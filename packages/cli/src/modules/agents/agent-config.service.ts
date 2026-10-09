@@ -315,8 +315,8 @@ export class AgentConfigService {
 			);
 		}
 
-		// An empty string clears the stored value.
-		for (const field of ['description', 'modelDeploymentName', 'modelProjectId'] as const) {
+		// Both are trimmed by the schema; an empty string clears the stored value.
+		for (const field of ['description', 'modelDeploymentName'] as const) {
 			if (decomposedSchema[field] === '') delete nextSchema[field];
 		}
 		return nextSchema;
@@ -395,7 +395,6 @@ const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
 	'description',
 	'modelDeploymentName',
-	'modelProjectId',
 	'personalisation',
 	'memory',
 	'subAgents',

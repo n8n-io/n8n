@@ -291,10 +291,6 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 			...promptCachingChanges,
 			...reasoningChanges,
 			...deploymentNameChange,
-			modelProjectId:
-				selection.provider === 'google-vertex'
-					? (selection.modelProjectId ?? props.config?.modelProjectId)
-					: '',
 		},
 		// A pending agent must not be persisted just because a default model was
 		// auto-applied — let the host apply it to the draft without autosaving.
@@ -353,11 +349,7 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
 	if (parsed?.provider === provider && credentialId) {
-		const changes: Partial<AgentJsonConfig> = { credential: credentialId };
-		if (provider === 'google-vertex' && credentialId !== props.config?.credential) {
-			changes.modelProjectId = '';
-		}
-		emit('update:config', changes);
+		emit('update:config', { credential: credentialId });
 	}
 }
 
@@ -423,7 +415,6 @@ defineExpose({ focusInstructions, focusModel });
 						:models-by-provider="filteredAgents"
 						:is-loading="isLoading"
 						:project-id="projectId"
-						:model-project-id="props.config?.modelProjectId"
 						:warn-missing-credentials="true"
 						:bound-credential-id="props.config?.credential ?? null"
 						data-testid="agent-model-selector"

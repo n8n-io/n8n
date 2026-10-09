@@ -1,6 +1,5 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { AgentEvalDataset, AgentEvalDatasetRepository, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -18,19 +17,12 @@ import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
 // Stub the @n8n/agents SDK: fluent builder is a no-op; `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
-const { generateMock, modelFetchMock } = vi.hoisted(() => ({
-	generateMock: vi.fn(),
-	modelFetchMock: vi.fn(),
-}));
+const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	// Channel action tools import APPROVAL_* schemas from the SDK; keep those real.
 	...(await importOriginal<typeof import('@n8n/agents')>()),
 	Agent: class {
 		model() {
-			return this;
-		}
-		modelFetch(fetch: CustomFetch) {
-			modelFetchMock(fetch);
 			return this;
 		}
 		instructions() {
@@ -57,9 +49,6 @@ vi.mock('../../agents/utils/agent-credential-provider', () => ({
 }));
 
 const user = mock<User>({ id: 'user-1' });
-const outboundHttp = mock<OutboundHttp>();
-const transport = mock<HttpTransport>();
-const proxyFetch = vi.fn<CustomFetch>();
 
 function makeConfig(over: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
@@ -101,11 +90,8 @@ describe('AgentEvalCaseGenerationService', () => {
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
 
 		generateMock.mockReset();
-		modelFetchMock.mockReset();
 		resolveModelMock.mockReset();
 		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
-		outboundHttp.transport.mockReturnValue(transport);
-		transport.asCustomFetch.mockReturnValue(proxyFetch);
 
 		flagGate.assertEnabled.mockResolvedValue(undefined);
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
@@ -121,7 +107,6 @@ describe('AgentEvalCaseGenerationService', () => {
 			datasetRepository,
 			flagGate,
 			instanceWriteAccess,
-			outboundHttp,
 		);
 	});
 
@@ -175,7 +160,6 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		const result = await service.generateDraftCases(user, 'project-1', 'agent-1');
 
-		expect(modelFetchMock).toHaveBeenCalledWith(proxyFetch);
 		// Prompt asks for the default count.
 		expect(generateMock).toHaveBeenCalledWith(
 			expect.stringContaining('Write exactly 6'),

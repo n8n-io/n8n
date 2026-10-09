@@ -9,7 +9,6 @@ const credentialMocks = vi.hoisted(() => ({
 		value: {
 			anthropic: 'local-anthropic-credential',
 			openai: 'local-openai-credential',
-			'google-vertex': 'local-google-credential',
 		},
 	},
 	selectCredential: vi.fn(),
@@ -151,93 +150,57 @@ describe('AgentMemoryModelSetting', () => {
 		]);
 	});
 
-	it.each([
-		{
-			selection: { provider: 'openai', model: 'gpt-5-mini' },
-			worker: { model: 'openai/gpt-5-mini', credential: 'local-openai-credential' },
-		},
-		{
-			selection: {
-				provider: 'google-vertex',
-				model: 'gemini-3-flash-preview',
-				modelProjectId: 'cloud-project',
-			},
-			worker: {
-				model: 'google-vertex/gemini-3-flash-preview',
-				credential: 'local-google-credential',
-				modelProjectId: 'cloud-project',
-			},
-		},
-	])(
-		'saves the model configuration when switching to $selection.provider',
-		async ({ selection, worker }) => {
-			const wrapper = mountSetting();
-			const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
-
-			selector.vm.$emit('change', selection);
-			await wrapper.vm.$nextTick();
-
-			expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
-				memory: {
-					observationalMemory: {
-						observerModel: worker,
-						reflectorModel: worker,
-					},
-					episodicMemory: {
-						credential: 'embedding-credential',
-						reflectorModel: worker,
-					},
-				},
-			});
-		},
-	);
-
-	it('uses an explicitly selected credential and clears the saved Vertex project', async () => {
+	it('uses the local credential when changing to a different provider', async () => {
 		const wrapper = mountSetting();
-		const config = makeConfig();
-		await wrapper.setProps({
-			config: {
-				...config,
-				memory: {
-					...config.memory,
-					enabled: true,
-					storage: 'n8n',
-					episodicMemory: {
-						...config.memory?.episodicMemory,
-						enabled: true,
-						credential: 'embedding-credential',
-						reflectorModel: {
-							model: 'google-vertex/saved-memory-model',
-							credential: 'saved-memory-credential',
-							modelProjectId: 'saved-project',
-						},
-					},
-				},
-			},
-		});
 		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
 
-		selector.vm.$emit('select-credential', 'google-vertex', 'new-google-credential');
-		selector.vm.$emit('change', {
-			provider: 'google-vertex',
-			model: 'new-memory-model',
-			modelProjectId: '',
+		selector.vm.$emit('change', { provider: 'openai', model: 'gpt-5-mini' });
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
+			memory: {
+				observationalMemory: {
+					observerModel: {
+						model: 'openai/gpt-5-mini',
+						credential: 'local-openai-credential',
+					},
+					reflectorModel: {
+						model: 'openai/gpt-5-mini',
+						credential: 'local-openai-credential',
+					},
+				},
+				episodicMemory: {
+					credential: 'embedding-credential',
+					reflectorModel: {
+						model: 'openai/gpt-5-mini',
+						credential: 'local-openai-credential',
+					},
+				},
+			},
 		});
+	});
+
+	it('uses an explicitly selected credential for the next model update', async () => {
+		const wrapper = mountSetting();
+		const selector = wrapper.getComponent({ name: 'AgentModelSelector' });
+
+		selector.vm.$emit('select-credential', 'anthropic', 'new-anthropic-credential');
+		selector.vm.$emit('change', { provider: 'anthropic', model: 'new-memory-model' });
 		await wrapper.vm.$nextTick();
 
 		expect(credentialMocks.selectCredential).toHaveBeenCalledWith(
-			'google-vertex',
-			'new-google-credential',
+			'anthropic',
+			'new-anthropic-credential',
 		);
 		expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
 			memory: {
 				observationalMemory: {
-					observerModel: { credential: 'new-google-credential', modelProjectId: '' },
-					reflectorModel: { credential: 'new-google-credential', modelProjectId: '' },
+					observerModel: { credential: 'new-anthropic-credential' },
+					reflectorModel: { credential: 'new-anthropic-credential' },
 				},
 				episodicMemory: {
 					credential: 'embedding-credential',
-					reflectorModel: { credential: 'new-google-credential', modelProjectId: '' },
+					reflectorModel: { credential: 'new-anthropic-credential' },
 				},
 			},
 		});

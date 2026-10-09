@@ -659,11 +659,16 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.list.mockResolvedValue([
-			{ id: 'vertex-cred', name: 'Service account', type: 'googleApi' },
+			{ id: 'vertex-cred', name: 'Vertex', type: 'googleVertexAiApi' },
 		]);
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
 			if (credentialId === 'vertex-cred') {
-				return { email: 'agent@example.test', privateKey: 'private-key', region: 'europe-west1' };
+				return {
+					email: 'agent@example.test',
+					privateKey: 'private-key',
+					region: 'europe-west1',
+					project: 'child-project',
+				};
 			}
 			if (credentialId === 'low-cred') {
 				return { apiKey: 'low-key', url: 'https://low.example/v1' };
@@ -681,7 +686,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 					medium: {
 						model: 'google-vertex/gemini-3-flash-preview',
 						credential: 'vertex-cred',
-						modelProjectId: 'child-project',
 					},
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
 				},

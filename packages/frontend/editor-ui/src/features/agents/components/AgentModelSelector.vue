@@ -9,11 +9,9 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
-import type { INodeListSearchItems } from 'n8n-workflow';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
@@ -50,7 +48,6 @@ const {
 	modelsByProvider,
 	isLoading,
 	projectId,
-	modelProjectId,
 	warnMissingCredentials = false,
 	boundCredentialId = null,
 	disabled = false,
@@ -61,7 +58,6 @@ const {
 	modelsByProvider: AgentModelsByProvider;
 	isLoading: boolean;
 	projectId: string;
-	modelProjectId?: string;
 	warnMissingCredentials?: boolean;
 	/**
 	 * The credential the host has actually persisted for this model. The picker
@@ -91,7 +87,6 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const nodeTypesStore = useNodeTypesStore();
 const aiGateway = useAiGateway();
 const { ensureLoaded, getDefaultModelForPicker, getVerificationStatus } = useModelCatalog();
 const pendingDefaultCredential = ref<{
@@ -102,91 +97,6 @@ const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
 );
-
-const selectedVertexProjectId = ref(modelProjectId);
-const vertexProjects = ref<INodeListSearchItems[]>([]);
-const vertexProjectsStatus = ref<'loading' | 'ready' | 'error'>('ready');
-const vertexProjectsRefresh = ref(0);
-
-watch(
-	[() => modelProjectId, () => credentials?.['google-vertex'], () => boundCredentialId],
-	([value, credentialId], [previousValue, previousCredentialId]) => {
-		if (value !== previousValue || (credentialId && credentialId === boundCredentialId)) {
-			selectedVertexProjectId.value = value;
-		} else if (previousCredentialId && credentialId !== previousCredentialId) {
-			selectedVertexProjectId.value = '';
-		}
-	},
-);
-
-watch(
-	[() => credentials?.['google-vertex'], () => projectId, vertexProjectsRefresh],
-	async ([credentialId, owningProjectId], _, onCleanup) => {
-		vertexProjects.value = [];
-		vertexProjectsStatus.value = 'ready';
-		if (!credentialId || !owningProjectId) return;
-
-		let active = true;
-		onCleanup(() => {
-			active = false;
-		});
-		vertexProjectsStatus.value = 'loading';
-		try {
-			const { results } = await nodeTypesStore.getResourceLocatorResults({
-				nodeTypeAndVersion: { name: '@n8n/n8n-nodes-langchain.lmChatGoogleVertex', version: 1 },
-				path: 'parameters.projectId',
-				methodName: 'gcpProjectsList',
-				currentNodeParameters: {},
-				credentials: { googleApi: { id: credentialId, name: '' } },
-				projectId: owningProjectId,
-			});
-			if (!active) return;
-			vertexProjects.value = results.toSorted((a, b) => a.name.localeCompare(b.name));
-			vertexProjectsStatus.value = 'ready';
-		} catch {
-			if (active) vertexProjectsStatus.value = 'error';
-		}
-	},
-	{ immediate: true },
-);
-
-function getVertexProjectItems(): MenuItem[] {
-	const items: MenuItem[] = vertexProjects.value.map((project) => ({
-		id: buildMenuItemId('google-vertex', 'project', String(project.value)),
-		label: project.name,
-		checked: selectedVertexProjectId.value === project.value,
-		keepOpen: true,
-	}));
-	if (!items.length) {
-		let label = i18n.baseText('agents.modelSelector.noProjects');
-		if (vertexProjectsStatus.value === 'loading') label = i18n.baseText('generic.loadingEllipsis');
-		if (vertexProjectsStatus.value === 'error') {
-			label = i18n.baseText('agents.modelSelector.projectsUnavailable');
-		}
-		items.push({
-			id: buildMenuItemId('google-vertex', 'reloadProjects', 'retry'),
-			label,
-			disabled: vertexProjectsStatus.value !== 'error',
-			keepOpen: true,
-		});
-	}
-	return [
-		{
-			id: 'google-vertex::header::projects',
-			label: i18n.baseText('agents.modelSelector.projects'),
-			header: true,
-			disabled: true,
-			divided: true,
-		},
-		...items,
-	];
-}
-
-function getModelSelection(provider: AgentModelProvider, model: string): AgentModelSelection {
-	const selection: AgentModelSelection = { provider, model };
-	if (provider === 'google-vertex') selection.modelProjectId = selectedVertexProjectId.value;
-	return selection;
-}
 
 const aiGatewayBalancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -445,6 +355,8 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					]
 				: [];
 
+	// Group the submenu into a "Connect to <provider>" credentials section and a
+	// "Models" section, each introduced by a non-interactive header row.
 	const connectItems: MenuItem[] = [
 		...freeOpenAiCreditsItems,
 		...n8nCreditsItems,
@@ -464,8 +376,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 			]
 		: [];
 
-	const projectItems =
-		provider === 'google-vertex' && hasProviderCredential ? getVertexProjectItems() : [];
 	const modelsSection: MenuItem[] = [...modelItems, ...statusItems];
 	const modelsHeader: MenuItem[] = modelsSection.length
 		? [
@@ -474,7 +384,8 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					label: i18n.baseText('agents.modelSelector.models'),
 					header: true,
 					disabled: true,
-					divided: connectItems.length > 0 || projectItems.length > 0,
+					// Separator above the models section when a connect section precedes it.
+					divided: connectItems.length > 0,
 				},
 			]
 		: [];
@@ -502,13 +413,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					}
 				: undefined,
 		},
-		children: [
-			...connectHeader,
-			...connectItems,
-			...projectItems,
-			...modelsHeader,
-			...modelsSection,
-		],
+		children: [...connectHeader, ...connectItems, ...modelsHeader, ...modelsSection],
 	};
 }
 
@@ -625,9 +530,6 @@ function selectCredentialAndResolveDefaultModel(
 	provider: AgentModelProvider,
 	credentialId: string,
 ) {
-	if (provider === 'google-vertex' && credentialId !== credentials?.[provider]) {
-		selectedVertexProjectId.value = '';
-	}
 	void ensureLoaded(projectId);
 	emit('selectCredential', provider, credentialId);
 	pendingDefaultCredential.value = { provider, credentialId };
@@ -659,7 +561,10 @@ function handleDefaultModelResolution(result: ReturnType<typeof getPendingDefaul
 	if (result.status === 'resolved' && result.defaultModel) {
 		emit(
 			'change',
-			getModelSelection(result.defaultModel.provider, result.defaultModel.model),
+			{
+				provider: result.defaultModel.provider,
+				model: result.defaultModel.model,
+			},
 			'auto',
 		);
 	}
@@ -695,19 +600,6 @@ async function onSelect(id: string) {
 	if (!parsed || !isAgentModelProvider(parsed.provider)) return;
 	const { provider: providerId, action, value } = parsed;
 
-	if (providerId === 'google-vertex' && action === 'reloadProjects') {
-		vertexProjectsRefresh.value++;
-		return;
-	}
-
-	if (providerId === 'google-vertex' && action === 'project') {
-		selectedVertexProjectId.value = value;
-		if (selectedModel?.provider === 'google-vertex') {
-			emit('change', getModelSelection(providerId, selectedModel.model));
-		}
-		return;
-	}
-
 	if (action === 'configure') {
 		emit('configureCredential', providerId);
 		openNewCredential(providerId, value);
@@ -742,7 +634,7 @@ async function onSelect(id: string) {
 
 	if (action === 'model') {
 		pendingDefaultCredential.value = null;
-		emit('change', getModelSelection(providerId, value));
+		emit('change', { provider: providerId, model: value });
 	}
 }
 

@@ -21,6 +21,7 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	// GooglePalmApi.credentials.ts    → apiKey, host (base URL)
 	google: (c) => ({ apiKey: c.apiKey, baseURL: c.host }),
 	'google-vertex': (c) => ({
+		project: (c.project ?? '__custom__') === '__custom__' ? c.projectId : c.project,
 		clientEmail: c.email,
 		privateKey: c.privateKey,
 		location: c.region,
