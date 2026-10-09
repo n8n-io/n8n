@@ -4,12 +4,13 @@ import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import type { INodeParameters, IWorkflowBase, Workflow } from 'n8n-workflow';
+import type { INodeParameters, IWebhookData, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -1700,7 +1701,8 @@ describe('WaitingWebhooks', () => {
 			);
 		});
 
-		it('should emit when execution successfully resumes', async () => {
+		it('should emit once with the time captured before webhook invocation', async () => {
+			const responseAt = new Date('2026-10-09T12:00:00.000Z');
 			mockWebhookService.getNodeWebhooks.mockReturnValue([
 				{
 					httpMethod: 'POST',
@@ -1716,6 +1718,7 @@ describe('WaitingWebhooks', () => {
 			] as any);
 			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
 				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback, _dn, options) => {
+					vi.setSystemTime(new Date(responseAt.getTime() + 5000));
 					options?.onResume?.();
 					callback(null, { noWebhookResponse: true });
 					return undefined;
@@ -1726,11 +1729,22 @@ describe('WaitingWebhooks', () => {
 				params: { path: 'test-execution-id', suffix: undefined },
 				method: 'POST',
 			});
-			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(responseAt);
+			try {
+				await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			} finally {
+				vi.useRealTimers();
+			}
 
+			expect(mockEventService.emit).toHaveBeenCalledTimes(1);
 			expect(mockEventService.emit).toHaveBeenCalledWith(
 				'execution-resumed',
-				expect.objectContaining({ executionId: 'test-execution-id', workflowId: 'workflow-id' }),
+				expect.objectContaining({
+					executionId: 'test-execution-id',
+					workflowId: 'workflow-id',
+					responseAt,
+				}),
 			);
 		});
 
@@ -1860,7 +1874,8 @@ describe('WaitingWebhooks', () => {
 				},
 			] as any);
 			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
-				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, done) => {
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, done, _dn, options) => {
+					options?.onResume?.();
 					done(null, { noWebhookResponse: true });
 					return undefined;
 				},
@@ -1872,6 +1887,60 @@ describe('WaitingWebhooks', () => {
 			});
 			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
 
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit for a matched form webhook', async () => {
+			const waitingForms = new WaitingForms(
+				mock(),
+				mock(),
+				executionPersistence,
+				mockWebhookService,
+				mockInstanceSettings,
+				mockEventService,
+				mockEndpointsConfig,
+			);
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.wait',
+					nodeName: 'WaitNode',
+					nodeId: 'node-id',
+					nodeParameters: { resume: 'form' },
+				}),
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				mock<IWebhookData>({
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: 'form',
+					},
+				}),
+			]);
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback, _dn, options) => {
+					options?.onResume?.();
+					callback(null, { noWebhookResponse: true });
+					return undefined;
+				},
+			);
+
+			await waitingForms.executeWebhook(
+				mock<WaitingWebhookRequest>({
+					params: { path: 'test-execution-id', suffix: undefined },
+					method: 'POST',
+				}),
+				createMockRes(),
+			);
+
+			expect(WebhookHelpers.executeWebhook).toHaveBeenCalledTimes(1);
 			expect(mockEventService.emit).not.toHaveBeenCalledWith(
 				'execution-resumed',
 				expect.anything(),

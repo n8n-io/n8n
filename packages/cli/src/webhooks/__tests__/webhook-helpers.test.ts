@@ -3119,13 +3119,13 @@ describe('executeWebhook when the node webhook throws', () => {
 		executionId,
 		method = 'GET',
 		onResume,
-		webhookSucceeds = false,
+		webhookResult,
 	}: {
 		runExecutionData?: IRunExecutionData;
 		executionId?: string;
 		method?: 'GET' | 'POST';
 		onResume?: () => void;
-		webhookSucceeds?: boolean;
+		webhookResult?: IWebhookResponseData;
 	}) => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -3134,8 +3134,8 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<IWorkflowExecuteAdditionalData>(),
 		);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
-		if (webhookSucceeds) {
-			webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] });
+		if (webhookResult !== undefined) {
+			webhookService.runWebhook.mockResolvedValue(webhookResult);
 		} else {
 			webhookService.runWebhook.mockRejectedValue(
 				new Error('No binary data with field data found.'),
@@ -3219,6 +3219,7 @@ describe('executeWebhook when the node webhook throws', () => {
 		{ method: 'POST' as const, disabled: true },
 	])('should leave a waiting execution as it was on $method', async ({ method, disabled }) => {
 		const runData = { Trigger: [mock<ITaskData>()] };
+		const savedRunData = { Trigger: [...runData.Trigger] };
 		const waitingNode = { ...startNode, disabled };
 		const runExecutionData = createRunExecutionData({
 			executionData: {
@@ -3242,6 +3243,7 @@ describe('executeWebhook when the node webhook throws', () => {
 		expectErrorResponse(responseCallback);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 		expect(runExecutionData.resultData.runData).toBe(runData);
+		expect(runExecutionData.resultData.runData).toEqual(savedRunData);
 		expect(runExecutionData.resultData.error).toBeUndefined();
 		expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
 			[{ json: { submitted: true } }],
@@ -3262,7 +3264,7 @@ describe('executeWebhook when the node webhook throws', () => {
 			executionId: EXECUTION_ID,
 			method: 'POST',
 			onResume,
-			webhookSucceeds: true,
+			webhookResult: { workflowData: [[{ json: { ok: true } }]] },
 		});
 
 		expect(onResume).toHaveBeenCalledTimes(1);
@@ -3270,6 +3272,25 @@ describe('executeWebhook when the node webhook throws', () => {
 		expect(onResume.mock.invocationCallOrder[0]).toBeLessThan(
 			workflowRunner.run.mock.invocationCallOrder[0],
 		);
+	});
+
+	it('should not resume when the node returns no workflow data', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: startNode, data: { main: [[]] }, source: null }],
+			},
+		});
+		const onResume = vi.fn();
+
+		await runRequest({
+			runExecutionData,
+			executionId: EXECUTION_ID,
+			onResume,
+			webhookResult: {},
+		});
+
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(onResume).not.toHaveBeenCalled();
 	});
 
 	it('should still record a new execution as failed', async () => {
