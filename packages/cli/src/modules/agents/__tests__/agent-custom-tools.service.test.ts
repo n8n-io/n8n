@@ -14,6 +14,10 @@ import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import {
+	type AgentFixtureOverrides,
+	createAgentSkillRefsService,
+} from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -31,7 +35,7 @@ const descriptor: ToolDescriptor = {
 	providerOptions: null,
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: agentId,
 		projectId,
@@ -67,6 +71,7 @@ function makeService() {
 			agentUpdateBroadcaster,
 			modificationTelemetry,
 		),
+		createAgentSkillRefsService(agentRepository),
 	);
 
 	return {

@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { StoredAgentConfig } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, User, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -38,7 +38,7 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 		data: {
 			versionId: string;
 			agentId: string;
-			schema: AgentJsonConfig | null;
+			schema: StoredAgentConfig | null;
 			tools: Agent['tools'] | null;
 			skills: Agent['skills'] | null;
 			publishedBy: User | string;
@@ -50,7 +50,7 @@ export class AgentHistoryRepository extends BaseRepository<AgentHistory> {
 		const publishedById = typeof publishedBy === 'string' ? null : publishedBy.id;
 		const repo = this.managerFor(ctx).getRepository(AgentHistory);
 		// TypeORM's QueryDeepPartialEntity can't express our @JsonColumn shapes
-		// (Zod-inferred AgentJsonConfig, the tools `Record<string, …>`, etc.),
+		// (Zod-inferred StoredAgentConfig, the tools `Record<string, …>`, etc.),
 		// so each JSON field is cast individually. The non-JSON fields
 		// (versionId, agentId, author, publishedById) stay type-checked.
 		// The casts are safe at runtime: @JsonColumn serialises the values.

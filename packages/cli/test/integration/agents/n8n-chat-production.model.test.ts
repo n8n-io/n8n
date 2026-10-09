@@ -20,6 +20,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { saveCredential } from '../shared/db/credentials';
 import { createOwner, createMember } from '../shared/db/users';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 vi.mock('@/utils/ai-proxy-fetch', async (importOriginal) => {
 	const original = await importOriginal<typeof import('@/utils/ai-proxy-fetch')>();
@@ -249,7 +250,7 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 				id: randomUUID(),
 				name: schema.name,
 				projectId: project.id,
-				schema,
+				schema: storedAgentConfig(schema),
 				tools,
 				skills: {},
 				integrations: [chatIntegration],
@@ -260,7 +261,7 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 		await Container.get(AgentHistoryRepository).saveVersion({
 			versionId,
 			agentId: agent.id,
-			schema: { ...schema, integrations: [chatIntegration] },
+			schema: storedAgentConfig({ ...schema, integrations: [chatIntegration] }),
 			tools,
 			skills: {},
 			publishedBy: owner,

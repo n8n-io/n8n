@@ -72,6 +72,11 @@ import { McpAgentSlackSetup } from '../tools/agents/agent-slack-setup';
 import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
+import {
+	createAgentSkillRefsService,
+	storedAgentConfig,
+	storedSkillRefs,
+} from '../../agents/__tests__/test-utils/stored-agent-config';
 
 const userHasScopesMock = userHasScopes as Mock;
 
@@ -180,6 +185,7 @@ describe('McpAgentToolsService', () => {
 		urlService,
 		projectScopeService,
 		new McpAgentSlackSetup(slackManagedSetup, slackManualSetup, mockLogger()),
+		createAgentSkillRefsService(),
 	);
 
 	let tools: Map<string, RegisteredTool>;
@@ -247,6 +253,7 @@ describe('McpAgentToolsService', () => {
 			mockLogger(),
 			agentRepository,
 			saveCompletion,
+			createAgentSkillRefsService(agentRepository),
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
@@ -262,6 +269,7 @@ describe('McpAgentToolsService', () => {
 			transactionRunner,
 			saveCompletion,
 			new AgentPolicyService(new PolicyEnforcementService()),
+			createAgentSkillRefsService(agentRepository),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -1986,6 +1994,45 @@ describe('McpAgentToolsService', () => {
 
 			expect(result.structuredContent.integrations).toEqual([integration]);
 			expect(result.structuredContent.config).not.toHaveProperty('integrations');
+		});
+
+		it('returns the stored skill refs, and config.replace of that config keeps them', async () => {
+			const skillRefs = [
+				{ type: 'skill' as const, id: 'zeta' },
+				{ type: 'skill' as const, id: 'alpha', enabled: false },
+				{ type: 'skill' as const, id: 'mid', enabled: true },
+			];
+			const skillBody = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
+			const agent = agentEntity({
+				schema: storedAgentConfig({ ...baseConfig, skills: skillRefs }),
+				skills: { zeta: skillBody, mid: { ...skillBody, name: 'Mid' } },
+				tools: {},
+			});
+			useRealCustomToolPersistence(agent);
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue([] as never);
+			agentTaskService.list.mockResolvedValue([] as never);
+
+			const read = await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
+			const { config, configHash } = read.structuredContent as {
+				config: AgentJsonConfig;
+				configHash: string;
+			};
+
+			expect(config.skills).toEqual(skillRefs);
+			expect(configHash).toBe(
+				getAgentConfigHash({ ...baseConfig, skills: skillRefs, integrations: [] }),
+			);
+
+			const written = await callTool('mutate_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				baseConfigHash: configHash,
+				operation: { type: 'config.replace', config },
+			});
+
+			expect(written.structuredContent).toMatchObject({ ok: true, configHash });
+			expect(storedSkillRefs(agent)).toEqual(skillRefs);
 		});
 
 		it('returns an error result for an unknown agent', async () => {

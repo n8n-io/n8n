@@ -9,6 +9,11 @@ import type { Agent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
+import {
+	type AgentFixtureOverrides,
+	type AgentHistoryFixtureOverrides,
+	createAgentSkillRefsService,
+} from '../../__tests__/test-utils/stored-agent-config';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
@@ -40,7 +45,7 @@ const customToolDescriptor: ToolDescriptor = {
 	providerOptions: null,
 };
 
-function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
+function makeAgentHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHistory {
 	return {
 		agentId,
 		versionId,
@@ -51,7 +56,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	} as unknown as AgentHistory;
 }
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: agentId,
 		name: 'Helper Agent',
@@ -76,7 +81,11 @@ describe('SubAgentSourceResolver', () => {
 		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
-		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);
+		resolver = new SubAgentSourceResolver(
+			agentRepository,
+			agentHistoryRepository,
+			createAgentSkillRefsService(agentRepository),
+		);
 	});
 
 	it('resolves the latest draft when no version is pinned', async () => {
@@ -318,6 +327,59 @@ describe('SubAgentSourceResolver', () => {
 		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
 			`Version "${versionId}" not found for agent "${agentId}"`,
 		);
+	});
+
+	describe('skill refs round trip', () => {
+		const draftRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+		];
+		const publishedRefs = [
+			{ type: 'skill' as const, id: 'mid', enabled: true },
+			{ type: 'skill' as const, id: 'zeta' },
+		];
+		const pinnedRefs = [{ type: 'skill' as const, id: 'old', enabled: false }];
+
+		beforeEach(() => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: { ...runnableConfig, skills: draftRefs },
+					activeVersion: makeAgentHistory({
+						schema: { ...runnableConfig, skills: publishedRefs },
+					}),
+				}),
+			);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+				makeAgentHistory({
+					versionId: 'pinned-version',
+					schema: { ...runnableConfig, skills: pinnedRefs },
+				}),
+			);
+		});
+
+		it('resolves the draft with the draft skill refs', async () => {
+			const result = await resolver.resolveForRuntime({ agentId }, { projectId });
+
+			expect(result.source.config.skills).toEqual(draftRefs);
+		});
+
+		it('resolves the published version with its skill refs', async () => {
+			const result = await resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, usePublishedVersion: true },
+			);
+
+			expect(result.source.config.skills).toEqual(publishedRefs);
+		});
+
+		it('resolves a pinned version with its skill refs', async () => {
+			const result = await resolver.resolveForRuntime(
+				{ agentId, versionId: 'pinned-version' },
+				{ projectId },
+			);
+
+			expect(result.source.config.skills).toEqual(pinnedRefs);
+		});
 	});
 
 	it('rejects a resolved config that is not runnable', async () => {

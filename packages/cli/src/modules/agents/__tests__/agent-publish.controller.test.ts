@@ -13,6 +13,7 @@ import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 function makeController({
 	agentPublishService = mock<AgentPublishService>(),
@@ -29,6 +30,7 @@ function makeController({
 		credentialsService,
 		agentValidationService,
 		agentPublishService,
+		createAgentSkillRefsService(),
 	);
 
 	return {

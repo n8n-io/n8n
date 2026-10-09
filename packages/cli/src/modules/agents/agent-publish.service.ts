@@ -6,6 +6,7 @@ import {
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentVersionListItemDto,
+	type StoredAgentConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -29,6 +30,7 @@ import { Telemetry } from '@/telemetry';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentDefinitionService } from './agent-definition.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { AgentDefinition } from './utils/agent-definition';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
@@ -46,6 +48,7 @@ import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -126,6 +129,7 @@ export class AgentPublishService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -159,13 +163,16 @@ export class AgentPublishService {
 
 		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
 
+		// The document that goes live: for a republish, the version's config, not the draft.
+		const published = await this.readPublishTargetDocument(agent, targetHistory);
+
 		// Backstop: explicit publish can be the first path to observe a complete
 		// setup. Marking here keeps "setup completed" a superset of "published".
 		const emitSetupCompleted = this.setupCompletionService.recordPublishedSetupComplete(
 			agent,
 			projectId,
 			user,
-			targetHistory ? targetHistory.schema : agent.schema,
+			published,
 		);
 
 		await this.commitPublication(agent, expectedRevision, user, tasks, targetHistory);
@@ -174,7 +181,7 @@ export class AgentPublishService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		this.trackPublished(agent, projectId, user, emitter, targetHistory);
+		this.trackPublished(agent, projectId, user, emitter, targetHistory, published);
 		await emitSetupCompleted?.();
 
 		await this.startPublishedServices(agent);
@@ -225,6 +232,7 @@ export class AgentPublishService {
 				)
 			: await this.agentValidationService.validateAgentEntityConfiguration(
 					agent,
+					await this.agentSkillRefs.refsForDraft(agent, {}),
 					projectId,
 					tasks,
 					credentialProvider,
@@ -310,10 +318,8 @@ export class AgentPublishService {
 		user: User,
 		emitter: AgentPublishEmitter,
 		targetHistory: AgentHistory | undefined,
+		published: AgentJsonConfig | null,
 	): void {
-		// The snapshot that actually went live, which for a republish is the
-		// version's schema rather than the draft.
-		const published = targetHistory ? targetHistory.schema : agent.schema;
 		const properties = {
 			agent_id: agent.id,
 			project_id: projectId,
@@ -436,33 +442,33 @@ export class AgentPublishService {
 	): Promise<void> {
 		await this.enforceRevertPolicy(agent, context.user, version.schema);
 
-		const previousSchema = agent.schema;
+		const previousSchema = agent.schema
+			? toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {}))
+			: null;
 		const previousTools = agent.tools ?? {};
 		const previousSkills = agent.skills ?? {};
-		const tasksChanged = await this.transactionRunner.run({}, async (ctx) => {
+		const { tasksChanged, nextSchema } = await this.transactionRunner.run({}, async (ctx) => {
 			const definition = await this.definitionService.readVersion(version, ctx);
 			definition.schema = draftSchemaFromVersion(definition.schema);
 			agent.versionId = nextVersionId;
-			return await this.definitionService.replaceDraft(agent, definition, ctx);
+			return {
+				tasksChanged: await this.definitionService.replaceDraft(agent, definition, ctx),
+				nextSchema: definition.schema,
+			};
 		});
 		const integrations = agent.integrations ?? [];
 		await this.saveCompletion.configurationSaved(
 			{
 				agent,
+				config: nextSchema,
 				projectId: agent.projectId,
 				user: context.user,
 				by: context.modifiedBy,
-				changedParts: diffAgentConfigParts(
-					previousSchema,
-					agent.schema,
-					integrations,
-					integrations,
-					{
-						tools: !isEqual(previousTools, agent.tools),
-						skills: !isEqual(previousSkills, agent.skills),
-						tasks: tasksChanged,
-					},
-				),
+				changedParts: diffAgentConfigParts(previousSchema, nextSchema, integrations, integrations, {
+					tools: !isEqual(previousTools, agent.tools),
+					skills: !isEqual(previousSkills, agent.skills),
+					tasks: tasksChanged,
+				}),
 				wasUnconfigured: false,
 			},
 			context.pushRef,
@@ -528,7 +534,7 @@ export class AgentPublishService {
 	private async snapshotConfiguredTasks(
 		ctx: OperationContext,
 		versionId: string,
-		config: AgentJsonConfig | null,
+		config: Pick<StoredAgentConfig, 'tasks'> | null,
 		tasks: ReadonlyMap<string, AgentTask>,
 	): Promise<void> {
 		if (!config) return;
@@ -561,23 +567,41 @@ export class AgentPublishService {
 	}
 
 	private pickConfiguredSkillBodies(
-		config: AgentJsonConfig | null,
+		config: StoredAgentConfig | null,
+		skillRefs: AgentSkillRefs,
 		skills: Record<string, AgentSkill>,
 	): Record<string, AgentSkill> | null {
 		if (!config) return null;
 
-		const missing = getMissingSkillIds(config, skills);
+		const missing = getMissingSkillIds(skillRefs, skills);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
 		}
 
 		const snapshot: Record<string, AgentSkill> = {};
-		for (const ref of config.skills ?? []) {
+		for (const ref of skillRefs ?? []) {
 			const skill = skills[ref.id];
 			if (skill) snapshot[ref.id] = deepCopy(skill);
 		}
 
 		return snapshot;
+	}
+
+	private async readPublishTargetDocument(
+		agent: Agent,
+		targetHistory: AgentHistory | undefined,
+	): Promise<AgentJsonConfig | null> {
+		if (targetHistory) {
+			return targetHistory.schema
+				? toAgentDocument(
+						targetHistory.schema,
+						await this.agentSkillRefs.refsForVersion(targetHistory, {}),
+					)
+				: null;
+		}
+		return agent.schema
+			? toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {}))
+			: null;
 	}
 
 	private async startPublishedServices(agent: Agent): Promise<void> {
@@ -687,11 +711,13 @@ export class AgentPublishService {
 		user: User,
 		versionId: string,
 	) {
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, ctx);
 		try {
 			return await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
 					agentId: agent.id,
+					// The stored config carries the skill refs of the draft into the version.
 					schema: agent.schema
 						? {
 								...agent.schema,
@@ -701,7 +727,7 @@ export class AgentPublishService {
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
+					skills: this.pickConfiguredSkillBodies(agent.schema, skillRefs, agent.skills ?? {}),
 					publishedBy: user,
 				},
 				ctx,

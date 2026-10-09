@@ -28,6 +28,7 @@ import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { formatPreviewSessionContext } from './builder/format-preview-context';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -84,6 +85,7 @@ export class InstanceAiAgentContextAdapterService {
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly agentsToolsService: AgentsToolsService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	createReader(user: User, projectId: string): InstanceAiAgentContextReader {
@@ -163,7 +165,7 @@ export class InstanceAiAgentContextAdapterService {
 
 		const agent = await this.agentsService.findById(input.agentId, projectId);
 		if (!agent) throw new UserError('Agent not found.');
-		const config = composeJsonConfig(agent);
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 
 		switch (input.type) {
 			case 'config':

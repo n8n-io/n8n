@@ -17,6 +17,7 @@ import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { Agent } from '../entities/agent.entity';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -38,6 +39,7 @@ function makeService() {
 		attachableWorkflowsService,
 		mcpRegistryService,
 		agentsToolsService,
+		createAgentSkillRefsService(),
 	);
 	return {
 		service,
