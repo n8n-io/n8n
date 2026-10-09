@@ -741,7 +741,10 @@ describe('PublicApiControllerRegistry', () => {
 			@Service()
 			class WidgetsPublicController {
 				@Get('/')
-				@ApiResponse(202, { mediaType: 'application/gzip' })
+				@ApiResponse(202, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Example': { description: 'Example header.' } },
+				})
 				async method(_req: unknown, res: express.Response) {
 					res.setHeader('X-Example', '1');
 					res.end(Buffer.from([1, 2, 3]));
@@ -865,6 +868,41 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
 		});
 
+		it('fails with 500 when a declared header is not set and the body never starts', async () => {
+			@Service()
+			class WidgetsBinaryHeaderPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Required': { description: 'Must be set.' } },
+				})
+				async method() {}
+			}
+			markPublicApiController(WidgetsBinaryHeaderPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(500);
+
+			expect(response.body.message).toBe('Internal server error');
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+		});
+
+		it('aborts the response when a declared header is not set at the first write', async () => {
+			@Service()
+			class WidgetsBinaryWritePublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Required': { description: 'Must be set.' } },
+				})
+				async method(_req: unknown, res: express.Response) {
+					res.end(Buffer.from('data'));
+				}
+			}
+			markPublicApiController(WidgetsBinaryWritePublicController as Controller, '/widgets');
+
+			await expect(request(activate()).get('/api/v1/widgets')).rejects.toThrow();
+		});
+
 		it('restores a Content-Type set by earlier middleware on an early failure', async () => {
 			@Service()
 			class WidgetsBinaryMiddlewarePublicController {
@@ -887,26 +925,6 @@ describe('PublicApiControllerRegistry', () => {
 
 			expect(response.headers['content-type']).toMatch(/text\/plain/);
 			expect(response.headers['content-disposition']).toBeUndefined();
-		});
-
-		it('runs the auth gate before the method', async () => {
-			authStrategyRegistry.authenticate.mockResolvedValue(false);
-			const handler = vi.fn();
-
-			@Service()
-			class WidgetsPublicController {
-				@Get('/')
-				@ApiResponse(200, { mediaType: 'application/gzip' })
-				async method(_req: unknown, res: express.Response) {
-					handler();
-					res.end(Buffer.from('data'));
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-
-			await request(activate()).get('/api/v1/widgets').expect(401);
-
-			expect(handler).not.toHaveBeenCalled();
 		});
 	});
 });

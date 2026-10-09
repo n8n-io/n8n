@@ -15,7 +15,8 @@ export type ApiKeyScopeRequirement =
 export type ResponseDtoClass = Pick<ZodClass, 'parse'>;
 
 /** Media types a binary `@ApiResponse` can declare. Add a type here to support it. */
-export type BinaryResponseMediaType = 'application/gzip';
+export const BINARY_RESPONSE_MEDIA_TYPES = ['application/gzip'] as const;
+export type BinaryResponseMediaType = (typeof BINARY_RESPONSE_MEDIA_TYPES)[number];
 
 /** A response header documented on a binary `@ApiResponse`. */
 export interface ResponseHeader {
@@ -30,7 +31,10 @@ export interface BinaryResponse {
 	mediaType: BinaryResponseMediaType;
 	/** OpenAPI description of the success response. Defaults to 'Operation successful.'. */
 	description?: string;
-	/** Response headers the controller method sets, keyed by header name. Documentation only. */
+	/**
+	 * Response headers the controller method must set before the body starts, keyed by header name.
+	 * The framework checks that each one is set, and documents it in the spec.
+	 */
 	headers?: Record<string, ResponseHeader>;
 }
 

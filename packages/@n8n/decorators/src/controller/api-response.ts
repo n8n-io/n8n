@@ -1,16 +1,26 @@
 import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { BinaryResponse, Controller, ResponseDtoClass, SuccessStatus } from './types';
+import {
+	BINARY_RESPONSE_MEDIA_TYPES,
+	type BinaryResponse,
+	type Controller,
+	type ResponseDtoClass,
+	type SuccessStatus,
+} from './types';
+
+function isBinaryResponse(body: unknown): body is BinaryResponse {
+	return (
+		typeof body === 'object' &&
+		body !== null &&
+		'mediaType' in body &&
+		BINARY_RESPONSE_MEDIA_TYPES.some((mediaType) => mediaType === body.mediaType)
+	);
+}
 
 /**
  * Declares what a route returns on success: its HTTP status, and either its public output DTO or a
  * binary body that the controller method writes to `res` itself.
- *
- * For a binary body, the registry sets the declared status and `Content-Type` before it calls the
- * method, and ignores the method's return value. The method must start the response before it
- * resolves (for a stream, await its `finish`). A method that returns without a response fails with
- * a 500.
  *
  * Only one @ApiResponse decorator should be present per endpoint otherwise an error will be thrown.
  */
@@ -52,8 +62,4 @@ export function ApiResponse(
 			routeMetadata.responseDto = body;
 		}
 	};
-}
-
-function isBinaryResponse(body: unknown): body is BinaryResponse {
-	return typeof body === 'object' && body !== null && 'mediaType' in body;
 }

@@ -1,16 +1,39 @@
 import type { BinaryResponse, SuccessStatus } from '@n8n/decorators';
 import { UnexpectedError } from '@n8n/errors';
 import type { Response } from 'express';
+import { type OutgoingHttpHeaders } from 'http';
+
+function getMissingHeaders(res: Response, declaredHeaders: string[]) {
+	return declaredHeaders.filter((name) => !res.hasHeader(name));
+}
+
+function restoreHeaders(res: Response, headers: OutgoingHttpHeaders) {
+	// Clear existing headers
+	for (const name of res.getHeaderNames()) {
+		if (headers[name] === undefined) {
+			res.removeHeader(name);
+		}
+	}
+
+	// Restore original headers
+	for (const [name, value] of Object.entries(headers)) {
+		if (value !== undefined) {
+			res.setHeader(name, value);
+		}
+	}
+}
+
+const missingHeaderError = (routeName: string, names: string[]) =>
+	new UnexpectedError(
+		`${routeName} did not set the declared response header(s): ${names.join(', ')}`,
+	);
 
 /**
- * Runs a route whose controller method writes a binary body to `res` itself. Sets the declared
- * status and media type first, so the documented ones are what a client gets.
+ * Runs a route whose controller method writes a binary body to `res` itself.
  *
- * If the method throws or returns before the response starts, restores the headers to their values
- * from before the method ran. This removes headers the method added, and puts back any value the
- * method (or the `Content-Type` set above) overwrote. The JSON error that follows is then not
- * labelled as binary. A method that returns without sending a response is a bug, so it fails with a
- * 500.
+ * Every declared header must be set before the body starts. The check runs at the first write, so
+ * it also covers a stream. A missing header aborts the response. If the method returns before it
+ * writes anything, the missing header fails the request with a 500.
  */
 export async function runBinaryResponseRoute(
 	res: Response,
@@ -19,27 +42,48 @@ export async function runBinaryResponseRoute(
 	routeName: string,
 	invoke: () => Promise<unknown>,
 ): Promise<void> {
-	const headersBefore = res.getHeaders();
-	const restoreHeaders = () => {
-		for (const name of res.getHeaderNames()) {
-			if (!(name in headersBefore)) res.removeHeader(name);
-		}
-		for (const [name, value] of Object.entries(headersBefore)) {
-			if (value !== undefined) res.setHeader(name, value);
-		}
-	};
+	const headers = res.getHeaders();
+	const declaredHeaders = Object.keys(binaryResponse.headers ?? {});
 
 	res.status(successStatus).setHeader('Content-Type', binaryResponse.mediaType);
 
+	// Node calls `writeHead` on the first write, so the check runs before any header is sent.
+	const originalWriteHead = res.writeHead;
+	res.writeHead = ((...args: Parameters<Response['writeHead']>) => {
+		const absent = getMissingHeaders(res, declaredHeaders);
+		if (absent.length) {
+			res.destroy(missingHeaderError(routeName, absent));
+			return res;
+		}
+		return originalWriteHead.apply(res, args);
+	}) as Response['writeHead'];
+
+	// The check ends with the route. Otherwise it would also block the JSON error response below.
+	const release = () => {
+		res.writeHead = originalWriteHead;
+	};
+
 	try {
 		await invoke();
+		release();
 	} catch (error) {
-		if (!res.headersSent) restoreHeaders();
+		release();
+		if (!res.headersSent) {
+			restoreHeaders(res, headers);
+		}
 		throw error;
 	}
 
 	if (!res.headersSent) {
-		restoreHeaders();
+		const absent = getMissingHeaders(res, declaredHeaders);
+
+		release();
+		restoreHeaders(res, headers);
+
+		if (absent.length) {
+			throw missingHeaderError(routeName, absent);
+		}
+
 		throw new UnexpectedError(
 			`${routeName} declares a binary @ApiResponse but returned without sending a response`,
 		);

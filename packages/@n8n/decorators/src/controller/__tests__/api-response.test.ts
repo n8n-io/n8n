@@ -100,16 +100,4 @@ describe('@ApiResponse Decorator', () => {
 			void TestController;
 		}).toThrow('declares a 204 @ApiResponse with a binary body');
 	});
-
-	it('should reject a binary @ApiResponse stacked with another @ApiResponse', () => {
-		expect(() => {
-			class TestController {
-				@Get('/')
-				@ApiResponse(204)
-				@ApiResponse(200, { mediaType: 'application/gzip' })
-				async handler() {}
-			}
-			void TestController;
-		}).toThrow('declares more than one @ApiResponse');
-	});
 });

@@ -150,8 +150,9 @@ need no change, since they all read the handler, not the media type.
 
 `@ApiResponse(status, { mediaType, description?, headers? })` declares a
 success body that the controller method writes to `res` itself, for example
-an `application/gzip` stream. `mediaType` accepts only the types in
-`BinaryResponseMediaType`.
+an `application/gzip` stream. The framework treats options whose `mediaType` is in
+`BINARY_RESPONSE_MEDIA_TYPES` as a binary response. `mediaType` accepts only
+those types.
 
 - The registry sets the declared status and `Content-Type: <mediaType>`
   before it calls the method. It does not call `res.json(...)`, and it
@@ -167,8 +168,10 @@ an `application/gzip` stream. `mediaType` accepts only the types in
   example `Deprecation`) stay.
 - After the response starts, an error goes to `next(error)`, as for a JSON
   route.
-- `headers` documents response headers in the spec only. The method sets
-  them; the registry does not set or check them.
+- Every header in `headers` must be set before the body starts. The
+  framework checks this at the first write. A missing header aborts the
+  response. If the method returns without writing, the request fails with a
+  `500`. Declare only headers the method always sets.
 - The generator documents the body as `{ type: string, format: binary }`
   under the `mediaType` content key, with the description and headers.
   The description defaults to `Operation successful.`.
