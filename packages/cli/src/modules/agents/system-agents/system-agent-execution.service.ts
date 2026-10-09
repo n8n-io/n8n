@@ -218,7 +218,37 @@ export class SystemAgentExecutionService {
 			user.id,
 		);
 		if (!deleted) throw new NotFoundError('Session not found');
+		await this.deleteChildThreads(agentId, thread.id, user.id);
 		await this.destroyThreadWorkspace(agentId, thread.id, user.id);
+	}
+
+	/**
+	 * Delete the child sessions of a deleted thread, for example the Agent
+	 * builder sessions it started. The parent is deleted first, so a busy
+	 * parent keeps its children. A failure is logged: the parent is already gone.
+	 */
+	private async deleteChildThreads(agentId: string, threadId: string, userId: string) {
+		const logFailure = (error: unknown, childThreadId?: string) =>
+			this.logger.warn('Failed to delete a child session of a system agent thread', {
+				agentId,
+				threadId,
+				...(childThreadId ? { childThreadId } : {}),
+				error: error instanceof Error ? error.message : String(error),
+			});
+		let children: Array<{ id: string; agentId: string; projectId: string }>;
+		try {
+			children = await this.threadRepository.findChildSessions(threadId, agentId);
+		} catch (error) {
+			logFailure(error);
+			return;
+		}
+		for (const child of children) {
+			try {
+				await this.executionService.deleteThread(child.projectId, child.agentId, child.id, userId);
+			} catch (error) {
+				logFailure(error, child.id);
+			}
+		}
 	}
 
 	/**

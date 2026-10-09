@@ -109,6 +109,7 @@ function setup(
 	registry.register(provider);
 
 	threadRepository.findOwnedById.mockResolvedValue(thread);
+	threadRepository.findChildSessions.mockResolvedValue([]);
 	executionRepository.findExecution.mockResolvedValue(null);
 	// Collect the prepared request, then stream the scripted chunks.
 	const prepared: AgentTurnRequest[] = [];
@@ -1068,6 +1069,53 @@ describe('SystemAgentExecutionService', () => {
 				AGENT_ID,
 				'thread-1',
 				'user-1',
+			);
+		});
+
+		it('deletes the child sessions of a deleted thread after the thread', async () => {
+			const { service, executionService, threadRepository } = setup();
+			executionService.deleteThread.mockResolvedValue(true);
+			threadRepository.findChildSessions.mockResolvedValue([
+				{ id: 'ia-builder:thread-1:agent-a', agentId: 'agent-a', projectId: 'project-1' },
+				{ id: 'ia-builder:thread-1:agent-b', agentId: 'agent-b', projectId: 'project-2' },
+			]);
+
+			await service.deleteThread(AGENT_ID, user, 'thread-1');
+
+			expect(threadRepository.findChildSessions).toHaveBeenCalledWith('thread-1', AGENT_ID);
+			expect(executionService.deleteThread.mock.calls).toEqual([
+				['project-1', AGENT_ID, 'thread-1', 'user-1'],
+				['project-1', 'agent-a', 'ia-builder:thread-1:agent-a', 'user-1'],
+				['project-2', 'agent-b', 'ia-builder:thread-1:agent-b', 'user-1'],
+			]);
+		});
+
+		it('keeps the child sessions of a busy thread', async () => {
+			const { service, executionService, threadRepository } = setup();
+			executionService.deleteThread.mockRejectedValue(
+				new ConflictError('The session has active work and cannot be deleted'),
+			);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(ConflictError);
+			expect(threadRepository.findChildSessions).not.toHaveBeenCalled();
+		});
+
+		it('logs a child session that cannot be deleted and deletes the others', async () => {
+			const { service, executionService, threadRepository, logger } = setup();
+			executionService.deleteThread
+				.mockResolvedValueOnce(true)
+				.mockRejectedValueOnce(new ConflictError('busy'))
+				.mockResolvedValueOnce(true);
+			threadRepository.findChildSessions.mockResolvedValue([
+				{ id: 'child-1', agentId: 'agent-a', projectId: 'project-1' },
+				{ id: 'child-2', agentId: 'agent-b', projectId: 'project-1' },
+			]);
+
+			await expect(service.deleteThread(AGENT_ID, user, 'thread-1')).resolves.toBeUndefined();
+			expect(executionService.deleteThread).toHaveBeenCalledTimes(3);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to delete a child session of a system agent thread',
+				expect.objectContaining({ threadId: 'thread-1', childThreadId: 'child-1' }),
 			);
 		});
 

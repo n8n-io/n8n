@@ -451,7 +451,16 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		if (changes.projectId !== undefined) set.projectId = changes.projectId;
 		// TypeORM rejects an update without values.
 		if (Object.keys(set).length === 0) return;
-		await this.update({ id: threadId }, set);
+		const { projectId } = set;
+		await this.runInTransaction({}, async (manager) => {
+			await manager.update(AgentExecutionThread, { id: threadId }, set);
+			// Child sessions (for example Agent builder sessions) follow the
+			// working project of their parent, so the parent lookup in
+			// `findOrCreate` keeps finding the parent.
+			if (projectId !== undefined) {
+				await manager.update(AgentExecutionThread, { parentThreadId: threadId }, { projectId });
+			}
+		});
 	}
 
 	/**
@@ -517,6 +526,22 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return await this.find({
 			where: { parentThreadId, projectId },
 			order: { createdAt: 'ASC' },
+		});
+	}
+
+	/**
+	 * Child sessions that a session of the given agent started. The children
+	 * follow the parent's working project (see `updateOwned`), but the cleanup
+	 * does not filter by project, so a child is never left behind.
+	 */
+	async findChildSessions(
+		parentThreadId: string,
+		parentAgentId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: { parentThreadId, parentAgentId },
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 	}
 
