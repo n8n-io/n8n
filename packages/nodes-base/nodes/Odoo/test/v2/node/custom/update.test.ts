@@ -48,7 +48,7 @@ describe('OdooV2 — custom:update', () => {
 
 	it('updates a record by ID with defineBelow fields and returns updated:true', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
 
 		const result = await node.execute.call(exec);
 
@@ -62,7 +62,7 @@ describe('OdooV2 — custom:update', () => {
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'fieldsToSend.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { name: 'Auto Update', phone: '123' } }]);
-		(transport.odooApiRequest as Mock).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
 
 		await node.execute.call(exec);
 
@@ -74,7 +74,7 @@ describe('OdooV2 — custom:update', () => {
 
 	it('uses the model from the customResource RLC parameter', async () => {
 		setupParams({ customResource: 'sale.order', recordId: 99 });
-		(transport.odooApiRequest as Mock).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
 
 		await node.execute.call(exec);
 
@@ -84,7 +84,9 @@ describe('OdooV2 — custom:update', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Write failed'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Write failed'));
 
 		const result = await node.execute.call(exec);
 
@@ -94,7 +96,9 @@ describe('OdooV2 — custom:update', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Write failed'));
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({})
+			.mockRejectedValue(new Error('Write failed'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Write failed');
 	});
