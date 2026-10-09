@@ -46,7 +46,9 @@ describe('skill scopes', () => {
 
 	it('are withheld from members and chat users, whose own skills need no scope', () => {
 		for (const scopes of [GLOBAL_MEMBER_SCOPES, GLOBAL_CHAT_USER_SCOPES]) {
-			expect(scopes.filter((scope) => scope.startsWith('skill:'))).toEqual([]);
+			expect(
+				scopes.filter((scope) => scope.startsWith('skill:') || scope.startsWith('projectSkill:')),
+			).toEqual([]);
 		}
 	});
 
