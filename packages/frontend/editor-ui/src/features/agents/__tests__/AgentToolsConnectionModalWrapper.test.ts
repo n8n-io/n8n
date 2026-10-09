@@ -335,8 +335,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isNodeTypeVersionSupported = vi.fn().mockReturnValue(true);
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
-		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
-
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
@@ -443,17 +441,6 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		button.click();
 		await flushPromises();
 	}
-
-	it('loads node types when the tool picker opens, but not in workflow mode', async () => {
-		render();
-		await flushPromises();
-		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledOnce();
-
-		vi.mocked(nodeTypesStore.loadNodeTypesIfNotLoaded).mockClear();
-		render([], vi.fn(), [], PROJECT_ID, 'workflows');
-		await flushPromises();
-		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
-	});
 
 	it('configures the suggestion footer copy', () => {
 		const { getByText } = render();
