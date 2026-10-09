@@ -1,0 +1,92 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 66
+packages/cli/src/errors/__tests__/rest-error-response.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 85,107
+  s_c71d8d6a27245a::t_708d8a46be4756 6,80,96
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 69,79
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 836,1007,1013,1925-1926
+  s_c71d8d6a27245a::t_fd9060d19281a9 1214-1223,1254-1258,1663-1666,1892-1901
+packages/cli/src/modules/n8n-packages/entities/tag/tag.types.ts
+  s_c71d8d6a27245a::t_fd9060d19281a9 95
+  s_c71d8d6a27245a::t_99ddd69148ed78 97,106
+packages/cli/src/modules/n8n-packages/spec/requirement-consumers.ts
+  s_c71d8d6a27245a::t_28054a36e24f53 3,11-14
+  s_c71d8d6a27245a::t_fd9060d19281a9 15-18
+  s_c71d8d6a27245a::t_708d8a46be4756 1-2
+  s_9dde2d3ceb6629::t_2ae15fa961501c 19
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 715,1344,1457
+  s_c71d8d6a27245a::t_fd9060d19281a9 1368-1372
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c71d8d6a27245a::t_fd9060d19281a9 31-35,74-77,196-198,201-203,208-214,483-487,492-493,497-500,504-505,584-589
+  s_c71d8d6a27245a::t_28054a36e24f53 18,73,188-192,204-207,215,218-233,235,310,431,445,491,494-496,501-503,511,526-530,538-564,567-583,590-602
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_c71d8d6a27245a::t_6f2d9600ed2ade 61,69,87,94,155,200,202,237,250,256
+  s_c71d8d6a27245a::t_83dcdc856b3318 144-147,224-227
+  s_c71d8d6a27245a::t_9694804d82075e 158-174,181,189
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 109,111,113
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 26,32,52
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_c71d8d6a27245a::t_28054a36e24f53 26,561,572,577,587
+  s_c71d8d6a27245a::t_fd9060d19281a9 568-571,573-576,578-581
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_c71d8d6a27245a::t_fd9060d19281a9 43,57,71
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-tags.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 254,436,443
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 77,86
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 470
+packages/cli/BREAKING-CHANGES.md
+  s_c71d8d6a27245a::t_246188d831056f 13-14
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 87,92,98
+  s_c71d8d6a27245a::t_28054a36e24f53 94-97
+  s_c71d8d6a27245a::t_fd9060d19281a9 11
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_c71d8d6a27245a::t_99ddd69148ed78 10
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_c71d8d6a27245a::t_6f2d9600ed2ade 35-37,44,50,58,72,98-105,136-137,140-141,144,146,149,151,154-155,158,160,162,165,167,180,186,188
+  s_c71d8d6a27245a::t_708d8a46be4756 3-4
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_c71d8d6a27245a::t_708d8a46be4756 3
+  s_c71d8d6a27245a::t_99ddd69148ed78 16,75,86,105
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 50-51
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 386,536
+  s_c71d8d6a27245a::t_20d6b40ccca50e 554,886
+packages/cli/src/public-api/v1/shared/spec/schemas/packageRequirementConsumer.generated.yml
+  s_c71d8d6a27245a::t_246188d831056f 1,2-6,8-10
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_c71d8d6a27245a::t_3ca14818f85353 2841
+  s_c71d8d6a27245a::t_fd9060d19281a9 2832-2835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "71a9f2e4ddc3aca73a34eab91346f4a9a4942414",
+  "prompts": {},
+  "sessions": {
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c71d8d6a27245a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a118f9-89a0-7922-9bda-d308ff402c58",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
