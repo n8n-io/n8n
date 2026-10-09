@@ -219,6 +219,7 @@ function buildHook(
 	options: {
 		newSession?: Ref<boolean>;
 		onSessionCreated?: (sessionId: string) => void;
+		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat'>;
 	} = {},
@@ -1979,6 +1980,29 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			message: 'Model is not configured',
 			missing: ['model'],
 		});
+	});
+
+	it('calls onAgentUnavailable (not fatalError, not a message bubble) for agent_unavailable errors', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'error',
+				message: 'This agent is not available in n8n Chat',
+				errorCode: 'agent_unavailable',
+			},
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+		const onAgentUnavailable = vi.fn();
+
+		const hook = buildHook(undefined, { onAgentUnavailable });
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		// Only user message — no inline error bubble
+		expect(hook.messages.value).toHaveLength(1);
+		expect(onAgentUnavailable).toHaveBeenCalledOnce();
+		expect(showQueueErrorMock).not.toHaveBeenCalled();
+		expect(hook.fatalError.value).toBeNull();
 	});
 
 	it('drops empty orphan minted bubbles when any error arrives', async () => {

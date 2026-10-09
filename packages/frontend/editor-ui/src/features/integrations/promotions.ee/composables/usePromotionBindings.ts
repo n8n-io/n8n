@@ -1,5 +1,9 @@
 import { computed, ref, shallowRef } from 'vue';
-import type { PromotionBindingConsumer, ContinueApplyPackageDto } from '@n8n/api-types';
+import type {
+	PromotionBindingConflict,
+	PromotionBindingConsumer,
+	ContinueApplyPackageDto,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
 import type {
@@ -34,6 +38,11 @@ type PromotionBindingsError =
 	| { kind: 'creationMismatch' }
 	// The UI uses the cause to show why Continue failed.
 	| { kind: 'continue'; cause: unknown };
+
+type DestructiveChange = Extract<PromotionBindingConflict, { code: 'destructive-change' }>;
+
+const isDestructiveChange = (conflict: PromotionBindingConflict): conflict is DestructiveChange =>
+	conflict.code === 'destructive-change';
 
 type BindingGroup = {
 	project: PromotionBindingConsumer['project'];
@@ -110,9 +119,20 @@ export function usePromotionBindings() {
 		return Array.from(projects.values());
 	});
 
+	const destructiveChanges = computed(
+		() => preflight.value?.conflicts.filter(isDestructiveChange) ?? [],
+	);
+	const hardConflicts = computed(
+		() => preflight.value?.conflicts.filter((conflict) => !isDestructiveChange(conflict)) ?? [],
+	);
+	const mode = computed<'blocked' | 'review' | 'bindings'>(() => {
+		if (hardConflicts.value.length || preflight.value?.accessRequirements.length) return 'blocked';
+		// A session that started with bindings keeps its table after the last one is created.
+		if (destructiveChanges.value.length && knownBindings.value.size === 0) return 'review';
+		return 'bindings';
+	});
 	const unresolvedCount = computed(
-		() =>
-			missingKeys.value.size + accessByKey.value.size + (preflight.value?.conflicts.length ?? 0),
+		() => missingKeys.value.size + accessByKey.value.size + hardConflicts.value.length,
 	);
 	const isBusy = computed(() => isSubmitting.value || isCreating.value);
 	const canContinue = computed(
@@ -200,6 +220,7 @@ export function usePromotionBindings() {
 		isSubmitting.value = true;
 		error.value = null;
 		try {
+			const confirmDestructiveChanges = destructiveChanges.value.length > 0 || undefined;
 			const result =
 				continueTarget.kind === 'selection'
 					? await continueApplyProjectSelection(
@@ -208,10 +229,12 @@ export function usePromotionBindings() {
 							{
 								workflowIds: continueTarget.workflowIds,
 								expectedSource: { ...expectedSource },
+								confirmDestructiveChanges,
 							},
 						)
 					: await continueApplyPromotion(rootStore.publicApiContext, connectionId, {
 							expectedSource: { ...expectedSource },
+							confirmDestructiveChanges,
 						});
 			if (currentSession !== session) return;
 			if (result.status === 'blocked') reconcile(result);
@@ -230,6 +253,9 @@ export function usePromotionBindings() {
 		originalResult,
 		preflight,
 		groups,
+		destructiveChanges,
+		hardConflicts,
+		mode,
 		unresolvedCount,
 		savedResources,
 		isBusy,

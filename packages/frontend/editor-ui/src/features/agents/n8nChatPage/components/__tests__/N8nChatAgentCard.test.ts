@@ -31,6 +31,7 @@ const agent: AgentChatListItem = {
 	name: 'Support Agent',
 	description: 'Answers billing questions for the whole team, in great detail.',
 	project: { id: 'project-1', name: 'Marketing' },
+	attachments: { image: false, pdf: false, audio: false },
 };
 
 function renderCard(props: Partial<InstanceType<typeof N8nChatAgentCard>['$props']> = {}) {

@@ -4,12 +4,14 @@ import {
 	Agent,
 	Tool,
 	type AnthropicThinkingEffort,
+	type ExecutionOptions,
 	type GenerateResult,
 	type ModelConfig,
 } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { appendFile } from 'node:fs/promises';
 
+import { evalUsageGuardrail } from './eval-usage';
 import { parseModelHeadersJson } from './parse-model-headers';
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
 
@@ -194,13 +196,16 @@ function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): M
 	}
 }
 
-/** Appends one JSON line per model call to `N8N_INSTANCE_AI_EVAL_USAGE_LOG`, to price eval runs. */
-function logUsage(agent: Agent, name: string, effort: AnthropicThinkingEffort | undefined): void {
+/** Step hooks that append one JSON line per model call to `N8N_INSTANCE_AI_EVAL_USAGE_LOG`, to price eval runs. */
+function usageLogHooks(
+	name: string,
+	effort: AnthropicThinkingEffort | undefined,
+): Pick<ExecutionOptions, 'onStepStart' | 'onStepEnd'> {
 	const file = process.env.N8N_INSTANCE_AI_EVAL_USAGE_LOG?.trim();
-	if (!file) return;
+	if (!file) return {};
 
 	const startedAt = new Map<string, number>();
-	agent.configuration({
+	return {
 		onStepStart: (step) => {
 			startedAt.set(`${step.callId}:${step.stepNumber}`, Date.now());
 		},
@@ -227,7 +232,7 @@ function logUsage(agent: Agent, name: string, effort: AnthropicThinkingEffort | 
 				// Diagnostics must never fail a run.
 			}
 		},
-	});
+	};
 }
 
 export function createEvalAgent(
@@ -256,7 +261,11 @@ export function createEvalAgent(
 
 	const effort = resolveEvalEffort(options);
 	applyAgentThinking(agent, model, effort);
-	logUsage(agent, name, effort);
+	// `configuration()` replaces the defaults it was given before: put any other default option in this call.
+	agent.configuration({
+		...usageLogHooks(name, effort),
+		guardrails: { hooks: [evalUsageGuardrail(name)] },
+	});
 
 	return agent;
 }
