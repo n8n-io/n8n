@@ -66,6 +66,7 @@ type EndpointGroup =
 	| 'type-availability-policies';
 
 type ModuleName =
+	| 'inbox'
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'

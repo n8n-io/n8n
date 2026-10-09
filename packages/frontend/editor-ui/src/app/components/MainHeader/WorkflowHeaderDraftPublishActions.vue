@@ -320,7 +320,7 @@ const flushSaveForReview = async (): Promise<string | undefined> => {
 const showReviewToast = (titleKey: BaseTextKey, reviewRequestId: string) => {
 	const reviewRoute = {
 		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-		params: { reviewRequestId },
+		params: { reviewId: reviewRequestId },
 	};
 	const reviewUrl = router.resolve(reviewRoute).href;
 
@@ -373,7 +373,7 @@ const onOpenReviewFromBanner = async () => {
 
 	await router.push({
 		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-		params: { reviewRequestId: review.id },
+		params: { reviewId: review.id },
 		// The inbox opens on its "Open" tab, so a closed review would land in a list
 		// that cannot contain its card. Keyed off the review's own state rather than
 		// an approved decision, so any way a review gets closed still lands right.

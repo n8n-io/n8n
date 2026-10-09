@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import { vi } from 'vitest';
 import { useProjectsStore } from './projects.store';
 import * as projectsApi from './projects.api';
@@ -337,5 +337,17 @@ describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
 		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
 		expect(store.currentProject).toBeNull();
 		expect(store.projectNavActiveId).toBe('shared');
+	});
+
+	it('clears the workflow project context when opening Reviews', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-1');
+		await store.setProjectNavActiveIdByWorkflowHomeProject(store.currentProject);
+
+		route.path = '/inbox';
+		await nextTick();
+
+		expect(store.projectNavActiveId).toBe('inbox');
+		expect(store.currentProject).toBeNull();
 	});
 });

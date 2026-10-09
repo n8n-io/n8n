@@ -965,3 +965,4 @@ export { compareExecutionListItems } from './dto/executions/compare-execution-li
 
 export type * from './workflow-suggestions';
 export * from './self-healing-results';
+export * from './inbox';
