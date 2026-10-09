@@ -160,14 +160,19 @@ Like the regular image, this image has no package manager, so `RUN apt-get insta
 2. Install or download the library in that stage.
 3. `COPY --from` the files into `n8nio/n8n:<version>-debian`. Set `LD_LIBRARY_PATH` or `NODE_PATH` if the library needs it.
 
-This example adds Oracle Instant Client on arm64:
+This example adds Oracle Instant Client:
 
 ```dockerfile
 FROM debian:trixie-slim AS oracle
+ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip libaio1t64 && \
-    curl -fsSL -o /tmp/ic.zip https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linux-arm64.zip && \
+    case "$TARGETARCH" in \
+      amd64) zip=instantclient-basiclite-linuxx64.zip; lib=x86_64-linux-gnu ;; \
+      arm64) zip=instantclient-basiclite-linux-arm64.zip; lib=aarch64-linux-gnu ;; \
+    esac && \
+    curl -fsSL -o /tmp/ic.zip "https://download.oracle.com/otn_software/linux/instantclient/$zip" && \
     unzip -q /tmp/ic.zip -d /opt/oracle && mv /opt/oracle/instantclient_* /opt/oracle/instantclient && \
-    cp -L /usr/lib/aarch64-linux-gnu/libaio.so.1t64 /opt/oracle/instantclient/libaio.so.1
+    cp -L "/usr/lib/$lib/libaio.so.1t64" /opt/oracle/instantclient/libaio.so.1
 
 FROM n8nio/n8n:2.41.0-debian
 COPY --from=oracle /opt/oracle/instantclient /opt/oracle/instantclient

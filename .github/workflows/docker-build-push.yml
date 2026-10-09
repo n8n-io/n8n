@@ -584,7 +584,9 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs: the
+    # generator verifies its own ref and rejects a SHA, so unpinned-uses is a
+    # known false positive here.
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0 # zizmor: ignore[unpinned-uses]
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_debian_image }}

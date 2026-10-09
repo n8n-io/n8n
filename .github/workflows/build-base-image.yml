@@ -27,6 +27,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      PLATFORMS: linux/amd64,linux/arm64
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +87,7 @@ jobs:
           SMOKE_CHECK: ${{ matrix.smoke_check }}
         run: |
           set -euo pipefail
-          for platform in linux/amd64 linux/arm64; do
+          for platform in ${PLATFORMS//,/ }; do
             docker buildx build --platform "$platform" --build-arg "DHI_REF=$DHI_REF" \
               -f "$DOCKERFILE" -t base-smoke --load .
             docker run --rm --platform "$platform" --user root --entrypoint node \
@@ -99,7 +101,7 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           build-args: |
             DHI_REF=${{ matrix.dhi_ref }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ env.PLATFORMS }}
           provenance: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
