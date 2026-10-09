@@ -18,6 +18,7 @@ import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.ser
 import { N8nPackagesPublicController } from '../n8n-packages.public.controller';
 
 const EXPORT_COUNTS = {
+	agents: 0,
 	workflows: 2,
 	folders: 1,
 	credentials: 0,
@@ -28,14 +29,15 @@ const EXPORT_COUNTS = {
 
 const DEFAULT_SERVICE_OPTIONS = {
 	user: { id: 'user-1' },
+	agentIds: [],
 	workflowIds: [],
 	folderIds: [],
 	projectIds: [],
 	includeVariableValues: true,
 	canExportVariableValues: false,
 	includeTags: true,
-	missingWorkflowDependencyPolicy: 'fail',
-	workflowVersionPolicy: 'latest',
+	dependencyPolicy: 'fail',
+	versionPolicy: 'latest',
 	credentialExportPolicy: 'expression-values-only',
 	includeArchivedWorkflows: false,
 };
@@ -96,7 +98,7 @@ describe('N8nPackagesPublicController', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'Provide either workflowIds/folderIds or projectIds, not both',
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
 			});
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
@@ -109,7 +111,7 @@ describe('N8nPackagesPublicController', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'Provide either workflowIds/folderIds or projectIds, not both',
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
 			});
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
@@ -119,7 +121,7 @@ describe('N8nPackagesPublicController', () => {
 
 			expect(caught).toBeInstanceOf(BadRequestError);
 			expect(caught).toMatchObject({
-				message: 'At least one workflowId, folderId, or projectId is required',
+				message: 'At least one agentId, workflowId, folderId, or projectId is required',
 			});
 			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
@@ -271,11 +273,11 @@ describe('N8nPackagesPublicController', () => {
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('forwards a non-default missing workflow dependency policy', async () => {
+		it('forwards a non-default dependency policy', async () => {
 			mockExportStream();
 
 			const caught = await runAndCatch(
-				{ workflowIds: ['wf-1'], missingWorkflowDependencyPolicy: 'reference-only' },
+				{ workflowIds: ['wf-1'], dependencyPolicy: 'reference-only' },
 				['workflow:export'],
 			);
 
@@ -283,22 +285,45 @@ describe('N8nPackagesPublicController', () => {
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				...DEFAULT_SERVICE_OPTIONS,
 				workflowIds: ['wf-1'],
-				missingWorkflowDependencyPolicy: 'reference-only',
+				dependencyPolicy: 'reference-only',
 			});
 		});
 
-		it('forwards a non-default workflow version policy', async () => {
+		it('forwards a non-default version policy', async () => {
 			mockExportStream();
 
 			const caught = await runAndCatch(
-				{ workflowIds: ['wf-1'], workflowVersionPolicy: 'published-strict' },
+				{ workflowIds: ['wf-1'], versionPolicy: 'published-strict' },
 				['workflow:export'],
 			);
 
 			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowVersionPolicy: 'published-strict' }),
+				expect.objectContaining({ versionPolicy: 'published-strict' }),
 			);
+		});
+
+		it('forwards agentIds and requires the agent:export scope for them', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ agentIds: ['agent-1'] }, [
+				'agent:export',
+				'variable:list',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				agentIds: ['agent-1'],
+				canExportVariableValues: true,
+			});
+		});
+
+		it('throws ForbiddenError when exporting agents without agent:export scope', async () => {
+			const caught = await runAndCatch({ agentIds: ['agent-1'] }, ['workflow:export']);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
 		});
 
 		it('forwards a non-default credential export policy', async () => {

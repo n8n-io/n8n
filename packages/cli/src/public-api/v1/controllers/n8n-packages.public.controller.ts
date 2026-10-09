@@ -69,6 +69,7 @@ function uploadLimits(maxParts: number) {
 
 function assertPackageExportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
+	agentIds: string[],
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
@@ -78,6 +79,9 @@ function assertPackageExportApiKeyScopes(
 	}
 
 	const requiredScopes: string[] = [];
+	if (agentIds.length > 0) {
+		requiredScopes.push('agent:export');
+	}
 	// Folders are exported as a workflow-organization concern, so they share the workflow:export scope.
 	if (workflowIds.length > 0 || folderIds.length > 0) {
 		requiredScopes.push('workflow:export');
@@ -201,7 +205,7 @@ export class N8nPackagesPublicController {
 	}
 
 	@Post('/export')
-	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export'] })
+	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export', 'agent:export'] })
 	@ApiSummary(EXPORT_SUMMARY)
 	@ApiDescription(EXPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -216,22 +220,28 @@ export class N8nPackagesPublicController {
 		_res: Response,
 		@Body({ required: true }) body: ExportPackageRequestDto,
 	): Promise<BinaryResult> {
-		const { workflowIds = [], folderIds = [], projectIds = [] } = body;
+		const { agentIds = [], workflowIds = [], folderIds = [], projectIds = [] } = body;
 
 		let exportResult: ExportPackageResult;
 
 		try {
-			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
-			if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
-				throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
+			// A package is either a set of loose selections or a set of whole projects, not both.
+			const hasLooseSelection = [agentIds, workflowIds, folderIds].some((ids) => ids.length > 0);
+			if (projectIds.length > 0 && hasLooseSelection) {
+				throw new BadRequestError(
+					'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
+				);
 			}
 
-			if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {
-				throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
+			if (!hasLooseSelection && projectIds.length === 0) {
+				throw new BadRequestError(
+					'At least one agentId, workflowId, folderId, or projectId is required',
+				);
 			}
 
 			const apiKeyScopes = assertPackageExportApiKeyScopes(
 				req.tokenGrant?.apiKeyScopes,
+				agentIds,
 				workflowIds,
 				folderIds,
 				projectIds,
@@ -239,14 +249,15 @@ export class N8nPackagesPublicController {
 
 			exportResult = await this.n8nPackagesService.exportPackage({
 				user: req.user,
+				agentIds,
 				workflowIds,
 				folderIds,
 				projectIds,
 				includeVariableValues: body.includeVariableValues,
 				canExportVariableValues: apiKeyScopes.includes('variable:list'),
 				includeTags: body.includeTags,
-				missingWorkflowDependencyPolicy: body.missingWorkflowDependencyPolicy,
-				workflowVersionPolicy: body.workflowVersionPolicy,
+				dependencyPolicy: body.dependencyPolicy,
+				versionPolicy: body.versionPolicy,
 				credentialExportPolicy: body.credentialExportPolicy,
 				includeArchivedWorkflows: body.includeArchivedWorkflows,
 			});
@@ -254,6 +265,7 @@ export class N8nPackagesPublicController {
 			this.eventService.emit('n8n-package-export-failed', {
 				user: req.user,
 				reason: classifyPackageFailure(error),
+				...(agentIds.length ? { agentIds } : {}),
 				...(workflowIds.length ? { workflowIds } : {}),
 				...(folderIds.length ? { folderIds } : {}),
 				...(projectIds.length ? { projectIds } : {}),
