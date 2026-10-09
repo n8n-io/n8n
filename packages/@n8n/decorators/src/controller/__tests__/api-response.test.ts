@@ -89,6 +89,28 @@ describe('@ApiResponse Decorator', () => {
 		expect(route.responseDto).toBeUndefined();
 	});
 
+	it('should reject a binary response with an unsupported media type', () => {
+		expect(() => {
+			class TestController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'text/csv' } as never)
+				async handler() {}
+			}
+			void TestController;
+		}).toThrow('unsupported binary media type "text/csv"');
+	});
+
+	it('should reject a body that is neither a response DTO nor binary options', () => {
+		expect(() => {
+			class TestController {
+				@Get('/')
+				@ApiResponse(200, {} as never)
+				async handler() {}
+			}
+			void TestController;
+		}).toThrow('neither a response DTO nor binary options');
+	});
+
 	it('should reject 204 with binary response', () => {
 		expect(() => {
 			const binaryOptions = { mediaType: 'application/gzip' } as never;

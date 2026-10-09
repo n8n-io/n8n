@@ -157,8 +157,10 @@ those types.
 - The registry sets the declared status and `Content-Type: <mediaType>`
   before it calls the method. It does not call `res.json(...)`, and it
   ignores the method's return value.
-- The method must start the response before it resolves. For a stream,
-  await the response's `finish` event. A method that returns before the
+- The method must start the response before it resolves. For a stream, use
+  `await pipeline(source, res)` from `node:stream/promises`. Do not wait for
+  the `finish` event: if the framework aborts the response, `finish` never
+  fires, and the method never settles. A method that returns before the
   response starts fails with a `500`.
 - If the method throws, or returns, before the response starts, the registry
   restores the headers to their values from before the method ran. It removes

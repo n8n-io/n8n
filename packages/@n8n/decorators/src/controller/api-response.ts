@@ -9,12 +9,20 @@ import {
 	type SuccessStatus,
 } from './types';
 
+function hasMediaType(body: unknown): body is { mediaType: unknown } {
+	return typeof body === 'object' && body !== null && 'mediaType' in body;
+}
+
 function isBinaryResponse(body: unknown): body is BinaryResponse {
 	return (
-		typeof body === 'object' &&
-		body !== null &&
-		'mediaType' in body &&
+		hasMediaType(body) &&
 		BINARY_RESPONSE_MEDIA_TYPES.some((mediaType) => mediaType === body.mediaType)
+	);
+}
+
+function isResponseDto(body: unknown): body is ResponseDtoClass {
+	return (
+		(typeof body === 'function' || (typeof body === 'object' && body !== null)) && 'parse' in body
 	);
 }
 
@@ -56,10 +64,22 @@ export function ApiResponse(
 
 		routeMetadata.successStatus = status;
 
-		if (isBinaryResponse(body)) {
+		if (hasMediaType(body)) {
+			if (!BINARY_RESPONSE_MEDIA_TYPES.includes(body.mediaType)) {
+				throw new Error(
+					`${String(handlerName)} declares an unsupported binary media type "${String(body.mediaType)}" - supported: ${BINARY_RESPONSE_MEDIA_TYPES.join(', ')}`,
+				);
+			}
 			routeMetadata.binaryResponse = body;
-		} else {
-			routeMetadata.responseDto = body;
+			return;
 		}
+
+		if (body !== undefined && !isResponseDto(body)) {
+			throw new Error(
+				`${String(handlerName)} declares an @ApiResponse body that is neither a response DTO nor binary options`,
+			);
+		}
+
+		routeMetadata.responseDto = body;
 	};
 }

@@ -32,8 +32,9 @@ const missingHeaderError = (routeName: string, names: string[]) =>
  * Runs a route whose controller method writes a binary body to `res` itself.
  *
  * Every declared header must be set before the body starts. The check runs at the first write, so
- * it also covers a stream. A missing header aborts the response. If the method returns before it
- * writes anything, the missing header fails the request with a 500.
+ * it also covers a stream. A missing header aborts the response, and the request fails with the
+ * missing-header error, not the premature-close error a stream reports. If the method returns
+ * before it writes anything, the missing header fails the request with a 500.
  */
 export async function runBinaryResponseRoute(
 	res: Response,
@@ -45,6 +46,8 @@ export async function runBinaryResponseRoute(
 	const headers = res.getHeaders();
 	const declaredHeaders = Object.keys(binaryResponse.headers ?? {});
 
+	const writeCheck: { failure?: UnexpectedError } = {};
+
 	res.status(successStatus).setHeader('Content-Type', binaryResponse.mediaType);
 
 	// Node calls `writeHead` on the first write, so the check runs before any header is sent.
@@ -52,7 +55,8 @@ export async function runBinaryResponseRoute(
 	res.writeHead = ((...args: Parameters<Response['writeHead']>) => {
 		const absent = getMissingHeaders(res, declaredHeaders);
 		if (absent.length) {
-			res.destroy(missingHeaderError(routeName, absent));
+			writeCheck.failure = missingHeaderError(routeName, absent);
+			res.destroy();
 			return res;
 		}
 		return originalWriteHead.apply(res, args);
@@ -63,21 +67,30 @@ export async function runBinaryResponseRoute(
 		res.writeHead = originalWriteHead;
 	};
 
+	let invokeFailure: { error: unknown } | undefined;
 	try {
 		await invoke();
-		release();
 	} catch (error) {
-		release();
+		invokeFailure = { error };
+	}
+	release();
+
+	if (writeCheck.failure) {
 		if (!res.headersSent) {
 			restoreHeaders(res, headers);
 		}
-		throw error;
+		throw writeCheck.failure;
+	}
+
+	if (invokeFailure) {
+		if (!res.headersSent) {
+			restoreHeaders(res, headers);
+		}
+		throw invokeFailure.error;
 	}
 
 	if (!res.headersSent) {
 		const absent = getMissingHeaders(res, declaredHeaders);
-
-		release();
 		restoreHeaders(res, headers);
 
 		if (absent.length) {

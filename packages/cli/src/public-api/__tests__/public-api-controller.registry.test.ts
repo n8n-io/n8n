@@ -21,6 +21,7 @@ import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -37,6 +38,19 @@ import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+
+// Records every error sent through the public API error path. A plain array, so `vi.resetAllMocks` leaves it alone.
+const sentErrors = vi.hoisted(() => [] as unknown[]);
+vi.mock('@/public-api/v1/public-api-error-response', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/public-api/v1/public-api-error-response')>();
+	return {
+		...actual,
+		sendPublicApiErrorResponse: (res: express.Response, error: Error) => {
+			sentErrors.push(error);
+			actual.sendPublicApiErrorResponse(res, error);
+		},
+	};
+});
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();
@@ -769,12 +783,7 @@ describe('PublicApiControllerRegistry', () => {
 				@Get('/')
 				@ApiResponse(200, { mediaType: 'application/gzip' })
 				async method(_req: unknown, res: express.Response) {
-					const stream = Readable.from([Buffer.from('ab'), Buffer.from('cd')]);
-					await new Promise<void>((resolve, reject) => {
-						stream.on('error', reject);
-						res.on('finish', resolve);
-						stream.pipe(res);
-					});
+					await pipeline(Readable.from([Buffer.from('ab'), Buffer.from('cd')]), res);
 				}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -901,6 +910,29 @@ describe('PublicApiControllerRegistry', () => {
 			markPublicApiController(WidgetsBinaryWritePublicController as Controller, '/widgets');
 
 			await expect(request(activate()).get('/api/v1/widgets')).rejects.toThrow();
+		});
+
+		it('reports a missing declared header on a stream instead of hanging', async () => {
+			sentErrors.length = 0;
+
+			@Service()
+			class WidgetsBinaryStreamPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Required': { description: 'Must be set.' } },
+				})
+				async method(_req: unknown, res: express.Response) {
+					await pipeline(Readable.from([Buffer.from('ab')]), res);
+				}
+			}
+			markPublicApiController(WidgetsBinaryStreamPublicController as Controller, '/widgets');
+
+			await expect(request(activate()).get('/api/v1/widgets')).rejects.toThrow();
+
+			expect(sentErrors).toEqual([
+				expect.objectContaining({ message: expect.stringContaining('X-Required') }),
+			]);
 		});
 
 		it('restores a Content-Type set by earlier middleware on an early failure', async () => {

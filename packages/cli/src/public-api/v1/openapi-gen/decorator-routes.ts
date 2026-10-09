@@ -201,11 +201,15 @@ export function buildRequestBodyJsonSchema(
 
 /** Documents a success body the controller method writes itself, with its declared headers. */
 export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
-	const responseHeaders: Record<string, { description: string; schema: { type: 'string' } }> = {};
+	const responseHeaders: Record<
+		string,
+		{ description: string; required: true; schema: { type: 'string' } }
+	> = {};
 
 	for (const [name, header] of Object.entries(headers ?? {})) {
 		responseHeaders[name] = {
 			description: header.description,
+			required: true,
 			schema: { type: 'string' },
 		};
 	}

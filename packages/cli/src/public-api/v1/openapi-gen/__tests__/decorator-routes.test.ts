@@ -395,6 +395,7 @@ describe('getDecoratorGeneratedOperations', () => {
 			headers: {
 				'X-Example': {
 					description: 'A header.',
+					required: true,
 					schema: { type: 'string' },
 				},
 			},
