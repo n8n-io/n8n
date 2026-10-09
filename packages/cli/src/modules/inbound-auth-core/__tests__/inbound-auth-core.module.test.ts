@@ -49,6 +49,17 @@ describe('InboundAuthCoreModule', () => {
 			expect(Container.get(TrustedSourceGate)).toBe(dbGate);
 		});
 
+		it('seeds the system trusted source once', async () => {
+			// Mock history from `beforeAll` does not survive into the test, so init again here.
+			dbStore.seedSystemSource.mockClear();
+			await new InboundAuthCoreModule().init();
+
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+			expect(dbStore.seedSystemSource).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'n8n-internal' }),
+			);
+		});
+
 		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
 			const server = Container.get(LocalAuthorizationServer);
 
