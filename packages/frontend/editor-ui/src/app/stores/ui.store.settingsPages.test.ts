@@ -52,10 +52,18 @@ describe('uiStore.settingsSidebarItems', () => {
 });
 
 describe('uiStore.settingsSidebarItems with a placeholder page', () => {
-	const item: IMenuSettingItem = { id: 'settings-licensed', label: 'Licensed', icon: 'lock' };
-	const setActiveModules = (activeModules: string[]) => {
+	const item: IMenuSettingItem = {
+		id: 'settings-with-placeholder',
+		label: 'With placeholder',
+		icon: 'lock',
+	};
+	const setLicensed = (licensed: boolean) => {
 		const settingsStore = useSettingsStore();
-		settingsStore.settings = { ...settingsStore.settings, activeModules };
+		settingsStore.settings = {
+			...settingsStore.settings,
+			activeModules: [],
+			enterprise: { ...settingsStore.settings.enterprise, logStreaming: licensed },
+		};
 	};
 
 	const itemIds = () => useUIStore().settingsSidebarItems.map(({ id }) => id);
@@ -64,10 +72,17 @@ describe('uiStore.settingsSidebarItems with a placeholder page', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('should keep the pages of an inactive module that declares a placeholder page', () => {
-		setActiveModules([]);
-		useUIStore().registerSettingsPages('licensed', [item], true);
+	it('should keep the pages of an inactive, unlicensed module that declares a placeholder page', () => {
+		setLicensed(false);
+		useUIStore().registerSettingsPages('with-placeholder', [item], 'logStreaming');
 
-		expect(itemIds()).toEqual(['settings-licensed']);
+		expect(itemIds()).toEqual(['settings-with-placeholder']);
+	});
+
+	it('should hide the pages of an inactive, licensed module that declares a placeholder page', () => {
+		setLicensed(true);
+		useUIStore().registerSettingsPages('with-placeholder', [item], 'logStreaming');
+
+		expect(itemIds()).toEqual([]);
 	});
 });

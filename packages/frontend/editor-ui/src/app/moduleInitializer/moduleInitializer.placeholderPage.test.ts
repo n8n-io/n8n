@@ -10,8 +10,10 @@ import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer'
 
 const { fixtures } = vi.hoisted(() => {
 	const view = (text: string) => ({ name: text, render: () => h('div', text) });
-	const middleware: RouterMiddlewareType[] = ['custom'];
-	const route = (name: string): RouteRecordRaw => ({
+	const route = (
+		name: string,
+		middleware: RouterMiddlewareType[] = ['custom'],
+	): RouteRecordRaw => ({
 		path: `/${name}`,
 		name,
 		component: async () => await Promise.resolve(view(`${name}-view`)),
@@ -24,8 +26,11 @@ const { fixtures } = vi.hoisted(() => {
 			name: 'With placeholder',
 			description: '',
 			icon: 'box',
-			routes: [route('with-placeholder')],
-			placeholderPage: async () => await Promise.resolve(view('paywall')),
+			routes: [route('with-placeholder'), route('with-placeholder-unguarded', ['authenticated'])],
+			placeholderPage: {
+				licenseFlag: 'logStreaming',
+				component: async () => await Promise.resolve(view('paywall')),
+			},
 		},
 		{
 			id: 'without-placeholder',
@@ -41,9 +46,16 @@ const { fixtures } = vi.hoisted(() => {
 
 vi.mock('@/app/modules.manifest', () => ({ modules: fixtures }));
 
-const setActiveModules = (activeModules: string[]) => {
+const setInstance = ({
+	activeModules = [],
+	licensed = false,
+}: { activeModules?: string[]; licensed?: boolean } = {}) => {
 	const settingsStore = useSettingsStore();
-	settingsStore.settings = { ...settingsStore.settings, activeModules };
+	settingsStore.settings = {
+		...settingsStore.settings,
+		activeModules,
+		enterprise: { ...settingsStore.settings.enterprise, logStreaming: licensed },
+	};
 };
 
 const createTestRouter = () => {
@@ -59,9 +71,12 @@ const createTestRouter = () => {
 	return router;
 };
 
+// Like the router, runs the guard only when the route lists 'custom'
 const checkRoute = (router: Router, name: string) => {
 	const to = router.resolve({ name });
-	const check = to.meta.middlewareOptions?.custom;
+	const check = to.meta.middleware?.includes('custom')
+		? to.meta.middlewareOptions?.custom
+		: undefined;
 	return check?.({ to: { ...to, name }, from: router.currentRoute.value, next: vi.fn() });
 };
 
@@ -77,14 +92,26 @@ beforeEach(() => {
 });
 
 describe('route guard', () => {
-	it('should allow an inactive module route when the module declares a placeholder page', () => {
-		setActiveModules([]);
+	it('should allow an inactive, unlicensed module route when the module declares a placeholder page', () => {
+		setInstance();
 
 		expect(checkRoute(createTestRouter(), 'with-placeholder')).toBe(true);
 	});
 
+	it('should block an inactive, licensed module route with a placeholder page', () => {
+		setInstance({ licensed: true });
+
+		expect(checkRoute(createTestRouter(), 'with-placeholder')).toBe(false);
+	});
+
+	it('should block an inactive, licensed module route that does not list the guard', () => {
+		setInstance({ licensed: true });
+
+		expect(checkRoute(createTestRouter(), 'with-placeholder-unguarded')).toBe(false);
+	});
+
 	it('should block an inactive module route without a placeholder page', () => {
-		setActiveModules([]);
+		setInstance();
 
 		expect(checkRoute(createTestRouter(), 'without-placeholder')).toBe(false);
 	});
@@ -92,13 +119,13 @@ describe('route guard', () => {
 
 describe('route component', () => {
 	it('should load the placeholder page while the module is inactive', async () => {
-		setActiveModules([]);
+		setInstance();
 
 		expect(await loadRouteView(createTestRouter(), 'with-placeholder')).toBe('paywall');
 	});
 
 	it('should load the real view while the module is active', async () => {
-		setActiveModules(['with-placeholder']);
+		setInstance({ activeModules: ['with-placeholder'] });
 
 		expect(await loadRouteView(createTestRouter(), 'with-placeholder')).toBe(
 			'with-placeholder-view',

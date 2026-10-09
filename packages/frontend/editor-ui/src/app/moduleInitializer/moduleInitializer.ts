@@ -1,4 +1,4 @@
-import { type RouteComponent, type Router, type RouteRecordRaw } from 'vue-router';
+import { type RouteComponent, type RouteMeta, type Router, type RouteRecordRaw } from 'vue-router';
 import {
 	type FrontendModuleDescription,
 	assertUniqueRouteNames,
@@ -11,6 +11,7 @@ import {
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
+import { showsPlaceholderPage } from '@/app/moduleInitializer/placeholderPage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
@@ -56,7 +57,11 @@ export const registerModuleSettingsPages = () => {
 	const uiStore = useUIStore();
 	modules.forEach((module) => {
 		if (module.settingsPages && module.settingsPages.length > 0) {
-			uiStore.registerSettingsPages(module.id, module.settingsPages, !!module.placeholderPage);
+			uiStore.registerSettingsPages(
+				module.id,
+				module.settingsPages,
+				module.placeholderPage?.licenseFlag,
+			);
 		}
 	});
 };
@@ -71,8 +76,9 @@ const checkModuleAvailability = (options: any) => {
 	}
 	const settingsStore = useSettingsStore();
 	if (!settingsStore.isModuleActive(options.to.meta.moduleName)) {
-		// A module with a placeholder page stays reachable
-		return modules.some((m) => m.id === options.to.meta.moduleName && m.placeholderPage);
+		// Open so an unlicensed module can show its placeholder page
+		const module = modules.find((m) => m.id === options.to.meta.moduleName);
+		return showsPlaceholderPage(module?.placeholderPage?.licenseFlag);
 	}
 	if (options.to.meta.moduleName === 'agents' && options.to.name !== AGENTS_SETTINGS_VIEW) {
 		return settingsStore.isAgentsEnabled;
@@ -158,6 +164,7 @@ const isLazyView = (
 
 /**
  * Loads `placeholderPage` instead of the view while the module is inactive.
+ * Adds the route guard, so a licensed but inactive module stays hidden.
  * vue-router caches the first result, so the choice is made once per page load.
  */
 const withPlaceholderPage = (
@@ -165,13 +172,22 @@ const withPlaceholderPage = (
 	module: FrontendModuleDescription,
 ): RouteRecordRaw => {
 	const { placeholderPage } = module;
-	if (!placeholderPage || !route.component || !isLazyView(route.component)) return route;
+	if (!placeholderPage) return route;
+	const middleware = route.meta?.middleware ?? [];
+	const meta: RouteMeta = {
+		...route.meta,
+		middleware: middleware.includes('custom') ? middleware : [...middleware, 'custom'],
+	};
+	if (!route.component || !isLazyView(route.component)) return { ...route, meta };
 	const view = route.component;
 
 	return {
 		...route,
+		meta,
 		component: async () =>
-			useSettingsStore().isModuleActive(module.id) ? await view() : await placeholderPage(),
+			useSettingsStore().isModuleActive(module.id)
+				? await view()
+				: await placeholderPage.component(),
 	};
 };
 
@@ -184,15 +200,16 @@ export const registerModuleRoutes = (router: Router) => {
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {
 			// Prepare the enhanced route with module metadata and custom middleware that checks module availability
+			const preparedRoute = withPlaceholderPage(route, module);
 			const enhancedRoute = {
-				...withPlaceholderPage(route, module),
+				...preparedRoute,
 				meta: {
-					...route.meta,
+					...preparedRoute.meta,
 					moduleName: module.id,
 					// Merge middleware options if custom middleware is present
-					...(route.meta?.middleware?.includes('custom') && {
+					...(preparedRoute.meta?.middleware?.includes('custom') && {
 						middlewareOptions: {
-							...route.meta?.middlewareOptions,
+							...preparedRoute.meta?.middlewareOptions,
 							custom: checkModuleAvailability,
 						},
 					}),

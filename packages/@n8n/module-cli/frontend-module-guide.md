@@ -277,18 +277,23 @@ makes no difference.
 ### Placeholder page for licensed features
 
 An unlicensed module is inactive, so its settings links and routes disappear. To show a paywall
-instead, set `placeholderPage`:
+instead, set `placeholderPage` with the module's license feature:
 
 ```ts
-placeholderPage: async () => await import('./views/MyFeaturePaywall.vue'),
+placeholderPage: {
+	licenseFlag: 'logStreaming', // a key of `settings.enterprise`
+	component: async () => await import('./views/MyFeaturePaywall.vue'),
+},
 ```
 
-While the module is inactive, its settings links stay visible and its routes render this page. The
-`available` getter and route `rbac` still apply. The route views must be lazy loaders. The shell
-picks the view or the placeholder once, when the route first loads.
+When the module is inactive and `licenseFlag` is off, its settings links stay and its routes show
+this page. The `available` getter and route `rbac` still apply. The shell adds the `'custom'` guard
+to these routes, so you don't need to list it. Route views must be lazy loaders. The shell picks
+the view or the placeholder once, on the first load of the route.
 
-The page shows for any inactive module, not only an unlicensed one. For example, a module turned
-off with `N8N_DISABLED_MODULES` shows it too. Do not assume the cause.
+If the module is licensed but inactive, for example turned off with `N8N_DISABLED_MODULES`, it
+stays hidden. A module that is unlicensed and turned off still shows the page. The frontend can't
+tell these two cases apart.
 
 ## Import-light descriptors
 
