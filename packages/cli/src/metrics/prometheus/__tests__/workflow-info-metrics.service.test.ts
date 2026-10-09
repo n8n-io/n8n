@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
+import type { DbConnection, WorkflowRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
@@ -8,10 +8,14 @@ import { mock } from 'vitest-mock-extended';
 import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowInfoMetricsService } from '../workflow-info-metrics.service';
+import { CachedMetricQueryFactory } from '../cached-metric-query';
 
 vi.mock('prom-client');
 
 describe('PrometheusWorkflowInfoMetricsService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeWorkflowInfoMetrics: true,
@@ -29,10 +33,11 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			workflowInfoMetricInterval: 60,
 		});
 		Object.assign(instanceSettings, { isLeader: true });
+		dbConnection.connectionState.connected = true;
 		service = new PrometheusWorkflowInfoMetricsService(
 			config,
 			workflowRepository,
-			cacheService,
+			new CachedMetricQueryFactory(cacheService, dbConnection),
 			instanceSettings,
 		);
 	});
@@ -145,6 +150,20 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 				workflow_id: 'wf_2',
 				workflow_name: 'Another Workflow',
 			});
+		});
+
+		it('should keep the previous series when the database is disconnected', async () => {
+			dbConnection.connectionState.connected = false;
+			cacheService.get.mockResolvedValue(undefined);
+			const collectFn = extractCollectFn();
+			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
+			const mockGauge = { reset: vi.fn(), labels: mockLabels };
+
+			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
+
+			expect(mockGauge.reset).not.toHaveBeenCalled();
+			expect(mockLabels).not.toHaveBeenCalled();
+			expect(workflowRepository.getWorkflowInfo).not.toHaveBeenCalled();
 		});
 
 		it('should reset and report nothing when not the leader', async () => {

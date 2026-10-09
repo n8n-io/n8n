@@ -27,15 +27,13 @@ describe('import-manifest-bridge', () => {
 	};
 
 	const leftoverManifest = (overrides: Record<string, unknown> = {}) =>
-		JSON.stringify(
-			packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
-				...overrides,
-			}),
-		);
+		JSON.stringify({
+			packageFormatVersion: '1',
+			exportedAt: '2026-01-01T00:00:00.000Z',
+			sourceN8nVersion: '1.0.0',
+			sourceId: 'old',
+			...overrides,
+		});
 
 	it('reads a leftover manifest and ignores a malformed file', async () => {
 		await writeTree({

@@ -1,4 +1,4 @@
-import type { AgentEvalRunSummary } from '@n8n/api-types';
+import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
@@ -20,15 +20,18 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
@@ -90,6 +93,8 @@ export class AgentEvalRunnerService {
 		private readonly license: License,
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly agentsSettingsService: AgentsSettingsService,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	/**
@@ -189,6 +194,85 @@ export class AgentEvalRunnerService {
 		});
 
 		return { runId: run.id, finished };
+	}
+
+	/**
+	 * Re-executes one already-seeded case in place, overwriting its own result
+	 * row. No new run, no run-level aggregation (counts/status/metrics): the
+	 * run this case belongs to may have settled minutes ago, and every sibling
+	 * result is left exactly as it was. Reuses `runCase`, the same
+	 * self-contained per-case execution `startRun`'s pool calls, with the input
+	 * read back from the result's own persisted snapshot rather than the
+	 * dataset's current Data Table row — a rerun repeats what this case
+	 * actually ran last, even if the row has since changed or been deleted.
+	 */
+	async rerunResult(
+		result: AgentEvalResult,
+		agentId: string,
+		projectId: string,
+		user: User,
+		options: { timeoutMs?: number; whatToCheck?: string } = {},
+	): Promise<AgentEvalResult> {
+		await this.flagGate.assertEnabled(user);
+
+		if (this.globalConfig.executions.mode === 'queue') {
+			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
+		}
+
+		assertRequiredModulesActive(this.moduleRegistry);
+
+		// Backstop for direct callers; the REST path asserts before its own lookups.
+		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run agents in this project.');
+		}
+		// Editing the rule rewrites eval data, so it needs more than running does —
+		// a chat-only member holds `agent:execute` but not `agent:update`.
+		if (
+			options.whatToCheck !== undefined &&
+			!(await userHasScopes(user, ['agent:update'], false, { projectId }))
+		) {
+			throw new ForbiddenError('You do not have permission to edit checks in this project.');
+		}
+
+		const input = readResultInputText(result.input);
+		if (!input) {
+			throw new BadRequestError('This case has no input to rerun.');
+		}
+
+		// Atomic, unlike the caller's snapshot status check: of two concurrent
+		// requests for the same result, only one wins the claim and executes.
+		if (!(await this.resultRepository.claimForRerun(result.id))) {
+			throw new BadRequestError(`Agent eval result ${result.id} is already running.`);
+		}
+
+		// An edited rule has no case row of its own to write back to here (the
+		// checks view only ever has this result's own snapshot) — so it's
+		// persisted onto that snapshot directly, ahead of the rerun that uses it.
+		let caseToRun = result;
+		if (options.whatToCheck !== undefined) {
+			try {
+				const snapshot = toJsonObject({ ...(result.input ?? {}), criteria: options.whatToCheck });
+				await this.resultRepository.updateInput(result.id, snapshot);
+				caseToRun = { ...result, input: snapshot };
+			} catch (error) {
+				// The claim already moved the row to `running`; settle it instead of
+				// leaving it stuck there.
+				await this.resultRepository.markAsError(result.id, 'rerun_failed', {
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw error;
+			}
+		}
+
+		await this.runCase(
+			caseToRun,
+			{ sourceRowId: caseToRun.sourceRowId, input, snapshot: caseToRun.input ?? {} },
+			{ agentId, projectId, user, timeoutMs: options.timeoutMs },
+		);
+
+		const refreshed = await this.resultRepository.findById(result.id);
+		if (!refreshed) throw new NotFoundError(`Agent eval result ${result.id} not found.`);
+		return refreshed;
 	}
 
 	// Scoped to the agent under test, so a bare run id can't read another agent's
@@ -512,6 +596,11 @@ export class AgentEvalRunnerService {
 	 * per-case error so one case can never abort the batch or leave its result
 	 * stuck `running`. Assumes a non-empty input — the caller screens those out
 	 * before taking a queue slot.
+	 *
+	 * On a successful execution, also grades the output via {@link judgeCase}
+	 * and persists the verdict — this is the one place both `executeRun`'s pool
+	 * and `rerunResult` (which calls this same method) run a case, so neither
+	 * duplicates the judging step.
 	 */
 	private async runCase(
 		resultRow: AgentEvalResult,
@@ -538,6 +627,26 @@ export class AgentEvalRunnerService {
 				return usage;
 			}
 
+			// Judged before the case is marked complete, and written in the same update.
+			// The result stays `running` — which a rerun cannot claim — until the whole
+			// attempt is finished. Completing first would let a second rerun start while
+			// this judge is pending, and this judge's verdict would then overwrite the
+			// newer attempt's. It also keeps a finished case from reading as a pass while
+			// its verdict is still missing.
+			//
+			// Grading is best-effort on top of a run that already succeeded: a failure
+			// to judge must not flip the case to `error`. `runCase` is the one place both
+			// `executeRun`'s pool and `rerunResult` funnel through, so this single step
+			// covers both.
+			let verdict: JsonObject | null = null;
+			try {
+				verdict = toJsonObject(await this.judgeCase(resolvedCase, execResult.finalText, ctx));
+			} catch (error) {
+				this.logger.error(`[AgentEvalRunner] Could not judge case ${resultRow.id}`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			await this.resultRepository.markAsCompleted(resultRow.id, {
 				output: toJsonObject({
 					finalText: execResult.finalText,
@@ -547,6 +656,7 @@ export class AgentEvalRunnerService {
 				}),
 				toolCalls: toJsonObject({ calls: execResult.toolCalls }),
 				metrics: usage ? { usage: { ...usage } } : null,
+				verdict,
 			});
 
 			return usage;
@@ -562,6 +672,32 @@ export class AgentEvalRunnerService {
 			}
 			return undefined;
 		}
+	}
+
+	/**
+	 * Grades a case's output against its rule (`criteria`) or gold answer
+	 * (`expectedOutput`, `criteria` wins if both are mapped), when the case's
+	 * snapshot has either. See {@link judgeAgentAnswer}.
+	 */
+	private async judgeCase(
+		resolvedCase: ResolvedCase,
+		output: string,
+		ctx: { agentId: string; projectId: string; user: User },
+	): Promise<AgentEvalVerdict> {
+		return await judgeAgentAnswer(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{
+				input: resolvedCase.input,
+				output,
+				criteria: readSnapshotText(resolvedCase.snapshot, 'criteria'),
+				expectedOutput: readSnapshotText(resolvedCase.snapshot, 'expectedOutput'),
+			},
+			ctx,
+		);
 	}
 
 	/**
@@ -666,6 +802,18 @@ function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number })
 	return { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 };
 }
 
+/**
+ * Reads `criteria`/`expectedOutput` back out of a case snapshot as judge-ready
+ * text. Mirrors {@link cellToJson}'s scalar coercion — the snapshot stores
+ * whatever the mapped Data Table cell held.
+ */
+function readSnapshotText(snapshot: JsonObject, key: 'criteria' | 'expectedOutput'): string | null {
+	const value = snapshot[key];
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	return null;
+}
+
 /** Coerce a Data Table cell into the agent's opening message. */
 function cellToString(value: DataTableColumnJsType | undefined): string {
 	if (value === null || value === undefined) return '';
@@ -682,4 +830,18 @@ function cellToJson(value: DataTableColumnJsType | undefined): JsonValue {
 
 function toJsonObject(value: unknown): JsonObject {
 	return jsonParse<JsonObject>(jsonStringify(value), { fallbackValue: {} });
+}
+
+/**
+ * Reads the opening message back out of a result's persisted `input` snapshot
+ * — the same text this case last ran with, not a re-resolved Data Table cell
+ * (the row may have been edited or deleted since). Mirrors the editor's own
+ * `readCaseRequest` reader.
+ */
+function readResultInputText(input: JsonObject | null): string | null {
+	if (!input) return null;
+	const value = input.input;
+	if (typeof value === 'string' && value.trim().length > 0) return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	return null;
 }

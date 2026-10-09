@@ -1120,7 +1120,7 @@ describe('PromotionsService', () => {
 					],
 				}),
 			);
-			expect(branch.commitSha).toBe(commitSha);
+			expect(branch).toMatchObject({ configId: CONFIG_ID, branchName: 'dev', commitSha });
 			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
@@ -1143,7 +1143,12 @@ describe('PromotionsService', () => {
 
 			const branch = await service.readBranchPackage('p1', 'apply');
 
-			expect(branch).toMatchObject({ commitSha: null, files: [] });
+			expect(branch).toMatchObject({
+				configId: CONFIG_ID,
+				branchName: 'dev',
+				commitSha: null,
+				files: [],
+			});
 			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
 				'no exported package',
 			);

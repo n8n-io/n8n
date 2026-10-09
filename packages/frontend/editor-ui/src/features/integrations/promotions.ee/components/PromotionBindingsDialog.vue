@@ -17,6 +17,7 @@ import { usePromotionBindings } from '../composables/usePromotionBindings';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
+	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -27,6 +28,7 @@ const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
 	createBinding: CreatePromotionBinding;
+	continueWith: ContinueTarget;
 }>();
 
 const emit = defineEmits<{
@@ -56,7 +58,7 @@ const {
 watch(
 	() => props.open,
 	(open) => {
-		if (open) bindings.start(props.blockedResult);
+		if (open) bindings.start(props.blockedResult, props.continueWith);
 		else bindings.end();
 	},
 	{ immediate: true },

@@ -5,10 +5,8 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { CacheService } from '@n8n/backend-services';
-
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import { CachedMetricQueryFactory } from './cached-metric-query';
 
 type WorkflowInfoGaugeParams = {
 	name: string;
@@ -31,7 +29,7 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly cacheService: CacheService,
+		private readonly cachedMetricQueries: CachedMetricQueryFactory,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
@@ -57,8 +55,7 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 	private initGauge({ name, help, cacheKey, activeOnly }: WorkflowInfoGaugeParams) {
 		const { instanceSettings } = this;
 		const cacheTtl = this.config.workflowInfoMetricInterval * Time.seconds.toMilliseconds;
-		const query = new CachedMetricQuery<Array<{ id: string; name: string }>>({
-			cacheService: this.cacheService,
+		const query = this.cachedMetricQueries.create<Array<{ id: string; name: string }>>({
 			cacheKey,
 			ttlMs: cacheTtl,
 			query: async () => await this.workflowRepository.getWorkflowInfo({ activeOnly }),
@@ -69,13 +66,17 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 			help,
 			labelNames: ['workflow_id', 'workflow_name'],
 			async collect() {
-				this.reset();
-
-				if (!instanceSettings.isLeader) return;
+				if (!instanceSettings.isLeader) {
+					this.reset();
+					return;
+				}
 
 				const workflows = await query.get();
-				for (const { id, name: workflowName } of workflows) {
-					this.labels({ workflow_id: id, workflow_name: workflowName }).set(1);
+				if (workflows !== undefined) {
+					this.reset();
+					for (const { id, name: workflowName } of workflows) {
+						this.labels({ workflow_id: id, workflow_name: workflowName }).set(1);
+					}
 				}
 			},
 		});

@@ -5,6 +5,7 @@ export {
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
 	useNodeTypeRestriction,
+	type TypeRestriction,
 } from './composables/useNodeTypeRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
 export { default as RestrictedNodePanel } from './components/RestrictedNodePanel.vue';

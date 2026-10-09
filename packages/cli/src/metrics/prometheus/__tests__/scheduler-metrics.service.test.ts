@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
-import type { ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
+import type { DbConnection, ScheduledTaskMetricSnapshot, ScheduledTaskRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
@@ -11,9 +11,14 @@ import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service'
 
 import type { CacheService } from '@n8n/backend-services';
 
+import { CachedMetricQueryFactory } from '../cached-metric-query';
+
 vi.mock('prom-client');
 
 describe('PrometheusSchedulerMetricsService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeSchedulerMetrics: true,
@@ -50,7 +55,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 		service = new PrometheusSchedulerMetricsService(
 			config,
 			instanceSettings,
-			cacheService,
+			new CachedMetricQueryFactory(cacheService, dbConnection),
 			taskRepository,
 		);
 
