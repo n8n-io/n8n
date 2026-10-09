@@ -20,6 +20,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 generateUserManagementEmailTemplates();
 generateTimezoneData();
 copyAgentIntegrationAssets();
+copyWorkflowPortalAssets();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -212,4 +213,17 @@ function generateTimezoneData() {
 		return acc;
 	}, {});
 	writeFileSync(path.resolve(ROOT_DIR, 'dist/timezones.json'), JSON.stringify({ data }));
+}
+
+function copyWorkflowPortalAssets() {
+	const destination = path.resolve(ROOT_DIR, 'dist/modules/workflow-portal/assets');
+	shell.mkdir('-p', destination);
+	shell.cp(path.resolve(ROOT_DIR, 'src/modules/workflow-portal/assets/*'), destination);
+	const messages = JSON.parse(
+		readFileSync(path.resolve(ROOT_DIR, '../frontend/@n8n/i18n/src/locales/en.json'), 'utf8'),
+	);
+	const portalMessages = Object.fromEntries(
+		Object.entries(messages).filter(([key]) => key.startsWith('workflowPortal.')),
+	);
+	writeFileSync(path.join(destination, 'messages.json'), JSON.stringify(portalMessages));
 }

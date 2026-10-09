@@ -1,4 +1,4 @@
-import { inDevelopment, inTest, Logger } from '@n8n/backend-common';
+import { inDevelopment, inTest, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -26,6 +26,7 @@ import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 
 import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
+import { mayReachDirectory } from './utils/request-path';
 
 @Service()
 export abstract class AbstractServer {
@@ -174,6 +175,30 @@ export abstract class AbstractServer {
 	async init(): Promise<void> {
 		const { app, sslKey, sslCert } = this;
 		const { protocol } = this.globalConfig;
+		let isPortalHost: ((host: string | undefined) => boolean) | undefined;
+		if (Container.get(ModuleRegistry).eligibleModules.includes('workflow-portal')) {
+			const { UrlService } = await import('@n8n/backend-services');
+			const { WorkflowPortalConfig } = await import(
+				'./modules/workflow-portal/workflow-portal.config.js'
+			);
+			const config = Container.get(WorkflowPortalConfig);
+			isPortalHost = (host) => config.isPortalHost(host);
+			if (isPortalHost(new URL(Container.get(UrlService).getInstanceBaseUrl()).host)) {
+				const { UserError } = await import('n8n-workflow');
+				throw new UserError('Use a separate hostname for N8N_WORKFLOW_PORTAL_BASE_URL.');
+			}
+			// Install before health checks, webhooks, and the editor fallback.
+			app.use((req, res, next) => {
+				if (
+					config.isPortalHost(req.headers.host) ||
+					mayReachDirectory(req.path, 'workflow-portal')
+				) {
+					res.status(404).end();
+					return;
+				}
+				next();
+			});
+		}
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -187,6 +212,13 @@ export abstract class AbstractServer {
 		} else {
 			const http = await import('http');
 			this.server = http.createServer(app);
+		}
+
+		if (isPortalHost) {
+			const rejectHost = isPortalHost;
+			this.server.on('upgrade', (req, socket) => {
+				if (rejectHost(req.headers.host)) socket.destroy();
+			});
 		}
 
 		const { port, listen_address: address } = Container.get(GlobalConfig);

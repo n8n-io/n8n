@@ -249,9 +249,12 @@ onMounted(async () => {
 			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
 					{{
-						i18n.baseText('oauth.consentView.firstParty.heading', {
-							interpolate: { resourceName: resourceName ?? '' },
-						})
+						i18n.baseText(
+							uiHints?.consentType === 'app'
+								? 'oauth.consentView.firstParty.app.heading'
+								: 'oauth.consentView.firstParty.heading',
+							{ interpolate: { resourceName: resourceName ?? '' } },
+						)
 					}}
 				</N8nHeading>
 				<N8nHeading v-else-if="resourceName" tag="h2" size="large" :bold="true">
@@ -271,9 +274,12 @@ onMounted(async () => {
 				<div :class="$style['text-content']">
 					<N8nText v-if="clientDetails?.isFirstParty" color="text-base" size="medium">
 						{{
-							i18n.baseText('oauth.consentView.firstParty.description', {
-								interpolate: { resourceType: firstPartyResourceType },
-							})
+							i18n.baseText(
+								uiHints?.consentType === 'app'
+									? 'oauth.consentView.firstParty.app.description'
+									: 'oauth.consentView.firstParty.description',
+								{ interpolate: { resourceType: firstPartyResourceType } },
+							)
 						}}
 					</N8nText>
 					<N8nText v-else-if="resourceName" color="text-base" size="medium">

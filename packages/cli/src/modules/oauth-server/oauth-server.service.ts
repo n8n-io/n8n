@@ -253,24 +253,28 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * On-demand per-trigger virtual client for a first-party protected resource
-	 * (form or chat trigger). Public + PKCE, single redirect_uri = the trigger URL
-	 * (which equals the client_id and the resource URL). The row is persisted lazily
-	 * only to satisfy the FKs from auth codes / tokens; it is never a DCR client and
-	 * is excluded from the registered-client cap.
+	 * First-party resources use their URL as the client ID and redirect URI.
+	 * Persist the row to link authorization codes and tokens.
+	 * Exclude these clients from the registered-client limit.
 	 */
 	private async resolveVirtualClient(
 		clientId: string,
 	): Promise<OAuthClientInformationFull | undefined> {
-		// First-party resources are form and chat triggers served under the (test) webhook
-		// base URL, so a client_id that isn't can never resolve to one. Skip the resolver
-		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
-		// can't be used to fan out DB lookups on arbitrary client_ids.
-		if (clientId.length > MAX_REDIRECT_URI_LENGTH || !this.isTriggerResourceClientId(clientId)) {
+		if (clientId.length > MAX_REDIRECT_URI_LENGTH) return undefined;
+
+		const registeredResource = this.resourceRegistry
+			.getAll()
+			.find(
+				(resource) =>
+					resource.isFirstParty &&
+					(resource.getResourceUrls?.() ?? [resource.getResourceUrl()]).includes(clientId),
+			);
+		// Only registered URLs and trigger URLs need the first-party client lookup.
+		if (!registeredResource && !this.isTriggerResourceClientId(clientId)) {
 			return undefined;
 		}
 
-		const resource = await this.resourceRegistry.getByResourceUrl(clientId);
+		const resource = registeredResource ?? (await this.resourceRegistry.getByResourceUrl(clientId));
 		if (!resource?.isFirstParty) {
 			return undefined;
 		}
