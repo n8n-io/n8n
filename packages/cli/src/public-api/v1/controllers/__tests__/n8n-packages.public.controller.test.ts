@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
-import { Readable, Writable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -52,17 +52,6 @@ describe('N8nPackagesPublicController', () => {
 		} as unknown as AuthenticatedRequest;
 	}
 
-	// A writable sink, so `pipeline` in the controller can complete.
-	function makeResponse() {
-		const res = new Writable({
-			write(_chunk, _encoding, callback) {
-				callback();
-			},
-		}) as unknown as Response & Writable;
-		res.setHeader = vi.fn().mockReturnValue(res);
-		return res;
-	}
-
 	function mockExportStream() {
 		mockService.exportPackage.mockResolvedValue({
 			stream: Readable.from([Buffer.from('package-bytes')]),
@@ -73,7 +62,7 @@ describe('N8nPackagesPublicController', () => {
 	async function runAndCatch(
 		body: Record<string, unknown>,
 		apiKeyScopes?: string[],
-		res: Response = makeResponse(),
+		res: Response = mock<Response>(),
 	) {
 		try {
 			await controller.exportPackage(
@@ -259,54 +248,26 @@ describe('N8nPackagesPublicController', () => {
 			},
 		);
 
-		it('does not emit n8n-package-export-failed when the client closes the connection mid-stream', async () => {
-			const prematureClose = Object.assign(new Error('Premature close'), {
-				code: 'ERR_STREAM_PREMATURE_CLOSE',
-			});
-			const stream = new Readable({
-				read() {
-					this.destroy(prematureClose);
-				},
-			});
-			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
-
-			const caught = await runAndCatch({ workflowIds: ['wf-1'] }, [
-				'workflow:export',
-				'variable:list',
-			]);
-
-			expect(caught).toBeUndefined();
-			expect(mockEventService.emit).not.toHaveBeenCalled();
-		});
-
-		it('streams the export for a valid workflow request', async () => {
+		it('returns the export stream and headers for a valid workflow request', async () => {
 			mockExportStream();
-			const res = makeResponse();
 
-			const caught = await runAndCatch(
-				{ workflowIds: ['wf-1', 'wf-2'] },
-				['workflow:export', 'variable:list'],
-				res,
+			const result = await controller.exportPackage(
+				makeRequest(['workflow:export', 'variable:list']),
+				mock<Response>(),
+				ExportPackageRequestDto.parse({ workflowIds: ['wf-1', 'wf-2'] }),
 			);
 
-			expect(caught).toBeUndefined();
 			expect(mockService.exportPackage).toHaveBeenCalledWith({
 				...DEFAULT_SERVICE_OPTIONS,
 				workflowIds: ['wf-1', 'wf-2'],
 				canExportVariableValues: true,
 			});
-			expect(res.setHeader).toHaveBeenCalledWith(
-				'Content-Disposition',
-				'attachment; filename="export.n8np"',
-			);
-			expect(res.setHeader).toHaveBeenCalledWith(
-				'X-N8n-Export-Counts',
-				JSON.stringify(EXPORT_COUNTS),
-			);
-			expect(res.setHeader).toHaveBeenCalledWith(
-				'Access-Control-Expose-Headers',
-				'X-N8n-Export-Counts',
-			);
+			expect(result.body).toBeInstanceOf(Readable);
+			expect(result.headers).toEqual({
+				'Content-Disposition': 'attachment; filename="export.n8np"',
+				'X-N8n-Export-Counts': JSON.stringify(EXPORT_COUNTS),
+				'Access-Control-Expose-Headers': 'X-N8n-Export-Counts',
+			});
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
