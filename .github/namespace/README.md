@@ -28,6 +28,9 @@ Use a Namespace workspace connected to this repository. Run these commands from 
 
 Verify that the job uses `namespace-profile-n8n-docker-poc` and passes the Node, pnpm, and SafeChain checks.
 Check that the pnpm cache mounts and Turbo uses the Namespace endpoint.
+Check that the dependency storage probe can hardlink from the store into `node_modules`.
+The package store lives at `node_modules/.pnpm-store`, inside the same cache mount as installed dependencies.
+The experiment clears the other entries in `node_modules` before each install to measure package-store reuse without retaining installed dependencies.
 Run the same commit again to measure warm caches.
 Check that publishing uses the separate `n8n-io-n8n-docker-publish-poc` cache tag.
 This prevents a publish runner from replacing the application cache with an older snapshot.

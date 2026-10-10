@@ -167,22 +167,32 @@ jobs:
           lscpu | grep -E '^(Architecture|CPU\(s\)|Model name|Thread|Core|Socket)'
           findmnt -T "$PWD" -o TARGET,SOURCE,FSTYPE
           findmnt -T "$STORE" -o TARGET,SOURCE,FSTYPE
-          stat -c 'device=%d path=%n' "$PWD" "$STORE"
+          findmnt -T "$PWD/node_modules" -o TARGET,SOURCE,FSTYPE
+          stat -c 'device=%d path=%n' "$PWD" "$STORE" "$PWD/node_modules"
 
-          WORK_PROBE="$(mktemp -d "$PWD/.ci-link-probe.XXXXXX")"
+          WORK_PROBE="$(mktemp -d "$PWD/node_modules/.ci-link-probe.XXXXXX")"
           STORE_PROBE="$(mktemp "$STORE/.ci-link-probe.XXXXXX")"
           trap 'rm -f "$STORE_PROBE"; rm -rf "$WORK_PROBE"' EXIT
           dd if=/dev/zero of="$STORE_PROBE" bs=4096 count=1 status=none
-          if ln "$STORE_PROBE" "$WORK_PROBE/hardlink"; then
-            echo 'Store-to-workspace hardlink: supported'
-          else
-            echo 'Store-to-workspace hardlink: unavailable'
-          fi
+          ln "$STORE_PROBE" "$WORK_PROBE/hardlink"
+          echo 'Store-to-node_modules hardlink: supported'
           if cp --reflink=always "$STORE_PROBE" "$WORK_PROBE/reflink"; then
-            echo 'Store-to-workspace reflink: supported'
+            echo 'Store-to-node_modules reflink: supported'
           else
-            echo 'Store-to-workspace reflink: unavailable'
+            echo 'Store-to-node_modules reflink: unavailable'
           fi
+
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { realpathSync } from 'node:fs';
+          import { sep } from 'node:path';
+
+          for (const [name, source] of [['n8n-workflow', 'packages/workflow'], ['n8n-core', 'packages/core']]) {
+            assert.equal(realpathSync(`packages/cli/node_modules/${name}`), realpathSync(source));
+            assert.ok(realpathSync(`compiled/node_modules/${name}`).startsWith(realpathSync('compiled') + sep));
+          }
+          console.log('Workspace links use the checkout; deployed links stay inside compiled.');
+          NODE
 
       # The cache archive preserves pnpm symlinks and executable modes across jobs.
       - name: Save Docker build context

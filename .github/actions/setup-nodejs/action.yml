@@ -183,12 +183,21 @@ runs:
         echo "path=$PNPM_CACHE_PATH" >> "$GITHUB_OUTPUT"
         echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
 
-    - name: Mount Namespace pnpm cache
+    - name: Mount Namespace dependency cache
       if: inputs.namespace-poc == 'true' && inputs.install-command != ''
       uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
       with:
-        cache: pnpm
-        path: ${{ steps.pnpm-metadata-cache.outputs.path }}
+        path: |
+          ${{ steps.pnpm-metadata-cache.outputs.path }}
+          node_modules
+
+    - name: Prepare empty Namespace installation target
+      if: inputs.namespace-poc == 'true' && inputs.install-command != ''
+      shell: bash
+      # Keep the store and installation target under one mount so pnpm can hardlink files.
+      run: |
+        find node_modules -mindepth 1 -maxdepth 1 ! -name .pnpm-store -exec rm -rf -- {} +
+        echo "PNPM_CONFIG_STORE_DIR=$GITHUB_WORKSPACE/node_modules/.pnpm-store" >> "$GITHUB_ENV"
 
     - name: Restore pnpm metadata cache
       if: inputs.install-command != '' && inputs.namespace-poc != 'true'
