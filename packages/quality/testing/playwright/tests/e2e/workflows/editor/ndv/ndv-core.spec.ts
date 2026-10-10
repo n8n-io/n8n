@@ -164,15 +164,9 @@ test.describe(
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest');
 			await n8n.ndv.close();
 
-<<<<<<< HEAD
 			await n8n.canvas.openNode('Read Spreadsheet File');
 			await n8n.ndv.openSettings();
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Spreadsheet File node version 1');
-=======
-			await n8n.canvas.openNode('Cron');
-			await n8n.ndv.openSettings();
-			await expect(n8n.ndv.getNodeVersion()).toContainText('Cron node version 1');
->>>>>>> 7424f0ca0452f9dc9fe4cf6627ecbf0b315ed1e3
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Deprecated');
 			await n8n.ndv.close();
 		});
