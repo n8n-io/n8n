@@ -489,6 +489,7 @@ export class EvalExecutionService {
 			}
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
+			this.logger.error(`[EvalMock] Data Table preparation failed: ${errorMsg}`);
 			throw new OperationalError(`FRAMEWORK ISSUE: Data Table preparation failed: ${errorMsg}`, {
 				cause: error,
 			});
