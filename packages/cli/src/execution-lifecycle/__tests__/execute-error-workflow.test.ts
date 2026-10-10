@@ -277,4 +277,35 @@ describe('executeErrorWorkflow', () => {
 			});
 		});
 	});
+
+	// The editor stores `DEFAULT` for "No Workflow". That sentinel is not a workflow id.
+	it('runs the local Error Trigger when errorWorkflow is DEFAULT', async () => {
+		const workflowData = mock<IWorkflowBase>({
+			id: 'workflow-123',
+			settings: { errorWorkflow: 'DEFAULT' },
+			nodes: [mock<INode>({ type: 'n8n-nodes-base.errorTrigger' })],
+		});
+		const fullRunData: IRun = {
+			data: createRunExecutionData({
+				resultData: {
+					error: new NodeOperationError(mockNode, 'Test error'),
+					runData: {},
+				},
+			}),
+			mode: 'webhook',
+			startedAt: new Date(),
+			storedAt: 'db',
+			status: 'error',
+		};
+		ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'project-123' } as never);
+
+		executeErrorWorkflow(workflowData, fullRunData, 'webhook', 'execution-789');
+		await new Promise(process.nextTick);
+
+		expect(workflowExecutionService.executeErrorWorkflow).toHaveBeenCalledWith(
+			'workflow-123',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
 });
