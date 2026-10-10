@@ -1,4 +1,5 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import { isQuotaExhaustedError } from '@n8n/instance-ai';
 import type {
 	AgentPersistedMessageContentPart,
 	AgentSseEvent,
@@ -268,6 +269,17 @@ export function emitChunkEvents(
 			});
 			return;
 		case 'error': {
+			// The credit pool answers with a machine code. Show the same sentence the
+			// Assistant uses, so the chat can render the out-of-credits state.
+			if (isQuotaExhaustedError(chunk.error)) {
+				send({
+					type: 'error',
+					message:
+						"You've run out of AI credits. Upgrade your plan to continue using the n8n Assistant.",
+					errorCode: 'quota_exhausted',
+				});
+				return;
+			}
 			const errMsg = stringifyError(chunk.error);
 			send({ type: 'error', message: errMsg });
 			return;

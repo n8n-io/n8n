@@ -180,6 +180,24 @@ describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 		expect(events).toEqual([{ type: 'error', message: 'something broke' }]);
 	});
 
+	it('maps a quota-exhausted provider error to the assistant credit message', async () => {
+		const error = Object.assign(new Error('Forbidden'), {
+			responseBody: JSON.stringify({
+				message: 'Have reached end of quota',
+				code: 'quota_exhausted',
+			}),
+		});
+		const events = await collectEvents([{ type: 'error', error }]);
+		expect(events).toEqual([
+			{
+				type: 'error',
+				message:
+					"You've run out of AI credits. Upgrade your plan to continue using the n8n Assistant.",
+				errorCode: 'quota_exhausted',
+			},
+		]);
+	});
+
 	it('JSON-stringifies a plain object error', async () => {
 		const error = { code: 'TIMEOUT', retryAfter: 30 };
 		const events = await collectEvents([{ type: 'error', error }]);

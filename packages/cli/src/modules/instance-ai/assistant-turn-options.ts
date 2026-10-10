@@ -7,6 +7,7 @@ import type {
 	InstanceAiThreadRunTarget,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { deepCopy } from 'n8n-workflow';
 
 import type { PlannedBuildFollowUp } from './planned-task-action-runner';
 import type { OrchestratorResumeReason } from './tracing/instance-ai-tracing.service';
@@ -82,5 +83,5 @@ export function readResumedTurnOptions(value: unknown): AssistantTurnOptions {
 }
 
 export function toJsonObject(options: AssistantTurnOptions): Record<string, unknown> {
-	return JSON.parse(JSON.stringify(options)) as Record<string, unknown>;
+	return deepCopy(options);
 }

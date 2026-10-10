@@ -105,6 +105,10 @@ export class SystemAgentExecutionService {
 			}
 			return existing;
 		}
+		// `register` inserts this row at boot. An end-to-end reset truncates `project`,
+		// and Postgres CASCADE removes the instance agent with it. Insert it again
+		// before the thread, or the agentId foreign key rejects the session.
+		await this.agentRepository.ensureInstanceAgent(provider.agentId, provider.name);
 		const { thread } = await this.txRunner.run(
 			{},
 			async (ctx) =>

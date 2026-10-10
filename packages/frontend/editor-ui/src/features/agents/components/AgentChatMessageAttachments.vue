@@ -114,6 +114,7 @@ onBeforeUnmount(() => {
 				:download="item.href ? item.attachment.fileName : undefined"
 				:class="$style.fileChip"
 				:title="item.attachment.fileName"
+				data-test-id="chat-file"
 			>
 				<N8nIcon icon="paperclip" size="small" />
 				<span :class="$style.fileName">{{ item.attachment.fileName }}</span>

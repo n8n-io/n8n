@@ -54,6 +54,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@n8n/backend-services';
 
@@ -146,6 +147,7 @@ describe('InstanceAiController', () => {
 		threadTabsService,
 		provenanceService,
 		threadSharing,
+		mock<AiPreferenceService>(),
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });

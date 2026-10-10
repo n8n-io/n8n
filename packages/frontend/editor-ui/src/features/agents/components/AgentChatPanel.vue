@@ -41,7 +41,7 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { useComposerFocus } from '../composables/useComposerFocus';
-import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -117,6 +117,8 @@ const props = withDefaults(
 		 * from its own `footer-start` menu turns it off and calls `openFilePicker`.
 		 */
 		showAttachButton?: boolean;
+		/** Marks transcript bubbles with the Instance AI test ids. */
+		tagInstanceMessages?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -135,6 +137,7 @@ const props = withDefaults(
 		attachmentAccept: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		tagInstanceMessages: false,
 	},
 );
 
@@ -167,6 +170,10 @@ defineSlots<{
 	'composer-attachments'?: () => unknown;
 	/** Replaces the composer, for example with a notice for a reader who cannot send. */
 	composer?: () => unknown;
+	/** Controls at the end of the composer row, such as the mention picker. */
+	'right-actions'?: () => unknown;
+	/** Chips rendered inside a user bubble, such as mentioned workflows. */
+	'user-message-extra'?: (props: { message: ChatMessage }) => unknown;
 }>();
 
 const locale = useI18n();
@@ -1040,6 +1047,7 @@ defineExpose({
 	setDraft,
 	clearBudgetStops,
 	openFilePicker: () => chatInput.value?.openFilePicker(),
+	getInputElement: () => chatInput.value?.getInputElement(),
 	// Read-only views of the chat state, for hosts that derive side panels from it.
 	messages: computed(() => messages.value),
 	isStreaming,
@@ -1133,10 +1141,15 @@ onBeforeUnmount(() => {
 			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			:can-increase-budget="canIncreaseBudget"
 			:budget-increase-pending="budgetIncreasePending"
+			:tag-instance-messages="tagInstanceMessages"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 			@increase-budget="onIncreaseBudget"
-		/>
+		>
+			<template #user-message-extra="slotProps">
+				<slot name="user-message-extra" :message="slotProps.message" />
+			</template>
+		</AgentChatMessageList>
 
 		<slot name="inline-offers" />
 
@@ -1511,6 +1524,9 @@ onBeforeUnmount(() => {
 				</template>
 				<template #footer-start>
 					<slot name="footer-start" />
+				</template>
+				<template v-if="$slots['right-actions']" #right-actions>
+					<slot name="right-actions" />
 				</template>
 			</ChatInputBase>
 		</div>

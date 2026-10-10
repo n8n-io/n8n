@@ -10,7 +10,16 @@
  * context (time zone, push ref, open tabs, hand-off context and resource
  * references) as `hostContext`.
  */
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
@@ -31,7 +40,18 @@ import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { ASSISTANT_CONFIRMATION_TOOL_NAME } from '@/features/ai/shared/agentsChat/assistantConfirmation';
 import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
-import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, InteractivePayload } from '@/features/ai/shared/agentsChat/types';
+import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
+import { useAssistantAtMentions } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
+import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAttachments';
+import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
+import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
+import type {
+	AssistantMentionArtifactReference,
+	AssistantMentionSelection,
+	WorkflowArtifactReference,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import { buildMentionKey } from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
@@ -143,8 +163,60 @@ function composerResumeData(payload: InteractivePayload, text: string): unknown 
 const chatMessages = computed(() => chatPanel.value?.messages ?? []);
 const isChatStreaming = computed(() => chatPanel.value?.isStreaming ?? false);
 const isChatLoadingHistory = computed(() => chatPanel.value?.isLoadingHistory ?? false);
+
+interface SentResourceEntry {
+	content: string;
+	attachments: InstanceAiResourceAttachment[];
+}
+
+function sentResourceStorageKey(): string {
+	return `n8n-instance-ai-message-resources:${thread.id}`;
+}
+
+function readSentResources(): SentResourceEntry[] {
+	try {
+		const raw = sessionStorage.getItem(sentResourceStorageKey());
+		if (!raw) return [];
+		const parsed: unknown = JSON.parse(raw);
+		return Array.isArray(parsed) ? (parsed as SentResourceEntry[]) : [];
+	} catch {
+		return [];
+	}
+}
+
+/** Mention chips ride the user bubble. Session storage keeps them across a reload. */
+const sentResourceLog = ref<SentResourceEntry[]>(readSentResources());
+
+function rememberSentResources(content: string, attachments: InstanceAiResourceAttachment[]): void {
+	if (attachments.length === 0) return;
+	sentResourceLog.value = [...sentResourceLog.value, { content, attachments }];
+	sessionStorage.setItem(sentResourceStorageKey(), JSON.stringify(sentResourceLog.value));
+}
+
+const resourcesByMessageId = computed(() => {
+	const pending = [...sentResourceLog.value];
+	const byId = new Map<string, InstanceAiResourceAttachment[]>();
+	for (const message of chatMessages.value) {
+		if (message.role !== 'user') continue;
+		const index = pending.findIndex((entry) => entry.content === message.content.trim());
+		if (index < 0) continue;
+		const [entry] = pending.splice(index, 1);
+		if (!entry) continue;
+		byId.set(message.id, entry.attachments);
+	}
+	return byId;
+});
+
+function resourcesForChatMessage(message: ChatMessage): InstanceAiResourceAttachment[] {
+	return resourcesByMessageId.value.get(message.id) ?? [];
+}
+
 const mirroredMessages = computed(() =>
-	agentsChatToThreadMessages(chatMessages.value, isChatStreaming.value),
+	agentsChatToThreadMessages(chatMessages.value, isChatStreaming.value).map((message) => {
+		if (message.role !== 'user') return message;
+		const attachments = resourcesByMessageId.value.get(message.id);
+		return attachments?.length ? { ...message, attachments } : message;
+	}),
 );
 const isAwaitingInput = computed(() => findTailOpenInteractive(chatMessages.value) !== undefined);
 
@@ -246,6 +318,111 @@ const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(
 );
 /** Resource references staged in the composer (canvas node selections). */
 const composerResources = ref<InstanceAiResourceAttachment[]>([]);
+
+const mentionsFlag = useIsAssistantAtMentionsEnabled();
+const draftText = ref('');
+const mentionFiles = ref<File[]>([]);
+const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
+const shouldShowMentions = computed(
+	() => mentionsFlag.value && Boolean(projectId.value) && !isTeammate.value,
+);
+const mentionArtifacts = computed((): WorkflowArtifactReference[] =>
+	[...thread.producedArtifacts.values()]
+		.filter((entry) => entry.type === 'workflow')
+		.map((entry) => ({
+			id: entry.id,
+			name: entry.name,
+			origin: thread.producedArtifactOrigins.get(entry.id),
+		})),
+);
+const mentionAvailability = useAssistantMentionAvailability({
+	enabled: shouldShowMentions,
+	projectId: () => projectId.value,
+	artifacts: () => mentionArtifacts.value,
+});
+const canUseMentions = computed(
+	() => shouldShowMentions.value && mentionAvailability.isAvailable.value,
+);
+const mentions = useAssistantAtMentions({
+	text: draftText,
+	enabled: canUseMentions,
+	getInputElement: () => chatPanel.value?.getInputElement() ?? undefined,
+});
+const mentionMenuOpen = mentions.menuOpen;
+const mentionQuery = mentions.query;
+const excludedMentionContext = computed(() => {
+	const keys = new Set<string>();
+	const workflowIds = new Set<string>();
+	for (const attachment of composerResources.value) {
+		if (attachment.type === 'workflow') {
+			keys.add(buildMentionKey('workflow', attachment.id, attachment.id));
+			workflowIds.add(attachment.id);
+			continue;
+		}
+		if (attachment.type !== 'nodes') continue;
+		for (const set of attachment.sets) {
+			if (set.canvasGroupId) {
+				keys.add(buildMentionKey('group', attachment.workflowId, set.canvasGroupId));
+				continue;
+			}
+			for (const node of set.nodes) {
+				keys.add(buildMentionKey('node', attachment.workflowId, node.id));
+			}
+		}
+	}
+	return { keys: [...keys], workflowIds: [...workflowIds] };
+});
+const mentionAttachments = useAssistantMentionAttachments({
+	files: mentionFiles,
+	resources: composerResources,
+	projectId: () => projectId.value,
+	reservedAttachmentCount: () => 0,
+	onReferenceAdded: (reference: AssistantMentionArtifactReference) => {
+		thread.upsertTransientWorkflowReference({
+			referenceId: reference.referenceId,
+			workflowId: reference.workflowId,
+			workflowName: reference.workflowName,
+			...(projectId.value ? { projectId: projectId.value } : {}),
+		});
+		void nextTick(() => {
+			openWorkflowPreview?.(reference.workflowId);
+		});
+	},
+	onReferenceRemoved: (referenceId) => {
+		thread.removeTransientWorkflowReference(referenceId);
+	},
+	onCleared: () => mentions.close(false, 'unavailable'),
+});
+// Availability can resolve after the first `@`. Re-read the draft so the menu still opens.
+watch(canUseMentions, (enabled, wasEnabled) => {
+	if (enabled && !wasEnabled) void mentions.handleTextChange(draftText.value);
+});
+
+function onDraftUpdate(value: string): void {
+	if (!shouldShowMentions.value) return;
+	void mentions.handleTextChange(value);
+}
+
+async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
+	const result = mentionAttachments.select(selection);
+	if (result.status === 'limit') {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.mentions.attachmentLimitMessage')),
+			i18n.baseText('instanceAi.mentions.attachmentLimitTitle'),
+		);
+		return;
+	}
+	if (result.truncated) {
+		toast.showError(
+			new Error(i18n.baseText('instanceAi.nodeContext.truncated.message')),
+			i18n.baseText('instanceAi.nodeContext.truncated.title'),
+		);
+	}
+	await mentions.replaceActiveRange(selection.item.label);
+}
 /** Text n8n wrote into the composer, to tell a pre-fill from a typed message. */
 const activePrefill = ref<InstanceAiPrefillPayload | null>(null);
 /** A programmatic send: its context replaces the composer state for one message. */
@@ -436,6 +613,14 @@ function readHostAttachments(hostContext: Record<string, unknown>): InstanceAiAt
 	return Array.isArray(attachments) ? (attachments as InstanceAiAttachment[]) : [];
 }
 
+function resourceAttachmentsOf(
+	attachments: InstanceAiAttachment[],
+): InstanceAiResourceAttachment[] {
+	return attachments.filter(
+		(attachment): attachment is InstanceAiResourceAttachment => attachment.type !== 'file',
+	);
+}
+
 /** A message the user typed was accepted: settle the hand-off state it carried. */
 function onMessageAccepted(payload: {
 	text: string;
@@ -446,7 +631,11 @@ function onMessageAccepted(payload: {
 	messageRunTarget.accepted(hostContext);
 	const attachments = readHostAttachments(hostContext);
 	thread.recordSentAttachments(attachments);
-	if (programmaticHostContexts.has(hostContext)) return;
+	// The empty view sends the opener. Its chips are on that payload, not in this composer.
+	if (programmaticHostContexts.has(hostContext)) {
+		rememberSentResources(payload.text.trim(), resourceAttachmentsOf(attachments));
+		return;
+	}
 
 	const prefill = activePrefill.value;
 	const authorship: InstanceAiMessageAuthorship = prefill
@@ -463,6 +652,7 @@ function onMessageAccepted(payload: {
 		attachmentCount: attachments.length + payload.files.length,
 	});
 
+	rememberSentResources(payload.text.trim(), [...composerResources.value]);
 	const nodeCount = countAttachedNodes(attachments);
 	if (nodeCount > 0) {
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
@@ -616,7 +806,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.conversation" data-test-id="instance-ai-agents-conversation">
+	<div
+		:class="$style.conversation"
+		data-test-id="instance-ai-agents-conversation"
+		@pointerdown.capture="shouldShowMentions && mentions.saveSelection()"
+		@click.capture="shouldShowMentions && mentions.handleCaretMove()"
+		@keyup.capture="shouldShowMentions && mentions.handleCaretMove()"
+	>
 		<AgentChatPanel
 			v-if="projectId"
 			ref="chatPanel"
@@ -632,7 +828,10 @@ onBeforeUnmount(() => {
 			attachment-accept=""
 			:show-attach-button="false"
 			:placeholder="composerPlaceholder"
+			:input-draft="shouldShowMentions ? draftText : undefined"
+			tag-instance-messages
 			mode="inline"
+			@update:input-draft="onDraftUpdate"
 			@message-accepted="onMessageAccepted"
 			@resume-failed="sharing.onResumeFailed"
 		>
@@ -663,6 +862,27 @@ onBeforeUnmount(() => {
 			<!-- Same menu as the empty view: attachments, computer use, browser use and MCP tools -->
 			<template #footer-start>
 				<InstanceAiInputMenu :thread-id="thread.id" @attach-files="chatPanel?.openFilePicker()" />
+			</template>
+			<template v-if="shouldShowMentions" #right-actions>
+				<AssistantAtMentionPicker
+					v-model="mentionMenuOpen"
+					:query="mentionQuery"
+					:project-id="projectId"
+					:artifacts="mentionArtifacts"
+					:excluded-keys="excludedMentionContext.keys"
+					:excluded-workflow-ids="excludedMentionContext.workflowIds"
+					:input-element="chatPanel?.getInputElement() ?? null"
+					:disabled="!canUseMentions"
+					@update:model-value="mentions.handleMenuOpenChange"
+					@select="handleMentionSelection"
+				/>
+			</template>
+			<template #user-message-extra="{ message }">
+				<AttachmentPreview
+					v-for="(attachment, index) in resourcesForChatMessage(message)"
+					:key="`sent-${message.id}-${index}`"
+					:attachment="attachment"
+				/>
 			</template>
 			<template v-if="composerContextChip || composerResources.length" #composer-attachments>
 				<InstanceAiResourceChip
