@@ -141,16 +141,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout code with Namespace
-        if: inputs.namespace_poc
-        uses: namespacelabs/nscloud-checkout-action@66f2dc6f6c42a8ac6c4e53473c4840006822831e # v9
-        with:
-          ref: ${{ inputs.ref }}
-          fetch-depth: 1
-          persist-credentials: false
-
       - name: Checkout code
-        if: ${{ !inputs.namespace_poc }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
@@ -167,6 +158,31 @@ jobs:
         env:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+      - name: Inspect dependency storage
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          STORE="$(pnpm store path --silent)"
+          lscpu | grep -E '^(Architecture|CPU\(s\)|Model name|Thread|Core|Socket)'
+          findmnt -T "$PWD" -o TARGET,SOURCE,FSTYPE
+          findmnt -T "$STORE" -o TARGET,SOURCE,FSTYPE
+          stat -c 'device=%d path=%n' "$PWD" "$STORE"
+
+          WORK_PROBE="$(mktemp -d "$PWD/.ci-link-probe.XXXXXX")"
+          STORE_PROBE="$(mktemp "$STORE/.ci-link-probe.XXXXXX")"
+          trap 'rm -f "$STORE_PROBE"; rm -rf "$WORK_PROBE"' EXIT
+          dd if=/dev/zero of="$STORE_PROBE" bs=4096 count=1 status=none
+          if ln "$STORE_PROBE" "$WORK_PROBE/hardlink"; then
+            echo 'Store-to-workspace hardlink: supported'
+          else
+            echo 'Store-to-workspace hardlink: unavailable'
+          fi
+          if cp --reflink=always "$STORE_PROBE" "$WORK_PROBE/reflink"; then
+            echo 'Store-to-workspace reflink: supported'
+          else
+            echo 'Store-to-workspace reflink: unavailable'
+          fi
 
       # The cache archive preserves pnpm symlinks and executable modes across jobs.
       - name: Save Docker build context
@@ -204,16 +220,7 @@ jobs:
       runners_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_date_primary_tag }}
       runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
     steps:
-      - name: Checkout code with Namespace
-        if: inputs.namespace_poc
-        uses: namespacelabs/nscloud-checkout-action@66f2dc6f6c42a8ac6c4e53473c4840006822831e # v9
-        with:
-          ref: ${{ inputs.ref }}
-          fetch-depth: 1
-          persist-credentials: false
-
       - name: Checkout code
-        if: ${{ !inputs.namespace_poc }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
