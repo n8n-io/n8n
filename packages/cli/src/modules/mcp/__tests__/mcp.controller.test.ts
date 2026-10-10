@@ -561,6 +561,48 @@ describe('McpController', () => {
 		);
 	});
 
+	describe('tool calls that use a former tool name', () => {
+		const serveToolCall = async (name: string) => {
+			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+			(mcpService.getServer as unknown as Mock).mockReturnValue({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+			});
+			const req = createReq({
+				body: {
+					jsonrpc: '2.0',
+					id: 1,
+					method: 'tools/call',
+					params: { name, arguments: { workflowId: 'wf-1', executionId: '7' } },
+				},
+			} as Partial<AuthenticatedMcpRequest>);
+
+			await controller.build(req, createRes());
+
+			return mockHandleRequest.mock.calls.at(-1)?.[2];
+		};
+
+		test('serves the call under the current tool name', async () => {
+			const servedBody = await serveToolCall('get_execution');
+
+			expect(servedBody).toMatchObject({
+				method: 'tools/call',
+				params: {
+					name: 'get_workflow_execution',
+					arguments: { workflowId: 'wf-1', executionId: '7' },
+				},
+			});
+		});
+
+		test('passes a current tool name through unchanged', async () => {
+			const servedBody = await serveToolCall('get_workflow_execution');
+
+			expect(servedBody).toMatchObject({
+				params: { name: 'get_workflow_execution' },
+			});
+		});
+	});
+
 	describe('GET /http', () => {
 		// The listen stream is unsupported in stateless mode: a GET routed into
 		// the transport would hang forever, so the route must answer 405 itself.
