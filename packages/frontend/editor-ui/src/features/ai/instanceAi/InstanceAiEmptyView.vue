@@ -39,6 +39,8 @@ import {
 	stashPendingFirstMessage,
 	stashPendingFirstMessageFiles,
 } from './composables/useInstanceAiHandoff';
+import { isWebsiteBuildRequest, writeCodeMode } from './codeMode/codeMode';
+import InstanceAiProjectHome from './components/InstanceAiProjectHome.vue';
 import { fileAttachmentToFile } from './utils/fileAttachments';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
@@ -563,6 +565,7 @@ async function handleSubmit(
 
 	const projectId = selectedProject.value;
 	const threadId = uuidv4();
+	if (isWebsiteBuildRequest(message)) writeCodeMode(threadId);
 	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
@@ -623,6 +626,11 @@ function handleShelfSuggestionSubmit(payload: ShelfSuggestionPayload) {
 function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	splitPreviewPromptKey.value = null;
 	void chatInputRef.value?.insertSuggestion(payload);
+}
+
+function askForWebsite() {
+	chatInputRef.value?.setText('Make me a website');
+	void nextTick(() => chatInputRef.value?.focus());
 }
 </script>
 
@@ -713,7 +721,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
-			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
+			<div v-else ref="emptyLayout" :class="[$style.emptyLayout, $style.emptyLayoutWithHome]">
+				<InstanceAiProjectHome @build-website="askForWebsite" />
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<InstanceAiFreeNudge
@@ -816,6 +825,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	padding-top: 20vh;
 	overflow-y: auto;
 	overflow-x: hidden;
+}
+
+.emptyLayoutWithHome {
+	padding-top: var(--spacing--lg);
+	align-items: center;
 }
 
 .centeredInput {

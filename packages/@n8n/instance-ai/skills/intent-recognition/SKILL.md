@@ -70,8 +70,11 @@ Two orthogonal decisions per request, or per part for compound requests:
   questions (e.g. asking what the assistant is capable of building) and
   one-off content tasks with no trigger, no persistence, and no reuse intent
   (summarize, translate, or draft something once) — answer or do these
-  directly instead of building an automation. This bucket only applies when
-  you can actually do the task directly: a one-off question or report that
+  directly instead of building an automation. A request to make a website,
+  landing page, or web app is not out-of-scope. Load the `code-mode` skill.
+  Do not build a workflow unless the user also asks for an automation. This
+  bucket only applies when you can actually do the task directly: a one-off
+  question or report that
   needs external systems you have no ad-hoc access to (a private issue
   tracker, wiki, or CRM) is not out-of-scope — classify it, and when
   answering requires judgment-driven navigation of those systems it is
