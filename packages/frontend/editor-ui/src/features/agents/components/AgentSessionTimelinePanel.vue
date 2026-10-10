@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PushMessage } from '@n8n/api-types';
+import type { AgentJsonConfig, PushMessage } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
@@ -7,26 +7,20 @@ import type {
 	AgentExecution,
 	ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
-import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
-import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
-import AgentBudgetNoticeCard from '@/features/agents/components/AgentBudgetNoticeCard.vue';
-import { isBudgetStopCode, type BudgetAmountField } from '@/features/agents/utils/budget-config';
+import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
+import SessionTimelineTestControls from './SessionTimelineTestControls.vue';
 import {
 	flattenExecutionsToTimelineItems,
-	computeIdleRanges,
 	sessionBounds,
 	chartBlockColor,
-	filteredTimelineItemIndexes,
 	isSubAgentTimelineItem,
 	itemStatusFilterKey,
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
-import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	EventKind,
 	FilterOption,
@@ -35,18 +29,16 @@ import type {
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useDocumentVisibility } from '@vueuse/core';
+import { useKeybindings } from '@/app/composables/useKeybindings';
 
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
+	agentName?: string;
 	threadId: string;
-	/**
-	 * Persists a raised budget cap. Omitted when the user cannot edit the
-	 * agent, which hides the increase action on the budget notice.
-	 */
-	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -58,11 +50,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
-const activeElement = useActiveElement();
-const panel = useTemplateRef<HTMLElement>('panel');
 const documentVisibility = useDocumentVisibility();
 
 const projectId = computed(() => props.projectId);
@@ -71,18 +60,28 @@ const executions = ref<AgentExecution[]>([]);
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
+const timelineTableRef = useTemplateRef('timelineTable');
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
-const resolvedBudgetStopExecutionId = ref<string | null>(null);
-const budgetIncreasePending = ref(false);
 let threadDetailRequestId = 0;
 let refreshPending = false;
 let removePushListener: (() => void) | undefined;
 let activeRequest: { identity: string; promise: Promise<void> } | undefined;
 
-const baseItems = computed<TimelineItem[]>(() =>
-	flattenExecutionsToTimelineItems(executions.value),
+/** Temporary test integration. Remove this block, the import, and the controls tag after testing. */
+const isDevelopment = import.meta.env.DEV;
+const testItems = ref<TimelineItem[] | null>(null);
+const isTimelineLoading = computed(() => loading.value && testItems.value === null);
+
+const baseItems = computed<TimelineItem[]>(
+	() => testItems.value ?? flattenExecutionsToTimelineItems(executions.value),
 );
+
+watch(testItems, () => {
+	selectedFilters.value = new Set();
+	searchQuery.value = '';
+	selectTimelineItem(null);
+});
 
 // Resolve sub-agent ids to friendly names, loaded lazily and only when the
 // session actually contains delegations (mirrors how the chat resolves the
@@ -98,46 +97,7 @@ const items = computed<TimelineItem[]>(() =>
 		return name ? { ...item, subAgentName: name } : item;
 	}),
 );
-const idleRanges = computed(() => computeIdleRanges(items.value));
-
 const bounds = computed(() => sessionBounds(items.value));
-
-// Only a budget stop in the latest run is still open: a later run got past an
-// older one. Raising the cap here resolves that run's stop, but the refreshed
-// history keeps the stop item, so remember which run was resolved. A newer run
-// that stops at the raised cap gets its own notice.
-const budgetStop = computed<{
-	index: number;
-	executionId: string;
-	code: 'budget.monthly' | 'budget.session';
-} | null>(() => {
-	const lastExecutionId = executions.value.at(-1)?.id;
-	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
-	for (let index = items.value.length - 1; index >= 0; index--) {
-		const item = items.value[index];
-		if (item.executionId !== lastExecutionId || item.kind !== 'execution-error') continue;
-		if (item.guardrailCode && isBudgetStopCode(item.guardrailCode)) {
-			return { index, executionId: lastExecutionId, code: item.guardrailCode };
-		}
-	}
-	return null;
-});
-
-async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
-	const stopExecutionId = budgetStop.value?.executionId;
-	if (!props.increaseBudget || !stopExecutionId || budgetIncreasePending.value) return;
-	// The save outlives a thread switch: only close the notice it was raised from.
-	const identity = threadIdentity();
-	budgetIncreasePending.value = true;
-	try {
-		const saved = await props.increaseBudget(payload);
-		if (saved && identity === threadIdentity()) {
-			resolvedBudgetStopExecutionId.value = stopExecutionId;
-		}
-	} finally {
-		budgetIncreasePending.value = false;
-	}
-}
 
 function labelForKey(key: string): string {
 	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
@@ -234,100 +194,24 @@ const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
-const visibleItemIndexes = computed(() =>
-	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
-);
-
-function moveSelectedIndex(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-
-	if (highlightedIndex.value === null || !indexes.includes(highlightedIndex.value)) {
-		highlightedIndex.value = direction === 1 ? indexes[0] : indexes[indexes.length - 1];
-		return;
-	}
-
-	const currentVisibleIndex = indexes.indexOf(highlightedIndex.value);
-	const nextVisibleIndex = currentVisibleIndex + direction;
-	if (nextVisibleIndex < 0 || nextVisibleIndex >= indexes.length) return;
-	highlightedIndex.value = indexes[nextVisibleIndex];
-}
-
-function moveSelectedIndexToBoundary(direction: 1 | -1) {
-	const indexes = visibleItemIndexes.value;
-	if (indexes.length === 0) return;
-	highlightedIndex.value = direction === 1 ? indexes[indexes.length - 1] : indexes[0];
-}
-
 function selectTimelineItem(index: number | null) {
 	selectedIndex.value = index;
 	highlightedIndex.value = index;
 }
 
-function onTimelineItemSelect(index: number | null) {
+function onChartSelect(index: number): void {
 	selectTimelineItem(index);
-	if (index === null) return;
-	const item = items.value[index];
-	if (!item) return;
-	agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
-}
-
-function shouldHandleShortcut() {
-	const element = activeElement.value;
-	if (!(element instanceof Element)) return false;
-
-	return panel.value?.contains(element) === true && !shouldIgnoreCanvasShortcut(element);
+	void nextTick(() => timelineTableRef.value?.scrollSelectedIntoView());
 }
 
 function timelineItemKey(item: TimelineItem): string {
 	return `${item.executionId}:${item.kind}:${item.toolCallId ?? item.timestamp}`;
 }
 
-function onKeyDown(event: KeyboardEvent) {
-	if (!shouldHandleShortcut()) return;
-
-	if (event.key === 'Escape') {
-		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
-			event.preventDefault();
-			selectTimelineItem(null);
-		}
-		return;
-	}
-
-	if (event.key === 'ArrowDown') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(1);
-		} else {
-			moveSelectedIndex(1);
-		}
-	} else if (event.key === 'ArrowUp') {
-		event.preventDefault();
-		if (event.metaKey) {
-			moveSelectedIndexToBoundary(-1);
-		} else {
-			moveSelectedIndex(-1);
-		}
-	}
-}
-
-useEventListener(document, 'keydown', onKeyDown);
-
-function onKeyUp(event: KeyboardEvent) {
-	if (!shouldHandleShortcut()) return;
-	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-	if (highlightedIndex.value === selectedIndex.value) return;
-	event.preventDefault();
-	onTimelineItemSelect(highlightedIndex.value);
-}
-
-useEventListener(document, 'keyup', onKeyUp);
-
 function loadThreadDetail() {
 	executions.value = [];
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
-	resolvedBudgetStopExecutionId.value = null;
 	selectTimelineItem(null);
 	loading.value = true;
 	emit('loaded', null);
@@ -429,78 +313,67 @@ onBeforeUnmount(() => {
 watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {
 	immediate: true,
 });
+
+const searchInput = useTemplateRef<HTMLInputElement | null>('searchInput');
+
+useKeybindings({
+	'/': {
+		disabled: () => searchInput.value?.disabled ?? false,
+		run: () => {
+			if (searchInput.value) searchInput.value.focus();
+		},
+	},
+});
 </script>
 
 <template>
-	<div ref="panel" :class="$style.panel">
-		<div v-if="!loading" :class="$style.subHeader">
-			<div :class="$style.search">
-				<N8nInput
-					v-model="searchQuery"
-					size="medium"
-					:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
-					clearable
-				>
-					<template #prefix>
-						<N8nIcon icon="search" :size="12" />
-					</template>
-				</N8nInput>
-			</div>
+	<div :class="$style.panel">
+		<SessionTimelineTestControls v-if="isDevelopment" @update="testItems = $event" />
+		<div v-if="!isTimelineLoading" :class="$style.subHeader">
+			<N8nInput
+				ref="searchInput"
+				v-model="searchQuery"
+				size="large"
+				:class="$style.searchInput"
+				:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
+				clearable
+			>
+				<template #prefix>
+					<N8nIcon icon="search" :size="12" />
+				</template>
+			</N8nInput>
+
 			<SessionEventFilter
 				:available="filterOptions"
 				:selected="selectedFilters"
 				@update="(next) => (selectedFilters = next)"
 			/>
 		</div>
-
-		<div v-if="!loading && items.length > 0" :class="$style.chartRow">
-			<SessionTimelineChart
-				:items="items"
-				:idle-ranges="idleRanges"
-				:session-start="bounds.start"
-				:session-end="bounds.end"
-				:visible-kinds="selectedFilters"
-				:selected-index="highlightedIndex"
-				@select="onTimelineItemSelect"
-			/>
-		</div>
-
-		<div :class="$style.panels">
-			<div :class="$style.tablePanel">
-				<div v-if="loading" :class="$style.loading">
-					{{ i18n.baseText('generic.loadingEllipsis') }}
-				</div>
-				<SessionTimelineTable
-					v-else
-					:items="items"
-					:idle-ranges="idleRanges"
-					:selected-index="highlightedIndex"
-					:visible-kinds="selectedFilters"
-					:search-query="searchQuery"
-					:notice-index="budgetStop?.index ?? null"
-					@select="onTimelineItemSelect"
-				>
-					<template #notice>
-						<AgentBudgetNoticeCard
-							v-if="budgetStop"
-							:code="budgetStop.code"
-							:can-increase="props.increaseBudget !== undefined"
-							:pending="budgetIncreasePending"
-							@increase="onIncreaseBudget"
-						/>
-					</template>
-				</SessionTimelineTable>
+		<SessionTimelineChart
+			v-if="!isTimelineLoading"
+			:items="items"
+			:session-start="bounds.start"
+			:session-end="bounds.end"
+			:visible-kinds="selectedFilters"
+			:selected-index="highlightedIndex"
+			@select="onChartSelect"
+		/>
+		<div :class="$style.section">
+			<div v-if="isTimelineLoading" :class="$style.loading">
+				{{ i18n.baseText('generic.loadingEllipsis') }}
 			</div>
-			<Transition name="session-detail-panel">
-				<div v-if="selectedItem" :class="$style.detailPanel">
-					<SessionDetailPanel
-						:item="selectedItem"
-						:project-id="props.projectId"
-						:agent-id="props.agentId"
-						@close="selectTimelineItem(null)"
-					/>
-				</div>
-			</Transition>
+
+			<SessionTimelineTable
+				v-if="!isTimelineLoading"
+				ref="timelineTable"
+				:items="items"
+				:agent-name="props.agentName"
+				:personalisation="props.personalisation"
+				:selected-index="highlightedIndex"
+				:visible-kinds="selectedFilters"
+				:search-query="searchQuery"
+				@select="selectTimelineItem"
+			/>
 		</div>
 	</div>
 </template>
@@ -520,83 +393,38 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 
 .panel {
 	display: flex;
+	gap: var(--spacing--2xs);
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
-	/* Keep the timeline's own stacking below the preview dock, which overlays
-	   this column as a sibling. Without it, a z-index inside the chart competes
-	   with the dock and paints over the chat. */
-	isolation: isolate;
+	--n8n-session-panel--container-width: 75ch;
 }
 .subHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
+	padding-block-start: var(--spacing--md);
+	width: 100%;
 	flex-shrink: 0;
+	max-width: var(--n8n-session-panel--container-width, none);
+	margin: 0 auto;
 }
 .search {
 	flex: 1;
 	min-width: 0;
 }
-.chartRow {
-	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	background-color: var(--background--surface);
-}
-.panels {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-}
-.tablePanel {
-	flex: 6;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
-}
-.detailPanel {
-	flex: 0 0 40%;
-	min-width: 0;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
-	border-left: var(--border);
-	background-color: var(--background--surface);
+.searchInput {
+	box-shadow: var(--shadow--xs);
 }
 
-:global(.session-detail-panel-enter-active),
-:global(.session-detail-panel-leave-active) {
-	transition:
-		flex-basis var(--duration--snappy) var(--easing--ease-out),
-		opacity var(--duration--snappy) var(--easing--ease-out),
-		transform var(--duration--snappy) var(--easing--ease-out);
-	overflow: hidden;
-}
-:global(.session-detail-panel-enter-from),
-:global(.session-detail-panel-leave-to) {
-	flex-basis: 0;
-	opacity: 0;
-	transform: translateX(var(--spacing--sm));
-	border-left-color: transparent;
-}
-:global(.session-detail-panel-enter-to),
-:global(.session-detail-panel-leave-from) {
-	flex-basis: 40%;
-	opacity: 1;
-	transform: translateX(0);
-}
-@media (prefers-reduced-motion: reduce) {
-	:global(.session-detail-panel-enter-active),
-	:global(.session-detail-panel-leave-active) {
-		transition: none;
-	}
+.section {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	background-color: var(--background--subtle);
 }
 .loading {
 	padding: var(--spacing--sm);

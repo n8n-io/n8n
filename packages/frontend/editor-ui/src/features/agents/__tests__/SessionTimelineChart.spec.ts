@@ -16,7 +16,6 @@ function mountChart(overrides: Partial<InstanceType<typeof SessionTimelineChart>
 	return mount(SessionTimelineChart, {
 		props: {
 			items,
-			idleRanges: [],
 			sessionStart: 0,
 			sessionEnd: 3000,
 			visibleKinds: new Set<string>(),
@@ -51,14 +50,6 @@ describe('SessionTimelineChart', () => {
 		expect(flex0).toMatch(/flex:\s*100\s+1\s+0/);
 		expect(flex1).toMatch(/flex:\s*500\s+1\s+0/);
 		expect(flex2).toMatch(/flex:\s*1000\s+1\s+0/);
-	});
-
-	it('renders idle cells as fixed-width 56px segments', () => {
-		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
-		const cells = w.findAll('[data-test-id="timeline-cell"]');
-		// Cell at index 2 contains the idle segment.
-		const idleCellStyle = cells[2].attributes('style') ?? '';
-		expect(idleCellStyle).toMatch(/flex:\s*0\s+0\s+56px/);
 	});
 
 	it('emits select with the block index on click', async () => {
@@ -113,23 +104,32 @@ describe('SessionTimelineChart', () => {
 		expect(block.attributes('style')).toContain('var(--color--red-600)');
 	});
 
-	it('renders idle blobs interleaved with events in chronological order', () => {
-		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
-		expect(w.findAll('[data-test-id="timeline-idle"]')).toHaveLength(1);
-		const all = w.findAll('[data-test-id="timeline-block"], [data-test-id="timeline-idle"]');
-		expect(all.map((el) => el.attributes('data-test-id'))).toEqual([
-			'timeline-block',
-			'timeline-block',
-			'timeline-idle',
-			'timeline-block',
-		]);
+	it('renders only event cells across a gap between events', () => {
+		const w = mountChart();
+		expect(w.findAll('[data-test-id="timeline-cell"]')).toHaveLength(3);
+		expect(w.findAll('[data-test-id="timeline-idle"]')).toHaveLength(0);
 	});
 
-	it('applies a selected marker when selectedIndex matches', () => {
-		const w = mountChart({ selectedIndex: 2 });
-		const blocks = w.findAll('[data-test-id="timeline-block"]');
-		expect(blocks[0].element.getAttribute('data-selected')).not.toBe('true');
-		expect(blocks[2].element.getAttribute('data-selected')).toBe('true');
+	it('scrolls a selected block into view without adding a selected marker', async () => {
+		const w = mountChart();
+		try {
+			const blocks = w.findAll('[data-test-id="timeline-block"]');
+			const chart = w.get('[data-test-id="timeline-cell"]').element.parentElement;
+			if (!chart) throw new Error('Chart container is missing');
+			Object.defineProperty(chart, 'clientWidth', { configurable: true, value: 200 });
+			Object.defineProperty(blocks[2].element, 'offsetLeft', { configurable: true, value: 300 });
+			Object.defineProperty(blocks[2].element, 'offsetWidth', { configurable: true, value: 50 });
+
+			await w.setProps({ selectedIndex: 2 });
+			await w.vm.$nextTick();
+
+			expect(chart.scrollLeft).toBe(198);
+			for (const block of blocks) {
+				expect(block.attributes('data-selected')).toBeUndefined();
+			}
+		} finally {
+			w.unmount();
+		}
 	});
 
 	it('marks a generic tool soft-failure block as failed', () => {
@@ -144,6 +144,7 @@ describe('SessionTimelineChart', () => {
 		});
 		const block = w.get('[data-test-id="timeline-block"]');
 		expect(block.attributes('data-error')).toBe('true');
+		expect(block.attributes('style')).toContain('var(--color--red-600)');
 	});
 
 	it('marks a workflow soft-failure block as failed', () => {
@@ -158,6 +159,7 @@ describe('SessionTimelineChart', () => {
 		});
 		const block = w.get('[data-test-id="timeline-block"]');
 		expect(block.attributes('data-error')).toBe('true');
+		expect(block.attributes('style')).toContain('var(--color--red-600)');
 	});
 
 	it('does not mark a successful tool block as failed', () => {
@@ -172,12 +174,6 @@ describe('SessionTimelineChart', () => {
 		});
 		const block = w.get('[data-test-id="timeline-block"]');
 		expect(block.attributes('data-error')).toBeUndefined();
-	});
-
-	it('renders the localized "Idle" pill text inside each idle segment', () => {
-		const w = mountChart({ idleRanges: [{ start: 1500, end: 2000 }] });
-		const idle = w.find('[data-test-id="timeline-idle"]');
-		expect(idle.text()).toContain('Idle');
 	});
 
 	it('reveals event details on keyboard focus and hides them on blur', async () => {
@@ -207,6 +203,9 @@ describe('SessionTimelineChart', () => {
 			expect(hoverCard.attributes('data-open')).toBe('true');
 
 			await block.trigger('blur');
+			await vi.advanceTimersByTimeAsync(99);
+			expect(hoverCard.attributes('data-open')).toBe('true');
+			await vi.advanceTimersByTimeAsync(1);
 			expect(hoverCard.attributes('data-open')).toBe('false');
 			expect(hoverCard.text()).not.toContain('Keyboard details');
 		} finally {
@@ -214,6 +213,120 @@ describe('SessionTimelineChart', () => {
 			vi.useRealTimers();
 		}
 	});
+
+	it('opens after 300ms and closes 100ms after mouseleave', async () => {
+		vi.useFakeTimers();
+		const w = mountChart();
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			const hoverCard = w.get('[data-test-id="timeline-hover-card"]');
+
+			await block.trigger('mouseenter');
+			await vi.advanceTimersByTimeAsync(299);
+			expect(hoverCard.attributes('data-open')).toBe('false');
+			await vi.advanceTimersByTimeAsync(1);
+			expect(hoverCard.attributes('data-open')).toBe('true');
+
+			await block.trigger('mouseleave');
+			await vi.advanceTimersByTimeAsync(99);
+			expect(hoverCard.attributes('data-open')).toBe('true');
+			await vi.advanceTimersByTimeAsync(1);
+			expect(hoverCard.attributes('data-open')).toBe('false');
+			expect(hoverCard.text()).toBe('');
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
+
+	it('cancels opening when the pointer leaves before 300ms', async () => {
+		vi.useFakeTimers();
+		const w = mountChart();
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			await block.trigger('mouseenter');
+			await vi.advanceTimersByTimeAsync(299);
+			await block.trigger('mouseleave');
+			await vi.runAllTimersAsync();
+
+			expect(w.get('[data-test-id="timeline-hover-card"]').attributes('data-open')).toBe('false');
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
+
+	it.each([
+		['another cell', 1, 'Second details'],
+		['the same cell', 0, 'First details'],
+	])(
+		'keeps the card open when the pointer enters %s during the close delay',
+		async (_, index, content) => {
+			vi.useFakeTimers();
+			const w = mountChart({
+				items: [
+					item({ content: 'First details' }),
+					item({ content: 'Second details', timestamp: 1000 }),
+				],
+			});
+			try {
+				const blocks = w.findAll('[data-test-id="timeline-block"]');
+				const hoverCard = w.get('[data-test-id="timeline-hover-card"]');
+				await blocks[0].trigger('mouseenter');
+				await vi.advanceTimersByTimeAsync(300);
+				await blocks[0].trigger('mouseleave');
+				await vi.advanceTimersByTimeAsync(50);
+				await blocks[index].trigger('mouseenter');
+
+				expect(hoverCard.attributes('data-open')).toBe('true');
+				expect(hoverCard.text()).toContain(content);
+				await vi.advanceTimersByTimeAsync(300);
+				expect(hoverCard.attributes('data-open')).toBe('true');
+				expect(hoverCard.text()).toContain(content);
+			} finally {
+				w.unmount();
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it.each(['opening', 'closing'])('clears the pending %s timer on unmount', async (phase) => {
+		vi.useFakeTimers();
+		const w = mountChart();
+		try {
+			const block = w.get('[data-test-id="timeline-block"]');
+			await block.trigger('mouseenter');
+			if (phase === 'closing') {
+				await vi.advanceTimersByTimeAsync(300);
+				await block.trigger('mouseleave');
+			}
+
+			const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+			try {
+				w.unmount();
+				expect(clearTimeoutSpy).toHaveBeenCalled();
+			} finally {
+				clearTimeoutSpy.mockRestore();
+			}
+		} finally {
+			w.unmount();
+			vi.useRealTimers();
+		}
+	});
+
+	it.each(['tool', 'workflow'] as const)(
+		'renders a successful %s block with a neutral color',
+		(kind) => {
+			const w = mountChart({ items: [item({ kind, toolOutcome: 'success' })] });
+			try {
+				expect(w.get('[data-test-id="timeline-block"]').attributes('style')).toContain(
+					'var(--color--neutral-600)',
+				);
+			} finally {
+				w.unmount();
+			}
+		},
+	);
 
 	it('exposes the HITL response status in the block label and hover card', async () => {
 		vi.useFakeTimers();
