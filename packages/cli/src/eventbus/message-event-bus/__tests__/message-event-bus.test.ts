@@ -166,5 +166,37 @@ describe('MessageEventBus.initialize', () => {
 				'startup-recovery',
 			);
 		});
+
+		it('leaves unfinished executions for a later call when recovery is deferred', async () => {
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: { b: [] },
+			});
+			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
+
+			await bus.initialize({ deferExecutionRecovery: true });
+
+			expect(mockedWriter.startLogging).toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
+
+			await bus.recoverUnfinishedExecutions();
+
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['b'], 'startup-recovery');
+		});
+
+		it('recovers only once, so executions started after startup are left alone', async () => {
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: { b: [] },
+			});
+			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
+			await bus.initialize({});
+			executionRepository.findUnfinishedIds.mockResolvedValue(['started-after-startup']);
+
+			await bus.recoverUnfinishedExecutions();
+
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledTimes(1);
+			expect(executionRepository.findUnfinishedIds).toHaveBeenCalledTimes(1);
+		});
 	});
 });
