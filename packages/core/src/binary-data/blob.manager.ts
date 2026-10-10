@@ -146,6 +146,16 @@ export class BinaryDataBlobManager implements BinaryData.Manager {
 		}
 	}
 
+	async claimForExecution(fileId: string, executionId: string) {
+		if (parseExecutionFileId(fileId)?.executionId !== TEMP_EXECUTION_ID) return fileId;
+
+		const temporarySegment = `/${TEMP_EXECUTION_ID}/`;
+		const claimedFileId = fileId.replace(temporarySegment, `/${executionId}/`);
+		await this.rename(fileId, claimedFileId);
+
+		return claimedFileId;
+	}
+
 	// private methods
 
 	private toFileId(location: BinaryData.FileLocation) {
