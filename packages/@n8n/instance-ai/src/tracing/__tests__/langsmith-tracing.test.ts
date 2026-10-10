@@ -12,6 +12,7 @@ import { createToolRegistry } from '../../tool-registry';
 import { createAskUserTool } from '../../tools/shared/ask-user.tool';
 import {
 	buildAgentTraceInputs,
+	canEmitTraceOnlyChildRun,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
@@ -600,6 +601,21 @@ describe('createInstanceAiTraceContext', () => {
 		await telemetry.provider?.shutdown();
 	});
 
+	it('writes span tags as one comma-separated string', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Hello' },
+		});
+
+		const span = agentsMock.getSpans().find((entry) => entry.id === tracing!.rootRun.otelSpanId);
+		expect(span?.attributes['langsmith.span.tags']).toBe('instance-ai, message-turn');
+	});
+
 	it('stamps model_id on root and actor runs and native telemetry metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -1162,6 +1178,23 @@ describe('createInstanceAiTraceContext', () => {
 		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done again' } });
 		expect(provider.forceFlush).toHaveBeenCalledTimes(1);
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports whether a trace-only child run can still export', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-can-emit',
+			messageId: 'message-can-emit',
+			runId: 'run-can-emit',
+			userId: 'user-can-emit',
+			input: { message: 'hello' },
+		});
+
+		expect(canEmitTraceOnlyChildRun(undefined)).toBe(false);
+		expect(canEmitTraceOnlyChildRun(tracing)).toBe(true);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+
+		expect(canEmitTraceOnlyChildRun(tracing)).toBe(false);
 	});
 
 	it('shuts down product telemetry once when releasing a trace client, with no outstanding memory-task leases', async () => {

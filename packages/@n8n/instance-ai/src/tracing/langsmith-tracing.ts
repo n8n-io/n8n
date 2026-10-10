@@ -309,7 +309,8 @@ function buildProductSpanAttributes(options: {
 
 	const tags = normalizeTags(DEFAULT_TAGS, options.tags);
 	if (tags?.length) {
-		attributes[LANGSMITH_SPAN_TAGS] = tags;
+		// LangSmith reads tags only from a comma-separated string, not from an array.
+		attributes[LANGSMITH_SPAN_TAGS] = tags.join(', ');
 	}
 
 	const metadata = buildProductSpanMetadata(options);
@@ -1119,6 +1120,49 @@ async function startAndFinishProductChildSpan(
 	});
 }
 
+function isLiveTraceHandle(
+	tracing: InstanceAiTraceContext | undefined,
+): tracing is InstanceAiTraceContext {
+	return tracing !== undefined && (tracing.isLive?.() ?? true);
+}
+
+/** Whether {@link emitTraceOnlyChildRun} would export a run, so callers can skip costly payloads. */
+function trackBackgroundOperation(
+	runtime: ProductOtelTraceRuntime,
+	operation: Promise<unknown>,
+): void {
+	if (runtime.shutdown) return;
+	runtime.backgroundOperations.add(operation);
+	void operation
+		.catch(() => undefined)
+		.finally(() => runtime.backgroundOperations.delete(operation));
+}
+
+/**
+ * Keep the trace that `emitTraceOnlyChildRun` would export to open until
+ * `operation` settles, so detached work can still record its child run.
+ * Prefers the ambient trace for the same reason `emitTraceOnlyChildRun` does.
+ */
+export function keepTraceOpenUntilSettled(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	operation: Promise<unknown>,
+): void {
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		trackBackgroundOperation(currentTrace.runtime, operation);
+		return;
+	}
+	if (isLiveTraceHandle(fallbackTracing)) fallbackTracing.keepOpenUntilSettled?.(operation);
+}
+
+export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
+	const currentTrace = getCurrentProductTrace();
+	return (
+		(currentTrace !== undefined && !currentTrace.runtime.shutdown) ||
+		isLiveTraceHandle(fallbackTracing)
+	);
+}
+
 /**
  * Emit a trace-only child run, preferring the current turn's ambient trace: a
  * tool suspended in one turn and resumed in a later one holds a stale handle
@@ -1150,7 +1194,7 @@ export async function emitTraceOnlyChildRun(
 		return 'ambient';
 	}
 	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
-	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+	if (isLiveTraceHandle(fallbackTracing)) {
 		try {
 			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
 				...init,
@@ -1357,13 +1401,7 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		onMemoryTaskEvent,
-		keepOpenUntilSettled: (operation) => {
-			if (otelRuntime.shutdown) return;
-			otelRuntime.backgroundOperations.add(operation);
-			void operation
-				.catch(() => undefined)
-				.finally(() => otelRuntime.backgroundOperations.delete(operation));
-		},
+		keepOpenUntilSettled: (operation) => trackBackgroundOperation(otelRuntime, operation),
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {

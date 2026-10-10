@@ -47,6 +47,11 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 	};
 });
 
+// Metric spans would change the trace child-run counts that these tests assert.
+vi.mock('../../../tracing/builder-metric-event', () => ({
+	emitBuilderMetric: vi.fn(async () => await Promise.resolve()),
+}));
+
 vi.mock('../workflow-validation-warnings', async () => {
 	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
 		'../workflow-validation-warnings',

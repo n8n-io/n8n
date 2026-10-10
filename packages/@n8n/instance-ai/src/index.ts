@@ -769,6 +769,7 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 	InstanceAiBuilderDelegate,
+	AgentValidationSummary,
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	BuilderOpenSuspension,
