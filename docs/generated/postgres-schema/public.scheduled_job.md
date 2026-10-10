@@ -26,6 +26,7 @@
 | recurrenceSize | integer |  | true |  |  | The N in a recurring_cron schedule's every-N-periods filter, e.g. 3 for every 3 weeks; at least 2. Set only when kind is 'recurring_cron'. |
 | recurrenceUnit | varchar(16) |  | true |  |  | Calendar period counted by a recurring_cron schedule's every-N-periods filter (hours, days, weeks, months). Set only when kind is 'recurring_cron'. |
 | taskType | varchar(128) |  | false |  |  | Selects which registered handler runs the task. |
+| timeoutSeconds | integer | 300 | false |  |  | How long, in seconds, one attempt of an occurrence may run before the executor stops it. |
 | timezone | varchar(64) |  | true |  |  | IANA timezone the cron expression is evaluated in; NULL uses the instance default. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -43,6 +44,7 @@
 | CHK_scheduled_job_recurrence_size | CHECK | CHECK (("recurrenceSize" >= 2)) |
 | CHK_scheduled_job_recurrence_unit | CHECK | CHECK ((("recurrenceUnit")::text = ANY ((ARRAY['hours'::character varying, 'days'::character varying, 'weeks'::character varying, 'months'::character varying])::text[]))) |
 | CHK_scheduled_job_recurring_cron | CHECK | CHECK ((((kind)::text <> 'recurring_cron'::text) OR (("cronExpression" IS NOT NULL) AND ("recurrenceUnit" IS NOT NULL) AND ("recurrenceSize" IS NOT NULL)))) |
+| CHK_scheduled_job_timeoutSeconds | CHECK | CHECK ((("timeoutSeconds" > 0) AND ("timeoutSeconds" <= 2147483) AND ("timeoutSeconds" = "timeoutSeconds"))) NOT VALID |
 | PK_893185383f029ca8d57bb781fa8 | PRIMARY KEY | PRIMARY KEY (id) |
 | scheduled_job_createdAt_not_null | n | NOT NULL "createdAt" |
 | scheduled_job_enabled_not_null | n | NOT NULL enabled |
@@ -56,6 +58,7 @@
 | scheduled_job_ownerType_not_null | n | NOT NULL "ownerType" |
 | scheduled_job_payload_not_null | n | NOT NULL payload |
 | scheduled_job_taskType_not_null | n | NOT NULL "taskType" |
+| scheduled_job_timeoutSeconds_not_null | n | NOT NULL "timeoutSeconds" |
 | scheduled_job_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -98,6 +101,7 @@ erDiagram
   integer recurrenceSize
   varchar_16_ recurrenceUnit
   varchar_128_ taskType
+  integer timeoutSeconds
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
@@ -120,6 +124,7 @@ erDiagram
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
   varchar_128_ taskType
+  integer timeoutSeconds
 }
 ```
 
