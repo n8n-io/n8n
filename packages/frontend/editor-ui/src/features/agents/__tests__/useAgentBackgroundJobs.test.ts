@@ -174,6 +174,29 @@ describe('useAgentBackgroundJobs', () => {
 		expect(jobs.value).toEqual([]);
 	});
 
+	it.each(['chat', 'n8n-chat'] as const)(
+		'retains a stopped workflow only in Preview after its report arrives, channel=%s',
+		async (channel) => {
+			const stopped: AgentBackgroundJobDto = {
+				...job,
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequested: true,
+			};
+			vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [stopped] });
+			receivedJobs.value = [
+				{ id: job.id, title: job.title, kind: 'workflow', status: 'cancelled' },
+			];
+			const { jobs } = create(channel);
+			await flushPromises();
+			expect(jobs.value).toEqual(channel === 'chat' ? [stopped] : []);
+			vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [{ ...job, id: 'new-job' }] });
+			onEvent(update);
+			await flushPromises();
+			expect(jobs.value).toEqual([{ ...job, id: 'new-job' }]);
+		},
+	);
+
 	it('does not apply a stop response to another conversation', async () => {
 		const { jobs, stopAll, isStopping } = create();
 		await flushPromises();

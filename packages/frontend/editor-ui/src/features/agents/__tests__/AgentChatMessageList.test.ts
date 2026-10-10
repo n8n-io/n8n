@@ -346,6 +346,25 @@ describe('AgentChatMessageList', () => {
 		wrapper.unmount();
 	});
 
+	it('hides empty saved result events and keeps the acknowledgement text', async () => {
+		const message: ChatMessage = {
+			id: 'stop:assistant',
+			executionId: 'stop',
+			role: 'assistant',
+			content: '',
+			backgroundJobSignal: { tasks: [] },
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle' },
+		});
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="markdown-chunk"]').exists()).toBe(false);
+		await wrapper.setProps({ messages: [{ ...message, content: 'The plan is stopped.' }] });
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="markdown-chunk"]').text()).toBe('The plan is stopped.');
+		wrapper.unmount();
+	});
+
 	it('keeps signal expansion and order when the response gains tools and text', async () => {
 		const message: ChatMessage = {
 			id: 'wake:assistant',
