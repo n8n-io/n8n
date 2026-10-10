@@ -98,8 +98,9 @@ function headerValuePlaceholder(pair: { key: string; value: string }): string {
 		: i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder');
 }
 
-// State-first copy: the row tells the admin whether tracing is live right now,
-// instead of describing what the disabled state would mean hypothetically.
+// State-first copy: the row describes the status shown on the control, instead
+// of describing what the disabled state would mean hypothetically. It follows the
+// draft like every other field, and the save bar marks it as not yet applied.
 const statusDescription = computed(() =>
 	otelStore.settings.enabled
 		? i18n.baseText('settings.opentelemetry.status.enabledDescription')
@@ -190,27 +191,6 @@ async function save(): Promise<boolean> {
 function discard() {
 	otelStore.discardChanges();
 	syncHeaderPairsFromStore();
-}
-
-const statusSaving = ref(false);
-
-/*
- * Enabling/disabling is a live status change, not a form draft: it applies
- * immediately by committing the current on-screen draft with the flag set.
- * Saving only the flag would silently enable with stale, previously-saved
- * config while the screen shows unsaved edits.
- */
-async function onToggleEnabled(enabled: boolean) {
-	otelStore.settings.enabled = enabled;
-	statusSaving.value = true;
-	try {
-		const saved = await save();
-		if (!saved) {
-			otelStore.settings.enabled = !enabled;
-		}
-	} finally {
-		statusSaving.value = false;
-	}
 }
 
 function onLeaveWithoutSaving() {
@@ -417,10 +397,8 @@ watch(
 					>
 						<template #action>
 							<OtelStatusControl
-								:enabled="otelStore.settings.enabled"
+								v-model:enabled="otelStore.settings.enabled"
 								:disabled="isEnvManaged('enabled')"
-								:loading="statusSaving"
-								@update:enabled="onToggleEnabled"
 							/>
 						</template>
 					</OtelSettingsRow>
