@@ -80,6 +80,7 @@ jobs:
               !**/*.test.ts
               !**/*.spec.ts
               !packages/quality/testing/playwright/**
+              !packages/quality/efficiency/**
               !packages/frontend/@n8n/storybook/**
               !.devcontainer/**
               !scripts/agent-setup.mjs

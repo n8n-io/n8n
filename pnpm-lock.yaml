@@ -8077,6 +8077,31 @@ importers:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
+  packages/quality/efficiency:
+    dependencies:
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
+      '@playwright/test':
+        specifier: catalog:e2e
+        version: 1.62.1
+      n8n-playwright:
+        specifier: workspace:*
+        version: link:../testing/playwright
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+
   packages/quality/efficiency/microbenchmarks:
     devDependencies:
       '@n8n/expression-runtime':
@@ -8399,6 +8424,9 @@ importers:
       eslint-plugin-playwright:
         specifier: catalog:e2e
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
+      execa:
+        specifier: 10.1.0
+        version: 10.1.0
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -18378,6 +18406,10 @@ packages:
     resolution: {integrity: sha512-adbxcyWV46qiHyvSp50TKt05tB4tK3HcmF7/nxfAdhnox83seTDbwnaqKO4sXRy7roHAIFqJP/Rw/AuEbX61LA==}
     engines: {node: '>=6'}
 
+  execa@10.1.0:
+    resolution: {integrity: sha512-5HT/600HqXEtmkb9mK/PkTWw+bQSCzPnWiZ4/87wD3Hi0wFzCapOuNT9p4M08PDd+KLHdHvFhKjOWmNx/npRNQ==}
+    engines: {node: '>=22'}
+
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
     engines: {node: '>=10'}
@@ -22186,6 +22218,10 @@ packages:
     resolution: {integrity: sha512-4yf0QO/sllf/1zbZWYnvWw3NxCQwLXKzIj0G849LSufP15BXKM0rbD2Z3wVnkMfjdn/CB0Dpp444gYAACdsplg==}
     engines: {node: '>=18'}
 
+  pretty-ms@9.3.1:
+    resolution: {integrity: sha512-HzMy3Geq23nVALD/M2LliU+F+M+gVNsvkQWWqeBZ8HDiCgzo6YPJ/Omrmtq24EFrIsk0a3EkQGEd7bDOo+IhGA==}
+    engines: {node: '>=18'}
+
   prismjs@1.29.0:
     resolution: {integrity: sha512-Kx/1w86q/epKcmte75LNrEoT+lX8pBpavuAbvJWRXar7Hz8jrtF+e3vY751p0R8H9HdArwaCTNDDzHg/ScJK1Q==}
     engines: {node: '>=6'}
@@ -24848,6 +24884,11 @@ packages:
     resolution: {integrity: sha512-K4jVyjnBdgvc86Y6BkaLZEN933SwYOuBFkdmBu9ZfkcAbdVbpITnDmjvZ/aQjRXQrv5EPkTnD1s39GiiqbngCw==}
     engines: {node: '>= 0.4'}
 
+  which-command@0.1.0:
+    resolution: {integrity: sha512-XZyoF5/5hZtXitIwzrU4NKK+Wtbb9aB9CezUEw2Q0wlYK8NUYQxC1rRXgNueYLtBAJwXIb+/tFVk4dozciNJMA==}
+    engines: {node: '>=22'}
+    hasBin: true
+
   which-typed-array@1.1.19:
     resolution: {integrity: sha512-rEvr90Bck4WZt9HHFC4DJMsjvu7x+r6bImz0/BrbWb7A2djJ8hnZMrWnHo9F8ssv0OMErasDhftrfROTyqSDrw==}
     engines: {node: '>= 0.4'}
@@ -25112,6 +25153,10 @@ packages:
 
   yoctocolors@2.1.1:
     resolution: {integrity: sha512-GQHQqAopRhwU8Kt1DDM8NjibDXHC8eoh1erhGAJPEyveY9qqVeXvVikNKrDz69sHowPMorbPUrH/mx8c50eiBQ==}
+    engines: {node: '>=18'}
+
+  yoctocolors@2.2.0:
+    resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
     engines: {node: '>=18'}
 
   yuku-ast@0.1.7:
@@ -37228,6 +37273,21 @@ snapshots:
       signal-exit: 3.0.7
       strip-eof: 1.0.0
 
+  execa@10.1.0:
+    dependencies:
+      '@sindresorhus/merge-streams': 4.0.0
+      figures: 6.1.0
+      get-stream: 9.0.1
+      human-signals: 8.0.1
+      is-plain-obj: 4.1.0
+      is-stream: 4.0.1
+      npm-run-path: 6.0.0
+      pretty-ms: 9.3.1
+      signal-exit: 4.1.0
+      strip-final-newline: 4.0.0
+      which-command: 0.1.0
+      yoctocolors: 2.2.0
+
   execa@5.1.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -41810,6 +41870,10 @@ snapshots:
     dependencies:
       parse-ms: 4.0.0
 
+  pretty-ms@9.3.1:
+    dependencies:
+      parse-ms: 4.0.0
+
   prismjs@1.29.0: {}
 
   proc-log@6.1.0: {}
@@ -45233,6 +45297,8 @@ snapshots:
       is-weakmap: 2.0.2
       is-weakset: 2.0.4
 
+  which-command@0.1.0: {}
+
   which-typed-array@1.1.19:
     dependencies:
       available-typed-arrays: 1.0.7
@@ -45501,6 +45567,8 @@ snapshots:
   yocto-queue@1.2.2: {}
 
   yoctocolors@2.1.1: {}
+
+  yoctocolors@2.2.0: {}
 
   yuku-ast@0.1.7:
     dependencies:
