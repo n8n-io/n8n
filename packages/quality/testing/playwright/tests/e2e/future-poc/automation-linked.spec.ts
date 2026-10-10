@@ -237,7 +237,9 @@ test.describe(
 		}) => {
 			const workflowName = `Parent digest ${nanoid(8)}`;
 			await linkCloud(n8n.api, cloudApi, cloudUrl);
-			const child = await n8n.api.workflows.createWorkflow(manualWorkflow(`Child ${nanoid(8)}`));
+			// A parent turns on only when the workflow it calls is already on.
+			const child = await n8n.api.workflows.createWorkflow(scheduleWorkflow(`Child ${nanoid(8)}`));
+			await publishWorkflow(n8n.api, child.id);
 			const workflow = await n8n.api.workflows.createWorkflow(
 				callingWorkflow(workflowName, child.id),
 			);
@@ -291,6 +293,19 @@ test.describe(
 		});
 	},
 );
+
+/** Turns the workflow on and waits until it is active. */
+async function publishWorkflow(api: ApiHelpers, workflowId: string): Promise<void> {
+	const current = await api.workflows.getWorkflow(workflowId);
+	const versionId = current.versionId ?? '';
+	expect(versionId).not.toEqual('');
+	await api.workflows.activate(workflowId, versionId);
+	await expect
+		.poll(async () => (await api.workflows.getWorkflow(workflowId)).active, {
+			timeout: STEP_TIMEOUT_MS,
+		})
+		.toBe(true);
+}
 
 /** Saves a new version of the workflow. The card still shows the version it proposed. */
 async function replaceWorkflow(
