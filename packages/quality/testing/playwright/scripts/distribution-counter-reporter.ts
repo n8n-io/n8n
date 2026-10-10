@@ -3,9 +3,16 @@ import type { FullConfig, Reporter, Suite, TestCase } from '@playwright/test/rep
 import { writeFileSync } from 'node:fs';
 import { relative, sep } from 'node:path';
 
+function listedTestLabel(test: TestCase): string {
+	const title = test.titlePath().join(' › ');
+	return `${test.location.file}:${test.location.line} ${title}`;
+}
+
 function workerHash(test: TestCase): string {
 	const value: unknown = Reflect.get(test, '_workerHash');
 	if (typeof value !== 'string' || value.length === 0) {
+		// The runner hides a reporter exception. Print the test before the throw.
+		console.error(`Playwright did not expose a worker hash for ${listedTestLabel(test)}`);
 		throw new Error('Playwright did not expose a worker hash for a listed test');
 	}
 	return value;
@@ -14,6 +21,7 @@ function workerHash(test: TestCase): string {
 function poolDigest(test: TestCase): string {
 	const value: unknown = Reflect.get(test, '_poolDigest');
 	if (typeof value !== 'string' || value.length === 0) {
+		console.error(`Playwright did not expose a fixture-pool digest for ${listedTestLabel(test)}`);
 		throw new Error('Playwright did not expose a fixture-pool digest for a listed test');
 	}
 	return value;
