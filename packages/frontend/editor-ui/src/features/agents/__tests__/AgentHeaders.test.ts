@@ -71,7 +71,7 @@ const breadcrumbItems = [
 ];
 
 describe('AgentSessionTimelineHeader', () => {
-	function mountHeader(overrides: Partial<{ showMetrics: boolean }> = {}) {
+	function mountHeader() {
 		return mount(AgentSessionTimelineHeader, {
 			props: {
 				breadcrumbItems,
@@ -84,20 +84,13 @@ describe('AgentSessionTimelineHeader', () => {
 						data: { date: 'Jan 1 10:00', active: true },
 					},
 				],
-				showMetrics: overrides.showMetrics ?? true,
-				triggerSource: 'slack',
-				triggerIcon: 'slack',
-				triggerLabel: 'Slack',
-				totalTokens: 1234,
-				totalCost: 0.1234,
-				durationLabel: '1.2s',
 				showLangsmithExport: false,
 				langsmithExportLoading: false,
 			},
 		});
 	}
 
-	it('renders breadcrumbs, session picker, session metadata, and metrics', () => {
+	it('renders breadcrumbs and the session picker', () => {
 		const wrapper = mountHeader();
 		const breadcrumbs = wrapper.findComponent({ name: 'N8nBreadcrumbs' }) as BreadcrumbsStubWrapper;
 
@@ -105,9 +98,6 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(wrapper.find('[data-testid="session-header-switcher"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('Support session');
 		expect(wrapper.text()).toContain('Jan 1 10:00');
-		expect(wrapper.text()).toContain('Slack');
-		expect(wrapper.text()).toContain('1,234t ($0.1234)');
-		expect(wrapper.text()).toContain('1.2s');
 	});
 
 	it('shows the project icon before the breadcrumb', () => {
@@ -118,11 +108,12 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(icon.props('size')).toBe('mini');
 	});
 
-	it('hides metrics and close button while metrics are unavailable', () => {
-		const wrapper = mountHeader({ showMetrics: false });
+	it('does not render session metadata', () => {
+		const wrapper = mountHeader();
 
-		expect(wrapper.text()).not.toContain('Slack');
-		expect(wrapper.find('[data-testid="agent-session-timeline-close"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="circle-dollar-sign"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="clock"]').exists()).toBe(false);
+		expect(wrapper.find('[data-icon="slack"]').exists()).toBe(false);
 	});
 
 	it('emits timeline header actions', async () => {
@@ -141,14 +132,15 @@ describe('AgentSessionTimelineHeader', () => {
 		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
-	it('uses the expected close button style', () => {
+	it('shows an outline Edit agent button with a pencil icon', () => {
 		const wrapper = mountHeader();
 		const closeButton = wrapper.find('[data-testid="agent-session-timeline-close"]');
 
-		expect(closeButton.attributes('data-variant')).toBe('ghost');
+		expect(closeButton.attributes('data-variant')).toBe('outline');
 		expect(closeButton.attributes('data-size')).toBe('medium');
-		expect(closeButton.attributes('data-icon-only')).toBeDefined();
-		expect(closeButton.find('[data-icon="x"]').exists()).toBe(true);
+		expect(closeButton.attributes('data-icon-only')).toBeUndefined();
+		expect(closeButton.find('[data-icon="pencil"]').exists()).toBe(true);
+		expect(closeButton.text()).toBe('Edit agent');
 	});
 });
 
