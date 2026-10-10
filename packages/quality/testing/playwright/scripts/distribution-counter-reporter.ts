@@ -1,11 +1,18 @@
 /* eslint-disable import-x/no-default-export -- Playwright loads a default reporter export. */
-import type { FullConfig, Reporter, Suite, TestCase } from '@playwright/test/reporter';
+import type { FullConfig, Reporter, Suite, TestCase, TestError } from '@playwright/test/reporter';
 import { writeFileSync } from 'node:fs';
 import { relative, sep } from 'node:path';
+
+function listedTestLabel(test: TestCase): string {
+	const title = test.titlePath().join(' › ');
+	return `${test.location.file}:${test.location.line} ${title}`;
+}
 
 function workerHash(test: TestCase): string {
 	const value: unknown = Reflect.get(test, '_workerHash');
 	if (typeof value !== 'string' || value.length === 0) {
+		// The runner hides a reporter exception. Print the test before the throw.
+		console.error(`Playwright did not expose a worker hash for ${listedTestLabel(test)}`);
 		throw new Error('Playwright did not expose a worker hash for a listed test');
 	}
 	return value;
@@ -14,6 +21,7 @@ function workerHash(test: TestCase): string {
 function poolDigest(test: TestCase): string {
 	const value: unknown = Reflect.get(test, '_poolDigest');
 	if (typeof value !== 'string' || value.length === 0) {
+		console.error(`Playwright did not expose a fixture-pool digest for ${listedTestLabel(test)}`);
 		throw new Error('Playwright did not expose a fixture-pool digest for a listed test');
 	}
 	return value;
@@ -24,6 +32,13 @@ function relativeSpec(file: string): string {
 }
 
 export default class DistributionCounterReporter implements Reporter {
+	// Playwright hides a reporter exception and does not print a load error
+	// when this reporter replaces the list reporter. Write the error here.
+	onError(error: TestError): void {
+		const text = error.stack ?? error.message;
+		if (text) console.error(text);
+	}
+
 	onBegin(_config: FullConfig, suite: Suite): void {
 		const output = process.env.DISTRIBUTION_COUNTER_OUTPUT;
 		if (!output) throw new Error('DISTRIBUTION_COUNTER_OUTPUT is required');

@@ -48,7 +48,7 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk... --filter=@n8n/api-types...
 
       - name: Generate matrix (up to 20 shards, duration-weighted)
         id: gen

@@ -1,4 +1,3 @@
-
 export type InstanceAiEventMap = {
 	'instance-ai-run-finished': {
 		/** 'suspended' is a non-terminal HITL segment: usage/tool counts only; the terminal event counts the run. */

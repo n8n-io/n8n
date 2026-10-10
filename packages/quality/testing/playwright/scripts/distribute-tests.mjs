@@ -26,7 +26,7 @@
  *   node distribute-tests.mjs <shards> <index>                 # Specs for a single shard
  */
 
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -194,23 +194,31 @@ function generateDistributionGroups(project, grepInvert) {
 	const temp = mkdtempSync(path.join(tmpdir(), 'distribution-groups-'));
 	const reportPath = path.join(temp, 'playwright-profiles.json');
 	const groupsPath = path.join(temp, 'groups.json');
-	execFileSync(
-		process.execPath,
-		[
-			PLAYWRIGHT_CLI,
-			'test',
-			'--list',
-			`--project=${project}`,
-			'--workers=1',
-			`--reporter=${DISTRIBUTION_REPORTER}`,
-			...(grepInvert ? [`--grep-invert=${grepInvert}`] : []),
-		],
-		{
-			cwd: PLAYWRIGHT_DIR,
-			env: { ...process.env, DISTRIBUTION_COUNTER_OUTPUT: reportPath },
-			stdio: ['ignore', 'ignore', 'inherit'],
-		},
-	);
+	const args = [
+		PLAYWRIGHT_CLI,
+		'test',
+		'--list',
+		`--project=${project}`,
+		'--workers=1',
+		`--reporter=${DISTRIBUTION_REPORTER}`,
+		...(grepInvert ? [`--grep-invert=${grepInvert}`] : []),
+	];
+	// The custom reporter replaces the list reporter, so a load error stays on
+	// the child stderr. Print that stderr. Otherwise the parent only sees exit 1.
+	const result = spawnSync(process.execPath, args, {
+		cwd: PLAYWRIGHT_DIR,
+		env: { ...process.env, DISTRIBUTION_COUNTER_OUTPUT: reportPath },
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'pipe'],
+		maxBuffer: 64 * 1024 * 1024,
+	});
+	if (result.stderr) process.stderr.write(result.stderr);
+	if (result.error) throw result.error;
+	if (result.status !== 0) {
+		if (result.stdout) process.stderr.write(result.stdout);
+		const signal = result.signal ? ` signal ${result.signal}` : '';
+		throw new Error(`Command failed (${result.status ?? 'none'}${signal}): ${args.join(' ')}`);
+	}
 	const report = JSON.parse(readFileSync(reportPath, 'utf8'));
 	const groups = buildDistributionGroups(report);
 	writeFileSync(groupsPath, JSON.stringify(groups));

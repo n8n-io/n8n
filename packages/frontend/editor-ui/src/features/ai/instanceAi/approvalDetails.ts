@@ -314,7 +314,9 @@ export function formatApprovalTitle(params: {
 	if (!toolName) return undefined;
 	const i18n = useI18n();
 	const action = typeof args?.action === 'string' ? args.action : undefined;
-	const keyBase = action ? `instanceAi.tools.${toolName}.${action}` : `instanceAi.tools.${toolName}`;
+	const keyBase = action
+		? `instanceAi.tools.${toolName}.${action}`
+		: `instanceAi.tools.${toolName}`;
 	if (resourceName) {
 		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
 		if (namedKey) {

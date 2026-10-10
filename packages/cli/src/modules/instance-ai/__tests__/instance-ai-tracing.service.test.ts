@@ -15,10 +15,7 @@ vi.mock('@n8n/instance-ai', () => ({
 	submitLangsmithUserFeedback: (...args: unknown[]) => submitLangsmithUserFeedback(...args),
 }));
 
-import {
-	InstanceAiTracingService,
-	type InstanceAiTracingEventReader,
-} from '../tracing';
+import { InstanceAiTracingService, type InstanceAiTracingEventReader } from '../tracing';
 
 type FakeTraceRun = {
 	id: string;
@@ -283,5 +280,4 @@ describe('InstanceAiTracingService', () => {
 			expect(service.getTraceContext('run-1')).toBeUndefined();
 		});
 	});
-
 });

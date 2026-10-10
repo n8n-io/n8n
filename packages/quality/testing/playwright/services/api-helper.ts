@@ -5,6 +5,7 @@ import type {
 	InstanceAiPermissions,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiThreadInfo,
+	LinkedInstanceSummary,
 } from '@n8n/api-types';
 import { request, type APIRequestContext } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
@@ -804,6 +805,25 @@ export class ApiHelpers {
 				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
 			);
 		}
+	}
+
+	/**
+	 * Link another n8n instance for the signed-in user. The server checks the
+	 * address with the token before it stores the link. The response has no token.
+	 */
+	async linkInstance(input: {
+		name: string;
+		url: string;
+		token: string;
+	}): Promise<LinkedInstanceSummary> {
+		const response = await this.request.post('/rest/linked-instances', { data: input });
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to link instance: ${response.status()} ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
 	}
 
 	// ===== PRIVATE METHODS =====

@@ -84,8 +84,6 @@ export class InstanceAiTracingService {
 
 	private readonly eventReader: InstanceAiTracingEventReader;
 
-
-
 	constructor(options: InstanceAiTracingServiceOptions) {
 		this.logger = options.logger;
 		this.eventReader = options.eventReader;
