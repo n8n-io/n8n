@@ -315,15 +315,19 @@ const urlValue = computedAsync(async () => {
 	if (isDataTableParameter.value && (selectedMode.value === 'id' || isListMode.value)) {
 		// Use the resolved value for expressions, but only if it's a concrete id —
 		// an unresolved template (still containing `{{ }}`) can't identify a table.
-		// Read the raw value: in list mode `valueToDisplay` holds the table name.
+		// In list mode `valueToDisplay` holds the table name, so read the raw value.
 		const raw = props.isValueExpression
 			? props.expressionComputedValue
-			: typeof props.modelValue === 'object'
+			: isListMode.value && typeof props.modelValue === 'object'
 				? props.modelValue?.value
-				: props.modelValue;
+				: valueToDisplay.value;
 		const id = typeof raw === 'string' ? raw.trim() : '';
 		if (!id || id.includes('{{') || id.includes('}}')) return null;
-		const table = await dataTableStore.fetchDataTableById(id);
+		// Reuse a table the store already holds before asking the API. A failed
+		// request only means there is no link to show.
+		const table =
+			dataTableStore.dataTables.find((dataTable) => dataTable.id === id) ??
+			(await dataTableStore.fetchDataTableById(id).catch(() => null));
 		// Resolve via the router so the link honours the configured base path (N8N_PATH).
 		return table
 			? router.resolve({
