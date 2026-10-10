@@ -5,10 +5,14 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
+import {
+	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	AI_GATEWAY_MCP_CONNECTION_MODE,
+} from '@n8n/api-types';
 import {
 	NodeConnectionTypes,
 	isCommunityPackageName,
+	isMcpGatewayAuthentication,
 	resolveSupportedCredentialActivation,
 } from 'n8n-workflow';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
@@ -24,6 +28,7 @@ import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -66,6 +71,7 @@ import {
 	useAgentToolCatalog,
 } from '../composables/useAgentToolCatalog';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
+import { loadMissingMcpNodeTypes } from '../utils/loadMcpNodeTypes';
 import {
 	isMcpRelatedNodeType,
 	mcpServerToNode,
@@ -110,6 +116,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -208,6 +215,7 @@ watch(
 
 const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
 const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ server }) => server));
+const isAddingMcpServer = ref(false);
 const configData = shallowRef<AgentToolConfigModalData | null>(null);
 const configForm = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const configTitle = ref('');
@@ -286,6 +294,10 @@ function handleInteractOutside(event: Event) {
 
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
+	void (
+		loadMissingMcpNodeTypes(workingMcpServers.value, nodeTypesStore, { retryFailed: true }) ??
+		nodeTypesStore.loadNodeTypesIfNotLoaded()
+	).catch(() => {});
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -323,10 +335,7 @@ function makeUniqueName(
 
 function resolveMcpNodeType(server: AgentJsonMcpServerConfig): INodeTypeDescription | null {
 	const preferredTypeName = server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
-	return (
-		nodeTypesStore.getNodeType(preferredTypeName) ??
-		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE)
-	);
+	return nodeTypesStore.getNodeType(preferredTypeName);
 }
 
 function getExistingMcpServerNames(
@@ -390,14 +399,58 @@ function openConfigForNewMcpServer(
 	});
 }
 
-function handleAddMcpServer(nodeType: INodeTypeDescription) {
-	const newServer = nodeTypeToNewMcpServer(nodeType);
-	newServer.name = makeUniqueName(
-		newServer.name,
-		getExistingMcpServerNames(workingMcpServers.value),
-		(name, counter) => `${name}-${counter}`,
+/** Prefer n8n Connect when the project has no usable credential for this server. */
+async function shouldDefaultToAiGateway(nodeType: INodeTypeDescription): Promise<boolean> {
+	const ownCredentialTypes = (nodeType.credentials ?? [])
+		.filter(({ name }) => !isMcpGatewayAuthentication(name))
+		.map(({ name }) => name);
+	const hasAiGatewayCredential = nodeType.credentials?.some(({ name }) =>
+		isMcpGatewayAuthentication(name),
 	);
-	openConfigForNewMcpServer(newServer, nodeType);
+	const projectId = props.data.projectId || projectsStore.personalProject?.id;
+	if (
+		!settingsStore.isAiGatewayEnabled ||
+		!hasAiGatewayCredential ||
+		ownCredentialTypes.length === 0 ||
+		!projectId
+	) {
+		return false;
+	}
+	try {
+		const usableCredentials = await credentialsStore.fetchUsableCredentials({ projectId });
+		return !usableCredentials.some(
+			({ type, usageScope }) =>
+				(usageScope ?? 'project') === 'project' && ownCredentialTypes.includes(type),
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('credentialsList.errorLoadingCredentials'));
+		return false;
+	}
+}
+
+async function handleAddMcpServer(nodeType: INodeTypeDescription) {
+	if (isAddingMcpServer.value || configData.value) return;
+	isAddingMcpServer.value = true;
+	try {
+		const newServer = nodeTypeToNewMcpServer(nodeType);
+		if (await shouldDefaultToAiGateway(nodeType)) {
+			newServer.authentication = 'none';
+			newServer.metadata = {
+				...newServer.metadata,
+				nodeTypeName: nodeType.name,
+				connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
+			};
+		}
+		if (!isOpen.value || configData.value) return;
+		newServer.name = makeUniqueName(
+			newServer.name,
+			getExistingMcpServerNames(workingMcpServers.value),
+			(name, counter) => `${name}-${counter}`,
+		);
+		openConfigForNewMcpServer(newServer, nodeType);
+	} finally {
+		isAddingMcpServer.value = false;
+	}
 }
 
 function isCommunityPreviewTool(nodeType: INodeTypeDescription): boolean {
@@ -452,7 +505,7 @@ async function handleAddTool(nodeType: INodeTypeDescription) {
 	if (getNodeItemRestriction(nodeType.name)) return;
 
 	if (isMcpRelatedNodeType(nodeType.name)) {
-		handleAddMcpServer(nodeType);
+		await handleAddMcpServer(nodeType);
 		return;
 	}
 

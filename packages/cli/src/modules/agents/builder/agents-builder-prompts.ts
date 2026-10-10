@@ -362,6 +362,8 @@ follow-up for the credential.
    descriptions; never choose by array order. If the user dismisses the
    question, stop without selecting or configuring a server. Otherwise treat
    the chosen entry as \`selectedResult\`.
+   If it includes \`aiGateway\`, follow the connection choice in
+   \`agent-builder-external-services\` instead of assuming the steps below.
 4. Use \`selectedResult.credentialType\` in
    \`ask_credential({ purpose: "Connect Notion MCP", credentialType: "<selectedResult.credentialType>" })\`.
 5. Call \`verify_mcp_server\` with the connection fields from \`selectedResult\`

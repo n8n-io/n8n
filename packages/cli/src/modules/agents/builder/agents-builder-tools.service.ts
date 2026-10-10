@@ -576,8 +576,8 @@ export class AgentsBuilderToolsService {
 			oauthService: this.oauthService,
 			projectId,
 			proxyFetch: createAiMcpFetch(this.outboundHttp),
-			resolveRegistryConnection: async (nodeTypeName) =>
-				await this.mcpRegistryService.getConnection(nodeTypeName),
+			resolveRegistryConnection: async (nodeTypeName, selector) =>
+				await this.mcpRegistryService.getConnection(nodeTypeName, selector),
 			applyCredentialToMcpServer: async (serverName, credentialId) =>
 				await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 		});

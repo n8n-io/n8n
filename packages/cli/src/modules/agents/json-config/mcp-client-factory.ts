@@ -5,7 +5,7 @@ import type {
 	McpConnectionFailedEvent,
 	ResolvedCredential,
 } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MCP_CONNECTION_MODE, type AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
@@ -134,7 +134,10 @@ export interface AiGatewayMcpCredentialResolver {
 
 export interface BuildMcpClientDeps {
 	credentialProvider: CredentialProvider & Partial<AiGatewayMcpCredentialResolver>;
-	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
+	resolveRegistryConnection?: (
+		nodeTypeName: string,
+		selector?: string,
+	) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
 	 * `IExecuteFunctions` workflow context. Only invoked when
@@ -178,7 +181,12 @@ export async function buildMcpClientForServer(
 	} = deps;
 	const { McpClient } = await import('@n8n/agents');
 
-	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
+	const registryNodeName = server.metadata?.nodeTypeName;
+	const useAiGateway =
+		Boolean(registryNodeName) && server.metadata?.connectionMode === AI_GATEWAY_MCP_CONNECTION_MODE;
+	const derivedAuth: DerivedAuth = useAiGateway
+		? { headers: {} }
+		: await deriveAuthHeaders(server, credentialProvider);
 	let { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
@@ -191,14 +199,16 @@ export async function buildMcpClientForServer(
 		? resolveMcpDomainPolicy(server, credentialData, nativeMcpHostname)
 		: undefined;
 
-	const registryNodeName = server.metadata?.nodeTypeName;
 	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
 		credentialError = new OperationalError(
 			`Credential type "${credentialType}" requires an MCP registry node`,
 		);
 	} else if (registryNodeName) {
 		try {
-			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
+			const connection = await deps.resolveRegistryConnection?.(
+				registryNodeName,
+				server.metadata?.connectionMode,
+			);
 			if (!connection) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
@@ -248,7 +258,7 @@ export async function buildMcpClientForServer(
 		: undefined;
 	const grantType = credentialData?.grantType;
 	const refreshAuthHeaders =
-		isMcpOAuth2Authentication(server.authentication) && server.credential
+		!useAiGateway && isMcpOAuth2Authentication(server.authentication) && server.credential
 			? async (currentHeaders: Record<string, string>) => {
 					const credentialId = server.credential;
 					if (!credentialId) return null;

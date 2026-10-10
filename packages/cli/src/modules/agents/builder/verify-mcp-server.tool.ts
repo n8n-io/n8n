@@ -4,6 +4,7 @@ import {
 	type AgentJsonConfig,
 	McpAuthenticationSchemaTypes,
 	McpOAuth2CredentialTypeSchema,
+	McpServerConfigSchema,
 } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { z } from 'zod';
@@ -107,7 +108,7 @@ const verifyMcpServerInputSchema = z.object({
 		.describe(
 			'Credential id returned by ask_credential. Required when authentication is not "none"',
 		),
-	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
+	metadata: McpServerConfigSchema.shape.metadata,
 	connectionTimeoutMs: z
 		.number()
 		.int()

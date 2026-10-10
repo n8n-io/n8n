@@ -22,6 +22,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import { loadMissingMcpNodeTypes } from '../utils/loadMcpNodeTypes';
 import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { isWarningIssue } from '../utils/validationIssues';
@@ -176,6 +177,15 @@ watch([() => props.projectId, selectedSubAgentIds], () => {
 	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
+// Load saved registry node types for MCP icons and editing after a page reload.
+watch(
+	[() => showSection('tools'), mcpServers],
+	([showTools, servers]) => {
+		if (showTools) void loadMissingMcpNodeTypes(servers, nodeTypesStore)?.catch(() => {});
+	},
+	{ immediate: true },
+);
+
 type CapabilityToolEntry =
 	| {
 			kind: 'tool';
@@ -249,11 +259,7 @@ function toolIcon(entry: CapabilityToolEntry): IconName {
 function toolNodeType(entry: CapabilityToolEntry) {
 	if (entry.kind === 'mcpServer') {
 		const preferredTypeName = entry.server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
-		return (
-			nodeTypesStore.getNodeType(preferredTypeName) ??
-			nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE) ??
-			null
-		);
+		return nodeTypesStore.getNodeType(preferredTypeName);
 	}
 
 	const { tool } = entry;

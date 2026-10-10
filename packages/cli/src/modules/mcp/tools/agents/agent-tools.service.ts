@@ -14,6 +14,7 @@ import {
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
 	McpOAuth2CredentialTypeSchema,
+	McpServerConfigSchema,
 	agentSkillSchema,
 	agentTaskSchema,
 	sanitizeAgentJsonConfig,
@@ -331,7 +332,7 @@ const verifyMcpServerInput = {
 		.min(1)
 		.optional()
 		.describe('Accessible credential ID; required when authentication is not none'),
-	metadata: z.object({ nodeTypeName: z.string().optional() }).optional(),
+	metadata: McpServerConfigSchema.shape.metadata,
 	connectionTimeoutMs: z.number().int().min(1).max(120_000).optional(),
 } satisfies z.ZodRawShape;
 
@@ -1752,8 +1753,8 @@ export class McpAgentToolsService {
 					oauthService: this.oauthService,
 					projectId: input.projectId,
 					proxyFetch: createAiMcpFetch(this.outboundHttp),
-					resolveRegistryConnection: async (nodeTypeName) =>
-						await this.mcpRegistryService.getConnection(nodeTypeName),
+					resolveRegistryConnection: async (nodeTypeName, selector) =>
+						await this.mcpRegistryService.getConnection(nodeTypeName, selector),
 				},
 			);
 			return { ok: true, tools };

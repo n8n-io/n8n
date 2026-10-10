@@ -15,6 +15,7 @@ export function externalServicesSkill(): RuntimeSkill {
 			'Use when connecting the target agent to an external product: deciding whether Slack, Discord, Linear, Telegram, or another platform is a chat integration/trigger versus a callable service, and adding, removing, or updating chat integrations or MCP servers.',
 		recommendedTools: [
 			'agent-context',
+			'list_credentials',
 			'configure_channel',
 			'ask_credential',
 			'verify_mcp_server',
@@ -22,6 +23,7 @@ export function externalServicesSkill(): RuntimeSkill {
 		],
 		allowedTools: [
 			'agent-context',
+			'list_credentials',
 			'configure_channel',
 			'ask_credential',
 			'verify_mcp_server',
@@ -209,16 +211,27 @@ search terms for that service.
     selecting a server, asking for credentials, verifying a connection, or
     mutating config. Do not re-present the question.
 - Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
-  \`tools\`, and optional \`metadata\` only from \`selectedResult\`.
+  \`tools\`, optional \`metadata\`, and optional \`aiGateway\` only from
+  \`selectedResult\`. A result with \`aiGateway\` offers one server with two
+  connection choices. If \`selectedResult.isTemplated\` is true, use Gateway
+  credits; the own-credential URL cannot be verified here. Otherwise, follow
+  the user's stated choice. If the user did not choose, call \`list_credentials\` with
+  \`types: [selectedResult.credentialType]\`. Use the own-credential choice
+  when it returns a credential, and use Gateway credits otherwise. Do not copy
+  a listed credential ID into config; use \`ask_credential\` for that choice.
+  For Gateway credits, use
+  \`selectedResult.aiGateway\` for URL, transport, authentication, and metadata.
+  Keep \`selectedResult.name\`.
 
 Follow these steps for the selected MCP result:
 
-1. Credential: call \`ask_credential\` with a short \`purpose\`, using
-   \`selectedResult.credentialType\` as \`credentialType\`. Never invent
-   credential IDs.
-2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
-   \`transport\`, \`authentication\`, and optional \`metadata\`, plus the returned
-   \`credentialId\` as \`credential\` when authentication is required.
+1. Credential: for Gateway credits, do not call \`ask_credential\` and omit
+   \`credential\`. For the own-credential choice, call \`ask_credential\` with
+   a short \`purpose\` and \`selectedResult.credentialType\`. Never invent IDs.
+2. Verify: call \`verify_mcp_server\` with the chosen connection's \`url\`,
+   \`transport\`, \`authentication\`, and \`metadata\`, plus
+   \`selectedResult.name\`. Pass the returned \`credentialId\` only for the
+   own-credential choice.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
 4. Write config: call \`agent-context({ type: "config" })\`, then \`patch_config\` to add the entry to
@@ -229,13 +242,13 @@ Follow these steps for the selected MCP result:
 ${INITIAL_BUILD_NOTE} For MCP that means: pick the best candidate as an
 assumption (above), then \`patch_config\` (with the \`configHash\` from your latest config read or write) a draft
 \`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
-\`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
-\`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
-authenticate yet. Include the credential in the trailing \`finish_setup\` call;
-verify with the returned credential id — on success the tool writes the
-credential into the matching entry itself (\`credentialApplied: true\`); no
-\`agent-context({ type: "config" })\`/\`patch_config\` follow-up for the credential. Existing-agent
-additions keep the immediate ask + verify flow above unchanged.
+\`authentication\`, and \`metadata\` from the chosen connection with
+\`credential\` omitted. For Gateway credits, verify the connection now. It
+needs no credential card in \`finish_setup\`. For the own-credential choice,
+skip verification until the trailing \`finish_setup\` call returns the
+credential id. Verify with that id. On success the tool writes the credential
+into the matching entry itself (\`credentialApplied: true\`). Do not call
+\`agent-context({ type: "config" })\`/\`patch_config\` again for the credential.
 
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call
@@ -304,8 +317,8 @@ setup later:
 
 ### Selecting credentials
 
-When using a registry-backed server, always use the \`credentialType\` returned
-by \`selectedResult\`.
+When using a registry-backed server with an own credential, use the
+\`credentialType\` returned by \`selectedResult\`. Gateway credits need none.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
@@ -328,9 +341,9 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
 - Never fabricate \`metadata.nodeTypeName\`.
-- When \`selectedResult\` includes \`metadata.nodeTypeName\`, include
-  \`metadata: { nodeTypeName: <selectedResult.metadata.nodeTypeName> }\` in the
-  entry so the UI can render the correct server form.
+- For a registry result, copy the chosen connection's \`metadata\` into the
+  entry. Gateway credits require \`metadata.connectionMode: "gateway"\` to
+  route the connection through the AI Gateway.
 - A registry match proves server availability, not support for the requested
   capability; use the verified live tool list for that decision.
 

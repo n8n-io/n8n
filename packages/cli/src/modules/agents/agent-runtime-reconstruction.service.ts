@@ -686,8 +686,8 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
-				resolveRegistryConnection: async (nodeTypeName) => {
-					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
+				resolveRegistryConnection: async (nodeTypeName, selector) => {
+					const connection = await this.mcpRegistryService.getConnection(nodeTypeName, selector);
 					if (connection?.attribution) {
 						mcpServerAttributions.set(server.name, connection.attribution);
 					}

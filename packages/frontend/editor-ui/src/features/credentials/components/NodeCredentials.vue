@@ -46,6 +46,7 @@ import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	GATEWAY_CREDITS_DOCS_URL,
 } from '@/app/constants';
+import { MCP_REGISTRY_NODE_PREFIX } from '@/app/constants/nodeTypes';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore, type CredentialFetchScope } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
@@ -263,6 +264,16 @@ const nodeType = computed(() =>
 const isGatewayCreditsOnlyMcpServer = computed(() => {
 	const declared = nodeType.value?.credentials ?? [];
 	return declared.length > 0 && declared.every(({ name }) => isMcpGatewayAuthentication(name));
+});
+
+// The AI Gateway version list does not include generated registry MCP nodes.
+const isMixedRegistryMcpServer = computed(() => {
+	if (!node.value.type.startsWith(MCP_REGISTRY_NODE_PREFIX)) return false;
+	const declared = nodeType.value?.credentials ?? [];
+	return (
+		declared.some(({ name }) => isMcpGatewayAuthentication(name)) &&
+		declared.some(({ name }) => !isMcpGatewayAuthentication(name))
+	);
 });
 
 const {
@@ -516,7 +527,8 @@ watch(
 		if (
 			aiGateway.isEnabled.value &&
 			(AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type) ||
-				!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion))
+				(!isMixedRegistryMcpServer.value &&
+					!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)))
 		) {
 			for (const { type } of types) {
 				if (selected.value[type.name]?.__aiGatewayManaged) {
@@ -978,7 +990,12 @@ function resolveGatewayActivation(credentialType: string) {
 function showAiGatewaySelector(credentialType: string): boolean {
 	if (!aiGateway.isEnabled.value) return false;
 	if (AI_GATEWAY_UNSUPPORTED_NODE_TYPES.includes(node.value.type)) return false;
-	if (!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)) return false;
+	if (
+		!isMixedRegistryMcpServer.value &&
+		!aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+	) {
+		return false;
+	}
 	if (isAiGatewayManagedCredentials(credentialType)) return true;
 	// Shown type supported → toggle directly; otherwise fall back to a sibling.
 	if (aiGateway.isCredentialTypeSupported(credentialType)) return true;
@@ -1073,7 +1090,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		name: props.node.name,
 		properties: { credentials },
 	});
-	if (!props.standalone) void aiGateway.saveAfterToggle();
+	if (!props.standalone && !isToolContext) void aiGateway.saveAfterToggle();
 }
 
 function getIssues(credentialTypeName: string): string[] {
@@ -1439,8 +1456,42 @@ function showQuickConnectSlot(
 		options.length === 0 &&
 		!getUnlistedSelected(type.name) &&
 		showQuickConnectEmptyState(type) &&
+		!(isMixedRegistryMcpServer.value && showN8nCreditsOption(type.name)) &&
 		!isAiGatewayManagedCredentials(type.name)
 	);
+}
+
+function getMcpQuickConnectType(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+): string | undefined {
+	return options.length === 0 && isMixedRegistryMcpServer.value
+		? getQuickConnectCredentialType(type)
+		: undefined;
+}
+
+function getCredentialFooterText(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+): string {
+	const quickConnectType = getMcpQuickConnectType(type, options);
+	return quickConnectType
+		? i18n.baseText('nodeCredentials.quickConnect.connectTo', {
+				interpolate: { provider: getServiceName(quickConnectType) },
+			})
+		: NEW_CREDENTIALS_TEXT;
+}
+
+function onClickCredentialFooter(
+	type: INodeCredentialDescription,
+	options: CredentialDropdownOption[],
+) {
+	const quickConnectType = getMcpQuickConnectType(type, options);
+	if (quickConnectType) {
+		void onQuickConnectSignIn(quickConnectType);
+	} else {
+		void onClickCreateCredential(type);
+	}
 }
 
 function showStandardEmptySlot(
@@ -1864,13 +1915,22 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							<template #footer>
 								<button
 									type="button"
-									data-test-id="node-credentials-select-item-new"
+									:data-test-id="
+										getMcpQuickConnectType(type, options)
+											? 'node-credentials-select-item-connect'
+											: 'node-credentials-select-item-new'
+									"
 									:class="[$style.newCredential]"
 									:disabled="!canCreateCredentials"
-									@click="onClickCreateCredential(type)"
+									@click="onClickCredentialFooter(type, options)"
 								>
-									<N8nIcon size="large" icon="plus" :class="$style.optionIcon" />
-									{{ NEW_CREDENTIALS_TEXT }}
+									<CredentialIcon
+										v-if="getMcpQuickConnectType(type, options)"
+										:credential-type-name="getMcpQuickConnectType(type, options) ?? type.name"
+										:size="16"
+									/>
+									<N8nIcon v-else size="large" icon="plus" :class="$style.optionIcon" />
+									{{ getCredentialFooterText(type, options) }}
 								</button>
 							</template>
 						</N8nSelect>

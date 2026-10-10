@@ -16,10 +16,12 @@ import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
 import { McpRegistryCapabilities } from './mcp-registry-capabilities';
+import { linearMockServer } from './mock-servers';
 import {
 	listMcpRegistryServers,
 	searchMcpRegistryServers,
 	type McpRegistrySearchResult,
+	type McpRegistrySearchOptions,
 } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import {
@@ -110,22 +112,36 @@ export class McpRegistryService {
 	 * matching + mapping that used to be re-implemented per call site.
 	 */
 	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
-		return searchMcpRegistryServers(await this.getAll(), queries);
+		return searchMcpRegistryServers(await this.getAll(), queries, this.getSearchOptions());
 	}
 
 	async list(limit: number): Promise<McpRegistrySearchResult[]> {
-		return listMcpRegistryServers(await this.getAll()).slice(0, limit);
+		return listMcpRegistryServers(await this.getAll(), this.getSearchOptions()).slice(0, limit);
 	}
 
 	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
 		const servers = await this.getBySlugs(slugs);
-		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+		return listMcpRegistryServers(
+			servers.filter((server) => server.status === 'active'),
+			this.getSearchOptions(),
+		);
 	}
 
-	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
+	/** Use the loader's merge decision so discovery only offers routable servers. */
+	private getSearchOptions(): McpRegistrySearchOptions {
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		return loader instanceof McpRegistryNodeLoader
+			? { loadedSlugs: loader.getLoadedSlugs(), pairedSlugs: loader.getPairedSlugs() }
+			: {};
+	}
+
+	async getConnection(
+		nodeTypeName: string,
+		selector?: string,
+	): Promise<McpRegistryConnection | undefined> {
 		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
 		if (!(loader instanceof McpRegistryNodeLoader)) return undefined;
-		return loader.getConnection(nodeTypeName);
+		return loader.getConnection(nodeTypeName, selector);
 	}
 
 	/**
@@ -170,7 +186,22 @@ export class McpRegistryService {
 			n8nConnectError = error;
 		}
 
-		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
+		// TODO: Delete this Firecrawl preview after the manual MCP picker check.
+		const firecrawlPreviewServer: McpRegistryServer = {
+			...linearMockServer,
+			slug: 'firecrawl',
+			title: 'Firecrawl',
+			description: 'MCP server for Firecrawl',
+			tagline: 'Connect to the Firecrawl MCP Server',
+			icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+			websiteUrl: 'https://docs.firecrawl.dev/mcp-server',
+			tags: ['web-scraping', 'search'],
+		};
+		const updatedServers = [
+			...registryUpdates.filter(({ slug }) => slug !== firecrawlPreviewServer.slug),
+			...n8nConnectUpdates,
+			firecrawlPreviewServer,
+		];
 		if (updatedServers.length === 0) {
 			this.logger.debug('MCP registry is up to date');
 		} else {
