@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -69,6 +68,14 @@ export type TriggerFailureHandler = (opts: {
 	activation: WorkflowActivateMode;
 }) => void;
 
+/** A poll run by a claimed occurrence: the fence of its writes, and the timeout of the occurrence. */
+export interface LeasedPoll {
+	fence: PollLeaseFence;
+	timeoutSeconds: number;
+	/** Milliseconds until the occurrence times out. */
+	remainingMs(): number;
+}
+
 /**
  * Builds the execution-context functions (`IGetExecuteTriggerFunctions` /
  * `IGetExecutePollFunctions`) that n8n-core uses to wire up active and poll
@@ -95,7 +102,6 @@ export class TriggerExecutionContextFactory {
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly pollCursorService: PollCursorService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
 		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
@@ -320,18 +326,20 @@ export class TriggerExecutionContextFactory {
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
-		fence?: PollLeaseFence,
+		leasedPoll?: LeasedPoll,
 		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
+		const fence = leasedPoll?.fence;
 		return (workflow: Workflow, node: INode) => {
-			// A poll must finish inside the handler's abandon deadline; past it, its
-			// commits are discarded. The lease is renewed while the poll runs, so it
-			// does not bound the poll. The margin — 20%, at least 5s, at most half the
-			// ceiling — leaves room for the trailing hand-off and cursor commit.
-			const ceilingMs =
-				this.globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
+			// A poll must finish inside the timeout of its occurrence; past it, the
+			// executor aborts the run and its commits are discarded. The lease is
+			// renewed while the poll runs, so it does not bound the poll. The margin
+			// — 20%, at least 5s, at most half the ceiling — leaves room for the
+			// trailing hand-off and cursor commit.
+			const ceilingMs = (leasedPoll?.timeoutSeconds ?? 0) * Time.seconds.toMilliseconds;
 			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
-			const pollBudgetMs = ceilingMs - marginMs;
+			// Setup before `poll()` uses part of the timeout, so the budget counts down with it.
+			const pollBudgetMs = () => Math.max(0, (leasedPoll?.remainingMs() ?? 0) - marginMs);
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
 			// than in a variable per node: only the poll that staged it can commit it, and
 			// two overlapping polls of the same node never share a slot. An unmigrated
@@ -489,7 +497,7 @@ export class TriggerExecutionContextFactory {
 				resolveNodeStaticData,
 				// Only a leased (durable) poll is bounded by the timeout; a
 				// legacy in-memory poll keeps PollContext's generous default.
-				fence ? () => pollBudgetMs : undefined,
+				fence ? pollBudgetMs : undefined,
 			);
 		};
 	}
@@ -502,7 +510,7 @@ export class TriggerExecutionContextFactory {
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
 		node: INode,
-		fence?: PollLeaseFence,
+		leasedPoll?: LeasedPoll,
 		prefetchedCursor?: PollerCursor,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
@@ -532,7 +540,7 @@ export class TriggerExecutionContextFactory {
 			'trigger',
 			'update',
 			resolveWorkflowData,
-			fence,
+			leasedPoll,
 			prefetchedCursor,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.

@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { GlobalConfig } from '@n8n/config';
 import type { PollerFullState, WorkflowRepository } from '@n8n/db';
 import {
 	createDispatchReporter,
 	createScheduler,
+	LeaseLostError,
+	TaskTimeoutError,
 	type ClaimedTask,
 	type SchedulerMetrics,
 	type SchedulerTaskStore,
@@ -39,8 +40,6 @@ describe('PollTriggerTaskHandler', () => {
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 	const eventService = mock<EventService>();
-	const pollTimeoutSeconds = 60;
-	const globalConfig = mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds } });
 
 	const handler = new PollTriggerTaskHandler(
 		rootLogger,
@@ -50,7 +49,6 @@ describe('PollTriggerTaskHandler', () => {
 		errorReporter,
 		pollBackoffService,
 		eventService,
-		globalConfig,
 	);
 
 	const onDispatch = vi.fn();
@@ -104,9 +102,9 @@ describe('PollTriggerTaskHandler', () => {
 		scheduledFor,
 		runAt: scheduledFor,
 		status: 'running',
-		timeoutSeconds: 45,
 		attempts: 0,
 		maxAttempts: 1,
+		timeoutSeconds: 45,
 		leaseEpoch: 1,
 		...overrides,
 	});
@@ -199,7 +197,11 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
 				buildWorkflowData(),
 				triggerNode,
-				{ taskId: 'task-1', leaseEpoch: 1 },
+				{
+					fence: { taskId: 'task-1', leaseEpoch: 1 },
+					timeoutSeconds: 45,
+					remainingMs: expect.any(Function),
+				},
 				undefined,
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
@@ -221,7 +223,11 @@ describe('PollTriggerTaskHandler', () => {
 			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
 				buildWorkflowData(),
 				triggerNode,
-				{ taskId: 'task-1', leaseEpoch: 1 },
+				{
+					fence: { taskId: 'task-1', leaseEpoch: 1 },
+					timeoutSeconds: 45,
+					remainingMs: expect.any(Function),
+				},
 				{ lastItemId: 'prefetched' },
 			);
 		});
@@ -487,81 +493,17 @@ describe('PollTriggerTaskHandler', () => {
 	});
 
 	describe('poll timeout', () => {
-		const pollTimeoutMs = pollTimeoutSeconds * 1000;
-
-		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		test.each(['poll', 'active-state lookup', 'failure write'])(
-			'rejects a timed-out poll if the lease was lost during the %s',
-			async (abortDuring) => {
-				const lease = new AbortController();
-				const reason = new Error('lease expired');
-				triggersAndPollers.runPollFunction.mockImplementationOnce(async () => {
-					if (abortDuring === 'poll') lease.abort(reason);
-					return await new Promise(() => {});
-				});
-				if (abortDuring === 'active-state lookup') {
-					workflowRepository.isActive.mockImplementationOnce(async () => {
-						lease.abort(reason);
-						return true;
-					});
-				}
-				if (abortDuring === 'failure write') {
-					pollBackoffService.recordFailure.mockImplementationOnce(async () => {
-						lease.abort(reason);
-					});
-				}
-
-				const rejected = expect(
-					handler.execute(buildTask(), report, runOf(lease.signal)),
-				).rejects.toBe(reason);
-				await vi.advanceTimersByTimeAsync(pollTimeoutMs);
-				await rejected;
-
-				expect(pollBackoffService.recordFailure).toHaveBeenCalledTimes(
-					abortDuring === 'failure write' ? 1 : 0,
-				);
-				expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
-				expect(pollFunctions.__emit).not.toHaveBeenCalled();
-				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
-				expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
-				expect(onDispatch).not.toHaveBeenCalled();
-				expect(releaseIsolate).toHaveBeenCalledTimes(1);
-			},
-		);
-
-		test('abandons a hanging poll as soon as the lease is lost', async () => {
-			const lease = new AbortController();
-			const reason = new Error('lease expired');
+		test('records a poll failure and reports no dispatch when the occurrence reaches its timeout', async () => {
+			const run = new AbortController();
 			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
 
-			const rejected = expect(
-				handler.execute(buildTask(), report, runOf(lease.signal)),
-			).rejects.toBe(reason);
-			await vi.advanceTimersByTimeAsync(1);
-			lease.abort(reason);
-			await rejected;
+			const settled = expect(handler.execute(buildTask(), report, runOf(run.signal))).resolves.toBe(
+				report.notDispatched(),
+			);
+			await vi.waitFor(() => expect(triggersAndPollers.runPollFunction).toHaveBeenCalled());
+			run.abort(new TaskTimeoutError(45));
+			await settled;
 
-			expect(eventService.emit).not.toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
-			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
-			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
-			expect(onDispatch).not.toHaveBeenCalled();
-			expect(releaseIsolate).toHaveBeenCalledTimes(1);
-		});
-
-		test('abandons a poll that outlives the timeout and reports no dispatch', async () => {
-			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
-
-			const executing = handler.execute(buildTask(), report, runOf(leaseSignal));
-			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
-
-			await expect(executing).resolves.toBeDefined();
 			// Writes nothing: no cursor advance via __emit, and no error workflow run
 			// either, so the next occurrence covers the same poll window.
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
@@ -571,6 +513,10 @@ describe('PollTriggerTaskHandler', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', {
 				nodeType: triggerNode.type,
 			});
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				'Poll exceeded its timeout and was abandoned',
+				expect.objectContaining({ workflowId: 'wf-1', nodeId: 'node-1' }),
+			);
 			// The timeout counts as a transient poll failure, so a source that keeps
 			// hanging backs off like any failing source.
 			expect(pollBackoffService.recordFailure).toHaveBeenCalledWith(
@@ -584,38 +530,41 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('records no failure for a workflow deactivated during a timed-out poll', async () => {
+			const run = new AbortController();
 			workflowRepository.isActive.mockResolvedValue(false);
 			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
 
-			const executing = handler.execute(buildTask(), report, runOf(leaseSignal));
-			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
-			await executing;
+			const settled = expect(handler.execute(buildTask(), report, runOf(run.signal))).resolves.toBe(
+				report.notDispatched(),
+			);
+			await vi.waitFor(() => expect(triggersAndPollers.runPollFunction).toHaveBeenCalled());
+			run.abort(new TaskTimeoutError(45));
+			await settled;
 
 			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
 		});
 
-		test('keeps a poll that finishes just inside the timeout', async () => {
-			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
-			triggersAndPollers.runPollFunction.mockReturnValue(
-				new Promise((resolve) => {
-					resolvePoll = resolve;
-				}),
+		test('abandons a hanging poll as soon as the lease is lost, and records nothing', async () => {
+			const run = new AbortController();
+			const reason = new LeaseLostError();
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+
+			const rejected = expect(handler.execute(buildTask(), report, runOf(run.signal))).rejects.toBe(
+				reason,
 			);
+			await vi.waitFor(() => expect(triggersAndPollers.runPollFunction).toHaveBeenCalled());
+			run.abort(reason);
+			await rejected;
 
-			const executing = handler.execute(buildTask(), report, runOf(leaseSignal));
-			await vi.advanceTimersByTimeAsync(pollTimeoutMs - 1);
-			resolvePoll(pollData);
-			await executing;
-
-			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
-			expect(onDispatch).toHaveBeenCalledTimes(1);
 			expect(eventService.emit).not.toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
 			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
-			// The deadline is cleared once the poll wins, so it can't outlive the tick.
-			expect(vi.getTimerCount()).toBe(0);
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
 		test('discards the data of an abandoned poll that resolves after the timeout', async () => {
+			const run = new AbortController();
 			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
 			triggersAndPollers.runPollFunction.mockReturnValue(
 				new Promise((resolve) => {
@@ -623,44 +572,56 @@ describe('PollTriggerTaskHandler', () => {
 				}),
 			);
 
-			const executing = handler.execute(buildTask(), report, runOf(leaseSignal));
-			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
-			await executing;
+			const settled = expect(handler.execute(buildTask(), report, runOf(run.signal))).resolves.toBe(
+				report.notDispatched(),
+			);
+			await vi.waitFor(() => expect(triggersAndPollers.runPollFunction).toHaveBeenCalled());
+			run.abort(new TaskTimeoutError(45));
+			await settled;
 			resolvePoll(pollData);
-			await vi.advanceTimersByTimeAsync(0);
+			await new Promise((resolve) => setImmediate(resolve));
 
-			// The tick was already reported as abandoned, so the late data is dropped:
-			// no hand-off, no cursor advance, no dispatch.
+			// The tick was already abandoned, so the late data is dropped: no hand-off,
+			// no cursor advance, no dispatch.
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 		});
 
 		test('discards an abandoned poll that fails after the timeout', async () => {
+			const run = new AbortController();
 			let rejectPoll: (error: Error) => void = () => {};
 			const pollPromise = new Promise<null>((_resolve, reject) => {
 				rejectPoll = reject;
 			});
+			const runPollFunction = vi.fn();
 			// A plain stub, because a vi.fn() subscribes to the promise it returns and so
 			// would mark the late rejection as handled.
 			const plainHandler = new PollTriggerTaskHandler(
 				rootLogger,
 				triggerExecutionContextFactory,
-				mock<TriggersAndPollers>({ runPollFunction: async () => await pollPromise }),
+				mock<TriggersAndPollers>({
+					runPollFunction: async () => {
+						runPollFunction();
+						return await pollPromise;
+					},
+				}),
 				workflowRepository,
 				errorReporter,
 				pollBackoffService,
 				eventService,
-				globalConfig,
 			);
 
-			const executing = plainHandler.execute(buildTask(), report, runOf(leaseSignal));
-			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
-			await executing;
+			const settled = expect(
+				plainHandler.execute(buildTask(), report, runOf(run.signal)),
+			).resolves.toBe(report.notDispatched());
+			await vi.waitFor(() => expect(runPollFunction).toHaveBeenCalled());
+			run.abort(new TaskTimeoutError(45));
+			await settled;
 			rejectPoll(new Error('poll source unreachable'));
-			await vi.advanceTimersByTimeAsync(0);
+			await new Promise((resolve) => setImmediate(resolve));
 
-			// The tick was already reported as abandoned, so the late failure is dropped
-			// rather than routed to the error workflow.
+			// The tick was already abandoned, so the late failure is dropped rather than
+			// routed to the error workflow.
 			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
@@ -727,6 +688,56 @@ describe('PollTriggerTaskHandler', () => {
 				expect(releaseIsolate).toHaveBeenCalledTimes(1);
 			},
 		);
+	});
+
+	describe('timeout through the executor', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		// A retry would poll the hanging source again, and does not wait for backoff when it is off.
+		test('records a poll failure and completes the occurrence without a retry when a poll reaches its timeout', async () => {
+			const timeoutSeconds = 30;
+			const task = buildTask({ maxAttempts: 3, timeoutSeconds, runAt: new Date() });
+			const store = mock<SchedulerTaskStore>();
+			const metrics = mock<SchedulerMetrics>();
+			store.claimDueTasks.mockResolvedValue([task]);
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockResolvedValue(true);
+			store.rescheduleTask.mockResolvedValue(1);
+			store.markDispatched.mockResolvedValue(1);
+			store.completeTask.mockResolvedValue(1);
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+			const scheduler = createScheduler({
+				hostId: 'test-host',
+				taskStore: store,
+				materializerTransaction: vi.fn(),
+				executor: { leaseSeconds: 60, lookaheadSeconds: 1 },
+				metrics,
+			});
+			scheduler.registerTaskHandler(POLL_TRIGGER_TASK_TYPE, handler);
+
+			await scheduler.execute();
+			await vi.advanceTimersByTimeAsync(timeoutSeconds * 1_000 + 1);
+			await vi.waitFor(() => expect(store.completeTask).toHaveBeenCalledTimes(1));
+			await scheduler.stop();
+
+			expect(metrics.recordTaskTimeout).toHaveBeenCalledExactlyOnceWith(POLL_TRIGGER_TASK_TYPE);
+			expect(pollBackoffService.recordFailure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					error: expect.objectContaining({ failure: { cause: 'temporarily-unavailable' } }),
+				}),
+			);
+			expect(store.rescheduleTask).not.toHaveBeenCalled();
+			expect(store.failTaskTerminal).not.toHaveBeenCalled();
+			expect(store.completeTask).toHaveBeenCalledTimes(1);
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('failures', () => {
