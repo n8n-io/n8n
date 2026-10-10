@@ -3,7 +3,9 @@ import {
 	getConfiguredEndpointUrl,
 	getMcpAuthHeaders,
 	type ICredentialTypes,
+	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
+	type McpGatewayCredentialType,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	type PrepareMcpRegistryConnectionInput,
@@ -11,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './registry/mcp-registry.types';
 
 export { getConfiguredEndpointUrl };
 
@@ -18,6 +21,10 @@ export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
 export const MCP_REGISTRY_BASE_NODE_NAME = 'mcpRegistryClientTool';
 export const MCP_BASE_OAUTH2_CREDENTIAL_NAME = 'mcpOAuth2Api';
+// Base credential an n8n Connect MCP server's synthetic type extends. The suffix
+// is load-bearing: the MCP runtime picks the gateway auth strategy from the
+// credential type name (`isMcpGatewayAuthentication`).
+export const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
 
 export function getMcpRegistryCredentialTypeName(
 	server: McpRegistryServer,
@@ -25,10 +32,29 @@ export function getMcpRegistryCredentialTypeName(
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+export function getMcpRegistryGatewayCredentialTypeName(
+	server: McpRegistryServer,
+): McpGatewayCredentialType {
+	return `${camelCase(server.slug)}McpGatewayApi`;
+}
+
 export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
 	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
+	// An n8n Connect MCP server authenticates with the minted Gateway credential,
+	// not an OAuth2 one, so its binding must carry the gateway credential type.
+	// Otherwise it never matches the node's credential and the connection resolves
+	// to nothing.
+	if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) {
+		return [
+			{
+				credentialType: getMcpRegistryGatewayCredentialTypeName(server),
+				name: 'Gateway credits',
+				value: 'gateway',
+			},
+		];
+	}
 	return [
 		{
 			credentialType: getMcpRegistryCredentialTypeName(server),
@@ -67,7 +93,9 @@ export function resolveMcpRegistryConnection(
 	const nodeTypeName = `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`;
 	const credentialBindings = getMcpRegistryCredentialOptions(server).flatMap(
 		({ credentialType, value }) =>
-			isMcpOAuth2Authentication(credentialType) ? [{ credentialType, selector: value }] : [],
+			isMcpOAuth2Authentication(credentialType) || isMcpGatewayAuthentication(credentialType)
+				? [{ credentialType, selector: value }]
+				: [],
 	);
 
 	// A templated remote's url is an unresolved `$self`-expression, not a
@@ -126,7 +154,9 @@ export function prepareMcpRegistryConnection({
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
+				message: isMcpGatewayAuthentication(credentialType)
+					? `Credential type "${credentialType}" does not contain a Gateway credits token`
+					: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}

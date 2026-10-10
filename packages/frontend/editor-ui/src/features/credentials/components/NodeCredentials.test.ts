@@ -2351,6 +2351,80 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		describe('Gateway credits only (n8n Connect MCP server)', () => {
+			const gatewayType = 'n8nConnectFirecrawlMcpGatewayApi';
+			const gatewayNodeType: INodeTypeDescription = {
+				...googleAiNodeType,
+				name: '@n8n/mcp-registry.n8nConnectFirecrawl',
+				credentials: [{ name: gatewayType, required: true }],
+			};
+			const gatewayNode: INodeUi = { ...googleAiNode, type: gatewayNodeType.name };
+
+			beforeEach(() => {
+				// Like the real store, every `*McpGatewayApi` type counts as supported.
+				vi.mocked(useAiGateway).mockReturnValue({
+					...useAiGateway(),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === gatewayType),
+				});
+				mockedStore(useNodeTypesStore).setNodeTypes([gatewayNodeType]);
+				credentialsStore.state.credentialTypes = {
+					[gatewayType]: { name: gatewayType, displayName: 'Firecrawl', properties: [] },
+				};
+			});
+
+			it('shows a locked Gateway credits field instead of a picker', () => {
+				const node: INodeUi = {
+					...gatewayNode,
+					credentials: { [gatewayType]: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = node;
+
+				renderComponent({ props: { node, overrideCredType: gatewayType } });
+
+				expect(screen.getByTestId('node-credentials-gateway-only')).toHaveTextContent(
+					'Gateway credits',
+				);
+				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+				expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+				expect(screen.getByTestId('credential-topup-button')).toBeInTheDocument();
+			});
+
+			it('selects Gateway credits when the slot is not managed', () => {
+				ndvStore.activeNode = gatewayNode;
+
+				const { emitted } = renderComponent({
+					props: { node: gatewayNode, overrideCredType: gatewayType },
+				});
+
+				const payload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+					properties: { credentials: Record<string, unknown> };
+				};
+				expect(payload.properties.credentials[gatewayType]).toEqual({
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				});
+			});
+
+			it('keeps the picker when the node also declares another credential type', () => {
+				const mixedNodeType: INodeTypeDescription = {
+					...gatewayNodeType,
+					credentials: [
+						{ name: 'firecrawlMcpOAuth2Api', required: true },
+						...gatewayNodeType.credentials!,
+					],
+				};
+				mockedStore(useNodeTypesStore).setNodeTypes([mixedNodeType]);
+				ndvStore.activeNode = gatewayNode;
+
+				renderComponent({
+					props: { node: gatewayNode, overrideCredType: 'firecrawlMcpOAuth2Api' },
+				});
+
+				expect(screen.queryByTestId('node-credentials-gateway-only')).not.toBeInTheDocument();
+			});
+		});
+
 		describe('multiple credential types (n8n credits on a non-default auth)', () => {
 			// Mirrors a node whose `authentication` defaults to an option mapping to a
 			// credential type NOT covered by n8n credits, while a sibling auth option

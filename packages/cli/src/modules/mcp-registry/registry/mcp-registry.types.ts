@@ -9,6 +9,27 @@ export type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
+/**
+ * `authType` value for an MCP server the AI Gateway hosts and bills to Gateway
+ * credits. The value mirrors the `__aiGatewayManaged` credential marker.
+ */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
+
+/**
+ * Slug prefix of an n8n Connect MCP server row. Both sources store their rows in
+ * one table keyed by slug, so the prefix stops a gateway server from replacing
+ * a registry server with the same slug. The prefix is reserved: the registry
+ * refresh drops any registry server whose slug starts with it.
+ */
+export const N8N_CONNECT_MCP_SLUG_PREFIX = 'n8n-connect-';
+
+/**
+ * Registry capability every n8n Connect MCP server requires. The instance
+ * supports it while n8n Connect is on, so these servers are hidden like any
+ * server that needs a capability the instance lacks.
+ */
+export const N8N_CONNECT_MCP_CAPABILITY = 'n8n-connect';
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 
@@ -136,6 +157,9 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 		authType: z.literal('usesCredentials'),
 		usesCredentials: mcpRegistryUsesCredentialsSchema,
 	}),
+	// A server the AI Gateway hosts and bills to Gateway credits. It needs no
+	// credential from the user and is only offered on instances licensed for it.
+	z.object({ authType: z.literal(AI_GATEWAY_MANAGED_AUTH_TYPE) }),
 ]);
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);

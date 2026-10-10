@@ -168,6 +168,8 @@ async function ensureSubAgentNamesLoaded() {
 
 onMounted(() => {
 	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
+	// MCP server rows resolve their icon and config node from the node types store.
+	if (showSection('tools')) void nodeTypesStore.loadNodeTypesIfNotLoaded().catch(() => {});
 });
 
 watch([() => props.projectId, selectedSubAgentIds], () => {

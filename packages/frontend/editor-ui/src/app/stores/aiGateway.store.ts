@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import type { INode } from 'n8n-workflow';
+import { isMcpGatewayAuthentication, type INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -160,17 +160,26 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	}
 
 	function isCredentialTypeSupported(credentialType: string): boolean {
+		// n8n Connect MCP servers are not in `credentialTypes`: the registry
+		// synthesizes a credential type per server, and only ever for an entry whose
+		// `authType` is `__aiGatewayManaged`. Those entries are withheld from the
+		// listing on unlicensed instances, so the type existing at all is the support
+		// signal.
+		if (isMcpGatewayAuthentication(credentialType)) return true;
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 
 	/**
-	 * Whether the gateway holds a provider config for this credential type, i.e.
-	 * whether it can actually mint a managed credential for it. Narrower than
+	 * Whether the gateway holds a provider config for this credential type, that
+	 * is whether it can actually mint a managed credential for it. Narrower than
 	 * {@link isCredentialTypeSupported}, which lists every credential type the
-	 * gateway serves for any node — use this one to gate model providers, so the
+	 * gateway serves for any node. Use this one to gate model providers, so the
 	 * offer matches what the backend will accept.
 	 */
 	function canServeCredentialType(credentialType: string): boolean {
+		// The backend mints these from the credential type alone, with no provider
+		// config to look up, so it will accept them.
+		if (isMcpGatewayAuthentication(credentialType)) return true;
 		return config.value?.providerConfig?.[credentialType] !== undefined;
 	}
 

@@ -11,7 +11,9 @@ import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
+import type { CredentialTypes } from '@/credential-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@n8n/backend-services';
 
@@ -33,6 +35,24 @@ const MOCK_GATEWAY_CONFIG = {
 	providerConfig: {
 		googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
 	},
+};
+
+const MOCK_MCP_SERVERS = {
+	servers: [
+		{
+			slug: 'firecrawl',
+			name: 'com.n8n/firecrawl-mcp',
+			title: 'Firecrawl',
+			description: 'Scrape, crawl, map and search the web, billed to Gateway credits',
+			tagline: 'Read the web with n8n credits',
+			version: '1.0.0',
+			updatedAt: '2026-09-17T10:00:00.000Z',
+			websiteUrl: 'https://firecrawl.dev',
+			icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+			tags: ['web-scraping', 'search'],
+			tools: [{ name: 'firecrawl_scrape', title: 'Firecrawl scrape', readOnlyHint: true }],
+		},
+	],
 };
 
 /** A successful gateway response carrying the parsed body. */
@@ -57,6 +77,7 @@ function makeService({
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
+	credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(true) }),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
@@ -79,6 +100,7 @@ function makeService({
 		userRepository,
 		urlService,
 		outboundHttp,
+		credentialTypes,
 	);
 }
 
@@ -237,6 +259,55 @@ describe('AiGatewayService', () => {
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'openAiApi', userId: USER_ID }),
 			).rejects.toThrow(UserError);
+		});
+
+		it('mints a token pinned to the gateway host for a gateway-hosted MCP server', async () => {
+			// Only the token is requested (no live gateway lookup): the registered
+			// credential type authorizes the mint. The token's egress is pinned to
+			// the gateway host so it can't leak elsewhere.
+			requestMock.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'firecrawlMcpGatewayApi',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({
+				token: 'mock-jwt-token',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'gateway.test',
+			});
+		});
+
+		it('mints only for an MCP credential type the registry registered', async () => {
+			const credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(false) });
+			const service = makeService({ credentialTypes });
+
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'unknownMcpGatewayApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('does not mint for the base MCP Gateway credential type', async () => {
+			const service = makeService();
+
+			await expect(
+				service.getSyntheticCredential({ credentialType: 'mcpGatewayApi', userId: USER_ID }),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('still requires a licence for a gateway-hosted MCP server', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'firecrawlMcpGatewayApi',
+					userId: USER_ID,
+				}),
+			).rejects.toThrow(FeatureNotLicensedError);
 		});
 
 		it('throws UserError when the node type is not covered by the gateway, even for a served credential type', async () => {
@@ -828,6 +899,45 @@ describe('AiGatewayService', () => {
 			await expect(
 				service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID }),
 			).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('fetchN8nConnectMcpServers()', () => {
+		it('maps the gateway MCP servers to registry entries with a prefixed slug', async () => {
+			requestMock.mockResolvedValueOnce(ok(MOCK_MCP_SERVERS));
+			const service = makeService();
+
+			const servers = await service.fetchN8nConnectMcpServers();
+
+			expect(servers).toHaveLength(1);
+			expect(servers[0]).toMatchObject({
+				slug: 'n8n-connect-firecrawl',
+				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				requiredCapabilities: ['n8n-connect'],
+				// The URL keeps the gateway's own slug.
+				remotes: [{ type: 'streamable-http', url: 'http://gateway.test/v1/gateway/mcp/firecrawl' }],
+			});
+		});
+
+		it('throws when the gateway is unreachable, so the registry refresh retries', async () => {
+			requestMock.mockRejectedValue(new Error('gateway down'));
+			const service = makeService();
+
+			await expect(service.fetchN8nConnectMcpServers()).rejects.toThrow('gateway down');
+		});
+
+		it('throws on a non-2xx response', async () => {
+			requestMock.mockResolvedValue(fail(400));
+			const service = makeService();
+
+			await expect(service.fetchN8nConnectMcpServers()).rejects.toThrow(UserError);
+		});
+
+		it('throws on an invalid response', async () => {
+			requestMock.mockResolvedValue(ok({ servers: [{ slug: 'firecrawl' }] }));
+			const service = makeService();
+
+			await expect(service.fetchN8nConnectMcpServers()).rejects.toThrow(UserError);
 		});
 	});
 

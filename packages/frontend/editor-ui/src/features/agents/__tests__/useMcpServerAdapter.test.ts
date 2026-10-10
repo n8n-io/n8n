@@ -155,5 +155,40 @@ describe('useMcpServerAdapter', () => {
 				},
 			});
 		});
+
+		it('rebuilds the managed credential slot for a gateway-hosted registry server', () => {
+			// A gateway server carries no stored credential id; the registry node
+			// type declares its credential as a `*McpGatewayApi` type. Rebuild the
+			// managed slot so the config modal opens without auto-enabling it.
+			const nodeType = {
+				...makeMcpNodeType(1),
+				name: '@n8n/mcp-registry.firecrawl',
+				credentials: [
+					{
+						name: 'firecrawlMcpGatewayApi',
+						required: true,
+					},
+				],
+			} satisfies INodeTypeDescription;
+
+			const node = mcpServerToNode(
+				{
+					name: 'firecrawl-mcp',
+					url: 'https://mcp.gateway/firecrawl',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+				},
+				nodeType,
+			);
+
+			expect(node.credentials).toEqual({
+				firecrawlMcpGatewayApi: {
+					id: null,
+					name: '',
+					__aiGatewayManaged: true,
+				},
+			});
+		});
 	});
 });

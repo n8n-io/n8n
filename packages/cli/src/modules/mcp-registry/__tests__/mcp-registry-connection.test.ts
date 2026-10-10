@@ -110,6 +110,25 @@ describe('prepareMcpRegistryConnection', () => {
 		});
 	});
 
+	it('names the Gateway credits token when a Gateway credential has none', () => {
+		const result = prepareMcpRegistryConnection({
+			connection: {
+				...connection,
+				credentialBindings: [{ credentialType: 'exampleMcpGatewayApi', selector: 'gateway' }],
+			},
+			credentialType: 'exampleMcpGatewayApi',
+			credentialData: { token: '' },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'missing_access_token',
+				message: 'Credential type "exampleMcpGatewayApi" does not contain a Gateway credits token',
+			},
+		});
+	});
+
 	it('rejects a credential type the server does not bind', () => {
 		const result = prepareMcpRegistryConnection({
 			connection,

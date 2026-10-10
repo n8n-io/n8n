@@ -8,8 +8,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	McpOAuth2CredentialType,
 	McpRegistryConnection,
+	McpRegistryCredentialType,
 	INode,
 	ISupplyDataFunctions,
 	NodeEgressFilter,
@@ -25,6 +25,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	isMcpGatewayAuthentication,
 	isMcpOAuth2Authentication,
 	type McpAuthenticationOption,
 	type McpServerTransport,
@@ -351,6 +352,15 @@ export async function getAuthHeaders(
 }> {
 	if (authentication === 'none') return {};
 
+	// Minted per execution, so no refresh to manage: the token is already current.
+	// A failed mint is not caught: its error (for example Gateway credits off, or
+	// no credits left) tells the user more than a missing credential would.
+	if (isMcpGatewayAuthentication(authentication)) {
+		const credentials = await ctx.getCredentials<ICredentialDataDecryptedObject>(authentication);
+		const headers = getMcpAuthHeaders(authentication, credentials);
+		return Object.keys(headers).length > 0 ? { headers, credentials } : {};
+	}
+
 	let credentialType: string;
 	if (isMcpOAuth2Authentication(authentication)) {
 		credentialType = authentication;
@@ -439,7 +449,7 @@ export async function connectMcpClientForCredential(
 		endpointUrl: string;
 		registryCredential?: {
 			connection: McpRegistryConnection;
-			credentialType: McpOAuth2CredentialType;
+			credentialType: McpRegistryCredentialType;
 			prepareConnection(
 				input: PrepareMcpRegistryConnectionInput,
 			): PrepareMcpRegistryConnectionResult;
