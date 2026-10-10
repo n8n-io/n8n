@@ -94,6 +94,61 @@ export class ExperienceModes {
 		return this.page.getByTestId('automation-proposal-resolved-status');
 	}
 
+	/** The line that names where the automation runs. */
+	getProposalPlace(): Locator {
+		return this.page.getByTestId('automation-proposal-place');
+	}
+
+	/** The note that a local automation runs only while this computer is on. */
+	getProposalCaveat(): Locator {
+		return this.page.getByTestId('automation-proposal-caveat');
+	}
+
+	/** "Change" on the place line. Power mode shows it when the card offers more than one place. */
+	getProposalChangeTarget(): Locator {
+		return this.page.getByTestId('automation-proposal-change-target');
+	}
+
+	/** One place in the open "Where should it run?" menu, by the start of its name. */
+	getProposalTargetOption(name: RegExp): Locator {
+		return this.page.getByRole('menuitemcheckbox', { name });
+	}
+
+	/** What the linked instance needs before the workflow goes there. */
+	getProposalPreflight(): Locator {
+		return this.page.getByTestId('automation-proposal-preflight');
+	}
+
+	/** The line that names credentials the linked instance does not have. */
+	getProposalPreflightSetUp(): Locator {
+		return this.page.getByTestId('automation-proposal-preflight-set-up');
+	}
+
+	/** The line that says the workflow cannot go to the linked instance. */
+	getProposalPreflightBlocked(): Locator {
+		return this.page.getByTestId('automation-proposal-preflight-blocked');
+	}
+
+	/** "Keep it on this computer" on the blocked notice. */
+	getProposalKeepHere(): Locator {
+		return this.page.getByTestId('automation-proposal-preflight-keep-here');
+	}
+
+	/** "Save, but leave it off" on the proposal card. */
+	getProposalSaveButton(): Locator {
+		return this.page.getByTestId('automation-proposal-save');
+	}
+
+	/** "Not now" on the proposal card. */
+	getProposalNotNowButton(): Locator {
+		return this.page.getByTestId('automation-proposal-not-now');
+	}
+
+	/** The link that opens the copy in the linked instance. */
+	getProposalOpenRemote(): Locator {
+		return this.page.getByTestId('automation-proposal-open-remote');
+	}
+
 	/** One group of the chat list in Power mode. */
 	getChatGroup(group: 'needs-you' | 'working' | 'ready' | 'done'): Locator {
 		return this.page.getByTestId(`assistant-chat-group-${group}`);

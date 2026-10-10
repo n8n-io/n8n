@@ -90,7 +90,8 @@ Both instances: `E2E_TESTS=true`, `N8N_LISTEN_ADDRESS=127.0.0.1`,
 
 "This computer" also gets:
 
-- `N8N_ENABLED_MODULES=instance-ai`.
+- `N8N_ENABLED_MODULES=instance-ai,linked-instances`. The automation card
+  offers the cloud only while the linked-instances module is on.
 - `N8N_INSTANCE_AI_MODEL=anthropic/claude-scripted`,
   `N8N_INSTANCE_AI_MODEL_URL` (the scripted LLM, with `/v1`) and
   `N8N_INSTANCE_AI_MODEL_API_KEY=scripted`.

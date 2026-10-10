@@ -160,7 +160,7 @@ describe('localAssistantEnv', () => {
 		const env = localAssistantEnv({ llmPort: 4010, sandboxPort: 4011 });
 
 		expect(env).toMatchObject({
-			N8N_ENABLED_MODULES: 'instance-ai',
+			N8N_ENABLED_MODULES: 'instance-ai,linked-instances',
 			N8N_INSTANCE_AI_MODEL: 'anthropic/claude-scripted',
 			N8N_INSTANCE_AI_MODEL_URL: 'http://127.0.0.1:4010/v1',
 			N8N_INSTANCE_AI_MODEL_API_KEY: 'scripted',
