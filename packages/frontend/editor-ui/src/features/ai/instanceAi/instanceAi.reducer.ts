@@ -1,6 +1,7 @@
 import { reactive } from 'vue';
 import {
 	getRenderHint,
+	canAcceptInstanceAiEvent,
 	createInitialState,
 	reduceEvent as reduceRunEvent,
 	toAgentTree,
@@ -195,6 +196,14 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	if (!state.groupIdByRunId) state.groupIdByRunId = new Map();
 	if (!state.runStateByGroupId) state.runStateByGroupId = new Map();
 	if (!hasSafeEventKeys(event)) return state.activeRunId;
+	const groupId =
+		event.type === 'run-start'
+			? (event.payload.messageGroupId ?? resolveGroupId(state, event.runId))
+			: resolveGroupId(state, event.runId);
+	const existingState = state.runStateByGroupId.get(groupId);
+	if (existingState && !canAcceptInstanceAiEvent(existingState.lifecycle, event)) {
+		return state.activeRunId;
+	}
 
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message
