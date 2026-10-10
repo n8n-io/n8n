@@ -55,9 +55,10 @@ test('analyze an image', async ({ cli }, testInfo) => {
 });
 ```
 
-`cli.run()` returns the `zx` process output. It expects exit code zero unless `expectedExitCode` is supplied.
+`cli.run()` returns the Execa result. It expects exit code zero unless `expectedExitCode` is supplied.
 Pass arguments as an array. Use `cwd`, `env`, and `timeout` for command options.
 Values in `env` override inherited environment variables.
+Commands run directly without a shell. Output keeps its trailing newlines.
 Each command creates a native step with command details, stdout, and stderr attachments.
 The fixture scrubs secrets from recorded text. It does not record environment variables.
 Fixture teardown stops unfinished processes. Await each command before reading its output files.
