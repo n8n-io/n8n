@@ -197,56 +197,58 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<div :class="$style.toolbar">
-			<N8nText v-if="selectedCount > 0" color="text-light" size="small">
-				{{
-					i18n.baseText('settings.context.preferences.selected', {
-						interpolate: { count: selectedCount },
-						adjustToNumber: selectedCount,
-					})
-				}}
-			</N8nText>
-			<N8nButton
-				v-if="selectedCount > 0"
-				variant="outline"
-				:label="i18n.baseText('settings.context.preferences.actions.deleteSelected')"
-				data-test-id="preferences-delete-selected-button"
-				@click="onDeleteSelected"
-			/>
-			<N8nButton
-				:label="i18n.baseText('settings.context.preferences.actions.create')"
-				data-test-id="preferences-create-button"
-				@click="openCreateModal"
-			/>
-		</div>
+		<div :class="$style.tableArea">
+			<div :class="$style.toolbar">
+				<N8nText v-if="selectedCount > 0" color="text-light" size="small">
+					{{
+						i18n.baseText('settings.context.preferences.selected', {
+							interpolate: { count: selectedCount },
+							adjustToNumber: selectedCount,
+						})
+					}}
+				</N8nText>
+				<N8nButton
+					v-if="selectedCount > 0"
+					variant="outline"
+					:label="i18n.baseText('settings.context.preferences.actions.deleteSelected')"
+					data-test-id="preferences-delete-selected-button"
+					@click="onDeleteSelected"
+				/>
+				<N8nButton
+					:label="i18n.baseText('settings.context.preferences.actions.create')"
+					data-test-id="preferences-create-button"
+					@click="openCreateModal"
+				/>
+			</div>
 
-		<PreferencesTable
-			v-model:table-options="tableOptions"
-			v-model:selection="selection"
-			:preferences="contextStore.preferences"
-			:items-length="contextStore.count"
-			:loading="contextStore.loading"
-			:show-empty="showEmptyState"
-			@edit="openEditModal"
-			@delete="onDelete"
-			@update:options="onOptionsUpdate"
-		>
-			<template #empty>
-				<div :class="$style.empty" data-test-id="preferences-empty-state">
-					<N8nHeading tag="h2" size="medium" bold>
-						{{ i18n.baseText('settings.context.preferences.empty.title') }}
-					</N8nHeading>
-					<N8nText color="text-light">
-						{{ i18n.baseText('settings.context.preferences.empty.description') }}
-					</N8nText>
-					<N8nButton
-						:label="i18n.baseText('settings.context.preferences.actions.create')"
-						data-test-id="preferences-empty-create-button"
-						@click="openCreateModal"
-					/>
-				</div>
-			</template>
-		</PreferencesTable>
+			<PreferencesTable
+				v-model:table-options="tableOptions"
+				v-model:selection="selection"
+				:preferences="contextStore.preferences"
+				:items-length="contextStore.count"
+				:loading="contextStore.loading"
+				:show-empty="showEmptyState"
+				@edit="openEditModal"
+				@delete="onDelete"
+				@update:options="onOptionsUpdate"
+			>
+				<template #empty>
+					<div :class="$style.empty" data-test-id="preferences-empty-state">
+						<N8nHeading tag="h2" size="medium" bold>
+							{{ i18n.baseText('settings.context.preferences.empty.title') }}
+						</N8nHeading>
+						<N8nText color="text-light">
+							{{ i18n.baseText('settings.context.preferences.empty.description') }}
+						</N8nText>
+						<N8nButton
+							:label="i18n.baseText('settings.context.preferences.actions.create')"
+							data-test-id="preferences-empty-create-button"
+							@click="openCreateModal"
+						/>
+					</div>
+				</template>
+			</PreferencesTable>
+		</div>
 
 		<PreferenceModal
 			:open="dialogTarget !== null"
@@ -258,13 +260,16 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* The settings shell insets the page; the header is pulled to the table's left edge. */
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
-	padding: 0;
+	padding-top: 0;
+}
 
-	header {
-		margin-inline: 0 auto;
-	}
+/* Toolbar and table read as one block below the centered page header, as on the API page. */
+.tableArea {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
 }
 
 .empty {
@@ -281,6 +286,6 @@ onMounted(async () => {
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
-	width: 100%;
+	margin-bottom: var(--spacing--sm);
 }
 </style>
