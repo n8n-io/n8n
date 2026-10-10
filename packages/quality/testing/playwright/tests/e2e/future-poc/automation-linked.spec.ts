@@ -52,7 +52,7 @@ test.describe(
 			});
 
 			await n8n.experienceModes.getProposalTurnOnButton().click();
-			await expectResolved(n8n, 'on', CLOUD_NAME);
+			await expectResolvedIn(n8n, 'on', CLOUD_NAME);
 			const remote = n8n.experienceModes.getProposalOpenRemote();
 			await expect(remote).toBeVisible();
 			await expect(remote).toHaveAttribute(
@@ -93,7 +93,7 @@ test.describe(
 			await expect(n8n.experienceModes.getProposalPreflight()).toBeHidden();
 
 			await n8n.experienceModes.getProposalTurnOnButton().click();
-			await expectResolved(n8n, 'on', 'This computer');
+			await expectResolvedIn(n8n, 'on', 'This computer');
 			await expect
 				.poll(async () => (await n8n.api.workflows.getWorkflow(workflow.id)).active, {
 					timeout: STEP_TIMEOUT_MS,
@@ -125,12 +125,18 @@ test.describe(
 				timeout: STEP_TIMEOUT_MS,
 			});
 			await expect(n8n.experienceModes.getProposalPreflightSetUp()).toContainText(CLOUD_NAME);
+			const setUp = n8n.experienceModes.getProposalPreflightSetUpLink();
+			await expect(setUp).toBeVisible();
+			await expect(setUp).toHaveAttribute(
+				'href',
+				`${cloudUrl.replace(/\/+$/, '')}/home/credentials`,
+			);
 			await expect(n8n.experienceModes.getProposalTurnOnButton()).toBeDisabled();
 			await expect(n8n.experienceModes.getProposalSaveButton()).toBeEnabled();
 			await expect(n8n.experienceModes.getProposalNotNowButton()).toBeEnabled();
 
 			await n8n.experienceModes.getProposalSaveButton().click();
-			await expectResolved(n8n, 'saved', CLOUD_NAME);
+			await expectResolvedIn(n8n, 'saved', CLOUD_NAME);
 
 			const copy = await waitForWorkflow(cloudApi, workflowName);
 			expect(copy.active).toBe(false);
@@ -180,12 +186,12 @@ test.describe(
 			});
 
 			await n8n.experienceModes.getProposalTurnOnButton().click();
-			await expectResolved(n8n, 'on', CLOUD_NAME);
+			await expectResolvedIn(n8n, 'on', CLOUD_NAME);
 			const copy = await waitForWorkflow(cloudApi, workflowName);
 			expect(copy.active).toBe(true);
 		});
 
-		test('a command on this computer stays here, and Power mode can still choose the cloud', async ({
+		test('a command on this computer is recommended here, and Power mode can still choose the cloud', async ({
 			n8n,
 			cloudApi,
 			cloudUrl,
@@ -213,14 +219,13 @@ test.describe(
 
 			await n8n.experienceModes.getProposalChangeTarget().click();
 			await n8n.experienceModes.getProposalTargetOption(/^This computer/).click();
-			await n8n.experienceModes.getProposalTurnOnButton().click();
-			await expectResolved(n8n, 'on', 'This computer');
-			await expect
-				.poll(async () => (await n8n.api.workflows.getWorkflow(workflow.id)).active, {
-					timeout: STEP_TIMEOUT_MS,
-				})
-				.toBe(true);
+			await expect(n8n.experienceModes.getProposalPlace()).toContainText('This computer');
+			await expect(n8n.experienceModes.getProposalCaveat()).toBeVisible();
+			await expect(n8n.experienceModes.getProposalPreflight()).toBeHidden();
+			await expect(n8n.experienceModes.getProposalTurnOnButton()).toBeEnabled();
+			// Choosing a place does not copy the workflow. The card is still open.
 			expect(await findWorkflow(cloudApi, workflowName)).toBeUndefined();
+			expect((await n8n.api.workflows.getWorkflow(workflow.id)).active).toBe(false);
 		});
 
 		test('a workflow that calls another workflow by ID offers only this computer', async ({
@@ -243,7 +248,7 @@ test.describe(
 			await expect(n8n.experienceModes.getProposalPreflight()).toBeHidden();
 
 			await n8n.experienceModes.getProposalTurnOnButton().click();
-			await expectResolved(n8n, 'on', 'This computer');
+			await expectResolvedIn(n8n, 'on', 'This computer');
 			await expect
 				.poll(async () => (await n8n.api.workflows.getWorkflow(workflow.id)).active, {
 					timeout: STEP_TIMEOUT_MS,
@@ -266,13 +271,7 @@ test.describe(
 			);
 			const workflow = await n8n.api.workflows.createWorkflow(scheduleWorkflow(workflowName));
 			const chatId = await propose(n8n, startLlm, startAssistantRun, workflow.id);
-			const current = await n8n.api.workflows.getWorkflow(workflow.id);
-			if (!current.versionId) throw new TestError('The workflow has no version id');
-			await n8n.api.workflows.update(
-				workflow.id,
-				current.versionId,
-				callingWorkflow(workflowName, child.id),
-			);
+			await replaceWorkflow(n8n.api, workflow.id, callingWorkflow(workflowName, child.id));
 
 			await n8n.api.users.setExperienceMode('power');
 			await n8n.start.fromInstanceAiThread(chatId);
@@ -293,14 +292,24 @@ test.describe(
 	},
 );
 
+/** Saves a new version of the workflow. The card still shows the version it proposed. */
+async function replaceWorkflow(
+	api: ApiHelpers,
+	workflowId: string,
+	workflow: Partial<IWorkflowBase>,
+): Promise<void> {
+	const current = await api.workflows.getWorkflow(workflowId);
+	const versionId = current.versionId ?? '';
+	expect(versionId).not.toEqual('');
+	await api.workflows.update(workflowId, versionId, workflow);
+}
+
 /** Turns on MCP on Cloud and stores the link on this computer. */
 async function linkCloud(api: ApiHelpers, cloudApi: ApiHelpers, cloudUrl: string): Promise<void> {
 	await cloudApi.setMcpAccess(true);
 	const { apiKey } = await cloudApi.rotateMcpApiKey();
 	const link = await api.linkInstance({ name: CLOUD_NAME, url: cloudUrl, token: apiKey });
-	if (link.status !== 'online') {
-		throw new TestError(`The cloud link is "${link.status}", not online`);
-	}
+	expect(link.status).toBe('online');
 }
 
 /** Asks for the proposal and returns the chat id. The page is not open yet. */
@@ -338,13 +347,23 @@ async function openProposal(
 	await expect(n8n.experienceModes.getProposalCard()).toBeVisible({ timeout: STEP_TIMEOUT_MS });
 }
 
-/** The answered card. `place` is omitted when the line does not name one. */
-async function expectResolved(n8n: n8nPage, status: string, place?: string): Promise<void> {
+/** The answered card shows this outcome. */
+async function expectResolved(n8n: n8nPage, status: string): Promise<void> {
 	await expect(n8n.experienceModes.getProposalResolved()).toBeVisible({ timeout: STEP_TIMEOUT_MS });
 	await expect(n8n.experienceModes.getProposalCard()).toBeHidden();
-	const line = n8n.experienceModes.getProposalResolvedStatus();
-	await expect(line).toHaveAttribute('data-status', status, { timeout: STEP_TIMEOUT_MS });
-	if (place !== undefined) await expect(line).toContainText(place);
+	await expect(n8n.experienceModes.getProposalResolvedStatus()).toHaveAttribute(
+		'data-status',
+		status,
+		{
+			timeout: STEP_TIMEOUT_MS,
+		},
+	);
+}
+
+/** The answered card shows this outcome and names the place. */
+async function expectResolvedIn(n8n: n8nPage, status: string, place: string): Promise<void> {
+	await expectResolved(n8n, status);
+	await expect(n8n.experienceModes.getProposalResolvedStatus()).toContainText(place);
 }
 
 function proposeScript(workflowId: string): ScriptInput {

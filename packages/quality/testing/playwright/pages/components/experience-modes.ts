@@ -124,6 +124,11 @@ export class ExperienceModes {
 		return this.page.getByTestId('automation-proposal-preflight-set-up');
 	}
 
+	/** "Set up in {place}" on the preflight notice. It opens the credentials of that instance. */
+	getProposalPreflightSetUpLink(): Locator {
+		return this.page.getByTestId('automation-proposal-preflight-set-up-link');
+	}
+
 	/** The line that says the workflow cannot go to the linked instance. */
 	getProposalPreflightBlocked(): Locator {
 		return this.page.getByTestId('automation-proposal-preflight-blocked');
