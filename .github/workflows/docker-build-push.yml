@@ -134,7 +134,7 @@ jobs:
   build-app:
     name: Build application for Docker images
     needs: determine-build-context
-    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-8x32' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-8x16' || 'blacksmith-8vcpu-ubuntu-2204' }}
     timeout-minutes: 35
     permissions:
       contents: read
@@ -168,7 +168,7 @@ jobs:
   build-and-push-docker:
     name: Build and Push Docker Image (${{ matrix.platform }})
     needs: [determine-build-context, build-app]
-    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-8x32' || matrix.runner }}
+    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-8x16' || matrix.runner }}
     timeout-minutes: 35
     permissions:
       actions: read
