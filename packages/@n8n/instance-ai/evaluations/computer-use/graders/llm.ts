@@ -2,13 +2,13 @@
 // LLM-as-judge grader: did the agent actually complete the task?
 //
 // Reads the scenario's user prompt + the agent's final text + a compact
-// summary of tool calls, asks a small/cheap LLM "did the agent succeed?",
+// summary of tool calls, asks the judge model "did the agent succeed?",
 // and converts the verdict to a GraderResult. Catches failure modes the
 // trace-level graders can't see (e.g. the agent gave up with an apologetic
 // message but mechanically called the right tools).
 // ---------------------------------------------------------------------------
 
-import { createEvalAgent, extractText, SONNET_MODEL } from '../../../src/utils/eval-agents';
+import { createEvalAgent, extractText, JUDGE_MODEL } from '../../../src/utils/eval-agents';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
 import type {
 	GraderResult,
@@ -17,7 +17,8 @@ import type {
 	ScenarioTrace,
 } from '../types';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Judges think at high effort, so match the binary checks' headroom.
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 const SYSTEM_PROMPT = `You are a strict evaluator deciding whether an AI assistant successfully completed the task a user asked it to do.
 
@@ -90,13 +91,14 @@ export async function gradeTaskCompleted(
 	scenarioCategory: ScenarioCategory,
 	grader: LlmTaskCompletedGrader,
 ): Promise<GraderResult> {
-	const model = grader.model ?? SONNET_MODEL;
+	const model = grader.model ?? JUDGE_MODEL;
 	const timeoutMs = grader.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
 	const agent = createEvalAgent('eval-llm-task-completed', {
 		model,
 		instructions: SYSTEM_PROMPT,
 		cache: true,
+		judge: true,
 	});
 
 	const values: Record<string, string> = {

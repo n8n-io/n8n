@@ -10,7 +10,7 @@
 import { vi } from 'vitest';
 
 vi.mock('../../../src/utils/eval-agents', () => ({
-	SONNET_MODEL: 'anthropic/claude-haiku-4-6',
+	JUDGE_MODEL: 'anthropic/claude-haiku-4-6',
 	createEvalAgent: vi.fn(),
 	extractText: vi.fn(),
 }));

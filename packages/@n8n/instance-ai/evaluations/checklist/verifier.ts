@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
 	EPHEMERAL_CACHE,
 	createEvalAgent,
+	resolveJudgeModel,
 	resolveEvalModelConfig,
 } from '../../src/utils/eval-agents';
 import type { VerificationArtifact } from '../harness/scenario-execution';
@@ -38,10 +39,10 @@ export const VERIFY_ATTEMPT_TIMEOUTS_MS = [60_000, 120_000, 240_000];
 export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
 /**
  * Completion budget for checklist JSON. Some OpenAI-compatible defaults (~250)
- * truncate mid-result (~298 tokens observed); 4096 leaves headroom for thinking
- * tokens plus multi-item checklists.
+ * truncate mid-result (~298 tokens observed). Judges at effort high think past 4096
+ * (Sonnet 4.6 / 5 replays hit it), so leave room for thinking plus the JSON.
  */
-export const VERIFIER_MAX_OUTPUT_TOKENS = 4_096;
+export const VERIFIER_MAX_OUTPUT_TOKENS = 16_384;
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
 function jitteredPauseMs(attempt: number): number {
@@ -171,7 +172,7 @@ async function runNativeOpenAiVerifier(
 	assistantText: string;
 	parsed: z.infer<typeof checklistResultSchema> | undefined;
 }> {
-	const model = resolveEvalModelConfig();
+	const model = resolveEvalModelConfig(resolveJudgeModel());
 	const requestBody = {
 		model: model.providerModelId,
 		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
@@ -395,7 +396,7 @@ export async function verifyChecklist(
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 	const attempts: VerifierAttemptDebug[] = [];
-	const model = resolveEvalModelConfig();
+	const model = resolveEvalModelConfig(resolveJudgeModel());
 	const useNativeOpenAiVerifier = model.provider === 'openai';
 
 	logVerifierDebug('request summary', {
@@ -454,6 +455,7 @@ export async function verifyChecklist(
 				const agent = createEvalAgent('eval-checklist-verifier', {
 					instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 					cache: true,
+					judge: true,
 				}).structuredOutput(checklistResultSchema);
 
 				// The inactivity watchdog arms on the FIRST chunk (inside the consume

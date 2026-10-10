@@ -245,6 +245,7 @@ export async function executeAgentScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		verifierInput: { checklist: scenarioChecklist, artifact },
 		buildTrace,
 		logger,
 		outputDir,
