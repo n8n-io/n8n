@@ -1,3 +1,4 @@
+import { splitTokenList } from '@n8n/utils/string/split-token-list';
 import { parse as parseYaml } from 'yaml';
 import {
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
@@ -23,7 +24,9 @@ export class AgentSkillImportError extends Error {
 type SkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
+	/** n8n spelling and the Agent Skills standard spelling of the same list. */
 	allowed_tools?: unknown;
+	'allowed-tools'?: unknown;
 };
 
 type SkillFile = { file: File; path: string };
@@ -182,7 +185,7 @@ function parseSkillMarkdown(content: string): AgentSkill {
 		name,
 		description,
 		instructions,
-		...optionalStringArrayField('allowedTools', data.allowed_tools),
+		...optionalStringArrayField('allowedTools', data.allowed_tools ?? data['allowed-tools']),
 	};
 }
 
@@ -197,8 +200,12 @@ function readRequiredString(value: unknown, field: 'name' | 'description'): stri
 	return value.trim();
 }
 
+/** A string is a delimited list, as the Agent Skills standard writes `allowed-tools`. */
 function optionalStringArrayField(field: 'allowedTools', value: unknown) {
-	if (typeof value === 'string' && value.trim()) return { [field]: [value.trim()] };
+	if (typeof value === 'string') {
+		const tools = splitTokenList(value);
+		return tools.length > 0 ? { [field]: tools } : {};
+	}
 	return optionalStringArrayProperty(field, value);
 }
 

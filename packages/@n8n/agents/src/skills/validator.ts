@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { splitTokenList } from '@n8n/utils/string/split-token-list';
 import { parse as parseYaml } from 'yaml';
 
 import {
@@ -16,8 +17,12 @@ export const RUNTIME_SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
 	'name',
 	'description',
+	// The Agent Skills standard spells the tool lists with a hyphen; n8n skills
+	// also use the underscore form. Both are read, one file uses one of them.
 	'recommended_tools',
+	'recommended-tools',
 	'allowed_tools',
+	'allowed-tools',
 	'interface',
 	'policy',
 	'dependencies',
@@ -78,8 +83,8 @@ export function parseRuntimeSkillMarkdown(
 	}
 
 	const description = requiredFrontmatterString(frontmatter.data, 'description', errors);
-	const recommendedTools = optionalStringArray(frontmatter.data, 'recommended_tools', errors);
-	const allowedTools = optionalStringArray(frontmatter.data, 'allowed_tools', errors);
+	const recommendedTools = optionalToolList(frontmatter.data, 'recommended_tools', errors);
+	const allowedTools = optionalToolList(frontmatter.data, 'allowed_tools', errors);
 	const skillInterface = optionalSkillInterface(frontmatter.data, errors);
 	const policy = optionalSkillPolicy(frontmatter.data, errors);
 	const dependencies = optionalSkillDependencies(frontmatter.data, errors);
@@ -233,6 +238,39 @@ function optionalFrontmatterString(
 		});
 	}
 	return normalized;
+}
+
+/**
+ * A tool list under its underscore or hyphen spelling. A string value is a
+ * delimited list, as the Agent Skills standard writes `allowed-tools`; an array
+ * is taken as is.
+ */
+function optionalToolList(
+	frontmatter: Record<string, unknown>,
+	field: `${string}_tools`,
+	errors: RuntimeSkillValidationError[],
+): string[] | undefined {
+	const spellings = [field, field.replace('_', '-')];
+	const present = spellings.filter(
+		(spelling) => frontmatter[spelling] !== undefined && frontmatter[spelling] !== null,
+	);
+	if (present.length > 1) {
+		errors.push({
+			code: 'invalid_field',
+			message: `Fields "${spellings.join('" and "')}" are the same list; use one of them`,
+			field,
+		});
+		return undefined;
+	}
+	const spelling = present[0];
+	if (!spelling) return undefined;
+
+	const value = frontmatter[spelling];
+	if (typeof value === 'string') {
+		const tools = splitTokenList(value);
+		return tools.length > 0 ? tools : undefined;
+	}
+	return optionalStringArray(frontmatter, spelling, errors);
 }
 
 function optionalStringArray(
