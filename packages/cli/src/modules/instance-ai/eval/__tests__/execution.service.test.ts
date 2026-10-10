@@ -1998,6 +1998,9 @@ describe('EvalExecutionService', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.errors).toEqual(['FRAMEWORK ISSUE: Data Table preparation failed: model down']);
+			expect(logger.error).toHaveBeenCalledWith(
+				'[EvalMock] Data Table preparation failed: model down',
+			);
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
