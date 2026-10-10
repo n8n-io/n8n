@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
+import { TaskTimeoutError } from '@n8n/scheduler';
 import { SpanStatus, type Span, type StartSpanOpts, type Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -191,11 +192,16 @@ describe('observeSystemTaskRun', () => {
 		{ aborted: ['lease'], result: 'lease_lost' },
 		{ aborted: ['shutdown'], result: 'aborted' },
 		{ aborted: ['shutdown', 'lease'], result: 'lease_lost' },
+		{ aborted: ['timeout'], result: 'timed_out' },
 	] as const)('settles a run stopped by $aborted as $result', async ({ aborted, result }) => {
 		const eventService = mock<EventService>();
 		const controllers = { shutdown: new AbortController(), lease: new AbortController() };
 		const task = taskThat(async () => {
-			aborted.forEach((source) => controllers[source].abort());
+			aborted.forEach((source) =>
+				source === 'timeout'
+					? controllers.lease.abort(new TaskTimeoutError(60))
+					: controllers[source].abort(),
+			);
 		});
 
 		const outcome = await observeSystemTaskRun(

@@ -787,12 +787,10 @@ describe('SystemTaskRunner', () => {
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
 			await expect(
-				handler.execute(
-					mock<ClaimedTask>(),
-					createDispatchReporter(vi.fn()),
-					new AbortController().signal,
-					Number.POSITIVE_INFINITY,
-				),
+				handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()), {
+					signal: new AbortController().signal,
+					remainingMs: () => Number.POSITIVE_INFINITY,
+				}),
 			).rejects.toThrow(error);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error, {
@@ -817,12 +815,10 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			const executing = handler.execute(
-				mock<ClaimedTask>(),
-				createDispatchReporter(vi.fn()),
-				new AbortController().signal,
-				Number.POSITIVE_INFINITY,
-			);
+			const executing = handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()), {
+				signal: new AbortController().signal,
+				remainingMs: () => Number.POSITIVE_INFINITY,
+			});
 			expect(runSignal?.aborted).toBe(false);
 
 			await runner.shutdown();
@@ -1341,12 +1337,10 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			await handler.execute(
-				mock<ClaimedTask>(),
-				createDispatchReporter(vi.fn()),
-				new AbortController().signal,
-				Number.POSITIVE_INFINITY,
-			);
+			await handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()), {
+				signal: new AbortController().signal,
+				remainingMs: () => Number.POSITIVE_INFINITY,
+			});
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'dummy',
