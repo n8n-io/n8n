@@ -105,8 +105,9 @@ function handleSelect(key: string): void {
 				placement="top"
 			>
 				<N8nButton
-					variant="outline"
+					variant="subtle"
 					icon="funnel"
+					size="large"
 					icon-only
 					:aria-label="i18n.baseText('agentSessions.timeline.events')"
 					:class="$style.trigger"

@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nBadge, N8nHoverCard, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
-import type { IdleRange, TimelineItem } from '../session-timeline.types';
+import type { TimelineItem } from '../session-timeline.types';
 import {
 	backgroundJobSignalSummary,
 	executionErrorLabel,
@@ -24,7 +24,6 @@ import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
 	items: TimelineItem[];
-	idleRanges: IdleRange[];
 	sessionStart: number;
 	sessionEnd: number;
 	visibleKinds: Set<string>;
@@ -35,9 +34,7 @@ const SCROLL_PADDING = 48;
 
 const emit = defineEmits<{ select: [index: number] }>();
 
-type Segment =
-	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
-	| { kind: 'idle'; range: IdleRange };
+type Segment = { kind: 'event'; item: TimelineItem; index: number; duration: number };
 
 type PopoverTarget = { segment: Segment; reference: HTMLElement };
 
@@ -56,7 +53,9 @@ const activePopoverStatus = computed(() => {
 
 const INSTANT_MS = 100;
 const POPOVER_SHOW_DELAY_MS = 300;
+const POPOVER_HIDE_DELAY_MS = 100;
 let showPopoverTimer: ReturnType<typeof setTimeout> | null = null;
+let hidePopoverTimer: ReturnType<typeof setTimeout> | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 let hoveredPopover: PopoverTarget | null = null;
@@ -64,20 +63,10 @@ let focusedPopover: PopoverTarget | null = null;
 
 const segments = computed<Segment[]>(() => {
 	const out: Segment[] = [];
-	const idles = [...props.idleRanges].sort((a, b) => a.start - b.start);
-	let idleIdx = 0;
 	for (let i = 0; i < props.items.length; i++) {
 		const item = props.items[i];
-		while (idleIdx < idles.length && idles[idleIdx].start <= item.timestamp) {
-			out.push({ kind: 'idle', range: idles[idleIdx] });
-			idleIdx++;
-		}
 		const duration = item.endTimestamp ? item.endTimestamp - item.timestamp : INSTANT_MS;
 		out.push({ kind: 'event', item, index: i, duration });
-	}
-	while (idleIdx < idles.length) {
-		out.push({ kind: 'idle', range: idles[idleIdx] });
-		idleIdx++;
 	}
 	return out;
 });
@@ -87,7 +76,6 @@ function isDimmed(item: TimelineItem): boolean {
 }
 
 function cellStyle(seg: Segment): Record<string, string> {
-	if (seg.kind === 'idle') return { flex: '0 0 56px' };
 	// flex-shrink: 1 lets cells contract when total min-widths exceed the chart width.
 	return { flex: `${Math.max(seg.duration, 1)} 1 0` };
 }
@@ -180,10 +168,6 @@ function popoverDuration(item: TimelineItem): string {
 	return formatDuration(item.endTimestamp - item.timestamp);
 }
 
-function idleDuration(range: IdleRange): string {
-	return formatDuration(range.end - range.start);
-}
-
 function popoverTime(item: TimelineItem): string {
 	if (!item.timestamp) return '';
 	return convertToDisplayDate(new Date(item.timestamp).toISOString()).time;
@@ -209,6 +193,11 @@ function showPopover(segment: Segment, event: MouseEvent | FocusEvent): void {
 		hoveredPopover = target;
 	}
 	clearShowPopoverTimer();
+	clearHidePopoverTimer();
+	if (popoverOpen.value) {
+		activePopover.value = target;
+		return;
+	}
 	showPopoverTimer = setTimeout(() => {
 		activePopover.value = target;
 		popoverOpen.value = true;
@@ -219,6 +208,12 @@ function clearShowPopoverTimer(): void {
 	if (!showPopoverTimer) return;
 	clearTimeout(showPopoverTimer);
 	showPopoverTimer = null;
+}
+
+function clearHidePopoverTimer(): void {
+	if (!hidePopoverTimer) return;
+	clearTimeout(hidePopoverTimer);
+	hidePopoverTimer = null;
 }
 
 function scrollSelectedIntoView(): void {
@@ -277,14 +272,19 @@ function hidePopover(event: MouseEvent | FocusEvent): void {
 		hoveredPopover = null;
 	}
 	clearShowPopoverTimer();
+	clearHidePopoverTimer();
 	const remainingTarget = focusedPopover ?? hoveredPopover;
 	if (remainingTarget) {
 		activePopover.value = remainingTarget;
 		popoverOpen.value = true;
 		return;
 	}
-	popoverOpen.value = false;
-	activePopover.value = null;
+	/** Keep the card open while the pointer crosses a gap between cells. */
+	hidePopoverTimer = setTimeout(() => {
+		popoverOpen.value = false;
+		activePopover.value = null;
+		hidePopoverTimer = null;
+	}, POPOVER_HIDE_DELAY_MS);
 }
 
 watch(
@@ -311,6 +311,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	clearShowPopoverTimer();
+	clearHidePopoverTimer();
 	chartRef.value?.removeEventListener('scroll', updateScrollState);
 	resizeObserver?.disconnect();
 });
@@ -341,15 +342,7 @@ onBeforeUnmount(() => {
 			>
 				<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
 				<template #content>
-					<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
-						<SessionTimelinePill
-							kind="idle"
-							:label="i18n.baseText('agentSessions.timeline.idle')"
-							show-label
-						/>
-						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
-					</div>
-					<div v-else-if="activePopover" :class="$style.popoverInner">
+					<div v-if="activePopover" :class="$style.popoverInner">
 						<SessionTimelinePill
 							:kind="popoverPillKind(activePopover.segment.item)"
 							:label="popoverLabel(activePopover.segment.item)"
@@ -359,7 +352,7 @@ onBeforeUnmount(() => {
 						<N8nBadge
 							v-if="activePopoverStatus"
 							:variant="activePopoverStatus.theme"
-							size="xsmall"
+							size="xxsmall"
 							:data-test-id="
 								activePopoverStatus.kind === 'hitl-response'
 									? 'timeline-popover-hitl-response-badge'
@@ -385,24 +378,13 @@ onBeforeUnmount(() => {
 				:class="$style.cell"
 				:style="cellStyle(seg)"
 			>
-				<div
-					v-if="seg.kind === 'idle'"
-					data-test-id="timeline-idle"
-					:class="$style.idle"
-					@mouseenter="showPopover(seg, $event)"
-					@mouseleave="hidePopover($event)"
-				>
-					<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
-				</div>
 				<button
-					v-else
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
 					:data-error="isErroredTimelineItem(seg.item) ? 'true' : undefined"
 					:aria-label="blockAriaLabel(seg.item)"
-					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
-					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
+					:class="$style.block"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
 					@mouseleave="hidePopover($event)"
@@ -425,12 +407,23 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/mixins';
+
 .carousel {
 	display: flex;
 	align-items: center;
+	justify-content: flex-start;
 	gap: var(--spacing--4xs);
 	width: 100%;
 	min-width: 0;
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	height: var(--height--lg);
+	padding-block: var(--spacing--xs);
+	max-width: var(--n8n-session-panel--container-width, none);
+	margin: 0 auto;
+
+	// @include mixins.scroll-mask(x);
 }
 
 .chart {
@@ -438,7 +431,7 @@ onBeforeUnmount(() => {
 	align-items: stretch;
 	flex: 1;
 	gap: 1px;
-	height: 28px;
+	height: var(--height--sm);
 	min-width: 0;
 	overflow-x: auto;
 	scrollbar-width: none;
@@ -459,11 +452,21 @@ onBeforeUnmount(() => {
 	position: relative;
 	display: flex;
 	align-items: stretch;
-	min-width: 24px;
+	min-width: var(--height--3xs);
 	flex-shrink: 0;
 	transition:
 		opacity,
 		transform var(--duration--snappy) var(--easing--ease-out);
+
+	/** First cell is actually #2 cause we have a hidden trigger element **/
+	&:nth-child(2) .block {
+		border-top-left-radius: var(--radius);
+		border-bottom-left-radius: var(--radius);
+	}
+	&:last-child .block {
+		border-top-right-radius: var(--radius);
+		border-bottom-right-radius: var(--radius);
+	}
 }
 
 .cell[data-error='true']::before {
@@ -472,51 +475,21 @@ onBeforeUnmount(() => {
 	left: 0;
 	width: 100%;
 	height: var(--spacing--4xs);
-	border-radius: var(--radius--sm);
 	background-color: var(--color--danger);
 	content: '';
 	/* Only needs to clear the block inside this cell. */
 	z-index: 1;
 }
 
-.chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
+.chart:has(.block:hover) .block:not(:hover) {
 	opacity: 0.4;
-}
-
-.idle {
-	position: relative;
-	flex: 1 0 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background-image: repeating-linear-gradient(
-		45deg,
-		var(--color--foreground--shade-1) 0 4px,
-		transparent 4px 8px
-	);
-	border-radius: var(--radius--sm);
-	cursor: default;
-}
-
-.idleFill {
-	display: inline-flex;
-	align-items: center;
-	padding: 1px var(--spacing--3xs);
-	background-color: var(--color--background);
-	border-radius: var(--radius--lg);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-	text-transform: lowercase;
-	letter-spacing: 0.02em;
 }
 
 .block {
 	position: relative;
 	flex: 1 0 0;
-	margin: 4px 0;
 	border: none;
-	border-radius: var(--radius--sm);
+	margin: 4px 0;
 	padding: 0;
 	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
@@ -555,7 +528,7 @@ onBeforeUnmount(() => {
 }
 
 .popoverMeta {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	font-variant-numeric: tabular-nums;
 }
 </style>

@@ -1,6 +1,10 @@
 import type { CSSProperties } from 'vue';
 import type { EventKind, TimelineItem } from './session-timeline.types';
-import { chartBlockColor, isSubAgentTimelineItem } from './session-timeline.utils';
+import {
+	chartBlockColor,
+	isErroredTimelineItem,
+	isSubAgentTimelineItem,
+} from './session-timeline.utils';
 type TimelinePillKind = EventKind | 'idle' | 'subagent';
 
 export function pillColors(
@@ -37,13 +41,17 @@ export function pillColors(
 	}
 }
 
-/** Chart block colour for a timeline item — sub-agent delegations get a distinct hue. */
+/** Keep color for users, agents, sub-agents, and errors. */
 export function chartBlockStyleForItem(item: TimelineItem): CSSProperties {
-	return {
-		'--session-timeline-chart-block-color': isSubAgentTimelineItem(item)
-			? 'var(--color--mint-600)'
-			: chartBlockColor(item.kind),
-	};
+	let color = 'var(--color--neutral-600)';
+	if (isErroredTimelineItem(item)) {
+		color = chartBlockColor('execution-error');
+	} else if (isSubAgentTimelineItem(item)) {
+		color = 'var(--color--mint-600)';
+	} else if (item.kind === 'user' || item.kind === 'agent') {
+		color = chartBlockColor(item.kind);
+	}
+	return { '--session-timeline-chart-block-color': color };
 }
 
 /**

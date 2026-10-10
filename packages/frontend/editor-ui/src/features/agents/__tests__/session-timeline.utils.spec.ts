@@ -364,6 +364,74 @@ function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecut
 	return { type: 'hitl-response', toolCallId: 'tc-1', timestamp: 190, ...overrides };
 }
 
+describe('timeline activity status', () => {
+	it.each(['tool', 'skill', 'node', 'workflow'] as const)(
+		'updates a running %s call when its result arrives',
+		(kind) => {
+			const call = toolCallEvent({ kind });
+			const running = flattenExecutionsToTimelineItems([
+				withTimeline([call], { status: 'running' }),
+			]);
+			const completed = flattenExecutionsToTimelineItems([
+				withTimeline([{ ...call, endTime: 200, success: true }], { status: 'running' }),
+			]);
+			expect(running[0]).toMatchObject({ activityStatus: 'running', endTimestamp: undefined });
+			expect(completed[0]).toMatchObject({
+				activityStatus: 'completed',
+				endTimestamp: 200,
+				toolOutput: undefined,
+			});
+		},
+	);
+
+	it('marks a finished call with an error as failed', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent({ endTime: 200, success: false })]),
+		]);
+		expect(items[0].activityStatus).toBe('failed');
+	});
+
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'marks an unfinished call as interrupted when the execution is %s',
+		(status) => {
+			const items = flattenExecutionsToTimelineItems([withTimeline([toolCallEvent()], { status })]);
+			expect(items[0].activityStatus).toBe('interrupted');
+		},
+	);
+
+	it('marks a suspended call as waiting', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent(), suspensionEvent()], { hitlStatus: 'suspended' }),
+		]);
+		expect(items[0].activityStatus).toBe('waiting');
+	});
+
+	it('updates a waiting call after resume', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([toolCallEvent(), suspensionEvent()], { hitlStatus: 'suspended' }),
+			withTimeline([toolCallEvent({ endTime: 300, success: true })], {
+				id: 'e-2',
+				hitlStatus: 'resumed',
+			}),
+		]);
+		expect(items[0]).toMatchObject({ activityStatus: 'completed', endTimestamp: 300 });
+	});
+
+	it('keeps completed calls complete when a later call is interrupted', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({ endTime: 200, success: true }),
+					toolCallEvent({ toolCallId: 'tc-2', startTime: 210 }),
+				],
+				{ status: 'interrupted' },
+			),
+		]);
+		expect(items[0].activityStatus).toBe('completed');
+		expect(items[1].activityStatus).toBe('interrupted');
+	});
+});
+
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
 
@@ -833,25 +901,29 @@ describe('flattenExecutionsToTimelineItems', () => {
 
 	it('maps a running tool-call without marking it failed', () => {
 		const items = flattenExecutionsToTimelineItems([
-			withTimeline([
-				{
-					type: 'tool-call',
-					kind: 'tool',
-					name: 'http',
-					toolCallId: 'tc-1',
-					input: { method: 'GET' },
-					output: undefined,
-					startTime: 1000,
-					endTime: 0,
-					success: false,
-				},
-			]),
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'http',
+						toolCallId: 'tc-1',
+						input: { method: 'GET' },
+						output: undefined,
+						startTime: 1000,
+						endTime: 0,
+						success: false,
+					},
+				],
+				{ status: 'running' },
+			),
 		]);
 		const tool = items.find((i) => i.kind === 'tool');
 		expect(tool).toMatchObject({
 			toolName: 'http',
+			activityStatus: 'running',
 			timestamp: 1000,
-			endTimestamp: 1000,
+			endTimestamp: undefined,
 			toolInput: { method: 'GET' },
 			toolOutput: undefined,
 			toolOutcome: undefined,

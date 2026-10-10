@@ -35,7 +35,11 @@ const iconSize = computed(() => Math.round(props.size * 0.6));
 </script>
 
 <template>
-	<div :class="$style.tile" :style="tileStyle" data-test-id="agent-personalisation-icon-tile">
+	<div
+		:class="['n8n-agent-icon', $style.tile]"
+		:style="tileStyle"
+		data-test-id="agent-personalisation-icon-tile"
+	>
 		<N8nIcon :icon="resolved.icon" :size="iconSize" />
 	</div>
 </template>
