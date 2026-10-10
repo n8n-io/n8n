@@ -2697,7 +2697,7 @@ describe('RoutingNode', () => {
 		// since an explicit `undefined` triggers the default.
 		const buildNodeType = (
 			baseURL: string | null = 'https://api.example.com',
-			routedUrl = 'https://other-host.example.com/path',
+			routedUrl = '/path',
 			propertyBaseURL?: string,
 		): INodeType => {
 			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
@@ -2895,6 +2895,84 @@ describe('RoutingNode', () => {
 
 			const requestOptions = getRequestOptions(result);
 			expect(requestOptions.url).toBe('/tests/project-123');
+		});
+
+		describe('when the routed url starts with a node parameter', () => {
+			const baseURL = 'https://graph.example.com/v13.0/';
+			const routedUrl = '={{$value}}/messages';
+
+			test("blocks a declarative node when mode is 'none' and the parameter is an absolute url", async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						{ baseURL, routedUrl, nodeParameters: { endpoint: 'http://other.example.net' } },
+					),
+				).rejects.toThrow('This credential is configured to prevent use within an');
+			});
+
+			test("does not widen the 'domains' allowlist with the host from the parameter", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					{ baseURL, routedUrl, nodeParameters: { endpoint: 'http://other.example.net' } },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBe('other.example.com');
+			});
+
+			test("does not block a declarative node when mode is 'none' and the parameter is an identifier", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ baseURL, routedUrl, nodeParameters: { endpoint: '1234567890' } },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+		});
+
+		describe('when the routed url is absolute', () => {
+			test("does not block a declarative node when mode is 'none' and the node declares no base URL", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ baseURL: null, routedUrl: '=https://reader.example.com/{{$parameter["endpoint"]}}' },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
+
+			test("does not widen the 'domains' allowlist with a caller-supplied base URL override", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com',
+					},
+					{
+						baseURL: '={{ $parameter.options?.baseURL || "https://api.example.com" }}',
+						routedUrl: 'https://api.example.com/path',
+						nodeParameters: { options: { baseURL: 'http://override.example.com' } },
+					},
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
+			});
+
+			test("does not block a declarative node when mode is 'none' and the host matches the base URL", async () => {
+				const result = await runWithCredential(
+					{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+					{ routedUrl: 'https://api.example.com/other' },
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBeUndefined();
+			});
 		});
 
 		describe('when requestDefaults.baseURL reads an optional override parameter', () => {
