@@ -95,6 +95,7 @@ function handleClick(event: MouseEvent) {
 }
 
 .label {
+	min-width: 0;
 	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
@@ -120,11 +121,7 @@ function handleClick(event: MouseEvent) {
 
 .shimmer {
 	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(
-		in srgb,
-		var(--text-color--subtler) 30%,
-		var(--background--subtle) 70%
-	);
+	--animation--shimmer--background: color-mix(in oklch, var(--text-color), transparent 10%);
 	--animation--shimmer--foreground: var(--text-color--subtler);
 	@include motion.shimmer;
 }

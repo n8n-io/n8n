@@ -428,6 +428,8 @@ function viewPreviewTrace() {
 				:agent-id="agentId"
 				:thread-id="threadId"
 				:increase-budget="canUpdate ? onIncreaseBudget : undefined"
+				:agent-name="thread?.agentName"
+				:personalisation="localConfig?.personalisation"
 				@loaded="onPanelLoaded"
 			/>
 			<div v-else :class="$style.newSessionEmpty">
