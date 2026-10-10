@@ -122,6 +122,14 @@ describe('systemTaskProvisionRequest', () => {
 		expect(request({ concurrencyLimit }).concurrencyLimit).toBe(concurrencyLimit);
 	});
 
+	it('leaves the timeout to the instance setting when the task declares none', () => {
+		expect(request()).toHaveProperty('timeoutSeconds', undefined);
+	});
+
+	it("honours a task's own timeout", () => {
+		expect(request({ timeoutSeconds: 600 }).timeoutSeconds).toBe(600);
+	});
+
 	it("honours a task's own policy, grace and attempts", () => {
 		expect(
 			request({
