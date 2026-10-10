@@ -29,18 +29,15 @@ const props = withDefaults(
 		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
 		showLangsmithExport: boolean;
 		langsmithExportLoading: boolean;
-		isPreviewOpen?: boolean;
-		showPreview?: boolean;
 		isSidePanelVisible?: boolean;
 	}>(),
-	{ isPreviewOpen: false, showPreview: false, isSidePanelVisible: false },
+	{ isSidePanelVisible: false },
 );
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
-	'toggle-preview': [];
 	'toggle-side-panel': [];
 	close: [];
 }>();
