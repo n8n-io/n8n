@@ -9,7 +9,6 @@ permissions:
 jobs:
   prepare-docker:
     uses: ./.github/workflows/prepare-docker-reusable.yml
-    secrets: inherit
 
   image-efficiency:
     name: Image Efficiency
@@ -59,7 +58,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: image-efficiency
+          name: image-efficiency-${{ github.run_attempt }}
           path: |
             packages/quality/efficiency/test-results/
             packages/quality/efficiency/test-results.json

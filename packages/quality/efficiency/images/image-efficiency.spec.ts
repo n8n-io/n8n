@@ -76,14 +76,14 @@ test(
 			testInfo,
 			`docker-image-layer-size-${image.name}`,
 			summary.sizeBytes / 1024 / 1024,
-			'MB',
+			'MiB',
 			dimensions,
 		);
 		await attachMetric(
 			testInfo,
 			`docker-image-wasted-size-${image.name}`,
 			summary.wastedBytes / 1024 / 1024,
-			'MB',
+			'MiB',
 			dimensions,
 		);
 		await attachMetric(

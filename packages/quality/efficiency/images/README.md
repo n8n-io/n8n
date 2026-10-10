@@ -43,7 +43,7 @@ These projects use the existing artifact and metrics reporters. They do not star
 4. Compare results for the same image type, platform, and Dive version.
    The metrics reporter sends measurements when the `QA_METRICS_WEBHOOK_*` variables are configured.
 
-   - `docker-image-layer-size-<image>` measures uncompressed layer content in MiB. The existing reporter uses the unit label `MB`.
+   - `docker-image-layer-size-<image>` measures uncompressed layer content in MiB.
    - `docker-image-wasted-size-<image>` measures Dive's estimated wasted content in MiB.
    - `docker-image-efficiency-<image>` records Dive's efficiency score as a percentage.
    - `docker-image-layer-count-<image>` records the number of filesystem layers.

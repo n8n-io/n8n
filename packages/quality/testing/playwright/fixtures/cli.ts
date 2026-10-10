@@ -21,12 +21,15 @@ export const test = base.extend<{ cli: Cli }>({
 			const { title = command, expectedExitCode = 0, ...processOptions } = options;
 			return await test.step(scrubSecretsInText(title), async (step) => {
 				const { $ } = await import('zx');
-				const process = $({ ...processOptions, verbose: false, quiet: true, nothrow: true })`${[
-					command,
-					...args,
-				]}`;
-				processes.add(process);
-				const result = await process.finally(() => processes.delete(process));
+				const child = $({
+					...processOptions,
+					env: { ...process.env, ...processOptions.env },
+					verbose: false,
+					quiet: true,
+					nothrow: true,
+				})`${[command, ...args]}`;
+				processes.add(child);
+				const result = await child.finally(() => processes.delete(child));
 
 				await step.attach('command', {
 					body: scrubSecretsInText(
