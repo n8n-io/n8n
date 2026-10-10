@@ -23,6 +23,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { extractPlaceholderLabels, isPlaceholderValue } from '@n8n/utils/placeholder';
 import {
+	DATA_TABLE_NODE_TYPES,
 	isResourceLocatorValue,
 	type INode,
 	type INodeListSearchItems,
@@ -60,7 +61,6 @@ import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/consta
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
-import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
 import { useRouter } from 'vue-router';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
@@ -200,7 +200,14 @@ const selectedMode = computed(() => {
 
 const isListMode = computed(() => selectedMode.value === 'list');
 
-const isDataTableNode = computed(() => !!props.node && DATA_TABLE_NODES.includes(props.node.type));
+// Same rule the backend uses to find data table references: the node types that
+// carry a `dataTableId` resource locator (Data table and Evaluation nodes).
+const isDataTableParameter = computed(
+	() =>
+		!!props.node &&
+		DATA_TABLE_NODE_TYPES.includes(props.node.type) &&
+		props.parameter.name === 'dataTableId',
+);
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -283,7 +290,10 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 const urlValue = computedAsync(async () => {
 	if (isValueEmpty.value) return null;
 	if (isListMode.value && typeof props.modelValue === 'object') {
-		return props.modelValue?.cachedResultUrl ?? null;
+		const cachedResultUrl = props.modelValue?.cachedResultUrl;
+		// A data table value set outside the dropdown (import, template, AI builder)
+		// has no cached url, so fall through to the lookup by id below.
+		if (cachedResultUrl || !isDataTableParameter.value) return cachedResultUrl ?? null;
 	}
 
 	if (selectedMode.value === 'url') {
@@ -300,15 +310,24 @@ const urlValue = computedAsync(async () => {
 		}
 	}
 
-	// Data table nodes have no url template, so resolve a link from the id by
+	// Data table parameters have no url template, so resolve a link from the id by
 	// looking the table up — only link it when it actually exists for the user.
-	if (isDataTableNode.value && selectedMode.value === 'id') {
+	if (isDataTableParameter.value && (selectedMode.value === 'id' || isListMode.value)) {
 		// Use the resolved value for expressions, but only if it's a concrete id —
 		// an unresolved template (still containing `{{ }}`) can't identify a table.
-		const raw = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		// In list mode `valueToDisplay` holds the table name, so read the raw value.
+		const raw = props.isValueExpression
+			? props.expressionComputedValue
+			: isListMode.value && typeof props.modelValue === 'object'
+				? props.modelValue?.value
+				: valueToDisplay.value;
 		const id = typeof raw === 'string' ? raw.trim() : '';
 		if (!id || id.includes('{{') || id.includes('}}')) return null;
-		const table = await dataTableStore.fetchDataTableById(id);
+		// Reuse a table the store already holds before asking the API. A failed
+		// request only means there is no link to show.
+		const table =
+			dataTableStore.dataTables.find((dataTable) => dataTable.id === id) ??
+			(await dataTableStore.fetchDataTableById(id).catch(() => null));
 		// Resolve via the router so the link honours the configured base path (N8N_PATH).
 		return table
 			? router.resolve({
