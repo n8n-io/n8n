@@ -134,12 +134,21 @@ jobs:
   build-app:
     name: Build application for Docker images
     needs: determine-build-context
-    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-8x16' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.namespace_poc && 'namespace-profile-n8n-docker-poc' || 'blacksmith-8vcpu-ubuntu-2204' }}
     timeout-minutes: 35
     permissions:
       contents: read
     steps:
+      - name: Checkout code with Namespace
+        if: inputs.namespace_poc
+        uses: namespacelabs/nscloud-checkout-action@66f2dc6f6c42a8ac6c4e53473c4840006822831e # v9
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Checkout code
+        if: ${{ !inputs.namespace_poc }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
@@ -149,6 +158,7 @@ jobs:
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
+          namespace-poc: ${{ inputs.namespace_poc && 'true' || 'false' }}
           # The image compiles native bindings against this Node version later.
           node-version: ${{ env.NODE_VERSION }}
           build-command: pnpm build:n8n
@@ -168,7 +178,7 @@ jobs:
   build-and-push-docker:
     name: Build and Push Docker Image (${{ matrix.platform }})
     needs: [determine-build-context, build-app]
-    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-8x16' || matrix.runner }}
+    runs-on: ${{ inputs.namespace_poc && 'namespace-profile-n8n-docker-poc' || matrix.runner }}
     timeout-minutes: 35
     permissions:
       actions: read
@@ -191,7 +201,16 @@ jobs:
       runners_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_date_primary_tag }}
       runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
     steps:
+      - name: Checkout code with Namespace
+        if: inputs.namespace_poc
+        uses: namespacelabs/nscloud-checkout-action@66f2dc6f6c42a8ac6c4e53473c4840006822831e # v9
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Checkout code
+        if: ${{ !inputs.namespace_poc }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}

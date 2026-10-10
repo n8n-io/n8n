@@ -1,11 +1,16 @@
 # This action works transparently on both Blacksmith and GitHub-hosted runners.
 # Blacksmith runners benefit from transparent caching and optional Docker layer caching.
 # GitHub-hosted runners use standard GitHub Actions caching.
+# The Namespace POC uses preloaded tools and native pnpm and Turbo caches.
 
 name: 'Node.js Build Setup'
 description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply chain protection, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
 
 inputs:
+  namespace-poc:
+    description: 'Use the preloaded Namespace POC toolchain and native caches.'
+    required: false
+    default: 'false'
   node-version:
     description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
     required: false
@@ -34,6 +39,14 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Activate Namespace toolchain
+      if: inputs.namespace-poc == 'true'
+      shell: bash
+      run: |
+        echo /opt/n8n-ci/node/bin >> "$GITHUB_PATH"
+        echo /opt/n8n-ci/pnpm >> "$GITHUB_PATH"
+        echo "PNPM_HOME=$HOME/setup-pnpm" >> "$GITHUB_ENV"
+
     # An empty key makes the builder use a local, uncached one. The job stays
     # green and loses the cache. Fail here instead.
     - name: Verify Docker cache key is set
@@ -51,7 +64,7 @@ runs:
 
     # Windows cannot activate a POSIX home path from the restored cache.
     - name: Restore pnpm executable
-      if: runner.os != 'Windows'
+      if: runner.os != 'Windows' && inputs.namespace-poc != 'true'
       id: cache-pnpm-exe
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -60,7 +73,7 @@ runs:
 
     - name: Setup pnpm
       id: setup-pnpm
-      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: steps.cache-pnpm-exe.outputs.cache-hit != 'true' && inputs.namespace-poc != 'true'
       continue-on-error: true
       uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
       with:
@@ -98,7 +111,7 @@ runs:
 
     # Save before later job failures can prevent cache creation.
     - name: Save pnpm executable
-      if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true'
+      if: runner.os != 'Windows' && steps.cache-pnpm-exe.outputs.cache-hit != 'true' && inputs.namespace-poc != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/setup-pnpm
@@ -117,13 +130,14 @@ runs:
     # quietly takes over. Caching the parent version dir captures the marker
     # alongside the toolchain. Key bumped to v2 to invalidate stale entries.
     - name: Restore Node.js Toolcache
-      if: runner.os == 'Linux' && runner.arch == 'X64'
+      if: runner.os == 'Linux' && runner.arch == 'X64' && inputs.namespace-poc != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: /opt/hostedtoolcache/node/${{ inputs.node-version }}
         key: node-toolcache-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.node-version }}
 
     - name: Setup Node.js
+      if: inputs.namespace-poc != 'true'
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
@@ -169,8 +183,15 @@ runs:
         echo "path=$PNPM_CACHE_PATH" >> "$GITHUB_OUTPUT"
         echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
 
+    - name: Mount Namespace pnpm cache
+      if: inputs.namespace-poc == 'true' && inputs.install-command != ''
+      uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
+      with:
+        cache: pnpm
+        path: ${{ steps.pnpm-metadata-cache.outputs.path }}
+
     - name: Restore pnpm metadata cache
-      if: ${{ inputs.install-command != '' }}
+      if: inputs.install-command != '' && inputs.namespace-poc != 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.pnpm-metadata-cache.outputs.path }}
@@ -190,6 +211,7 @@ runs:
     # radius across jobs, retry covers the first-job-per-key case where the
     # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
+      if: inputs.namespace-poc != 'true'
       id: cache-safe-chain
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -201,7 +223,7 @@ runs:
     # script also runs `setup-ci`, so on a cache miss this both downloads AND
     # activates; the Activate step below then re-runs `setup-ci` idempotently.
     - name: Download Aikido SafeChain
-      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
+      if: steps.cache-safe-chain.outputs.cache-hit != 'true' && inputs.namespace-poc != 'true'
       run: |
         VERSION="1.5.20"
         EXPECTED_SHA256="0ad25efe15d1fa56105157a454d647223e78eb0c53d1f85e3d10afcd722e7bfd"
@@ -360,10 +382,16 @@ runs:
     # `fetch failed`, turning the whole job red. Skip it so the one Windows
     # build job stays green; Linux/Blacksmith jobs keep remote caching.
     - name: Configure Turborepo Cache
-      if: steps.turbo-server.outputs.running != 'true' && runner.os != 'Windows'
+      if: steps.turbo-server.outputs.running != 'true' && runner.os != 'Windows' && inputs.namespace-poc != 'true'
       uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7 # v2.5.1
       with:
         server-port: 0
+
+    - name: Configure Namespace Turborepo cache
+      if: inputs.namespace-poc == 'true'
+      uses: namespace-actions/setup-turbocache@a94b84c111f2cc781a4a83c4d07a99f2c63e33d6 # v0
+      with:
+        team: n8n-docker-poc
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
       if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
@@ -372,7 +400,7 @@ runs:
         cache-key: ${{ inputs.docker-cache-key }}
 
     - name: Setup Docker Builder (GitHub fallback)
-      if: ${{ inputs.enable-docker-cache == 'true' && !contains(runner.name, 'blacksmith') }}
+      if: inputs.enable-docker-cache == 'true' && !contains(runner.name, 'blacksmith') && inputs.namespace-poc != 'true'
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
     - name: Build Project

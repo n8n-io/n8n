@@ -648,6 +648,8 @@ Composite actions in `.github/actions/`:
 
 ### setup-nodejs
 
+For the opt-in Namespace Docker trial, see [Configure the Namespace Docker trial](namespace/README.md).
+
 ```yaml
 inputs:
   node-version:        # default: '26.5.1'

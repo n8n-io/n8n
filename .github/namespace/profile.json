@@ -1,0 +1,20 @@
+{
+	"tag": "n8n-docker-poc",
+	"description": "n8n Docker trial with preloaded tools and Namespace caches",
+	"os": "ubuntu-22.04",
+	"instance_shape": {
+		"virtual_cpu": 8,
+		"memory_megabytes": 16384,
+		"machine_arch": "amd64",
+		"os": "linux"
+	},
+	"builder_mode": "USE_REMOTE_BUILDER",
+	"cache_volume_settings": [
+		{
+			"volume_tag": "n8n-docker-poc",
+			"volume_size_gb": 20,
+			"bundled_git_mirror": true,
+			"bundled_runner_actions_cache": true
+		}
+	]
+}
