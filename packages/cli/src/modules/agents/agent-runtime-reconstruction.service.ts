@@ -37,6 +37,8 @@ import { nanoid } from 'nanoid';
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -287,6 +289,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -429,6 +432,21 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
+	private async areCredentialsAvailableToAgents(
+		credentialIds: string[],
+		projectId: string,
+		user: User,
+	): Promise<boolean> {
+		if (!isCredSharingEnabled() || credentialIds.length === 0) return true;
+
+		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+			projectId,
+			excludePersonalRoute: true,
+		});
+		const usableIds = new Set(usable.map((credential) => credential.id));
+		return credentialIds.every((id) => usableIds.has(id));
+	}
+
 	private async checkToolAccess(
 		ref: Exclude<AgentJsonToolConfig, { type: 'custom' }>,
 		projectId: string,
@@ -457,6 +475,9 @@ export class AgentRuntimeReconstructionService {
 			);
 			if (credentials.some((credential) => credential === null)) {
 				return denied('The user cannot read a credential the tool uses');
+			}
+			if (!(await this.areCredentialsAvailableToAgents(credentialIds, projectId, user))) {
+				return denied('The tool uses a personal credential that agents cannot use yet');
 			}
 			return { credentialIds, workflowIds: [] };
 		}
@@ -495,6 +516,9 @@ export class AgentRuntimeReconstructionService {
 			),
 		);
 		if (credentials.some((credential) => credential === null)) return false;
+		if (!(await this.areCredentialsAvailableToAgents(snapshot.credentialIds, projectId, user))) {
+			return false;
+		}
 
 		const workflows = await Promise.all(
 			snapshot.workflowIds.map(

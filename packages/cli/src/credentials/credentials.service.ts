@@ -628,10 +628,14 @@ export class CredentialsService {
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
 	 * for workflows that have not been saved yet.
+	 * @param options.excludePersonalRoute Skip the personal route. Agents set
+	 * this because they do not support it yet.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
-		options: { workflowId: string } | { projectId: string },
+		options: ({ workflowId: string } | { projectId: string }) & {
+			excludePersonalRoute?: boolean;
+		},
 	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
@@ -641,16 +645,22 @@ export class CredentialsService {
 			'credential:read',
 		]);
 
+		const projectRouteOnly = isCredSharingEnabled() && options.excludePersonalRoute === true;
+
 		// get all credentials the workflow or project has access to
 		const credentialIdsForWorkflow = new Set(
-			'workflowId' in options
-				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
-				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
+			(projectRouteOnly
+				? await this.findCredentialsOfWorkflowOrProject(options)
+				: 'workflowId' in options
+					? await this.findAllCredentialIdsForWorkflow(options.workflowId)
+					: await this.findAllCredentialIdsForProject(options.projectId)
+			).map((c) => c.id),
 		);
 
-		const personalRouteCredentialIds = isCredSharingEnabled()
-			? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
-			: new Set<string>();
+		const personalRouteCredentialIds =
+			isCredSharingEnabled() && !options.excludePersonalRoute
+				? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
+				: new Set<string>();
 
 		// the union of all three is every credential the user can use in this
 		// workflow or project
@@ -755,6 +765,14 @@ export class CredentialsService {
 		// Otherwise the workflow can only use credentials from projects it's part
 		// of.
 		return await this.credentialsRepository.findAllCredentialsForWorkflow(workflowId);
+	}
+
+	private async findCredentialsOfWorkflowOrProject(
+		options: { workflowId: string } | { projectId: string },
+	): Promise<CredentialsEntity[]> {
+		return 'workflowId' in options
+			? await this.credentialsRepository.findAllCredentialsForWorkflow(options.workflowId)
+			: await this.credentialsRepository.findAllCredentialsForProject(options.projectId);
 	}
 
 	async findAllCredentialIdsForProject(projectId: string): Promise<CredentialsEntity[]> {

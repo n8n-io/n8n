@@ -299,6 +299,7 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(result).toEqual([{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
+			excludePersonalRoute: true,
 		});
 		// Credential fields are mapped for the provider (anthropic: apiKey + url→baseURL).
 		expect(listModelsForProvider).toHaveBeenCalledWith(
