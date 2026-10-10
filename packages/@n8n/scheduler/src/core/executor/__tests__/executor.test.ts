@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
-import { LeaseLostError } from '../../errors';
+import { LeaseLostError, TaskTimeoutError } from '../../errors';
 import type { ClaimedTask } from '../../types';
 import { backoff } from '../backoff';
 import { Executor } from '../executor';
@@ -8,7 +8,7 @@ import type { ExecutorHooks } from '../executor';
 import type { ExecutorOptions } from '../options';
 import type { PrecisionTimer } from '../precision-timer';
 import type { ExecutorTaskStore } from '../store';
-import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from '../task-handler';
+import type { DispatchReporter, TaskHandler, TaskHandlerRegistry, TaskRun } from '../task-handler';
 import type { ExecutorTracing, FireResult } from '../tracing';
 
 const HOST = 'main-abc';
@@ -54,7 +54,7 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onLeaseLost: vi.fn(),
 		onLeaseRenewal: vi.fn(),
 		onLeaseRenewalError: vi.fn(),
-		onLongRunningTask: vi.fn(),
+		onTaskTimeout: vi.fn(),
 	} satisfies ExecutorHooks;
 	// A see-through tracing hook that records its calls and just runs the fire.
 	// The executor's only obligation is to route every fire through this hook;
@@ -250,7 +250,11 @@ describe('Executor.fire', () => {
 		const result = await executor.fire(HOST, task);
 
 		expect(result).toEqual({ outcome: 'completed' });
-		expect(handler.execute).toHaveBeenCalledWith(task, expect.any(Object), expect.any(AbortSignal));
+		expect(handler.execute).toHaveBeenCalledWith(
+			task,
+			expect.any(Object),
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 		expect(store.completeTask).toHaveBeenCalledWith({
 			host: HOST,
 			id: task.id,
@@ -805,20 +809,22 @@ describe('Executor.fire lease renewal', () => {
 		let finish!: () => void;
 		let signal!: AbortSignal;
 		const handler: TaskHandler = {
-			execute: vi.fn(async (_task: ClaimedTask, report: DispatchReporter, s: AbortSignal) => {
-				signal = s;
-				if (dispatchFirst) {
-					report.dispatched();
-				}
-				await new Promise<void>((resolve) => {
-					finish = resolve;
-					s.addEventListener('abort', () => resolve());
-				});
-				if (s.aborted) {
-					throw s.reason;
-				}
-				return report.notDispatched();
-			}),
+			execute: vi.fn(
+				async (_task: ClaimedTask, report: DispatchReporter, { signal: s }: TaskRun) => {
+					signal = s;
+					if (dispatchFirst) {
+						report.dispatched();
+					}
+					await new Promise<void>((resolve) => {
+						finish = resolve;
+						s.addEventListener('abort', () => resolve());
+					});
+					if (s.aborted) {
+						throw s.reason;
+					}
+					return report.notDispatched();
+				},
+			),
 		};
 		return { handler, finish: () => finish(), signal: () => signal };
 	};
@@ -994,52 +1000,146 @@ describe('Executor.fire lease renewal', () => {
 		},
 	);
 
-	it('reports a run still pending after sixty leases, and not one that settled earlier', async () => {
-		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
-		const stuck = longRunning();
-		const quick = longRunning();
-		registry.resolve.mockReturnValueOnce(quick.handler).mockReturnValueOnce(stuck.handler);
-		store.beginDispatch.mockResolvedValue(1);
-		store.renewLease.mockResolvedValue(true);
-		store.completeTask.mockResolvedValue(1);
-		const quickTask = claimedTask({ id: 'quick' });
-		const stuckTask = claimedTask({ id: 'stuck' });
+	describe('timeout', () => {
+		const TIMEOUT_SECONDS = 4 * LEASE_SECONDS;
+		const TIMEOUT_MS = TIMEOUT_SECONDS * 1_000;
 
-		const quickFiring = executor.fire(HOST, quickTask);
-		await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
-		quick.finish();
-		await quickFiring;
-		const stuckFiring = executor.fire(HOST, stuckTask);
-		await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000 - 1);
-		expect(hooks.onLongRunningTask).not.toHaveBeenCalled();
+		it('aborts a run that did not dispatch with a TaskTimeoutError, stops renewing, and counts a failed attempt', async () => {
+			const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			const { handler, signal } = longRunning();
+			registry.resolve.mockReturnValue(handler);
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockResolvedValue(true);
+			store.rescheduleTask.mockResolvedValue(1);
+			const task = claimedTask({ maxAttempts: 3, timeoutSeconds: TIMEOUT_SECONDS });
 
-		await vi.advanceTimersByTimeAsync(1);
-		expect(hooks.onLongRunningTask).toHaveBeenCalledExactlyOnceWith(stuckTask, 60 * LEASE_SECONDS);
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(TIMEOUT_MS - 1);
+			expect(signal().aborted).toBe(false);
+			expect(hooks.onTaskTimeout).not.toHaveBeenCalled();
 
-		stuck.finish();
-		await stuckFiring;
-	});
+			await vi.advanceTimersByTimeAsync(1);
+			expect(signal().reason).toBeInstanceOf(TaskTimeoutError);
+			expect(signal().reason).toMatchObject({ timeoutSeconds: TIMEOUT_SECONDS });
+			expect(hooks.onTaskTimeout).toHaveBeenCalledExactlyOnceWith(task);
+			await expect(firing).resolves.toMatchObject({ outcome: 'rescheduled' });
+			expect(store.rescheduleTask).toHaveBeenCalledExactlyOnceWith(
+				{ host: HOST, id: task.id, claimedEpoch: task.leaseEpoch },
+				backoff(1),
+				'The run of this occurrence reached its timeout',
+			);
+			const renewals = store.renewLease.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(2 * LEASE_SECONDS * 1_000);
+			expect(store.renewLease).toHaveBeenCalledTimes(renewals);
+		});
 
-	it('reports the time actually waited when sixty leases exceed the timer limit', async () => {
-		const leaseSeconds = 24 * 60 * 60;
-		const { store, registry, hooks, executor } = setup({ leaseSeconds });
-		const { handler, finish } = longRunning();
-		registry.resolve.mockReturnValue(handler);
-		store.beginDispatch.mockResolvedValue(1);
-		store.renewLease.mockResolvedValue(true);
-		store.completeTask.mockResolvedValue(1);
-		const task = claimedTask();
-		const maxTimeoutMs = 2 ** 31 - 1;
+		it('hands the handler the time left before its signal aborts, counted from before the dispatch write', async () => {
+			const { store, registry, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			const { handler, signal } = longRunning();
+			registry.resolve.mockReturnValue(handler);
+			const DISPATCH_DELAY_MS = 2_000;
+			store.beginDispatch.mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve(1), DISPATCH_DELAY_MS)),
+			);
+			store.renewLease.mockResolvedValue(true);
+			store.rescheduleTask.mockResolvedValue(1);
+			const task = claimedTask({ maxAttempts: 3, timeoutSeconds: TIMEOUT_SECONDS });
 
-		const firing = executor.fire(HOST, task);
-		await vi.advanceTimersByTimeAsync(1_000);
-		expect(hooks.onLongRunningTask).not.toHaveBeenCalled();
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(DISPATCH_DELAY_MS);
+			const run = vi.mocked(handler.execute).mock.calls[0][2];
+			expect(run.remainingMs()).toBe(TIMEOUT_MS - DISPATCH_DELAY_MS);
 
-		await vi.advanceTimersByTimeAsync(maxTimeoutMs - 1_000);
-		expect(hooks.onLongRunningTask).toHaveBeenCalledExactlyOnceWith(task, maxTimeoutMs / 1_000);
+			await vi.advanceTimersByTimeAsync(run.remainingMs() - 1);
+			expect(signal().aborted).toBe(false);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(signal().reason).toBeInstanceOf(TaskTimeoutError);
+			expect(run.remainingMs()).toBe(0);
+			await firing;
+		});
 
-		finish();
-		await firing;
+		it('stops renewing a handler that ignores its signal, so its lease expires', async () => {
+			const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			let signal!: AbortSignal;
+			registry.resolve.mockReturnValue({
+				execute: vi.fn(async (_task: ClaimedTask, _report: DispatchReporter, run: TaskRun) => {
+					signal = run.signal;
+					return await new Promise<never>(() => {});
+				}),
+			});
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockResolvedValue(true);
+			const task = claimedTask({ timeoutSeconds: TIMEOUT_SECONDS });
+
+			void executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+			const renewals = store.renewLease.mock.calls.length;
+			expect(renewals).toBeGreaterThan(0);
+			expect(signal.reason).toBeInstanceOf(TaskTimeoutError);
+
+			await vi.advanceTimersByTimeAsync(2 * LEASE_SECONDS * 1_000);
+			expect(store.renewLease).toHaveBeenCalledTimes(renewals);
+			expect(hooks.onLeaseRenewal).not.toHaveBeenCalledWith(task, 'expired');
+			expect(store.rescheduleTask).not.toHaveBeenCalled();
+			expect(store.completeTask).not.toHaveBeenCalled();
+		});
+
+		it('completes a dispatched run that reaches its timeout instead of retrying it', async () => {
+			const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			const { handler, signal } = longRunning({ dispatchFirst: true });
+			registry.resolve.mockReturnValue(handler);
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockResolvedValue(true);
+			store.completeTask.mockResolvedValue(1);
+			const task = claimedTask({ maxAttempts: 3, timeoutSeconds: TIMEOUT_SECONDS });
+
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+			expect(signal().reason).toBeInstanceOf(TaskTimeoutError);
+			await expect(firing).resolves.toEqual({ outcome: 'completed' });
+			expect(store.rescheduleTask).not.toHaveBeenCalled();
+			expect(hooks.onFire).toHaveBeenCalledWith(task.taskType, 'success');
+		});
+
+		it('leaves a run that settles before its timeout alone', async () => {
+			const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			const { handler, finish, signal } = longRunning();
+			registry.resolve.mockReturnValue(handler);
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockResolvedValue(true);
+			store.completeTask.mockResolvedValue(1);
+			const task = claimedTask({ timeoutSeconds: TIMEOUT_SECONDS });
+
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(TIMEOUT_MS - 1);
+			finish();
+			await expect(firing).resolves.toEqual({ outcome: 'completed' });
+			await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+			expect(signal().aborted).toBe(false);
+			expect(hooks.onTaskTimeout).not.toHaveBeenCalled();
+		});
+
+		it('does not report a timeout for a run already aborted by a lost claim', async () => {
+			const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			let signal!: AbortSignal;
+			registry.resolve.mockReturnValue({
+				execute: vi.fn(async (_task: ClaimedTask, _report: DispatchReporter, run: TaskRun) => {
+					signal = run.signal;
+					return await new Promise<never>(() => {});
+				}),
+			});
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockResolvedValue(false);
+			const task = claimedTask({ timeoutSeconds: TIMEOUT_SECONDS });
+
+			void executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+			expect(signal.reason).toBeInstanceOf(LeaseLostError);
+			expect(hooks.onTaskTimeout).not.toHaveBeenCalled();
+		});
 	});
 
 	it('reports a failed renewal without aborting the handler', async () => {

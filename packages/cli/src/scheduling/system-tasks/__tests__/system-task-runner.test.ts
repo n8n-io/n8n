@@ -791,6 +791,7 @@ describe('SystemTaskRunner', () => {
 					mock<ClaimedTask>(),
 					createDispatchReporter(vi.fn()),
 					new AbortController().signal,
+					Number.POSITIVE_INFINITY,
 				),
 			).rejects.toThrow(error);
 
@@ -820,6 +821,7 @@ describe('SystemTaskRunner', () => {
 				mock<ClaimedTask>(),
 				createDispatchReporter(vi.fn()),
 				new AbortController().signal,
+				Number.POSITIVE_INFINITY,
 			);
 			expect(runSignal?.aborted).toBe(false);
 
@@ -1343,6 +1345,7 @@ describe('SystemTaskRunner', () => {
 				mock<ClaimedTask>(),
 				createDispatchReporter(vi.fn()),
 				new AbortController().signal,
+				Number.POSITIVE_INFINITY,
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {

@@ -1,7 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
-import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
+import type {
+	ClaimedTask,
+	DispatchDecision,
+	DispatchReporter,
+	TaskHandler,
+	TaskRun,
+} from '@n8n/scheduler';
 import type { Tracing } from 'n8n-core';
 
 import { observeSystemTaskRun } from './system-task-run-observer';
@@ -26,7 +32,7 @@ export class SystemTaskHandler implements TaskHandler {
 	async execute(
 		task: ClaimedTask,
 		report: DispatchReporter,
-		leaseSignal: AbortSignal,
+		{ signal: leaseSignal }: TaskRun,
 	): Promise<DispatchDecision> {
 		const outcome = await observeSystemTaskRun(
 			this.eventService,

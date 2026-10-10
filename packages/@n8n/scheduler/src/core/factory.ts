@@ -326,11 +326,12 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					error: described(error),
 				});
 			},
-			onLongRunningTask: (task, runningSeconds) => {
-				emit('warn', 'Scheduler task is still running after many leases; it may be stuck', {
+			onTaskTimeout: (task) => {
+				recordMetric(() => metrics.recordTaskTimeout(task.taskType));
+				emit('warn', 'Scheduler task run reached its timeout', {
 					taskId: task.id,
 					taskType: task.taskType,
-					runningSeconds,
+					timeoutSeconds: task.timeoutSeconds,
 				});
 			},
 			onDispatch: (taskType, lagSeconds) => {

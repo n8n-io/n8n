@@ -1,5 +1,5 @@
 // These are constants, not environment variables, to keep this mechanism under
-// control in its first version. A per-job timeout may come later.
+// control in its first version.
 
 /**
  * Renewals per lease: two may fail in a row before the lease expires.
@@ -13,10 +13,3 @@ export const RENEWALS_PER_LEASE = 3;
  * renewals, and one this short or shorter expires before its first renewal.
  */
 export const MIN_RENEWAL_INTERVAL_MS = 5_000;
-
-/**
- * A run still pending after this many leases is reported as possibly stuck. Some
- * system tasks run for 15 to 30 minutes, so with the default 60s lease this warns
- * after one hour.
- */
-export const LONG_RUN_THRESHOLD_IN_LEASES = 60;
