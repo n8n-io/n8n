@@ -17,8 +17,6 @@ import { HttpBasicAuth } from 'n8n-nodes-base/credentials/HttpBasicAuth.credenti
 import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.credentials';
 import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
-import { Function as FunctionNode } from 'n8n-nodes-base/nodes/Function/Function.node';
-import { FunctionItem } from 'n8n-nodes-base/nodes/FunctionItem/FunctionItem.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
@@ -119,7 +117,16 @@ export function minimalNodeType(
 	};
 }
 
-export function buildDefaultNodes(): INodeTypeData {
+// Test-only definitions keep deprecation coverage after 3.x removes the legacy nodes.
+export function createDeprecatedNodeType(name: string): INodeType {
+	const { type } = minimalNodeType(name, [
+		{ displayName: 'Code', name: 'functionCode', type: 'string', default: '' },
+	]);
+	type.description.deprecated = true;
+	return type as INodeType;
+}
+
+function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
 		'n8n-nodes-base.manualTrigger': {
@@ -145,11 +152,11 @@ export function buildDefaultNodes(): INodeTypeData {
 			sourcePath: '',
 		},
 		'n8n-nodes-base.function': {
-			type: new FunctionNode(),
+			type: createDeprecatedNodeType('n8n-nodes-base.function'),
 			sourcePath: '',
 		},
 		'n8n-nodes-base.functionItem': {
-			type: new FunctionItem(),
+			type: createDeprecatedNodeType('n8n-nodes-base.functionItem'),
 			sourcePath: '',
 		},
 		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.

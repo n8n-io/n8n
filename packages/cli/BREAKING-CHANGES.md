@@ -2,6 +2,17 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# Unreleased
+
+## n8n Packages (preview)
+
+Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
+The `usedByWorkflows` field is no longer supported.
+Re-export packages after upgrading.
+Regenerate existing Promotions snapshots.
+Package import errors also use `usedBy` for resource consumers.
+Update API clients to read each consumer's `kind` and `id`.
+
 # 3.0.0
 
 ### What changed?
@@ -67,6 +78,7 @@ The `$evaluateExpression()` helper was removed from the Code node. A Code node t
 ### When is action necessary?
 
 If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
+
 # 2.0.0
 
 ### What changed?
