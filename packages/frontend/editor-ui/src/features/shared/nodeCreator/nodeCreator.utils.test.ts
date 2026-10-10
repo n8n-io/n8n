@@ -1183,6 +1183,27 @@ describe('NodeCreator - utils', () => {
 
 			expect(searchNodes('container', [node, command]).map((item) => item.key)).toEqual(['group']);
 		});
+
+		it('keeps matching actions with the same node key', () => {
+			const sendMessage = mockActionCreateElement(undefined, {
+				actionKey: 'sendMessage',
+				displayName: 'Send a message',
+			});
+			const getMessages = mockActionCreateElement(undefined, {
+				actionKey: 'getMessages',
+				displayName: 'Get messages',
+			});
+			sendMessage.key = 'slack';
+			getMessages.key = 'slack';
+
+			const result = searchNodes('message', [sendMessage, getMessages]);
+			const actionKeys = result
+				.filter((item) => item.type === 'action')
+				.map((item) => item.properties.actionKey);
+
+			expect(actionKeys).toHaveLength(2);
+			expect(actionKeys).toEqual(expect.arrayContaining(['sendMessage', 'getMessages']));
+		});
 	});
 
 	describe('searchNodes - n8n Connect boost', () => {
