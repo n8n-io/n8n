@@ -14,6 +14,7 @@ Commands in this table run from the repository root. Container-backed tests need
 | Test PostgreSQL, queue mode, multi-main, or process lifecycle | `<mode>:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=postgres:infrastructure` | [Infrastructure tests](tests/infrastructure/) |
 | Check accessibility within a product journey | E2E project with the `a11y` fixture | `pnpm --filter n8n-playwright test:local` | [Accessibility checks](docs/ACCESSIBILITY.md) |
 | Measure idle memory, retention, or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
+| Measure Docker image size and layer waste | `@n8n/efficiency` image projects | `pnpm --filter @n8n/efficiency test:images` | [Image efficiency](../../efficiency/images/README.md) |
 | Measure infrastructure throughput and resource use | `benchmarking:infrastructure` | `pnpm --filter n8n-playwright test:benchmark` | [Infrastructure benchmarks](tests/infrastructure/benchmarks/README.md) |
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
 | Test workflow execution and schemas | `cli-workflows` | `pnpm --filter n8n-playwright test:workflows` | [Workflow tests](tests/cli-workflows/README.md) |
@@ -21,7 +22,44 @@ Commands in this table run from the repository root. Container-backed tests need
 | Check browser-backed harness contracts | Harness Vitest config | `pnpm --filter n8n-playwright test:harness` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
 | Run evaluation scenarios | `eval` | `pnpm --filter n8n-playwright test:evals` | [Evaluation tests](tests/evals/) |
 
-The Playwright package owns the runner and its specs. Standalone measurement tools live in [efficiency](../../efficiency/README.md). Read [AGENTS.md](AGENTS.md) before you change a test. The examples below run from this package unless noted.
+The Playwright package owns shared test tooling and product suites. Efficiency suites can reuse its exports from the [efficiency workspace](../../efficiency/README.md). Read [AGENTS.md](AGENTS.md) before you change a test. The examples below run from this package unless noted.
+
+## Shared setup exports
+
+Other private workspaces can declare `n8n-playwright` and the catalog-pinned `@playwright/test` as development dependencies.
+
+| Export | Provides |
+| --- | --- |
+| `n8n-playwright/config` | `defineQualityConfig()` and `qualityReporters()` for Currents, QA metrics, and standard reports |
+| `n8n-playwright/test` | `test` and `expect` with the base Currents fixtures |
+| `n8n-playwright/cli` | CLI fixture with command steps, output attachments, exit-code checks, and process cleanup |
+| `n8n-playwright/metrics` | `attachMetric()` for QA metrics and Currents analytics |
+
+The configuration factory accepts standard Playwright options. It does not start a browser, application, or container stack.
+Reporter paths resolve from this package. Test paths and report outputs resolve from the consuming workspace.
+Supply `reporter` to replace the defaults, or append suite-specific reporters to `qualityReporters()`.
+The existing container and product fixtures remain in `fixtures/`.
+
+### CLI fixture
+
+```typescript
+import { test } from 'n8n-playwright/cli';
+
+test('analyze an image', async ({ cli }, testInfo) => {
+	const report = testInfo.outputPath('analysis.json');
+	await cli.run('dive', ['n8nio/n8n:local', '--json', report], {
+		title: 'Analyze image layers',
+		timeout: 240_000,
+	});
+	await testInfo.attach('analysis', { path: report, contentType: 'application/json' });
+});
+```
+
+`cli.run()` returns the `zx` process output. It expects exit code zero unless `expectedExitCode` is supplied.
+Pass arguments as an array. Use `cwd`, `env`, and `timeout` for command options.
+Each command creates a native step with command details, stdout, and stderr attachments.
+The fixture scrubs secrets from recorded text. It does not record environment variables.
+Fixture teardown stops unfinished processes. Await each command before reading its output files.
 
 ## Development setup
 ```bash

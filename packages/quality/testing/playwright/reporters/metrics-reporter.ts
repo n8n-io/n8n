@@ -30,7 +30,7 @@ const LOG_PREFIX = '[MetricsReporter]';
  * If your test contains a testInfo.attach() call with a name starting with 'metric:', the metric
  * will be collected and sent as a single batched payload at the end of the run.
  *
- * See utils/performance-helper.ts for the attachMetric() helper.
+ * See utils/metrics.ts for the attachMetric() helper.
  */
 class MetricsReporter implements Reporter {
 	private readonly webhook: CiMetricsWebhook;

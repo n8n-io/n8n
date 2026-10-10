@@ -7,11 +7,12 @@ Read the repository [AGENTS.md](../../AGENTS.md) first. Use the [quality enginee
 | Policy | Repository rules and static analysis | [`rules-engine`](policy/rules-engine/), [`code-health`](policy/code-health/) |
 | Testing | Test selection, architecture checks, and test orchestration | [`test-impact`](testing/test-impact/), [`janitor`](testing/janitor/), [`playwright`](testing/playwright/) |
 | Environments | Test services and deployment stacks | [`containers`](environments/containers/) |
-| Efficiency | Speed, memory, load, latency, throughput, capacity, and resource use | [Microbenchmarks](efficiency/microbenchmarks/), [Playwright performance tests](testing/playwright/tests/performance/), [infrastructure benchmarks](testing/playwright/tests/infrastructure/benchmarks/), [benchmark CLI](efficiency/scale/benchmark/) |
+| Efficiency | Speed, memory, load, latency, throughput, capacity, and resource use | [Efficiency workspace](efficiency/), [microbenchmarks](efficiency/microbenchmarks/), [Playwright performance tests](testing/playwright/tests/performance/), [infrastructure benchmarks](testing/playwright/tests/infrastructure/benchmarks/), [benchmark CLI](efficiency/scale/benchmark/) |
 
 ## Working rules
 
 - Read the instructions in the owning package before you change its files.
+- Keep suites in their owning area. Reuse exported runner configuration and fixtures instead of copying them.
 - Keep benchmark methods and results comparable when you move files. Do not change behavior during a path migration.
 - Keep existing package names and `pnpm --filter` commands when you move workspaces.
 - Update workspace discovery, CI paths, test-impact rules, ownership, documentation, and the lockfile when you move a package. Verify that each moved workspace still runs its intended checks.

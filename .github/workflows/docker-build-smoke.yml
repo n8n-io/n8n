@@ -1,5 +1,8 @@
 name: 'Docker Build Smoke Test'
 
+permissions:
+  contents: read
+
 # Verifies the full Docker build chain works without any caching.
 # Catches native module compilation failures (e.g., isolated-vm, sqlite3)
 # that layer caching can mask in the regular E2E pipeline.
@@ -31,6 +34,15 @@ on:
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
       - 'scripts/smoke-n8n-image.mjs'
+      - 'packages/quality/efficiency/images/**'
+      - 'packages/quality/efficiency/playwright.config.ts'
+      - 'packages/quality/efficiency/package.json'
+      - 'packages/quality/testing/playwright/quality-config.ts'
+      - 'packages/quality/testing/playwright/quality-test.ts'
+      - 'packages/quality/testing/playwright/fixtures/cli.ts'
+      - 'packages/quality/testing/playwright/utils/metrics.ts'
+      - 'packages/quality/testing/playwright/reporters/**'
+      - '.github/workflows/docker-build-smoke.yml'
       - 'package.json'
       - '.github/scripts/docker/kafka-native-smoke-check.mjs'
       - '.github/scripts/docker/should-smoke-build.mjs'
@@ -112,6 +124,48 @@ jobs:
           # Use a separate key. This job builds with --no-cache. A shared key
           # would write an empty snapshot over the release layers.
           docker-cache-key: docker-smoke
+
+      - name: Install Dive
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Keep this version in sync with efficiency/images/dive-results.ts.
+          VERSION=0.13.1
+          case "$(uname -m)" in
+            x86_64) ARCH=amd64; CHECKSUM=0970549eb4a306f8825a84145a2534153badb4d7dcf3febd1967c706367c3d0e ;;
+            aarch64) ARCH=arm64; CHECKSUM=2fcd2cf20f634ccdb41efac44048b204bfc867c115641f37a7420693ed480a18 ;;
+            *) echo 'Unsupported Dive architecture' >&2; exit 1 ;;
+          esac
+          DIR=$(mktemp -d "$RUNNER_TEMP/dive.XXXXXX")
+          ARCHIVE="$DIR/dive.tar.gz"
+          curl --fail --location --retry 3 \
+            "https://github.com/wagoodman/dive/releases/download/v${VERSION}/dive_${VERSION}_linux_${ARCH}.tar.gz" \
+            --output "$ARCHIVE"
+          echo "$CHECKSUM  $ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE" -C "$DIR" dive
+          echo "$DIR" >> "$GITHUB_PATH"
+
+      - name: Measure image layer efficiency
+        run: pnpm --filter=@n8n/efficiency test:images
+        env:
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_PROJECT_ID: 'nHHLA5'
+          CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}-images-${{ matrix.platform }}
+          QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+          QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+          QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+
+      - name: Upload image efficiency reports
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: image-efficiency-${{ matrix.platform }}
+          path: |
+            packages/quality/efficiency/test-results/
+            packages/quality/efficiency/test-results.json
+            packages/quality/efficiency/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
 
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
