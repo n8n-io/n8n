@@ -379,6 +379,8 @@ function viewPreviewTrace() {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:thread-id="threadId"
+				:agent-name="thread?.agentName"
+				:personalisation="localConfig?.personalisation"
 				@loaded="onPanelLoaded"
 			/>
 			<div v-else :class="$style.newSessionEmpty">

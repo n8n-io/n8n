@@ -15,6 +15,7 @@ export type EventKind =
 	| 'background-task-signal';
 
 export type ToolCallOutcome = 'success' | 'error';
+export type TimelineActivityStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'interrupted';
 /**
  * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
  * node: nobody is being asked anything, the resume arrives from the workflow.
@@ -28,6 +29,7 @@ export interface TimelineItem {
 	executionId: string;
 	timestamp: number;
 	endTimestamp?: number;
+	activityStatus?: TimelineActivityStatus;
 	content?: string;
 	thinkingSegments?: ThinkingSegment[];
 	backgroundJobSignal?: AgentBackgroundJobSignal;

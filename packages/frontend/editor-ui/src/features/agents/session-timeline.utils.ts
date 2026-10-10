@@ -13,6 +13,7 @@ import type {
 	HitlRequestType,
 	HitlResponseStatus,
 	IdleRange,
+	TimelineActivityStatus,
 	TimelineItem,
 	TimelineStatusFilterKey,
 	ToolCallOutcome,
@@ -516,6 +517,11 @@ function toolCallOutcome(event: RawToolCallEvent): ToolCallOutcome | undefined {
 	return event.success ? 'success' : 'error';
 }
 
+function toolActivityStatus(event: RawToolCallEvent, exec: AgentExecution): TimelineActivityStatus {
+	if (event.endTime !== 0) return event.success ? 'completed' : 'failed';
+	return exec.status === 'running' ? 'running' : 'interrupted';
+}
+
 function isSkillToolCall(event: RawToolCallEvent): boolean {
 	return event.kind === 'skill' || event.name === LOAD_SKILL_TOOL_NAME;
 }
@@ -636,8 +642,15 @@ function hitlResponseStatus(
 	return 'responded';
 }
 
-function mergeResumedToolResult(item: TimelineItem | undefined, event: RawToolCallEvent): void {
-	if (!item || isDeclinedToolOutput(event.output)) return;
+function mergeResumedToolResult(
+	item: TimelineItem | undefined,
+	event: RawToolCallEvent,
+	exec: AgentExecution,
+): void {
+	if (!item) return;
+	item.activityStatus = toolActivityStatus(event, exec);
+	item.endTimestamp = event.endTime || undefined;
+	if (isDeclinedToolOutput(event.output)) return;
 	item.toolOutput = event.output;
 	item.toolOutcome = toolCallOutcome(event);
 	item.toolSuccess = event.endTime === 0 ? undefined : event.success;
@@ -776,7 +789,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 			} else if (event.type === 'tool-call') {
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (hitlContext) {
-					mergeResumedToolResult(hitlContext.toolItem, event);
+					mergeResumedToolResult(hitlContext.toolItem, event, exec);
 					if (!hitlContext.hasExplicitResponse) {
 						items.push(hitlResponseItem(hitlContext, exec.id, event.output, event.startTime, true));
 					}
@@ -798,8 +811,9 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					toolOutput: event.output,
 					toolOutcome: toolCallOutcome(event),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
+					activityStatus: toolActivityStatus(event, exec),
 					timestamp: event.startTime,
-					endTimestamp: event.endTime || event.startTime,
+					endTimestamp: event.endTime || undefined,
 					workflowId: isWorkflow ? event.workflowId : undefined,
 					workflowName: isWorkflow ? event.workflowName : undefined,
 					workflowExecutionId: isWorkflow ? event.workflowExecutionId : undefined,
@@ -817,6 +831,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const request = hitlRequestPayload(event, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
 				if (event.toolCallId) {
+					const toolItem = initialToolItems.get(event.toolCallId);
+					if (toolItem) {
+						toolItem.activityStatus =
+							exec.status === 'error' ||
+							exec.status === 'cancelled' ||
+							exec.status === 'interrupted'
+								? 'interrupted'
+								: 'waiting';
+					}
 					hitlContexts.set(event.toolCallId, {
 						requestType,
 						toolName: event.toolName || toolCall?.name || '',
@@ -843,6 +866,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const hitlContext = hitlContexts.get(event.toolCallId);
 				if (!hitlContext) continue;
 				hitlContext.hasExplicitResponse = true;
+				if (hitlContext.toolItem) {
+					const responseStatus = hitlResponseStatus(hitlContext.requestType, event.response);
+					if (responseStatus === 'declined') {
+						hitlContext.toolItem.activityStatus = 'completed';
+					} else {
+						hitlContext.toolItem.activityStatus =
+							exec.status === 'running' ? 'running' : 'interrupted';
+					}
+				}
 				items.push(hitlResponseItem(hitlContext, exec.id, event.response, event.timestamp ?? 0));
 			}
 		}

@@ -183,22 +183,22 @@ function onScroll() {
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
 
-function scrollTo(position: number) {
+function scrollTo(position: number, behavior: ScrollBehavior = 'auto') {
 	if (!wrapperRef.value) {
 		return;
 	}
 
-	wrapperRef.value.scrollTop = position;
+	wrapperRef.value.scrollTo({ top: position, behavior });
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
 
-function scrollToKey(key: Item[Key]) {
+function scrollToKey(key: Item[Key], behavior: ScrollBehavior = 'auto') {
 	const position = itemPositionCache.value[key];
 	if (position === undefined) {
 		return;
 	}
 
-	scrollTo(position);
+	scrollTo(position, behavior);
 }
 
 defineExpose({ scrollToKey, scrollTo, scrollTop });
