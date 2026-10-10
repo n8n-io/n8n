@@ -13,5 +13,4 @@ Its configuration owns the efficiency projects and their scopes. Suites live in 
 For idle memory, canvas performance, throughput, and local soak tests, use the [Playwright suite map](../testing/playwright/README.md#choose-a-suite). These specs need Playwright fixtures, projects, metrics, or managed containers.
 
 Run image measurements with `pnpm --filter @n8n/efficiency test:images`.
-Run browser-free helper tests with `pnpm --filter @n8n/efficiency test:unit`.
 The nested microbenchmark and benchmark CLI workspaces keep their own commands and configurations.

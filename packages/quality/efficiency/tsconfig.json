@@ -6,5 +6,5 @@
 		"lib": ["esnext", "dom"],
 		"types": ["@playwright/test", "node"]
 	},
-	"include": ["playwright.config.ts", "vitest.config.ts", "images/**/*.ts"]
+	"include": ["playwright.config.ts", "images/**/*.ts"]
 }

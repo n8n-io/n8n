@@ -53,10 +53,11 @@ These projects use the existing artifact and metrics reporters. They do not star
 
 ## CI results
 
-The Docker smoke workflow runs these projects against its existing amd64 and arm64 builds.
-Each architecture uploads a Playwright report and test attachments.
+Run `Test: Image Efficiency` through GitHub Actions with a manual dispatch.
+The standalone workflow prepares or restores the cached n8n and runners images on amd64.
+Run the distroless project locally when that image is available.
+The image job uploads a Playwright report and test attachments.
 Currents stores results and attachments when its record key is configured.
-The workflow runs nightly, on relevant Docker or image-test changes, and on manual dispatch.
 
 Measurements have no size or waste budgets yet. Analysis errors and invalid reports fail the test.
 Dive's JSON export bypasses its CI rules, so `.dive-ci` does not enforce budgets in these projects.

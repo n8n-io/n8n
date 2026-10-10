@@ -1,0 +1,68 @@
+name: 'Test: Image Efficiency'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
+  image-efficiency:
+    name: Image Efficiency
+    needs: prepare-docker
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    timeout-minutes: 20
+    env:
+      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+      CURRENTS_PROJECT_ID: 'nHHLA5'
+      CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}-images
+      QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+      QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+      QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/utils...
+
+      - name: Load images from cache
+        uses: ./.github/actions/load-n8n-docker
+
+      - name: Install Dive
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Keep this version in sync with efficiency/images/dive-results.ts.
+          VERSION=0.13.1
+          DIR=$(mktemp -d "$RUNNER_TEMP/dive.XXXXXX")
+          ARCHIVE="$DIR/dive.tar.gz"
+          curl --fail --location --retry 3 \
+            "https://github.com/wagoodman/dive/releases/download/v${VERSION}/dive_${VERSION}_linux_amd64.tar.gz" \
+            --output "$ARCHIVE"
+          echo "0970549eb4a306f8825a84145a2534153badb4d7dcf3febd1967c706367c3d0e  $ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE" -C "$DIR" dive
+          echo "$DIR" >> "$GITHUB_PATH"
+
+      - name: Measure image layer efficiency
+        run: >-
+          pnpm --filter=@n8n/efficiency exec playwright test
+          --project=image-efficiency:n8n --project=image-efficiency:runners
+
+      - name: Upload image efficiency reports
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: image-efficiency
+          path: |
+            packages/quality/efficiency/test-results/
+            packages/quality/efficiency/test-results.json
+            packages/quality/efficiency/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

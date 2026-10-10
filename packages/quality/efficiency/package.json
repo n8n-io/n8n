@@ -4,11 +4,10 @@
 	"scripts": {
 		"test:all": "playwright test",
 		"test:images": "playwright test --project='image-efficiency:*'",
-		"test:unit": "vitest run",
 		"report": "playwright show-report",
-		"lint": "oxlint --quiet playwright.config.ts vitest.config.ts images",
+		"lint": "oxlint --quiet playwright.config.ts images",
 		"typecheck": "tsc --noEmit",
-		"format:check": "biome ci playwright.config.ts vitest.config.ts images"
+		"format:check": "biome ci playwright.config.ts images"
 	},
 	"dependencies": {
 		"zod": "catalog:"
@@ -19,8 +18,7 @@
 		"n8n-playwright": "workspace:*",
 		"oxlint": "catalog:",
 		"oxlint-tsgolint": "catalog:",
-		"typescript": "catalog:typescript",
-		"vitest": "catalog:"
+		"typescript": "catalog:typescript"
 	},
 	"license": "LicenseRef-n8n-sustainable-use"
 }
