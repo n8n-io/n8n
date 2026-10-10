@@ -5,6 +5,7 @@ export {
 	intervalFromSeconds,
 	resolveSystemTaskRunOptions,
 	resolveSystemTaskSchedule,
+	timeoutAfterLimit,
 	validateSystemTask,
 } from './system-task';
 export type {
