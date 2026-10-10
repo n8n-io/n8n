@@ -644,6 +644,45 @@ describe('createBuildOrchestrator', () => {
 		expect(verdicts?.[0].attribution).toBe('framework_issue');
 	});
 
+	it("fails, without judging, the expectations of a build that read another build's workflow", async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const building = vi.fn().mockResolvedValue(okBuild({ foreignWorkflowReads: ['other-wf'] }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['builds the digest'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).not.toHaveBeenCalled();
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts?.[0]).toMatchObject({ pass: false, attribution: 'framework_issue' });
+		// Counted, like the row: only `incomplete` keeps a verdict out of the pass rate.
+		expect(verdicts?.[0].incomplete).toBeFalsy();
+		expect(verdicts?.[0].reason).toContain('another build');
+	});
+
+	it("keeps a timed-out build that read another build's workflow neutral", async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+		const timeout = { kind: 'turn' as const, turn: 1, elapsedMs: 900_001 };
+		const building = vi
+			.fn()
+			.mockResolvedValue(okBuild({ foreignWorkflowReads: ['other-wf'], timeout }));
+		const deps = makeDeps([makeLane(1, building)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ processExpectations: ['builds the digest'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		const verdicts = await deps.buildExpectationsByKey.get('0:case-a');
+		expect(verdicts?.[0]).toMatchObject({ incomplete: true, attribution: 'timeout' });
+	});
+
 	it('serves prebuilt workflows by fetching them, never invoking the builder', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const lane = makeLane(1, tracedBuild);
