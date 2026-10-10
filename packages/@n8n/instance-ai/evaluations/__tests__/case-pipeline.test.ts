@@ -944,7 +944,7 @@ describe('seed-table scenarios (TRUST-311 parity)', () => {
 	});
 });
 
-describe('dedupe scenarios queue on the workflow they run', () => {
+describe('scenarios queue on the backend state they reset', () => {
 	const TRIGGER = 'n8n-nodes-base.manualTrigger';
 	const dedupeWorkflow = (id: string) =>
 		({ id, nodes: [{ type: TRIGGER }, { type: 'n8n-nodes-base.removeDuplicates' }] }) as never;
@@ -1018,7 +1018,60 @@ describe('dedupe scenarios queue on the workflow they run', () => {
 		await expectSerialized(rows, started, first, second);
 	});
 
-	it('does not serialize a case whose workflows do not deduplicate', async () => {
+	it('serializes scenarios whose workflow binds a Data Table', async () => {
+		const { lane, started, first, second } = laneWithTwoDeferredRuns();
+		const build = okBuild({
+			workflowJsons: [
+				{
+					id: 'wf-1',
+					nodes: [
+						{ type: TRIGGER },
+						{
+							type: 'n8n-nodes-base.dataTable',
+							parameters: { dataTableId: { __rl: true, mode: 'id', value: 'dt-1' } },
+						},
+					],
+				},
+			] as never,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 1 }), {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1', 's2'])]]),
+			}),
+		);
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await expectSerialized(rows, started, first, second);
+	});
+
+	it('does not wait on itself when two built workflows bind the same table', async () => {
+		const { lane, started, first } = laneWithTwoDeferredRuns();
+		const binds = (id: string) => ({
+			id,
+			nodes: [
+				{
+					type: 'n8n-nodes-base.dataTable',
+					parameters: { dataTableId: { __rl: true, mode: 'name', value: 'Orders' } },
+				},
+			],
+		});
+		// No trigger in either workflow, so the run target is unknown and every
+		// workflow's tables count.
+		const build = okBuild({
+			workflowId: 'wf-run',
+			workflowJsons: [binds('wf-a'), binds('wf-b')] as never,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(makeOrchestrator({ build, lane, buildDurationMs: 1 }), {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1'])]]),
+			}),
+		);
+		const row = pipeline.runRow(rowInputs('s1'));
+		await vi.waitFor(() => expect(started).toHaveLength(1));
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await row;
+	});
+
+	it('does not serialize a case whose workflows neither deduplicate nor use a Data Table', async () => {
 		const { lane, started, first, second } = laneWithTwoDeferredRuns();
 		const build = okBuild({ workflowJsons: [{ id: 'wf-1', nodes: [{ type: TRIGGER }] }] as never });
 		const pipeline = createCasePipeline(

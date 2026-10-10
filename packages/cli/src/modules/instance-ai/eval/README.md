@@ -26,6 +26,32 @@ executes; the data is pinned onto it.
   simulated verification (`@n8n/instance-ai`
   `generate-simulation-fixtures.service.ts`).
 
+## Data Tables — real tables, prepared per scenario
+
+Data Table nodes are neither mocked nor pinned. A Data Table lives inside n8n,
+so the node runs for real: it applies its own filters, sets `pairedItem`, and
+sees the rows the same run wrote before it. A pinned read could do none of
+these things.
+
+Before each scenario, `prepareDataTables` in `execution.service.ts`:
+
+1. Finds every Data Table that the workflow's enabled Data Table nodes bind,
+   by id or by name, in the workflow's own project.
+2. Skips the tables in `seededDataTableIds`. The CLI already filled them with
+   the rows from the scenario's `seedDataTables`.
+3. Asks the mock model for the starting rows of the other tables, in one call
+   (`data-table-rows.ts`). The prompt has the scenario, the Phase 1 context and
+   node hints, and each table's real columns.
+4. Empties each table and inserts its rows.
+
+Rows in a table that the workflow writes use the value formats of the
+workflow's write nodes, because such a table only holds rows that the workflow
+wrote. A node whose table does not exist runs as it is and fails, as it would
+for a user. A failure to prepare the tables is a framework issue.
+
+The CLI queues the runs that bind one table on one lane (`workflowDataTableKeys`
+in `harness/seed-tables.ts`), so two scenarios never reset each other's rows.
+
 ## Credential connection tests — a separate, opt-in surface
 
 A credential's connection test is neither of the two layers above: it is issued

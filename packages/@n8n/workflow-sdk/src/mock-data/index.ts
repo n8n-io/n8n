@@ -4,7 +4,6 @@ export type {
 	OutputParserContext,
 	NodeSchemaContext,
 	PinDataGenerationInstructions,
-	DataTableColumnInfo,
 	DeclaredFieldContract,
 } from './types';
 export {

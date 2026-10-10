@@ -17,7 +17,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { buildAiRootPlaceholder } from './ai-root-shapes';
-import type { DataTableColumnInfo, NodeSchemaContext } from './types';
+import type { NodeSchemaContext } from './types';
 
 /** Nesting levels to expand before an object/array becomes an empty stub. */
 const MAX_DEPTH = 4;
@@ -42,12 +42,6 @@ export function buildSchemaPlaceholderItem(
 	if (!ctx) return {};
 
 	const declared = ctx.declaredFields;
-	// A Data Table row must carry exactly its columns, so the static
-	// `__schema__` (which only knows the system columns) is discarded.
-	if (declared?.exact) {
-		return fromDeclaredKeys(declared.keys, ctx.dataTableColumns, options, { capped: false });
-	}
-
 	const fromSchema = buildFromSchema(ctx.schema, options);
 	const withDeclared = declared
 		? overlayDeclaredFields(fromSchema, declared.keys, declared.envelopeKey, options)
@@ -65,48 +59,12 @@ function overlayDeclaredFields(
 	options: PlaceholderItemOptions,
 ): Record<string, unknown> {
 	if (keys.length === 0) return base;
-	const fields = fromDeclaredKeys(keys, undefined, options, { capped: true });
+	const fields = Object.fromEntries(
+		keys.slice(0, MAX_PROPERTIES).map((key) => [key, valueForKeyName(key, options)]),
+	);
 	if (!envelopeKey) return { ...base, ...fields };
 	const existing = isRecord(base[envelopeKey]) ? base[envelopeKey] : {};
 	return { ...base, [envelopeKey]: { ...existing, ...fields } };
-}
-
-/**
- * An exact contract is not capped: dropping a real Data Table column would
- * contradict the "every row carries every column" promise the caller relies
- * on. The cap only guards open-ended schema/parser field lists.
- */
-function fromDeclaredKeys(
-	keys: string[],
-	columns: DataTableColumnInfo[] | undefined,
-	options: PlaceholderItemOptions,
-	{ capped }: { capped: boolean },
-): Record<string, unknown> {
-	const typeByColumn = new Map((columns ?? []).map((column) => [column.name, column.type]));
-	const wanted = capped ? keys.slice(0, MAX_PROPERTIES) : keys;
-	return Object.fromEntries(
-		wanted.map((key) => [key, declaredValue(key, typeByColumn.get(key), options)]),
-	);
-}
-
-/** Data Table columns carry a type; everything else falls back to the field name's shape. */
-function declaredValue(
-	key: string,
-	columnType: string | undefined,
-	options: PlaceholderItemOptions,
-): unknown {
-	switch (columnType) {
-		case 'number':
-			return 1;
-		case 'boolean':
-			return true;
-		case 'date':
-			return options.now.toISOString();
-		case 'string':
-			return PLACEHOLDER_STRING;
-		default:
-			return valueForKeyName(key, options);
-	}
 }
 
 /**

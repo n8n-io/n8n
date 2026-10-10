@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvalSeedDataTable } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import {
 	freshSeedNameSuffix,
@@ -159,6 +160,37 @@ export function workflowDeduplicates(
 	workflow: { nodes?: Array<{ type: string }> } | undefined,
 ): boolean {
 	return workflow?.nodes?.some((node) => node.type === REMOVE_DUPLICATES_NODE_TYPE) ?? false;
+}
+
+const DATA_TABLE_NODE_TYPES = new Set(['n8n-nodes-base.dataTable', 'n8n-nodes-base.dataTableTool']);
+
+/** The Data Tables a workflow binds, as `name:<lower-cased name>`. An id-mode node
+ *  carries the table name in `cachedResultName`, so the id is the key only when that
+ *  name is missing. The server empties and refills these tables before every run, so
+ *  two runs that bind one table must not interleave. Two tables of one name in two
+ *  projects share a key, which only makes their runs wait. */
+export function workflowDataTableKeys(
+	workflow:
+		| { nodes?: Array<{ type: string; disabled?: boolean; parameters?: unknown }> }
+		| undefined,
+): string[] {
+	const keys = new Set<string>();
+	for (const node of workflow?.nodes ?? []) {
+		if (node.disabled || !DATA_TABLE_NODE_TYPES.has(node.type)) continue;
+		const locator = isRecord(node.parameters) ? node.parameters.dataTableId : undefined;
+		const value = isRecord(locator) ? locator.value : locator;
+		if (typeof value !== 'string' || value.length === 0) continue;
+		const name =
+			isRecord(locator) && locator.mode === 'name'
+				? value
+				: isRecord(locator)
+					? locator.cachedResultName
+					: undefined;
+		keys.add(
+			typeof name === 'string' && name.length > 0 ? `name:${name.toLowerCase()}` : `id:${value}`,
+		);
+	}
+	return [...keys].sort();
 }
 
 /**

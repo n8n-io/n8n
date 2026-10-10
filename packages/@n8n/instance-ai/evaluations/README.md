@@ -39,6 +39,7 @@ Each run:
 - **Mocked nodes** — anything that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion…). The request is intercepted before it leaves the process; an LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer (triggers/webhooks, LangChain/AI nodes, database nodes). They receive LLM-generated pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute on the mocked data.
+- **Data Table nodes** — run for real against the real table. Before each scenario, the server empties every Data Table the workflow uses and inserts starting rows that an LLM writes from the scenario. A table declared in the scenario's `seedDataTables` gets those exact rows instead. Two runs that use the same table run one after the other.
 
 ~95% of node types are covered. See [Known limitations](#known-limitations) for the gaps.
 
@@ -775,6 +776,7 @@ reliable signal. Two specific things to know:
 - **Mocked nodes** — any node that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion, etc.). The request is intercepted before it leaves the process. An LLM generates the response.
 - **Pinned nodes** — nodes that don't go through the HTTP layer: trigger/webhook nodes, LangChain/AI nodes (they use SDKs directly), database nodes. These receive LLM-generated data as pin data.
 - **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute their actual code on the mocked/pinned data.
+- **Data Table nodes** — run for real against the real table, which the server empties and fills with the scenario's starting rows before each scenario (see [What gets mocked](#what-gets-mocked)).
 
 No real credentials or API connections are needed. ~95% of node types are covered; the main gaps are binary-data nodes (file attachments, image generation) and streaming nodes.
 
@@ -1304,6 +1306,7 @@ packages/cli/src/modules/instance-ai/eval/
 ├── mock-handler.ts       # Per-request mock generation (Phase 2)
 ├── api-docs.ts           # Context7 API doc fetcher
 ├── node-config.ts        # Node config serializer
+├── data-table-rows.ts    # LLM starting rows for the workflow's Data Tables (Phase 1.5)
 └── pin-data-generator.ts # LLM pin data for bypass nodes (Phase 1.5)
 ```
 

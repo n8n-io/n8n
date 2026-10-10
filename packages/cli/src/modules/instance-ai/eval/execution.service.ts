@@ -12,7 +12,7 @@ import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
-import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
 	BinaryDataService,
@@ -39,6 +39,7 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
+	OperationalError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -76,16 +77,14 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
-import { applyDataTableReadParameters } from './data-table-pin-filter';
+import { DATA_TABLE_NODE_TYPES, generateDataTableRows } from './data-table-rows';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
-	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
-	isDataTableRead,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -334,28 +333,33 @@ export class EvalExecutionService {
 			`[EvalMock] Phase 1 result — globalContext: ${hints.globalContext ? 'present' : 'EMPTY'}, triggerContent keys: ${JSON.stringify(Object.keys(hints.triggerContent))}, nodeHints: ${Object.keys(hints.nodeHints).join(', ')}`,
 		);
 
-		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const liveReads = await this.liveDataTableReads(workflowEntity, seededDataTableIds);
-		if (liveReads.size > 0) {
-			this.logger.debug(`[EvalMock] Reading seeded Data Tables live: ${[...liveReads].join(', ')}`);
-		}
-		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet, liveReads);
-		const bypassNodeNames = bypassNodes.map((n) => n.name);
-
+		// Phase 1.5: pin data for nodes that bypass the HTTP mock layer, and the
+		// starting rows of the Data Tables the workflow uses
+		const bypassNodeNames = identifyNodesForPinData(workflowEntity, unpinSet).map((n) => n.name);
 		if (bypassNodeNames.length > 0) {
 			this.logger.debug(
 				`[EvalMock] Generating pin data for ${bypassNodeNames.length} bypass nodes: ${bypassNodeNames.join(', ')}`,
 			);
-			hints.bypassPinData = await this.generateBypassPinData(
+		}
+		// Both settle before a failure surfaces: a table fill still running after the
+		// request ends would reset rows under the next queued scenario.
+		const [pinResult, tablesResult] = await Promise.allSettled([
+			this.generateBypassPinData(
 				workflowEntity,
 				bypassNodeNames,
 				hints.globalContext,
 				timings,
-				hints.warnings,
 				scenarioHints,
-			);
+			),
+			this.prepareDataTables(workflowEntity, hints, timings, scenarioHints, seededDataTableIds),
+		]);
+		if (pinResult.status === 'rejected') throw pinResult.reason;
+		if (tablesResult.status === 'rejected') throw tablesResult.reason;
+		const bypassPinData = pinResult.value;
+		if (bypassNodeNames.length > 0) {
+			hints.bypassPinData = bypassPinData;
 			this.logger.debug(
-				`[EvalMock] Phase 1.5 result — pinned nodes: ${Object.keys(hints.bypassPinData).join(', ') || 'none'}`,
+				`[EvalMock] Phase 1.5 result — pinned nodes: ${Object.keys(bypassPinData).join(', ') || 'none'}`,
 			);
 		}
 
@@ -374,14 +378,11 @@ export class EvalExecutionService {
 		bypassNodeNames: string[],
 		globalContext: string,
 		timings: EvalTimings,
-		warnings: string[],
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
-			const dataTableColumns = await this.resolveDataTableColumns(workflowEntity, bypassNodeNames);
-
 			// Keep the scenario separate from the general context: the pin generator
 			// treats "Test Scenario" as authoritative, and merging them into one blob
 			// lets invented context override scenario-specified stored state.
@@ -397,7 +398,6 @@ export class EvalExecutionService {
 								? { dataDescription: globalContext, testScenario: scenarioHints }
 								: undefined,
 						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
-						dataTableColumns,
 					}),
 			);
 
@@ -418,15 +418,6 @@ export class EvalExecutionService {
 				}
 			}
 
-			const bypassSet = new Set(bypassNodeNames);
-			for (const node of workflowEntity.nodes) {
-				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
-				const filtered = applyDataTableReadParameters(node, normalized[node.name]);
-				normalized[node.name] = filtered.items;
-				for (const warning of filtered.warnings) this.logger.warn(`[EvalMock] ${warning}`);
-				warnings.push(...filtered.flags);
-			}
-
 			return normalized;
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
@@ -436,85 +427,77 @@ export class EvalExecutionService {
 	}
 
 	/**
-	 * Real column names for each pinned dataTable-read node, read from the
-	 * builder-created table itself. They are the authoritative row shape —
-	 * without them the pin generator invents plausible-but-wrong column names
-	 * (`email` where the table says `contact_email`) and correctly-built
-	 * downstream expressions resolve undefined. Best-effort: a missing table or
-	 * unresolved id degrades that node to prompt-only generation.
-	 *
-	 * Only row-emitting reads qualify — `rowExists`/`rowNotExists` pass the input
-	 * item through, so enforcing table columns on them would demand a fixture the
-	 * real node never emits.
+	 * Empty every Data Table the workflow uses and fill it with the scenario's
+	 * starting rows, so Data Table nodes run for real against a known state.
+	 * Tables the caller already filled (`seededDataTableIds`) keep their rows.
+	 * A node whose table does not resolve runs as it is, as it would for a user.
 	 */
-	private async resolveDataTableColumns(
+	private async prepareDataTables(
 		workflowEntity: IWorkflowBase,
-		bypassNodeNames: string[],
-	): Promise<Record<string, DataTableColumnInfo[]> | undefined> {
-		const bypassSet = new Set(bypassNodeNames);
-		const readNodes = workflowEntity.nodes.filter(
-			(node) => bypassSet.has(node.name) && emitsDataTableRows(node),
+		hints: MockHints,
+		timings: EvalTimings,
+		scenarioHints?: string,
+		seededDataTableIds?: string[],
+	): Promise<void> {
+		const nodes = workflowEntity.nodes.filter(
+			(node) => !node.disabled && DATA_TABLE_NODE_TYPES.has(node.type),
 		);
-		if (readNodes.length === 0) return undefined;
+		if (nodes.length === 0) return;
 
-		const columnsByNode: Record<string, DataTableColumnInfo[]> = {};
-		let projectId: string | undefined;
-		for (const node of readNodes) {
-			try {
-				projectId ??= (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
+		try {
+			const projectId = (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id))
+				.id;
+			const seeded = new Set(seededDataTableIds);
+			const nodesByTableId = new Map<string, INode[]>();
+			for (const node of nodes) {
 				const tableId = await this.resolveDataTableNodeId(node, projectId);
-				if (!tableId) {
-					this.logger.warn(
-						`[EvalMock] No Data Table found for node "${node.name}" — pinned rows fall back to prompt-only generation`,
-					);
-					continue;
-				}
+				if (!tableId || seeded.has(tableId)) continue;
+				nodesByTableId.set(tableId, [...(nodesByTableId.get(tableId) ?? []), node]);
+			}
+			if (nodesByTableId.size === 0) return;
+			// Only the workflow's own project: an id can point anywhere.
+			const tables = (
+				await this.dataTableService.findDataTablesByIds([...nodesByTableId.keys()])
+			).filter((table) => table.projectId === projectId);
+			if (tables.length === 0) return;
 
-				const columns = await this.dataTableService.getColumns(tableId, projectId);
-				columnsByNode[node.name] = columns.map(({ name, type }) => ({ name, type }));
-			} catch (error) {
-				this.logger.warn(
-					`[EvalMock] Could not resolve Data Table columns for node "${node.name}" — pinned rows fall back to prompt-only generation`,
-					{ error: error instanceof Error ? error.message : String(error) },
+			const { rowsByTable, warnings } = await timings.time(
+				'data-table-rows',
+				undefined,
+				async () =>
+					await generateDataTableRows({
+						tables: tables.map((table) => ({
+							name: table.name,
+							columns: table.columns.map(({ name, type }) => ({ name, type })),
+							nodes: nodesByTableId.get(table.id) ?? [],
+						})),
+						globalContext: hints.globalContext,
+						nodeHints: hints.nodeHints,
+						scenarioHints,
+					}),
+			);
+			for (const warning of warnings) this.logger.warn(`[EvalMock] ${warning}`);
+			hints.warnings.push(...warnings);
+
+			for (const table of tables) {
+				const rows = rowsByTable[table.name] ?? [];
+				await this.dataTableService.clearRows(table.id, projectId);
+				if (rows.length > 0) await this.dataTableService.insertRows(table.id, projectId, rows);
+				this.logger.debug(
+					`[EvalMock] Data Table "${table.name}" starts with ${String(rows.length)} row(s)`,
 				);
 			}
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			this.logger.error(`[EvalMock] Data Table preparation failed: ${errorMsg}`);
+			throw new OperationalError(`FRAMEWORK ISSUE: Data Table preparation failed: ${errorMsg}`, {
+				cause: error,
+			});
 		}
-
-		return Object.keys(columnsByNode).length > 0 ? columnsByNode : undefined;
 	}
 
-	/** Data Table reads bound to a table the caller reseeded for this scenario. That
-	 *  table holds the scenario's rows, so the read runs live and also sees the
-	 *  writes the run makes before it. */
-	private async liveDataTableReads(
-		workflowEntity: IWorkflowBase,
-		seededDataTableIds: string[] | undefined,
-	): Promise<Set<string>> {
-		const live = new Set<string>();
-		if (!seededDataTableIds?.length) return live;
-		const seeded = new Set(seededDataTableIds);
-		// The node resolves a `name` locator case-insensitively at run time
-		// (`LOWER(name) LIKE LOWER(:name)`), so the seeded tables are matched the
-		// same way, or a read spelt in another case would stay pinned.
-		const seededByLowerName = new Map<string, string>();
-		for (const table of await this.dataTableService.findDataTablesByIds(seededDataTableIds)) {
-			seededByLowerName.set(table.name.toLowerCase(), table.id);
-		}
-		for (const node of workflowEntity.nodes) {
-			if (!isDataTableRead(node)) continue;
-			const locator = dataTableLocator(node);
-			if (!locator) continue;
-			const tableId =
-				locator.mode === 'name'
-					? seededByLowerName.get(locator.value.toLowerCase())
-					: locator.value;
-			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
-		}
-		return live;
-	}
-
-	/** The table a Data Table node binds, for the column shapes. `name` mode is
-	 *  looked up in the project the way the node does, case-insensitively. */
+	/** The table a Data Table node binds. `name` mode is looked up in the
+	 *  project the way the node does, case-insensitively. */
 	private async resolveDataTableNodeId(
 		node: INode,
 		projectId: string,

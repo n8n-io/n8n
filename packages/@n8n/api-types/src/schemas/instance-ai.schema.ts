@@ -2924,8 +2924,8 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 * budget can exceed the 15 minutes a plain run takes.
 	 */
 	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
-	/** Data tables the caller reseeded with this scenario's rows. A Data Table read
-	 *  bound to one of them reads the table instead of pinned rows. */
+	/** Data tables the caller reseeded with this scenario's rows. The server keeps
+	 *  their rows, and fills every other table the workflow uses itself. */
 	seededDataTableIds: z.array(z.string().min(1)).max(20).optional(),
 }) {}
 
