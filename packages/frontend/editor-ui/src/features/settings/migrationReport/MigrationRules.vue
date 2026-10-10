@@ -18,6 +18,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
+import { RouterLink } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
@@ -26,6 +27,7 @@ import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -34,6 +36,10 @@ const i18n = useI18n();
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
+
+// A user who can edit every workflow sees the whole instance and may refresh it.
+// Everyone else sees the workflows they can edit, and the instance issues are not theirs.
+const canManageReport = hasPermission(['rbac'], { rbac: { scope: 'workflow:update' } });
 
 const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 	? { version: MIGRATION_REPORT_TARGET_VERSION }
@@ -75,12 +81,14 @@ async function refreshReport() {
 }
 
 const tabs = computed(() => {
+	const workflowIssues = {
+		label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
+		value: 'workflow-issues',
+		tag: openWorkflowRulesCount.value ? String(openWorkflowRulesCount.value) : undefined,
+	};
+	if (!canManageReport) return [workflowIssues];
 	return [
-		{
-			label: i18n.baseText('settings.migrationReport.tabs.workflowIssues'),
-			value: 'workflow-issues',
-			tag: openWorkflowRulesCount.value ? String(openWorkflowRulesCount.value) : undefined,
-		},
+		workflowIssues,
 		{
 			label: i18n.baseText('settings.migrationReport.tabs.instanceIssues'),
 			value: 'instance-issues',
@@ -125,6 +133,10 @@ const progressLabel = computed(() =>
 		},
 	}),
 );
+
+function ruleDetailRoute(ruleId: string) {
+	return { name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: ruleId } };
+}
 
 // Impact order: the impact that blocks the update comes first, the one with no
 // runtime effect comes last.
@@ -173,6 +185,16 @@ const sortedInstanceResults = computed(() => {
 			docs-leading-text=""
 		/>
 		<div>
+			<N8nText
+				v-if="!canManageReport"
+				tag="p"
+				size="small"
+				color="text-light"
+				class="mb-s"
+				data-test-id="migration-report-scope-note"
+			>
+				{{ i18n.baseText('settings.migrationReport.scopeNote') }}
+			</N8nText>
 			<div v-if="state" :class="$style.Progress">
 				<div
 					:class="$style.ProgressTrack"
@@ -205,6 +227,7 @@ const sortedInstanceResults = computed(() => {
 						</I18nT>
 					</N8nText>
 					<N8nButton
+						v-if="canManageReport"
 						variant="subtle"
 						:label="i18n.baseText('settings.migrationReport.refreshButton')"
 						icon="refresh-cw"
@@ -242,7 +265,15 @@ const sortedInstanceResults = computed(() => {
 					<N8nSettingsRow v-for="issue in sortedWorkflowResults" :key="issue.ruleId">
 						<template #info>
 							<div :class="$style.CardTitleContainer">
-								<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
+								<N8nText tag="h3" size="medium" color="text-dark" bold>
+									<RouterLink
+										:to="ruleDetailRoute(issue.ruleId)"
+										:class="$style.TitleLink"
+										data-test-id="migration-rule-title-link"
+									>
+										{{ issue.ruleTitle }}
+									</RouterLink>
+								</N8nText>
 								<N8nTooltip
 									:content="workflowTooltips[issue.ruleImpact]"
 									placement="top"
@@ -267,16 +298,37 @@ const sortedInstanceResults = computed(() => {
 									↗
 								</N8nLink>
 							</N8nText>
+							<div :class="$style.FindingCounts" data-test-id="migration-rule-finding-counts">
+								<N8nText
+									v-if="issue.nbAffectedWorkflows > 0"
+									size="small"
+									color="text-light"
+									:class="$style.FindingCount"
+								>
+									<span :class="[$style.FindingCountDot, $style.open]" />
+									{{
+										i18n.baseText('settings.migrationReport.findingCount.open', {
+											interpolate: { count: issue.nbAffectedWorkflows },
+										})
+									}}
+								</N8nText>
+								<N8nText
+									v-if="issue.nbWontFixWorkflows > 0"
+									size="small"
+									color="text-light"
+									:class="$style.FindingCount"
+								>
+									<span :class="[$style.FindingCountDot, $style.wontFix]" />
+									{{
+										i18n.baseText('settings.migrationReport.findingCount.wontFix', {
+											interpolate: { count: issue.nbWontFixWorkflows },
+										})
+									}}
+								</N8nText>
+							</div>
 						</template>
 						<template #action>
-							<N8nLink
-								:class="$style.NoLineBreak"
-								theme="text"
-								:to="{
-									name: VIEWS.MIGRATION_RULE_REPORT,
-									params: { migrationRuleId: issue.ruleId },
-								}"
-							>
+							<N8nLink :class="$style.NoLineBreak" theme="text" :to="ruleDetailRoute(issue.ruleId)">
 								<span :class="$style.NoLineBreak">
 									{{
 										isOpenRule(issue)
@@ -399,5 +451,40 @@ const sortedInstanceResults = computed(() => {
 
 .UnderlinedText {
 	text-decoration: underline;
+}
+
+.TitleLink {
+	color: inherit;
+	text-decoration: none;
+
+	&:hover {
+		color: var(--color--primary);
+	}
+}
+
+.FindingCounts {
+	display: flex;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--2xs);
+}
+
+.FindingCount {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.FindingCountDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+
+	&.open {
+		background-color: var(--text-color--subtler);
+	}
+
+	&.wontFix {
+		background-color: var(--icon-color--warning);
+	}
 }
 </style>

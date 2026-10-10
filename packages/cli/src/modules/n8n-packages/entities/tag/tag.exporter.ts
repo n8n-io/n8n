@@ -41,13 +41,13 @@ export class TagExporter {
 		const requirementsByTagId = new Map<string, PackageTagRequirement>();
 
 		for (const { workflowId, tag } of request.usages) {
-			const requirement = requirementsByTagId.get(tag.id) ?? {
+			const requirement: PackageTagRequirement = requirementsByTagId.get(tag.id) ?? {
 				id: tag.id,
 				name: tag.name,
-				usedByWorkflows: [],
+				usedBy: [],
 			};
-			if (!requirement.usedByWorkflows.includes(workflowId)) {
-				requirement.usedByWorkflows.push(workflowId);
+			if (!requirement.usedBy.some(({ id }) => id === workflowId)) {
+				requirement.usedBy.push({ kind: 'workflow', id: workflowId });
 			}
 			requirementsByTagId.set(tag.id, requirement);
 		}

@@ -12,7 +12,11 @@ import {
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
+<<<<<<< HEAD
 	LOG_STREAM_MODAL_KEY,
+=======
+	IMPORT_WORKFLOW_URL_MODAL_KEY,
+>>>>>>> 7424f0ca0452f9dc9fe4cf6627ecbf0b315ed1e3
 	MIGRATE_WORKFLOW_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
@@ -155,10 +159,6 @@ export const SHELL_MODAL_INITIAL_STATE: Readonly<Record<string, ModalState>> = O
 		},
 	},
 	[INVITE_USER_MODAL_KEY]: { open: false },
-	[LOG_STREAM_MODAL_KEY]: {
-		open: false,
-		data: undefined,
-	},
 	[MIGRATE_WORKFLOW_MODAL_KEY]: { open: false },
 	[MOVE_FOLDER_MODAL_KEY]: {
 		open: false,

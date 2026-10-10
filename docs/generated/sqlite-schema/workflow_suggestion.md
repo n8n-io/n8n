@@ -24,7 +24,7 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 | closedReason | varchar(16) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expectedBaseline | TEXT |  | false |  |  |  |
-| id | varchar(36) |  | false | [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
+| id | varchar(36) |  | false | [self_healing_result](self_healing_result.md) [workflow_suggestion_activity](workflow_suggestion_activity.md) |  |  |
 | payload | TEXT |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | resultKind | varchar(16) |  | false |  |  |  |
@@ -62,6 +62,7 @@ CREATE TABLE "workflow_suggestion" ("id" varchar(36) PRIMARY KEY NOT NULL, "work
 erDiagram
 
 "workflow_suggestion" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"self_healing_result" }o--o| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion_activity" }o--|| "workflow_suggestion" : "FOREIGN KEY (suggestionId) REFERENCES workflow_suggestion (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_suggestion" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -100,6 +101,23 @@ erDiagram
   varchar_128_ roleSlug FK
   TEXT settings
   datetime_3_ updatedAt
+}
+"self_healing_result" {
+  varchar backgroundUserId FK
+  datetime_3_ completedAt
+  datetime_3_ createdAt
+  datetime_3_ dismissedAt
+  varchar dismissedById FK
+  varchar_36_ executionId
+  varchar_36_ id PK
+  varchar_16_ outcome
+  varchar_36_ projectId FK
+  TEXT report
+  varchar_36_ suggestionId FK
+  TEXT summary
+  datetime_3_ updatedAt
+  TEXT usage
+  varchar_36_ workflowId FK
 }
 "workflow_suggestion_activity" {
   varchar_16_ action

@@ -1,4 +1,4 @@
-import type { PromotionDirection } from '@n8n/api-types';
+import { AgentJsonConfigSchema, type PromotionDirection } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -7,6 +7,7 @@ import {
 	linkUserToProject,
 	mockInstance,
 	testDb,
+	testModules,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -26,6 +27,7 @@ import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -40,6 +42,7 @@ import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
 import { PromotionConfigRepository } from '../database/repositories/promotion-config.repository';
+import { PromotionConnectionProjectRepository } from '../database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import { PromotionsService } from '../promotions.service';
@@ -51,6 +54,7 @@ Container.set(
 	new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder: instanceFolder })),
 );
 mockInstance(ActiveWorkflowManager);
+beforeAll(async () => await testModules.loadModules(['agents']));
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
@@ -60,6 +64,8 @@ const server = setupTestServer({
 let remoteFolder: string;
 
 beforeEach(async () => {
+	await Container.get(PromotionConnectionProjectRepository).delete({});
+	await Container.get(AgentRepository).delete({});
 	await Container.get(PromotionConfigRepository).delete({});
 	await Container.get(PromotionConnectionRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
@@ -134,9 +140,62 @@ async function remoteHead(): Promise<string> {
 	return (await simpleGit(remoteFolder).revparse(['main'])).trim();
 }
 
+/** The source a preview reports for a connection created by `createConnection`. */
+async function sourceOf(connectionId: string, direction: PromotionDirection) {
+	const config = await Container.get(PromotionConfigRepository).findByConnectionAndDirection(
+		connectionId,
+		direction,
+	);
+	return { configId: config?.id, branchName: 'main' };
+}
+
+it('previews against the connection linked to the project, not the instance one', async () => {
+	const owner = await createOwner();
+	const linked = await createTeamProject('Linked', owner);
+	const other = await createTeamProject('Other', owner);
+	const instance = await createConnection();
+	const projectConnection = await Container.get(PromotionConnectionRepository).insertConnection({
+		name: 'Project',
+		scope: 'projects',
+		providerId: instance.providerId,
+		target: { schemaVersion: 1, remoteUrl: remoteFolder },
+	});
+	const projectConfig = await Container.get(PromotionConfigRepository).insertConfig({
+		connectionId: projectConnection.id,
+		direction: 'promote',
+		name: 'Promote',
+		settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
+	});
+	await Container.get(PromotionConnectionProjectRepository).linkProject(
+		linked.id,
+		projectConnection.id,
+	);
+	await Container.get(PromotionsService).clone(projectConnection.id, 'promote');
+	const agent = server.authAgentFor(owner);
+
+	const linkedPreview = await agent.get(`/promotions/${linked.id}/changes/promote`).expect(200);
+	expect(linkedPreview.body.data.source).toEqual({
+		configId: projectConfig.id,
+		branchName: 'production',
+	});
+	const otherPreview = await agent.get(`/promotions/${other.id}/changes/promote`).expect(200);
+	expect(otherPreview.body.data.source).toEqual(await sourceOf(instance.id, 'promote'));
+}, 30_000);
+
 it('lists new, changed, moved, archived, restored and deleted workflows through the endpoint', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Preview', owner);
+	await Container.get(AgentRepository).save({
+		id: 'local-agent',
+		name: 'Local Agent',
+		projectId: project.id,
+		schema: AgentJsonConfigSchema.parse({
+			name: 'Local Agent',
+			model: '',
+			instructions: '',
+			subAgents: { agents: [{ agentId: 'external-agent' }] },
+		}),
+	});
 	const otherProject = await createTeamProject('Other', owner);
 	const publishable = await createWorkflowWithHistory(
 		{ name: 'Publication', nodes: [], connections: {} },
@@ -162,6 +221,7 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 	});
 	expect((await agent.get(endpoint).expect(200)).body.data).toEqual({
 		commitSha: await remoteHead(),
+		source: await sourceOf(connection.id, 'promote'),
 		changes: [],
 	});
 
@@ -466,7 +526,11 @@ it('lists what applying the branch changes on this instance, named and archived 
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 
 	const synced = await agent.get(applyEndpoint).expect(200);
-	expect(synced.body.data).toEqual({ commitSha: baseline, changes: [] });
+	expect(synced.body.data).toEqual({
+		commitSha: baseline,
+		source: await sourceOf(connection.id, 'apply'),
+		changes: [],
+	});
 
 	await workflows.update(renamed.id, { name: 'Local name', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: false });
@@ -525,7 +589,11 @@ it('lists what applying the branch changes on this instance, named and archived 
 		canExportVariableValues: true,
 	});
 	const after = await agent.get(applyEndpoint).expect(200);
-	expect(after.body.data).toEqual({ commitSha: await remoteHead(), changes: [] });
+	expect(after.body.data).toEqual({
+		commitSha: await remoteHead(),
+		source: await sourceOf(connection.id, 'apply'),
+		changes: [],
+	});
 	expect(after.body.data.commitSha).not.toBe(baseline);
 }, 30_000);
 
@@ -608,6 +676,7 @@ it('answers for a destination that has only an apply configuration', async () =>
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data).toEqual({
 		commitSha: await remoteHead(),
+		source: await sourceOf(connection.id, 'apply'),
 		changes: [expect.objectContaining({ id: workflow.id, name: 'Local only', status: 'new' })],
 	});
 	await agent.get(endpoint).expect(400);

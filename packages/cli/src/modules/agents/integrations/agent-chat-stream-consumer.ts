@@ -96,6 +96,18 @@ const createResponseState = (options: ConsumeStreamOptions): ResponseState => ({
 	quietErrors: options.quietErrors === true,
 });
 
+const BUDGET_STOP_TEXT = {
+	'budget.session':
+		'⚠️ This session reached its cost cap and stopped. Open the agent in n8n and increase the cap.',
+	'budget.monthly':
+		'⚠️ This agent reached its monthly budget and stopped. Open the agent in n8n and increase the cap.',
+} as const;
+
+function budgetStopText(code: string | undefined): string | undefined {
+	if (code === 'budget.session' || code === 'budget.monthly') return BUDGET_STOP_TEXT[code];
+	return undefined;
+}
+
 export class AgentChatStreamConsumer {
 	constructor(private readonly options: AgentChatStreamConsumerOptions) {}
 
@@ -104,6 +116,7 @@ export class AgentChatStreamConsumer {
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
+		stream = this.separateTextSteps(stream);
 		if (this.options.disableStreaming || options.forceBuffered || options.throwOnDeliveryError) {
 			await this.consumeBuffered(stream, thread, options);
 			return;
@@ -221,6 +234,7 @@ export class AgentChatStreamConsumer {
 			endStreamingPost,
 		});
 		const responseState = createResponseState(options);
+		let budgetStop: string | undefined;
 
 		try {
 			for await (const chunk of stream) {
@@ -266,15 +280,49 @@ export class AgentChatStreamConsumer {
 							pendingText = '';
 						}
 						break;
+					case 'finish':
+						budgetStop ??= budgetStopText(chunk.guardrail?.code);
+						break;
 					default:
-						// Ignore non-user-visible chunks (reasoning, finish,
-						// tool-input-*, start-step, finish-step, etc.)
+						// Ignore non-user-visible chunks (reasoning, tool-input-*,
+						// start-step, finish-step, etc.)
 						break;
 				}
 			}
-			await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+			if (budgetStop !== undefined) {
+				await this.postBudgetStop(thread, budgetStop, responseState, responseLifecycle);
+			} else {
+				await this.postFallbackIfNeeded(responseState, responseLifecycle, thread);
+			}
 		} finally {
 			await responseLifecycle.finish();
+		}
+	}
+
+	// Preserve paragraph breaks when the bridge extracts text from the full stream.
+	private async *separateTextSteps(
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
+	): AsyncGenerator<AgentExecutionStreamChunk> {
+		let hasText = false;
+		let needsSeparator = false;
+		for await (const chunk of stream) {
+			if (chunk.type === 'text-delta' && chunk.delta) {
+				yield hasText && needsSeparator ? { ...chunk, delta: `\n\n${chunk.delta}` } : chunk;
+				hasText ||= chunk.delta.trim().length > 0;
+				needsSeparator = false;
+				continue;
+			}
+			if (chunk.type === 'finish-step') {
+				needsSeparator = true;
+			} else if (
+				chunk.type === 'message' ||
+				chunk.type === 'tool-call-suspended' ||
+				chunk.type === 'error'
+			) {
+				hasText = false;
+				needsSeparator = false;
+			}
+			yield chunk;
 		}
 	}
 
@@ -297,6 +345,18 @@ export class AgentChatStreamConsumer {
 			if (throwOnDeliveryError) throw postError;
 			await this.postError(thread, postError, state);
 		}
+	}
+
+	private async postBudgetStop(
+		thread: Thread<unknown, unknown>,
+		text: string,
+		state: ResponseState,
+		lifecycle: ResponseLifecycle,
+		throwOnDeliveryError = false,
+	): Promise<void> {
+		await lifecycle.startDiscreteResponse();
+		await this.postBufferedText(thread, text, state, throwOnDeliveryError);
+		state.hasVisibleResponse = true;
 	}
 
 	private async postError(
@@ -408,6 +468,7 @@ export class AgentChatStreamConsumer {
 			await this.postBufferedText(thread, text, responseState, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
+		let budgetStop: string | undefined;
 
 		try {
 			for await (const chunk of stream) {
@@ -460,17 +521,30 @@ export class AgentChatStreamConsumer {
 							buffer = '';
 						}
 						break;
+					case 'finish':
+						budgetStop ??= budgetStopText(chunk.guardrail?.code);
+						break;
 					default:
 						break;
 				}
 			}
 			await flushBuffer();
-			await this.postFallbackIfNeeded(
-				responseState,
-				responseLifecycle,
-				thread,
-				options.throwOnDeliveryError,
-			);
+			if (budgetStop !== undefined) {
+				await this.postBudgetStop(
+					thread,
+					budgetStop,
+					responseState,
+					responseLifecycle,
+					options.throwOnDeliveryError,
+				);
+			} else {
+				await this.postFallbackIfNeeded(
+					responseState,
+					responseLifecycle,
+					thread,
+					options.throwOnDeliveryError,
+				);
+			}
 		} finally {
 			await flushBuffer();
 			await responseLifecycle.finish();

@@ -20,6 +20,10 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
+import type {
+	AgentRuntimeInstrumentation,
+	PrepareWorkflowAgentForEval,
+} from '../agent-runtime-instrumentation';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
@@ -308,6 +312,7 @@ describe('AgentWorkflowExecutionService', () => {
 			agent_id: agentId,
 			user_id: userId,
 			run_type: 'production',
+			source: 'workflow',
 			message_count: 1,
 		});
 		expect(executionService.recordTimelineSnapshot).toHaveBeenCalledWith(
@@ -919,7 +924,7 @@ describe('AgentWorkflowExecutionService', () => {
 				'production',
 				undefined,
 				workflowContext,
-				streamObserver,
+				{ streamObserver },
 			);
 
 			// No entity lookup — the embedded config is the source of truth.
@@ -976,6 +981,7 @@ describe('AgentWorkflowExecutionService', () => {
 					agent_id: 'inline:wf-1:Message an Agent',
 					agent_type: 'inline',
 					run_type: 'production',
+					source: 'workflow',
 					turn_status: 'succeeded',
 					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
 				}),
@@ -1300,7 +1306,7 @@ describe('AgentWorkflowExecutionService', () => {
 				undefined,
 				undefined,
 				undefined,
-				streamObserver,
+				{ streamObserver },
 			);
 			await expect(execution).rejects.toMatchObject({
 				message: 'reader failed while consuming stream',
@@ -1338,7 +1344,7 @@ describe('AgentWorkflowExecutionService', () => {
 				undefined,
 				undefined,
 				undefined,
-				streamObserver,
+				{ streamObserver },
 			);
 
 			await expect(execution).rejects.toMatchObject({
@@ -1455,5 +1461,103 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+	});
+
+	describe('eval runs', () => {
+		const evalConfig: AgentJsonConfig = { ...schema, instructions: 'Help users (eval copy)' };
+		const integrations = [{ type: 'slack', credentialId: 'slack-1' }] as Agent['integrations'];
+
+		function makePrepareForEval() {
+			const instrumentation: AgentRuntimeInstrumentation = {
+				configureToolAdditionalData: vi.fn(),
+			};
+			const prepareForEval = vi
+				.fn<PrepareWorkflowAgentForEval>()
+				.mockResolvedValue({ config: evalConfig, instrumentation });
+			return { prepareForEval, instrumentation };
+		}
+
+		it('compiles a stored agent from the eval config and seams, without chat integrations', async () => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ integrations }));
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+			const { prepareForEval, instrumentation } = makePrepareForEval();
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				true,
+				undefined,
+				undefined,
+				undefined,
+				{ prepareForEval },
+			);
+
+			expect(prepareForEval).toHaveBeenCalledWith(schema, { hasChatIntegrations: true });
+			const [entity, , , , , passedInstrumentation] =
+				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
+			expect(entity.schema).toEqual(evalConfig);
+			expect(entity.integrations).toEqual([]);
+			expect(passedInstrumentation).toBe(instrumentation);
+			// Run telemetry describes the config that ran, not the stored one.
+			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					telemetry: expect.objectContaining({
+						configuration: expect.objectContaining({ channels: [] }),
+					}),
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('compiles an inline agent from the eval config and seams', async () => {
+			const { service, reconstructionService } = makeService();
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(makeRuntime());
+			const { prepareForEval, instrumentation } = makePrepareForEval();
+
+			await service.executeInlineForWorkflow(
+				{
+					config: {
+						name: 'Inline Agent',
+						model: 'openai/gpt-5',
+						credential: 'cred-1',
+						instructions: 'Help users',
+					},
+				},
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				userId,
+				'test',
+				undefined,
+				undefined,
+				{ prepareForEval },
+			);
+
+			expect(prepareForEval).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Inline Agent' }),
+			);
+			expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ config: evalConfig, instrumentation }),
+			);
+		});
+
+		it('passes no seams and keeps chat integrations outside eval runs', async () => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ integrations }));
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+			const [entity, , , , , passedInstrumentation] =
+				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
+			expect(entity.integrations).toEqual(integrations);
+			expect(passedInstrumentation).toBeUndefined();
+		});
 	});
 });

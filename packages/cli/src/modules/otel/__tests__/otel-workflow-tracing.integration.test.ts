@@ -1,5 +1,5 @@
 import { createTeamProject, createWorkflow, getPersonalProject } from '@n8n/backend-test-utils';
-import type { ExecutionRepository } from '@n8n/db';
+import { WorkflowRepository, type ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -13,6 +13,7 @@ import {
 	initOtelTestEnvironment,
 	terminateOtelTestEnvironment,
 	executeWorkflow,
+	executeWorkflowOnWorker,
 	waitForExecution,
 	waitForExecutionStatus,
 	saveAndSetEnv,
@@ -24,6 +25,8 @@ import {
 	createFailingWorkflowFixture,
 	createWaitWorkflowFixture,
 } from './support/otel-workflow-fixtures';
+import { OtelSettingsService } from '../otel-settings.service';
+import { OtelConfig } from '../otel.config';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
@@ -155,6 +158,51 @@ describe('OTEL Workflow Tracing Integration', () => {
 		expect(resumedSpanId).not.toBe(parkedSpanId);
 	});
 
+	it('should give the resumed segment the name of a workflow renamed during the wait', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWaitWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecutionStatus(executionRepository, executionId, 'waiting');
+
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Renamed during wait' });
+		await Container.get(WaitTracker).startExecution(executionId);
+		await waitForExecutionStatus(executionRepository, executionId, 'success');
+
+		const spans = otel.getFinishedSpans();
+		const parked = spans.find((s) => s.attributes['n8n.execution.status'] === 'waiting')!;
+		const resumed = spans.find((s) => s.attributes['n8n.execution.status'] === 'success')!;
+		const resumedNodeSpans = spans.filter(
+			(s) =>
+				s.name === 'node.execute' && s.parentSpanContext?.spanId === resumed.spanContext().spanId,
+		);
+
+		expect(parked.attributes['n8n.workflow.name']).toBe(workflow.name);
+		expect(resumed.attributes['n8n.workflow.name']).toBe('Renamed during wait');
+		expect(resumedNodeSpans.length).toBeGreaterThan(0);
+		for (const span of resumedNodeSpans) {
+			expect(span.attributes['n8n.workflow.name']).toBe('Renamed during wait');
+		}
+	});
+
+	it('should add the execution identity to worker node spans when the worker starts its own trace', async () => {
+		const project = await createTeamProject('Finance');
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+
+		const executionId = await executeWorkflowOnWorker(workflow, project.id);
+
+		const nodeSpans = otel.getFinishedSpans().filter((s) => s.name === 'node.execute');
+		expect(nodeSpans).toHaveLength(workflow.nodes.length);
+		for (const span of nodeSpans) {
+			expect(span.attributes).toMatchObject({
+				'n8n.execution.id': executionId,
+				'n8n.workflow.id': workflow.id,
+				'n8n.workflow.name': workflow.name,
+				'n8n.project.id': project.id,
+				'n8n.project.name': 'Finance',
+			});
+		}
+	});
+
 	it('should inherit traceId from inbound HTTP traceparent', async () => {
 		const inboundTraceId = '9bf2bd87b5053953e3fa08d8d889494b';
 		const project = await createTeamProject();
@@ -170,6 +218,67 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
 		expect(workflowSpan).toBeDefined();
 		expect(workflowSpan.spanContext().traceId).toBe(inboundTraceId);
+	});
+});
+
+describe('Start marker spans', () => {
+	const setStartSpanFlags = async (enabled: boolean) => {
+		const config = Container.get(OtelConfig);
+		config.emitWorkflowStartSpan = enabled;
+		config.emitNodeStartSpan = enabled;
+		await Container.get(OtelSettingsService).loadSettings();
+	};
+
+	beforeAll(async () => await setStartSpanFlags(true));
+	afterAll(async () => await setStartSpanFlags(false));
+
+	it('should emit one workflow marker and one marker for each node span', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		const nodeSpanIds = spans
+			.filter((s) => s.name === 'node.execute')
+			.map((s) => s.spanContext().spanId);
+		const workflowMarkers = spans.filter((s) => s.name === 'workflow.execute.started');
+		const nodeMarkers = spans.filter((s) => s.name === 'node.execute.started');
+
+		expect(workflowMarkers).toHaveLength(1);
+		expect(workflowMarkers[0].parentSpanContext?.spanId).toBe(workflowSpan.spanContext().spanId);
+		expect(workflowMarkers[0].attributes['n8n.execution.id']).toBe(executionId);
+		expect(nodeMarkers.map((m) => m.parentSpanContext?.spanId).sort()).toEqual(nodeSpanIds.sort());
+		for (const marker of [...workflowMarkers, ...nodeMarkers]) {
+			expect(marker.duration).toEqual([0, 0]);
+		}
+	});
+
+	it('should emit a workflow marker for each segment of a resumed execution', async () => {
+		const project = await createTeamProject();
+		const workflow = await createWorkflow(createWaitWorkflowFixture(), project);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecutionStatus(executionRepository, executionId, 'waiting');
+
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Renamed during wait' });
+		await Container.get(WaitTracker).startExecution(executionId);
+		await waitForExecutionStatus(executionRepository, executionId, 'success');
+
+		const spans = otel.getFinishedSpans();
+		const parked = spans.find((s) => s.attributes['n8n.execution.status'] === 'waiting')!;
+		const resumed = spans.find((s) => s.attributes['n8n.execution.status'] === 'success')!;
+		const markerOf = (segment: typeof parked) =>
+			spans.filter(
+				(s) =>
+					s.name === 'workflow.execute.started' &&
+					s.parentSpanContext?.spanId === segment.spanContext().spanId,
+			);
+
+		expect(spans.filter((s) => s.name === 'workflow.execute.started')).toHaveLength(2);
+		expect(markerOf(parked)).toHaveLength(1);
+		expect(markerOf(resumed)).toHaveLength(1);
+		expect(markerOf(resumed)[0].attributes['n8n.workflow.name']).toBe('Renamed during wait');
 	});
 });
 

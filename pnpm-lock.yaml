@@ -207,8 +207,8 @@ catalogs:
       specifier: ^4.0.20
       version: 4.0.20
     '@ai-sdk/openai-compatible':
-      specifier: ^3.0.14
-      version: 3.0.28
+      specifier: ^3.0.44
+      version: 3.0.44
     '@ai-sdk/otel':
       specifier: ^1.0.66
       version: 1.0.74
@@ -1208,7 +1208,7 @@ importers:
         version: 4.0.20(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
-        version: 3.0.28(zod@3.25.76)
+        version: 3.0.44(zod@3.25.76)
       '@ai-sdk/otel':
         specifier: 'catalog:'
         version: 1.0.74(zod@3.25.76)
@@ -1227,6 +1227,9 @@ importers:
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
+      '@n8n/client-oauth2':
+        specifier: workspace:*
+        version: link:../client-oauth2
       '@n8n/sandbox-client':
         specifier: 0.1.1
         version: 0.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -2882,6 +2885,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@typescript-eslint/typescript-estree':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)
@@ -4564,6 +4570,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.18
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -4577,6 +4586,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
@@ -4698,7 +4710,7 @@ importers:
         version: 4.0.39(zod@3.25.76)
       '@ai-sdk/openai-compatible':
         specifier: 'catalog:'
-        version: 3.0.28(zod@3.25.76)
+        version: 3.0.44(zod@3.25.76)
       '@apidevtools/json-schema-ref-parser':
         specifier: 12.0.2
         version: 12.0.2
@@ -4865,8 +4877,8 @@ importers:
         specifier: 'catalog:'
         version: 1.27.0
       '@n8n_io/license-sdk':
-        specifier: 3.1.0
-        version: 3.1.0
+        specifier: 3.3.0
+        version: 3.3.0
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -7532,6 +7544,9 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -8701,6 +8716,12 @@ packages:
     peerDependencies:
       zod: 3.25.76
 
+  '@ai-sdk/openai-compatible@3.0.44':
+    resolution: {integrity: sha512-pK7mERd/aIJVtyQCe/nV3G3iEJCY1no8GHDOGbgpNC+petjSfsxj+ni0Q8WVVehTUiY9B04F3Xvir+icBgORCg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: 3.25.76
+
   '@ai-sdk/openai@4.0.20':
     resolution: {integrity: sha512-/Hu+btLIO2zuYqCp//vBBAGdM/BeN4gds+NWrlv7Y9WrcTXwnEEwh6P3QZIWh2Tt1I1lswuDIpAJ4t/c/rws3Q==}
     engines: {node: '>=22'}
@@ -8734,6 +8755,16 @@ packages:
     engines: {node: '>=22'}
     peerDependencies:
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.36':
+    resolution: {integrity: sha512-MFXBn6XDyf37PNQAge/HTatPJE8Vmg/g/w4WPtjSV53jq8FKAzoaN5+43hsdQa9bqgN+/13jxug9ChvsG+godQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: 3.25.76
+
+  '@ai-sdk/provider@4.0.10':
+    resolution: {integrity: sha512-fX2ENAc7iDpZ+Wp4+Rk06Usn/Ys7dI9uAkGv0jlF6XVrW13NkRWx5Ou+U6lIM2E1fTLkCs16GGrUAaVvroag7A==}
+    engines: {node: '>=22'}
 
   '@ai-sdk/provider@4.0.3':
     resolution: {integrity: sha512-e0CpNWJUY7OxAFAnCZkw+ri9QOHWwTs1tXP42782KFGCU07qt8NiXCrCVowyCB5dP2r5/Uls+g2oPd8kOJn9dw==}
@@ -11547,8 +11578,8 @@ packages:
     resolution: {integrity: sha512-xCELByG49K24I1rVx6o3FueAH1+cu66d7ojoQepkbfsphIK0HLZisTCZ3/MmgtZUjvXMUI0Ekg46NWHvMMcJtQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
-  '@n8n_io/license-sdk@3.1.0':
-    resolution: {integrity: sha512-29+JEuXwoGCflBpVgT6ZzcWOeTNum2DcU57fnmUv9RPBuG1xo2Xrnx/1T+oL7XmztI3m1C0OnECZ842TImcxPg==}
+  '@n8n_io/license-sdk@3.3.0':
+    resolution: {integrity: sha512-067T0HncCKaqQmgA0hc/Bad+ztL67ZYyePnc263kEX0PfxQaAXRIofHPYLVrKxPbZlxgB5+SmuDlDeDtXAiZKg==}
     engines: {node: '>=20'}
 
   '@napi-rs/canvas-android-arm64@0.1.80':
@@ -25164,6 +25195,12 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.25(zod@3.25.76)
       zod: 3.25.76
 
+  '@ai-sdk/openai-compatible@3.0.44(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
+      zod: 3.25.76
+
   '@ai-sdk/openai@4.0.20(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
@@ -25212,6 +25249,19 @@ snapshots:
       eventsource-parser: 3.0.8
       undici: 7.29.1
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.36(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.10
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.0.8
+      undici: 7.29.1
+      zod: 3.25.76
+
+  '@ai-sdk/provider@4.0.10':
+    dependencies:
+      json-schema: 0.4.0
 
   '@ai-sdk/provider@4.0.3':
     dependencies:
@@ -29564,7 +29614,7 @@ snapshots:
 
   '@n8n_io/ai-assistant-sdk@1.27.0': {}
 
-  '@n8n_io/license-sdk@3.1.0':
+  '@n8n_io/license-sdk@3.3.0':
     dependencies:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12

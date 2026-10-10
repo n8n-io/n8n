@@ -167,8 +167,8 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 </script>
 
 <template>
-	<div :class="$style.row">
-		<div :class="$style.rowLabel">
+	<div :class="shared.settingRow">
+		<div :class="shared.settingLabel">
 			<N8nText step="sm" bold :class="shared.dataEntryLabel">
 				{{ i18n.baseText('agents.builder.memory.recallModel.label') }}
 			</N8nText>
@@ -176,7 +176,7 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 				{{ i18n.baseText('agents.builder.memory.recallModel.hint') }}
 			</N8nText>
 		</div>
-		<div :class="$style.modelSelector">
+		<div :class="shared.settingControlWide">
 			<AgentModelSelector
 				:selected-model="selectedModel"
 				:credentials="effectiveCredentials"
@@ -194,29 +194,3 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 		</div>
 	</div>
 </template>
-
-<style module>
-.row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-}
-
-.rowLabel {
-	display: flex;
-	flex: 1 1 0;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-
-.modelSelector {
-	flex: 0 0 calc(var(--spacing--5xl) + var(--spacing--lg));
-}
-
-.modelSelector > * {
-	width: 100%;
-}
-</style>

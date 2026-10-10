@@ -274,6 +274,22 @@ describe('node type policies public API instance scope', () => {
 	});
 });
 
+describe('node type policies public API extends rules', () => {
+	test('PUT rejects an extends rule with 400 and writes nothing', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+
+		const response = await agent.put('/node-type-policies/instance').send({
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } }],
+			defaultAction: 'allow',
+			version: 0,
+		});
+
+		expect(response.statusCode).toBe(400);
+		const current = await agent.get('/node-type-policies/instance');
+		expect(current.body.version).toBe(0);
+	});
+});
+
 describe('node type policies public API project scope', () => {
 	test('GET on an unconfigured project reports allow-all at version 0', async () => {
 		const response = await testServer.publicApiAgentFor(projectAdmin).get(projectRoute(project.id));

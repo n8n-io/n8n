@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest';
-import type { Logger } from '@n8n/backend-common';
+import type { AgentJsonConfig } from '@n8n/api-types';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -16,6 +17,7 @@ import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from '
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { PrepareWorkflowAgentForEval } from '@/modules/agents/agent-runtime-instrumentation';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -101,12 +103,22 @@ vi.mock('n8n-workflow', async () => {
 	};
 });
 
+const mockExecuteAgent = vi.fn();
+vi.mock('@/workflow-execute-additional-data', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/workflow-execute-additional-data')>()),
+	executeAgent: async (...args: unknown[]) => await mockExecuteAgent(...args),
+}));
+vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn() }));
+vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
+
 // ---------------------------------------------------------------------------
 // Import SUT and mocked modules (after vi.mock calls)
 // ---------------------------------------------------------------------------
 
 import { EvalExecutionService } from '../execution.service';
+import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
+import { createWebSearchMock } from '../web-search-mock';
 import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
@@ -227,6 +239,7 @@ describe('EvalExecutionService', () => {
 	const dataTableService = mock<DataTableService>();
 	const processedDataRepository = mock<ProcessedDataRepository>();
 	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
+	const moduleRegistry = mock<ModuleRegistry>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -265,6 +278,7 @@ describe('EvalExecutionService', () => {
 			dataTableService,
 			processedDataRepository,
 			instanceAiConfig,
+			moduleRegistry,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -480,6 +494,38 @@ describe('EvalExecutionService', () => {
 				await service.executeWithLlmMock('wf-1', makeUser());
 
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+
+			it('pins one empty item for a Manual Trigger without trigger content', async () => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: { properties: [] } as unknown as INodeTypeDescription,
+					trigger: vi.fn(),
+				} as never);
+				const manualTrigger = {
+					id: 'node-1',
+					name: 'Run',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				} as INode;
+				mockGetStartNode.mockReturnValue(manualTrigger);
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({ nodes: [manualTrigger] }) as never,
+				);
+				const hints = makeEmptyHints();
+				hints.triggerContent = {};
+				generateMockHintsMock.mockResolvedValue(hints);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(generateMockHintsMock).toHaveBeenCalledWith(
+					expect.objectContaining({ defaultStartNodeName: 'Run' }),
+				);
+				const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+					pinData?: Record<string, unknown[]>;
+				};
+				expect(runArg.pinData?.Run).toEqual([{ json: {} }]);
 			});
 		});
 
@@ -1837,6 +1883,48 @@ describe('EvalExecutionService', () => {
 			});
 		});
 
+		it('writes the embedded text into a synthesized PDF', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: {
+					attachment_0: {
+						mimeType: 'application/pdf',
+						fileName: 'invoice.pdf',
+						text: 'Invoice Number: INV-2026-0042',
+					},
+				},
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			const pdf = Buffer.from(item?.binary?.attachment_0.data ?? '', 'base64');
+			expect(pdf.toString('latin1')).toContain('(Invoice Number: INV-2026-0042) Tj');
+		});
+
+		it('does not add the requirement key when the embedded map names other files', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { CV_0: { mimeType: 'application/pdf', fileName: 'cv.pdf' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+			detectBinaryDependenciesMock.mockReturnValueOnce({
+				propertyName: 'data',
+				contentType: 'application/octet-stream',
+				filename: 'input.bin',
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(Object.keys(item?.binary ?? {})).toEqual(['CV_0']);
+		});
+
 		it('does not create pin data when triggerContent is empty', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = {};
@@ -2043,6 +2131,227 @@ describe('EvalExecutionService', () => {
 
 			expect(result.hints.globalContext).toBe('Users: jane@example.com, john@example.com');
 			expect(result.hints.nodeHints).toEqual({ 'HTTP Request': 'Return user profiles' });
+		});
+	});
+
+	// ── agents a workflow calls ──────────────────────────────────────
+
+	describe('agents a workflow calls', () => {
+		const callingNode = 'Ask Support';
+		const agentConfig = {
+			name: 'Support Bot',
+			model: 'openai/gpt-5',
+			credential: 'cred-1',
+			instructions: 'Answer support questions.',
+			memory: { enabled: true, storage: 'n8n' },
+			vectorStores: [{ id: 'store-1' }],
+			mcpServers: [{ name: 'linear', url: 'https://mcp.linear.app/mcp' }],
+		} as unknown as AgentJsonConfig;
+		const toolNode: INode = {
+			id: 'tool-1',
+			name: 'slack',
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		type AgentCallData = StubAdditionalData & {
+			executeAgent: (...args: unknown[]) => Promise<unknown>;
+		};
+
+		let runData: AgentCallData | undefined;
+
+		/** Makes the run call an agent through the swapped `executeAgent`, once per entry. */
+		function callAgentsDuringRun(...calls: Array<[threadId: string, workflowContext: object]>) {
+			workflowRunner.run.mockImplementation(async (data) => {
+				const ad = makeMockedAdditionalData() as AgentCallData;
+				runData = ad;
+				await data.configureAdditionalData?.(ad as never);
+				for (const [threadId, workflowContext] of calls) {
+					await ad.executeAgent(
+						{ agentId: 'agent-1' },
+						'hi',
+						'exec-1',
+						threadId,
+						ad,
+						'evaluation',
+						undefined,
+						workflowContext,
+						undefined,
+					);
+				}
+				return DB_EXECUTION_ID;
+			});
+		}
+
+		beforeEach(() => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			createLlmMockHandlerMock.mockReturnValue(
+				vi.fn().mockResolvedValue({ body: { ok: true }, headers: {}, statusCode: 200 }),
+			);
+		});
+
+		it('runs the called agent with fake I/O and records it under the calling node', async () => {
+			let prepared: Awaited<ReturnType<PrepareWorkflowAgentForEval>> | undefined;
+			const toolData = makeMockedAdditionalData();
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				const prepareForEval = args[9] as PrepareWorkflowAgentForEval;
+				prepared = await prepareForEval(agentConfig);
+				prepared.instrumentation.configureToolAdditionalData?.(toolData as never, {
+					toolName: 'slack',
+					toolKind: 'node',
+				});
+				await toolData.evalLlmMockHandler?.(
+					{ url: 'https://slack.com/api/chat.postMessage', method: 'POST', body: { text: 'hi' } },
+					toolNode,
+				);
+				vi.mocked(createMcpMockFetch).mock.calls[0][0].onToolCall({
+					serverName: 'linear',
+					toolName: 'list_issues',
+					args: { query: 'refund' },
+					result: { issues: [] },
+				});
+				vi.mocked(createWebSearchMock).mock.calls[0][0].onSearch(
+					{ query: 'refund policy' },
+					{ query: 'refund policy', results: [] },
+				);
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(mockExecuteAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hi',
+				'exec-1',
+				'thread-1',
+				expect.anything(),
+				'evaluation',
+				undefined,
+				{ callingNodeName: callingNode },
+				undefined,
+				expect.any(Function),
+			);
+			expect(prepared?.config.mcpServers).toEqual(agentConfig.mcpServers);
+			expect(prepared?.config.memory).toBeUndefined();
+			expect(prepared?.config.vectorStores).toBeUndefined();
+			const entry = result.nodeResults[callingNode];
+			expect(entry.executionMode).toBe('mocked');
+			expect(entry.interceptedRequests.map((request) => request.nodeType)).toEqual([
+				'n8n-nodes-base.slack',
+				'mcp:linear',
+				'web-search:fallback',
+			]);
+			expect(result.nodeResults.slack).toBeUndefined();
+			// The run's helper reports credentials the tools needed mocked.
+			expect(toolData.credentialsHelper).toBe(runData?.credentialsHelper);
+			// Memory goes off without a flag; a lost capability gets one.
+			expect(result.hints.warnings).toEqual([expect.stringContaining('vectorStores')]);
+		});
+
+		it('reuses one set of fakes per node and flags memory when a call continues a session', async () => {
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);
+				return { response: 'done' };
+			});
+			const session = { callingNodeName: callingNode, hasCallerSessionId: true };
+			callAgentsDuringRun(['session-1', session], ['session-1', session]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(createMcpMockFetch).toHaveBeenCalledTimes(1);
+			expect(createWebSearchMock).toHaveBeenCalledTimes(1);
+			expect(result.hints.warnings).toEqual([
+				expect.stringContaining('vectorStores'),
+				expect.stringContaining('memory'),
+			]);
+		});
+
+		it('flags the chat integrations that the eval drops from a called agent', async () => {
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				await (args[9] as PrepareWorkflowAgentForEval)(agentConfig, { hasChatIntegrations: true });
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.hints.warnings).toContainEqual(
+				expect.stringContaining('turned off its chat integrations'),
+			);
+		});
+
+		it("flags sub-agent features and mocks agents that the called agent's tools call", async () => {
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				const { instrumentation } = await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);
+				const toolData = makeMockedAdditionalData() as AgentCallData;
+				instrumentation.configureToolAdditionalData?.(toolData as never, {
+					toolName: 'triage',
+					toolKind: 'workflow',
+				});
+				const { callingNodeName } = args[7] as { callingNodeName: string };
+				if (callingNodeName === callingNode) {
+					instrumentation.transformDelegatedAgentConfig?.(agentConfig, { subAgentId: 'child-1' });
+					await toolData.executeAgent(
+						{ agentId: 'agent-2' },
+						'hi',
+						'exec-1',
+						'thread-2',
+						toolData,
+						'evaluation',
+						undefined,
+						{ callingNodeName: 'Inner Message' },
+						undefined,
+					);
+				} else {
+					await toolData.evalLlmMockHandler?.(
+						{ url: 'https://slack.com/api/chat.postMessage', method: 'POST' },
+						toolNode,
+					);
+				}
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(
+				result.nodeResults[callingNode].interceptedRequests.map((request) => request.nodeType),
+			).toEqual(['n8n-nodes-base.slack']);
+			expect(result.nodeResults['Inner Message']).toBeUndefined();
+			expect(result.hints.warnings).toContainEqual(expect.stringContaining('sub-agent child-1'));
+		});
+
+		it("turns off a sub-agent's MCP servers that the calling agent's mock does not cover", async () => {
+			let childConfig: AgentJsonConfig | undefined;
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				const { instrumentation } = await (args[9] as PrepareWorkflowAgentForEval)(agentConfig);
+				childConfig = instrumentation.transformDelegatedAgentConfig?.(
+					{
+						...agentConfig,
+						memory: undefined,
+						vectorStores: undefined,
+						mcpServers: [
+							{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+							{ name: 'github', url: 'https://mcp.github.com/mcp' },
+						],
+					} as unknown as AgentJsonConfig,
+					{ subAgentId: 'child-1' },
+				);
+				return { response: 'done' };
+			});
+			callAgentsDuringRun(['thread-1', { callingNodeName: callingNode }]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(childConfig?.mcpServers).toEqual([
+				{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+			]);
+			expect(result.hints.warnings).toContainEqual(
+				expect.stringMatching(/sub-agent child-1's MCP server "github"/),
+			);
 		});
 	});
 
