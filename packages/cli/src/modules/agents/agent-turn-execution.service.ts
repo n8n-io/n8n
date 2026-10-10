@@ -1,16 +1,19 @@
 import type {
 	Agent as RuntimeAgent,
 	ExecutionOptions,
+	GuardrailDecision,
 	ResumeOptions,
 	RunOptions,
 	SideCallUsageReport,
 	StreamChunk,
 } from '@n8n/agents';
+import { isAbortError } from '@n8n/agents';
 import type { AgentBackgroundJobSignal } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { AgentTaskCancellationRepository } from './repositories/agent-task-cancellation.repository';
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -48,6 +51,7 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 );
 
 interface ExecuteTurnConfig {
+	wake?: StartExecutionParams['wake'];
 	admittedExecution?: AgentExecutionAdmission;
 	onAdmitted?: () => Promise<void>;
 	agentInstance: RuntimeAgent;
@@ -99,6 +103,7 @@ function getMaxIterationsChunks(): StreamChunk[] {
 @Service()
 export class AgentTurnExecutionService {
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly logger: Logger,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly chatExecutionService: AgentChatExecutionService,
@@ -138,6 +143,12 @@ export class AgentTurnExecutionService {
 			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
 		} catch (error) {
+			if (
+				state.executionId &&
+				this.isStoppedChatTurn(turn, config) &&
+				!(error instanceof AgentExecutionRecordingError)
+			)
+				return;
 			state.executionError = error;
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
@@ -153,6 +164,16 @@ export class AgentTurnExecutionService {
 				}
 			}
 		}
+	}
+
+	private isStoppedChatTurn(
+		turn: AgentTurnRequest | undefined,
+		config: ExecuteTurnConfig,
+	): boolean {
+		const signal = turn?.options.abortSignal;
+		return Boolean(
+			config.chatSurface !== undefined && signal?.aborted && isAbortError(signal.reason),
+		);
 	}
 
 	private createChatExecutionControl(
@@ -227,6 +248,8 @@ export class AgentTurnExecutionService {
 				}
 				continue;
 			}
+			// The runtime also emits an error chunk for a requested stop.
+			if (chunk.type === 'error' && this.isStoppedChatTurn(turn, config)) continue;
 			recorder.record(chunk);
 			if (chunk.type === 'tool-call-suspended') state.suspendedRunId = chunk.runId;
 			if (chunk.type === 'error') state.executionError = chunk.error;
@@ -435,6 +458,7 @@ export class AgentTurnExecutionService {
 		const admission = await this.startExecution(
 			{
 				...turn.recording,
+				wake: config.wake,
 				previewChat: config.chatSurface === 'preview' ? true : undefined,
 				acceptsSteering: chatControl !== undefined,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
@@ -459,6 +483,18 @@ export class AgentTurnExecutionService {
 		chatControl?: ChatExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
 		const { executionId, inputMessageIds } = admission;
+		const checkCancellation = async (): Promise<GuardrailDecision | undefined> =>
+			(await this.cancellations.isCancelled(config.context.threadId, executionId))
+				? { action: 'stop', code: 'tasks-cancelled', canceled: true }
+				: undefined;
+		turn.options.guardrails = {
+			...turn.options.guardrails,
+			hooks: [
+				{ before: checkCancellation, beforeTool: checkCancellation },
+				...(turn.options.guardrails?.hooks ?? []),
+			],
+		};
+
 		if (turn.type === 'start') turn.input = bindExecutionInput(turn.input, inputMessageIds);
 		const executionSignal = this.agentExecutionService.getAbortSignal(executionId);
 		turn.options.abortSignal = turn.options.abortSignal

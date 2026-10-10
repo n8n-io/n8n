@@ -16,6 +16,7 @@
 | projectId | varchar(255) |  | false |  | [public.project](public.project.md) |  |
 | sessionNumber | integer | 0 | false |  |  |  |
 | taskId | varchar(32) |  | true |  |  | Published task ID that triggered this session; not an FK because published runs can outlive draft task definition rows |
+| taskStop | json |  | true |  |  | Latest task stop boundary and unresolved stop errors |
 | taskVersionId | varchar(36) |  | true |  | [public.agent_history](public.agent_history.md) | Published agent_history version that supplied the task snapshot |
 | title | varchar(255) |  | true |  |  |  |
 | totalCompletionTokens | integer | 0 | false |  |  |  |
@@ -84,6 +85,7 @@ erDiagram
   varchar_255_ projectId FK
   integer sessionNumber
   varchar_32_ taskId
+  json taskStop
   varchar_36_ taskVersionId FK
   varchar_255_ title
   integer totalCompletionTokens

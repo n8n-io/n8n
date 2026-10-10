@@ -397,3 +397,11 @@ export interface VectorStoreTestResult {
 	message?: string;
 	warning?: string;
 }
+
+export class AgentChatCancelDto extends Z.class({
+	scope: z.enum(['foreground', 'all']).optional(),
+}) {}
+
+export class AgentTaskCancellationDto extends Z.class({
+	planId: z.string().uuid().nullable(),
+}) {}

@@ -2,6 +2,7 @@ import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
 import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
+import { executionToMessagesDto } from '../utils/execution-to-message-mapper';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
 	return { type: 'tool-call', toolCallId, toolName, input } satisfies StreamChunk;
@@ -12,6 +13,41 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 }
 
 describe('ExecutionRecorder', () => {
+	it.each([true, false])(
+		'keeps canceled tool state in saved chat messages (started: %s)',
+		(started) => {
+			const recorder = new ExecutionRecorder();
+			if (started) recorder.record(makeToolCallChunk('update_plan', {}, 'tc-canceled'));
+			recorder.record({
+				type: 'tool-result',
+				toolCallId: 'tc-canceled',
+				toolName: 'update_plan',
+				output: 'Tool call canceled',
+				canceled: true,
+			});
+			const { timeline } = recorder.getMessageRecord();
+			expect(timeline[0]).toMatchObject({ type: 'tool-call', canceled: true, success: true });
+			const messages = executionToMessagesDto({
+				id: 'execution-1',
+				userMessage: 'Update the comparison',
+				author: null,
+				timeline,
+				attachments: null,
+				status: 'cancelled',
+				error: null,
+				createdAt: new Date(),
+			});
+			expect(messages.find((message) => message.role === 'assistant')?.content).toEqual([
+				expect.objectContaining({
+					type: 'tool-call',
+					toolCallId: 'tc-canceled',
+					state: 'resolved',
+					canceled: true,
+				}),
+			]);
+		},
+	);
+
 	it('scrubs titles in the initial signal', () => {
 		const recorder = new ExecutionRecorder(undefined, undefined, {
 			tasks: [

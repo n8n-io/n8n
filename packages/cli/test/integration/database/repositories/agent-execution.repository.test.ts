@@ -26,6 +26,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
@@ -193,7 +194,14 @@ describe('AgentExecutionRepository', () => {
 		memory.getImplementation.mockReturnValue(memoryBackend);
 		const attachmentService = mock<AgentChatAttachmentService>();
 		const executionLogStore = mock<AgentExecutionLogStore>();
+		const cancellations = new AgentTaskCancellationRepository(
+			connection ?? repository.manager.connection,
+			txRunner,
+			threads,
+			new AgentsConfig(),
+		);
 		const executionService = new AgentExecutionService(
+			cancellations,
 			mockLogger(),
 			executions,
 			threads,
@@ -231,6 +239,7 @@ describe('AgentExecutionRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 		);
 		const queue = new AgentMessageQueueService(
+			cancellations,
 			txRunner,
 			queueRepository,
 			threads,
@@ -249,6 +258,7 @@ describe('AgentExecutionRepository', () => {
 			await finalize();
 		});
 		return {
+			cancellations,
 			steering,
 			settingsService,
 			txRunner,
@@ -262,6 +272,7 @@ describe('AgentExecutionRepository', () => {
 			attachmentService,
 			executionLogStore,
 			turns: new AgentTurnExecutionService(
+				cancellations,
 				mockLogger(),
 				executionService,
 				chatExecutionService,
@@ -480,6 +491,7 @@ describe('AgentExecutionRepository', () => {
 			};
 			const createMain = () => {
 				const service = new AgentBackgroundJobService(
+					mock<AgentTaskCancellationRepository>(),
 					jobs,
 					repository,
 					mock<ExecutionPersistence>(),
@@ -495,6 +507,7 @@ describe('AgentExecutionRepository', () => {
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
+						mock<AgentTaskCancellationRepository>(),
 						sourceResolver,
 						turns,
 						storage,
@@ -1648,6 +1661,84 @@ describe('AgentExecutionRepository', () => {
 			});
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
+
+		it('admits one stop report before later input without consuming the queued message', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			await enqueue(services, input(threadId, 'Start', 'new'));
+			const first = await claim(services, threadId);
+			await finish(services, first);
+			const stopId = uuid();
+			await services.cancellations.saveStop(
+				{
+					threadId,
+					planId: null,
+					requestedAt: new Date().toISOString(),
+					generation: await services.cancellations.captureGeneration(threadId, {}),
+					failures: [],
+					pause: { id: stopId },
+				},
+				{},
+			);
+			const pending = await enqueue(services, input(threadId, 'Continue'));
+			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+			const recording = {
+				...first.recording,
+				queueItemId: undefined,
+				userMessage: 'Report the stop',
+				hideUserMessageFromTranscript: true,
+				wake: { jobIds: [], planStopId: stopId },
+			};
+			const start = async (params = recording) =>
+				await services.executionService.startExecutionRecording(params, new Date());
+			await expect(
+				start({ ...recording, wake: { jobIds: [], planStopId: uuid() } }),
+			).rejects.toThrow('This plan stop report is no longer available');
+			await expect(start({ ...recording, wake: { jobIds: [], planStopId: '' } })).rejects.toThrow(
+				'The plan is stopped',
+			);
+			const blocker = await repository.save({ id: uuid(), threadId, status: 'running' });
+			await expect(start()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			await repository.update(blocker.id, { status: 'success' });
+			await services.queueRepository.update(pending.id, { executionId: blocker.id });
+			await expect(start()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			await services.queueRepository.update(pending.id, { executionId: null });
+			const checkpoints = Container.get(AgentCheckpointRepository);
+			const checkpoint = await checkpoints.save({
+				runId: uuid(),
+				agentId,
+				threadId,
+				expired: false,
+				state: JSON.stringify({
+					status: 'suspended',
+					persistence: {
+						threadId,
+						hostMetadata: { [EXECUTION_METADATA_KEY]: blocker.id },
+					},
+				}),
+			});
+			await expect(start()).rejects.toBeInstanceOf(AgentTurnAlreadyRunningError);
+			await checkpoints.delete(checkpoint.runId);
+			const report = await start();
+			expect(report.inputMessageIds).not.toContain(pending.messageId);
+			expect(await services.queueRepository.findItem(threadId, pending.id, {})).toMatchObject({
+				executionId: null,
+			});
+			await expect(start()).rejects.toThrow('This plan stop report is no longer available');
+			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+			const recorder = new ExecutionRecorder();
+			recorder.record({ type: 'text-delta', id: 'report', delta: 'Tasks stopped.' });
+			recorder.record({ type: 'finish', finishReason: 'stop' });
+			await services.executionService.finalizeExecution(report.executionId, {
+				...recording,
+				record: recorder.getMessageRecord(),
+			});
+			await services.cancellations.finishPauseReport(threadId, stopId);
+			const next = await claim(services, threadId);
+			expect(next.admission.inputMessageIds).toEqual([pending.messageId]);
+			await finish(services, next);
+			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+		});
 
 		it.each([false, true])(
 			'finishes active work and cancels pending messages when Agents turns off (attachment cleanup fails: %s)',

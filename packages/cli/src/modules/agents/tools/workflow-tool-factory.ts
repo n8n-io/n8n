@@ -38,6 +38,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { EXECUTION_METADATA_KEY } from '../types/agent-queued-message';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -796,6 +797,10 @@ async function backgroundWaitingExecution(
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
+			sourceExecutionId:
+				typeof ctx.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY] === 'string'
+					? ctx.persistence.hostMetadata[EXECUTION_METADATA_KEY]
+					: undefined,
 			parentResourceId,
 			parentPrincipalHash: sandboxScope.principalHash,
 			title: reference.workflowName,

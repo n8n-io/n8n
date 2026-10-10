@@ -2,6 +2,9 @@ import {
 	type AgentBackgroundJobsResponse,
 	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
+	AgentChatCancelDto,
+	AgentTaskCancellationDto,
+	type AgentTaskCancellationState,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
@@ -24,6 +27,7 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -34,6 +38,7 @@ import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 
+import { AgentTaskCancellationService } from './agent-task-cancellation.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -70,6 +75,7 @@ import { withOpenSuspensions } from './utils/messages-envelope';
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
 	constructor(
+		private readonly taskCancellation: AgentTaskCancellationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
@@ -457,6 +463,7 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Param('executionId') executionId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const cancelRequested = await this.chatExecutionService.requestCancel({
 			projectId: req.params.projectId,
@@ -465,6 +472,7 @@ export class AgentChatController {
 			executionId,
 			userId: req.user.id,
 			surface: 'preview',
+			...(payload.scope ? { scope: payload.scope } : {}),
 		});
 		return { cancelRequested };
 	}
@@ -476,6 +484,7 @@ export class AgentChatController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const { projectId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -485,6 +494,7 @@ export class AgentChatController {
 			agentId,
 			runId,
 			resourceId: draftChatMemoryResourceId(req.user.id),
+			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
 		return { cancelled };
 	}
@@ -896,7 +906,10 @@ export class AgentChatController {
 			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
 		}
 
-		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
+			includePaused: true,
+			includeSettled: !!(await this.taskCancellation.state(threadId)),
+		});
 		return this.mapBackgroundJobsToDto(jobs);
 	}
 
@@ -933,6 +946,45 @@ export class AgentChatController {
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
 			})),
 		};
+	}
+
+	private async assertTaskCancellationAccess(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		if (
+			!(await this.agentsService.findById(agentId, projectId)) ||
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		)
+			throw new NotFoundError('Session not found');
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled)
+			throw new BadRequestError('Background tasks are not enabled');
+	}
+
+	@Post('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async cancelTasks(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<AgentTaskCancellationState> {
+		await this.assertTaskCancellationAccess(req);
+		return await this.taskCancellation.request(req.params.threadId, payload.planId);
+	}
+
+	@Get('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async getTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentTaskCancellationState | null> {
+		await this.assertTaskCancellationAccess(req);
+		return await this.taskCancellation.state(req.params.threadId);
 	}
 
 	@Post('/:agentId/chat/:threadId/background-tasks/stop')

@@ -6,6 +6,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
+import { AgentTaskCancellationRepository } from './repositories/agent-task-cancellation.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentsSettingsService } from './agents-settings.service';
@@ -64,6 +65,7 @@ export class AgentMessageQueueService {
 	onAvailable?: (threadId: string) => void;
 
 	constructor(
+		private readonly cancellations: AgentTaskCancellationRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly repository: AgentMessageQueueRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
@@ -353,6 +355,7 @@ export class AgentMessageQueueService {
 			if (!thread) return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
+			if (await this.cancellations.blocksQueue(threadId, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);
 			if (active?.executionId)
 				await this.repository.removeActive(threadId, active.executionId, ctx);

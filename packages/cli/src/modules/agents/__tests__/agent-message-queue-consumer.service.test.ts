@@ -335,6 +335,32 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 	});
 
+	it('ends delivery without an error when Stop follows queue acceptance', async () => {
+		const item = claim('session');
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		chatExecutions.register.mockImplementation((_context, controller) => {
+			controller.abort(new DOMException('Response stopped', 'AbortError'));
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({ name: 'AbortError' }),
+			expect.objectContaining({ aborted: true }),
+		);
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		expect(sender.send).toHaveBeenCalledWith({
+			type: 'done',
+			sessionId: 'session',
+			executionId: item.admission.executionId,
+		});
+		expect(sender.close).toHaveBeenCalledOnce();
+	});
+
 	it('leaves integration work pending until its bridge is available and stops admission during shutdown', async () => {
 		const item = claim('session', true);
 		const checked = createDeferredPromise();

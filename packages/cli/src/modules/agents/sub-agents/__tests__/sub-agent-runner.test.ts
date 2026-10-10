@@ -1,4 +1,3 @@
-import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
@@ -21,6 +20,8 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentTaskCancellationRepository } from '@/modules/agents/repositories/agent-task-cancellation.repository';
+import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -129,6 +130,7 @@ describe('SubAgentRunner', () => {
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
+	let cancellations: Mocked<AgentTaskCancellationRepository>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -149,9 +151,12 @@ describe('SubAgentRunner', () => {
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
 		logger = mock<Logger>();
+		cancellations = mock<AgentTaskCancellationRepository>();
 		runner = new SubAgentRunner(
+			cancellations,
 			sourceResolver,
 			new AgentTurnExecutionService(
+				cancellations,
 				logger,
 				agentExecutionService,
 				mock<AgentChatExecutionService>(),
@@ -190,6 +195,25 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('marks task cancellation in the child model and tool checks', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		cancellations.isCancelled.mockResolvedValue(true);
+		const hooks = childAgent.stream.mock.calls[0][1]?.guardrails?.hooks ?? [];
+		const decisions = await Promise.all([
+			hooks[0]?.before?.(mock()),
+			hooks[0]?.beforeTool?.(mock()),
+		]);
+		expect(decisions).toEqual([
+			{ action: 'stop', code: 'tasks-cancelled', canceled: true },
+			{ action: 'stop', code: 'tasks-cancelled', canceled: true },
+		]);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
@@ -793,7 +817,7 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				runId: 'child-run-1',
 				hostMetadata: { n8nExecutionId: 'agent-execution-1' },
-				shouldPause,
+				shouldPause: expect.any(Function),
 			}),
 		);
 		expect(result).toMatchObject({

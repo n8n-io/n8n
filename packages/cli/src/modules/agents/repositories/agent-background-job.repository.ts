@@ -8,11 +8,13 @@ import {
 	type AgentBackgroundJobKind,
 	type AgentBackgroundJobStatus,
 } from '../entities/agent-background-job.entity';
+import { AgentTaskCancellationRepository } from './agent-task-cancellation.repository';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 
 type NewAgentBackgroundJobBase = {
+	sourceExecutionId?: string;
 	id: string;
 	parentAgentId: string;
 	parentThreadId: string;
@@ -57,12 +59,15 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly threadRepository: AgentExecutionThreadRepository,
+		private readonly cancellations: AgentTaskCancellationRepository,
 	) {
 		super(AgentBackgroundJob, dataSource.manager, transactionRunner);
 	}
 
 	async insertSubAgentJobIfCapacity(job: NewSubAgentJob, limit: number): Promise<boolean> {
 		return await this.runInTransaction({}, async (manager, ctx) => {
+			await this.cancellations.lockScope(job.parentThreadId, ctx);
+			await this.cancellations.assertAdmission(job.parentThreadId, job.sourceExecutionId, ctx);
 			if (!(await this.threadRepository.lockById(job.parentThreadId, ctx))) {
 				throw new UserError('Session not found');
 			}
@@ -80,12 +85,17 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	async insertWorkflowJobOrGetExisting(
 		job: NewWorkflowJob,
 	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
-		await this.createQueryBuilder()
-			.insert()
-			.into(AgentBackgroundJob)
-			.values({ ...job, status: 'running' })
-			.orIgnore()
-			.execute();
+		await this.runInTransaction({}, async (manager, ctx) => {
+			await this.cancellations.lockScope(job.parentThreadId, ctx);
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(AgentBackgroundJob)
+				.values({ ...job, status: 'running' })
+				.orIgnore()
+				.execute();
+			// The service stops late workflow receipts before returning them to the caller.
+		});
 
 		const inserted = await this.existsBy({ id: job.id });
 		if (inserted) return { inserted: true };
@@ -507,7 +517,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			},
 			{
 				status: settlement.status,
-				result: settlement.result ?? null,
+				result: settlement.result ?? (settlement.status === 'cancelled' ? () => '"result"' : null),
 				error: settlement.error ?? null,
 				settledAt: new Date(),
 				notifiedAt:
@@ -518,6 +528,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			},
 		);
 		return result.affected === 1;
+	}
+
+	async preserveLateCompletedResult(id: string, result: string): Promise<void> {
+		// A confirmed output remains useful even when cancellation won the terminal-state race.
+		await this.update({ id, status: 'cancelled', result: IsNull() }, { result });
 	}
 
 	/** Delete settled jobs older than the cutoff only if their results are marked as delivered. */
