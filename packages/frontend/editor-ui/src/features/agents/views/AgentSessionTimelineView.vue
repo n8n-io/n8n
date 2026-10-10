@@ -25,6 +25,7 @@ import {
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import SessionTimelineSidePanel from '@/features/agents/components/SessionTimelineSidePanel.vue';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import {
 	increasedBudgetConfig,
@@ -34,7 +35,7 @@ import { useToast } from '@n8n/composables/useToast';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
 import { useI18n } from '@n8n/i18n';
 import type { DropdownMenuItemProps, IconName, PathItem } from '@n8n/design-system';
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -119,6 +120,11 @@ async function deleteSession() {
 // title/metrics/trigger without a second fetch of the same thread.
 const thread = ref<AgentExecutionThread | null>(null);
 const executions = ref<AgentExecution[]>([]);
+const isSidePanelVisible = ref(true);
+
+onMounted(() => {
+	isSidePanelVisible.value = window.innerWidth >= 400;
+});
 
 const triggerSource = computed((): string | null => {
 	if (executions.value.length === 0) return null;
@@ -324,6 +330,8 @@ async function onIncreaseBudget(payload: {
 			:show-langsmith-export="isLangSmithExportEnabled && hasLoadedThread"
 			:langsmith-export-loading="isExporting"
 			:metadata="hasLoadedThread ? sessionMetadata : undefined"
+			:is-side-panel-visible="isSidePanelVisible"
+			@toggle-side-panel="isSidePanelVisible = !isSidePanelVisible"
 			:has-session="hasLoadedThread"
 			:can-delete-session="canDeleteSession"
 			:is-deleting-session="isDeletingSession"
@@ -344,6 +352,12 @@ async function onIncreaseBudget(payload: {
 				:agent-name="thread?.agentName"
 				:personalisation="localConfig?.personalisation"
 				@loaded="onPanelLoaded"
+			/>
+			<SessionTimelineSidePanel
+				v-if="thread"
+				:thread="thread"
+				:metadata="sessionMetadata"
+				:is-visible="isSidePanelVisible"
 			/>
 		</div>
 	</div>
