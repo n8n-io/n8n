@@ -284,6 +284,10 @@ export class ScalingService {
 		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
 		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
 
+		if (this.globalConfig.queue.suspendExecutionsOnShutdown) {
+			this.jobProcessor.suspendRunningJobs();
+		}
+
 		let count = 0;
 
 		while (hasQueuedJobsToDrain() || (hasInProcessExecutionsToDrain() && isWithinDrainBudget())) {

@@ -270,6 +270,8 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			// on IExecutionResponse — narrow via the property check.
 			const waitTill = (ex as IExecutionResponse & { waitTill?: Date | string }).waitTill;
 			if (!waitTill) return undefined;
+			// Parked at worker shutdown: no node is waiting, the run resumes on its own.
+			if (ex.data?.waitReason === 'suspended') return undefined;
 			const lastNodeExecuted = ex.data?.resultData?.lastNodeExecuted;
 			if (node.name !== lastNodeExecuted) return undefined;
 
@@ -525,7 +527,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 		function setExecution(value: IExecutionResponse | null, opts: SetExecutionOptions = {}) {
 			const { stripWaitingTaskData = true } = opts;
-			if (stripWaitingTaskData && value?.data?.waitTill) {
+			// A run parked at worker shutdown has no node waiting: its last node finished for real.
+			const isParked = value?.data?.waitReason === 'suspended';
+			if (stripWaitingTaskData && value?.data?.waitTill && !isParked) {
 				delete value.data.resultData.runData[value.data.resultData.lastNodeExecuted as string];
 			}
 			execution.value = value;

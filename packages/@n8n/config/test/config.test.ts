@@ -436,6 +436,7 @@ describe('GlobalConfig', () => {
 				enabled: false,
 				name: '',
 			},
+			suspendExecutionsOnShutdown: false,
 		},
 		taskRunners: {
 			mode: 'internal',

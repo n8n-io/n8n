@@ -3814,11 +3814,15 @@ export interface IWorkflowExecutionDataProcess {
 	 * What, if anything, on the main that started this run awaits its outcome
 	 * and would act on a paused segment as if it were the result. A worker must
 	 * not park such a run at shutdown.
-	 * - `'response'`: a webhook caller is owed a response; satisfied once the run
-	 *   relays one.
+	 * The values differ in what clears them, not in when:
+	 * - `'response'`: a webhook caller is owed a response. Cleared when the worker
+	 *   relays one: at the Respond to Webhook node for `responseNode`, at the end
+	 *   of the run for `lastNode`.
 	 * - `'completion'`: a trigger node's done promise (Kafka, RabbitMQ, MQTT), an
-	 *   Instance AI run or a retry awaits the end of the run; never satisfied early.
-	 * - `'none'`: nothing waits, the run may be parked.
+	 *   Instance AI run, a retry or an MCP Trigger run awaits the end of the run.
+	 *   Never cleared.
+	 * - `'none'`: nothing waits, the run may be parked. A webhook in the default
+	 *   `onReceived` mode is answered at enqueue and starts here.
 	 * Absent (older main): treated as `'completion'`, the strictest reading.
 	 */
 	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
