@@ -182,6 +182,7 @@ export interface WorkflowToolContext {
 
 /** {@link WorkflowToolContext} plus fields that only exist once a run does. */
 export interface WorkflowToolRunContext extends WorkflowToolContext {
+	abortSignal?: AbortSignal;
 	/** Stamped onto sub-executions so a Wait node finishing can wake this run. */
 	agentRun?: RelatedAgentRun;
 }
@@ -463,7 +464,9 @@ export async function executeWorkflow(
 ): Promise<WorkflowToolExecutionResult> {
 	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
 
+	context.abortSignal?.throwIfAborted();
 	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId);
+	context.abortSignal?.throwIfAborted();
 
 	// Build pin data for the trigger
 	const triggerPinData: IPinData = {
@@ -524,60 +527,100 @@ export async function executeWorkflow(
 		responsePromise,
 	);
 
-	// Wait for completion with timeout protection
-	const timeoutMs = DEFAULT_TIMEOUT_MS;
+	return await withWorkflowCancellation(executionId, workflow.id, context.abortSignal, async () => {
+		// Wait for completion with timeout protection
+		const timeoutMs = DEFAULT_TIMEOUT_MS;
 
-	let completedRun: IRun | undefined;
-	if (activeExecutions.has(executionId)) {
-		let timeoutId: NodeJS.Timeout | undefined;
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timeoutId = setTimeout(() => {
-				reject(new Error(`Execution timed out after ${timeoutMs}ms`));
-			}, timeoutMs);
-		});
+		let completedRun: IRun | undefined;
+		if (activeExecutions.has(executionId)) {
+			let timeoutId: NodeJS.Timeout | undefined;
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(new Error(`Execution timed out after ${timeoutMs}ms`));
+				}, timeoutMs);
+			});
 
-		try {
-			completedRun = await Promise.race([
-				activeExecutions.getPostExecutePromise(executionId),
-				timeoutPromise,
-			]);
-			clearTimeout(timeoutId);
-		} catch (error) {
-			clearTimeout(timeoutId);
-			if (error instanceof Error && error.message.includes('timed out')) {
-				try {
-					activeExecutions.stopExecution(
+			try {
+				completedRun = await Promise.race([
+					activeExecutions.getPostExecutePromise(executionId),
+					timeoutPromise,
+				]);
+				clearTimeout(timeoutId);
+			} catch (error) {
+				clearTimeout(timeoutId);
+				if (error instanceof Error && error.message.includes('timed out')) {
+					try {
+						activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
+					} catch {
+						// Execution may have completed between timeout and cancel
+					}
+					return {
 						executionId,
-						new TimeoutExecutionCancelledError(executionId),
-					);
-				} catch {
-					// Execution may have completed between timeout and cancel
+						status: 'error',
+						error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+					};
 				}
-				return {
-					executionId,
-					status: 'error',
-					error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
-				};
+				throw error;
 			}
-			throw error;
 		}
-	}
 
-	const result =
-		completedRun && context.executionMode === 'integrated'
-			? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
-			: await extractResult(executionId, allOutputs);
-	if (isWorkflowToolResponse(webhookResponse)) {
-		const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
-			webhookResponse,
-			{ reclaim: true, context: { workflowId: workflow.id, executionId } },
-		);
-		result.data = {
-			...(result.data ?? {}),
-			response: truncateWebhookResponse(response),
-		};
+		const result =
+			completedRun && context.executionMode === 'integrated'
+				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
+				: await extractResult(executionId, allOutputs);
+		if (isWorkflowToolResponse(webhookResponse)) {
+			const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
+				webhookResponse,
+				{ reclaim: true, context: { workflowId: workflow.id, executionId } },
+			);
+			result.data = {
+				...(result.data ?? {}),
+				response: truncateWebhookResponse(response),
+			};
+		}
+		return result;
+	});
+}
+
+/** The foreground tool owns cancellation until it hands the workflow to a background job. */
+async function withWorkflowCancellation<T>(
+	executionId: string,
+	workflowId: string | undefined,
+	signal: AbortSignal | undefined,
+	execute: () => Promise<T>,
+): Promise<T> {
+	if (!signal) return await execute();
+	const aborted = createDeferredPromise<never>();
+	const onAbort = () => {
+		void (async () => {
+			try {
+				const { ExecutionService } = await import('@/executions/execution.service.js');
+				const id =
+					workflowId ??
+					(await Container.get(ExecutionPersistence).findSingleExecution(executionId))?.workflowId;
+				if (!id) throw new Error('The workflow execution is no longer available');
+				await Container.get(ExecutionService).stop(executionId, [id]);
+				aborted.reject(signal.reason);
+			} catch (error) {
+				aborted.reject(error);
+			}
+		})();
+	};
+	signal.addEventListener('abort', onAbort, { once: true });
+	try {
+		if (signal.aborted) {
+			onAbort();
+			return await aborted.promise;
+		}
+		const result = await Promise.race([execute(), aborted.promise]);
+		if (signal.aborted) return await aborted.promise;
+		return result;
+	} finally {
+		signal.removeEventListener('abort', onAbort);
 	}
-	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -1111,7 +1154,11 @@ function assembleWorkflowTool(
 					current.workflow,
 					current.triggerNode,
 					parsedInput,
-					{ ...context, agentRun: agentRunOf(context, ctx) },
+					{
+						...context,
+						agentRun: agentRunOf(context, ctx),
+						abortSignal: ctx.abortSignal,
+					},
 					allOutputs,
 					toolName,
 				);
@@ -1130,7 +1177,14 @@ function assembleWorkflowTool(
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
 			if (result.status === 'waiting') {
-				result = await pollIfDueSoon(result, allOutputs, ctx.abortSignal);
+				const waiting = result;
+				result = await withWorkflowCancellation(
+					waiting.executionId,
+					reference.workflowId,
+					ctx.abortSignal,
+					async () => await pollIfDueSoon(waiting, allOutputs, ctx.abortSignal),
+				);
+				ctx.abortSignal?.throwIfAborted();
 			}
 
 			if (result.status === 'waiting' && context.backgroundTasksEnabled) {
