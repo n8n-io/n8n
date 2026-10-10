@@ -8,4 +8,5 @@ self-hosted-runner:
     - blacksmith-32vcpu-ubuntu-2204
     - blacksmith-32vcpu-ubuntu-2204-arm
     - namespace-profile-n8n-docker-poc
+    - nscloud-ubuntu-22.04-amd64-1x2
     - ubuntu-slim

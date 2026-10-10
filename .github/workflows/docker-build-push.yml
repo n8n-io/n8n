@@ -93,7 +93,7 @@ on:
 jobs:
   determine-build-context:
     name: Determine Build Context
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.namespace_poc && 'nscloud-ubuntu-22.04-amd64-1x2' || 'ubuntu-latest' }}
     outputs:
       release_type: ${{ steps.context.outputs.release_type }}
       n8n_version: ${{ steps.context.outputs.version }}
@@ -106,6 +106,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
+          sparse-checkout: .github/scripts/docker
+          persist-credentials: false
 
       - name: Resolve built commit SHA
         id: sha
