@@ -544,7 +544,7 @@ describe('AgentExecutionRepository', () => {
 			}
 			try {
 				await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id), {
-					timeout: Math.max(deadline - Date.now(), 1_000),
+					timeout: childSettleTimeoutMs,
 					interval: 50,
 				});
 			} catch (error) {
