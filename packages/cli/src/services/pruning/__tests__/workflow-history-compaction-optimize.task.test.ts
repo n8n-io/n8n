@@ -21,6 +21,10 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 	});
 
+	it('should outlast the default task timeout', () => {
+		expect(task.timeoutSeconds).toBe(1800);
+	});
+
 	it('should optimize histories on run, handing the pass its abort signal', async () => {
 		const { signal } = new AbortController();
 

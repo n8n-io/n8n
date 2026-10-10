@@ -1,7 +1,7 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { TransactionRunner, DbConnectionOptions } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -62,7 +62,11 @@ describe('AgentCheckpointPruningTask', () => {
 		checkpointRepository = Container.get(AgentCheckpointRepository);
 		config = Container.get(AgentsConfig);
 		storage = makeStorage(checkpointRepository);
-		task = new AgentCheckpointPruningTask(storage, Container.get(AgentBackgroundJobService));
+		task = new AgentCheckpointPruningTask(
+			Container.get(DatabaseConfig),
+			storage,
+			Container.get(AgentBackgroundJobService),
+		);
 		stale = new Date(Date.now() - (config.checkpointTtlSeconds + Time.hours.toSeconds) * 1000);
 	});
 
@@ -199,6 +203,7 @@ describe('AgentCheckpointPruningTask', () => {
 			// Arrange: the other connection prunes the row but does not commit.
 			const [runId] = await insertCheckpoints('stale', 1, stale);
 			await new AgentCheckpointPruningTask(
+				Container.get(DatabaseConfig),
 				otherStorage,
 				Container.get(AgentBackgroundJobService),
 			).run();
