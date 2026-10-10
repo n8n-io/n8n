@@ -1,4 +1,5 @@
 import { N8N_NODES_API_VERSION } from '@n8n/constants';
+import { parseNodesApiLevel } from 'n8n-workflow';
 
 import { test as base } from '../base';
 import { IMPORT_MARKER_DIR, PUBLISHED_PACKAGES, type FixturePackage } from './fixture-packages';
@@ -20,7 +21,7 @@ export interface PackageDisk {
 type Fixtures = {
 	/** Publishes every fixture package into the stack's registry, once per worker, before any test runs. */
 	publishedPackages: readonly FixturePackage[];
-	/** Node API level the instance supports: 2.x runs level 1, 3.x runs level 3. */
+	/** Major node API level for fixtures that require integer levels. */
 	supportedNodesApiVersion: number;
 	/** What the package left on the instance's disk; follows the main container across a restart. */
 	packageDisk: PackageDisk;
@@ -44,7 +45,7 @@ export const test = base.extend<
 	],
 
 	supportedNodesApiVersion: async ({ api: _api }, use) => {
-		await use(N8N_NODES_API_VERSION);
+		await use(parseNodesApiLevel(N8N_NODES_API_VERSION)!.major);
 	},
 
 	packageDisk: async ({ n8nContainer }, use) => {

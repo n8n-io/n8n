@@ -199,11 +199,8 @@ export class N8nPackagesService {
 		const dependencyPolicy = request.dependencyPolicy ?? ExportDependencyPolicy.Fail;
 		const isReferenceOnly = dependencyPolicy === ExportDependencyPolicy.ReferenceOnly;
 
-		const workflowIds = request.workflowIds ?? [];
-		const folderIds = request.folderIds ?? [];
-		const projectIds = request.projectIds ?? [];
 		const includeTags = request.includeTags ?? true;
-		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
 		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;

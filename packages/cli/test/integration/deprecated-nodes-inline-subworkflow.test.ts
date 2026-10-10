@@ -27,8 +27,12 @@ describe('inline sub-workflow with a deprecated node', () => {
 			'n8n-nodes-base.manualTrigger',
 			'n8n-nodes-base.executeWorkflow',
 			'n8n-nodes-base.executeWorkflowTrigger',
-			'n8n-nodes-base.function',
 		]);
+		const deprecatedNode = utils.createDeprecatedNodeType('n8n-nodes-base.function');
+		deprecatedNode.description.inputs = [NodeConnectionTypes.Main];
+		deprecatedNode.description.outputs = [NodeConnectionTypes.Main];
+		deprecatedNode.execute = async () => [[{ json: { ran: 'function' } }]];
+		nodeTypes['n8n-nodes-base.function'] = { type: deprecatedNode, sourcePath: '' };
 
 		await utils.initNodeTypes(nodeTypes);
 		await utils.initBinaryDataService();
