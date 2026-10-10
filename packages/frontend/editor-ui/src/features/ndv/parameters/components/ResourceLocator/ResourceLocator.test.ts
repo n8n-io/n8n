@@ -1489,14 +1489,20 @@ describe('ResourceLocator', () => {
 		});
 
 		it('uses the cached url of a list value without a lookup', async () => {
+			// Differs from the url a lookup would build, so the test shows which one is used.
+			const cachedUrl = `/projects/cached-project/datatables/${TABLE_ID}`;
+			const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 			const { getByTestId } = renderDataTableLocator({
 				mode: 'list',
 				value: TABLE_ID,
 				cachedResultName: 'h1_asset_eval',
-				cachedResultUrl: TABLE_URL,
+				cachedResultUrl: cachedUrl,
 			});
 
-			expect(await waitFor(() => getByTestId('rlc-open-resource-link'))).toBeInTheDocument();
+			const link = await waitFor(() => getByTestId('rlc-open-resource-link'));
+			await userEvent.click(link);
+
+			expect(windowOpenSpy).toHaveBeenCalledWith(cachedUrl, '_blank', 'noopener,noreferrer');
 			expect(dataTableStore.fetchDataTableById).not.toHaveBeenCalled();
 		});
 
