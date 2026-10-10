@@ -906,12 +906,17 @@ export class ExecutionPersistence {
 		executionId: string,
 		conditions?: UpdateExecutionConditions,
 	): FindOptionsWhere<ExecutionEntity> {
-		if (conditions?.requireStatus && conditions?.requireNotCanceled) {
-			throw new UnexpectedError('`requireStatus` and `requireNotCanceled` cannot be combined');
+		const statusConstraintCount =
+			(conditions?.requireStatus !== undefined ? 1 : 0) +
+			(conditions?.requireStatuses !== undefined ? 1 : 0) +
+			(conditions?.requireNotCanceled ? 1 : 0);
+		if (statusConstraintCount > 1) {
+			throw new UnexpectedError('Only one `status` constraint can be applied per update');
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
+		if (conditions?.requireStatuses) where.status = In([...conditions.requireStatuses]);
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
