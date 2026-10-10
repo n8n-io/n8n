@@ -92,7 +92,12 @@ onMounted(async () => {
 		void rolesStore.fetchRoles();
 	}
 
-	await userRoleProvisioningStore.getProvisioningConfig();
+	const hasSsoLicense = [EnterpriseEditionFeature.Saml, EnterpriseEditionFeature.Oidc].some(
+		(feature) => settingsStore.isEnterpriseFeatureEnabled[feature],
+	);
+	if (hasSsoLicense) {
+		await userRoleProvisioningStore.getProvisioningConfig();
+	}
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {
