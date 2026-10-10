@@ -69,6 +69,28 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(recent.get(workflow.id)?.map((entry) => entry.userId)).toEqual([alice.id, bob.id]);
 		});
 
+		test('pages past the first 500 events to reach a workflow published before them', async () => {
+			const [busy, quiet] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await publishEvent(quiet, alice.id, '2026-01-01T00:00:00.000Z');
+			await publishEvent(quiet, bob.id, '2026-01-02T00:00:00.000Z');
+			for (let batch = 0; batch < 6; batch++) {
+				await repository.insert(
+					Array.from({ length: 100 }, () => ({
+						workflowId: busy.id,
+						versionId: null,
+						event: 'activated' as const,
+						userId: alice.id,
+						createdAt: new Date('2026-01-03T00:00:00.000Z'),
+					})),
+				);
+			}
+
+			const recent = await repository.findRecentAttributedByWorkflowIds([busy.id, quiet.id], 2);
+
+			expect(recent.get(busy.id)?.map((entry) => entry.userId)).toEqual([alice.id, alice.id]);
+			expect(recent.get(quiet.id)?.map((entry) => entry.userId)).toEqual([bob.id, alice.id]);
+		});
+
 		test('omits a workflow with no attributable event and returns nothing for no ids', async () => {
 			const workflow = await createWorkflow();
 			await publishEvent(workflow, null, '2026-01-01T00:00:00.000Z');
