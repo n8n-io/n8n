@@ -85,6 +85,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const node = mock<INode>();
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
+	const stoppedAt = new Date('2025-01-13T18:25:51.267Z');
 	const workflowData: IWorkflowBase = {
 		id: workflowId,
 		name: 'Test Workflow',
@@ -122,12 +123,14 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		stoppedAt,
 		storedAt: 'db',
 	});
 	const failedRun = mock<IRun>({
 		status: 'error',
 		finished: false,
 		waitTill: undefined,
+		stoppedAt,
 		storedAt: 'db',
 	});
 	const waitingRun = mock<IRun>({
@@ -146,6 +149,7 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		stoppedAt,
 		storedAt: 'db',
 		data: {
 			resultData: {
@@ -160,6 +164,7 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'error',
 		finished: false,
 		waitTill: undefined,
+		stoppedAt,
 		storedAt: 'db',
 		data: {
 			resultData: {
@@ -1182,6 +1187,39 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
+				it('should mark an unsaved zero-output execution as successful before deletion', async () => {
+					const zeroOutputRun: IRun = {
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						mode: 'trigger',
+						startedAt: new Date('2025-01-13T18:25:50.267Z'),
+						stoppedAt,
+						storedAt: 'db',
+						data: createRunExecutionData({
+							resultData: {
+								lastNodeExecuted: 'Code',
+								runData: {
+									Code: [mock<ITaskData>({ data: { main: [[]] } })],
+								},
+							},
+						}),
+					};
+					workflowData.settings = { saveDataSuccessExecution: 'none' };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [zeroOutputRun, {}]);
+
+					expect(executionPersistence.deleteInFlightExecution).toHaveBeenCalledWith({
+						workflowId,
+						executionId,
+						storedAt: 'db',
+						status: 'success',
+						finished: true,
+						stoppedAt,
+					});
+				});
+
 				it('should soft delete manual executions when manual saving is disabled', async () => {
 					lifecycleHooks.workflowData.settings = { saveManualExecutions: false };
 					lifecycleHooks = createHooks();
@@ -1470,6 +1508,9 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowId,
 					executionId,
 					storedAt: 'db',
+					status: 'success',
+					finished: true,
+					stoppedAt: successfulRun.stoppedAt,
 				});
 			});
 
@@ -1494,6 +1535,9 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowId,
 					executionId,
 					storedAt: 'db',
+					status: 'error',
+					finished: false,
+					stoppedAt: failedRun.stoppedAt,
 				});
 			});
 
@@ -1532,6 +1576,9 @@ describe('Execution Lifecycle Hooks', () => {
 						workflowId,
 						executionId,
 						storedAt: 'db',
+						status: 'success',
+						finished: true,
+						stoppedAt: successfulRunWithMetadata.stoppedAt,
 					});
 				});
 
@@ -1572,6 +1619,9 @@ describe('Execution Lifecycle Hooks', () => {
 						workflowId,
 						executionId,
 						storedAt: 'db',
+						status: 'error',
+						finished: false,
+						stoppedAt: failedRunWithMetadata.stoppedAt,
 					});
 				});
 
