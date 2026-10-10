@@ -59,6 +59,8 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 	envManagedFields: [],
@@ -236,6 +238,19 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.click(getByTestId('otel-production-only'));
 
 		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+	});
+
+	it('disables the node start span checkbox while node spans are off', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ includeNodeSpans: false }));
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-emit-node-start-span')).toBeInTheDocument());
+
+		expect(getByTestId('otel-emit-node-start-span')).toBeDisabled();
+
+		await userEvent.click(getByTestId('otel-include-node-spans'));
+
+		await waitFor(() => expect(getByTestId('otel-emit-node-start-span')).toBeEnabled());
 	});
 
 	// ── save ──────────────────────────────────────────────────────────────────
@@ -440,6 +455,8 @@ describe('SettingsOpenTelemetryView', () => {
 
 		// Checkboxes
 		await userEvent.click(getByTestId('otel-include-node-spans'));
+		await userEvent.click(getByTestId('otel-emit-workflow-start-span'));
+		await userEvent.click(getByTestId('otel-emit-node-start-span'));
 		await userEvent.click(getByTestId('otel-inject-outbound'));
 		await userEvent.click(getByTestId('otel-production-only'));
 
@@ -458,6 +475,8 @@ describe('SettingsOpenTelemetryView', () => {
 					startupConnectivityTimeoutMs: 5000,
 					tracesSampleRate: 0.5,
 					includeNodeSpans: true,
+					emitWorkflowStartSpan: true,
+					emitNodeStartSpan: true,
 					injectOutbound: true,
 					productionExecutionsOnly: true,
 				}),

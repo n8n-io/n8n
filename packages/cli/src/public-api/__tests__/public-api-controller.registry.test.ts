@@ -1,4 +1,4 @@
-import { publicApiUploadedFileSchema, Z } from '@n8n/api-types';
+import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -14,11 +14,13 @@ import {
 	Param,
 	Post,
 	ProjectScope,
+	Query,
 	RequiresUserQuota,
 } from '@n8n/decorators';
 import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
+import { Readable } from 'node:stream';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -191,6 +193,24 @@ describe('PublicApiControllerRegistry', () => {
 				.expect(400);
 
 			expect(response.body.message).toBe('request/body/active is read-only');
+		});
+
+		it('rejects a negative query limit with a 400', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				list(_req: express.Request, _res: express.Response, @Query _query: ListTagsQueryDto) {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets?limit=-1').expect(400);
+
+			expect(response.body.message).toBe(
+				'request/query/limit Param `limit` must be a non-negative integer',
+			);
 		});
 	});
 
@@ -703,6 +723,225 @@ describe('PublicApiControllerRegistry', () => {
 			const response = await request(activate()).get('/api/v1/widgets').expect(403);
 
 			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+	});
+
+	describe('binary response bodies', () => {
+		// supertest buffers only text and JSON bodies by default
+		const readBinaryBody = (
+			res: request.Response,
+			callback: (error: Error | null, body: Buffer) => void,
+		) => {
+			const chunks: Buffer[] = [];
+			res.on('data', (chunk: Buffer) => chunks.push(chunk));
+			res.on('end', () => callback(null, Buffer.concat(chunks)));
+		};
+
+		it('sends the body the method returns, with the declared status, media type and headers', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(202, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Example': { description: 'Example header.' } },
+				})
+				async method() {
+					return { body: Buffer.from([1, 2, 3]), headers: { 'X-Example': '1' } };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(202);
+
+			expect(response.headers['content-type']).toBe('application/gzip');
+			expect(response.headers['x-example']).toBe('1');
+			expect(response.body).toEqual(Buffer.from([1, 2, 3]));
+		});
+
+		it('streams a returned stream', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method() {
+					return { body: Readable.from([Buffer.from('ab'), Buffer.from('cd')]) };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(200);
+
+			expect(response.body.toString()).toBe('abcd');
+		});
+
+		it('matches a declared header name case-insensitively', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Example': { description: 'Example header.' } },
+				})
+				async method() {
+					return { body: Buffer.from('x'), headers: { 'x-example': '1' } };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(200);
+
+			expect(response.headers['x-example']).toBe('1');
+		});
+
+		it('keeps the declared media type when a result header tries to replace it', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method() {
+					return { body: Buffer.from('x'), headers: { 'Content-Type': 'text/plain' } };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.get('/api/v1/widgets')
+				.buffer(true)
+				.parse(readBinaryBody)
+				.expect(200);
+
+			expect(response.headers['content-type']).toBe('application/gzip');
+		});
+
+		it('fails with 500 when the method returns no binary body', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(500);
+
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+			expect(response.body.message).toBe('Internal server error');
+		});
+
+		it('fails with 500 when a declared header is missing from the result', async () => {
+			@Service()
+			class WidgetsBinaryHeaderPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Required': { description: 'Must be set.' } },
+				})
+				async method() {
+					return { body: Buffer.from('x') };
+				}
+			}
+			markPublicApiController(WidgetsBinaryHeaderPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(500);
+
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+			expect(response.body.message).toBe('Internal server error');
+		});
+
+		it('sends a clean JSON error when the method throws before the body starts', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method() {
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+			expect(response.body.message).toBe('missing');
+		});
+
+		it('sends a clean JSON error when a stream fails before its first chunk', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, {
+					mediaType: 'application/gzip',
+					headers: { 'X-Example': { description: 'Example header.' } },
+				})
+				async method() {
+					const failing = new Readable({
+						read() {
+							this.destroy(new NotFoundError('missing'));
+						},
+					});
+					return { body: failing, headers: { 'X-Example': '1' } };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers['content-type']).toMatch(/application\/json/);
+			expect(response.headers['x-example']).toBeUndefined();
+			expect(response.body.message).toBe('missing');
+		});
+
+		it('keeps headers set before the method on an error response', async () => {
+			const since = new Date('2026-07-23T00:00:00Z');
+
+			@Service()
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				@Deprecated({ since })
+				async method() {
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers.deprecation).toBe(`@${Math.floor(since.getTime() / 1000)}`);
+		});
+
+		it('keeps a Content-Type set by earlier middleware on an error response', async () => {
+			@Service()
+			class WidgetsBinaryMiddlewarePublicController {
+				@Middleware()
+				label(_req: express.Request, res: express.Response, next: express.NextFunction) {
+					res.setHeader('Content-Type', 'text/plain');
+					next();
+				}
+
+				@Get('/')
+				@ApiResponse(200, { mediaType: 'application/gzip' })
+				async method() {
+					throw new NotFoundError('missing');
+				}
+			}
+			markPublicApiController(WidgetsBinaryMiddlewarePublicController as Controller, '/widgets');
+
+			const response = await request(activate()).get('/api/v1/widgets').expect(404);
+
+			expect(response.headers['content-type']).toMatch(/text\/plain/);
 		});
 	});
 });

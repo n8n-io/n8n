@@ -1,5 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, type AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
 import type { WhatsAppAdapter } from '@chat-adapter/whatsapp';
 import { createHmac } from 'crypto';
@@ -7,7 +7,9 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatAttachmentService } from '../../../../agent-chat-attachment.service';
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
+import { ChannelRateLimitGuard } from '../../../channel-rate-limit.guard';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
@@ -18,6 +20,7 @@ import type {
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { WhatsAppIntegration } from '../../../platforms/whatsapp-integration';
 import {
+	createMockAttachmentService,
 	createReplayContextSetup,
 	installFetchStub,
 	type MemoryMessageContextStore,
@@ -35,7 +38,18 @@ export interface WhatsAppInboundMessageFixture {
 	from: string;
 	id: string;
 	timestamp: string;
-	type: 'text' | 'interactive' | 'button' | 'reaction';
+	type:
+		| 'text'
+		| 'interactive'
+		| 'button'
+		| 'reaction'
+		| 'image'
+		| 'document'
+		| 'audio'
+		| 'video'
+		| 'sticker'
+		| 'location'
+		| 'contacts';
 	text?: { body: string };
 	interactive?: {
 		type: 'button_reply' | 'list_reply';
@@ -44,6 +58,22 @@ export interface WhatsAppInboundMessageFixture {
 	};
 	button?: { payload: string; text: string };
 	reaction?: { emoji: string; message_id: string };
+	image?: { id: string; mime_type: string; sha256: string; caption?: string };
+	document?: {
+		id: string;
+		mime_type: string;
+		sha256: string;
+		filename?: string;
+		caption?: string;
+	};
+	audio?: { id: string; mime_type: string; sha256: string; voice?: boolean };
+	video?: { id: string; mime_type: string; sha256: string; caption?: string };
+	sticker?: { id: string; mime_type: string; sha256: string; animated: boolean };
+	location?: { latitude: number; longitude: number; name?: string; address?: string; url?: string };
+	contacts?: Array<{
+		name?: { formatted_name: string; first_name?: string; last_name?: string };
+		phones?: Array<{ phone: string; wa_id?: string; type?: string }>;
+	}>;
 }
 
 export interface WhatsAppWebhookFixture {
@@ -71,8 +101,10 @@ export interface WhatsAppReplayFixtures {
 	followUp: WhatsAppWebhookFixture;
 }
 
-export interface WhatsAppReplayContext extends Omit<ReplayContextSetup, 'nextStream' | 'chat'> {
+export interface WhatsAppReplayContext
+	extends Omit<ReplayContextSetup, 'nextStream' | 'chat' | 'attachmentService'> {
 	chat: ChatInstance;
+	attachmentService: AgentChatAttachmentService;
 	agentExecutor: {
 		executeForChatPublished: Mock;
 		resumeForChat: Mock;
@@ -104,7 +136,9 @@ export function whatsAppThreadId(
 	return `whatsapp:${fixtures.phoneNumberId}:${fixtures.contact.wa_id}`;
 }
 
-export function createWhatsAppIntegration(): WhatsAppIntegration {
+export function createWhatsAppIntegration(
+	channelRateLimitGuard = new ChannelRateLimitGuard(),
+): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),
 		mock<AgentRepository>(),
@@ -112,7 +146,63 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
 			encryptionKey: 'test-encryption-key',
 			hmacSignatureSecret: 'test-hmac-signature-secret',
 		}),
+		channelRateLimitGuard,
 	);
+}
+
+/**
+ * Real, minimal-but-valid file content per media kind — genuine magic bytes,
+ * not arbitrary filler — so `resolveInboundMimeType`'s magic-byte sniffing
+ * (see `agent-chat-bridge.ts`) resolves them the same way it would for a real
+ * download, rather than falling back to `application/octet-stream`. Keyed by
+ * the same string each fixture's fake media `id` embeds (e.g. `media-image-1`
+ * contains `"image"`), so the stub below can serve the right bytes for
+ * whichever media a test's fixture declares.
+ */
+const WHATSAPP_MEDIA_CONTENT: Record<string, Buffer> = {
+	image: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]),
+	document: Buffer.from('%PDF-1.4\nsynthetic test content padding padding padding'),
+	audio: Buffer.from([0xff, 0xfb, 0x90, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+	// A minimal real OGG page (see https://www.rfc-editor.org/rfc/rfc3533)
+	// wrapping a complete 19-byte Opus ID header (RFC 7845 §5.1), so it sniffs
+	// as audio/ogg like a real WhatsApp voice note would.
+	voice: Buffer.concat([
+		Buffer.from('OggS'),
+		Buffer.from([0x00]), // version
+		Buffer.from([0x02]), // header_type: beginning of stream
+		Buffer.alloc(8), // granule position
+		Buffer.from([0x01, 0x02, 0x03, 0x04]), // serial number
+		Buffer.alloc(4), // page sequence number
+		Buffer.alloc(4), // CRC checksum
+		Buffer.from([0x01]), // page_segments: one lacing value follows
+		Buffer.from([19]), // segment_table: one 19-byte segment
+		Buffer.from('OpusHead'),
+		Buffer.from([0x01]), // version
+		Buffer.from([0x01]), // channel count
+		Buffer.from([0x38, 0x01]), // pre-skip (312, little-endian)
+		Buffer.from([0x80, 0xbb, 0x00, 0x00]), // input sample rate (48000, little-endian)
+		Buffer.from([0x00, 0x00]), // output gain
+		Buffer.from([0x00]), // channel mapping family
+	]),
+	video: Buffer.from([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]),
+	sticker: Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBPVP8 ')]),
+	// One byte over the shared cap: WhatsApp attachments never carry a
+	// declared `size` (see `WhatsAppInboundMessage`), so the bridge's size
+	// check only ever fires after this downloads — there's nothing to
+	// pre-empt it on, unlike a platform that reports size upfront.
+	oversized: Buffer.alloc(MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES + 1, 0x41),
+};
+
+/**
+ * A fixed number of leading sends fail with the given Meta error before the
+ * stub starts succeeding — for exercising `withWhatsAppRateLimitBackoff`'s
+ * retry loop. `count: Infinity` fails every send, for the exhausted-retries
+ * case.
+ */
+export interface WhatsAppFailureSequence {
+	count: number;
+	status?: number;
+	code?: number;
 }
 
 /**
@@ -121,12 +211,40 @@ export function createWhatsAppIntegration(): WhatsAppIntegration {
  * same `/{phoneNumberId}/messages` endpoint, so the response only needs a
  * message ID — the adapter doesn't branch on the response shape otherwise.
  */
-function installWhatsAppApiStub(failedTypes: string[] = []) {
+function installWhatsAppApiStub(
+	failedTypes: string[] = [],
+	failureSequence?: WhatsAppFailureSequence,
+) {
 	let nextMessageId = 1000;
+	let failuresLeft = failureSequence?.count ?? 0;
 	return installFetchStub({
 		match: /graph\.facebook\.com/,
-		onRequest: ({ url, body }) => {
+		onRequest: ({ httpMethod, url, body }) => {
 			const path = url.split('?')[0];
+
+			// `downloadMedia(mediaId)` (used for every inbound attachment) makes two
+			// plain GETs with no JSON body — a metadata lookup, then the CDN url it
+			// returns — so they need to be branched on method+path before the
+			// send-message logic below, which assumes a POST with a JSON body.
+			if (httpMethod === 'GET') {
+				if (path.includes('/media-download/')) {
+					const mediaId = path.slice(path.lastIndexOf('/') + 1);
+					// Fixtures' media ids embed their kind (e.g. `media-image-1`), so
+					// real magic-byte content can be matched to whichever media the
+					// test's fixture actually declared.
+					const kind = Object.keys(WHATSAPP_MEDIA_CONTENT).find((key) => mediaId.includes(key));
+					return {
+						apiCall: { method: 'media-download', body: {} },
+						rawResponseBody: kind ? WHATSAPP_MEDIA_CONTENT[kind] : Buffer.from('unknown-media'),
+					};
+				}
+				const mediaId = path.slice(path.lastIndexOf('/') + 1);
+				return {
+					apiCall: { method: 'media-metadata', body: {} },
+					responseBody: { url: `https://graph.facebook.com/media-download/${mediaId}` },
+				};
+			}
+
 			const method = path.slice(path.lastIndexOf('/') + 1);
 			const type = typeof body.type === 'string' ? body.type : undefined;
 			if (type && failedTypes.includes(type)) {
@@ -134,6 +252,16 @@ function installWhatsAppApiStub(failedTypes: string[] = []) {
 					apiCall: { method, body },
 					responseBody: { error: { message: 'Test failure', code: 131047 } },
 					status: 400,
+				};
+			}
+			if (failuresLeft > 0 && method === 'messages') {
+				failuresLeft--;
+				return {
+					apiCall: { method, body },
+					responseBody: {
+						error: { message: 'Test rate limit', code: failureSequence?.code ?? 130429 },
+					},
+					status: failureSequence?.status ?? 400,
 				};
 			}
 			const to = typeof body.to === 'string' ? body.to : '';
@@ -156,11 +284,17 @@ export async function createWhatsAppReplayContext(
 		stream?: StreamChunk[];
 		integration?: AgentIntegrationConfig;
 		failedApiTypes?: string[];
+		failureSequence?: WhatsAppFailureSequence;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
-	const stub = installWhatsAppApiStub(options.failedApiTypes);
+	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
 
-	const integrationImpl = createWhatsAppIntegration();
+	// Shared with `createReplayContextSetup` below so the adapter's own guard
+	// checks (automatic replies) and the action executor's (respond, send_dm)
+	// agree on one connection's cooldown state, mirroring how DI hands both the
+	// same singleton in production.
+	const channelRateLimitGuard = new ChannelRateLimitGuard();
+	const integrationImpl = createWhatsAppIntegration(channelRateLimitGuard);
 	const integration: AgentIntegrationConfig = options.integration ?? {
 		type: 'whatsapp',
 		credentialId: 'cred-whatsapp',
@@ -200,12 +334,15 @@ export async function createWhatsAppReplayContext(
 		state: createMemoryState(),
 	});
 
+	const attachmentService = createMockAttachmentService();
 	const setup = createReplayContextSetup({
 		chat: chat as never,
 		integrationImpl,
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,
+		attachmentService,
+		channelRateLimitGuard,
 	});
 
 	// No identity bootstrap call here — WhatsApp derives its bot user ID from
@@ -233,6 +370,7 @@ export async function createWhatsAppReplayContext(
 
 	return {
 		...setup,
+		attachmentService,
 		chat: chat as unknown as ChatInstance,
 		adapter,
 		apiCalls: stub.apiCalls,

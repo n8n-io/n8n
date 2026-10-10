@@ -117,6 +117,11 @@ export class ChatHubExecutionWatcherService {
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { runData, executionId } = ctx;
 
+		// An auto-resume enqueues the next segment from the worker, so that worker also waits
+		// for the job and gets a second call for the same segment. The process that ran the
+		// segment handles it.
+		if (!ctx.executedInThisProcess) return;
+
 		const context = await this.executionStore.get(executionId);
 		if (!context) return; // Not a tracked chat hub execution
 
@@ -144,10 +149,7 @@ export class ChatHubExecutionWatcherService {
 			return;
 		}
 
-		// NOTE: This check is required because on multi-main/queue mode, the resumed execution's
-		// 'workflowExecuteAfter' hook fires one more time after it should have stopped in 'waiting'
-		// state on a Chat response node. On this final hook call the runData.status is 'success' even though
-		// the execution isn't finished. On single-main mode this does not happen.
+		// A `success` run that has not finished must not end the conversation.
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (runData.finished) {
 			await this.pushFinalResults(context, message);

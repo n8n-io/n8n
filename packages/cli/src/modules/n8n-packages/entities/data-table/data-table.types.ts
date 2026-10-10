@@ -7,6 +7,9 @@ import type {
 } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
+import type { RequirementSource } from '../requirement-source';
+
+export type DataTableRequirement = RequirementSource & { dataTableId: string };
 
 export interface WorkflowDataTableRequirement {
 	workflowId: string;
@@ -48,7 +51,6 @@ export type DataTableResolutionFailure = {
 	conflictingTableId?: string;
 	/** For a rename `name-conflict`: the matched table's current name. */
 	currentName?: string;
-	usedByWorkflows: string[];
 };
 
 export function createFailure(
@@ -72,7 +74,6 @@ export function createFailure(
 		kind,
 		sourceId: requirement.id,
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 		...details,
 	};
 }

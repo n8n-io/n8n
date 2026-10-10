@@ -247,7 +247,14 @@ const sessionValue = computed(() => {
 
 .usageHeader {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.usageHeader > :last-child {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .spent {
@@ -272,6 +279,7 @@ const sessionValue = computed(() => {
 .rowValue {
 	display: flex;
 	align-items: center;
+	flex-shrink: 0;
 	gap: var(--spacing--xs);
 }
 
@@ -280,6 +288,7 @@ const sessionValue = computed(() => {
 	flex-direction: column;
 	align-items: flex-end;
 	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .track {
@@ -312,8 +321,11 @@ const sessionValue = computed(() => {
 }
 
 .rowLabel {
+	opacity: var(--agent-row-label-opacity, 1);
 	display: flex;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 </style>

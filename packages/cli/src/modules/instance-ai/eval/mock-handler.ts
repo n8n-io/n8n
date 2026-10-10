@@ -76,7 +76,7 @@ Match THIS request only (URL + method): a node may make multiple sequential call
 
 For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.
 
-**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request). Exception: when the document at a download/export path is itself textual (CSV, XML, HTML, plain text) and the scenario or node hints specify its contents, use \`type: "text"\` with the exact document — reserve \`binary\` for opaque formats (PDF, images, audio, video, archives).
+**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). For a PDF whose content the scenario or node hints state, also put that content in \`textBody\` as plain text — the harness writes it into the PDF; without it the PDF has no text. Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request). Exception: when the document at a download/export path is itself textual (CSV, XML, HTML, plain text) and the scenario or node hints specify its contents, use \`type: "text"\` with the exact document — reserve \`binary\` for opaque formats (PDF, images, audio, video, archives).
 
 **Raw text / non-JSON responses.** When the real endpoint returns a non-JSON text document — XML/SOAP, CSV, HTML, RSS/Atom, plain text — use \`type: "text"\` and put the EXACT raw document in \`textBody\`, with \`contentType\` set to the real MIME (\`text/xml\`, \`application/xml\`, \`text/csv\`, \`text/html\`, \`text/plain\`). NEVER wrap such a document inside a JSON object like \`{"data": "<?xml..."}\` — the node consumes the raw text, and a JSON wrapper corrupts it. SOAP endpoints return the full SOAP envelope as \`textBody\`; SOAP faults use \`type: "error"\` with the fault XML in \`textBody\`.`;
 
@@ -628,7 +628,7 @@ const submitResponseSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The raw text document exactly as the service would send it (e.g. "<?xml version=\\"1.0\\"?>..."). Required for type="text"; allowed with type="error" when the service returns a text/XML error document. Omit otherwise.',
+			'The raw text document exactly as the service would send it (e.g. "<?xml version=\\"1.0\\"?>..."). Required for type="text"; allowed with type="error" when the service returns a text/XML error document; with type="binary" and a PDF, the document\'s text as plain text. Omit otherwise.',
 		),
 	statusCode: z
 		.number()
@@ -1019,7 +1019,10 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 		case 'binary': {
 			const filename = spec.filename ?? 'mock-file.dat';
 			const contentType = spec.contentType ?? 'application/octet-stream';
-			const body = synthesizeBinaryFixture(contentType, filename, { sizeHint: spec.sizeHint });
+			const body = synthesizeBinaryFixture(contentType, filename, {
+				sizeHint: spec.sizeHint,
+				text: spec.textBody,
+			});
 			return {
 				body,
 				headers: {

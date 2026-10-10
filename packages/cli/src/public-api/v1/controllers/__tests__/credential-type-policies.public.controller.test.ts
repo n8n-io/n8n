@@ -1,7 +1,7 @@
 import type {
-	PolicyEffectiveWriteResultPublicDto,
-	PutInstancePolicyDto,
-	PutProjectPolicyDto,
+	CredentialTypePolicyEffectiveWriteResultPublicDto,
+	PutCredentialTypeInstancePolicyDto,
+	PutCredentialTypeProjectPolicyDto,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -195,9 +195,9 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 
 	it('putCredentialTypeInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
-		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
+		const dto = { rules, defaultAction: 'deny', version: 3 } as PutCredentialTypeInstancePolicyDto;
 
-		const result: PolicyEffectiveWriteResultPublicDto =
+		const result: CredentialTypePolicyEffectiveWriteResultPublicDto =
 			await controller.putCredentialTypeInstancePolicy(req, res, dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
@@ -218,7 +218,7 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 
 	it('putCredentialTypeProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
-		const dto = { rules, defaultAction: 'deny', version: 3 } as PutProjectPolicyDto;
+		const dto = { rules, defaultAction: 'deny', version: 3 } as PutCredentialTypeProjectPolicyDto;
 
 		const result = await controller.putCredentialTypeProjectPolicy(req, res, 'project-id', dto);
 

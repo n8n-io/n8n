@@ -2153,6 +2153,9 @@ export class InstanceAiAdapterService {
 					},
 					userId: user.id,
 					pushRef,
+					// The agent awaits this run's result and prunes its pins afterwards, so
+					// a worker must not park a trigger-mode run at shutdown.
+					callerAwaitsOutcome: 'completion',
 					// A verification run picks a production execution mode above so the
 					// trigger behaves realistically. Without this opt-out, a failed build
 					// attempt would dispatch the user's error workflow as if production

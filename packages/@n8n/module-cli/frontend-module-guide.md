@@ -192,6 +192,14 @@ you use a surface.
 | `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
 | `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
 
+### Position of a settings link
+
+Each item in `settingsPages` accepts an optional integer `order`. The sidebar sorts the shell links
+and the module links together, from low to high. The shell links use 10, 20, 30, and so on. Pick a
+number between two shell links to put your link between them. A link without `order` goes last. Two
+links with the same `order` keep their registration order. The `order` field is not part of
+`IMenuItem`.
+
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
 after the login.
@@ -265,6 +273,27 @@ routes: [
 
 If `meta.middleware` has no `'custom'` entry, the route resolves. The state of the module then
 makes no difference.
+
+### Placeholder page for licensed features
+
+An unlicensed module is inactive, so its settings links and routes disappear. To show a paywall
+instead, set `placeholderPage` with the module's license feature:
+
+```ts
+placeholderPage: {
+	licenseFlag: 'logStreaming', // a key of `settings.enterprise`
+	component: async () => await import('./views/MyFeaturePaywall.vue'),
+},
+```
+
+When the module is inactive and `licenseFlag` is off, its settings links stay and its routes show
+this page. The `available` getter and route `rbac` still apply. The shell adds the `'custom'` guard
+to these routes, so you don't need to list it. Route views must be lazy loaders. The shell picks
+the view or the placeholder once, on the first load of the route.
+
+If the module is licensed but inactive, for example turned off with `N8N_DISABLED_MODULES`, it
+stays hidden. A module that is unlicensed and also turned off still shows the page, because the
+frontend can't tell it apart from a module that is only unlicensed.
 
 ## Import-light descriptors
 

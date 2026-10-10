@@ -7,7 +7,7 @@ import '../controllers';
 
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
-import type { ResponseDtoClass } from '@n8n/decorators';
+import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -20,7 +20,7 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
-import { stripUntypedNullable } from './untyped-nullable';
+import { applySchemaModifiers } from './schema-modifiers';
 
 const REQUEST_BODY_COMPONENT = 'RequestBody';
 
@@ -194,11 +194,52 @@ export function buildRequestBodyJsonSchema(
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
 
-	// Keep in sync with `buildArtifactsFromRegistry`, both convert the same DTOs to OpenAPI
-	// and `/discover` serves this schema straight from a route at runtime.
-	stripUntypedNullable(schema);
+	applySchemaModifiers(schema);
 
 	return isRecord(schema) ? schema : undefined;
+}
+
+/** Documents a success body the controller method writes itself, with its declared headers. */
+export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
+	const responseHeaders: Record<
+		string,
+		{ description: string; required: true; schema: { type: 'string' } }
+	> = {};
+
+	for (const [name, header] of Object.entries(headers ?? {})) {
+		responseHeaders[name] = {
+			description: header.description,
+			required: true,
+			schema: { type: 'string' },
+		};
+	}
+
+	return {
+		description: description ?? 'Operation successful.',
+		headers: Object.keys(responseHeaders).length ? responseHeaders : undefined,
+		content: {
+			[mediaType]: { schema: { type: 'string' as const, format: 'binary' } },
+		},
+	};
+}
+
+/** Documents a JSON success body from the route's response DTO, or a bare success when it has none. */
+export function buildJsonSuccessResponse(
+	responseDto: ResponseDtoClass | undefined,
+	resolveSchema: SchemaResolver,
+) {
+	const hasResponseContent = responseDto && hasNamedSchema(responseDto);
+
+	return {
+		description: 'Operation successful.',
+		content: hasResponseContent
+			? {
+					'application/json': {
+						schema: resolveSchema(responseDto, responseDto.schema),
+					},
+				}
+			: undefined,
+	};
 }
 
 /**
@@ -207,24 +248,16 @@ export function buildRequestBodyJsonSchema(
  * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
  * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
  * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * A binary `@ApiResponse` documents its media type, description and headers instead of a JSON DTO.
  */
 function buildResponses(
 	route: ResolvedPublicApiRoute,
 	resolveSchema: SchemaResolver,
 ): RouteConfig['responses'] {
 	const responses: RouteConfig['responses'] = {
-		[route.successStatus]: {
-			description: 'Operation successful.',
-			...(route.responseDto && hasNamedSchema(route.responseDto)
-				? {
-						content: {
-							'application/json': {
-								schema: resolveSchema(route.responseDto, route.responseDto.schema),
-							},
-						},
-					}
-				: {}),
-		},
+		[route.successStatus]: route.binaryResponse
+			? buildBinarySuccessResponse(route.binaryResponse)
+			: buildJsonSuccessResponse(route.responseDto, resolveSchema),
 	};
 
 	// If the route has a request body or query, we add an HTTP 400 as a possible response

@@ -13,6 +13,8 @@ export type OtelSettings = {
 	tracesSampleRate: number;
 	startupConnectivityTimeoutMs: number;
 	includeNodeSpans: boolean;
+	emitWorkflowStartSpan: boolean;
+	emitNodeStartSpan: boolean;
 	injectOutbound: boolean;
 	productionExecutionsOnly: boolean;
 };

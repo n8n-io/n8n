@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -54,6 +54,45 @@ export class AgentRepository extends BaseRepository<Agent> {
 			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findForExport(
+		agentIds: string[],
+		projectIds: string[] | null,
+		options: { includeActiveVersion: boolean },
+	): Promise<Agent[]> {
+		if (agentIds.length === 0 || projectIds?.length === 0) return [];
+		// Keep both ID filters below the database parameter limit.
+		const projectBatches = projectIds === null ? [null] : chunkIds([...new Set(projectIds)]);
+		const agents: Agent[] = [];
+		for (const ids of chunkIds([...new Set(agentIds)])) {
+			for (const projects of projectBatches) {
+				const found = await this.find({
+					where: { id: In(ids), ...(projects === null ? {} : { projectId: In(projects) }) },
+					relations: { activeVersion: options.includeActiveVersion },
+				});
+				agents.push(...found);
+			}
+		}
+		return agents.sort((left, right) => left.id.localeCompare(right.id));
+	}
+
+	async findIdsInProjectsForExport(projectIds: string[]): Promise<string[]> {
+		const ids: string[] = [];
+		for (const projects of chunkIds([...new Set(projectIds)])) {
+			const agents = await this.find({ select: ['id'], where: { projectId: In(projects) } });
+			ids.push(...agents.map(({ id }) => id));
+		}
+		return ids.sort();
+	}
+
+	async findExistingIds(agentIds: string[]): Promise<Set<string>> {
+		const ids = new Set<string>();
+		for (const chunk of chunkIds(agentIds)) {
+			const agents = await this.find({ select: ['id'], where: { id: In(chunk) } });
+			for (const { id } of agents) ids.add(id);
+		}
+		return ids;
 	}
 
 	/**
@@ -185,6 +224,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 	): void {
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
+		}
+		if (filter?.ids) {
+			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
 		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
@@ -369,10 +411,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
-	): Promise<Array<Pick<Agent, 'id' | 'activeVersionId'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'activeVersionId'>>> {
 		if (ids.length === 0) return [];
 		return await this.find({
-			select: ['id', 'activeVersionId'],
+			select: ['id', 'name', 'activeVersionId'],
 			where: { id: In(ids), projectId },
 		});
 	}

@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils';
 import { describe, it, beforeEach, vi, expect } from 'vitest';
 import { renderComponent } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
+import { AGENTS_LIST_VIEW } from '@/features/agents/constants';
 import type {
 	CommandBarItem,
 	CommandBarRemoteSource,
@@ -106,6 +107,7 @@ const genericCommands: CommandBarItem[] = [
 
 const workflows = createRemoteSource('workflows');
 const credentials = createRemoteSource('credentials', 3);
+const agents = createRemoteSource('agents', 2);
 const nodeEntries = ref<CommandBarItem[]>(items('node', 25));
 const assistantCommands = ref<CommandBarItem[]>([]);
 const recentInitialize = vi.fn().mockResolvedValue(undefined);
@@ -170,6 +172,9 @@ vi.mock('./useChatHubCommands', () => ({
 vi.mock('./useInstanceAiCommands', () => ({
 	useInstanceAiCommands: () => ({ commands: computed(() => assistantCommands.value) }),
 }));
+vi.mock('./useAgentNavigationCommands', () => ({
+	useAgentNavigationCommands: () => group([], { source: agents.source }),
+}));
 
 describe('useCommandBar', () => {
 	let commandBar: ReturnType<typeof useCommandBar>;
@@ -221,6 +226,7 @@ describe('useCommandBar', () => {
 		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
 			ALL_TAB,
 			'workflows',
+			'agents',
 			'credentials',
 			ACTIONS_TAB,
 		]);
@@ -230,6 +236,20 @@ describe('useCommandBar', () => {
 		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
 			ALL_TAB,
 			'nodes',
+			'workflows',
+			'agents',
+			'credentials',
+			ACTIONS_TAB,
+		]);
+	});
+
+	it('puts the source of the current view first', async () => {
+		currentRoute.value = { name: AGENTS_LIST_VIEW, params: {} };
+		await open();
+
+		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
+			ALL_TAB,
+			'agents',
 			'workflows',
 			'credentials',
 			ACTIONS_TAB,
@@ -271,12 +291,17 @@ describe('useCommandBar', () => {
 			limit: PAGE_SIZE,
 		});
 
-		const [actionsSection, workflowsSection, credentialsSection] = commandBar.sections.value;
+		const [actionsSection, workflowsSection, agentsSection, credentialsSection] =
+			commandBar.sections.value;
 		expect(actionsSection.items[0].id).toBe('settings');
 		expect(actionsSection.items).toHaveLength(PREVIEW_LIMIT + 1);
 		expect(actionsSection.items.at(-1)?.id).toBe(`show-all-${ACTIONS_TAB}`);
 		expect(workflowsSection.items).toHaveLength(PREVIEW_LIMIT + 1);
 		expect(workflowsSection.items.at(-1)?.id).toBe('show-all-workflows');
+		expect(agentsSection.items.map(({ id }) => id)).toEqual([
+			'agentssettings-0',
+			'agentssettings-1',
+		]);
 		expect(credentialsSection.items.map(({ id }) => id)).toEqual([
 			'credentialssettings-0',
 			'credentialssettings-1',

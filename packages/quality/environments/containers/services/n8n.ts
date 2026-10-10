@@ -15,6 +15,7 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import {
 	applyEngineEnv,
 	ENGINE_PORT,
+	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
 	engineHostname,
 	type EngineMode,
@@ -112,6 +113,12 @@ export interface N8NInstancesOptions {
 	 * Pair with `user` so the files stay owned by the host user.
 	 */
 	userHomeHostDir?: string;
+	/**
+	 * Host dir bind-mounted as the storage path of the main and the engine
+	 * container, so a binary file one plane stores is read by the other.
+	 * `container` engine mode only. Disables container reuse.
+	 */
+	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
 	/** Readiness timeout override; an old release migrating a fresh DB can exceed the default. */
@@ -211,6 +218,7 @@ interface SharedConfig {
 	startupDeadline: StartupDeadline;
 	image?: string;
 	userHomeHostDir?: string;
+	binaryDataHostDir?: string;
 	user?: string;
 	startupTimeoutMs?: number;
 }
@@ -245,6 +253,7 @@ async function createContainer(
 		startupDeadline,
 		image,
 		userHomeHostDir,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	} = shared;
@@ -310,13 +319,26 @@ async function createContainer(
 		bindMounts.push({ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' });
 	}
 
+	if (binaryDataHostDir) {
+		// One host dir in both planes, at the path their env names. Writable by
+		// the container's `node` user for the same reason as the coverage dir.
+		mkdirSync(binaryDataHostDir, { recursive: true });
+		chmodSync(binaryDataHostDir, 0o777);
+		bindMounts.push({
+			source: binaryDataHostDir,
+			target: ENGINE_SHARED_STORAGE_PATH,
+			mode: 'rw',
+		});
+	}
+
 	if (bindMounts.length > 0) {
 		container = container.withBindMounts(bindMounts);
 	}
 
-	// Reuse stays off for a coverage or mounted-home container: the process
-	// must exit to flush coverage, and cycle data belongs to the cycle.
-	if (!coverageHostDir && !userHomeHostDir) {
+	// Reuse stays off for a container with a host dir mounted: the process must
+	// exit to flush coverage, cycle data belongs to the cycle, and a reused
+	// container would keep the binary data dir of an earlier stack.
+	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir) {
 		container = container.withReuse();
 	}
 
@@ -389,6 +411,7 @@ export async function createN8NInstances(
 		startupDeadline,
 		image,
 		userHomeHostDir,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 		engine,
@@ -411,6 +434,7 @@ export async function createN8NInstances(
 		startupDeadline,
 		image,
 		userHomeHostDir,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};
@@ -452,6 +476,7 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};

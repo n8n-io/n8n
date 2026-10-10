@@ -322,6 +322,7 @@ describe('ExecutionRepository', () => {
 			const executionRepo = Container.get(ExecutionRepository);
 			const tracingContext = {
 				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+				identity: { 'n8n.execution.id': 'exec-1' },
 			};
 			const { id: runningId } = await createExecution('running', { tracingContext });
 

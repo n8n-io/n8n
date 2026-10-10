@@ -5289,6 +5289,28 @@ describe('createExecutionAdapter run()', () => {
 		});
 	});
 
+	it('marks a trigger-mode run as awaited so a worker never parks it at shutdown', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Schedule',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+			],
+			connections: {},
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.callerAwaitsOutcome).toBe('completion');
+	});
+
 	it('still applies overrides when the workflow has no settings', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
