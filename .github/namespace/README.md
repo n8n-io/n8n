@@ -29,6 +29,8 @@ Use a Namespace workspace connected to this repository. Run these commands from 
 Verify that the job uses `namespace-profile-n8n-docker-poc` and passes the Node, pnpm, and SafeChain checks.
 Check that the pnpm cache mounts and Turbo uses the Namespace endpoint.
 Run the same commit again to measure warm caches.
+Check that publishing uses the separate `n8n-io-n8n-docker-publish-poc` cache tag.
+This prevents a publish runner from replacing the application cache with an older snapshot.
 
 When tool versions change, update the Dockerfile versions and checksums together.
 Match Node to `docker-build-push.yml`, pnpm to `package.json`, and SafeChain to `setup-nodejs/action.yml`.

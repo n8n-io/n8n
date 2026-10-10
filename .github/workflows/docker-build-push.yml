@@ -180,7 +180,8 @@ jobs:
   build-and-push-docker:
     name: Build and Push Docker Image (${{ matrix.platform }})
     needs: [determine-build-context, build-app]
-    runs-on: ${{ inputs.namespace_poc && 'namespace-profile-n8n-docker-poc' || matrix.runner }}
+    # A publish runner can start before the application cache commits. Keep its writes separate.
+    runs-on: ${{ inputs.namespace_poc && 'namespace-profile-n8n-docker-poc;overrides.cache-tag=n8n-io-n8n-docker-publish-poc' || matrix.runner }}
     timeout-minutes: 35
     permissions:
       actions: read
