@@ -3,7 +3,6 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-
 import type { PrometheusMetricsCollector } from './base';
 import { DURATION_BUCKETS_SECONDS } from './constant';
 
@@ -62,9 +61,6 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			help: 'Total estimated cost in USD of Instance AI runs (models.dev pricing).',
 		});
 		costTotal.inc(0);
-
-
-
 
 		this.eventService.on(
 			'instance-ai-run-finished',

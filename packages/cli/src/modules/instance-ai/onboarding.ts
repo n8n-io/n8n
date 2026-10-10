@@ -1,11 +1,7 @@
-import type {
-	InstanceAiEnsureThreadResponse,
-} from '@n8n/api-types';
+import type { InstanceAiEnsureThreadResponse } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	loadInstanceAiRuntimeSkillSource,
-} from '@n8n/instance-ai';
+import { loadInstanceAiRuntimeSkillSource } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -120,5 +116,4 @@ export class InstanceAiOnboardingService {
 		});
 		return response;
 	}
-
 }
