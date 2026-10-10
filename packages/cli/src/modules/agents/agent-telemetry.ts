@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 
 import type {
 	AgentTelemetryMemoryType,
@@ -6,6 +6,30 @@ import type {
 } from '@/interfaces';
 
 import type { Agent } from './entities/agent.entity';
+import type { MessageRecord } from './execution-recorder';
+import {
+	capabilityCountTelemetryProperties,
+	countAgentCapabilities,
+} from './utils/agent-capabilities';
+
+export function buildAgentTurnMetrics(record: MessageRecord) {
+	return {
+		latency_ms: record.duration,
+		cost: record.totalCost ?? 0,
+		token_count: record.usage?.totalTokens ?? 0,
+		tool_call_count: record.timeline.filter((event) => event.type === 'tool-call').length,
+	};
+}
+
+export function buildAgentCapabilityTelemetryProperties(
+	config: AgentJsonConfig | null,
+	integrations: AgentIntegrationConfig[],
+) {
+	const counts = countAgentCapabilities(config, integrations);
+	// Keep capability counts separate from the runtime tool count, which includes provider tools.
+	const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(config, integrations);
+	return { ...capabilityCountTelemetryProperties(counts), model, tool_types };
+}
 
 export function buildAgentConfigurationTelemetry(
 	agent: Agent,

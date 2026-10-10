@@ -1,5 +1,6 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend-services';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -7,20 +8,15 @@ import {
 	User,
 	ProjectRelationRepository,
 	ProjectRepository,
-	SharedWorkflowRepository,
 	UserRepository,
 	Role,
 	SettingsRepository,
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
-import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { BadRequestError } from '@n8n/errors';
 
 import { PasswordUtility } from './password.utility';
 
@@ -33,28 +29,10 @@ export class OwnershipService {
 		private passwordUtility: PasswordUtility,
 		private projectRelationRepository: ProjectRelationRepository,
 		private projectRepository: ProjectRepository,
-		private sharedWorkflowRepository: SharedWorkflowRepository,
+		private workflowProjectService: WorkflowProjectService,
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
 	) {}
-
-	// To make use of the cache service we should store POJOs, these
-	// methods should be used to create copies of the entities
-	// converting them into plain JavaScript objects
-	// Ideally our data entities wouldn't be classes, but plain
-	// interfaces and therefore pojos adhering to these interfaces
-	copyProject(project: Project): Partial<Project> {
-		return {
-			...project,
-		};
-	}
-
-	reconstructProject(project: Partial<Project>): Project | undefined {
-		if (typeof project !== 'object' || project === null) {
-			return undefined;
-		}
-		return Object.assign(new Project(), project);
-	}
 
 	copyUser(user: User): Partial<User> {
 		return {
@@ -91,34 +69,11 @@ export class OwnershipService {
 	 * {@link invalidateWorkflowProjectCacheByIds} afterwards.
 	 */
 	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
-		const cachedValue = await this.cacheService.getHashValue<Partial<Project>>(
-			'workflow-project',
-			workflowId,
-		);
-
-		if (cachedValue) {
-			const project = this.reconstructProject(cachedValue);
-			if (project) return project;
-		}
-
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: { workflowId, role: 'workflow:owner' },
-			relations: ['project'],
-		});
-
-		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: this.copyProject(sharedWorkflow.project),
-		});
-
-		return sharedWorkflow.project;
+		return await this.workflowProjectService.getWorkflowProjectCached(workflowId);
 	}
 
 	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
-		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: this.copyProject(project),
-		});
-
-		return project;
+		return await this.workflowProjectService.setWorkflowProjectCacheEntry(workflowId, project);
 	}
 
 	/**
@@ -126,23 +81,43 @@ export class OwnershipService {
 	 * Personal project ownership is **immutable**.
 	 */
 	async getPersonalProjectOwnerCached(projectId: string): Promise<User | null> {
-		const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
-			'project-owner',
-			projectId,
+		const owners = await this.getPersonalProjectOwnersCached([projectId]);
+		return owners.get(projectId) ?? null;
+	}
+
+	async getPersonalProjectOwnersCached(projectIds: string[]): Promise<Map<string, User>> {
+		const ownerByProjectId = new Map<string, User>();
+		const cacheResults = await Promise.all(
+			[...new Set(projectIds)].map(async (projectId) => {
+				const cachedValue = await this.cacheService.getHashValue<Partial<User>>(
+					'project-owner',
+					projectId,
+				);
+				return {
+					projectId,
+					owner: cachedValue ? this.reconstructUser(cachedValue) : undefined,
+				};
+			}),
 		);
-
-		if (cachedValue) {
-			const user = this.reconstructUser(cachedValue);
-			if (user) return user;
+		for (const { projectId, owner } of cacheResults) {
+			if (owner) ownerByProjectId.set(projectId, owner);
 		}
+		const projectIdsToFetch = cacheResults
+			.filter(({ owner }) => !owner)
+			.map(({ projectId }) => projectId);
 
-		const ownerRel = await this.projectRelationRepository.getPersonalProjectOwners([projectId]);
-		const owner = ownerRel[0]?.user ?? null;
-		if (owner) {
-			void this.cacheService.setHash('project-owner', { [projectId]: this.copyUser(owner) });
+		if (projectIdsToFetch.length === 0) return ownerByProjectId;
+
+		const ownerRelations =
+			await this.projectRelationRepository.getPersonalProjectOwners(projectIdsToFetch);
+		const ownersToCache: Record<string, Partial<User>> = {};
+		for (const { projectId, user } of ownerRelations) {
+			ownerByProjectId.set(projectId, user);
+			ownersToCache[projectId] = this.copyUser(user);
 		}
+		void this.cacheService.setHash('project-owner', ownersToCache);
 
-		return owner;
+		return ownerByProjectId;
 	}
 
 	async invalidateProjectOwnerCacheByUserId(userId: string) {
@@ -153,16 +128,7 @@ export class OwnershipService {
 	}
 
 	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
-		const rows = await this.sharedWorkflowRepository.find({
-			where: { projectId, role: 'workflow:owner' },
-			select: ['workflowId'],
-		});
-		await Promise.all(
-			rows.map(
-				async ({ workflowId }) =>
-					await this.cacheService.deleteFromHash('workflow-project', workflowId),
-			),
-		);
+		await this.workflowProjectService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	/**
@@ -171,12 +137,7 @@ export class OwnershipService {
 	 * `workflow:owner` rows have moved to a different project.
 	 */
 	async invalidateWorkflowProjectCacheByIds(workflowIds: string[]): Promise<void> {
-		await Promise.all(
-			workflowIds.map(
-				async (workflowId) =>
-					await this.cacheService.deleteFromHash('workflow-project', workflowId),
-			),
-		);
+		await this.workflowProjectService.invalidateWorkflowProjectCacheByIds(workflowIds);
 	}
 
 	addOwnedByAndSharedWith(
@@ -237,23 +198,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.exists({
-			where: [
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					lastActiveAt: Not(IsNull()),
-				},
-				// OR
-				// This condition only exists because of PAY-4247
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					password: Not(IsNull()),
-				},
-			],
-			relations: ['role'],
-		});
+		return await this.userRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(

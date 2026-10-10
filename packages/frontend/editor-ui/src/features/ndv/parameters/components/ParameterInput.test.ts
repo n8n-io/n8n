@@ -1,7 +1,8 @@
-import { computed, defineComponent, h, nextTick, reactive, shallowRef } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	ToolConfigCredentialSelectedKey,
+	ParameterInputModalContextKey,
 	WorkflowDocumentStoreKey,
 	WorkflowIdKey,
 } from '@/app/constants/injectionKeys';
@@ -434,6 +435,66 @@ describe('ParameterInput.vue', () => {
 			expect(options.length).toEqual(2);
 			expect(mockIsActionOptionVisible).not.toHaveBeenCalled();
 		});
+
+		test('filters options when the path has no parameters root (standalone tool config)', async () => {
+			// The tool-config form renders ParameterInputList with an empty path root,
+			// so the top-level operation param arrives as `operation`, not
+			// `parameters.operation`. The gateway filter must still apply.
+			mockIsActionOptionVisible.mockImplementation(
+				(_node, _name, value) => value === 'appendOrUpdate',
+			);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent(
+				'Append or Update Row',
+			);
+		});
+
+		test('hides resource options the AI gateway does not support (standalone tool config)', async () => {
+			// The standalone tool-config form renders with an empty path root, so the
+			// top-level resource param arrives as `resource`, not `parameters.resource`.
+			// The gateway filter must still apply.
+			const resourceParameter = {
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options' as const,
+				noDataExpression: true,
+				options: [
+					{ name: 'Record', value: 'record' },
+					{ name: 'Base', value: 'base' },
+				],
+				default: 'record',
+			};
+			mockIsActionOptionVisible.mockImplementation((_node, name, value) => {
+				expect(name).toBe('resource');
+				return value === 'record';
+			});
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'resource',
+					parameter: resourceParameter,
+					modelValue: 'record',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Record');
+		});
 	});
 
 	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {
@@ -551,6 +612,38 @@ describe('ParameterInput.vue', () => {
 		await waitFor(() =>
 			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
 		);
+	});
+
+	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {
+		const { container, emitted } = renderComponent({
+			props: {
+				path: 'port',
+				parameter: createTestNodeProperties({
+					displayName: 'Port',
+					name: 'port',
+					type: 'number',
+				}),
+				modelValue: '1433',
+				isForCredential: true,
+			},
+		});
+		const input = container.querySelector('input');
+		expect(input).toBeInstanceOf(HTMLInputElement);
+		if (!(input instanceof HTMLInputElement)) {
+			throw new Error('Expected input element');
+		}
+
+		expect(input).toHaveValue('1433');
+		expect(emitted('update')).toBeUndefined();
+
+		await userEvent.clear(input);
+		await userEvent.type(input, '1434');
+		await userEvent.tab();
+
+		await waitFor(() => {
+			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1434 })]);
+		});
+		expect(emitted('textInput')).toBeUndefined();
 	});
 
 	describe('paste events', () => {
@@ -912,6 +1005,33 @@ describe('ParameterInput.vue', () => {
 		expect(expressionEditor).toBeInTheDocument();
 		const expressionEditorInput = within(expressionEditor).getByRole('textbox');
 		await waitFor(() => expect(expressionEditorInput).toHaveFocus());
+	});
+
+	it('hosts the expanded expression editor and clears its focus state on close or unmount', async () => {
+		const openDialogs = ref(new Set<string>());
+		const view = renderComponent({
+			global: {
+				provide: { [ParameterInputModalContextKey]: { openDialogs, appendTo: 'body' } },
+			},
+			props: {
+				path: 'name',
+				parameter: createTestNodeProperties({ name: 'name', type: 'string' }),
+				modelValue: '={{ $json.name }}',
+			},
+		});
+
+		await fireEvent.click(view.getByTestId('expander'));
+		const expandedInput = await view.findByTestId('expression-modal-input');
+		expect(view.container.contains(expandedInput)).toBe(false);
+		expect(expandedInput.closest('#app-modals')).toBeNull();
+		expect(openDialogs.value.size).toBe(1);
+		await fireEvent.click(view.getByRole('button', { name: 'Close this dialog' }));
+		await waitFor(() => expect(openDialogs.value.size).toBe(0));
+
+		await fireEvent.click(view.getByTestId('expander'));
+		expect(openDialogs.value.size).toBe(1);
+		view.unmount();
+		expect(openDialogs.value.size).toBe(0);
 	});
 
 	describe('when not in focus', () => {

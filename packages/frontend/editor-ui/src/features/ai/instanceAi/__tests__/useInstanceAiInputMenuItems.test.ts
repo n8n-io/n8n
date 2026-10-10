@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick, ref } from 'vue';
 
 import {
 	type InputMenuItem,
@@ -14,15 +15,18 @@ const {
 	ensureBrowserConnected,
 	computerUseTelemetry,
 	featureFlags,
+	ignorePendingConnectResult,
 	mcpStore,
 	mcpTelemetry,
+	router,
 	settingsStore,
 	uiStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { browserUse: true, computerUse: true, mcp: true },
+	featureFlags: { computerUse: true, preferences: false },
+	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -32,12 +36,16 @@ const {
 		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
 	},
+	router: {
+		push: vi.fn(),
+		resolve: vi.fn(() => ({ href: '/settings/context/preferences' })),
+	},
 	settingsStore: {
 		fetch: vi.fn(),
-		settings: { mcpAccessEnabled: true },
+		isMcpAvailable: true,
 		isLocalGatewayDisabled: false,
-		isLocalGatewayDisabledByAdmin: false,
-		isBrowserUseEnabledByAdmin: true,
+		isComputerUseAvailable: true,
+		isBrowserUseAvailable: true,
 		isGatewayConnected: false,
 		computerUseConnectionStatus: 'none',
 		browserUseConnectionStatus: 'none',
@@ -57,31 +65,20 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+vi.mock('vue-router', () => ({
+	useRouter: () => router,
+}));
+
+vi.mock('@/features/settings/context/context.utils', () => ({
+	isContextPreferencesEnabled: () => featureFlags.preferences,
+}));
+
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => uiStore,
 }));
 
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.mcp;
-			},
-		},
-	}),
-}));
-
 vi.mock('../composables/useBrowserUseConnection', () => ({
 	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
-}));
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.browserUse;
-			},
-		},
-	}),
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -100,6 +97,10 @@ vi.mock('../instanceAiSettings.store', () => ({
 
 vi.mock('../instanceAiMcp.store', () => ({
 	useInstanceAiMcpStore: () => mcpStore,
+}));
+
+vi.mock('../composables/useMcpServerConnect', () => ({
+	useMcpServerConnect: () => ({ ignorePendingConnectResult }),
 }));
 
 vi.mock('../instanceAiMcp.telemetry', () => ({
@@ -147,29 +148,51 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.browserUse = true;
 		featureFlags.computerUse = true;
-		featureFlags.mcp = true;
+		featureFlags.preferences = false;
 		mcpStore.connections = [];
-		settingsStore.settings.mcpAccessEnabled = true;
+		settingsStore.isMcpAvailable = true;
 		settingsStore.isLocalGatewayDisabled = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = false;
-		settingsStore.isBrowserUseEnabledByAdmin = true;
+		settingsStore.isComputerUseAvailable = true;
+		settingsStore.isBrowserUseAvailable = true;
 		settingsStore.isGatewayConnected = false;
 		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
 		settingsStore.gatewayHostIdentifier = null;
 	});
 
-	it('omits connection groups disabled by feature or admin settings', () => {
-		featureFlags.mcp = false;
-		settingsStore.isLocalGatewayDisabledByAdmin = true;
-		settingsStore.isBrowserUseEnabledByAdmin = false;
+	it('omits connection groups that instance settings report as unavailable', () => {
+		settingsStore.isMcpAvailable = false;
+		settingsStore.isComputerUseAvailable = false;
+		settingsStore.isBrowserUseAvailable = false;
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
 
 		expect(menuItems.value.map(({ id }) => id)).toEqual(['attach-files']);
 		expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+	});
+	it('fetches MCP connections when MCP becomes available', async () => {
+		const isMcpAvailable = ref(false);
+		const originalDescriptor = Object.getOwnPropertyDescriptor(settingsStore, 'isMcpAvailable');
+		Object.defineProperty(settingsStore, 'isMcpAvailable', {
+			configurable: true,
+			get: () => isMcpAvailable.value,
+			set: (value: boolean) => {
+				isMcpAvailable.value = value;
+			},
+		});
+
+		try {
+			useInstanceAiInputMenuItems(vi.fn());
+			expect(mcpStore.fetchConnectionsLazy).not.toHaveBeenCalled();
+
+			settingsStore.isMcpAvailable = true;
+			await nextTick();
+
+			expect(mcpStore.fetchConnectionsLazy).toHaveBeenCalledOnce();
+		} finally {
+			Object.defineProperty(settingsStore, 'isMcpAvailable', originalDescriptor!);
+		}
 	});
 
 	it.each(mcpStatusCases)(
@@ -292,7 +315,43 @@ describe('useInstanceAiInputMenuItems', () => {
 			data: { connectionId: '1' },
 		});
 		expect(mcpStore.disconnect).toHaveBeenCalledWith('1');
+		expect(ignorePendingConnectResult).toHaveBeenCalledWith('server-1');
+		expect(ignorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
+			mcpStore.disconnect.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
 		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+	});
+
+	describe('the preferences item', () => {
+		it('hides the item while the context preferences flag is off', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'preferences')).toBeUndefined();
+		});
+
+		it('is a plain item, with no nested list of applied preferences', () => {
+			featureFlags.preferences = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			const item = findItem(menuItems.value, 'preferences');
+
+			expect(item?.label).toBe('instanceAi.inputMenu.preferences.label');
+			expect(item?.children).toBeUndefined();
+			expect(item?.divided).toBe(true);
+		});
+
+		it('opens the Context preferences settings page in a new tab', async () => {
+			featureFlags.preferences = true;
+			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await findItem(menuItems.value, 'preferences')?.data?.action?.();
+
+			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+			expect(openSpy).toHaveBeenCalledWith('/settings/context/preferences', '_blank');
+			expect(router.push).not.toHaveBeenCalled();
+			openSpy.mockRestore();
+		});
 	});
 });

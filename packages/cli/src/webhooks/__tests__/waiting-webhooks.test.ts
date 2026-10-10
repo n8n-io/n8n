@@ -1,16 +1,16 @@
+import type { EventService } from '@n8n/backend-services';
 import type { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import type { INodeParameters, IWorkflowBase, Workflow } from 'n8n-workflow';
+import type { INodeParameters, IWebhookData, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -379,6 +379,245 @@ describe('WaitingWebhooks', () => {
 			expect(mockJson).toHaveBeenCalledWith({ error: 'Invalid token' });
 			expect(mockRender).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	/*
+	 * Regression test — a send-and-wait node id is recognised whether it arrives as a
+	 * route suffix or inside the signature query value, and either way the request
+	 * must pass HMAC validation.
+	 * Ref: CAT-3881
+	 * 2026-09-18
+	 */
+	describe('send-and-wait node id in the signature query value', () => {
+		const nodeId = 'send-and-wait-node-id';
+		const resumeToken = 'a'.repeat(64);
+
+		const buildExecution = () =>
+			mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									id: nodeId,
+									name: 'SendAndWaitNode',
+									type: 'n8n-nodes-base.sendAndWait',
+									parameters: { operation: SEND_AND_WAIT_OPERATION },
+									typeVersion: 1,
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						lastNodeExecuted: 'SendAndWaitNode',
+						runData: {
+							SendAndWaitNode: [{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] }],
+						},
+						error: undefined,
+					},
+					resumeToken,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: nodeId,
+							name: 'SendAndWaitNode',
+							type: 'n8n-nodes-base.sendAndWait',
+							parameters: { operation: SEND_AND_WAIT_OPERATION },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+
+		const buildRes = () =>
+			mock<express.Response>({
+				status: vi.fn().mockReturnThis(),
+				render: vi.fn(),
+				json: vi.fn(),
+			});
+
+		it('rejects with 401 when the node id rides the signature query instead of the route suffix and the HMAC is invalid', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(buildExecution());
+
+			const executeWebhookSpy = vi.spyOn(WebhookHelpers, 'executeWebhook');
+
+			const res = buildRes();
+			// No route suffix; the node id is carried in the signature query value (old URL format).
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: undefined },
+				method: 'GET',
+				url: `/webhook-waiting/execution-id?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}%2F${nodeId}`,
+				headers: { host: 'example.com' },
+			});
+
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(executeWebhookSpy).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('resumes when the node id is the route suffix and the HMAC is valid', async () => {
+			const execution = buildExecution();
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'GET',
+					path: nodeId,
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'GET',
+						name: 'default',
+						path: nodeId,
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const executeWebhookSpy = vi
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return undefined;
+					},
+				);
+
+			const res = buildRes();
+			const signedPath = `/webhook-waiting/execution-id/${nodeId}?approved=true`;
+			const signature = require('crypto')
+				.createHmac('sha256', TEST_HMAC_SECRET)
+				.update(signedPath)
+				.digest('hex');
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: nodeId },
+				method: 'GET',
+				url: `${signedPath}&${WAITING_TOKEN_QUERY_PARAM}=${signature}`,
+				headers: { host: 'example.com' },
+			});
+
+			const result = await waitingWebhooks.executeWebhook(req, res);
+
+			expect(res.status).not.toHaveBeenCalledWith(401);
+			expect(executeWebhookSpy).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	describe('token stripping on resume', () => {
+		const resumeToken = 'a'.repeat(64);
+
+		const buildExecution = () =>
+			mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									id: 'wait-node-id',
+									name: 'WaitNode',
+									type: 'n8n-nodes-base.wait',
+									parameters: { resume: 'webhook' },
+									typeVersion: 1,
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						lastNodeExecuted: 'WaitNode',
+						runData: {
+							WaitNode: [{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] }],
+						},
+						error: undefined,
+					},
+					resumeToken,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'wait-node-id',
+							name: 'WaitNode',
+							type: 'n8n-nodes-base.wait',
+							parameters: { resume: 'webhook' },
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					settings: {},
+					staticData: {},
+				},
+			});
+
+		it('removes the token from the request query and url before the node runs', async () => {
+			/* Arrange */
+			executionPersistence.findSingleExecution.mockResolvedValue(buildExecution());
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'GET',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'GET',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const executeWebhookSpy = vi
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return undefined;
+					},
+				);
+
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'execution-id', suffix: undefined },
+				method: 'GET',
+				url: `/webhook-waiting/execution-id?${WAITING_TOKEN_QUERY_PARAM}=${resumeToken}&foo=bar`,
+				headers: { host: 'example.com' },
+			});
+			req.query = { [WAITING_TOKEN_QUERY_PARAM]: resumeToken, foo: 'bar' };
+
+			/* Act */
+			await waitingWebhooks.executeWebhook(req, mock<express.Response>());
+
+			/* Assert */
+			expect(executeWebhookSpy).toHaveBeenCalled();
+			const [, , , , , , , , calledReq] = executeWebhookSpy.mock.calls[0];
+			expect((calledReq as express.Request).query).not.toHaveProperty(WAITING_TOKEN_QUERY_PARAM);
+			expect((calledReq as express.Request).query).toEqual({ foo: 'bar' });
+			expect((calledReq as express.Request).url).not.toContain(resumeToken);
+			expect((calledReq as express.Request).url).toBe('/webhook-waiting/execution-id?foo=bar');
 		});
 	});
 
@@ -1462,7 +1701,54 @@ describe('WaitingWebhooks', () => {
 			);
 		});
 
-		it('should emit when execution successfully resumes', async () => {
+		it('should emit once with the time captured before webhook invocation', async () => {
+			const responseAt = new Date('2026-10-09T12:00:00.000Z');
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback, _dn, options) => {
+					vi.setSystemTime(new Date(responseAt.getTime() + 5000));
+					options?.onResume?.();
+					callback(null, { noWebhookResponse: true });
+					return undefined;
+				},
+			);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: 'test-execution-id', suffix: undefined },
+				method: 'POST',
+			});
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(responseAt);
+			try {
+				await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			} finally {
+				vi.useRealTimers();
+			}
+
+			expect(mockEventService.emit).toHaveBeenCalledTimes(1);
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.objectContaining({
+					executionId: 'test-execution-id',
+					workflowId: 'workflow-id',
+					responseAt,
+				}),
+			);
+		});
+
+		it('should not emit when the resume request fails before the execution resumes', async () => {
 			mockWebhookService.getNodeWebhooks.mockReturnValue([
 				{
 					httpMethod: 'POST',
@@ -1478,7 +1764,7 @@ describe('WaitingWebhooks', () => {
 			] as any);
 			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
 				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
-					callback(null, { noWebhookResponse: true });
+					callback(new Error('Workflow Webhook Error: Workflow could not be started!'), {});
 					return undefined;
 				},
 			);
@@ -1487,11 +1773,13 @@ describe('WaitingWebhooks', () => {
 				params: { path: 'test-execution-id', suffix: undefined },
 				method: 'POST',
 			});
-			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
+			await expect(waitingWebhooks.executeWebhook(mockReq, createMockRes())).rejects.toThrow(
+				'Workflow could not be started',
+			);
 
-			expect(mockEventService.emit).toHaveBeenCalledWith(
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
 				'execution-resumed',
-				expect.objectContaining({ executionId: 'test-execution-id', workflowId: 'workflow-id' }),
+				expect.anything(),
 			);
 		});
 
@@ -1586,7 +1874,8 @@ describe('WaitingWebhooks', () => {
 				},
 			] as any);
 			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
-				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, done) => {
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, done, _dn, options) => {
+					options?.onResume?.();
 					done(null, { noWebhookResponse: true });
 					return undefined;
 				},
@@ -1598,6 +1887,60 @@ describe('WaitingWebhooks', () => {
 			});
 			await waitingWebhooks.executeWebhook(mockReq, createMockRes());
 
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit for a matched form webhook', async () => {
+			const waitingForms = new WaitingForms(
+				mock(),
+				mock(),
+				executionPersistence,
+				mockWebhookService,
+				mockInstanceSettings,
+				mockEventService,
+				mockEndpointsConfig,
+			);
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				createMockExecution({
+					nodeType: 'n8n-nodes-base.wait',
+					nodeName: 'WaitNode',
+					nodeId: 'node-id',
+					nodeParameters: { resume: 'form' },
+				}),
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				mock<IWebhookData>({
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: 'form',
+					},
+				}),
+			]);
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(
+				async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback, _dn, options) => {
+					options?.onResume?.();
+					callback(null, { noWebhookResponse: true });
+					return undefined;
+				},
+			);
+
+			await waitingForms.executeWebhook(
+				mock<WaitingWebhookRequest>({
+					params: { path: 'test-execution-id', suffix: undefined },
+					method: 'POST',
+				}),
+				createMockRes(),
+			);
+
+			expect(WebhookHelpers.executeWebhook).toHaveBeenCalledTimes(1);
 			expect(mockEventService.emit).not.toHaveBeenCalledWith(
 				'execution-resumed',
 				expect.anything(),

@@ -1,0 +1,15 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-section padding="0 20px">
+			<mj-column>
+				<mj-include path="./_logo.mjml" />
+				<mj-text>Hi {{firstName}},</mj-text>
+				<mj-text><b>{{agentName}}</b> reached {{percent}}% of its monthly budget.</mj-text>
+				<mj-text>The agent keeps running. Open the agent to raise the budget or change the alert.</mj-text>
+				<mj-button href="{{agentUrl}}">Open agent</mj-button>
+				<mj-include path="./_footer.mjml" />
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

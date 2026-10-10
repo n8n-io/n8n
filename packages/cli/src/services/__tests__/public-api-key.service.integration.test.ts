@@ -1,7 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
+import {
+	getOwnerOnlyApiKeyScopes,
+	MEMBER_API_KEY_SCOPES,
+	type ApiKeyScope,
+} from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,7 +16,7 @@ import { PublicApiKeyService } from '../public-api-key.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
-const jwtService = new JwtService(instanceSettings, mock());
+const jwtService = new JwtService(instanceSettings, mock(), mock());
 
 let apiKeyRepository: ApiKeyRepository;
 let publicApiKeyService: PublicApiKeyService;
@@ -69,6 +73,18 @@ describe('PublicApiKeyService', () => {
 			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
 				false,
 			);
+		});
+
+		it('should keep every scope a member may hold', async () => {
+			const adminUser = await createAdminWithApiKey({
+				scopes: [...MEMBER_API_KEY_SCOPES, 'user:create'],
+			});
+			const apiKeyId = adminUser.apiKeys[0].id;
+
+			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
+
+			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			expect(apiKeyOnDb.scopes).toEqual(MEMBER_API_KEY_SCOPES);
 		});
 	});
 
@@ -145,25 +161,14 @@ describe('PublicApiKeyService', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should let a member grant folder scopes, which apply to their own projects', async () => {
-			// Arrange
-			const folderScopes: ApiKeyScope[] = [
-				'folder:create',
-				'folder:read',
-				'folder:update',
-				'folder:delete',
-				'folder:list',
-			];
-
-			// Act
+		it('should let a member grant every member scope', async () => {
 			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
 				{
 					role: GLOBAL_MEMBER_ROLE,
 				},
-				folderScopes,
+				MEMBER_API_KEY_SCOPES,
 			);
 
-			// Assert
 			expect(result).toBe(true);
 		});
 	});

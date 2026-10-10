@@ -23,6 +23,9 @@ describe('agent channel platform registry', () => {
 	it('narrows registered platform keys', () => {
 		expect(isRegisteredAgentChannelPlatform('slack')).toBe(true);
 		expect(isRegisteredAgentChannelPlatform('future-channel')).toBe(false);
+		// Registered for its stepper. The channel itself stays hidden from the
+		// catalog through `internal` on the backend, which is a separate switch.
+		expect(isRegisteredAgentChannelPlatform('teams')).toBe(true);
 	});
 
 	it('derives Slack list metadata from its local runtime state', () => {
@@ -59,6 +62,20 @@ describe('agent channel platform registry', () => {
 			false,
 		);
 		expect(platform.disconnectConfirmationComponent).toBeDefined();
+	});
+
+	it('registers n8n Chat with its "Make available" connect action', () => {
+		const platform = getAgentChannelPlatform('n8n_chat');
+		const action = platform.getConnectAction(
+			{ text },
+			{ loading: ref(false), load: async () => {} },
+		);
+
+		expect(platform.type).toBe('n8n_chat');
+		expect(action).toEqual({ label: 'agents.channels.n8nChat.makeAvailable' });
+		expect(platform.setupComponent).toBeDefined();
+		expect(platform.editComponent).toBeDefined();
+		expect(platform.setupComponent).toBe(platform.editComponent);
 	});
 
 	it('presents the generic Slack disconnect warning contract', () => {

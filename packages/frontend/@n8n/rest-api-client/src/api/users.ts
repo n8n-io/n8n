@@ -1,4 +1,7 @@
 import type {
+	ChangeEmailRequestDto,
+	ChangeEmailResponse,
+	ConfirmEmailChangeRequestDto,
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
@@ -148,6 +151,27 @@ export async function updateCurrentUser(
 	params: UserUpdateRequestDto,
 ): Promise<IUserResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/me', params);
+}
+
+export async function requestEmailChange(
+	context: IRestApiContext,
+	params: ChangeEmailRequestDto,
+): Promise<ChangeEmailResponse> {
+	return await makeRestApiRequest(context, 'POST', '/change-email', params);
+}
+
+export async function resolveEmailChangeToken(
+	context: IRestApiContext,
+	params: { token: string },
+): Promise<{ email: string }> {
+	return await makeRestApiRequest(context, 'GET', '/resolve-change-email-token', params);
+}
+
+export async function confirmEmailChange(
+	context: IRestApiContext,
+	params: ConfirmEmailChangeRequestDto,
+): Promise<{ success: true }> {
+	return await makeRestApiRequest(context, 'POST', '/confirm-email-change', params);
 }
 
 export async function updateCurrentUserSettings(

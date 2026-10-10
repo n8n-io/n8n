@@ -142,6 +142,7 @@ describe('kindColorToken', () => {
 	it('maps each kind to a CSS token', () => {
 		expect(kindColorToken('user')).toBe('var(--color--blue-400)');
 		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
+		expect(kindColorToken('skill')).toBe('var(--color--orange-400)');
 		expect(kindColorToken('tool')).toBe('var(--color--success)');
 		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
 		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
@@ -265,6 +266,90 @@ function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionT
 	};
 }
 
+describe('session timeline reasoning', () => {
+	it('keeps reasoning with the next response across tool calls', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Check the source.', timestamp: 10, endTime: 20 },
+				toolCallEvent(),
+				{ type: 'reasoning', content: 'Use the result.', timestamp: 200, endTime: 220 },
+				{ type: 'text', content: 'The answer.', timestamp: 230, endTime: 250 },
+			]),
+		]);
+		expect(items.map(({ kind }) => kind)).toEqual(['tool', 'agent']);
+		expect(items[1]).toMatchObject({
+			content: 'The answer.',
+			timestamp: 230,
+			endTimestamp: 250,
+			thinkingSegments: [
+				{ content: 'Check the source.', startTime: 10, endTime: 20 },
+				{ content: 'Use the result.', startTime: 200, endTime: 220 },
+			],
+		});
+	});
+
+	it('keeps separate reasoning for each response and skips empty traces', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'First thought.', timestamp: 10 },
+				{ type: 'text', content: 'First response.', timestamp: 20 },
+				{ type: 'reasoning', content: '  ', timestamp: 25 },
+				{ type: 'reasoning', content: 'Second thought.', timestamp: 30 },
+				{ type: 'text', content: 'Second response.', timestamp: 40 },
+				{ type: 'text', content: 'No reasoning.', timestamp: 50 },
+			]),
+		]);
+		expect(items[0].thinkingSegments?.map(({ content }) => content)).toEqual(['First thought.']);
+		expect(items[1].thinkingSegments?.map(({ content }) => content)).toEqual(['Second thought.']);
+		expect(items[2].thinkingSegments).toBeUndefined();
+	});
+
+	it('keeps partial reasoning when a run fails before producing text', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'reasoning', content: 'Partial thought.', timestamp: 10 }], {
+				status: 'error',
+				error: 'Run failed',
+			}),
+		]);
+		expect(items[0]).toMatchObject({
+			kind: 'agent',
+			content: '',
+			timestamp: 10,
+			thinkingSegments: [{ content: 'Partial thought.', startTime: 10 }],
+		});
+		expect(items[1].kind).toBe('execution-error');
+	});
+
+	it('keeps reasoning-only messages in order before tool calls', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Check the source.', timestamp: 10, endTime: 20 },
+				toolCallEvent(),
+			]),
+		]);
+		expect(items.map(({ kind, timestamp }) => ({ kind, timestamp }))).toEqual([
+			{ kind: 'agent', timestamp: 10 },
+			{ kind: 'tool', timestamp: 100 },
+		]);
+	});
+
+	it('keeps reasoning within its execution and steering segment', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'reasoning', content: 'Before steering.', timestamp: 10 },
+				{ type: 'input', messageId: 'steer', timestamp: 20 },
+				{ type: 'reasoning', content: 'After steering.', timestamp: 30 },
+			]),
+			withTimeline([{ type: 'text', content: 'Next execution.', timestamp: 40 }], { id: 'e-2' }),
+		]);
+		expect(items.map(({ thinkingSegments }) => thinkingSegments?.[0].content)).toEqual([
+			'Before steering.',
+			'After steering.',
+			undefined,
+		]);
+	});
+});
+
 function suspensionEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
 	return {
 		type: 'suspension',
@@ -281,6 +366,48 @@ function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecut
 
 describe('flattenExecutionsToTimelineItems', () => {
 	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
+
+	it.each([
+		['structured output', { name: 'Structured skill' }, {}, 'Structured skill'],
+		['text output', { value: [{ text: '[Skill: "Text skill"]\nInstructions' }] }, {}, 'Text skill'],
+		['input name', undefined, { name: 'Input skill' }, 'Input skill'],
+		['input skill ID', undefined, { skillId: 'skill-123' }, 'skill-123'],
+		[
+			'malformed text output',
+			{ value: [{ text: '[Skill: "Malformed skill]\nInstructions' }] },
+			{},
+			'Malformed skill',
+		],
+	] as const)('maps a skill call using its %s', (_source, output, input, expectedName) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					name: 'load_skill',
+					input,
+					output,
+					endTime: 200,
+					success: true,
+				}),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({
+			kind: 'skill',
+			skillName: expectedName,
+			toolName: 'load_skill',
+			toolOutcome: 'success',
+		});
+	});
+
+	it('maps an explicitly typed skill call', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({ kind: 'skill', name: 'custom_skill', input: { name: 'Triage' } }),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({ kind: 'skill', skillName: 'Triage' });
+	});
 
 	it('carries attachments on the user item', () => {
 		const items = flattenExecutionsToTimelineItems([
@@ -615,6 +742,60 @@ describe('flattenExecutionsToTimelineItems', () => {
 			withTimeline([{ type: 'text', content: 'hi there', timestamp: 1234 }]),
 		]);
 		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
+	});
+
+	it.each([
+		{
+			label: 'text and attachments',
+			text: [{ type: 'text', text: 'Use this image' }],
+			content: 'Use this image',
+		},
+		{ label: 'attachments only', text: [], content: '' },
+	])('maps steered $label between agent output', ({ text, content }) => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', content: 'Before steering', timestamp: 100 },
+					{
+						type: 'input',
+						timestamp: 200,
+						messageId: 'steered-user-message',
+					},
+					{ type: 'text', content: 'After steering', timestamp: 300 },
+				],
+				{
+					userMessage: `Original request\n${content}`,
+					inputMessages: [
+						{
+							id: 'original-input',
+							role: 'user',
+							content: [{ type: 'text', text: 'Original request' }],
+						},
+						{
+							id: 'steered-user-message',
+							role: 'user',
+							content: [
+								...text,
+								{
+									type: 'file',
+									fileId: attachment.id,
+									fileName: attachment.fileName,
+									mimeType: attachment.mimeType,
+									sizeBytes: attachment.sizeBytes,
+								},
+							],
+						},
+					],
+				},
+			),
+		]);
+
+		expect(items).toMatchObject([
+			{ kind: 'user', content: 'Original request', executionId: 'e-1' },
+			{ kind: 'agent', content: 'Before steering', timestamp: 100 },
+			{ kind: 'user', content, executionId: 'e-1', timestamp: 200, attachments: [attachment] },
+			{ kind: 'agent', content: 'After steering', timestamp: 300 },
+		]);
 	});
 
 	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {
@@ -976,5 +1157,53 @@ describe('hitlRequestLabelKey', () => {
 
 	it('falls back to the interaction label for records with no request type', () => {
 		expect(hitlRequestLabelKey(undefined)).toBe('agentSessions.timeline.hitlRequested');
+	});
+});
+
+describe('background task signals', () => {
+	const signal = {
+		tasks: [
+			{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'completed' },
+			{ id: 'job-2', title: 'Wait for reply', kind: 'workflow', status: 'cancelled' },
+		],
+	} as const;
+
+	it('keeps the signal before the reply with its execution and timestamp', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({
+				timeline: [
+					{ type: 'background-task-signal', timestamp: 1000, signal: { tasks: [...signal.tasks] } },
+					{ type: 'text', timestamp: 2000, content: 'Done' },
+				],
+			}),
+		]);
+		expect(items).toEqual([
+			{
+				kind: 'background-task-signal',
+				executionId: 'e-1',
+				timestamp: 1000,
+				backgroundJobSignal: signal,
+			},
+			expect.objectContaining({ kind: 'agent', content: 'Done' }),
+		]);
+	});
+
+	it('filters signals and searches task titles and translated statuses', () => {
+		const event = item({
+			kind: 'background-task-signal',
+			backgroundJobSignal: { tasks: [...signal.tasks] },
+		});
+		const labels: Record<string, string> = {
+			'background-task-signal': 'Background task results received',
+			'background-task-completed': 'Completed',
+			'background-task-cancelled': 'Canceled',
+		};
+		const labelForKey = (key: string) => labels[key] ?? key;
+		expect(matchesTimelineFilters(event, new Set(['background-task-signal']))).toBe(true);
+		expect(matchesTimelineFilters(event, new Set(['agent']))).toBe(false);
+		for (const query of ['results received', 'invoices', 'canceled', 'completed']) {
+			expect(matchesSearch(event, query, labelForKey)).toBe(true);
+		}
+		expect(kindColorToken(event.kind)).toBeDefined();
 	});
 });

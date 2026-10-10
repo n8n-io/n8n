@@ -18,8 +18,9 @@ import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
-import type { TriggerOutputs } from '../execution.types';
+import type { SeededSteps, TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
@@ -64,11 +65,23 @@ describe('step execution (integration)', () => {
 		{
 			workflowId = 'wf-1',
 			graph: workflowGraph = graph,
+			seededSteps,
 			lifecycleEventCallback,
+			waitSweepIntervalMs,
+			resolveOn = 'finish',
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
+			seededSteps?: SeededSteps;
 			lifecycleEventCallback?: LifecycleEventCallback;
+			waitSweepIntervalMs?: number;
+			/**
+			 * Which write means the engine has gone quiet. An execution that
+			 * suspends and stays suspended never finishes, so those cases wait on
+			 * the suspension instead — but a wait the sweep goes on to fire has to
+			 * wait for the finish, or the runtime stops before the sweep runs.
+			 */
+			resolveOn?: 'finish' | 'suspend';
 		} = {},
 	) {
 		let done!: () => void;
@@ -80,12 +93,20 @@ describe('step execution (integration)', () => {
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
+			responseSender: noopExecutionResponseSender,
+			waitSweepIntervalMs,
 			// also how the test reaches the stores the runtime owns
-			externalDependencies: ({ executionStore }) => {
+			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
-					done();
+					if (resolveOn === 'finish') done();
+					return recorded;
+				});
+				const suspendStep = stepStore.suspendStep.bind(stepStore);
+				vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, wait) => {
+					const recorded = await suspendStep(id, wait);
+					if (resolveOn === 'suspend') done();
 					return recorded;
 				});
 				return {
@@ -107,8 +128,9 @@ describe('step execution (integration)', () => {
 				graph: workflowGraph,
 				workflow: {},
 				triggerOutputs,
+				seededSteps,
 				executionId: generateId(),
-				callerContext: {},
+				callerContext: { hostMode: 'trigger' },
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -152,6 +174,7 @@ describe('step execution (integration)', () => {
 			executionId,
 			workflowId: 'wf-1',
 			mode: 'production',
+			hostMode: 'trigger',
 			at: expect.any(String) as string,
 		});
 		// The ids are the ones a consumer would re-query the data plane with.
@@ -182,7 +205,8 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-1',
 			mode: 'production',
 			iteration: 0,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 		});
 	});
 
@@ -215,6 +239,144 @@ describe('step execution (integration)', () => {
 			stack: expect.stringContaining('TypeError: credentials missing') as string,
 		});
 		expect(step?.outputs).toBeNull();
+	});
+
+	it('suspends a step that declares a wait, and reports the execution as waiting', async () => {
+		const waitGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// far future, so no sweep in a later case can fire this leftover row
+		const wait = {
+			resumeAt: '2099-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const executor: IStepExecutor = {
+			execute: async () => {
+				await Promise.resolve();
+				return { wait };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait',
+			graph: waitGraph,
+			resolveOn: 'suspend',
+		});
+
+		// nothing settled the step, so the execution has no outcome to record
+		expect(execution.status).toBe('waiting');
+		expect(execution.finishedAt).toBeNull();
+
+		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
+		expect(waiting?.status).toBe('waiting');
+		expect(waiting?.waitDeclaration).toEqual(wait);
+		expect(waiting?.waitTill).toEqual(new Date(wait.resumeAt));
+		expect(waiting?.outputs).toBeNull();
+	});
+
+	it('fires a due wait, resumes the step and runs the execution to the end', async () => {
+		const waitGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// already past, so the first sweep finds it due
+		const wait = {
+			resumeAt: '2020-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return request.node.id === 'node-a'
+					? { wait }
+					: { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait-fires',
+			graph: waitGraph,
+			waitSweepIntervalMs: 20,
+		});
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+
+		const nodeA = steps.find(({ nodeId }) => nodeId === 'node-a');
+		expect(nodeA?.status).toBe('completed');
+		expect(nodeA?.resumeCause).toEqual({ kind: 'deadline' });
+		// the declaration's captured outputs are what the step emitted
+		expect(nodeA?.outputs).toEqual(wait.outputsAtDeadline);
+
+		// node-a ran once, to declare the wait — the deadline resume did not run it
+		// again, and its captured outputs became node-b's input
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-b']);
+		expect(requests[1].inputs).toEqual([[{ json: { passed: 'through' } }]]);
+		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('completed');
+	});
+
+	it('cancels a waiting step when a sibling branch fails', async () => {
+		// The trigger fans out. A suspends, then B throws, which fails the whole
+		// execution. A must not survive as a live row: nothing would ever resume a
+		// request-only wait, and the sweep would run a deadline wait inside a
+		// failed execution.
+		const forkGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		// far future, so no sweep in another case can fire this row if the
+		// cancellation regresses
+		const wait = {
+			resumeAt: '2099-01-01T00:00:00.000Z',
+			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
+			acceptsResumeRequest: false,
+		};
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				await Promise.resolve();
+				if (request.node.id === 'node-a') return { wait };
+				throw new Error('node blew up');
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-wait-cancelled',
+			graph: forkGraph,
+		});
+
+		expect(execution.status).toBe('failed');
+		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('failed');
+
+		const waiting = steps.find(({ nodeId }) => nodeId === 'node-a');
+		expect(waiting?.status).toBe('cancelled');
+		// the declaration stays on the row as a record of what it was waiting for
+		expect(waiting?.waitDeclaration).toEqual(wait);
 	});
 
 	it('runs the execution to completion even when every status batch is refused', async () => {
@@ -275,6 +437,82 @@ describe('step execution (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
+	});
+
+	it('records a seeded node with its outputs when the run reaches it, and runs what follows on them', async () => {
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [[{ json: {} }]], {
+			workflowId: 'wf-seeded',
+			graph: chainGraph,
+			seededSteps: { 'node-a': [[[{ json: { reused: true } }]]] },
+		});
+
+		// Only B ran, on A's seeded outputs.
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-b']);
+		expect(requests[0].inputs).toEqual([[{ json: { reused: true } }]]);
+		expect(execution.status).toBe('completed');
+		const a = steps.find((step) => step.nodeId === 'node-a');
+		expect(a).toMatchObject({ status: 'completed', outputs: [[{ json: { reused: true } }]] });
+	});
+
+	it('reaches a seeded node only once everything before it has settled', async () => {
+		// trigger -> A -> B (seeded) -> C: C must not run before A, even though
+		// B's outputs are known from the start.
+		const chainGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+				{ id: 'node-c', name: 'C', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-a', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'node-b', to: 'node-c', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const requests: StepExecutionRequest[] = [];
+		const executor: IStepExecutor = {
+			execute: async (request) => {
+				requests.push(request);
+				await Promise.resolve();
+				return { outputs: [[{ json: { ran: request.node.id } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [[{ json: {} }]], {
+			workflowId: 'wf-seeded-order',
+			graph: chainGraph,
+			seededSteps: { 'node-b': [[[{ json: { seeded: true } }]]] },
+		});
+
+		expect(requests.map(({ node }) => node.id)).toEqual(['node-a', 'node-c']);
+		expect(requests[1].inputs).toEqual([[{ json: { seeded: true } }]]);
+		expect(execution.status).toBe('completed');
+		// B's row was written when the run reached it, after A settled.
+		const a = steps.find((step) => step.nodeId === 'node-a');
+		const b = steps.find((step) => step.nodeId === 'node-b');
+		expect(b?.status).toBe('completed');
+		expect(b!.createdAt.getTime()).toBeGreaterThanOrEqual(a!.updatedAt.getTime());
 	});
 
 	it('runs a fan-in once, with each input slot fed by its branch', async () => {
@@ -388,6 +626,7 @@ describe('step execution (integration)', () => {
 			orchestrationQueue,
 			{ v1StepExecutor: { execute } },
 			noopLifecycleEventPublisher,
+			noopExecutionResponseSender,
 		);
 
 		const executionId = generateId();
@@ -396,10 +635,11 @@ describe('step execution (integration)', () => {
 			workflowId: 'wf-2',
 			status: 'running',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 		});
 		const created = await stepStore.createSteps(executionId, [
 			// completed steps always carry outputs, as the start handler writes them

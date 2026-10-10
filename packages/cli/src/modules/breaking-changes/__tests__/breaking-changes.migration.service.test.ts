@@ -20,6 +20,7 @@ import {
 	AiTransformDeprecatedRule,
 	AI_TRANSFORM_NODE_TYPE,
 } from '../rules/v3/ai-transform-deprecated.rule';
+import type { WorkflowMigration } from '../migrations/node-migration';
 import { createNode } from './test-helpers';
 
 describe('BreakingChangeMigrationService', () => {
@@ -161,13 +162,32 @@ describe('BreakingChangeMigrationService', () => {
 		expect(updateData.nodes.find((n) => n.id === otherNode.id)).toEqual(otherNode);
 	});
 
+	it('keeps the connections of a node-for-node migration intact', async () => {
+		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		const connections = { Transform: { main: [[{ node: 'End', type: 'main', index: 0 }]] } };
+		// A plain object so the connections reach the service as real data, not a deep mock.
+		const workflow = {
+			id: 'wf-1',
+			name: 'My WF',
+			nodes: [aiNode, createNode('End', 'n8n-nodes-base.noOp')],
+			connections: structuredClone(connections),
+		} as unknown as WorkflowEntity;
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+
+		await service.migrateWorkflow(RULE_ID, 'wf-1', user);
+
+		const [, updateData] = workflowService.update.mock.calls[0];
+		expect(updateData.connections).toEqual(connections);
+	});
+
 	it('marks a clean migration republishable when the published version was migrated and it validates', async () => {
 		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
 		// Published version == the version being migrated.
 		const workflow = buildWorkflow([aiNode], { versionId: 'v1', activeVersionId: 'v1' });
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
 		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
-		workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+		workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 
 		const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
 
@@ -210,7 +230,7 @@ describe('BreakingChangeMigrationService', () => {
 		const workflow = buildWorkflow([aiNode], { versionId: 'v2', activeVersionId: 'v1' });
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
 		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
-		workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+		workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 
 		const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
 
@@ -225,7 +245,7 @@ describe('BreakingChangeMigrationService', () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
 		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
 		// e.g. only a manual trigger, so activation validation fails.
-		workflowValidationService.validateForActivation.mockReturnValue({
+		workflowValidationService.validateForActivation.mockResolvedValue({
 			isValid: false,
 			error: 'no trigger',
 		});
@@ -233,5 +253,75 @@ describe('BreakingChangeMigrationService', () => {
 		const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
 
 		expect(result.republishable).toBe(false);
+	});
+
+	describe('workflow-level migrations', () => {
+		// A migration that adds a node in front of each flagged node and rewires the edge.
+		const insertBefore: WorkflowMigration = {
+			ruleId: RULE_ID,
+			migrateWorkflow: ({ nodes, connections, affectedNodeIds }) => {
+				const [target] = nodes.filter((node) => affectedNodeIds.has(node.id));
+				return {
+					nodes: [...nodes, createNode('Added', 'n8n-nodes-base.noOp')],
+					connections: {
+						...connections,
+						Added: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
+					},
+					migratedNodeIds: [target.id],
+					notes: ['Review the migrated workflow'],
+				};
+			},
+		};
+
+		it('saves the graph the migration returns and requires review', async () => {
+			const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+			// A plain object rather than mock<WorkflowEntity>: a deep mock proxy turns
+			// the spread of `connections` into garbage.
+			const workflow = {
+				id: 'wf-1',
+				name: 'My WF',
+				nodes: [aiNode],
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				connections: {},
+			} as unknown as WorkflowEntity;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+			workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
+			vi.spyOn(migrationRegistry, 'get').mockReturnValue(insertBefore);
+
+			const result = await service.migrateWorkflow(RULE_ID, 'wf-1', user);
+
+			expect(result).toEqual({
+				workflowId: 'wf-1',
+				newVersionId: 'new-version',
+				migratedNodeIds: [aiNode.id],
+				unmapped: [],
+				notes: ['Review the migrated workflow'],
+				republishable: false,
+			});
+
+			const [, updateData] = workflowService.update.mock.calls[0];
+			expect(updateData.nodes.map((n) => n.name)).toEqual(['Transform', 'Added']);
+			expect(updateData.connections).toEqual({
+				Added: { main: [[{ node: 'Transform', type: 'main', index: 0 }]] },
+			});
+			// Review is required even when the graph would pass activation validation.
+			expect(workflowValidationService.validateForActivation).not.toHaveBeenCalled();
+		});
+
+		it('surfaces a migration failure as a bad request without saving', async () => {
+			const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(buildWorkflow([aiNode]));
+			vi.spyOn(migrationRegistry, 'get').mockReturnValue({
+				ruleId: RULE_ID,
+				migrateWorkflow: () => {
+					throw new Error('cannot rewire');
+				},
+			});
+
+			await expect(service.migrateWorkflow(RULE_ID, 'wf-1', user)).rejects.toThrow('cannot rewire');
+			expect(workflowService.update).not.toHaveBeenCalled();
+		});
 	});
 });

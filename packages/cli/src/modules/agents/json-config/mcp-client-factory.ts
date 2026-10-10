@@ -1,4 +1,9 @@
-import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents';
+import type {
+	CredentialProvider,
+	McpClient,
+	McpServerConfig,
+	McpConnectionFailedEvent,
+} from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -127,7 +132,7 @@ export interface BuildMcpClientDeps {
 	 * remaining servers' tools. Used for logging/telemetry — the user-facing
 	 * warning is emitted from the agent runtime as a `warning` stream chunk.
 	 */
-	onConnectionFailed?: (event: { server: string; error: string }) => void;
+	onConnectionFailed?: (event: McpConnectionFailedEvent) => void;
 	onToolCallSettled?: McpServerConfig['onToolCallSettled'];
 }
 
@@ -281,8 +286,7 @@ export async function buildMcpClientForServer(
 		}),
 		...(onConnectionFailed
 			? {
-					onConnectionFailed: (event: { server: string; error: string }) =>
-						onConnectionFailed(event),
+					onConnectionFailed: (event: McpConnectionFailedEvent) => onConnectionFailed(event),
 				}
 			: {}),
 	};
@@ -302,6 +306,14 @@ export async function listMcpServerTools(
 	try {
 		client = await buildMcpClientForServer(server, deps);
 		const tools = await client.listTools();
+		const failures = client.getConnectionFailures();
+		if (failures.length > 0) {
+			throw new OperationalError(
+				failures
+					.map((failure) => `MCP server "${failure.server}" connection failed: ${failure.error}`)
+					.join('; '),
+			);
+		}
 		return tools.map((tool) => ({ name: tool.name, description: tool.description ?? '' }));
 	} finally {
 		await client?.close().catch(() => {});

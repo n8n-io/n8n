@@ -16,6 +16,7 @@ import {
 	detectBinaryDependencies,
 	emitsDataTableRows,
 	generateMockHints,
+	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	isDataTableRead,
@@ -235,6 +236,28 @@ describe('identifyNodesForPinData', () => {
 			expect(result.map((n) => n.name)).toEqual(['Cache']);
 		});
 	});
+
+	it('leaves only the Data Table reads in the live set unpinned', () => {
+		const read = (name: string, operation: string) =>
+			makeNode({
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { resource: 'row', operation },
+			});
+		const nodes = [
+			read('Read Seeded', 'get'),
+			read('Read Other', 'rowExists'),
+			makeNode({ name: 'Cache', type: 'n8n-nodes-base.redis' }),
+		];
+
+		const result = identifyNodesForPinData(
+			makeWorkflow(nodes),
+			undefined,
+			new Set(['Read Seeded', 'Cache']),
+		);
+
+		expect(result.map((n) => n.name)).toEqual(['Read Other', 'Cache']);
+	});
 });
 
 describe('partitionAiRoots', () => {
@@ -450,6 +473,32 @@ describe('partitionAiRoots', () => {
 				root: 'Agent',
 				subNodeType: llmType,
 				reason: 'unsupported_vendor_llm',
+			});
+		});
+
+		it.each([
+			'@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			'@n8n/n8n-nodes-langchain.embeddingsCohere',
+			'@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+			'@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
+		])('auto-pins a root backed by embeddings sub-node %s', (embeddingsType) => {
+			// Embeddings speak the vendor SDK, so the HTTP mock never sees them, and
+			// no `EVAL_PROVIDER_URL_FIELD` entry rewrites their credentials. Left
+			// unpinned the root reaches the real provider on real credentials.
+			const nodes = [
+				makeNode({ name: 'Embeddings', type: embeddingsType }),
+				makeNode({ name: 'Store', type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory' }),
+			];
+			const connections: IConnections = {
+				Embeddings: { ai_embedding: [[{ node: 'Store', type: 'ai_embedding', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual(['Store']);
+			expect(result.autoPinned[0]).toMatchObject({
+				root: 'Store',
+				subNodeType: embeddingsType,
+				reason: 'unsupported_vendor_embeddings',
 			});
 		});
 
@@ -1090,6 +1139,32 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([]);
 	});
 
+	it('should unwrap trigger content that comes back as an n8n item', async () => {
+		const binary = { CV_0: { mimeType: 'application/pdf', fileName: 'cv.pdf' } };
+		mockAgentResponses(
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { json: { 'Full Name': 'Ada Lovelace' }, binary },
+				nodeHints: { Slack: 'post a message' },
+			}),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual({ 'Full Name': 'Ada Lovelace', binary });
+	});
+
+	it('should keep trigger content whose json field sits next to other fields', async () => {
+		const triggerContent = { json: { id: 1 }, headers: {}, body: {} };
+		mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent, nodeHints: { Slack: 'post' } }),
+		);
+
+		const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(result.triggerContent).toEqual(triggerContent);
+	});
+
 	it('should retry when the first attempt returns empty triggerContent, then succeed', async () => {
 		const generate = mockAgentResponses(
 			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
@@ -1107,6 +1182,40 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([
 			expect.stringContaining('Phase 1 attempt 1/2: empty triggerContent'),
 		]);
+	});
+
+	it('names the empty trigger content in the retry prompt', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[0][0]).not.toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain(TRIGGER_CONTENT_CORRECTION);
+	});
+
+	it('names the failure reason in the retry prompt when the first attempt threw', async () => {
+		const generate = mockAgentResponses(
+			new Error('Unexpected end of JSON input'),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[1][0]).toContain(
+			'The previous answer was unusable: Unexpected end of JSON input',
+		);
 	});
 
 	it('should return emptyResult with both warnings when every attempt fails', async () => {
@@ -1156,6 +1265,76 @@ describe('generateMockHints', () => {
 
 		expect(generate).toHaveBeenCalledTimes(2);
 		expect(result.warnings).toEqual([expect.stringContaining('invalid nodeHints')]);
+	});
+
+	it.each([true, 'true'])(
+		'accepts empty triggerContent when triggerEmitsNoItems is %j, and forwards the flag',
+		async (flag) => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					globalContext: '',
+					nodeHints: { Slack: 'foo' },
+					triggerEmitsNoItems: flag,
+				}),
+			);
+
+			const result = await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.triggerEmitsNoItems).toBe(true);
+			expect(result.warnings).toEqual([]);
+		},
+	);
+
+	describe('Manual Trigger start', () => {
+		const manualWorkflow = makeWorkflow([
+			makeNode({ name: 'Run', type: 'n8n-nodes-base.manualTrigger' }),
+			makeNode({ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+			makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+		]);
+
+		it('accepts empty triggerContent without a retry, and keeps the hints', async () => {
+			const generate = mockAgentResponses(
+				JSON.stringify({ globalContext: 'ctx', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			);
+
+			const result = await generateMockHints({
+				workflow: manualWorkflow,
+				nodeNames: ['Run', 'Slack'],
+				defaultStartNodeName: 'Run',
+			});
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(result.triggerContent).toEqual({});
+			expect(result.globalContext).toBe('ctx');
+			expect(result.warnings).toEqual([]);
+		});
+
+		it('still retries empty triggerContent when the hints name another trigger', async () => {
+			const generate = mockAgentResponses(
+				JSON.stringify({
+					triggerContent: {},
+					startNodeName: 'Schedule',
+					nodeHints: { Slack: 'foo' },
+				}),
+				JSON.stringify({
+					triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+					startNodeName: 'Schedule',
+					nodeHints: { Slack: 'foo' },
+				}),
+			);
+
+			const result = await generateMockHints({
+				workflow: manualWorkflow,
+				nodeNames: ['Schedule', 'Slack'],
+				defaultStartNodeName: 'Run',
+			});
+
+			expect(generate).toHaveBeenCalledTimes(2);
+			expect(result.startNodeName).toBe('Schedule');
+			expect(result.triggerContent).toEqual({ timestamp: '2024-01-01T00:00:00Z' });
+		});
 	});
 
 	it('should not call the agent when there are no hint-eligible nodes', async () => {

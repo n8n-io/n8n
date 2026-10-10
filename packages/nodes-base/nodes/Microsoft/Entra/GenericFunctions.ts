@@ -22,6 +22,7 @@ import {
 } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
 
+import { escapeODataSearchValue, escapeODataValue } from '@utils/query-escaping';
 import { validateUserTargetId, type UserTargetMessages } from '../GenericFunctions';
 
 const ID_FORMAT_HINT = 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315';
@@ -515,7 +516,7 @@ export async function getGroups(
 		const headers: IDataObject = {};
 		if (filter) {
 			headers.ConsistencyLevel = 'eventual';
-			qs.$search = `"displayName:${filter}"`;
+			qs.$search = `"displayName:${escapeODataSearchValue(filter)}"`;
 		}
 		response = await microsoftApiRequest.call(this, 'GET', '/groups', {}, qs, headers);
 	}
@@ -559,7 +560,8 @@ export async function getUsers(
 		};
 		const headers: IDataObject = {};
 		if (filter) {
-			qs.$filter = `startsWith(displayName, '${filter}') OR startsWith(userPrincipalName, '${filter}')`;
+			const filterValue = escapeODataValue(filter);
+			qs.$filter = `startsWith(displayName, '${filterValue}') OR startsWith(userPrincipalName, '${filterValue}')`;
 		}
 		response = await microsoftApiRequest.call(this, 'GET', '/users', {}, qs, headers);
 	}

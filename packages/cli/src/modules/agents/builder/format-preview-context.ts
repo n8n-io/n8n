@@ -1,3 +1,5 @@
+import type { AgentPersistedMessageDto } from '@n8n/api-types';
+
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { TimelineEvent } from '../execution-recorder';
@@ -33,7 +35,25 @@ function stringifyToolValue(value: unknown): string {
 	return truncate(serialized, MAX_TOOL_VALUE_CHARS);
 }
 
-function formatTimelineEvent(event: TimelineEvent): string {
+function formatInput(message: AgentPersistedMessageDto): string {
+	const text = message.content
+		.flatMap((part) => {
+			if (part.type === 'text') return [part.text];
+			if (part.type === 'file') return [`[Attachment: ${part.fileName ?? part.fileId ?? 'file'}]`];
+			return [];
+		})
+		.join('\n');
+	return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
+}
+
+function formatTimelineEvent(event: TimelineEvent, execution: AgentExecution): string {
+	if (event.type === 'input') {
+		const message = execution.inputMessages?.find(({ id }) => id === event.messageId);
+		return message ? formatInput(message) : '';
+	}
+	if (event.type === 'background-task-signal') {
+		return `Background task results received: ${stringifyToolValue(event.signal.tasks)}`;
+	}
 	if (event.type === 'text') {
 		return `Assistant: ${truncate(event.content, MAX_TEXT_CHARS)}`;
 	}
@@ -70,11 +90,19 @@ function formatExecution(execution: AgentExecution): string {
 	if (execution.error) headerParts.push(`error=${execution.error}`);
 
 	const lines = [`## Turn (${headerParts.join(', ')})`];
-	if (execution.userMessage !== null) {
+	if (execution.inputMessages !== undefined) {
+		const steeredIds = new Set(
+			execution.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
+		);
+		for (const message of execution.inputMessages) {
+			if (!steeredIds.has(message.id)) lines.push(formatInput(message));
+		}
+	} else if (execution.userMessage !== null) {
 		lines.push(`User: ${truncate(execution.userMessage, MAX_TEXT_CHARS)}`);
 	}
 	for (const event of execution.timeline ?? []) {
-		lines.push(formatTimelineEvent(event));
+		const line = formatTimelineEvent(event, execution);
+		if (line) lines.push(line);
 	}
 	return lines.join('\n');
 }
@@ -86,16 +114,36 @@ function selectTurnExecutions(
 	let anchorIndex = executions.findIndex((execution) => execution.id === executionId);
 	if (anchorIndex === -1) return null;
 
-	while (anchorIndex > 0 && executions[anchorIndex].userMessage === null) {
+	while (
+		anchorIndex > 0 &&
+		continuesExecution(executions[anchorIndex - 1], executions[anchorIndex])
+	) {
 		anchorIndex--;
 	}
 
 	const selected = [executions[anchorIndex]];
 	for (let i = anchorIndex + 1; i < executions.length; i++) {
-		if (executions[i].userMessage !== null) break;
+		if (!continuesExecution(executions[i - 1], executions[i])) break;
 		selected.push(executions[i]);
 	}
 	return selected;
+}
+
+function continuesExecution(previous: AgentExecution, current: AgentExecution): boolean {
+	if (current.inputMessageIds !== undefined) {
+		const firstInputId = current.inputMessageIds[0];
+		if (!firstInputId) return false;
+		if (previous.inputMessageIds !== undefined) {
+			return firstInputId === previous.inputMessageIds[0];
+		}
+		// A legacy continuation gets its first input link when it consumes steering.
+		return (
+			current.timeline?.some(
+				(event) => event.type === 'input' && event.messageId === firstInputId,
+			) ?? false
+		);
+	}
+	return current.userMessage === null;
 }
 
 /**

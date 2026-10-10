@@ -270,6 +270,23 @@ while an unpublish deprovisions the workflow's jobs immediately before removing 
 `workflow_published_version` mapping that made it an owner
 (`WorkflowPublicationApplier`).
 
+n8n's `system-task` owner type shows an owner that is never deleted, only no longer
+wanted by the code: a task removed, flipped back to its in-process timer, or gated off
+by a flag. Each task owns one job, stamped with the n8n version that last provisioned
+it. At startup, once it has provisioned the tasks it runs durably, an instance deletes
+every system-task job it does not run durably, unless the stamp is newer than its own
+version: a newer version added that task, and an older instance in a rolling deploy
+must leave it alone (`SystemTaskJobRegistrar`). Each delete is pinned to the row as listed,
+so a job another instance restamps in between survives. The resolver answers by the
+same rule, so the sweep only retires what a failed startup cleanup left behind. Two
+cases are deploy constraints, not code: rolling back to a version without a task
+leaves that task's job in place, unclaimed, until a version that runs it boots again or
+a newer version that does not run it deletes it at startup, and a version that still
+declares the task durable but has the flag off skips the task's in-memory runs while
+that job stays in place; and every instance must share the same system-task
+configuration, since an instance that does not run a task durably deletes its job at
+startup.
+
 **2. Register a liveness resolver.**
 
 The scheduler cannot tell whether one of your owners still exists, so you answer that
@@ -384,7 +401,18 @@ The design leans on a few ideas working together.
 - **Lease.** A claim comes with an expiry (a *lease*). While the lease is valid the
   run belongs to that server. If the server dies, the lease lapses and the recovery
   pass can safely take the run back. Without leases a crashed server would strand
-  its runs forever.
+  its runs forever. While a handler runs, a heartbeat renews its lease every quarter
+  of the lease, but never more often than every five seconds, so a long run keeps
+  its claim while its renewals succeed. A lease of five seconds or less
+  expires before its first renewal, and the scheduler warns about it at startup.
+  If a renewal finds the claim gone, or no renewal succeeds for a whole lease, the
+  handler's signal aborts, unless the run is already recorded as dispatched.
+  A handler that abandons work on this abort must reject. If its claim still
+  matches, the executor counts the failed attempt. It retries only while
+  attempts remain. If the claim no longer matches, the write changes nothing.
+  A clean return completes an occurrence that the executor still owns.
+  A run still running after sixty leases, or after about 24 days if that comes
+  first, logs a warning, since it may be stuck.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
   time a run is claimed. Every final write ("mark succeeded", "mark failed") is
   guarded by that number. So if a slow server comes back from the dead after its
@@ -527,8 +555,8 @@ A few things that are not obvious from the code but save a lot of confusion.
   All three default to no-ops, and a throwing hook is swallowed so a broken logger
   or exporter can never break the scheduling it was only meant to observe.
 
-- **Two warnings tell an operator their timing is off.** Both arrive through the
-  event sink at `warn` level, so they land in the host's logs:
+- **Three event-sink warnings tell an operator their timing is off.** All arrive
+  through the event sink at `warn` level, so they land in the host's logs:
   - a **clock-skew warning** at start-up. Due-ness and leases are judged on the
     clock the scheduler coordinates on (the host supplies it via `now`, e.g. the
     shared store's clock), but fire timers are armed on this instance's own clock. When
@@ -542,6 +570,9 @@ A few things that are not obvious from the code but save a lot of confusion.
     `DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS` (default `30s`) past its scheduled
     time, once per late fire. This flags a genuinely late dispatch (a blocked event
     loop, a skewed clock), not routine sub-second jitter.
+  - a **short-lease warning** at start-up when the lease is
+    `MIN_RENEWAL_INTERVAL_MS` (`5s`) or shorter. Such a lease expires before its
+    first renewal, but it may still be renewed before the reaper reclaims it.
 
 - **Runs are recorded ahead of time, within a window.** Because upcoming runs are
   queued in advance, a frequent schedule does not need one planning pass per fire.
@@ -561,10 +592,6 @@ A few things that are not obvious from the code but save a lot of confusion.
   `@n8n/scheduler-features`, would keep the integration concerns together on their
   own, and mirror the clean split this package already draws between algorithm and
   host.
-- **Lease renewal for long handlers.** A claim's lease is fixed for now, so a
-  handler that runs longer than its lease risks being recovered and re-run. A
-  heartbeat that extends the lease while a handler is genuinely still working would
-  lift that constraint.
 
 ### Exploring the idea: a standalone `@n8n/scheduler-worker`
 

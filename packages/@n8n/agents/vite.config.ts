@@ -53,6 +53,7 @@ export default mergeConfig(
 	createVitestConfig({
 		// Integration tests run via vitest.integration.config.mjs (real providers, long timeouts).
 		exclude: [...configDefaults.exclude, '**/__tests__/integration/**'],
+		setupFiles: ['src/__tests__/setup.ts'],
 	}),
 	{
 		plugins: [rewriteSourceRequire()],

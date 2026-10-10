@@ -58,9 +58,10 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 
 call_agent verifies the draft Agent's behavior through built-in Preview chat, not configured channel
 triggers, platform context, message delivery, or replies. Real tools and credentials are used, so
-side effects are possible. If the test exposes errors, report them and ask whether to fix them rather
-than mutating the Agent automatically. Every approval decision must come from the human; resume each
-returned approval individually.
+side effects are possible. Omit sessionId to start a new test conversation. To continue one, pass the
+exact sessionId from an earlier call_agent result; never make one up. If the test exposes errors,
+report them and ask whether to fix them rather than mutating the Agent automatically. Every approval
+decision must come from the human; resume each returned approval individually.
 
 ## Publication approval
 
@@ -164,6 +165,34 @@ never appear in the config schema above. Manage them exclusively with update_age
 which validates the credential and persists the configuration without publishing. A configured
 channel stays inactive until publish_agent is called unless the Agent already has an active version;
 in that case, it connects immediately to the existing active snapshot.
+
+### Slack
+
+A Slack app sends events only to the request URL in its own configuration, so a Slack channel works
+only with a Slack app that points at this Agent. A slackApi credential made for another use, such as a
+Slack Trigger or another Agent, passes every credential check but the Agent receives nothing. Connect
+Slack in this order:
+
+1. Call update_agent_integration with action=connect, type=slack, and no credentialId. Nothing changes.
+   - status=workspace_selection_required lists managerCredentials with their workspaces. Ask the user
+     which workspace to use and confirm that n8n may create a Slack app there.
+   - code=slack_workspace_not_connected means no Slack workspace is connected to n8n yet. Give the
+     user agentUrl and ask them to connect the workspace once through Add channel, then retry.
+   - code=slack_manager_reconnect_required means the listed Slack workspace credentials must be
+     reconnected. Give the user agentUrl and ask them to reconnect through Add channel, then retry.
+   - code=slack_managed_setup_unavailable means this instance cannot create Slack apps. Relay
+     slackApp.requestUrl and slackApp.manifest so the user can configure a Slack app, then connect
+     with that app's slackApi credential.
+2. Call update_agent_integration again with the chosen managerCredentialId and workspaceId. n8n
+   creates the Slack app, installs it, and connects the channel. If the result has
+   status=install_approval_required, give the user installUrl; n8n connects the channel after they
+   approve the install. Call get_agent to confirm. If the result has
+   code=slack_app_built_for_another_agent, the Agent already uses a bot credential from another
+   Slack app: disconnect that credential, then install again.
+
+When you connect with an explicit slackApi credential, the result has slackApp.configuredForAgent. It
+is true only when n8n built the Slack app for this Agent. If it is false, relay the warning and
+slackApp.requestUrl to the user instead of reporting the channel as ready.
 
 ## MCP servers
 

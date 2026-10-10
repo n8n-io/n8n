@@ -1,7 +1,15 @@
+import { CredentialOptionsRequestDto } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import type { CredentialInformation, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { oAuth1CredentialAuthorize, oAuth2CredentialAuthorize } from './credentials.api';
+import {
+	oAuth1CredentialAuthorize,
+	oAuth2CredentialAuthorize,
+	searchCredentials,
+	getCredentialOptions,
+	type CredentialOptionsDestination,
+} from './credentials.api';
 import type { ICredentialsResponse } from './credentials.types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -11,6 +19,49 @@ vi.mock('@n8n/rest-api-client', () => ({
 const makeRestApiRequestMock = vi.mocked(makeRestApiRequest);
 
 const context: IRestApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
+
+describe('credentials.api resource locator', () => {
+	it.each<{
+		destination: CredentialOptionsDestination;
+		path: string;
+		tokenData?: ICredentialDataDecryptedObject;
+		expectedTokenData?: ICredentialDataDecryptedObject;
+	}>([
+		{
+			destination: { kind: 'project', projectId: 'project-id' },
+			path: '/credentials/options/projects/project-id',
+			tokenData: { oauthTokenData: null as unknown as CredentialInformation },
+		},
+		{ destination: { kind: 'instance' }, path: '/credentials/options/instance' },
+		{
+			destination: { kind: 'stored', credentialId: 'credential-id' },
+			path: '/credentials/credential-id/options',
+			tokenData: { oauthTokenData: { access_token: 'access-token' } },
+			expectedTokenData: { oauthTokenData: { access_token: 'access-token' } },
+		},
+	])(
+		'sends a valid draft in a POST body to $path',
+		async ({ destination, path, tokenData, expectedTokenData }) => {
+			const credentialData = { email: 'service@example.com', privateKey: 'draft-key' };
+			const data = {
+				type: 'googleVertexAiApi',
+				propertyName: 'project',
+				data: { ...credentialData, ...tokenData },
+				paginationToken: 'next-page',
+			};
+			const originalData = structuredClone(data);
+			await getCredentialOptions(context, destination, data);
+			expect(makeRestApiRequestMock).toHaveBeenLastCalledWith(context, 'POST', path, {
+				...data,
+				data: { ...credentialData, ...expectedTokenData },
+			});
+			expect(
+				CredentialOptionsRequestDto.safeParse(makeRestApiRequestMock.mock.lastCall?.[3]).success,
+			).toBe(true);
+			expect(data).toEqual(originalData);
+		},
+	);
+});
 
 // A credential as returned by the list/edit endpoints, carrying the large fields
 // (homeProject, scopes, sharedWithProjects) that previously bloated the auth GET URL.
@@ -48,6 +99,34 @@ describe('credentials.api OAuth authorization', () => {
 
 		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'GET', '/oauth1-credential/auth', {
 			id: 'cred-1',
+		});
+	});
+});
+
+describe('credentials.api searchCredentials', () => {
+	beforeEach(() => {
+		makeRestApiRequestMock.mockReset();
+		makeRestApiRequestMock.mockResolvedValue([]);
+	});
+
+	it('sends the name filter, pagination, and includeGlobal', async () => {
+		await searchCredentials(context, { name: 'slack', skip: 20, take: 21 });
+
+		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'GET', '/credentials', {
+			filter: { name: 'slack' },
+			skip: 20,
+			take: 21,
+			includeGlobal: true,
+		});
+	});
+
+	it('omits the filter when the name is empty', async () => {
+		await searchCredentials(context, { name: '', skip: 0, take: 21 });
+
+		expect(makeRestApiRequestMock).toHaveBeenCalledWith(context, 'GET', '/credentials', {
+			skip: 0,
+			take: 21,
+			includeGlobal: true,
 		});
 	});
 });

@@ -12,8 +12,10 @@ import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { fetchApiDocs } from './api-docs';
@@ -57,7 +59,7 @@ Response SHAPE comes from the API docs; DATA VALUES come from the node config. U
 
 **Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
 
-**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns per the docs — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...] }\`, \`{ "results": [...] }\`, \`{ "items": [...] }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns per the docs — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
 
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
@@ -66,13 +68,15 @@ Node-config patterns to know:
 
 **Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from the example dates in the API documentation. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
 
-Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. Return a single page (don't expect multi-page cursor follow-up), but keep the API's real envelope and mark it as the final page (e.g. \`nextCursor: null\`, \`has_more: false\`).
+Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response.
+
+**Pagination.** Unless the scenario defines pages, the first page holds ALL the data: return it as one page, and make it the last page exactly the way THIS API marks its last page. APIs differ, and a wrong marker makes the client ask for more pages forever. Some APIs leave the next-page field out of the last page (Airtable \`offset\`, Google \`nextPageToken\`). Some always send it and set it to \`null\` on the last page (Asana \`next_page\`, list endpoints with a \`next\` link). Some set a has-more flag to \`false\` (Notion and Stripe \`has_more\`). Use this API's own convention, and never copy another API's marker. So, unless the scenario defines pages, a request for any later page (a page number above the first, or an offset, cursor or token) gets this API's empty last page: the same envelope, no items, and the same last-page marker. Never serve items again on a later page.
 
 **Keep list responses small.** Generate the MINIMUM data that satisfies the request, scenario, and workflow logic. For list/feed/forecast endpoints, return only as many entries as the downstream logic needs — a 5-day hourly forecast does not need all 40 entries, just enough to cover the window the workflow filters on (default 5-8 entries, at most ~20). Exception: when the scenario, hints, or the request's own parameters state an exact count or a larger dataset, honor that exactly — never shrink an explicitly-specified dataset. Oversized responses are slow to generate and risk aborting the whole request.
 
 For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.
 
-**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request). Exception: when the document at a download/export path is itself textual (CSV, XML, HTML, plain text) and the scenario or node hints specify its contents, use \`type: "text"\` with the exact document — reserve \`binary\` for opaque formats (PDF, images, audio, video, archives).
+**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). For a PDF whose content the scenario or node hints state, also put that content in \`textBody\` as plain text — the harness writes it into the PDF; without it the PDF has no text. Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request). Exception: when the document at a download/export path is itself textual (CSV, XML, HTML, plain text) and the scenario or node hints specify its contents, use \`type: "text"\` with the exact document — reserve \`binary\` for opaque formats (PDF, images, audio, video, archives).
 
 **Raw text / non-JSON responses.** When the real endpoint returns a non-JSON text document — XML/SOAP, CSV, HTML, RSS/Atom, plain text — use \`type: "text"\` and put the EXACT raw document in \`textBody\`, with \`contentType\` set to the real MIME (\`text/xml\`, \`application/xml\`, \`text/csv\`, \`text/html\`, \`text/plain\`). NEVER wrap such a document inside a JSON object like \`{"data": "<?xml..."}\` — the node consumes the raw text, and a JSON wrapper corrupts it. SOAP endpoints return the full SOAP envelope as \`textBody\`; SOAP faults use \`type: "error"\` with the fault XML in \`textBody\`.`;
 
@@ -115,7 +119,13 @@ interface MockHandlerOptions {
 	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
 	pinnedOutputs?: string;
 	maxRetries?: number;
+	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
+	signal?: AbortSignal;
 }
+
+// A real request never answers in zero time. Instant cache hits let a node that
+// repeats one request loop without yielding, which starves the run's budget timer.
+const CACHED_REPLY_DELAY_MS = 20;
 
 interface MockResponseSpec {
 	type: 'json' | 'text' | 'binary' | 'error';
@@ -147,6 +157,11 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
 
 	return async (requestOptions, node) => {
+		// Thrown past the catch-all below: a node that ignores HTTP errors must not keep looping.
+		if (options?.signal?.aborted) {
+			throw new OperationalError('The eval run has ended, so this mocked request was cancelled');
+		}
+
 		// Catch-all: a defect anywhere in the mock pipeline must surface as an
 		// `_evalMockError` sentinel (verifier categorizes it mock_issue) with a
 		// full stack in the server log — never as an opaque crash of the
@@ -163,6 +178,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				Container.get(Logger).debug(
 					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
 				);
+				await sleep(CACHED_REPLY_DELAY_MS);
 				return cloneMockResponse(await cached);
 			}
 
@@ -612,7 +628,7 @@ const submitResponseSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The raw text document exactly as the service would send it (e.g. "<?xml version=\\"1.0\\"?>..."). Required for type="text"; allowed with type="error" when the service returns a text/XML error document. Omit otherwise.',
+			'The raw text document exactly as the service would send it (e.g. "<?xml version=\\"1.0\\"?>..."). Required for type="text"; allowed with type="error" when the service returns a text/XML error document; with type="binary" and a PDF, the document\'s text as plain text. Omit otherwise.',
 		),
 	statusCode: z
 		.number()
@@ -1003,7 +1019,10 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 		case 'binary': {
 			const filename = spec.filename ?? 'mock-file.dat';
 			const contentType = spec.contentType ?? 'application/octet-stream';
-			const body = synthesizeBinaryFixture(contentType, filename, { sizeHint: spec.sizeHint });
+			const body = synthesizeBinaryFixture(contentType, filename, {
+				sizeHint: spec.sizeHint,
+				text: spec.textBody,
+			});
 			return {
 				body,
 				headers: {

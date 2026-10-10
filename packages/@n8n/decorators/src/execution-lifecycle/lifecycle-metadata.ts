@@ -56,6 +56,11 @@ export type WorkflowExecuteAfterContext = {
 	retryOf?: string;
 	/** Who initiated the run. Unset means a regular user-initiated run. */
 	source?: WorkflowExecutionSource;
+	/**
+	 * False when this process only enqueued the run and waited for its job. In queue mode,
+	 * the process that ran the job fires its own `workflowExecuteAfter` for the same run.
+	 */
+	executedInThisProcess: boolean;
 };
 
 export type WorkflowExecuteResumeContext = {

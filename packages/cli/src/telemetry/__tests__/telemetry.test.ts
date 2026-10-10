@@ -2,6 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
+import type { WorkflowRepository } from '@n8n/db';
 import { defineTelemetryEvents, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { InstanceSettings } from 'n8n-core';
@@ -9,6 +11,9 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
 
+import type { License } from '@/license';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
@@ -29,6 +34,7 @@ describe('Telemetry', () => {
 	const mockRudderStack = mock<RudderStack>();
 
 	let telemetry: Telemetry;
+	let postHog: PostHogClient;
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
@@ -51,10 +57,8 @@ describe('Telemetry', () => {
 
 	beforeEach(async () => {
 		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
-		// @ts-expect-error Spying on private method
-		vi.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(function () {});
 
-		const postHog = new PostHogClient(instanceSettings, mock());
+		postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
 		telemetry = new Telemetry(
@@ -479,6 +483,7 @@ describe('Telemetry', () => {
 					message_count: 1,
 					token_count: 15,
 					tool_call_count: 2,
+					counts_by_source: { unknown: { message_count: 1, token_count: 15, tool_call_count: 2 } },
 				},
 				'agent-2:test': {
 					agent_id: 'agent-2',
@@ -486,47 +491,90 @@ describe('Telemetry', () => {
 					message_count: 1,
 					token_count: 0,
 					tool_call_count: 0,
+					counts_by_source: { unknown: { message_count: 1, token_count: 0, tool_call_count: 0 } },
 				},
 			});
 		});
 
-		test('should flush agent execution counters and reset the buffer', () => {
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 15 });
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', tool_call_count: 2 });
+		test('should flush source counters in one event and reset the buffer', () => {
+			const chatRun = { agent_id: 'agent-1', run_type: 'test' as const, source: 'chat' };
+			telemetry.trackAgentExecution({ ...chatRun, message_count: 2 });
+			telemetry.trackAgentExecution({ ...chatRun, token_count: 10 });
+			telemetry.trackAgentExecution({ ...chatRun, tool_call_count: 1 });
+			telemetry.trackAgentExecution({
+				...chatRun,
+				source: 'instance-ai',
+				message_count: 1,
+				token_count: 5,
+				tool_call_count: 1,
+			});
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
-			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
-				event_version: '2',
-				agent_id: 'agent-1',
-				run_type: 'test',
-				message_count: 1,
-				token_count: 15,
-				tool_call_count: 2,
-			});
+			expect(spyTrack).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
+				{
+					event_version: '2',
+					agent_id: 'agent-1',
+					run_type: 'test',
+					message_count: 3,
+					token_count: 15,
+					tool_call_count: 2,
+					counts_by_source: {
+						chat: { message_count: 2, token_count: 10, tool_call_count: 1 },
+						'instance-ai': { message_count: 1, token_count: 5, tool_call_count: 1 },
+					},
+				},
+			);
+			expect(
+				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT.getValidationError(spyTrack.mock.calls[0][1]),
+			).toBeNull();
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 
-		test('should bucket test and production runs of the same agent into separate events', () => {
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', message_count: 1 });
+		test('should preserve source values within separate test and production events', () => {
+			telemetry.trackAgentExecution({
+				agent_id: 'agent-1',
+				run_type: 'test',
+				source: 'n8n_chat',
+				message_count: 1,
+			});
 			telemetry.trackAgentExecution({
 				agent_id: 'agent-1',
 				run_type: 'production',
-				message_count: 2,
+				source: 'n8n_chat_production',
+				message_count: 1,
+			});
+			telemetry.trackAgentExecution({
+				agent_id: 'agent-1',
+				run_type: 'production',
+				source: 'n8n_chat',
+				message_count: 1,
 			});
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
 
+			expect(spyTrack).toHaveBeenCalledTimes(2);
 			expect(spyTrack).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
-				expect.objectContaining({ run_type: 'test', message_count: 1 }),
+				expect.objectContaining({
+					run_type: 'test',
+					message_count: 1,
+					counts_by_source: { n8n_chat: { message_count: 1, token_count: 0, tool_call_count: 0 } },
+				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT,
-				expect.objectContaining({ run_type: 'production', message_count: 2 }),
+				expect.objectContaining({
+					run_type: 'production',
+					message_count: 2,
+					counts_by_source: {
+						n8n_chat_production: { message_count: 1, token_count: 0, tool_call_count: 0 },
+						n8n_chat: { message_count: 1, token_count: 0, tool_call_count: 0 },
+					},
+				}),
 			);
 		});
 
@@ -549,6 +597,7 @@ describe('Telemetry', () => {
 				message_count: 0,
 				token_count: 20,
 				tool_call_count: 0,
+				counts_by_source: { unknown: { message_count: 0, token_count: 20, tool_call_count: 0 } },
 			});
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
@@ -558,9 +607,15 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				user_id: 'user-1',
 				run_type: 'test',
+				source: 'chat',
 				message_count: 1,
 			});
-			telemetry.trackAgentExecution({ agent_id: 'agent-1', run_type: 'test', token_count: 20 });
+			telemetry.trackAgentExecution({
+				agent_id: 'agent-1',
+				run_type: 'test',
+				source: 'slack',
+				token_count: 20,
+			});
 
 			// @ts-expect-error Calling private method
 			telemetry.flushAgentExecutionCounts();
@@ -573,6 +628,7 @@ describe('Telemetry', () => {
 				message_count: 1,
 				token_count: 0,
 				tool_call_count: 0,
+				counts_by_source: { chat: { message_count: 1, token_count: 0, tool_call_count: 0 } },
 			});
 			expect(spyTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
 				event_version: '2',
@@ -581,7 +637,18 @@ describe('Telemetry', () => {
 				message_count: 0,
 				token_count: 20,
 				tool_call_count: 0,
+				counts_by_source: { slack: { message_count: 0, token_count: 20, tool_call_count: 0 } },
 			});
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT.name,
+					userId: instanceId,
+					properties: expect.objectContaining({
+						user_id: undefined,
+						counts_by_source: { slack: { message_count: 0, token_count: 20, tool_call_count: 0 } },
+					}),
+				}),
+			);
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});
 
@@ -639,17 +706,19 @@ describe('Telemetry', () => {
 			]);
 		});
 
-		test('should flush session metrics with additive sums', () => {
-			for (const [thread_id, latency_ms, cost, token_count, tool_call_count] of [
-				['thread-1', 100, 10, 1000, 1],
-				['thread-1', 200, 20, 2000, 3],
-				['thread-2', 400, 40, 4000, 5],
-				['thread-3', 800, 80, 8000, 7],
+		test('should split turn metrics by source and count distinct sessions', () => {
+			for (const [thread_id, source, latency_ms, cost, token_count, tool_call_count] of [
+				['thread-1', 'chat', 100, 10, 1000, 1],
+				['thread-1', 'instance-ai', 200, 20, 2000, 3],
+				['thread-2', 'chat', 400, 40, 4000, 5],
+				['thread-3', 'instance-ai', 800, 80, 8000, 7],
+				['thread-1', 'chat', 50, 5, 500, 2],
 			] as const) {
 				telemetry.trackAgentTurnFinished({
 					agent_id: 'agent-1',
 					user_id: 'user-1',
 					thread_id,
+					source,
 					run_type: 'test',
 					turn_status: 'succeeded',
 					configuration,
@@ -666,6 +735,7 @@ describe('Telemetry', () => {
 			const payload = spyTrack.mock.calls.find(
 				([eventName]) => eventName === TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS,
 			)?.[1];
+			expect(spyTrack).toHaveBeenCalledTimes(1);
 			expect(payload).toEqual({
 				event_version: '1',
 				agent_id: 'agent-1',
@@ -674,13 +744,34 @@ describe('Telemetry', () => {
 				run_type: 'test',
 				turn_status: 'succeeded',
 				session_count: 3,
-				turn_count: 4,
-				latency_ms_sum: 1500,
-				cost_sum: 150,
-				token_count_sum: 15000,
-				tool_call_count_sum: 16,
+				turn_count: 5,
+				latency_ms_sum: 1550,
+				cost_sum: 155,
+				token_count_sum: 15500,
+				tool_call_count_sum: 18,
 				num_skills_sum: 6,
+				counts_by_source: {
+					chat: {
+						session_count: 2,
+						turn_count: 3,
+						latency_ms_sum: 550,
+						cost_sum: 55,
+						token_count_sum: 5500,
+						tool_call_count_sum: 8,
+						num_skills_sum: 4,
+					},
+					'instance-ai': {
+						session_count: 2,
+						turn_count: 2,
+						latency_ms_sum: 1000,
+						cost_sum: 100,
+						token_count_sum: 10000,
+						tool_call_count_sum: 10,
+						num_skills_sum: 4,
+					},
+				},
 			});
+			expect(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS.getValidationError(payload)).toBeNull();
 			expect(payload).not.toHaveProperty('latency_ms_avg');
 			expect(payload).not.toHaveProperty('latency_ms_p25');
 			expect(payload).not.toHaveProperty('cost_avg');
@@ -725,6 +816,7 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
+				source: 'n8n_chat',
 				turn_status: 'succeeded',
 				configuration,
 				latency_ms: 100,
@@ -736,6 +828,7 @@ describe('Telemetry', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-2',
 				run_type: 'production',
+				source: 'n8n_chat_production',
 				turn_status: 'failed',
 				configuration,
 				latency_ms: 200,
@@ -753,6 +846,7 @@ describe('Telemetry', () => {
 					run_type: 'test',
 					turn_status: 'succeeded',
 					latency_ms_sum: 100,
+					counts_by_source: { n8n_chat: expect.objectContaining({ turn_count: 1 }) },
 				}),
 			);
 			expect(spyTrack).toHaveBeenCalledWith(
@@ -761,6 +855,7 @@ describe('Telemetry', () => {
 					run_type: 'production',
 					turn_status: 'failed',
 					latency_ms_sum: 200,
+					counts_by_source: { n8n_chat_production: expect.objectContaining({ turn_count: 1 }) },
 				}),
 			);
 		});
@@ -1015,6 +1110,7 @@ describe('Telemetry', () => {
 				traits,
 				context: { ip: '0.0.0.0' },
 			});
+			expect(postHog.groupIdentify).not.toHaveBeenCalled();
 		});
 
 		test('should call rudderStack.group() with composite userId when userId is provided', () => {
@@ -1027,6 +1123,11 @@ describe('Telemetry', () => {
 				userId: `${instanceId}#user-123`,
 				traits,
 				context: { ip: '0.0.0.0' },
+			});
+			expect(postHog.groupIdentify).toHaveBeenCalledWith({
+				distinctId: `${instanceId}#user-123`,
+				instanceId,
+				properties: traits,
 			});
 		});
 
@@ -1080,6 +1181,28 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('redacts MCP tool call properties before sending the event', () => {
+			const agentId = 'sk-proj-example0123456789abcdef0123456789';
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'validate_agent',
+				parameters: { agentId, settings: { apiKey: 'example-value' } },
+				results: { success: false, error: `Agent "${agentId}" not found` },
+			});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: USER_CALLED_MCP_TOOL_EVENT,
+					properties: expect.objectContaining({
+						user_id: 'user-1',
+						tool_name: 'validate_agent',
+						parameters: { agentId: '[REDACTED]', settings: { apiKey: '[REDACTED]' } },
+						results: { success: false, error: 'Agent "[REDACTED]" not found' },
+					}),
+				}),
+			);
+		});
+
 		test('should format userId with user_id when provided', () => {
 			const eventName = 'Test Event';
 			const properties = { user_id: '5678' };
@@ -1117,6 +1240,42 @@ describe('Telemetry', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('groupIdentify', () => {
+		const traits = { version: '1.0' } as Record<string, string | number>;
+
+		test('should send the PostHog override to PostHog only', () => {
+			telemetry.groupIdentify({ traits, postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: traits,
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits,
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should keep RudderStack traits unchanged when only PostHog gets them', () => {
+			telemetry.groupIdentify({ userId: 'owner-1', postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: traits,
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: `${instanceId}#owner-1`,
+				traits: undefined,
+				context: { ip: '0.0.0.0' },
+			});
 		});
 	});
 
@@ -1192,8 +1351,177 @@ describe('Telemetry', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('failed schema validation'));
 		});
+
+		describe('missing user_id', () => {
+			const USER_SCOPED_TELEMETRY = defineTelemetryEvents({
+				USER_TESTED_USER_SCOPED_ENTRY: {
+					name: 'User tested user scoped entry',
+					description: 'Fires when a registry entry that names its user is exercised in tests.',
+					properties: z.object({ user_id: z.string() }),
+				},
+			});
+
+			const buildTelemetry = () => {
+				const logger = mock<Logger>();
+				const instance = new Telemetry(
+					logger,
+					new PostHogClient(instanceSettings, mock()),
+					mock(),
+					instanceSettings,
+					mock(),
+					globalConfig,
+					mock(),
+					mock(),
+				);
+				// @ts-expect-error Assigning to private property
+				instance.rudderStack = mockRudderStack;
+				return { logger, instance };
+			};
+
+			const missingUserIdWarnings = (logger: Logger) =>
+				vi
+					.mocked(logger.warn)
+					.mock.calls.filter(([message]) => message.includes('carries no user_id'));
+
+			test('should warn once per event name', () => {
+				const { logger, instance } = buildTelemetry();
+
+				instance.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-1' });
+				instance.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-2' });
+
+				const warnings = missingUserIdWarnings(logger);
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0][0]).toContain('"User tested registry entry"');
+			});
+
+			test('should stay quiet when the event carries a user_id', () => {
+				const { logger, instance } = buildTelemetry();
+
+				instance.track(USER_SCOPED_TELEMETRY.USER_TESTED_USER_SCOPED_ENTRY, { user_id: 'u-1' });
+
+				expect(missingUserIdWarnings(logger)).toHaveLength(0);
+			});
+
+			test('should stay quiet for an unregistered event, which declares no schema', () => {
+				const { logger, instance } = buildTelemetry();
+
+				instance.track('pulse', {});
+
+				expect(missingUserIdWarnings(logger)).toHaveLength(0);
+			});
+		});
+	});
+
+	describe('sendPulsePacket', () => {
+		const license = mock<License>({
+			getPlanName: () => 'enterprise',
+			getTriggerLimit: () => 400,
+		});
+		const workflowRepository = mock<WorkflowRepository>({
+			getActiveTriggerCount: async () => 7,
+		});
+
+		let pulseTelemetry: Telemetry;
+
+		beforeEach(() => {
+			mockPulsePacketSources();
+
+			pulseTelemetry = new Telemetry(
+				mock(),
+				new PostHogClient(instanceSettings, mock()),
+				license,
+				instanceSettings,
+				workflowRepository,
+				globalConfig,
+				mock(),
+				mock(),
+			);
+		});
+
+		afterEach(async () => {
+			await pulseTelemetry.stopTracking();
+		});
+
+		test('should send one packet of instance-wide counters', async () => {
+			// @ts-expect-error Assigning to private property
+			pulseTelemetry.rudderStack = mockRudderStack;
+
+			await pulseTelemetry.sendPulsePacket();
+
+			expect(spyTrack).toHaveBeenCalledWith('pulse', {
+				plan_name_current: 'enterprise',
+				quota: 400,
+				usage: 7,
+				role_count: { owner: 1 },
+				source_control_set_up: 'main',
+				branchName: 'main',
+				read_only_instance: true,
+				team_projects: 2,
+				project_role_count: {
+					'project:admin': 4,
+					'project:chatUser': 0,
+					'project:editor': 0,
+					'project:personalOwner': 0,
+					'project:viewer': 0,
+				},
+			});
+		});
+
+		test('should send nothing when RudderStack is not initialized', async () => {
+			await pulseTelemetry.sendPulsePacket();
+
+			expect(spyTrack).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('flushBuffers', () => {
+		test('should send the buffered events and empty the buffers', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+			});
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+			);
+			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should send nothing when RudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.flushBuffers();
+
+			expect(spyTrack).not.toHaveBeenCalled();
+		});
 	});
 });
+
+/** Registers the services the pulse packet reads its counters from. */
+const mockPulsePacketSources = () => {
+	mockInstance(SourceControlPreferencesService, {
+		getPreferences: () => mock({ branchName: 'main', branchReadOnly: true }),
+		isSourceControlSetup: () => 'main',
+	});
+	mockInstance(UserRepository, { countUsersByRole: async () => ({ owner: 1 }) });
+	mockInstance(ProjectRepository, { getProjectCounts: async () => ({ personal: 3, team: 2 }) });
+	mockInstance(ProjectRelationRepository, {
+		countUsersByRole: async () => ({
+			'project:admin': 4,
+			'project:chatUser': 0,
+			'project:editor': 0,
+			'project:personalOwner': 0,
+			'project:viewer': 0,
+		}),
+	});
+};
 
 const fakeTestSystemTime = (dateTime: string | Date): Date => {
 	const dt = new Date(dateTime);

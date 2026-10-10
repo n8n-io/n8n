@@ -26,7 +26,7 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import type { Method } from './webhook.types';
 
@@ -76,7 +76,11 @@ export class WebhookService {
 			cachedStaticWebhook = undefined;
 		}
 
-		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
+		if (cachedStaticWebhook) {
+			const entity = this.webhookRepository.create(cachedStaticWebhook);
+			// The cache key is the request path, so a stored entry can hold a dynamic row.
+			return entity.isDynamic ? null : entity;
+		}
 
 		const dbStaticWebhook = await this.findStaticWebhookInDb(method, path);
 
@@ -95,7 +99,8 @@ export class WebhookService {
 	 * Find a matching webhook with zero dynamic path segments, e.g. `<uuid>` or `user/profile`.
 	 */
 	private async findStaticWebhookInDb(method: Method, path: string) {
-		return await this.webhookRepository.findOneBy({ webhookPath: path, method });
+		const webhook = await this.webhookRepository.findOneBy({ webhookPath: path, method });
+		return webhook?.isDynamic ? null : webhook;
 	}
 
 	/**
@@ -472,6 +477,10 @@ export class WebhookService {
 						workflowId,
 						workflowExecuteAdditionalData: additionalData,
 						webhookId,
+						// Who the run is attributed to: the test-webhook owner on a
+						// manual run, the workflow's publisher on a production one.
+						// `executeWebhook` copies this onto the execution.
+						userId: additionalData.userId,
 					});
 				});
 		}
@@ -492,6 +501,7 @@ export class WebhookService {
 		property: string,
 		defaultValue?: string | boolean,
 	) {
+		// TODO(native-evaluation rollout, CAT-4699): remove the native resolution, keep the engine call.
 		const native = resolveWebhookDescriptionField(node, webhookDescription, property);
 		if (native.resolved) return native.value;
 

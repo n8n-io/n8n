@@ -8,12 +8,15 @@ describe('permissions', () => {
 		expect(getResourcePermissions()).toEqual({
 			agent: {},
 			aiAssistant: {},
+			aiPreference: {},
+			projectAiPreference: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
 			community: {},
 			communityPackage: {},
 			credential: {},
+			credentialTypePolicy: {},
 			externalSecretsProvider: {},
 			externalSecret: {},
 			eventBusDestination: {},
@@ -54,6 +57,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -95,6 +99,8 @@ describe('permissions', () => {
 		const permissionRecord: PermissionsRecord = {
 			agent: {},
 			aiAssistant: {},
+			aiPreference: {},
+			projectAiPreference: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -109,6 +115,7 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
+			credentialTypePolicy: {},
 			eventBusDestination: {
 				list: true,
 				test: true,
@@ -185,6 +192,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

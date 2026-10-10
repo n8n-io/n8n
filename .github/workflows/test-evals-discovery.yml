@@ -64,6 +64,7 @@ jobs:
         working-directory: packages/@n8n/instance-ai
         env:
           ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          N8N_ENABLED_MODULES: agents,instance-ai
           LANGSMITH_TRACING: 'true'
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}

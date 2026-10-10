@@ -22,12 +22,11 @@ vi.mock('openid-client', async (importOriginal) => {
 	};
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
@@ -391,6 +390,37 @@ describe('OidcService', () => {
 
 			// Should not attempt to import Publisher in single main setup
 			expect(mockPublisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('state redirect target', () => {
+		beforeEach(() => {
+			vi.mocked(jwtService.sign).mockImplementation((_purpose, payload) => JSON.stringify(payload));
+			vi.mocked(jwtService.verify).mockImplementation((_purpose, token) => JSON.parse(token));
+		});
+
+		it('round-trips the in-app destination through the signed state', () => {
+			const { signed } = oidcService.generateState(false, '/workflow/abc?tab=1');
+
+			expect(oidcService.verifyState(signed)).toEqual({
+				state: expect.stringMatching(/^n8n_state:/),
+				redirectUrl: '/workflow/abc?tab=1',
+			});
+		});
+
+		it('omits the destination for the home page', () => {
+			const { signed } = oidcService.generateState(false, '/');
+
+			expect(oidcService.verifyState(signed)).not.toHaveProperty('redirectUrl');
+		});
+
+		it('ignores a destination that is not a string', () => {
+			const signed = JSON.stringify({
+				state: 'n8n_state:5d3a3f6e-1d2b-4c8a-9e1f-0a1b2c3d4e5f',
+				redirectUrl: 42,
+			});
+
+			expect(oidcService.verifyState(signed)).not.toHaveProperty('redirectUrl');
 		});
 	});
 

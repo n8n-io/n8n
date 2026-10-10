@@ -1,0 +1,64 @@
+{
+  "name": "@n8n/backend-services",
+  "version": "1.3.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:dev": "vitest --silent=false"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-network": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
+    "@n8n/decorators": "workspace:*",
+    "@n8n/db": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@n8n/permissions": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "cache-manager": "catalog:",
+    "express-openapi-validator": "5.5.3",
+    "ioredis": "5.3.2",
+    "n8n-workflow": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/backend-test-utils": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/lodash": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "ioredis-mock": "^8.8.1",
+    "lodash": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

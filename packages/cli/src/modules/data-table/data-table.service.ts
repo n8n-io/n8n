@@ -11,6 +11,7 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -46,9 +47,7 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
-import { EventService } from '@/events/event.service';
 import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -285,6 +284,17 @@ export class DataTableService {
 		return result;
 	}
 
+	async replaceSchema(
+		dataTableId: string,
+		projectId: string,
+		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
+	) {
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);
+
+		await this.dataTableColumnRepository.replaceSchema(dataTableId, projectId, schema);
+	}
+
 	async moveColumn(
 		dataTableId: string,
 		projectId: string,
@@ -335,6 +345,15 @@ export class DataTableService {
 
 		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
 			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
+			const sortColumn = dto.sortBy?.[0];
+			if (
+				sortColumn &&
+				!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn) &&
+				!columns.some((column) => column.name === sortColumn)
+			) {
+				throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
+			}
+
 			const transformedDto = dto.filter
 				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
 				: dto;

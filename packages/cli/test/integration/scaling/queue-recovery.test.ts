@@ -42,6 +42,7 @@ describe('ScalingService queue recovery', () => {
 			mock(),
 			mock(),
 			Container.get(ExecutionCrashService),
+			mock(),
 		);
 	});
 
@@ -119,7 +120,7 @@ describe('ScalingService queue recovery', () => {
 		});
 
 		await scalingService.recoverFromQueue();
-		await Container.get(ExecutionCrashService).markAsCrashed(execution.id);
+		await Container.get(ExecutionCrashService).markAsCrashed(execution.id, 'queue-recovery');
 
 		const laterWorkflow = await createWorkflow();
 		await createDanglingExecution('trigger', laterWorkflow);

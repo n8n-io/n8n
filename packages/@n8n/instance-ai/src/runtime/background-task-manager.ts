@@ -173,6 +173,11 @@ export class BackgroundTaskManager {
 		);
 	}
 
+	/** Running tasks on every thread. A finished parent can leave a builder looping. */
+	listRunningTasks(): ManagedBackgroundTask[] {
+		return [...this.tasks.values()].filter((task) => task.status === 'running');
+	}
+
 	/** Sub-agents running across every thread on this process. */
 	runningTaskCount(): number {
 		let count = 0;
@@ -230,11 +235,11 @@ export class BackgroundTaskManager {
 		return task;
 	}
 
-	cancelThread(threadId: string): ManagedBackgroundTask[] {
+	cancelThread(threadId: string, abortReason?: unknown): ManagedBackgroundTask[] {
 		const cancelled: ManagedBackgroundTask[] = [];
 		for (const [taskId, task] of this.tasks) {
 			if (task.threadId !== threadId || task.status !== 'running') continue;
-			task.abortController.abort();
+			task.abortController.abort(abortReason);
 			task.status = 'cancelled';
 			cancelled.push(task);
 			this.tasks.delete(taskId);

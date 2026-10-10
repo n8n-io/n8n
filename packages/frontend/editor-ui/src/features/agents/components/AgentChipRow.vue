@@ -8,10 +8,12 @@ const props = withDefaults(
 		addLabel: string;
 		addButtonTestId?: string;
 		disabled?: boolean;
+		showLabel?: boolean;
 	}>(),
 	{
 		addButtonTestId: undefined,
 		disabled: false,
+		showLabel: true,
 	},
 );
 
@@ -27,7 +29,7 @@ const emit = defineEmits<{
 
 <template>
 	<div :class="$style.row" :inert="props.disabled || undefined">
-		<N8nText v-if="props.itemCount > 0" bold :class="$style.label">
+		<N8nText v-if="props.showLabel && props.itemCount > 0" bold :class="$style.label">
 			{{ props.label }}
 		</N8nText>
 
@@ -79,6 +81,7 @@ const emit = defineEmits<{
 }
 
 .label {
+	opacity: var(--agent-row-label-opacity, 1);
 	--n8n--row-label-width: max(7%, calc(var(--spacing--3xl) + var(--spacing--sm)));
 	flex: 0 0 var(--n8n--row-label-width);
 	line-height: var(--line-height--sm);
@@ -104,6 +107,12 @@ const emit = defineEmits<{
 	--button--color: var(--text-color--subtler);
 	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
+
+	/** TODO: Consider making this style a generic N8nButton style. DS-652 **/
+	&:hover {
+		--button--color: var(--text-color);
+		background-color: transparent;
+	}
 }
 
 .extra {

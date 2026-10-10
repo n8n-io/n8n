@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,14 +8,13 @@ import '@/zod-alias-support';
 
 import { ImportCredentialsCommand } from '../credentials';
 
+const logger = mockInstance(Logger);
+
 describe('ImportCredentialsCommand', () => {
 	let inputDir: string;
 
 	const buildCommand = () => {
 		const command = new ImportCredentialsCommand();
-		const logger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-		// @ts-expect-error Protected property
-		command.logger = logger;
 		return { command, logger };
 	};
 
@@ -35,6 +36,7 @@ describe('ImportCredentialsCommand', () => {
 	});
 
 	beforeEach(async () => {
+		vi.clearAllMocks();
 		inputDir = await mkdtemp(join(tmpdir(), 'n8n-import-credentials-'));
 	});
 
@@ -54,8 +56,7 @@ describe('ImportCredentialsCommand', () => {
 			await write('xbNcOFBmxn4eb05i.json', workflowFile('xbNcOFBmxn4eb05i'));
 			const { command, logger } = buildCommand();
 
-			// @ts-expect-error Private method
-			const credentials = await command.readCredentials({ inputPath: inputDir, separate: true });
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
 
 			expect(credentials).toHaveLength(1);
 			expect(credentials[0]).toMatchObject({ id: 'cred-1', type: 'httpHeaderAuth' });
@@ -71,8 +72,7 @@ describe('ImportCredentialsCommand', () => {
 			});
 			const { command, logger } = buildCommand();
 
-			// @ts-expect-error Private method
-			const credentials = await command.readCredentials({ inputPath: inputDir, separate: true });
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
 
 			expect(credentials).toHaveLength(1);
 			expect(logger.warn).not.toHaveBeenCalled();
@@ -87,8 +87,7 @@ describe('ImportCredentialsCommand', () => {
 			await write('broken.json', { ...credentialFile('broken'), data });
 			const { command, logger } = buildCommand();
 
-			// @ts-expect-error Private method
-			const credentials = await command.readCredentials({ inputPath: inputDir, separate: true });
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
 
 			expect(credentials).toHaveLength(1);
 			expect(credentials[0]).toMatchObject({ id: 'cred-1' });
@@ -102,8 +101,7 @@ describe('ImportCredentialsCommand', () => {
 			await writeRaw('truncated.json', '{"type": "httpHeaderAuth", "data": "U2Fs');
 			const { command, logger } = buildCommand();
 
-			// @ts-expect-error Private method
-			const credentials = await command.readCredentials({ inputPath: inputDir, separate: true });
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
 
 			expect(credentials).toHaveLength(1);
 			expect(credentials[0]).toMatchObject({ id: 'cred-1' });
@@ -117,8 +115,7 @@ describe('ImportCredentialsCommand', () => {
 			await write('cred-2.json', credentialFile('cred-2'));
 			const { command, logger } = buildCommand();
 
-			// @ts-expect-error Private method
-			const credentials = await command.readCredentials({ inputPath: inputDir, separate: true });
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
 
 			expect(credentials).toHaveLength(2);
 			expect(logger.warn).not.toHaveBeenCalled();

@@ -1,15 +1,29 @@
-import { MCP_AGENT_SCOPES, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import {
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	MCP_AGENT_SCOPES,
+	MCP_INSTANCE_SCOPES,
+} from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import type { ProtectedResource, ResourceUser } from '@n8n/inbound-auth';
+import { UrlService } from '@n8n/backend-services';
+import { PostHogClient } from '@/posthog';
 
-import { BUILDER_TOOLS, FOLDER_FEATURE_TOOLS, TOOLS_BY_SCOPE } from './mcp-scopes';
-import { areAgentToolsAvailable } from './mcp-tool-availability';
+import {
+	ACTIVITY_LOG_TOOLS,
+	BUILDER_TOOLS,
+	FOLDER_FEATURE_TOOLS,
+	INSTANCE_CONTEXT_TOOLS,
+	TOOLS_BY_SCOPE,
+} from './mcp-scopes';
+import {
+	areAgentToolsAvailable,
+	arePreferenceToolsEnabled,
+	isCommunityNodeInstallAvailable,
+} from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -19,6 +33,7 @@ import { McpSettingsService } from './mcp.settings.service';
  */
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
+const PREFERENCE_SCOPES = new Set<string>(['aiPreference:read', 'aiPreference:write']);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -39,6 +54,8 @@ const LEGACY_MCP_AUDIENCE = 'mcp-server-api';
 export class McpProtectedResource implements ProtectedResource {
 	readonly id = INSTANCE_MCP_RESOURCE_ID;
 
+	readonly surface = 'instance-mcp' as const;
+
 	/**
 	 * Fallback audience for token requests without an RFC 8707 resource
 	 * indicator — the instance MCP server predates resource indicators, so
@@ -53,6 +70,7 @@ export class McpProtectedResource implements ProtectedResource {
 		private readonly globalConfig: GlobalConfig,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly licenseState: LicenseState,
+		private readonly postHogClient: PostHogClient,
 	) {}
 
 	get scopes(): string[] {
@@ -64,11 +82,21 @@ export class McpProtectedResource implements ProtectedResource {
 	 * Filtered to the tools this instance actually exposes, so the consent
 	 * screen never advertises tools a grant cannot deliver.
 	 */
-	getScopeTools(): Record<string, string[]> {
+	async getScopeTools(): Promise<Record<string, string[]>> {
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
+		// Consent and tool registration use the same instance activity gate.
+		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
+		let instanceContextEnabled = false;
+		try {
+			instanceContextEnabled =
+				(await this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG)) ===
+				true;
+		} catch {
+			// Keep context tools hidden when the gate cannot be read.
+		}
 
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
@@ -79,7 +107,9 @@ export class McpProtectedResource implements ProtectedResource {
 						(tool) =>
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
-							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)),
+							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
+							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
 					),
 				]),
 		);
@@ -127,11 +157,53 @@ export class McpProtectedResource implements ProtectedResource {
 		return await this.mcpSettingsService.getAllowedRedirectUris();
 	}
 
+	/**
+	 * Scopes narrowed to what this user can actually exercise on this instance.
+	 *
+	 * `communityPackage:install` is dropped unless `install_community_node` would
+	 * really register, so the consent screen never records a grant that can do
+	 * nothing. Delegates to the same predicate registration uses rather than
+	 * re-checking one of its conditions: the screen pre-checks every offered
+	 * scope on first consent, so a scope offered here is a scope granted.
+	 *
+	 * `aiPreference:*` is dropped for a user outside the preferences experiment
+	 * arm for the same reason, and one more: showing the scopes to the control
+	 * arm exposes the feature to the users the experiment keeps unaware of it.
+	 */
+	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
+		const { CommunityPackagesConfig } = await import(
+			'@/modules/community-packages/community-packages.config.js'
+		);
+		const installAvailable = isCommunityNodeInstallAvailable(
+			this.moduleRegistry,
+			Container.get(CommunityPackagesConfig),
+			this.globalConfig,
+			this.mcpConfig,
+			user,
+		);
+		const preferencesEnabled = await this.arePreferencesEnabledFor(user);
+
+		return this.scopes.filter(
+			(scope) =>
+				(installAvailable || scope !== 'communityPackage:install') &&
+				(preferencesEnabled || !PREFERENCE_SCOPES.has(scope)),
+		);
+	}
+
+	private async arePreferencesEnabledFor(user: ResourceUser): Promise<boolean> {
+		try {
+			return arePreferenceToolsEnabled(await this.postHogClient.getFeatureFlags(user));
+		} catch {
+			// Registration treats an unreadable flag as off; consent must agree.
+			return false;
+		}
+	}
+
 	async isAvailable(): Promise<boolean> {
 		return await this.mcpSettingsService.getEnabled();
 	}
 
-	async authorize(_user: User): Promise<boolean> {
+	async authorize(_user: ResourceUser): Promise<boolean> {
 		// The instance MCP server has no per-user authorization rule: any
 		// authenticated user may access it while the server is enabled, and all
 		// users are denied when it is disabled.

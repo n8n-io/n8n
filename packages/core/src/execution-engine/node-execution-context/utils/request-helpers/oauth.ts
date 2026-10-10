@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -311,7 +312,14 @@ function resolveTokenExpiredStatusCode(
 	oAuth2Options?: IOAuth2Options,
 	credentials?: OAuth2CredentialData,
 ): number | number[] {
-	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	const credentialStatusCode = credentials?.tokenExpiredStatusCode;
+	if (credentialStatusCode === undefined) {
+		return oAuth2Options?.tokenExpiredStatusCode ?? 401;
+	}
+
+	return Array.isArray(credentialStatusCode)
+		? credentialStatusCode.map((statusCode) => Number(statusCode))
+		: Number(credentialStatusCode);
 }
 
 // Some gateways signal an expired token with different codes on different endpoints
@@ -333,9 +341,9 @@ const TOKEN_EXPIRY_BUFFER_MS = 60_000;
  * Whether the stored token still has time left on it. An absent or unparsable expiry counts as
  * expired, so callers fall back to refreshing when the expiry is unknown.
  */
-function isStoredTokenUnexpired(credentials: OAuth2CredentialData): boolean {
-	const expiresAt = Number(credentials.oauthTokenData?.n8n_expires_at);
-	return Number.isFinite(expiresAt) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt;
+export function isTokenExpiryInFuture(expiresAt: unknown): boolean {
+	const timestamp = Number(expiresAt);
+	return Number.isFinite(timestamp) && Date.now() + TOKEN_EXPIRY_BUFFER_MS < timestamp;
 }
 
 function isSingleUseValue(value: unknown): boolean {
@@ -496,7 +504,7 @@ export async function requestOAuth2(
 		if (shouldSkipTokenRefresh) return false;
 		if (!isTokenExpiredStatusCode(status, tokenExpiredStatusCode)) return false;
 		if (status === 401 || oAuth2Options?.skipRefreshWhileTokenIsFresh !== true) return true;
-		return !isStoredTokenUnexpired(credentials);
+		return !isTokenExpiryInFuture(credentials.oauthTokenData?.n8n_expires_at);
 	};
 
 	const refreshCtx: RefreshOAuth2TokenContext = {

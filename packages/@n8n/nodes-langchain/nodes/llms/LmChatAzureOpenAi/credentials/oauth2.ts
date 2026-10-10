@@ -2,12 +2,14 @@ import { getBearerTokenProvider } from '@azure/identity';
 import { NodeOperationError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from './N8nOAuth2TokenCredential';
+import { normalizeEndpoint } from './normalizeEndpoint';
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,
 } from '../types';
+import { AZURE_OPENAI_INFERENCE_SCOPE } from '../types';
 
-const AZURE_OPENAI_SCOPE = 'https://cognitiveservices.azure.com/.default';
 /**
  * Creates Entra ID (OAuth2) authentication for Azure OpenAI
  */
@@ -18,13 +20,21 @@ export async function setupOAuth2Authentication(
 	try {
 		const credential =
 			await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(credentialName);
-		// Create a TokenCredential
-		const entraTokenCredential = new N8nOAuth2TokenCredential(this.getNode(), credential);
+		// Mints tokens for the inference audience (the default).
+		const entraTokenCredential = new N8nOAuth2TokenCredential(
+			this.getNode(),
+			credential,
+			undefined,
+			this.helpers.getSecureEgressFilter(),
+		);
 		const deploymentDetails = await entraTokenCredential.getDeploymentDetails();
 
-		// Use getBearerTokenProvider to create the function LangChain expects
-		// Pass the required scope for Azure Cognitive Services
-		const azureADTokenProvider = getBearerTokenProvider(entraTokenCredential, AZURE_OPENAI_SCOPE);
+		// getBearerTokenProvider caches the token across calls. It requires a scope, but the
+		// audience comes from the credential above; the v1.0 endpoint reads `resource`, not `scope`.
+		const azureADTokenProvider = getBearerTokenProvider(
+			entraTokenCredential,
+			AZURE_OPENAI_INFERENCE_SCOPE,
+		);
 
 		this.logger.debug('Successfully created Azure AD Token Provider.');
 
@@ -32,9 +42,14 @@ export async function setupOAuth2Authentication(
 			azureADTokenProvider,
 			azureOpenAIApiInstanceName: deploymentDetails.resourceName,
 			azureOpenAIApiVersion: deploymentDetails.apiVersion,
-			azureOpenAIEndpoint: deploymentDetails.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(deploymentDetails.endpoint),
 			...(deploymentDetails.endpointType === 'foundry' && deploymentDetails.foundryEndpoint
-				? { azureFoundryBaseURL: deploymentDetails.foundryEndpoint }
+				? {
+						azureFoundryBaseURL: requireFoundryEndpoint(
+							this.getNode(),
+							deploymentDetails.foundryEndpoint,
+						),
+					}
 				: {}),
 		};
 	} catch (error) {

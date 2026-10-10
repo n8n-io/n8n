@@ -1,5 +1,7 @@
 import { hashEpisodicMemoryEvidence, type NewObservationLogEntry } from '@n8n/agents';
-import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
+import type { OperationContext, Transaction } from '@n8n/db';
+import { In, IsNull, Like } from '@n8n/typeorm';
+import { jsonParse } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,7 +22,7 @@ import type { AgentMessageRepository } from '../../repositories/agent-message.re
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
 import type { AgentObservationRepository } from '../../repositories/agent-observation.repository';
-import type { AgentResourceRepository } from '../../repositories/agent-resource.repository';
+import { AgentResourceRepository } from '../../repositories/agent-resource.repository';
 import type { AgentThreadRepository } from '../../repositories/agent-thread.repository';
 import { N8nMemory } from '../n8n-memory';
 
@@ -85,6 +87,9 @@ describe('N8nMemory', () => {
 			execute: vi.fn().mockResolvedValue({ raw: {}, generatedMaps: [], identifiers: [] }),
 		};
 		resourceRepository.createQueryBuilder.mockReturnValue(resourceInsertQueryBuilder as never);
+		resourceRepository.ensureExists.mockImplementation(
+			AgentResourceRepository.prototype.ensureExists.bind(resourceRepository),
+		);
 		transactionDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionObservationCreate = vi.fn((input) => ({ ...input }) as AgentObservationEntity);
 		transactionObservationFind = vi.fn().mockResolvedValue([]);
@@ -158,6 +163,13 @@ describe('N8nMemory', () => {
 		Object.defineProperty(threadRepository, 'manager', {
 			value: { transaction: runInTransaction },
 		});
+		threadRepository.runInTransaction.mockImplementation(
+			async (ctx, callback) =>
+				await runInTransaction(
+					async (trx: { delete: typeof transactionDelete; getRepository: Mock }) =>
+						await callback(trx as never, ctx),
+				),
+		);
 		memoryEntryRunInTransaction = vi.fn(
 			async (callback: (trx: { getRepository: Mock }) => Promise<unknown>) =>
 				await callback({
@@ -199,282 +211,115 @@ describe('N8nMemory', () => {
 		memory = memoryService.getImplementation('agent-1');
 	});
 
-	function makeMessageEntity(id: string, createdAt: Date, text: string): AgentMessageEntity {
-		return {
-			id,
+	it.each([
+		['user-1', 'user-1'],
+		['integration:slack:U_ALICE', undefined],
+		[undefined, undefined],
+		['', ''],
+	])('loads the correct message scope for resource %s', async (resourceId, expectedResource) => {
+		messageRepository.findRuntimeMessages.mockResolvedValue([]);
+		const before = new Date('2026-01-01');
+		await memory.getMessages('thread-1', { resourceId, before, limit: 2 });
+		expect(messageRepository.findRuntimeMessages).toHaveBeenCalledWith(
+			{ threadId: 'thread-1', resourceId: expectedResource },
+			{ resourceId, before, limit: 2 },
+		);
+	});
+
+	it('hydrates model content and ordering from message columns for both runtime readers', async () => {
+		const createdAt = new Date('2026-01-01T00:00:01Z');
+		const modelContextAt = new Date('2026-01-01T00:00:02Z');
+		const original = {
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'original' }],
+		};
+		const projected = {
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'enriched' }],
+		};
+		const legacy = Object.assign(mock<AgentMessageEntity>(), {
+			id: 'legacy',
+			createdAt,
+			modelContextAt: null,
+			modelContent: null,
+			content: Object.assign({}, original, { createdAt: createdAt.toISOString() }),
+		});
+		const current = Object.assign(mock<AgentMessageEntity>(), {
+			id: 'current',
+			createdAt,
+			modelContextAt,
+			content: original,
+			modelContent: projected,
+		});
+		messageRepository.findRuntimeMessages.mockResolvedValue([legacy, current]);
+		const expected = [
+			{ ...original, id: 'legacy', createdAt },
+			{ ...projected, id: 'current', createdAt: modelContextAt },
+		];
+		expect(await memory.getMessages('thread-1')).toEqual(expected);
+		const since = { sinceCreatedAt: createdAt, sinceMessageId: 'older' };
+		expect(await memory.getMessagesForObservationScope('thread-1', { since })).toEqual(expected);
+		expect(messageRepository.findRuntimeMessages).toHaveBeenLastCalledWith(
+			{ threadId: 'thread-1' },
+			{ since },
+		);
+	});
+
+	it('passes execution ownership to message persistence when host metadata is present', async () => {
+		const messages = [
+			{ id: 'm-1', createdAt: new Date(), role: 'assistant' as const, content: [] },
+		];
+		await memory.saveMessages({
 			threadId: 'thread-1',
 			resourceId: 'user-1',
-			role: 'user',
-			type: null,
-			content: {
-				id,
-				createdAt,
-				role: 'user',
-				content: [{ type: 'text', text }],
-			},
-			createdAt,
-			updatedAt: createdAt,
-		} as unknown as AgentMessageEntity;
-	}
-
-	describe('saveMessages — hydrated file parts', () => {
-		it('strips data from fileRef file parts before upserting, keeping the reference', async () => {
-			const bytes = new Uint8Array([1, 2, 3]);
-			await memory.saveMessages({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				messages: [
-					{
-						id: 'm-1',
-						createdAt: new Date('2026-05-12T10:00:00Z'),
-						role: 'user',
-						content: [
-							{ type: 'text', text: 'look at this' },
-							{
-								type: 'file',
-								mediaType: 'image/png',
-								data: bytes,
-								fileRef: { id: 'att-1', fileName: 'photo.png', sizeBytes: 3 },
-							},
-						],
-					},
-				],
-			});
-
-			expect(messageRepository.upsert).toHaveBeenCalledTimes(1);
-			const [entities] = messageRepository.upsert.mock.calls[0];
-			const content = (entities as Array<{ content: { content: unknown[] } }>)[0].content;
-			const filePart = content.content[1] as Record<string, unknown>;
-			expect(filePart.data).toBeUndefined();
-			expect(filePart.fileRef).toEqual({ id: 'att-1', fileName: 'photo.png', sizeBytes: 3 });
+			messages,
+			hostMetadata: { n8nExecutionId: 'execution-1' },
 		});
-	});
-
-	describe('getMessages — resourceId filter', () => {
-		beforeEach(() => {
-			messageRepository.find.mockResolvedValue([]);
-		});
-
-		it('includes resourceId in the where clause when provided', async () => {
-			await memory.getMessages('thread-1', { resourceId: 'user-1' });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1', resourceId: 'user-1' },
-				}),
-			);
-		});
-
-		it('loads messages from every author in an integration thread', async () => {
-			await memory.getMessages('thread-1', { resourceId: 'integration:slack:U_ALICE' });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1' },
-				}),
-			);
-		});
-
-		it('omits resourceId from the where clause when not provided', async () => {
-			await memory.getMessages('thread-1');
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1' },
-				}),
-			);
-		});
-
-		it('preserves an empty-string resourceId in the filter instead of dropping it', async () => {
-			// Guard against the previous `...(opts?.resourceId && ...)` bug: a
-			// falsy userId must NOT widen the query to every user's messages
-			// on a shared thread.
-			await memory.getMessages('thread-1', { resourceId: '' });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1', resourceId: '' },
-				}),
-			);
-		});
-
-		it('combines resourceId with the `before` filter', async () => {
-			const before = new Date('2026-01-01');
-
-			await memory.getMessages('thread-1', { resourceId: 'user-1', before });
-
-			const call = messageRepository.find.mock.calls[0][0];
-			expect(call?.where).toMatchObject({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				createdAt: LessThan(before),
-			});
-		});
-	});
-
-	describe('getMessages — limit window', () => {
-		it('loads the newest limited messages and returns them chronologically', async () => {
-			const middle = makeMessageEntity('m2', new Date('2026-01-01T00:00:02.000Z'), 'middle');
-			const newest = makeMessageEntity('m3', new Date('2026-01-01T00:00:03.000Z'), 'newest');
-			messageRepository.find.mockResolvedValue([newest, middle]);
-
-			const result = await memory.getMessages('thread-1', { limit: 2 });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1' },
-					order: { createdAt: 'DESC' },
-					take: 2,
-				}),
-			);
-			expect(result.map((m) => m.id)).toEqual(['m2', 'm3']);
-		});
-
-		it('combines limit with before and resourceId while still asking for newest first', async () => {
-			const before = new Date('2026-01-01T00:00:04.000Z');
-			messageRepository.find.mockResolvedValue([
-				makeMessageEntity('m3', new Date('2026-01-01T00:00:03.000Z'), 'newest'),
-				makeMessageEntity('m2', new Date('2026-01-01T00:00:02.000Z'), 'middle'),
-			]);
-
-			const result = await memory.getMessages('thread-1', {
-				before,
-				limit: 2,
-				resourceId: 'user-1',
-			});
-
-			const call = messageRepository.find.mock.calls[0][0];
-			expect(call?.where).toMatchObject({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				createdAt: LessThan(before),
-			});
-			expect(call?.order).toEqual({ createdAt: 'DESC' });
-			expect(call?.take).toBe(2);
-			expect(result.map((m) => m.id)).toEqual(['m2', 'm3']);
-		});
-	});
-
-	describe('getMessages — persisted JSON hydration', () => {
-		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			const entity = makeMessageEntity('m2', createdAt, 'middle');
-			entity.content = {
-				...entity.content,
-				createdAt: createdAt.toISOString(),
-			};
-			messageRepository.find.mockResolvedValue([entity]);
-
-			const [result] = await memory.getMessages('thread-1');
-
-			expect(result.createdAt).toBeInstanceOf(Date);
-			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
-		});
-	});
-
-	describe('getMessagesForObservationScope', () => {
-		it('queries source messages by observation scope id', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			messageRepository.find.mockResolvedValue([makeMessageEntity('m2', createdAt, 'middle')]);
-
-			const result = await memory.getMessagesForObservationScope('thread-1');
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: [{ threadId: 'thread-1' }],
-					order: { createdAt: 'ASC', id: 'ASC' },
-				}),
-			);
-			expect(result.map((m) => m.id)).toEqual(['m2']);
-		});
-
-		it('does not filter source messages by resourceId', async () => {
-			messageRepository.find.mockResolvedValue([]);
-
-			await memory.getMessagesForObservationScope('thread-1');
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: [{ threadId: 'thread-1' }],
-				}),
-			);
-		});
-
-		it('applies the cursor keyset for observation scopes', async () => {
-			const sinceCreatedAt = new Date('2026-01-01T00:00:01.000Z');
-			messageRepository.find.mockResolvedValue([]);
-
-			await memory.getMessagesForObservationScope('thread-1', {
-				since: { sinceCreatedAt, sinceMessageId: 'm1' },
-			});
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: [
-						{ threadId: 'thread-1', createdAt: MoreThan(sinceCreatedAt) },
-						{
-							threadId: 'thread-1',
-							createdAt: Equal(sinceCreatedAt),
-							id: MoreThan('m1'),
-						},
-					],
-				}),
-			);
-		});
-
-		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			const entity = makeMessageEntity('m2', createdAt, 'middle');
-			entity.content = {
-				...entity.content,
-				createdAt: createdAt.toISOString(),
-			};
-			messageRepository.find.mockResolvedValue([entity]);
-
-			const [result] = await memory.getMessagesForObservationScope('thread-1');
-
-			expect(result.createdAt).toBeInstanceOf(Date);
-			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
+		expect(messageRepository.saveRuntimeMessages).toHaveBeenCalledWith({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages,
+			executionId: 'execution-1',
 		});
 	});
 
 	describe('saveThread — existing row', () => {
+		/** Applies the update to `existing` the way the locked repository write does. */
+		function lockedRow(existing: Partial<AgentThreadEntity>) {
+			const row = { id: 'thread-1', resourceId: 'original-user', ...existing } as AgentThreadEntity;
+			threadRepository.patchThread.mockImplementation(async (threadId, update) => {
+				if (threadId !== row.id) return null;
+				const patch = update(row);
+				if (!patch) return row;
+				if (patch.title !== undefined) row.title = patch.title;
+				if (patch.metadata !== undefined) row.metadata = patch.metadata;
+				return row;
+			});
+			return row;
+		}
+
 		it('preserves the original resourceId instead of overwriting with the caller’s', async () => {
 			// Shared threads (e.g. the test-chat thread keyed by agentId) are
 			// written to by multiple users. The first writer owns the row;
 			// subsequent saves must not re-stamp it with the current caller.
-			const existing = {
-				id: 'thread-1',
-				resourceId: 'original-user',
-				title: null,
-				metadata: null,
-			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			const row = lockedRow({ title: null, metadata: null });
 
-			await memory.saveThread({
+			const saved = await memory.saveThread({
 				id: 'thread-1',
 				resourceId: 'different-user',
-				title: undefined,
+				title: 'Renamed',
 				metadata: undefined,
 			});
 
-			expect(threadRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'thread-1', resourceId: 'original-user' }),
-			);
+			expect(row.resourceId).toBe('original-user');
+			expect(saved.resourceId).toBe('original-user');
+			expect(threadRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('still ensures the caller’s resource row exists (for message-level writes)', async () => {
 			// resourceId on the thread is preserved, but messages saved afterwards
 			// carry the current user's resourceId — that row must exist.
-			const existing = {
-				id: 'thread-1',
-				resourceId: 'original-user',
-				title: null,
-				metadata: null,
-			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			lockedRow({ title: null, metadata: null });
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -490,21 +335,14 @@ describe('N8nMemory', () => {
 			expect(resourceInsertQueryBuilder.orIgnore).toHaveBeenCalled();
 		});
 
-		it('merges metadata updates instead of replacing existing thread metadata', async () => {
+		it('merges metadata updates into the locked row instead of replacing it', async () => {
 			const currentMessageContext = {
 				integrationConnectionId: 'slack:cred-1',
 				platform: 'slack',
 				target: { type: 'thread', threadId: 'thread-1' },
 				updatedAt: '2026-05-18T10:00:00.000Z',
 			};
-			const existing = {
-				id: 'thread-1',
-				resourceId: 'original-user',
-				title: null,
-				metadata: JSON.stringify({ currentMessageContext }),
-			} as unknown as AgentThreadEntity;
-			threadRepository.findOneBy.mockResolvedValue(existing);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			const row = lockedRow({ title: null, metadata: JSON.stringify({ currentMessageContext }) });
 
 			await memory.saveThread({
 				id: 'thread-1',
@@ -513,42 +351,143 @@ describe('N8nMemory', () => {
 				metadata: { summary: 'Support thread' },
 			});
 
-			expect(threadRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ metadata: expect.any(String) }),
-			);
-			const savedThread = threadRepository.save.mock.calls[0][0] as AgentThreadEntity;
-			expect(JSON.parse(savedThread.metadata ?? '{}')).toEqual({
+			expect(JSON.parse(row.metadata ?? '{}')).toEqual({
 				currentMessageContext,
 				summary: 'Support thread',
 			});
 		});
+
+		it('writes nothing when the save carries no title or metadata', async () => {
+			lockedRow({ title: 'Chat', metadata: null });
+
+			await memory.saveThread({ id: 'thread-1', resourceId: 'original-user' });
+
+			const update = threadRepository.patchThread.mock.calls[0][1];
+			expect(update({ title: 'Chat', metadata: '{"a":1}' } as AgentThreadEntity)).toBeNull();
+		});
 	});
 
-	describe('deleteMessagesByThread', () => {
-		it('deletes only the caller’s messages when resourceId is provided', async () => {
-			await memory.deleteMessagesByThread('thread-1', 'user-1');
+	describe('saveThread — new row', () => {
+		it('creates the thread when no row exists', async () => {
+			threadRepository.patchThread.mockResolvedValue(null);
+			threadRepository.create.mockImplementation((e) => e as AgentThreadEntity);
+			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
 
-			expect(messageRepository.delete).toHaveBeenCalledWith({
-				threadId: 'thread-1',
+			await memory.saveThread({
+				id: 'thread-1',
 				resourceId: 'user-1',
+				title: 'Chat',
+				metadata: { keep: 1 },
 			});
+
+			expect(threadRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'thread-1',
+					resourceId: 'user-1',
+					title: 'Chat',
+					metadata: JSON.stringify({ keep: 1 }),
+				}),
+			);
 		});
+	});
 
-		it('deletes every message on the thread when resourceId is omitted', async () => {
-			await memory.deleteMessagesByThread('thread-1');
+	describe('patchThread', () => {
+		let writes: number;
 
-			expect(messageRepository.delete).toHaveBeenCalledWith({ threadId: 'thread-1' });
-		});
+		/** A row store behind the repository double that counts writes. */
+		function seedThread(metadata: Record<string, unknown> | null) {
+			writes = 0;
+			const row = {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Chat',
+				metadata: metadata ? JSON.stringify(metadata) : null,
+			} as AgentThreadEntity;
+			threadRepository.patchThread.mockImplementation(async (threadId, update) => {
+				if (threadId !== row.id) return null;
+				const patch = update(row);
+				if (!patch) return { ...row };
+				if (patch.title !== undefined) row.title = patch.title;
+				if (patch.metadata !== undefined) row.metadata = patch.metadata;
+				writes++;
+				return { ...row } as AgentThreadEntity;
+			});
+			return row;
+		}
 
-		it('does not widen the delete to all users when resourceId is an empty string', async () => {
-			// Same security invariant as getMessages: an accidental falsy userId
-			// must never fall through to "delete everyone's messages".
-			await memory.deleteMessagesByThread('thread-1', '');
+		it('replaces the metadata, so a patch can remove keys', async () => {
+			const row = seedThread({ keep: 1, drop: 2 });
 
-			expect(messageRepository.delete).toHaveBeenCalledWith({
+			const updated = await memory.patchThread({
 				threadId: 'thread-1',
-				resourceId: '',
+				update: ({ metadata }) => {
+					const { drop: _drop, ...rest } = metadata ?? {};
+					return { title: 'Renamed', metadata: { ...rest, added: true } };
+				},
 			});
+
+			expect(jsonParse(row.metadata ?? '{}')).toEqual({ keep: 1, added: true });
+			expect(row.title).toBe('Renamed');
+			expect(updated).toMatchObject({
+				id: 'thread-1',
+				title: 'Renamed',
+				metadata: { keep: 1, added: true },
+			});
+		});
+
+		it('keeps the title when the patch only sets metadata', async () => {
+			const row = seedThread({ count: 1 });
+
+			await memory.patchThread({
+				threadId: 'thread-1',
+				update: () => ({ metadata: {} }),
+			});
+
+			expect(row.title).toBe('Chat');
+			expect(row.metadata).toBe('{}');
+		});
+
+		it('returns the current thread without a write when the update returns null', async () => {
+			seedThread({ count: 1 });
+
+			const result = await memory.patchThread({ threadId: 'thread-1', update: () => null });
+
+			expect(result).toMatchObject({ id: 'thread-1', title: 'Chat', metadata: { count: 1 } });
+			expect(writes).toBe(0);
+		});
+
+		it('returns null for a missing thread without calling the update', async () => {
+			seedThread({});
+			const update = vi.fn();
+
+			expect(await memory.patchThread({ threadId: 'missing', update })).toBeNull();
+			expect(update).not.toHaveBeenCalled();
+			expect(writes).toBe(0);
+		});
+
+		it('passes a root operation context to the repository by default', async () => {
+			seedThread({});
+
+			await memory.patchThread({ threadId: 'thread-1', update: () => null });
+
+			expect(threadRepository.patchThread).toHaveBeenCalledWith(
+				'thread-1',
+				expect.any(Function),
+				{},
+			);
+		});
+
+		it("passes the caller's operation context to the repository", async () => {
+			seedThread({});
+			const ctx: OperationContext = { trx: mock<Transaction>() };
+
+			await memory.patchThread({ threadId: 'thread-1', update: () => null }, ctx);
+
+			expect(threadRepository.patchThread).toHaveBeenCalledWith(
+				'thread-1',
+				expect.any(Function),
+				ctx,
+			);
 		});
 	});
 

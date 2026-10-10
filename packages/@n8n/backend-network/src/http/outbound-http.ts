@@ -6,13 +6,14 @@ import type {
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	IRequestOptions,
+	NodeEgressFilter,
 } from 'n8n-workflow';
 import type http from 'node:http';
 import type https from 'node:https';
 import type { Readable } from 'node:stream';
 import type { Dispatcher } from 'undici';
 
-import { SsrfProtectionService } from '../ssrf';
+import { passthroughEgressFilter, SsrfProtectionService } from '../ssrf';
 import { httpRequest } from './axios/request';
 import { withClientDefaults } from './client-default-headers';
 import { HttpRequestClientOptions } from './client-options';
@@ -118,6 +119,7 @@ export interface HttpRequestClient {
 	 * @deprecated Use {@link request} with `IHttpRequestOptions`. This exists only
 	 * to back the deprecated `request` helpers.
 	 */
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestLegacy(options: IRequestOptions, callbacks?: LegacyRequestCallbacks): Promise<unknown>;
 }
 
@@ -209,6 +211,7 @@ export class OutboundHttp {
 			request,
 			requestLegacy: async (requestOptions, callbacks) => {
 				try {
+					// oxlint-disable-next-line typescript/no-deprecated
 					return await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks);
 				} catch (error) {
 					throw markHttpRequestError(error);
@@ -239,6 +242,17 @@ export class OutboundHttp {
 			getNodeAgent: (agentOptions) =>
 				agentOptions !== undefined ? buildNodeAgents(proxy, ssrf, agentOptions) : lazyNodeAgents(),
 		};
+	}
+
+	/**
+	 * The egress filter enforcing the given {@link UseDefaultSsrfPolicy}, for
+	 * callers that hand a filter to a third-party SDK: the container's
+	 * `SsrfProtectionService` when the policy resolves to guarded, a passthrough
+	 * filter otherwise.
+	 */
+	egressFilter(useDefaultSsrfPolicy: UseDefaultSsrfPolicy = 'safe'): NodeEgressFilter {
+		const ssrf = this.resolveSsrf(useDefaultSsrfPolicy);
+		return ssrf === 'disabled' ? passthroughEgressFilter : ssrf;
 	}
 
 	/**

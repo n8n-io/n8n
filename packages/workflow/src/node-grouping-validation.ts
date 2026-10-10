@@ -17,7 +17,7 @@ import {
 	type IWorkflowGroup,
 	type NodeConnectionType,
 } from './interfaces';
-import { isTriggerNode } from './node-helpers';
+import { isTriggerNode, isTriggerNodeType } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
@@ -41,6 +41,111 @@ export function normalizeGroupDescription(description: unknown): string | undefi
 	return capped.length > 0 ? capped : undefined;
 }
 
+/** Issue code shared by every surface that reports the collapsed box count. */
+export const TOP_LEVEL_ITEMS_OVER_CEILING_CODE = 'TOP_LEVEL_ITEMS_OVER_CEILING';
+
+export type TopLevelItemsSummary = {
+	/** Boxes on the canvas with every group collapsed: groups plus ungrouped nodes. */
+	total: number;
+	groupCount: number;
+	ceiling: number;
+	overCeiling: boolean;
+	/** Ungrouped nodes that draw a box, the trigger included. */
+	ungroupedNodeNames: string[];
+	/** Ungrouped nodes a group could still hold; a trigger cannot join one. */
+	groupableNodeNames: string[];
+};
+
+type TopLevelItemsNode = Pick<INode, 'type'> & { id?: string; name?: string };
+
+/**
+ * Names of the nodes that reach their parent over non-main connections only. A
+ * sub-node rides with its parent on the canvas, so it is not a box of its own.
+ */
+export function collectSubNodeNames(
+	connectionsBySourceNode: IConnections | undefined,
+): Set<string> {
+	const subNodeNames = new Set<string>();
+
+	for (const [nodeName, connectionsByType] of Object.entries(connectionsBySourceNode ?? {})) {
+		// An empty slot (`ai_tool: [[]]`) is not a connection, so it must not make a sub-node.
+		const connectedTypes = Object.entries(connectionsByType)
+			.filter(([, outputs]) => outputs.some((targets) => (targets?.length ?? 0) > 0))
+			.map(([type]) => type);
+
+		if (
+			connectedTypes.length > 0 &&
+			connectedTypes.every((type) => type !== NodeConnectionTypes.Main)
+		) {
+			subNodeNames.add(nodeName);
+		}
+	}
+
+	return subNodeNames;
+}
+
+/**
+ * Counts the boxes a reader sees with every group collapsed. Sticky notes and
+ * sub-nodes do not count: a sticky belongs to the user, a sub-node rides with its
+ * parent. Shared by the Instance AI build and the MCP save tools so both report
+ * the same number the grouping guidance states.
+ */
+export function summarizeTopLevelItems(input: {
+	nodes: TopLevelItemsNode[];
+	nodeGroups?: Array<Pick<IWorkflowGroup, 'nodeIds'>>;
+	connectionsBySourceNode?: IConnections;
+}): TopLevelItemsSummary {
+	const groups = input.nodeGroups ?? [];
+	const groupedNodeIds = new Set(groups.flatMap((group) => group.nodeIds));
+	const subNodeNames = collectSubNodeNames(input.connectionsBySourceNode);
+
+	const ungrouped = input.nodes.filter((node) => {
+		const isSticky = node.type === STICKY_NODE_TYPE;
+		const isGrouped = node.id !== undefined && groupedNodeIds.has(node.id);
+		const isSubNode = node.name !== undefined && subNodeNames.has(node.name);
+
+		return !isSticky && !isGrouped && !isSubNode;
+	});
+
+	const labelOf = (node: TopLevelItemsNode) => node.name ?? node.id ?? node.type;
+	const total = groups.length + ungrouped.length;
+
+	return {
+		total,
+		groupCount: groups.length,
+		ceiling: TOP_LEVEL_ITEM_CEILING,
+		overCeiling: total > TOP_LEVEL_ITEM_CEILING,
+		ungroupedNodeNames: ungrouped.map(labelOf),
+		groupableNodeNames: ungrouped.filter((node) => !isTriggerNodeType(node.type)).map(labelOf),
+	};
+}
+
+/** The over-ceiling message, worded once so every surface tells the agent the same thing. */
+export function formatTopLevelItemsMessage(summary: TopLevelItemsSummary): string {
+	const stillUngrouped =
+		summary.groupableNodeNames.length > 0
+			? `. Still ungrouped: ${summary.groupableNodeNames.join(', ')}`
+			: '';
+
+	return (
+		`The canvas top level has ${summary.total} boxes with every group collapsed, over the ${summary.ceiling} you should aim for` +
+		stillUngrouped +
+		'. Group any stage that can form a valid group and build again, or say why each of them cannot join one.'
+	);
+}
+
+/**
+ * The group rules that relax behind a flag. Each one rolls out on its own.
+ * The validator takes this shape; the canvas and the save path each fill it
+ * from their own flag reader.
+ */
+export type NodeGroupRuleOptions = {
+	/** Accept a group that holds its own trigger. */
+	allowTriggerInGroup?: boolean;
+	/** Accept a group with several entry and exit nodes. */
+	allowMultipleBoundaryNodes?: boolean;
+};
+
 export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
 	connectionsBySourceNode: IConnections;
@@ -54,7 +159,7 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 		node: TNode,
 		nodeType: INodeTypeDescription,
 	) => Array<NodeConnectionType | INodeOutputConfiguration>;
-};
+} & NodeGroupRuleOptions;
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
 	| { valid: true; subGraph: TNode[]; subGraphData: ExtractableSubgraphData }
@@ -118,8 +223,18 @@ export const NODE_GROUPING_RULES = {
 export function validateNodeSelectionForExtraction<TNode extends INode>(
 	input: NodeGroupingValidationInput<TNode>,
 ): NodeSelectionValidationResult<TNode> {
-	const subgraphResult = validateNodeSelectionSubgraph(input);
-	if (!subgraphResult.valid) return subgraphResult;
+	// Both rules forced off: extraction replaces the selection with one node, which
+	// has one input and one output. Several entries or exits leave nothing to wire
+	// that node back to.
+	const subgraphResult = validateNodeSelectionSubgraph({
+		...input,
+		allowTriggerInGroup: false,
+		allowMultipleBoundaryNodes: false,
+	});
+
+	if (!subgraphResult.valid) {
+		return subgraphResult;
+	}
 
 	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
 	const { start, end } = subgraphResult.subGraphData;
@@ -215,7 +330,7 @@ export type WorkflowGroupsValidationInput<TNode extends INode = INode> = {
 	 * Pass `null` to run basic checks only.
 	 */
 	getNodeType: ((node: TNode) => INodeTypeDescription | null | undefined) | null;
-};
+} & NodeGroupRuleOptions;
 
 export type WorkflowGroupsValidationResult =
 	| { valid: true }
@@ -262,18 +377,10 @@ export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeFo
  * Note: must be called after node IDs are assigned (see `addNodeIds` in the CLI),
  * since nodes created via the API may not have IDs until that step assigns them.
  */
-export function validateWorkflowGroups<TNode extends INode>({
-	nodes,
-	connectionsBySourceNode,
-	nodeGroups,
-	getNodeType,
-}: WorkflowGroupsValidationInput<TNode>): WorkflowGroupsValidationResult {
-	const result = validateWorkflowGroupsWithGroupIdentity({
-		nodes,
-		connectionsBySourceNode,
-		nodeGroups,
-		getNodeType,
-	});
+export function validateWorkflowGroups<TNode extends INode>(
+	input: WorkflowGroupsValidationInput<TNode>,
+): WorkflowGroupsValidationResult {
+	const result = validateWorkflowGroupsWithGroupIdentity(input);
 
 	if (result.valid) return { valid: true };
 
@@ -292,6 +399,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	connectionsBySourceNode,
 	nodeGroups,
 	getNodeType,
+	...rules
 }: WorkflowGroupsValidationInput<TNode>):
 	| { valid: true }
 	| {
@@ -377,6 +485,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 				connectionsBySourceNode: connections,
 				getNodeType,
 				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
+				...rules,
 			});
 			if (!result.valid) {
 				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
@@ -493,11 +602,16 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
+	allowTriggerInGroup,
+	allowMultipleBoundaryNodes,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
-	const triggers = nodes.filter((node) => {
-		const nodeType = getNodeType(node);
-		return nodeType ? isTriggerNode(nodeType) : false;
-	});
+	// A relaxed group may hold its own trigger, together with the nodes that follow it.
+	const triggers = allowTriggerInGroup
+		? []
+		: nodes.filter((node) => {
+				const nodeType = getNodeType(node);
+				return nodeType ? isTriggerNode(nodeType) : false;
+			});
 	if (triggers.length > 0) {
 		return {
 			valid: false,
@@ -508,7 +622,10 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 
 	const adjacencyList = buildAdjacencyList(connectionsBySourceNode);
 	const selectedNodeNames = new Set(nodes.map((node) => node.name));
-	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList);
+	// A relaxed group may have several entry and exit nodes
+	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList, {
+		relaxBoundaryRules: allowMultipleBoundaryNodes,
+	});
 
 	if (Array.isArray(selection)) {
 		return { valid: false, reason: 'invalid-subgraph', errors: selection };

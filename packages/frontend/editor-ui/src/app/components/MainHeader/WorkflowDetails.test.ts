@@ -34,11 +34,13 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import { telemetry } from '@/app/plugins/telemetry';
 
 const mockMcpNudgeCanShow = vi.hoisted(() => vi.fn(() => true));
+const mockMcpNudgeIsEligibleApartFromExperiment = vi.hoisted(() => vi.fn(() => true));
 const saveAsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility', () => ({
 	useMcpJsonNudgeEligibility: () => ({
 		canShow: mockMcpNudgeCanShow,
+		isEligibleApartFromExperiment: mockMcpNudgeIsEligibleApartFromExperiment,
 		recordImpression: vi.fn(),
 	}),
 }));
@@ -233,6 +235,7 @@ describe('WorkflowDetails', () => {
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		mockMcpNudgeCanShow.mockReturnValue(true);
+		mockMcpNudgeIsEligibleApartFromExperiment.mockReturnValue(true);
 		workflowsListStore.workflowsById = {
 			'1': workflow,
 			'123': workflow,

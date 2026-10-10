@@ -37,6 +37,8 @@ const defaultSettings: OtelSettings = {
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2_000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 };

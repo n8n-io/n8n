@@ -12,7 +12,6 @@ import type {
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
 import { useI18n } from '../../composables/useI18n';
-import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
@@ -35,6 +34,7 @@ const {
 	selectedCredentialName,
 	credentialsMissing = false,
 	credentialsMissingLabel,
+	restrictedLabel,
 	noMatchLabel,
 	showBorder = true,
 	disabled = false,
@@ -53,6 +53,8 @@ const {
 	credentialsMissing?: boolean;
 	/** Text shown when credentials are required but missing. */
 	credentialsMissingLabel?: string;
+	/** Badge shown in the trigger when a policy blocks the selected item. */
+	restrictedLabel?: string;
 	/** Empty-state text shown when search returns no matching items. */
 	noMatchLabel: string;
 	/** Whether the trigger button should render with a border. */
@@ -77,6 +79,7 @@ const emit = defineEmits<{
 defineSlots<{
 	'trigger-leading'?: (props: { ui: { class: string } }) => void;
 	'item-leading'?: (props: { item: AiModelSelectorMenuItem<TData>; ui: { class: string } }) => void;
+	'item-restricted'?: (props: { item: AiModelSelectorMenuItem<TData> }) => void;
 }>();
 
 const dropdownRef = useTemplateRef('dropdownRef');
@@ -104,6 +107,7 @@ defineExpose({
 	open: () => {
 		if (!disabled) dropdownRef.value?.open();
 	},
+	close: () => dropdownRef.value?.close(),
 });
 </script>
 
@@ -135,15 +139,24 @@ defineExpose({
 						</N8nText>
 						<span v-if="isLoading" :class="$style.loading"></span>
 						<N8nBadge
-							v-if="credentialsMissing && !isLoading"
-							theme="danger"
+							v-else-if="restrictedLabel"
+							variant="danger"
+							size="small"
+							:class="$style.credsBadge"
+							data-test-id="ai-model-selector-restricted-badge"
+						>
+							{{ restrictedLabel }}
+						</N8nBadge>
+						<N8nBadge
+							v-else-if="credentialsMissing"
+							variant="danger"
 							size="small"
 							:class="$style.credsBadge"
 						>
 							{{ resolvedCredentialsMissingLabel }}
 						</N8nBadge>
 						<N8nText
-							v-else-if="selectedCredentialName && !isLoading"
+							v-else-if="selectedCredentialName"
 							bold
 							color="text-light"
 							:data-test-id="credentialDataTestId"
@@ -194,18 +207,22 @@ defineExpose({
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
-					theme="secondary"
+					variant="secondary"
 					size="xsmall"
-					:show-border="false"
 				>
 					{{ item.data.badgeLabel }}
 				</N8nBadge>
-				<N8nActionPill
+				<N8nBadge
 					v-if="item.data?.actionPill"
-					size="small"
-					:type="item.data.actionPill.type ?? 'default'"
-					:text="item.data.actionPill.text"
-				/>
+					size="xxsmall"
+					:variant="
+						item.data.actionPill.type === 'danger' || item.data.actionPill.type === 'info'
+							? item.data.actionPill.type
+							: 'success'
+					"
+				>
+					{{ item.data.actionPill.text }}
+				</N8nBadge>
 				<span v-if="item.data?.connectedLabel" :class="$style.connected">
 					<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
 					<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
@@ -214,8 +231,21 @@ defineExpose({
 		</template>
 
 		<template #item-trailing="{ item, ui }">
+			<span v-if="item.data?.restrictedLabel" :class="[$style.restricted, ui.class]">
+				<N8nText size="xsmall" color="text-light" data-test-id="ai-model-selector-restriction">
+					{{ item.data.restrictedLabel }}
+				</N8nText>
+				<slot name="item-restricted" :item="item">
+					<N8nIcon
+						icon="lock"
+						size="xsmall"
+						color="text-light"
+						data-test-id="ai-model-selector-restricted-icon"
+					/>
+				</slot>
+			</span>
 			<N8nTooltip
-				v-if="item.data?.description"
+				v-else-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
 				placement="right"
@@ -232,7 +262,8 @@ defineExpose({
 @use '../../css/mixins/motion' as motion;
 
 .dropdownButton {
-	flex: 1;
+	// Keep the trigger height when a parent uses a column flex layout.
+	flex: 1 1 auto;
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -305,6 +336,13 @@ defineExpose({
 	transform: translateY(1px);
 }
 
+.selectedLabel > :global(.n8n-text) {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
 .chevron {
 	color: var(--text-color--subtler);
 }
@@ -319,12 +357,17 @@ defineExpose({
 	margin-inline: var(--spacing--5xs);
 }
 
-.connected {
+.connected,
+.restricted {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
 	white-space: nowrap;
+}
+
+.restricted {
+	padding-left: var(--spacing--md);
 }
 
 .connectedIcon {

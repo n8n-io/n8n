@@ -5,19 +5,20 @@ import type {
 	ResolvedDependency,
 } from '@n8n/api-types';
 import {
+	chunkIds,
 	CredentialsRepository,
 	ProjectRelationRepository,
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, type FindManyOptions } from '@n8n/typeorm';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
@@ -156,6 +157,7 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
+		options: { listUnavailableCredentials?: boolean } = {},
 	): Promise<DependenciesBatchResponse> {
 		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
 		if (!loaded) return {};
@@ -171,6 +173,23 @@ export class WorkflowDependencyQueryService {
 				maps.allAgentIds.size > 0 ? this.getAccessibleAgentProjectIds(user) : new Set<string>(),
 			]);
 
+		// Only a credential's dependency details need each workflow's owning
+		// project (to link a "used in" workflow back to its project), and only
+		// while the feature that surfaces that link is enabled — so this never
+		// adds work to workflow/data-table dependency lookups or flag-off
+		// instances (e.g. the credentials list's pre-existing "N workflows" pill).
+		const needsWorkflowProject = resourceType === 'credential' && isCredSharingEnabled();
+		const workflowFindOptions: FindManyOptions<WorkflowEntity> = needsWorkflowProject
+			? {
+					where: { id: In([...maps.allWfIds]) },
+					select: { id: true, name: true, shared: { role: true, project: { id: true } } },
+					relations: { shared: { project: true } },
+				}
+			: {
+					where: { id: In([...maps.allWfIds]) },
+					select: ['id', 'name'],
+				};
+
 		// Load all referenced resources (not just accessible ones) so that ids whose
 		// resource has been deleted — the index may still reference them — can be
 		// dropped instead of being reported as inaccessible.
@@ -181,12 +200,7 @@ export class WorkflowDependencyQueryService {
 						select: ['id', 'name'],
 					})
 				: [],
-			maps.allWfIds.size > 0
-				? this.workflowRepository.find({
-						where: { id: In([...maps.allWfIds]) },
-						select: ['id', 'name'],
-					})
-				: [],
+			maps.allWfIds.size > 0 ? this.workflowRepository.find(workflowFindOptions) : [],
 			maps.allDtIds.size > 0
 				? this.dataTableRepository.find({
 						where: { id: In([...maps.allDtIds]) },
@@ -203,8 +217,9 @@ export class WorkflowDependencyQueryService {
 		const accessibleDtIdSet = new Set(accessibleDtIds);
 
 		const agentNames = new Map<string, { name: string; projectId: string }>();
-		const wfNames = new Map<string, string>();
+		const wfNames = new Map<string, { name: string; projectId?: string }>();
 		const credNames = new Map<string, string>();
+		const unavailableCredNames = new Map<string, string>();
 		const dtNames = new Map<string, { name: string; projectId: string }>();
 		const existingAgentIds = new Set<string>();
 		const existingWfIds = new Set<string>();
@@ -221,13 +236,36 @@ export class WorkflowDependencyQueryService {
 				});
 			}
 		}
+		// Same usability rule as the node credential field, so a user with only
+		// see-rights sees the credential as unavailable in both places.
+		const listUnavailable =
+			options.listUnavailableCredentials === true &&
+			resourceType === 'workflow' &&
+			isCredSharingEnabled();
+		const unusableCredIds = new Set(
+			listUnavailable
+				? (
+						await this.credentialsFinderService.findUnusableCredentialsForUser(
+							user,
+							credentials.map((c) => c.id),
+						)
+					).map((c) => c.id)
+				: [],
+		);
 		for (const c of credentials) {
 			existingCredIds.add(c.id);
-			if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
+			if (unusableCredIds.has(c.id)) unavailableCredNames.set(c.id, c.name ?? c.id);
+			else if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
 		}
 		for (const w of workflows) {
 			existingWfIds.add(w.id);
-			if (accessibleWfIdSet.has(w.id)) wfNames.set(w.id, w.name ?? w.id);
+			if (accessibleWfIdSet.has(w.id)) {
+				const ownerShare = w.shared?.find((s) => s.role === 'workflow:owner');
+				wfNames.set(w.id, {
+					name: w.name ?? w.id,
+					projectId: ownerShare?.project?.id,
+				});
+			}
 		}
 		for (const dt of dataTables) {
 			existingDtIds.add(dt.id);
@@ -242,10 +280,41 @@ export class WorkflowDependencyQueryService {
 				agentNames,
 				wfNames,
 				credNames,
+				unavailableCredNames,
 				dtNames,
 			},
 			{ existingAgentIds, existingWfIds, existingCredIds, existingDtIds },
 		);
+	}
+
+	/**
+	 * Resolved dependencies for every workflow in a folder, deduplicated. The folder filter is
+	 * recursive, so a subfolder's workflows count as the folder's own.
+	 */
+	async getFolderDependencies(
+		projectId: string,
+		folderId: string,
+		user: User,
+	): Promise<ResolvedDependency[]> {
+		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(
+			user,
+			['workflow:read'],
+			folderId,
+			projectId,
+		);
+
+		const dependencies = new Map<string, ResolvedDependency>();
+		// A folder hierarchy has no size limit, so keep each query under the driver's bind ceiling.
+		for (const chunk of chunkIds(workflowIds)) {
+			const byWorkflow = await this.getResourceDependencies(chunk, 'workflow', user);
+			for (const result of Object.values(byWorkflow)) {
+				for (const dependency of result.dependencies) {
+					dependencies.set(`${dependency.type}:${dependency.id}`, dependency);
+				}
+			}
+		}
+
+		return [...dependencies.values()];
 	}
 
 	private async loadDepsForResources(
@@ -354,8 +423,9 @@ export class WorkflowDependencyQueryService {
 		maps: RawDepMaps,
 		accessMaps: {
 			agentNames: Map<string, { name: string; projectId: string }>;
-			wfNames: Map<string, string>;
+			wfNames: Map<string, { name: string; projectId?: string }>;
 			credNames: Map<string, string>;
+			unavailableCredNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
 		},
 		existing: {
@@ -395,38 +465,41 @@ export class WorkflowDependencyQueryService {
 				for (const id of ids ?? []) {
 					if (!existingIds.has(id)) continue;
 					const name = nameMap.get(id);
+					const unavailableName = accessMaps.unavailableCredNames.get(id);
 					if (name !== undefined) {
 						dependencies.push({ id, name, type });
+					} else if (type === 'credentialId' && unavailableName !== undefined) {
+						dependencies.push({ id, name: unavailableName, type, unavailable: true });
 					} else {
 						inaccessibleCount++;
 					}
 				}
 			};
 
-			resolve(
-				maps.subMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'workflowCall',
-			);
-			resolve(
-				maps.parentMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'workflowParent',
-			);
-			resolve(
-				maps.errorWfMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'errorWorkflow',
-			);
-			resolve(
-				maps.errorWfParentMap.get(resourceId),
-				accessMaps.wfNames,
-				existing.existingWfIds,
-				'errorWorkflowParent',
-			);
+			const resolveWorkflowDep = (
+				ids: Set<string> | undefined,
+				type: ResolvedDependency['type'],
+			) => {
+				for (const id of ids ?? []) {
+					if (!existing.existingWfIds.has(id)) continue;
+					const workflow = accessMaps.wfNames.get(id);
+					if (workflow) {
+						dependencies.push({
+							id,
+							name: workflow.name,
+							type,
+							projectId: workflow.projectId,
+						});
+					} else {
+						inaccessibleCount++;
+					}
+				}
+			};
+
+			resolveWorkflowDep(maps.subMap.get(resourceId), 'workflowCall');
+			resolveWorkflowDep(maps.parentMap.get(resourceId), 'workflowParent');
+			resolveWorkflowDep(maps.errorWfMap.get(resourceId), 'errorWorkflow');
+			resolveWorkflowDep(maps.errorWfParentMap.get(resourceId), 'errorWorkflowParent');
 			resolve(
 				maps.credMap.get(resourceId),
 				accessMaps.credNames,
@@ -470,10 +543,12 @@ export class WorkflowDependencyQueryService {
 				return ids.filter((id) => accessible.has(id));
 			}
 			case 'credential': {
+				// The dependency graph only ever exposes a credential's id, name and type.
 				const accessible = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
 					ids,
 					user,
 					['credential:read'],
+					{ visibilityOnly: true },
 				);
 				return ids.filter((id) => accessible.has(id));
 			}

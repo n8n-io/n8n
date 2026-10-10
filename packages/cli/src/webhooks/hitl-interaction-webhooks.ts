@@ -58,6 +58,7 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const execution = await this.getExecution(parsed.executionId);
 		if (!execution) return { ok: false, status: 404 };
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.status === 'running' || execution.finished || execution.data?.resultData?.error) {
 			// Replayed or late interaction: nothing left to resume.
 			return { ok: false, status: 409 };
@@ -69,6 +70,10 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		if (!node) return { ok: false, status: 404 };
 
 		if (node.type !== this.platformNodeType) return { ok: false, status: 404 };
+
+		// The resume routes on the node id as the webhook suffix. Execution snapshots are frozen
+		// copies that can predate id enforcement, and an id-less node resolves to an empty suffix.
+		if (!node.id) return { ok: false, status: 404 };
 
 		return {
 			ok: true,

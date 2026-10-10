@@ -56,6 +56,27 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GOOGLE_SHEETS_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
+	googleCalendarOAuth2Api: {
+		defaultName: '[eval] Google Calendar',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	hubspotAppToken: {
+		defaultName: '[eval] HubSpot',
+		buildData: (token) => ({ appToken: token }),
+	},
+	// Instagram accounts connect through the Facebook Graph API.
+	facebookGraphApi: {
+		defaultName: '[eval] Facebook Graph',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	linkedInOAuth2Api: {
+		defaultName: '[eval] LinkedIn',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	highLevelOAuth2Api: {
+		defaultName: '[eval] HighLevel',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
 	// MCP-registry-synthesized credential types (agent MCP servers). Creating
 	// them requires the backend to run with the `mcp-registry` module enabled;
 	// placeholder tokens are fine — agent eval runs mock the MCP wire.
@@ -141,8 +162,11 @@ export async function createOneCredential(
 	options?: {
 		logger?: EvalLogger;
 		setupHint?: InstanceAiCredentialSetupHint;
+		description?: string | null;
 		/** Seed with no field values, modelling a credential the user saved empty. */
 		blank?: boolean;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	if (credentialType === 'httpTemplatedCustomAuth') {
@@ -171,6 +195,8 @@ export async function createOneCredential(
 		resolvedName,
 		credentialType,
 		options?.blank ? {} : template.buildData(token),
+		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: credentialType };
 }
@@ -186,7 +212,12 @@ async function createTemplatedCustomAuthCredential(
 	client: N8nClient,
 	name: string | undefined,
 	usedNames: Map<string, number>,
-	options?: { logger?: EvalLogger; setupHint?: InstanceAiCredentialSetupHint },
+	options?: {
+		logger?: EvalLogger;
+		setupHint?: InstanceAiCredentialSetupHint;
+		description?: string | null;
+		projectId?: string;
+	},
 ): Promise<CreatedCredential> {
 	const hint = options?.setupHint;
 	if (!hint) {
@@ -218,16 +249,22 @@ async function createTemplatedCustomAuthCredential(
 	);
 
 	options?.logger?.verbose(`  Creating credential ${resolvedName} (httpTemplatedCustomAuth)`);
-	const { id } = await client.createCredential(resolvedName, 'httpTemplatedCustomAuth', {
-		template: JSON.stringify(hint.template),
-		placeholderDefs: JSON.stringify(hint.placeholders),
-		placeholderValues: JSON.stringify(placeholderValues),
-		serviceHost: hint.serviceHost ?? '',
-		serviceOrigin: hint.serviceOrigin ?? '',
-		docsUrl: hint.docsUrl ?? '',
-		testUrl: hint.testUrl ?? '',
-		acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
-	});
+	const { id } = await client.createCredential(
+		resolvedName,
+		'httpTemplatedCustomAuth',
+		{
+			template: JSON.stringify(hint.template),
+			placeholderDefs: JSON.stringify(hint.placeholders),
+			placeholderValues: JSON.stringify(placeholderValues),
+			serviceHost: hint.serviceHost ?? '',
+			serviceOrigin: hint.serviceOrigin ?? '',
+			docsUrl: hint.docsUrl ?? '',
+			testUrl: hint.testUrl ?? '',
+			acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
+		},
+		options?.description,
+		options?.projectId,
+	);
 	return { id, name: resolvedName, type: 'httpTemplatedCustomAuth' };
 }
 
@@ -254,6 +291,8 @@ export async function createDeclaredCredentials(
 		onCreated?: (id: string) => void;
 		logger?: EvalLogger;
 		nameCounts?: Map<string, number>;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential[]> {
 	const logger = options?.logger;
@@ -263,7 +302,9 @@ export async function createDeclaredCredentials(
 	for (const decl of declared) {
 		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, {
 			logger,
+			...(decl.description !== undefined ? { description: decl.description } : {}),
 			...(decl.blank ? { blank: true } : {}),
+			...(options?.projectId !== undefined ? { projectId: options.projectId } : {}),
 		});
 		options?.onCreated?.(cred.id);
 		created.push(cred);

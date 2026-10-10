@@ -12,7 +12,8 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
@@ -24,6 +25,7 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@Post('/')
@@ -41,6 +43,7 @@ export class AgentsController {
 			: await this.agentDefaultModelResolverService.resolve(req.user, projectId);
 
 		const agent = await this.agentsService.create(projectId, payload.name, {
+			actor: { kind: 'user', user: req.user },
 			id: payload.id,
 			...(defaultModel ? { defaultModel } : {}),
 			// Keep the config name in sync with the entity name so the list and
@@ -123,5 +126,15 @@ export class AgentsController {
 		}
 
 		return { success: true };
+	}
+
+	@Get('/:agentId/collaboration/write-lock')
+	@ProjectScope('agent:read')
+	async getWriteLock(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.collaborationService.getAgentWriteLock(req.params.projectId, agentId);
 	}
 }

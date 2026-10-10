@@ -16,6 +16,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -36,7 +37,8 @@ import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { EventService } from '@n8n/backend-services';
+import { WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -52,6 +54,7 @@ describe('ExecutionRecoveryService', () => {
 	const workflowSharingService = mockInstance(WorkflowSharingService);
 	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 	mockInstance(WorkflowPublicationNotifier);
+	const eventService = mock<EventService>();
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
@@ -78,11 +81,12 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
-			new ExecutionCrashService(executionRepository, mock()),
+			new ExecutionCrashService(executionRepository, mock(), eventService, instanceSettings),
 		);
 	});
 
 	beforeEach(() => {
+		eventService.emit.mockClear();
 		instanceSettings.markAsLeader();
 		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue([]);
 	});
@@ -129,7 +133,6 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				instanceSettings.markAsFollower();
-				// @ts-expect-error Private method
 				const amendSpy = vi.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');
 
@@ -359,6 +362,86 @@ describe('ExecutionRecoveryService', () => {
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
 				expect(amendedExecution.data).toEqual({ version: 1, resultData: { runData: {} } });
 				expect(amendedExecution.status).toBe('crashed');
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			test('for errored dataless execution, should keep `error` and announce no crash', async () => {
+				const workflow = await createWorkflow();
+				const execution = await createExecution(
+					{ status: 'error', data: stringify(undefined) },
+					workflow,
+				);
+				const messages = setupMessages(execution.id, 'Some workflow');
+
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				expect(amendedExecution?.status).toBe('error');
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			test.each([
+				{
+					status: 'crashed' as const,
+					label: 'dataful',
+					data: stringify(IN_PROGRESS_EXECUTION_DATA),
+				},
+				{ status: 'crashed' as const, label: 'dataless', data: stringify(undefined) },
+				{
+					status: 'waiting' as const,
+					label: 'dataful',
+					data: stringify(IN_PROGRESS_EXECUTION_DATA),
+				},
+			])(
+				'for $label $status execution, should leave it as is and announce nothing',
+				async ({ status, data }) => {
+					const workflow = await createWorkflow(OOM_WORKFLOW);
+					const execution = await createExecution({ status, data }, workflow);
+					const messages = setupMessages(execution.id, workflow.name);
+					const updateSpy = vi.spyOn(executionPersistence, 'updateExistingExecution');
+
+					const amendedExecution = await executionRecoveryService.recoverFromLogs(
+						execution.id,
+						messages,
+					);
+
+					expect(amendedExecution).toBeNull();
+					expect(updateSpy).not.toHaveBeenCalled();
+					expect(eventService.emit).not.toHaveBeenCalled();
+					const stored = await executionRepository.findOneByOrFail({ id: execution.id });
+					expect(stored.status).toBe(status);
+				},
+			);
+
+			test('for running execution, should announce the crash once with the last node timestamp', async () => {
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{ status: 'running', data: stringify(IN_PROGRESS_EXECUTION_DATA) },
+					workflow,
+				);
+				const messages = setupMessages(execution.id, workflow.name);
+				const startOfLastNodeRun = messages
+					.find((m) => m.eventName === 'n8n.node.started' && m.payload.nodeName === 'DebugHelper')
+					?.ts.toJSDate();
+
+				await executionRecoveryService.recoverFromLogs(execution.id, messages);
+
+				expect(eventService.emit.mock.calls).toEqual([
+					[
+						'execution-crashed',
+						expect.objectContaining({
+							executionId: execution.id,
+							workflowId: workflow.id,
+							detector: 'startup-recovery',
+							stoppedAt: startOfLastNodeRun,
+						}),
+					],
+				]);
+				const stored = await executionRepository.findOneByOrFail({ id: execution.id });
+				expect(stored.status).toBe('crashed');
+				expect(stored.stoppedAt).toEqual(startOfLastNodeRun);
 			});
 
 			test('for running execution without `runData`, should reconstruct missing node data', async () => {
@@ -476,6 +559,57 @@ describe('ExecutionRecoveryService', () => {
 
 				expect(debugHelperTaskData.executionStatus).toBe('crashed');
 				expect(debugHelperTaskData.error).toBeInstanceOf(NodeCrashedError);
+			});
+
+			test('should stop at the latest node event when nodes ran out of canvas order', async () => {
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{ status: 'running', data: stringify(undefined) },
+					workflow,
+				);
+				const nodeEvent = (
+					eventName: 'n8n.node.started' | 'n8n.node.finished',
+					nodeName: string,
+					ts: string,
+				) =>
+					new EventMessageNode({
+						eventName,
+						ts: DateTime.fromISO(ts),
+						payload: {
+							executionId: execution.id,
+							workflowName: workflow.name,
+							nodeName,
+							nodeType: 'n8n-nodes-base.debugHelper',
+							nodeId: '123',
+						},
+					});
+				// The trigger comes first in the node list but finishes last.
+				const messages = [
+					nodeEvent('n8n.node.started', 'DebugHelper', '2025-01-01T00:00:01.000Z'),
+					nodeEvent('n8n.node.finished', 'DebugHelper', '2025-01-01T00:00:02.000Z'),
+					nodeEvent(
+						'n8n.node.started',
+						'When clicking "Execute workflow"',
+						'2025-01-01T00:00:03.000Z',
+					),
+					nodeEvent(
+						'n8n.node.finished',
+						'When clicking "Execute workflow"',
+						'2025-01-01T00:00:04.000Z',
+					),
+				];
+
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				const latest = new Date('2025-01-01T00:00:04.000Z');
+				expect(amendedExecution?.stoppedAt).toEqual(latest);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-crashed',
+					expect.objectContaining({ stoppedAt: latest }),
+				);
 			});
 
 			test('should update `status`, `stoppedAt` and `data` if last node finished', async () => {

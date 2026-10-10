@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ExecutionRepository } from '@n8n/db';
+import type { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { MessageEventBusLogWriter } from '../../message-event-bus-writer/message-event-bus-log-writer';
 import { MessageEventBus } from '../message-event-bus';
+import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 
 vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 vi.unmock('node:fs');
@@ -18,6 +19,8 @@ interface BusConfigOverrides {
 	logFullPath?: string;
 	logBaseName?: string;
 	keepLogCount?: number;
+	crashRecoveryMode?: 'simple' | 'extensive';
+	executionsMode?: 'regular' | 'queue';
 }
 
 const buildGlobalConfig = (overrides: BusConfigOverrides = {}) =>
@@ -32,9 +35,12 @@ const buildGlobalConfig = (overrides: BusConfigOverrides = {}) =>
 				maxTotalMessagesPerFile: 500_000,
 			},
 			checkUnsentInterval: 0,
-			crashRecoveryMode: 'extensive',
+			crashRecoveryMode: overrides.crashRecoveryMode ?? 'extensive',
 		},
-		executions: { mode: 'regular', recovery: { workflowDeactivationEnabled: false } },
+		executions: {
+			mode: overrides.executionsMode ?? 'regular',
+			recovery: { workflowDeactivationEnabled: false },
+		},
 	});
 
 describe('MessageEventBus.initialize', () => {
@@ -43,14 +49,16 @@ describe('MessageEventBus.initialize', () => {
 	let getInstanceSpy: MockInstance;
 	const mockedWriter = mock<MessageEventBusLogWriter>();
 	const executionRepository = mock<ExecutionRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const executionCrashService = mock<ExecutionCrashService>();
 
 	const buildBus = (globalConfig: GlobalConfig) =>
 		new MessageEventBus(
 			logger,
 			executionRepository,
+			workflowRepository,
 			mock(),
-			mock(),
-			mock(),
+			executionCrashService,
 			globalConfig,
 			mock<InstanceSettings>({ n8nFolder: tempDir }),
 		);
@@ -67,7 +75,8 @@ describe('MessageEventBus.initialize', () => {
 		});
 		mockedWriter.getLogFileName.mockReturnValue('mocked.log');
 		mockedWriter.isRecoveryProcessRunning.mockReturnValue(false);
-		executionRepository.find.mockResolvedValue([]);
+		executionRepository.findUnfinishedIds.mockResolvedValue([]);
+		workflowRepository.getWorkflowInfo.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -118,5 +127,44 @@ describe('MessageEventBus.initialize', () => {
 
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(stalePath));
+	});
+
+	describe('startup recovery', () => {
+		it('merges log and database unfinished ids, logs active workflows, and marks them crashed in simple mode', async () => {
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: { b: [], c: [] },
+			});
+			executionRepository.findUnfinishedIds.mockResolvedValue(['a', 'b']);
+			workflowRepository.getWorkflowInfo.mockResolvedValue([{ id: 'w1', name: 'W1' }]);
+			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
+
+			await bus.initialize({});
+
+			expect(workflowRepository.getWorkflowInfo).toHaveBeenCalledWith({ activeOnly: true });
+			expect(logger.info).toHaveBeenCalledWith('   - W1 (ID: w1)');
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(
+				['b', 'c', 'a'],
+				'startup-recovery',
+			);
+		});
+
+		it('does not read unfinished executions from the database in queue mode', async () => {
+			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+				unsentMessages: [],
+				unfinishedExecutions: { b: [], c: [] },
+			});
+			const bus = buildBus(
+				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
+			);
+
+			await bus.initialize({});
+
+			expect(executionRepository.findUnfinishedIds).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(
+				['b', 'c'],
+				'startup-recovery',
+			);
+		});
 	});
 });

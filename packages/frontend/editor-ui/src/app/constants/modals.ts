@@ -13,7 +13,6 @@ export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
-export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const WORKFLOW_HISTORY_VERSION_UNPUBLISH = 'workflowHistoryVersionUnpublish';
 export const WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY = 'workflowHistoryNameVersion';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
@@ -35,7 +34,7 @@ export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
 
-export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
+export { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@n8n/frontend-constants/workflows';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';

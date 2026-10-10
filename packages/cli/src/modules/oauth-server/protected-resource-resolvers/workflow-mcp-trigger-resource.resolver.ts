@@ -1,6 +1,6 @@
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
@@ -102,6 +102,7 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-mcp:' + workflow.id,
+				surface: 'trigger' as const,
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				scopes: WORKFLOW_MCP_TRIGGER_SCOPES,

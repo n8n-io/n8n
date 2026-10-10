@@ -1,5 +1,9 @@
 import { Container } from '@n8n/di';
-import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
+import {
+	buildHitlCallbackReference,
+	InstanceSettings,
+	markTelegramInteractionRequest,
+} from 'n8n-core';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -56,6 +60,8 @@ describe('telegramSendAndWaitWebhook', () => {
 		vi.clearAllMocks();
 		webhookFns = mock<IWebhookFunctions>();
 		webhookFns.getCredentials.mockResolvedValue({ accessToken: ACCESS_TOKEN });
+		// A real webhook always has a request object; unflagged means "not the fixed HITL route".
+		webhookFns.getRequestObject.mockReturnValue(mock());
 	});
 
 	it('delegates to the shared sendAndWaitWebhook when chatApproval is off', async () => {
@@ -74,6 +80,55 @@ describe('telegramSendAndWaitWebhook', () => {
 		// not {} (regression: a bare `bodyData.callback_query` read would throw).
 		(sendAndWaitWebhook as Mock).mockResolvedValue({ noWebhookResponse: true });
 		webhookFns.getBodyData.mockReturnValue(undefined as never);
+		webhookFns.getNodeParameter.mockReturnValue(false);
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(sendAndWaitWebhook).toHaveBeenCalledTimes(1);
+		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('responds 403 without delegating when a fixed-route request resumes a node with chatApproval off', async () => {
+		const req = {};
+		markTelegramInteractionRequest(req);
+		webhookFns.getRequestObject.mockReturnValue(req as never);
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockReturnValue(false);
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn().mockReturnThis();
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as never);
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
+		expect(status).toHaveBeenCalledWith(403);
+		// No workflowData: the execution stays waiting.
+		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('responds 403 without delegating when a fixed-route request has no callback_query and chatApproval is on', async () => {
+		const req = {};
+		markTelegramInteractionRequest(req);
+		webhookFns.getRequestObject.mockReturnValue(req as never);
+		webhookFns.getBodyData.mockReturnValue(undefined as never);
+		webhookFns.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'chatApproval' ? true : undefined,
+		);
+		const status = vi.fn().mockReturnThis();
+		const send = vi.fn().mockReturnThis();
+		webhookFns.getResponseObject.mockReturnValue({ status, send } as never);
+
+		const result = await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
+		expect(status).toHaveBeenCalledWith(403);
+		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('still delegates for a link-button request with chatApproval off when it did not arrive on the fixed route', async () => {
+		(sendAndWaitWebhook as Mock).mockResolvedValue({ noWebhookResponse: true });
+		webhookFns.getRequestObject.mockReturnValue(mock());
+		webhookFns.getBodyData.mockReturnValue({});
 		webhookFns.getNodeParameter.mockReturnValue(false);
 
 		const result = await telegramSendAndWaitWebhook.call(webhookFns);

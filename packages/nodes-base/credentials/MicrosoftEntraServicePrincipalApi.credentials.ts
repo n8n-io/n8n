@@ -177,7 +177,7 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		},
 		{
 			displayName:
-				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test reads the organization via Microsoft Graph, so the app needs Organization.Read.All (or Directory.Read.All) for the test to pass.',
+				'App-only access uses application permissions that an admin must consent to on the app registration. The connection test only checks that the app can sign in. A missing or unconsented permission shows up as an error when a node runs, not here.',
 			name: 'setupNotice',
 			type: 'notice',
 			default: '',
@@ -270,9 +270,9 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		},
 	];
 
-	// Only called when "accessToken" (the expirable property) is empty, on a 401 retry,
-	// or during a credential test. Core drives expiry refresh through its 401 retry path,
-	// so we deliberately do not persist `expires_in` or run a credential-side TTL.
+	// Only called when "accessToken" (the expirable property) is empty or on a 401 retry.
+	// Core drives expiry refresh through its 401 retry path, so we deliberately do not
+	// persist `expires_in` or run a credential-side TTL.
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const accessToken = await getAccessToken(credentials);
 		return { accessToken };
@@ -292,10 +292,11 @@ export class MicrosoftEntraServicePrincipalApi implements ICredentialType {
 		return requestOptions;
 	}
 
+	// The service document needs no application permission, so the test passes on the mint alone.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.graphApiBaseUrl || "https://graph.microsoft.com"}}',
-			url: '/v1.0/organization',
+			url: '/v1.0/',
 			method: 'GET',
 		},
 	};

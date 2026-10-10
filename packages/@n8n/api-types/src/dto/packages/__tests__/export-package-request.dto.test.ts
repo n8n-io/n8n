@@ -1,29 +1,21 @@
 import { ExportPackageRequestDto } from '../export-package-request.dto';
 
 describe('ExportPackageRequestDto', () => {
-	describe('workflowIds', () => {
-		it('accepts a non-empty array of workflow ids', () => {
-			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1', 'wf-2'] });
-			expect(result.success).toBe(true);
-		});
-
-		it('accepts up to 300 workflow ids', () => {
-			const workflowIds = Array.from({ length: 300 }, (_, i) => `wf-${i}`);
-			expect(ExportPackageRequestDto.safeParse({ workflowIds }).success).toBe(true);
+	describe.each(['workflowIds', 'agentIds'] as const)('%s', (field) => {
+		it('accepts and trims up to 300 IDs', () => {
+			const ids = Array.from({ length: 300 }, (_, index) => `id-${index}`);
+			const parsed = ExportPackageRequestDto.parse({ [field]: ids.map((id) => ` ${id} `) });
+			expect(parsed[field]).toEqual(ids);
 		});
 
 		it.each([
-			{ name: 'empty workflowIds array', request: { workflowIds: [] } },
-			{ name: 'both empty arrays', request: { workflowIds: [], projectIds: [] } },
-			{ name: 'empty-string workflow id', request: { workflowIds: [''] } },
-			{ name: 'whitespace-only workflow id', request: { workflowIds: ['   '] } },
-			{ name: 'non-string workflow id', request: { workflowIds: [123] } },
-			{
-				name: 'more than 300 workflow ids',
-				request: { workflowIds: Array.from({ length: 301 }, (_, i) => `wf-${i}`) },
-			},
-		])('rejects $name', ({ request }) => {
-			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
+			{ name: 'empty array', ids: [] },
+			{ name: 'empty ID', ids: [''] },
+			{ name: 'whitespace ID', ids: ['   '] },
+			{ name: 'non-string ID', ids: [123] },
+			{ name: 'more than 300 IDs', ids: Array.from({ length: 301 }, (_, i) => `id-${i}`) },
+		])('rejects $name', ({ ids }) => {
+			expect(ExportPackageRequestDto.safeParse({ [field]: ids }).success).toBe(false);
 		});
 	});
 
@@ -144,67 +136,36 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
-	describe('missingWorkflowDependencyPolicy', () => {
-		it.each(['fail', 'reference-only', 'include-in-package'])(
-			'accepts %s',
-			(missingWorkflowDependencyPolicy) => {
-				const result = ExportPackageRequestDto.safeParse({
-					workflowIds: ['wf-1'],
-					missingWorkflowDependencyPolicy,
-				});
-
-				expect(result.success).toBe(true);
-			},
-		);
+	describe('dependencyPolicy', () => {
+		it.each(['fail', 'reference-only', 'include-in-package'])('accepts %s', (dependencyPolicy) => {
+			expect(ExportPackageRequestDto.parse({ dependencyPolicy }).dependencyPolicy).toBe(
+				dependencyPolicy,
+			);
+		});
 
 		it('defaults to fail', () => {
-			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
-
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.missingWorkflowDependencyPolicy).toBe('fail');
-			}
+			expect(ExportPackageRequestDto.parse({}).dependencyPolicy).toBe('fail');
 		});
 
 		it('rejects unknown values', () => {
-			const result = ExportPackageRequestDto.safeParse({
-				workflowIds: ['wf-1'],
-				missingWorkflowDependencyPolicy: 'skip',
-			});
-
-			expect(result.success).toBe(false);
+			expect(ExportPackageRequestDto.safeParse({ dependencyPolicy: 'skip' }).success).toBe(false);
 		});
 	});
 
-	describe('workflowVersionPolicy', () => {
+	describe('versionPolicy', () => {
 		it.each(['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'])(
 			'accepts %s',
-			(workflowVersionPolicy) => {
-				const result = ExportPackageRequestDto.safeParse({
-					workflowIds: ['wf-1'],
-					workflowVersionPolicy,
-				});
-
-				expect(result.success).toBe(true);
+			(versionPolicy) => {
+				expect(ExportPackageRequestDto.parse({ versionPolicy }).versionPolicy).toBe(versionPolicy);
 			},
 		);
 
 		it('defaults to latest', () => {
-			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
-
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.workflowVersionPolicy).toBe('latest');
-			}
+			expect(ExportPackageRequestDto.parse({}).versionPolicy).toBe('latest');
 		});
 
 		it('rejects unknown values', () => {
-			const result = ExportPackageRequestDto.safeParse({
-				workflowIds: ['wf-1'],
-				workflowVersionPolicy: 'published',
-			});
-
-			expect(result.success).toBe(false);
+			expect(ExportPackageRequestDto.safeParse({ versionPolicy: 'published' }).success).toBe(false);
 		});
 	});
 

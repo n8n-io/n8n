@@ -6,11 +6,13 @@ import type {
 } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { computed } from 'vue';
-import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import InstanceContextStep from './InstanceContextStep.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 
@@ -25,6 +27,7 @@ const props = withDefaults(
 );
 
 const { getToolLabel } = useToolLabel();
+const { getInstanceContextLabel } = useInstanceContextLabel();
 
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -45,9 +48,14 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
+/** Reuse the context row label while it is the latest active entry. */
 const activityLabel = computed<string | undefined>(() => {
 	const toolCall = tailToolCall.value;
-	return toolCall ? getToolLabel(toolCall.toolName, toolCall.args) : undefined;
+	if (toolCall) return getToolLabel(toolCall.toolName, toolCall.args);
+
+	if (!props.active || props.awaitingInput) return undefined;
+	const last = props.entries[props.entries.length - 1];
+	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
 });
 
 const segments = computed(() => {
@@ -64,7 +72,10 @@ const durationSec = computed<number | undefined>(() => {
 		const toolCall = toolCallFor(entry);
 		if (!toolCall) continue;
 		const startedAt = toolCall.startedAt ? Date.parse(toolCall.startedAt) : NaN;
-		const completedAt = toolCall.completedAt ? Date.parse(toolCall.completedAt) : NaN;
+		// An interrupted call is stamped when the restarted process sweeps it, which can
+		// be hours after the work stopped, so its end time says nothing about the duration.
+		const completedAt =
+			toolCall.completedAt && !toolCall.interrupted ? Date.parse(toolCall.completedAt) : NaN;
 		if (!Number.isNaN(startedAt))
 			start = start === undefined ? startedAt : Math.min(start, startedAt);
 		if (!Number.isNaN(completedAt))
@@ -85,18 +96,15 @@ const durationSec = computed<number | undefined>(() => {
 		test-id="instance-ai-thinking-block"
 	>
 		<template v-for="(entry, index) in props.entries" :key="index">
-			<div v-if="entry.type === 'text'" :class="$style.thought">
+			<!-- Reasoning renders inline: the header already shows its first sentence. -->
+			<div v-if="entry.type === 'text' || entry.type === 'reasoning'" :class="$style.thought">
 				<InstanceAiMarkdown
 					:content="entry.content"
 					:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				/>
 			</div>
 
-			<AiReasoningBlock
-				v-else-if="entry.type === 'reasoning'"
-				:entry="entry"
-				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
-			/>
+			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
 
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"

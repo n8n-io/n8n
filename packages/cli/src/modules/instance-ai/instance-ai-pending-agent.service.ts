@@ -4,8 +4,7 @@ import { Container, Service } from '@n8n/di';
 import { threadAuthorizesAgentAdoption } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import { AgentRunnableStateService } from '@/modules/agents/agent-runnable-state.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -114,6 +113,7 @@ export class InstanceAiPendingAgentService {
 		const { agents, defaultModelResolver } = this.agentsModule();
 		const defaultModel = await defaultModelResolver.resolve(user, projectId);
 		return await agents.create(projectId, name, {
+			actor: { kind: 'user', user },
 			id: agentId,
 			adoptOnCollision,
 			...(defaultModel ? { defaultModel } : {}),

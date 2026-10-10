@@ -1,7 +1,8 @@
 import { ChatAnthropic, type ChatAnthropicInput } from '@langchain/anthropic';
-import type { LLMResult } from '@langchain/core/outputs';
 import {
+	anthropicTokensUsageParser,
 	getProxyAgent,
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -18,20 +19,17 @@ import {
 } from 'n8n-workflow';
 
 import { getCustomCredentialHeader } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { searchModels } from './methods/searchModels';
 
-// The 1.3+ resource locator accepts any id the provider lists, so the newest
-// generation is the right answer on every one of those versions. Phrased as
-// choice guidance rather than a validity claim: older versions still default to
-// an older model, and that stored value is not wrong, just superseded.
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	propertyHint:
-		'Default to claude-sonnet-5 (latest Sonnet); use claude-opus-5 when the user needs the most capable model. Do not fall back to an older generation (Claude Sonnet 4.6 or earlier, Claude 3.x, Claude 2, LEGACY options) unless the user asks for a specific model. Tell the user which model you picked, why, and that they can change it at any time. When extended thinking is needed, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
+		'When extended thinking is needed, use Adaptive mode and choose an Effort level. ' +
+		MODEL_SELECTION_HINT,
 };
 
-// Versions 1 to 1.2 expose a fixed enum that predates the current generation,
-// so the recommendation above names nothing those versions can actually select.
+// Versions 1 to 1.2 restrict model selection to a fixed list.
 const ANTHROPIC_LEGACY_MODEL_BUILDER_HINT = {
 	propertyHint:
 		'This node version only offers superseded Claude models. Pick claude-3-5-sonnet-20241022 if the node has to stay on this version; otherwise rebuild it on the latest node version, where the current Claude generation is selectable.',
@@ -654,32 +652,12 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
-		const tokensUsageParser = (result: LLMResult) => {
-			const usage = (result?.llmOutput?.usage as {
-				input_tokens: number;
-				output_tokens: number;
-				cache_creation_input_tokens?: number;
-				cache_read_input_tokens?: number;
-			}) ?? {
-				input_tokens: 0,
-				output_tokens: 0,
-			};
-			const promptTokens =
-				usage.input_tokens +
-				(usage.cache_creation_input_tokens ?? 0) +
-				(usage.cache_read_input_tokens ?? 0);
-			return {
-				completionTokens: usage.output_tokens,
-				promptTokens,
-				totalTokens: promptTokens + usage.output_tokens,
-			};
-		};
-
 		const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
+			fetch: aiClientFetch,
 			// undici v7 and the SDK's bundled fetch types disagree structurally
 			// (FormData iterators), so the dispatcher cannot carry its own type here.
 			fetchOptions: {
-				dispatcher: getProxyAgent(baseURL),
+				dispatcher: getProxyAgent(baseURL, undefined, this.helpers.getSecureEgressFilter()),
 			} as NonNullable<ChatAnthropicInput['clientOptions']>['fetchOptions'],
 		};
 
@@ -777,7 +755,7 @@ export class LmChatAnthropic implements INodeType {
 			maxTokens: options.maxTokensToSample,
 			callbacks: [
 				new N8nLlmTracing(this, {
-					tokensUsageParser,
+					tokensUsageParser: anthropicTokensUsageParser,
 					redactedHeaders: customHeader ? [customHeader.name] : [],
 				}),
 			],

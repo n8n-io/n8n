@@ -9,9 +9,9 @@ import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';
 import { ChatHubToolRepository } from './chat-hub-tool.repository';
@@ -22,6 +22,7 @@ export class ChatHubToolService {
 		private readonly logger: Logger,
 		private readonly chatToolRepository: ChatHubToolRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -86,6 +87,7 @@ export class ChatHubToolService {
 	async createTool(user: User, data: ChatHubCreateToolRequest): Promise<ChatHubTool> {
 		const definition = data.definition;
 		this.validateToolExpressions(definition);
+		this.deprecatedNodesValidationService.validateOnCreate([definition]);
 
 		const tool = await this.chatToolRepository.createTool({
 			id: definition.id,
@@ -107,6 +109,7 @@ export class ChatHubToolService {
 		updates: ChatHubUpdateToolRequest,
 		trx?: EntityManager,
 	): Promise<ChatHubTool> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const tool = await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
 			const existingTool = await this.chatToolRepository.getOneById(id, user.id, em);
 			if (!existingTool) {
@@ -117,12 +120,21 @@ export class ChatHubToolService {
 
 			if (updates.definition !== undefined) {
 				this.validateToolExpressions(updates.definition);
+				this.deprecatedNodesValidationService.validateOnUpdate(
+					[updates.definition],
+					[existingTool.definition],
+				);
 				updateData.definition = updates.definition;
 				updateData.name = updates.definition.name;
 				updateData.type = updates.definition.type;
 				updateData.typeVersion = updates.definition.typeVersion ?? 1;
 			}
 			if (updates.enabled !== undefined) {
+				if (updates.enabled) {
+					this.deprecatedNodesValidationService.validateOnCreate([
+						updates.definition ?? existingTool.definition,
+					]);
+				}
 				updateData.enabled = updates.enabled;
 			}
 
@@ -134,6 +146,7 @@ export class ChatHubToolService {
 	}
 
 	async deleteTool(id: string, userId: string, trx?: EntityManager): Promise<void> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
 			const existingTool = await this.chatToolRepository.getOneById(id, userId, em);
 			if (!existingTool) {

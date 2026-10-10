@@ -8,7 +8,9 @@ import type { Agent } from '../entities/agent.entity';
  * column holds everything except triggers, which live on `agent.integrations`.
  * The builder LLM consumes the merged shape.
  */
-export function composeJsonConfig(agent: Agent): AgentJsonConfig | null {
+export function composeJsonConfig(
+	agent: Pick<Agent, 'schema' | 'integrations'>,
+): AgentJsonConfig | null {
 	if (!agent.schema) return null;
 	return {
 		...agent.schema,
@@ -25,5 +27,8 @@ export function decomposeJsonConfig(config: AgentJsonConfig): {
 	integrations: AgentIntegrationConfig[];
 } {
 	const { integrations, ...schemaConfig } = config;
-	return { schemaConfig, integrations: integrations ?? [] };
+	return {
+		schemaConfig,
+		integrations: integrations ?? [],
+	};
 }

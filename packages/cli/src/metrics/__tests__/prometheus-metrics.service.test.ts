@@ -5,6 +5,8 @@ import type express from 'express';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
+import type { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
+
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
 import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
@@ -15,6 +17,7 @@ import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-m
 import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
+import type { PrometheusMcpPostSaveMetricsService } from '../prometheus/mcp-post-save-metrics.service';
 import type { PrometheusPollTriggerMetricsService } from '../prometheus/poll-trigger-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
@@ -22,6 +25,7 @@ import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.
 import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
 import type { PrometheusSchedulerMetricsService } from '../prometheus/scheduler-metrics.service';
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
+import type { PrometheusSystemTaskMetricsService } from '../prometheus/system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
 import type { PrometheusWebhookAndFormMetricsService } from '../prometheus/webhook-and-form-metrics.service';
@@ -55,10 +59,13 @@ describe('PrometheusMetricsService', () => {
 	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
 	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
+	let mcpPostSave: Mocked<PrometheusMcpPostSaveMetricsService>;
 	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
 	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
 	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
+	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
+	const databaseIndependentRoutes = mock<DatabaseIndependentRoutes>();
 
 	let service: PrometheusMetricsService;
 
@@ -83,11 +90,14 @@ describe('PrometheusMetricsService', () => {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			mcpPostSave,
 			dbPool,
 			workflowPublication,
 			scheduler,
 			pollTrigger,
 			encryption,
+			systemTask,
+			databaseIndependentRoutes,
 		);
 
 	beforeEach(() => {
@@ -119,11 +129,13 @@ describe('PrometheusMetricsService', () => {
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		mcpPostSave = mock<PrometheusMcpPostSaveMetricsService>({ enabled: true });
 		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
 		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 		scheduler = mock<PrometheusSchedulerMetricsService>({ enabled: true });
 		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
 		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
+		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -154,11 +166,13 @@ describe('PrometheusMetricsService', () => {
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(mcpPostSave.init).toHaveBeenCalledWith(app);
 			expect(dbPool.init).toHaveBeenCalledWith(app);
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 			expect(scheduler.init).toHaveBeenCalledWith(app);
 			expect(pollTrigger.init).toHaveBeenCalledWith(app);
 			expect(encryption.init).toHaveBeenCalledWith(app);
+			expect(systemTask.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {
@@ -181,6 +195,7 @@ describe('PrometheusMetricsService', () => {
 			service.init(app);
 
 			expect(app.get).toHaveBeenCalledWith('/metrics', expect.any(Function));
+			expect(databaseIndependentRoutes.add).toHaveBeenCalledWith('/metrics');
 		});
 
 		it('should return metrics string with correct content-type when /metrics handler is called', async () => {

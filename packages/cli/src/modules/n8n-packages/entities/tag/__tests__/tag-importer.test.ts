@@ -2,7 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { TagEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { TagService } from '@/services/tag.service';
 
 import { TagImporter } from '../tag-importer';
@@ -27,7 +27,7 @@ function makeImporter() {
 }
 
 const request: TagImportRequest = {
-	requirements: [{ id: 'tag-1', name: 'prod', usedByWorkflows: ['wf-1'] }],
+	requirements: [{ id: 'tag-1', name: 'prod', usedBy: [{ kind: 'workflow', id: 'wf-1' }] }],
 	missingMode: 'create',
 	conflictPolicy: 'skip',
 };
@@ -40,9 +40,7 @@ describe('TagImporter.plan', () => {
 		const plan = await importer.plan(contextFor([]), request, appliedWorkflows);
 
 		expect(plan.creations).toEqual([{ id: 'tag-1', name: 'prod' }]);
-		expect(plan.failures).toEqual([
-			{ kind: 'permission-denied', missingScope: 'tag:create', usedByWorkflows: ['wf-1'] },
-		]);
+		expect(plan.failures).toEqual([{ kind: 'permission-denied', missingScope: 'tag:create' }]);
 	});
 
 	it('fails with permission-denied when the user lacks tag:update for a planned rename', async () => {
@@ -56,9 +54,7 @@ describe('TagImporter.plan', () => {
 		);
 
 		expect(plan.renames).toEqual([{ id: 'tag-1', from: 'production', to: 'prod' }]);
-		expect(plan.failures).toEqual([
-			{ kind: 'permission-denied', missingScope: 'tag:update', usedByWorkflows: ['wf-1'] },
-		]);
+		expect(plan.failures).toEqual([{ kind: 'permission-denied', missingScope: 'tag:update' }]);
 	});
 
 	it('fails with permission-denied when the user lacks tag:update for a planned reconcile', async () => {
@@ -72,9 +68,7 @@ describe('TagImporter.plan', () => {
 		);
 
 		expect(plan.reconciles).toEqual([{ id: 'tag-1', name: 'prod', oldId: 'tag-9' }]);
-		expect(plan.failures).toEqual([
-			{ kind: 'permission-denied', missingScope: 'tag:update', usedByWorkflows: ['wf-1'] },
-		]);
+		expect(plan.failures).toEqual([{ kind: 'permission-denied', missingScope: 'tag:update' }]);
 	});
 });
 
