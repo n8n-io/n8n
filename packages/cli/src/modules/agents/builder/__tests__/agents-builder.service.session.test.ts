@@ -125,11 +125,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 	function createObservationLogReflectFn(model: unknown, options: unknown) {
 		return { model, options, kind: 'reflect' };
 	}
-
-	function createPlannerTodosTool(): BuiltTool {
-		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
-	}
-
 	return {
 		streamCalls,
 		resumeCalls,
@@ -147,7 +142,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
-		createPlannerTodosTool,
 	};
 });
 
@@ -157,7 +151,6 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
-	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and
@@ -406,6 +399,7 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(agentsSdkMocks.registeredToolNames).toEqual(
 			expect.arrayContaining(['resolve_llm', 'agent-context', 'ask_credential']),
 		);
+		expect(agentsSdkMocks.registeredToolNames).not.toContain('write_todos');
 	});
 
 	it('registers the parent MCP tools for an initial builder turn', async () => {
