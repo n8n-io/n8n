@@ -164,7 +164,13 @@ jobs:
         shell: bash
         run: |
           STORE="$(pnpm store path --silent)"
-          lscpu | grep -E '^(Architecture|CPU\(s\)|Model name|Thread|Core|Socket)'
+          lscpu | grep -E '^(Architecture|CPU\(s\)|On-line|Vendor ID|Model|CPU family|Stepping|Thread|Core|Socket|CPU.*MHz|Hypervisor|Virtualization|L[123])'
+          for FILE in /sys/fs/cgroup/cpu.max /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/memory.max; do
+            if [ -r "$FILE" ]; then
+              echo "$FILE"
+              cat "$FILE"
+            fi
+          done
           findmnt -T "$PWD" -o TARGET,SOURCE,FSTYPE
           findmnt -T "$STORE" -o TARGET,SOURCE,FSTYPE
           findmnt -T "$PWD/node_modules" -o TARGET,SOURCE,FSTYPE
@@ -253,6 +259,14 @@ jobs:
             compiled
             dist/task-runner-javascript
           fail-on-cache-miss: true
+
+      - name: Inspect Docker builder hardware
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          docker buildx build --progress=plain --no-cache --output type=cacheonly - <<'DOCKERFILE'
+          FROM node:26.10.0-alpine3.24@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80
+          RUN node -e 'const fs = require("node:fs"); const os = require("node:os"); const cpu = fs.readFileSync("/proc/cpuinfo", "utf8").split(/\n\n/)[0].split("\n").filter(line => /^(vendor_id|cpu family|model|model name|stepping|cpu MHz|cache size|siblings|cpu cores|microcode)\s*:/.test(line)); console.log(JSON.stringify({ cpu, logicalCpus: os.cpus().length, availableParallelism: os.availableParallelism(), memoryGiB: os.totalmem() / 2 ** 30, kernel: os.release() }, null, 2)); for (const path of ["/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu.stat", "/sys/fs/cgroup/memory.max"]) { if (fs.existsSync(path)) console.log(path, fs.readFileSync(path, "utf8")); }'
+          DOCKERFILE
 
       - name: Determine Docker tags for all images
         id: determine-tags
