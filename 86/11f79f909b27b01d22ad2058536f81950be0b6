@@ -1,0 +1,51 @@
+packages/nodes-base/nodes/Mailchimp/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c9375548d5ff87 62-65
+  s_2e1fa95fc44f8f::t_7184447a3ae641 74-79
+  s_a8d7d542d666a7::t_e6f462687fde57 9,11,32,41,88
+packages/nodes-base/nodes/Mailchimp/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7ce227216875e8 1-22
+packages/nodes-base/nodes/Mailchimp/Mailchimp.node.ts
+  s_84e3fed1d772f3::t_98a3a661e76d78 11,1589-1594,1613,1634,1653,1703,1713,1818,1830,1851,1891,1901,2009,2041,2071,2129,2137-2143,2152,2163,2173,2184,2194
+packages/nodes-base/nodes/Mailchimp/MailchimpTrigger.node.ts
+  s_097953de0a96e2::t_1f8cabe0f8720f 12,171,196,234,250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8611f79f909b27b01d22ad2058536f81950be0b6",
+  "prompts": {},
+  "sessions": {
+    "s_097953de0a96e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac90f73f2622c71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_84e3fed1d772f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7dda021841efe059",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a8d7d542d666a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-abbb49b4bb6e8c19c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

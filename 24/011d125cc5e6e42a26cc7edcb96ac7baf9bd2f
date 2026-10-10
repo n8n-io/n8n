@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Okta/test/UserFunctions.test.ts
+  s_2e1fa95fc44f8f::t_aa994368d150c3 107-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24011d125cc5e6e42a26cc7edcb96ac7baf9bd2f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Brandfetch/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_b4d78dcf6efbce 1-135,173
+  s_2e1fa95fc44f8f::t_e15f021900cb5d 136-145,147-172
+  s_2e1fa95fc44f8f::t_a5694bff2b64dd 146
+  s_2e1fa95fc44f8f::t_24718aaa65fa18 174-175
+packages/nodes-base/nodes/Brandfetch/test/workflow/Brandfetch.workflow.test.ts
+  s_2e1fa95fc44f8f::t_6df686192f1971 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27aefc4b8defe5bbaf3f130ad45e92fc233395fa",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

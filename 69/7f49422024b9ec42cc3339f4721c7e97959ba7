@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v1/workflow/requestUrls.workflow.test.ts
+  s_2e1fa95fc44f8f::t_494481b900898c 1-93
+  s_2e1fa95fc44f8f::t_ac34fff8258c3e 94-96
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/workflow/requestUrls.workflow.json
+  s_5c415727fb2ccd::t_972bca274ec3a5 17,48,72,94,99,122,146,151,173,197,222,244,249,272,277,302,307,329,350,393,417,440,466,489,512,766,775,790,799,808,817,825,840,848,863,871,879,894,902,910,918
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/workflow/requestUrls.workflow.test.ts
+  s_5c415727fb2ccd::t_1f93edf6496122 5,7,9,11,13,15,17,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "697f49422024b9ec42cc3339f4721c7e97959ba7",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5c415727fb2ccd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1f0b3a90f3341e87",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

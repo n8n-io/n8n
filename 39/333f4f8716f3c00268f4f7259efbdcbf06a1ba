@@ -1,0 +1,54 @@
+packages/nodes-base/nodes/Workable/test/WorkableTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_3ad8c57538eb8e 1-71
+packages/nodes-base/nodes/WooCommerce/__tests__/WooCommerceTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_7a31cf5549283d 2
+  s_2e1fa95fc44f8f::t_eabc4f48f47c80 209,213-216
+  s_2e1fa95fc44f8f::t_07b1a91bba4e2d 206-207,210-212,217-247
+  s_2e1fa95fc44f8f::t_40bbf2409d742e 208
+  s_2e1fa95fc44f8f::t_4e34c2ae0ea0fb 4
+packages/nodes-base/nodes/Wise/test/workflow/Wise.workflow.test.ts
+  s_2e1fa95fc44f8f::t_25bc4dbe661587 1-64
+packages/nodes-base/nodes/Vonage/test/workflow/Vonage.workflow.test.ts
+  s_2e1fa95fc44f8f::t_bd8d80998ae10a 1-25
+packages/nodes-base/nodes/WooCommerce/__tests__/workflow/WooCommerce.workflow.test.ts
+  s_2e1fa95fc44f8f::t_0f7beca42900fb 1-69
+packages/nodes-base/nodes/Wise/test/WiseTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_1a67791ed305e5 1-47
+packages/nodes-base/nodes/Wekan/test/workflow/Wekan.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8f486ef1faf88b 1-23,25-27,30-61,63-70
+  s_2e1fa95fc44f8f::t_371bb0ad3f1395 28-29
+  s_2e1fa95fc44f8f::t_570e495a5e9e65 24
+  s_2e1fa95fc44f8f::t_b1a7f3976efb5e 62
+packages/nodes-base/nodes/Vonage/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_addc00c8789fb0 1-59
+packages/nodes-base/nodes/Wekan/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_b62cbd427e0e1c 1-852
+packages/nodes-base/nodes/Wise/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_ffe8e23cedd157 1-494
+packages/nodes-base/nodes/WooCommerce/__tests__/workflow/requests.workflow.json
+  s_4c8cc20b364bbe::t_5f3835879c64aa 1-523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39333f4f8716f3c00268f4f7259efbdcbf06a1ba",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4c8cc20b364bbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4513b8b76516693e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

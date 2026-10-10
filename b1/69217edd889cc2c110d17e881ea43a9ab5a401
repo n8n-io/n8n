@@ -1,0 +1,102 @@
+packages/@n8n/decorators/src/controller/types.ts
+  s_8631ec10eb1199::t_5bab70b06e8683 121
+  s_8631ec10eb1199::t_fa16d7398e787c 5,31-33
+  s_8631ec10eb1199::t_fff9063ac3f525 34-35
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_8631ec10eb1199::t_5ef9c8c442bb51 67,72-75
+  s_8631ec10eb1199::t_80ec9217eea113 76-77
+  s_8631ec10eb1199::t_268e04424571b7 31
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_96959332022b42 152-168,170,175
+  s_8631ec10eb1199::t_9756f71a3bce82 169
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_b8087f587f606d 740,748-749,765,770-771,785,789-794,805,808,813-814,819-823,825,828,833,837,840,843,851-853,859,861-875,877,880,882,886,888-894,897,899-903,906-907,910,912-915,918,920,922,925,936
+packages/@n8n/decorators/src/controller/index.ts
+  s_8631ec10eb1199::t_fa16d7398e787c 24
+packages/cli/src/public-api/media-types/binary-response.ts
+  s_8631ec10eb1199::t_85f2c81a7e0c61 5,25-27,29,31,33-34
+  s_8631ec10eb1199::t_f4766673a490e0 1,4,7-13,74,76,81,83-84,87
+  s_8631ec10eb1199::t_69b89fecfb07bf 90
+  s_8631ec10eb1199::t_16c076b40efabd 22-24,28,30,88-90
+  s_8631ec10eb1199::t_968755998656f0 37-39,44-46,49-50,52-54,63-64,66-72,87,91-94,96-100,102-103,105-110,112-116
+  s_8631ec10eb1199::t_d2ac32663beb30 65
+  s_8631ec10eb1199::t_a9d0ddb2da7c2d 51
+  s_8631ec10eb1199::t_c59923e499ed32 16-21
+  s_8631ec10eb1199::t_b2df95bfea79b0 41,43,47-48
+  s_8631ec10eb1199::t_0a392d7639a2d4 55-62
+  s_8631ec10eb1199::t_3dbe18a6ed73b0 40
+  s_8631ec10eb1199::t_495b0f517dea47 42
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_4eae74cce3bbff 23,125-126,131
+.agents/skills/public-api/SKILL.md
+  s_8631ec10eb1199::t_268e04424571b7 112
+packages/cli/src/public-api/media-types/__tests__/binary-response.test.ts
+  s_8631ec10eb1199::t_dc00dd4f65e9be 34
+  s_8631ec10eb1199::t_6b7172559745cc 45
+  s_8631ec10eb1199::t_94c6e881140dae 1-2,4-7,16-22,24-33,35-44,46-55,200
+  s_8631ec10eb1199::t_a33833bc23c612 9-11,13-15
+  s_8631ec10eb1199::t_a95b82684cca82 23
+  s_8631ec10eb1199::t_a286d7346663c6 56-57,69,71-75,78-103
+  s_8631ec10eb1199::t_c8a378058bd0f9 3
+  s_8631ec10eb1199::t_b6ea123b6b5460 105-113,116
+  s_8631ec10eb1199::t_69545c386e4d70 134-144,155-160,184-199
+  s_8631ec10eb1199::t_32a7230fbafeb9 104,114-115,117-133
+  s_8631ec10eb1199::t_1172c158d2590a 145-154
+  s_8631ec10eb1199::t_718c6cd4899c66 58-68,70,76-77
+  s_8631ec10eb1199::t_dc64d6e72ae93f 8,12
+  s_8631ec10eb1199::t_6cc8326a9f142a 161-183
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_8631ec10eb1199::t_79b46e282d2379 87
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_2f5bac864c6ede 2,23,25-26,28-31,42-45,54,57-59,70-79,81-100
+  s_8631ec10eb1199::t_a760cf1e1bc092 113,156
+  s_8631ec10eb1199::t_dc5c4356d64cf2 80
+  s_8631ec10eb1199::t_039b723567d51e 206-262,264-282
+  s_8631ec10eb1199::t_27d19e5b8355f6 263
+  s_8631ec10eb1199::t_ba6c3ce6ed3aa1 101
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_8631ec10eb1199::t_dc76f826423041 72-76
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_8631ec10eb1199::t_fff3109db1257e 4,7-8,15-37,39-41,44-46,48-59
+  s_8631ec10eb1199::t_3f39f509f46915 3
+  s_8631ec10eb1199::t_dce64a83002ff5 9-14,38,42-43,47
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_8631ec10eb1199::t_94fba0c6bc2381 34
+  s_8631ec10eb1199::t_20c61d460ad667 1-2,4,9-18,21-24,26-30,32,35,37,40-43,45-50
+  s_8631ec10eb1199::t_1d93c33666eade 51
+  s_8631ec10eb1199::t_02ed641c802086 39
+  s_8631ec10eb1199::t_89313d65365642 44
+  s_8631ec10eb1199::t_dce64a83002ff5 3,5-8,19-20,25,31,33,36,38
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_8631ec10eb1199::t_bc51cb25fdb3b2 201-207
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_8631ec10eb1199::t_cc3db2a9738d60 1-21
+packages/cli/src/public-api/v1/openapi.yml
+  s_8631ec10eb1199::t_7243d8ef6f4a93 81
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_8631ec10eb1199::t_4db1e1f8d1be60 4,31,34-35,66-70,73-77,79-83,171,183,185-187,283,286-290,311-431
+  s_8631ec10eb1199::t_9592400c40c1a3 1-3,5-30,32-33,36-65,71-72,78,84-170,172-182,184,188-282,284-285,291-310,432
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_8631ec10eb1199::t_dc5c4356d64cf2 225,237
+  s_8631ec10eb1199::t_1e76d44e2bc60b 9,17-26,206-207,213-221,224,236,258-297
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_8631ec10eb1199::t_a4ed324fa0af5c 1-6,8,10-69,71-79,81-116
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_8631ec10eb1199::t_df6ff3e0e722a1 192-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b169217edd889cc2c110d17e881ea43a9ab5a401",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

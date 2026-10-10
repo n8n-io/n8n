@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/FacebookLeadAds/GenericFunctions.ts
+  s_22eea66365bbbb::t_8c0ead87662ba3 10-11,13,27,31,39,80,87,95,119,129,140,153,165,171,178,187,206,220
+packages/nodes-base/nodes/FacebookLeadAds/__tests__/FacebookLeadAdsTrigger.node.test.ts
+  s_7b373731fe31a5::t_5cccc0f5b73fcd 148-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0068bb11dadfebcbbe3203435e3b39b92f4a3c15",
+  "prompts": {},
+  "sessions": {
+    "s_22eea66365bbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a16673bfa31c94f40",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7b373731fe31a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a566983649db61ea2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

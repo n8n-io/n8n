@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Odoo/test/workflow/Odoo.workflow.test.ts
+  s_2e1fa95fc44f8f::t_05c38869a1b38a 9-16
+  s_2e1fa95fc44f8f::t_fbf7111c644e0e 38
+  s_2e1fa95fc44f8f::t_6821009081e217 35
+  s_2e1fa95fc44f8f::t_bcadcc2d6a5e15 34,36
+  s_2e1fa95fc44f8f::t_379654edfb126e 1-8,17-33,37,39-48
+  s_2e1fa95fc44f8f::t_a9e2aa67a304d0 49-51
+packages/nodes-base/nodes/Odoo/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_1e6e00290f8435 22
+  s_2e1fa95fc44f8f::t_0b65d6dcd80fee 1-18,25-26,28,34-37,40-51,54-65
+  s_2e1fa95fc44f8f::t_c53505b829bed5 19-21
+  s_2e1fa95fc44f8f::t_f84c771c715c3f 23-24
+  s_2e1fa95fc44f8f::t_e5935a3179b3ec 27
+  s_2e1fa95fc44f8f::t_6766b8aa53c65d 29-33
+  s_2e1fa95fc44f8f::t_fa644a1528d91e 38-39
+  s_2e1fa95fc44f8f::t_b41915d78940c4 52-53
+  s_2e1fa95fc44f8f::t_71e0e9876ce533 66-68
+  s_19150bf5812493::t_e9a6a843f839b0 69-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "330cc7233af4df75033c7623cf27b6ce69d4ecb3",
+  "prompts": {},
+  "sessions": {
+    "s_19150bf5812493": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaeb313a3a4da81b4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

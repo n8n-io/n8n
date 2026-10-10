@@ -1,0 +1,80 @@
+packages/nodes-base/nodes/Pushcut/PushcutTrigger.node.ts
+  s_2e1fa95fc44f8f::t_649803c36bfaba 99
+  s_2e1fa95fc44f8f::t_72378602a18329 8,61,78
+packages/nodes-base/nodes/Pushcut/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_214a42478e21c5 1-24
+packages/nodes-base/nodes/QuickBase/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_73e1c3a490ac6a 1-27
+packages/nodes-base/nodes/Pushbullet/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3cba744b32715d 1-24
+packages/nodes-base/nodes/Pushbullet/GenericFunctions.ts
+  s_3bd5fd0ef4a52e::t_95b3294dd1c237 8,10,15,20,22,35-41,51
+packages/nodes-base/nodes/Pushcut/GenericFunctions.ts
+  s_cce0fb24602098::t_5ecc07bc2d44e6 9-10,12,17,24,31
+packages/nodes-base/nodes/Pushover/GenericFunctions.ts
+  s_0b340cbcd99bee::t_b9f432cb1ac7b5 8-9,11,16,22,29
+packages/nodes-base/nodes/QuickBase/GenericFunctions.ts
+  s_0b340cbcd99bee::t_bbf9e2a3873bb7 10-11,13,18,22,35,44,72,83
+packages/nodes-base/nodes/QuickBooks/GenericFunctions.ts
+  s_628b34ed698406::t_26c37da43f28e2 4,15-16,28,31,47,49,93,107,151,188,208,230,253
+packages/nodes-base/nodes/QuickBooks/QuickBooks.node.ts
+  s_628b34ed698406::t_e6f4432af1c771 12,270,287,296,304,341,365,374,382,407,430,439,447,472,534,551,572,581,594,632,695,712,733,742,755,793,807,824,832,858,875,896,905,918,956,970,987,995,1039,1072,1081,1089,1114
+packages/nodes-base/nodes/QuickBooks/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3d25828b02dd84 3,5,23,40,57,75,88-110
+packages/nodes-base/nodes/Pushbullet/Pushbullet.node.ts
+  s_2e1fa95fc44f8f::t_49ab7c0aeecef7 11,358,417,423-436,439,441,448-453,472,479-485,494-498,508-515
+packages/nodes-base/nodes/Pushcut/Pushcut.node.ts
+  s_2e1fa95fc44f8f::t_b9b797828cf272 10,143,156-160,193
+packages/nodes-base/nodes/Pushover/Pushover.node.ts
+  s_2e1fa95fc44f8f::t_0941e19d464b59 10,284-289,359-364
+packages/nodes-base/nodes/QuickBase/QuickBase.node.ts
+  s_2e1fa95fc44f8f::t_70511abe48a8cc 11,88-94,106-112,153,185,226,292,326-331,372,379-385,473,556,595,605,648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39c1abf8e001dd02b6f88ebe5fe866337c5c5234",
+  "prompts": {},
+  "sessions": {
+    "s_0b340cbcd99bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac6763e23459042a2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_3bd5fd0ef4a52e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4cd846362f8d8557",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_628b34ed698406": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab9774a9ac55dc3a5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_cce0fb24602098": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a26e01be8e32b516e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

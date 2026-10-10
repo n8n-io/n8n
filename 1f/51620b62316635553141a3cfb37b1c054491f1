@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Brevo/test/BrevoTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_032deb722530bd 1-15,17-30,37-63
+  s_2e1fa95fc44f8f::t_bc029600b2bf33 16
+  s_2e1fa95fc44f8f::t_476380a2c3698b 31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f51620b62316635553141a3cfb37b1c054491f1",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

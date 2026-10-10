@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Google/Gmail/v2/loadOptions.ts
+  s_2e1fa95fc44f8f::t_1a27a5907e4e34 12
+packages/nodes-base/nodes/Google/Books/GoogleBooks.node.ts
+  s_2e1fa95fc44f8f::t_438af74243a610 380-382
+  s_2e1fa95fc44f8f::t_bb2fc7093cd670 17-25
+packages/nodes-base/nodes/Google/Books/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_83d1c2f7c8553d 30-58
+packages/nodes-base/nodes/Google/Gmail/test/v2/GmailV2.node.test.ts
+  s_2e1fa95fc44f8f::t_677e0d60ae24c8 361-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6adf1d5c0f9d8c6dcd71444349608615c2f7a50",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
