@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-default-export -- Playwright loads a default reporter export. */
-import type { FullConfig, Reporter, Suite, TestCase } from '@playwright/test/reporter';
+import type { FullConfig, Reporter, Suite, TestCase, TestError } from '@playwright/test/reporter';
 import { writeFileSync } from 'node:fs';
 import { relative, sep } from 'node:path';
 
@@ -32,6 +32,13 @@ function relativeSpec(file: string): string {
 }
 
 export default class DistributionCounterReporter implements Reporter {
+	// Playwright hides a reporter exception and does not print a load error
+	// when this reporter replaces the list reporter. Write the error here.
+	onError(error: TestError): void {
+		const text = error.stack ?? error.message;
+		if (text) console.error(text);
+	}
+
 	onBegin(_config: FullConfig, suite: Suite): void {
 		const output = process.env.DISTRIBUTION_COUNTER_OUTPUT;
 		if (!output) throw new Error('DISTRIBUTION_COUNTER_OUTPUT is required');

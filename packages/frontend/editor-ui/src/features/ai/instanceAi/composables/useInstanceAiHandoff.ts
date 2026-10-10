@@ -109,7 +109,6 @@ const pendingWorkflowAttachmentKey = (threadId: string) =>
 const pendingRedirectLandingKey = (threadId: string) =>
 	`n8n-instance-ai-redirect-landing:${threadId}`;
 
-
 export function buildInstanceAiCredentialHandoffContext(
 	credential: InstanceAiCredentialContext,
 ): InstanceAiHandoffContext {
