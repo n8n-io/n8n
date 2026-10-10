@@ -95,11 +95,10 @@ export function jsonToDocument(
 	} else if (value === null) {
 		return { nullValue: null };
 	} else if (typeof value === 'number' && !Number.isNaN(value)) {
-		if (value.toString().indexOf('.') !== -1) {
-			return { doubleValue: value };
-		} else {
+		if (Number.isInteger(value)) {
 			return { integerValue: value };
 		}
+		return { doubleValue: value };
 	} else if (typeof value === 'string' && /[-T:]/.test(value) && isValidDate(value)) {
 		const date = new Date(Date.parse(value));
 		return { timestampValue: date.toISOString() };
