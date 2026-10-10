@@ -85,7 +85,7 @@ EmptyStateWithIconCards.parameters = {
 	docs: {
 		description: {
 			story:
-				'The `cards` icon variant renders a fanned trio of bordered cards above the heading: the raised centre card carries the static icon of the feature or settings page the empty state belongs to (`center`), while the two tilted side cards cycle through `sides` with a staggered fade+blur swap. Side icons accept registered icon names, any Lucide icon name, or custom Vue components (e.g. inlined brand marks) — this story mixes a custom SVG mark with built-in icons. Cycling is skipped when fewer than three side icons are provided or when the user prefers reduced motion.',
+				'The `cards` icon variant renders a fanned trio of bordered cards above the heading: the raised centre card carries the static icon of the feature or settings page the empty state belongs to (`center`), while the two tilted side cards cycle through `sides` with a fade+blur swap. The first swap lands shortly after mount and the two sides then alternate every 1.5s, so each card holds its icon for 3s. Side icons accept registered icon names, any Lucide icon name, or custom Vue components (e.g. inlined brand marks) — this story mixes a custom SVG mark with built-in icons. Cycling is skipped when fewer than three side icons are provided or when the user prefers reduced motion. The tiles follow the theme; when the side icons are fixed-colour brand marks, set `--empty-state-icon-cards--tile-background` and `--empty-state-icon-cards--tile-color` on an ancestor to pin them to a light surface for the dark theme. The trio is also exported on its own as `N8nEmptyStateIconCards` for compact empty states that do not need the dashed container.',
 		},
 	},
 };
