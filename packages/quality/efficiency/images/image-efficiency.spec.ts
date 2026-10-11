@@ -20,7 +20,7 @@ const imageIdentitySchema = z.object({
 
 test(
 	'image layer efficiency',
-	{ annotation: [{ type: 'owner', description: 'Cloud Platform' }] },
+	{ annotation: [{ type: 'owner', description: 'Developer Platform' }] },
 	async ({ cli }, testInfo) => {
 		const { image } = imageMetadataSchema.parse(testInfo.project.metadata);
 		const { stdout: version } = await cli.run(dive, ['--version'], { timeout: 10_000 });
