@@ -900,6 +900,20 @@ describe('InstanceAiEmptyView', () => {
 		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 	});
 
+	it('keeps the home in user mode until power mode is selected', async () => {
+		const { getByRole, getByText, queryByTestId } = renderView();
+
+		expect(getByRole('radio', { name: 'User' })).toBeChecked();
+		expect(getByText('Ask for anything.')).toBeVisible();
+		expect(queryByTestId('instance-ai-project-home')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByRole('radio', { name: 'Power' }));
+
+		expect(getByRole('radio', { name: 'Power' })).toBeChecked();
+		expect(queryByTestId('instance-ai-project-home')).toBeInTheDocument();
+		expect(getByText('Workflows, agents, and approvals in this project.')).toBeVisible();
+	});
+
 	it('keeps the free nudge ineligible until credits are loaded', async () => {
 		store.creditsQuota = undefined;
 

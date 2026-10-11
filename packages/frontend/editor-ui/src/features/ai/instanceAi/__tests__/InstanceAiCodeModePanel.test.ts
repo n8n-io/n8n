@@ -61,6 +61,9 @@ describe('InstanceAiProjectHome', () => {
 		const { emitted, getByTestId } = renderHome();
 
 		expect(getByTestId('instance-ai-project-home')).toHaveTextContent('Project home');
+		expect(getByTestId('instance-ai-project-home')).toHaveTextContent(
+			'Workflows, agents, and approvals in this project.',
+		);
 		expect(getByTestId('instance-ai-project-home')).toHaveTextContent('Agents');
 		expect(getByTestId('instance-ai-project-home')).toHaveTextContent('Approvals');
 		expect(getByTestId('instance-ai-project-home')).toHaveTextContent('People');

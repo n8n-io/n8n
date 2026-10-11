@@ -10,7 +10,7 @@ import type {
 	InstanceAiThreadSource,
 } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useChatInputAutoFocus } from '@n8n/design-system';
+import { N8nSegmentControl, N8nText, useChatInputAutoFocus } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -40,6 +40,7 @@ import {
 	stashPendingFirstMessageFiles,
 } from './composables/useInstanceAiHandoff';
 import { isWebsiteBuildRequest, writeCodeMode } from './codeMode/codeMode';
+import { readHomeMode, writeHomeMode, type AssistantHomeMode } from './homeMode/homeMode';
 import InstanceAiProjectHome from './components/InstanceAiProjectHome.vue';
 import { fileAttachmentToFile } from './utils/fileAttachments';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
@@ -632,11 +633,32 @@ function askForWebsite() {
 	chatInputRef.value?.setText('Make me a website');
 	void nextTick(() => chatInputRef.value?.focus());
 }
+
+const homeMode = ref<AssistantHomeMode>(readHomeMode());
+const showHomeMode = computed(() => !showProactiveStarter.value && !isSplitVariantEnabled.value);
+const homeModeOptions = computed(() => [
+	{ label: i18n.baseText('instanceAi.homeMode.user'), value: 'user' as const },
+	{ label: i18n.baseText('instanceAi.homeMode.power'), value: 'power' as const },
+]);
+
+watch(homeMode, (mode) => {
+	writeHomeMode(mode);
+});
 </script>
 
 <template>
 	<div :class="$style.chatArea">
-		<InstanceAiViewHeader v-if="!isSplitLayoutActive" />
+		<InstanceAiViewHeader v-if="!isSplitLayoutActive">
+			<template v-if="showHomeMode" #actions>
+				<N8nSegmentControl
+					v-model="homeMode"
+					size="small"
+					:options="homeModeOptions"
+					:aria-label="i18n.baseText('instanceAi.homeMode.label')"
+					data-test-id="instance-ai-home-mode"
+				/>
+			</template>
+		</InstanceAiViewHeader>
 
 		<div :class="$style.contentArea">
 			<div v-if="showProactiveStarter" :class="$style.proactiveLayout">
@@ -721,9 +743,23 @@ function askForWebsite() {
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
-			<div v-else ref="emptyLayout" :class="[$style.emptyLayout, $style.emptyLayoutWithHome]">
-				<InstanceAiProjectHome @build-website="askForWebsite" />
-				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
+			<div
+				v-else
+				ref="emptyLayout"
+				:class="[$style.emptyLayout, homeMode === 'power' && $style.emptyLayoutPower]"
+			>
+				<div :class="[$style.homeStack, homeMode === 'power' && $style.homeStackPower]">
+					<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
+					<N8nText
+						v-if="homeMode === 'user'"
+						size="small"
+						color="text-light"
+						:class="$style.userHint"
+					>
+						{{ i18n.baseText('instanceAi.homeMode.userHint') }}
+					</N8nText>
+					<InstanceAiProjectHome v-else @build-website="askForWebsite" />
+				</div>
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<InstanceAiFreeNudge
 						:eligible="
@@ -827,9 +863,26 @@ function askForWebsite() {
 	overflow-x: hidden;
 }
 
-.emptyLayoutWithHome {
+.emptyLayoutPower {
 	padding-top: var(--spacing--lg);
+}
+
+.homeStack {
+	width: 100%;
+	/* Matches the composer width. No spacing token is 680px. */
+	max-width: 680px;
+	display: flex;
+	flex-direction: column;
 	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.homeStackPower {
+	align-items: stretch;
+}
+
+.userHint {
+	text-align: center;
 }
 
 .centeredInput {

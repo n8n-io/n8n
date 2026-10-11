@@ -25,9 +25,14 @@ const cards = [
 <template>
 	<section :class="$style.home" data-test-id="instance-ai-project-home">
 		<div :class="$style.heading">
-			<N8nText tag="h2" size="large" bold>{{
-				i18n.baseText('instanceAi.projectHome.title')
-			}}</N8nText>
+			<div :class="$style.titles">
+				<N8nText tag="h2" size="large" bold>{{
+					i18n.baseText('instanceAi.projectHome.title')
+				}}</N8nText>
+				<N8nText size="small" color="text-light">{{
+					i18n.baseText('instanceAi.projectHome.lead')
+				}}</N8nText>
+			</div>
 			<N8nButton
 				size="small"
 				icon="code"
@@ -61,9 +66,16 @@ const cards = [
 
 .heading {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+.titles {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	min-width: 0;
 }
 
 .cards {
