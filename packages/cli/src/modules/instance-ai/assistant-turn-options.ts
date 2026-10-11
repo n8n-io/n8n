@@ -83,5 +83,7 @@ export function readResumedTurnOptions(value: unknown): AssistantTurnOptions {
 }
 
 export function toJsonObject(options: AssistantTurnOptions): Record<string, unknown> {
-	return deepCopy(options);
+	// deepCopy keeps the input type. The queue stores a plain record.
+	const copied: unknown = deepCopy(options);
+	return isRecord(copied) ? copied : {};
 }
