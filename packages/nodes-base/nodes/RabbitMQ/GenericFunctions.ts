@@ -61,6 +61,16 @@ export async function rabbitmqCreateChannel(
 	});
 }
 
+export const parseAssertOptionArguments = (options: Options | TriggerOptions) => {
+	const args: IDataObject = {};
+	if (options.arguments?.argument?.length) {
+		for (const { key, value } of options.arguments.argument) {
+			if (key) args[key] = value;
+		}
+	}
+	return args;
+};
+
 export async function rabbitmqConnectQueue(
 	this: IExecuteFunctions | ITriggerFunctions,
 	queue: string,
@@ -71,7 +81,25 @@ export async function rabbitmqConnectQueue(
 	return await new Promise(async (resolve, reject) => {
 		try {
 			if (options.assertQueue) {
-				await channel.assertQueue(queue, options);
+				const queueArgs = parseAssertOptionArguments(options);
+				const assertOptions: amqplib.Options.AssertQueue = {
+					durable: options.durable,
+					autoDelete: options.autoDelete,
+					exclusive: options.exclusive,
+					arguments: queueArgs,
+				};
+
+				try {
+					await channel.assertQueue(queue, assertOptions);
+				} catch (error) {
+					if (
+						error.message.includes('PRECONDITION_FAILED') &&
+						error.message.includes('inequivalent arg')
+					) {
+						throw new Error(`Queue '${queue}' already exists with different settings.`);
+					}
+					throw error;
+				}
 			} else {
 				await channel.checkQueue(queue);
 			}
