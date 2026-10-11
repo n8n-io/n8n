@@ -31,13 +31,12 @@ jobs:
       fail-fast: false
       matrix:
         provider: [blacksmith, namespace]
-        video: ['on', 'off']
         include:
           - provider: blacksmith
             runner: blacksmith-2vcpu-ubuntu-2204
           - provider: namespace
             runner: namespace-profile-n8n-ci-e2e-memory-probe
-    name: '8-GB probe: ${{ matrix.provider }}, video ${{ matrix.video }}'
+    name: '8-GB probe: ${{ matrix.provider }}'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 50
     env:
@@ -46,7 +45,7 @@ jobs:
       PLAYWRIGHT_WORKERS: '1'
       TEST_IMAGE_N8N: n8nio/n8n:local
       N8N_SKIP_LICENSES: 'true'
-      CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.provider }}-video-${{ matrix.video }}
+      CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.provider }}
       CURRENTS_PROJECT_ID: qyhJh8 # n8n-sandbox
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -63,13 +62,6 @@ jobs:
           docker image inspect n8nio/n8n:local n8nio/runners:local --format '{{.Id}}'
       - name: Pre-pull test images
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts caddy mockserver n8n postgres redis taskRunner sandboxApi sandboxRunner sandboxSandbox victoriaLogs victoriaMetrics vector
-      # Probe-only edit: the config has no switch for video recording.
-      - name: Turn video recording off
-        if: matrix.video == 'off'
-        run: |
-          config=packages/quality/testing/playwright/playwright.config.ts
-          sed -i "s/video: 'on',/video: 'off',/" "$config"
-          grep -n "video: 'off'," "$config"
       - name: Run matched shard with memory samples
         # End before the job limit so the samples still upload.
         timeout-minutes: 38
@@ -96,7 +88,8 @@ jobs:
             while true; do
               date -u +%FT%TZ
               free -b
-              ps -eo pid,ppid,uid,rss,comm --sort=-rss | head -n 20
+              cat /proc/loadavg /proc/pressure/cpu 2>/dev/null || true
+              ps -eo pid,ppid,uid,rss,pcpu,comm --sort=-rss | head -n 20
               docker stats --no-stream --format '{{json .}}'
               sleep 5
             done
@@ -123,7 +116,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: memory-probe-${{ matrix.provider }}-video-${{ matrix.video }}
+          name: memory-probe-${{ matrix.provider }}
           # The JSON results give each test's start time for the memory samples.
           path: |
             ${{ runner.temp }}/memory-probe
