@@ -751,7 +751,6 @@ async function handleResume(
 		throw error;
 	}
 
-
 	return await runBuilderConsumeLoop({
 		context,
 		delegate,
@@ -1082,7 +1081,6 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 			const activity: InstanceAiAgentActivity =
 				resolution.mode === 'create' ? 'creating' : (input.operation ?? 'working');
-
 
 			// Before the builder touches it: a repair-shaped eval case seeds from the
 			// state the turn opened on. A new agent has no prior state.

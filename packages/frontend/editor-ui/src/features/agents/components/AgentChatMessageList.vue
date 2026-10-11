@@ -45,6 +45,15 @@ const props = defineProps<{
 	dismissedFixToolCallIds?: string[];
 	canIncreaseBudget?: boolean;
 	budgetIncreasePending?: boolean;
+	/**
+	 * Marks user and assistant bubbles with the Instance AI test ids. Project
+	 * agent chat leaves this off.
+	 */
+	tagInstanceMessages?: boolean;
+}>();
+
+defineSlots<{
+	'user-message-extra'?: (props: { message: ChatMessage }) => unknown;
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +72,15 @@ function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistant
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
 	if (!executionId || failures.length === 0) return;
 	emit('sendToAssistant', { executionId, failures });
+}
+
+function instanceMessageTestId(role: 'user' | 'assistant'): string | undefined {
+	if (!props.tagInstanceMessages) return undefined;
+	return role === 'user' ? 'instance-ai-user-message' : 'instance-ai-assistant-message';
+}
+
+function isQuotaExhaustedMessage(message: ChatMessage | undefined): boolean {
+	return message?.errorCode === 'quota_exhausted';
 }
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
@@ -466,7 +484,11 @@ watch(
 			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
 				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
 			</div>
-			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div
+				v-else-if="group.kind === 'toolRun'"
+				:class="[$style.message, $style.assistant]"
+				:data-test-id="instanceMessageTestId('assistant')"
+			>
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
@@ -500,7 +522,16 @@ watch(
 						/>
 					</div>
 					<div
-						v-if="group.finalMessage?.content"
+						v-if="isQuotaExhaustedMessage(group.finalMessage)"
+						data-test-id="instance-ai-out-of-credits"
+					>
+						<N8nText tag="p">{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}</N8nText>
+						<N8nButton size="small" data-test-id="instance-ai-out-of-credits-upgrade">
+							{{ i18n.baseText('instanceAi.error.outOfCredits.upgrade') }}
+						</N8nButton>
+					</div>
+					<div
+						v-else-if="group.finalMessage?.content"
 						:class="[
 							$style.chatMessage,
 							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
@@ -565,6 +596,7 @@ watch(
 			<div
 				v-else
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
+				:data-test-id="instanceMessageTestId(group.message.role)"
 			>
 				<div :class="$style.content">
 					<AgentChatToolSteps
@@ -611,6 +643,20 @@ watch(
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
+					</div>
+					<slot
+						v-if="group.message.role === 'user'"
+						name="user-message-extra"
+						:message="group.message"
+					/>
+					<div
+						v-if="isQuotaExhaustedMessage(group.message)"
+						data-test-id="instance-ai-out-of-credits"
+					>
+						<N8nText tag="p">{{ i18n.baseText('instanceAi.error.outOfCredits.title') }}</N8nText>
+						<N8nButton size="small" data-test-id="instance-ai-out-of-credits-upgrade">
+							{{ i18n.baseText('instanceAi.error.outOfCredits.upgrade') }}
+						</N8nButton>
 					</div>
 					<template v-else>
 						<template v-for="item in getMessageRenderItems(group.message)" :key="item.key">

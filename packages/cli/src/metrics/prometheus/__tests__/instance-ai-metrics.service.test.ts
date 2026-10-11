@@ -6,7 +6,6 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-
 import { DURATION_BUCKETS_SECONDS } from '../constant';
 import { PrometheusInstanceAiMetricsService } from '../instance-ai-metrics.service';
 
@@ -87,7 +86,6 @@ describe('PrometheusInstanceAiMetricsService', () => {
 				help: 'Total estimated cost in USD of Instance AI runs (models.dev pricing).',
 			});
 		});
-
 	});
 
 	describe('instance-ai-run-finished event handler', () => {

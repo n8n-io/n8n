@@ -165,6 +165,8 @@ export interface AgentsChatMessage {
 	interactives?: InteractivePayload[];
 	interactive?: InteractivePayload;
 	attachments?: ChatMessageAttachment[];
+	/** Set when the turn failed for a known reason, such as an exhausted credit pool. */
+	errorCode?: string;
 	/** Persisted agent execution id for this turn (history parse or live SSE `done`). */
 	executionId?: string;
 	/**

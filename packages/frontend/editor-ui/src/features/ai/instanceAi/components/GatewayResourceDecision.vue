@@ -90,7 +90,10 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 	// hostname or a URL, so it goes through the egress policy like any other
 	// free-form value.
 	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
-	await transport.confirm(props.requestId, { kind: 'resourceDecision', resourceDecision: decision });
+	await transport.confirm(props.requestId, {
+		kind: 'resourceDecision',
+		resourceDecision: decision,
+	});
 }
 </script>
 

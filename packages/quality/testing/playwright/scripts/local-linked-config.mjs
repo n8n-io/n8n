@@ -114,7 +114,9 @@ export function baseInstanceEnv(instance, userFolder) {
 /** Assistant variables for "This computer". The model is the scripted LLM. */
 export function localAssistantEnv({ llmPort, sandboxPort }) {
 	return {
-		N8N_ENABLED_MODULES: 'instance-ai',
+		// instance-ai is a default module. linked-instances is off until it is named here,
+		// and the automation card offers the cloud only while it is on.
+		N8N_ENABLED_MODULES: 'instance-ai,linked-instances',
 		N8N_INSTANCE_AI_MODEL: 'anthropic/claude-scripted',
 		// Keep `/v1`: the proxy code path does not add it.
 		N8N_INSTANCE_AI_MODEL_URL: `http://127.0.0.1:${llmPort}/v1`,

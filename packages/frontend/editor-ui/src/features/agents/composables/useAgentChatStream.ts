@@ -1252,7 +1252,20 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
-				} else if (session.userMessage && !session.executionId) {
+				} else if (event.errorCode === 'quota_exhausted' || session.executionId) {
+					// A quota stop must land in the transcript. A send that never
+					// started an execution stays a toast, except for that stop.
+					messages.value.push(
+						reactive<ChatMessage>({
+							id: crypto.randomUUID(),
+							role: 'assistant',
+							content: event.message,
+							toolCalls: [],
+							status: CHAT_MESSAGE_STATUS.ERROR,
+							...(event.errorCode ? { errorCode: event.errorCode } : {}),
+						}),
+					);
+				} else if (session.userMessage) {
 					showSendError(event.message, session);
 				} else {
 					messages.value.push(
@@ -1262,6 +1275,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 							content: event.message,
 							toolCalls: [],
 							status: CHAT_MESSAGE_STATUS.ERROR,
+							...(event.errorCode ? { errorCode: event.errorCode } : {}),
 						}),
 					);
 				}

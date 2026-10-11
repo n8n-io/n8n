@@ -2,14 +2,16 @@ import type { APIResponse } from '@playwright/test';
 
 import type { ApiHelpers } from './api-helper';
 
-/** A binary file attached to a chat message, as the chat endpoint expects it. */
+/** A binary file attached to an Assistant chat message, as the agents chat endpoint expects it. */
 export interface InstanceAiFileAttachmentPayload {
-	type: 'file';
 	/** Base64-encoded contents. */
 	data: string;
 	mimeType: string;
 	fileName: string;
 }
+
+/** The code-defined n8n Assistant agent. */
+const ASSISTANT_AGENT_ID = 'n8n-assistant';
 
 /**
  * Helper for driving Instance AI endpoints directly, bypassing the editor UI.
@@ -25,10 +27,13 @@ export class InstanceAiApiHelper {
 	 * non-2xx status is the expected outcome rather than an error.
 	 */
 	async sendMessageResponse(
-		threadId: string,
+		projectId: string,
 		payload: { message?: string; attachments?: InstanceAiFileAttachmentPayload[] },
 	): Promise<APIResponse> {
-		return await this.api.request.post(`/rest/instance-ai/chat/${threadId}`, { data: payload });
+		return await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${ASSISTANT_AGENT_ID}/chat`,
+			{ data: payload },
+		);
 	}
 
 	/**

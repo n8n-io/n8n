@@ -7,6 +7,7 @@ import type {
 	InstanceAiThreadRunTarget,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { deepCopy } from 'n8n-workflow';
 
 import type { PlannedBuildFollowUp } from './planned-task-action-runner';
 import type { OrchestratorResumeReason } from './tracing/instance-ai-tracing.service';
@@ -82,5 +83,21 @@ export function readResumedTurnOptions(value: unknown): AssistantTurnOptions {
 }
 
 export function toJsonObject(options: AssistantTurnOptions): Record<string, unknown> {
-	return JSON.parse(JSON.stringify(options)) as Record<string, unknown>;
+	// deepCopy keeps the input type and keeps keys whose values are undefined.
+	// The queue stores a plain record, and a missing value must not become a key.
+	const copied: unknown = deepCopy(options);
+	if (!isRecord(copied)) return {};
+	omitUndefined(copied);
+	return copied;
+}
+
+function omitUndefined(record: Record<string, unknown>): void {
+	for (const key of Object.keys(record)) {
+		const value = record[key];
+		if (value === undefined) {
+			delete record[key];
+			continue;
+		}
+		if (isRecord(value)) omitUndefined(value);
+	}
 }

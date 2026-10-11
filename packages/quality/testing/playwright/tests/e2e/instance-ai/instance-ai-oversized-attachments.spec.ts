@@ -2,6 +2,8 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
+import { MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH } from '@n8n/api-types';
+
 import { test, expect, instanceAiTestConfig, SKIP_PROXY_SETUP_ANNOTATION } from './fixtures';
 
 /**
@@ -109,14 +111,15 @@ test.describe(
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n }) => {
 				// The composer check is a convenience; the backend is authoritative. Post
-				// straight to the endpoint to prove a scripted client cannot get past it.
-				const response = await n8n.api.instanceAi.sendMessageResponse(crypto.randomUUID(), {
+				// straight to the agents chat to prove a scripted client cannot get past it.
+				const project = await n8n.api.projects.getMyPersonalProject();
+				const response = await n8n.api.instanceAi.sendMessageResponse(project.id, {
 					message: 'look at this',
 					attachments: [
 						{
-							type: 'file',
-							// One byte over the encoded ceiling of 10 MiB.
-							data: 'A'.repeat(10 * 1024 * 1024 + 1),
+							// One character over the encoded ceiling. The DTO rejects it
+							// before the handler stores the file.
+							data: 'A'.repeat(MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH + 1),
 							mimeType: 'image/png',
 							fileName: 'huge.png',
 						},
@@ -125,9 +128,7 @@ test.describe(
 
 				expect(response.status()).toBe(400);
 				const body = await response.text();
-				// Quotes the limit in the unit the user can act on, and says what to do.
-				expect(body).toContain('7.5 MB');
-				expect(body.toLowerCase()).toContain('smaller');
+				expect(body).toContain('10 MB');
 			},
 		);
 

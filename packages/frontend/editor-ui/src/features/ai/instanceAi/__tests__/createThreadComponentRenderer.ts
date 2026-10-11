@@ -4,8 +4,6 @@ import { createComponentRenderer, type RenderOptions } from '@/__tests__/render'
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { FrontendModuleSettings, InstanceAiMessage } from '@n8n/api-types';
 
-
-
 type RendererOptions = { merge?: boolean };
 
 /** A bare, all-mocked `ThreadRuntime` for components that only need the shape, not real behaviour. */

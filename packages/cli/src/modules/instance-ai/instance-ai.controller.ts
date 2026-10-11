@@ -19,15 +19,22 @@ import {
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiProvenanceListQuery,
+	InstanceAiPreferenceCardEditRequestDto,
+	InstanceAiPreferenceCardUndoRequestDto,
+	aiPreferenceScopeOf,
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiPreferenceCardEditResponse,
+	InstanceAiPreferenceCardEvent,
+	InstanceAiPreferenceCardUndoResponse,
 	InstanceAiProvenanceListResponse,
 	InstanceAiThreadTabsResponse,
 	InstanceAiWorkflowProvenanceResponse,
+	PreferenceCardPayload,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -76,6 +83,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AiPreferenceService } from '@/services/ai-preference.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@n8n/backend-services';
 
@@ -113,6 +121,7 @@ export class InstanceAiController {
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 		private readonly provenanceService: WorkflowProvenanceService,
 		private readonly threadSharing: ThreadSharingService,
+		private readonly aiPreferenceService: AiPreferenceService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -143,6 +152,58 @@ export class InstanceAiController {
 	// the log on purpose, and the check would cost a log read on every click.
 	// The fold ignores preference-card facts when it anchors a turn, so a wrong
 	// pair can only mis-render that one card's state in the caller's own thread.
+
+	@Post('/threads/:threadId/preferences/:preferenceId/undo')
+	@GlobalScope('instanceAi:message')
+	async undoPreferenceCard(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body body: InstanceAiPreferenceCardUndoRequestDto,
+	): Promise<InstanceAiPreferenceCardUndoResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		await this.aiPreferenceService.delete(req.user, preferenceId);
+		return {
+			ok: true,
+			event: this.preferenceCardEvent(req.user.id, body.runId, {
+				toolCallId: body.toolCallId,
+				preferenceId,
+				state: 'undone',
+			}),
+		};
+	}
+
+	@Post('/threads/:threadId/preferences/:preferenceId/edit')
+	@GlobalScope('instanceAi:message')
+	async editPreferenceCard(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('preferenceId') preferenceId: string,
+		@Body body: InstanceAiPreferenceCardEditRequestDto,
+	): Promise<InstanceAiPreferenceCardEditResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const preference = await this.aiPreferenceService.update(req.user, preferenceId, {
+			content: body.content,
+			scope: body.scope,
+			projectId: body.projectId,
+			userId: body.userId,
+		});
+		return {
+			preference,
+			event: this.preferenceCardEvent(req.user.id, body.runId, {
+				toolCallId: body.toolCallId,
+				preferenceId,
+				state: 'edited',
+				content: preference.content,
+				scope: aiPreferenceScopeOf(preference),
+				projectId: preference.projectId,
+			}),
+		};
+	}
 
 	// ── Credits ──────────────────────────────────────────────────────────────
 
@@ -1010,6 +1071,21 @@ export class InstanceAiController {
 	 * Verify thread ownership. Throws ForbiddenError if another user owns it.
 	 * @param allowNew When true, a non-existent thread is permitted (new conversation).
 	 */
+	private preferenceCardEvent(
+		userId: string,
+		runId: string,
+		payload: PreferenceCardPayload,
+	): InstanceAiPreferenceCardEvent {
+		return {
+			type: 'preference-card',
+			runId,
+			agentId: 'root',
+			userId,
+			ts: Date.now(),
+			payload,
+		};
+	}
+
 	private async assertThreadAccess(
 		userId: string,
 		threadId: string,
