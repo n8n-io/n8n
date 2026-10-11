@@ -1,10 +1,10 @@
 {
 	"tag": "n8n-ci-e2e",
-	"description": "n8n CI E2E trial: 2 vCPU, 8 GB RAM",
+	"description": "n8n CI E2E trial: 2 vCPU, 16 GB RAM",
 	"os": "ubuntu-22.04",
 	"instance_shape": {
 		"virtual_cpu": 2,
-		"memory_megabytes": 8192,
+		"memory_megabytes": 16384,
 		"machine_arch": "amd64",
 		"os": "linux"
 	},
