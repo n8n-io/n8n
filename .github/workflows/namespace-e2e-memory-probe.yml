@@ -33,18 +33,23 @@ jobs:
         include:
           - provider: blacksmith
             runner: blacksmith-2vcpu-ubuntu-2204
+            trace: 'on'
           - provider: namespace
             runner: namespace-profile-n8n-ci-e2e-memory-probe
-    name: '8-GB probe: ${{ matrix.provider }}'
+            trace: 'on'
+          - provider: namespace
+            runner: namespace-profile-n8n-ci-e2e-memory-probe
+            trace: 'off'
+    name: '8-GB probe: ${{ matrix.provider }}, trace ${{ matrix.trace }}'
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 50
     env:
       NODE_OPTIONS: --max-old-space-size=6144
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/quality/testing/playwright/.playwright-browsers
       PLAYWRIGHT_WORKERS: '1'
       TEST_IMAGE_N8N: n8nio/n8n:local
       N8N_SKIP_LICENSES: 'true'
-      CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.provider }}
+      CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.provider }}-trace-${{ matrix.trace }}
       CURRENTS_PROJECT_ID: qyhJh8 # n8n-sandbox
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -62,7 +67,10 @@ jobs:
       - name: Pre-pull test images
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts caddy mockserver n8n postgres redis taskRunner sandboxApi sandboxRunner sandboxSandbox victoriaLogs victoriaMetrics vector
       - name: Run matched shard with memory samples
+        # End before the job limit so the samples still upload.
+        timeout-minutes: 38
         env:
+          TRACE_MODE: ${{ matrix.trace }}
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -93,7 +101,7 @@ jobs:
           sampler=$!
           trap 'kill "$sampler" 2>/dev/null || true' EXIT
           export NODE_OPTIONS="$NODE_OPTIONS --require=$GITHUB_WORKSPACE/.github/namespace/memory-probe.cjs"
-          pnpm --filter=n8n-playwright test:container:multi-main:e2e --workers=1 \
+          pnpm --filter=n8n-playwright test:container:multi-main:e2e --workers=1 --trace="$TRACE_MODE" \
             tests/e2e/workflows/editor/ndv/ndv-floating-nodes.spec.ts \
             tests/e2e/ai/assistant-credential-help.spec.ts \
             tests/e2e/ai/workflow-builder-smoke.spec.ts \
@@ -111,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: memory-probe-${{ matrix.provider }}
+          name: memory-probe-${{ matrix.provider }}-trace-${{ matrix.trace }}
           path: ${{ runner.temp }}/memory-probe
           retention-days: 3
           if-no-files-found: warn
