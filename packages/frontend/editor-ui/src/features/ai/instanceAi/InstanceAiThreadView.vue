@@ -52,6 +52,8 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiCodeModePanel from './components/InstanceAiCodeModePanel.vue';
+import { isWebsiteBuildRequest, readCodeMode, writeCodeMode } from './codeMode/codeMode';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -725,6 +727,35 @@ async function persistTestAgentOfferDismissal(agentId: string) {
 function handleNewThreadClick() {
 	void router.push({ name: INSTANCE_AI_VIEW });
 }
+
+const codeModeDismissed = ref(false);
+const codeModeRequested = ref(readCodeMode(props.threadId));
+const websiteRequestCount = computed(
+	() =>
+		thread.messages.filter(
+			(message) => message.role === 'user' && isWebsiteBuildRequest(message.content),
+		).length,
+);
+const seenWebsiteRequests = ref(websiteRequestCount.value);
+
+watch(websiteRequestCount, (count) => {
+	if (count <= seenWebsiteRequests.value) return;
+	seenWebsiteRequests.value = count;
+	writeCodeMode(props.threadId);
+	codeModeRequested.value = true;
+	codeModeDismissed.value = false;
+});
+
+const showCodeMode = computed(
+	() =>
+		(codeModeRequested.value || websiteRequestCount.value > 0) &&
+		!codeModeDismissed.value &&
+		!preview.isPreviewVisible.value,
+);
+
+function closeCodeMode() {
+	codeModeDismissed.value = true;
+}
 </script>
 
 <template>
@@ -982,6 +1013,7 @@ function handleNewThreadClick() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<InstanceAiCodeModePanel v-if="showCodeMode" :class="$style.codeMode" @close="closeCodeMode" />
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
 		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
@@ -1030,6 +1062,14 @@ function handleNewThreadClick() {
 	flex-shrink: 0;
 	min-width: 0;
 	border-left: var(--border);
+}
+
+.codeMode {
+	/* Panel width. No spacing token matches 22rem, 28rem, or 40rem. */
+	flex: 1 1 28rem;
+	min-width: 22rem;
+	max-width: 40rem;
+	min-height: 0;
 }
 
 .canvasAreaExpanded {
