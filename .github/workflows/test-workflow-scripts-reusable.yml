@@ -3,6 +3,11 @@ name: 'Test: Workflow scripts'
 on:
   workflow_call:
     inputs:
+      runner-provider:
+        description: 'Optional runner provider override'
+        required: false
+        type: string
+        default: ''
       ref:
         description: GitHub ref to lint.
         required: false
@@ -20,7 +25,7 @@ env:
 jobs:
   workflow-script-tests:
     name: Run tests for workflow scripts
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests;overrides.cache-tag=n8n-ci-workflow-scripts' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:

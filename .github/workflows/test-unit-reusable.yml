@@ -3,6 +3,11 @@ name: 'Test: Unit'
 on:
   workflow_call:
     inputs:
+      runner-provider:
+        description: 'Optional runner provider override'
+        required: false
+        type: string
+        default: ''
       ref:
         description: GitHub ref to test.
         required: false
@@ -44,7 +49,7 @@ env:
 jobs:
   unit-test-backend:
     name: Backend Unit Tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -107,7 +112,7 @@ jobs:
 
   unit-test-cli:
     name: CLI Unit Tests (${{ matrix.shard }}/2)
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:
@@ -156,7 +161,7 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -211,7 +216,7 @@ jobs:
 
   integration-test-cli:
     name: CLI Integration Tests (${{ matrix.shard }}/2)
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:
@@ -260,7 +265,7 @@ jobs:
 
   unit-test-nodes:
     name: Nodes Unit Tests
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}
@@ -307,7 +312,7 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/4)
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:

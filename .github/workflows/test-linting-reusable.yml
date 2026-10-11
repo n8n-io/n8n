@@ -3,6 +3,11 @@ name: 'Test: Linting'
 on:
   workflow_call:
     inputs:
+      runner-provider:
+        description: 'Optional runner provider override'
+        required: false
+        type: string
+        default: ''
       ref:
         description: GitHub ref to lint.
         required: false
@@ -21,7 +26,7 @@ env:
 jobs:
   lint:
     name: Lint (${{ matrix.name }})
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:

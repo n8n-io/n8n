@@ -3,6 +3,11 @@ name: 'Test: Frontend declarations'
 on:
   workflow_call:
     inputs:
+      runner-provider:
+        description: 'Optional runner provider override'
+        required: false
+        type: string
+        default: ''
       ref:
         description: 'Git ref to test'
         required: true
@@ -13,7 +18,7 @@ permissions: {}
 jobs:
   declarations:
     name: Frontend declarations
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     timeout-minutes: 15
     permissions:
       contents: read

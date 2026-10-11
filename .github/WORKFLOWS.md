@@ -682,6 +682,8 @@ Composite actions in `.github/actions/`:
 
 ### setup-nodejs
 
+See [Run the Namespace CI trial](namespace/README.md) for the manual provider comparison and cache profiles.
+
 ```yaml
 inputs:
   node-version:        # default: '26.12.1'

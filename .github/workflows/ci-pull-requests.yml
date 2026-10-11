@@ -1,8 +1,17 @@
 name: 'CI: Pull Requests (Build, Test, Lint)'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI runner trial: {0} ({1})', inputs.runner_provider, github.ref_name) || '' }}"
 
 on:
   pull_request:
   merge_group:
+  workflow_dispatch:
+    inputs:
+      runner_provider:
+        description: 'Runner provider for a full CI trial'
+        type: choice
+        required: true
+        default: namespace
+        options: [namespace, blacksmith]
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
@@ -11,7 +20,7 @@ concurrency:
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-build' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -19,22 +28,23 @@ jobs:
       QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
       QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
     outputs:
-      ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
-      runtime: ${{ fromJSON(steps.ci-filter.outputs.results).runtime == true }}
-      unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
+      ci: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).ci == true }}
+      runtime: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).runtime == true }}
+      unit: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
-      dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
-      frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
-      workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
-      workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
-      db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
-      db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
+      dev_server_smoke: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
+      frontend_declarations: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
+      workflows: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      workflow_scripts: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
+      db: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).db == true }}
+      db_migrations: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
-      engine_e2e: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
+      engine_e2e: ${{ github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
       # The main E2E suite runs. Read by e2e-matrix and e2e.
       run_e2e: >-
         ${{ github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group' &&
-        (fromJSON(steps.ci-filter.outputs.results).runtime == true
+        (github.event_name == 'workflow_dispatch'
+          || fromJSON(steps.ci-filter.outputs.results).runtime == true
           || fromJSON(steps.ci-filter.outputs.results).e2e == true
           || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
@@ -42,13 +52,13 @@ jobs:
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
-      changed_files: ${{ steps.ci-filter.outputs.changed-files }}
+      changed_files: ${{ github.event_name != 'workflow_dispatch' && steps.ci-filter.outputs.changed-files || '' }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
-          # Use merge_group SHA when in merge queue, otherwise PR merge ref
-          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+          # Manual trials use the branch commit. PRs use the merge commit.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
           # Include recent history so the PR filter can reuse the checkout.
           fetch-depth: 200
 
@@ -231,13 +241,13 @@ jobs:
               .github/scripts/db-test-matrix.mjs
 
       - name: Setup and Build
-        if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
+        if: github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ${{ fromJSON(steps.ci-filter.outputs.results).ci && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...' }}
+          build-command: ${{ (github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).ci) && 'pnpm build' || 'pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...' }}
 
       - name: Report build critical path
-        if: fromJSON(steps.ci-filter.outputs.results).ci
+        if: github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).ci
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
@@ -245,14 +255,14 @@ jobs:
       # full Postgres range, so every merge still gates on the older majors.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
-        if: fromJSON(steps.ci-filter.outputs.results).db
+        if: github.event_name == 'workflow_dispatch' || fromJSON(steps.ci-filter.outputs.results).db
         env:
           DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
         run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
-        if: fromJSON(steps.ci-filter.outputs.results).unit
+        if: github.event_name != 'workflow_dispatch' && fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
         run: |
@@ -262,13 +272,13 @@ jobs:
 
   format-check:
     name: Format check
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tools' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
       contents: read
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
 
       - name: Install format tools
         uses: ./.github/actions/setup-nodejs
@@ -289,6 +299,7 @@ jobs:
     uses: ./.github/workflows/test-unit-reusable.yml
     needs: [install-and-build, format-check]
     with:
+      runner-provider: ${{ inputs.runner_provider }}
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
@@ -298,7 +309,7 @@ jobs:
   typecheck:
     name: Typecheck
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: [install-and-build, format-check]
     env:
       # Inherited by every worker turbo spawns, so the real budget is
@@ -322,12 +333,13 @@ jobs:
     uses: ./.github/workflows/test-linting-reusable.yml
     needs: [install-and-build, format-check]
     with:
+      runner-provider: ${{ inputs.runner_provider }}
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
   check-packaging:
     name: Check packaging
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: [install-and-build, format-check]
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -360,6 +372,7 @@ jobs:
         || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e'))
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
+      runner: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || 'blacksmith-4vcpu-ubuntu-2204' }}
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
@@ -369,7 +382,7 @@ jobs:
     name: Prepare E2E / Shard matrix
     needs: install-and-build
     if: needs.install-and-build.outputs.run_e2e == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-e2e' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
       skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
@@ -402,7 +415,11 @@ jobs:
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |
           FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
+          ARGS=(--matrix 20 --orchestrate "--project=$PLAYWRIGHT_PROJECT")
+          if [ "$GITHUB_EVENT_NAME" != 'workflow_dispatch' ]; then
+            ARGS+=(--impact "--files=$FILES_CSV" "--base=$MERGE_BASE")
+          fi
+          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs "${ARGS[@]}")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
@@ -418,6 +435,7 @@ jobs:
       needs.e2e-matrix.outputs.skip_tests != 'true'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
+      runner: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-e2e' || 'blacksmith-2vcpu-ubuntu-2204' }}
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       test-mode: docker-artifact
       test-command: ${{ github.event.pull_request.head.repo.fork == true && 'pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert=@licensed' || 'pnpm --filter=n8n-playwright test:container:multi-main:e2e' }}
@@ -443,6 +461,7 @@ jobs:
       github.event_name != 'merge_group'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
+      runner: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-e2e' || 'blacksmith-2vcpu-ubuntu-2204' }}
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:container:engine-v2:e2e
@@ -460,6 +479,7 @@ jobs:
     if: needs.install-and-build.outputs.dev_server_smoke == 'true' && github.event_name != 'merge_group'
     uses: ./.github/workflows/test-dev-server-smoke-reusable.yml
     with:
+      runner-provider: ${{ inputs.runner_provider }}
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
@@ -473,6 +493,7 @@ jobs:
     if: needs.install-and-build.outputs.frontend_declarations == 'true'
     uses: ./.github/workflows/test-frontend-declarations-reusable.yml
     with:
+      runner-provider: ${{ inputs.runner_provider }}
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
   db-tests:
@@ -481,6 +502,7 @@ jobs:
     if: needs.install-and-build.outputs.db == 'true'
     uses: ./.github/workflows/test-db-reusable.yml
     with:
+      runner-provider: ${{ inputs.runner_provider }}
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
@@ -516,6 +538,7 @@ jobs:
     if: needs.install-and-build.outputs.workflow_scripts == 'true'
     uses: ./.github/workflows/test-workflow-scripts-reusable.yml
     with:
+      runner-provider: ${{ inputs.runner_provider }}
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
@@ -604,19 +627,20 @@ jobs:
   # being green, not just the image consumers: a re-run of a red workflow should
   # restore the image rather than rebuild it.
   #
-  # Blacksmith-only rather than following the usual `runs-on` provider switch: off
-  # Blacksmith the tarball lands in GitHub's own cache, which this action does not
-  # address, so there is nothing here to delete.
+  # Namespace stores tarballs in GitHub's cache. Blacksmith uses its own cache backend.
   cleanup-docker-image:
     name: Cleanup Docker image
     needs: [prepare-docker, e2e-performance, required-checks]
     if: |
       always() &&
-      vars.RUNNER_PROVIDER != 'github' &&
+      (inputs.runner_provider || vars.RUNNER_PROVIDER) != 'github' &&
       needs.prepare-docker.result == 'success' &&
       needs.required-checks.result == 'success' &&
       (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'nscloud-ubuntu-22.04-amd64-1x2' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    permissions:
+      actions: write
+      contents: read
     steps:
       # Not `gh api --method DELETE`: written on Blacksmith runners, where
       # actions/cache is transparently intercepted, so GitHub's cache has no
@@ -624,9 +648,18 @@ jobs:
       # Key must track build-n8n-docker/load-n8n-docker; a mismatch makes the
       # delete a silent no-op rather than a failure.
       - name: Delete the image tarball from the cache
+        if: inputs.runner_provider != 'namespace'
         uses: useblacksmith/cache-delete@941f534fcf46c8d0a89feeceeb0f5377d82dd5e7 # v2
         with:
           key: n8n-docker-image-v2-standard-${{ github.sha }}
+
+      - name: Delete the Namespace image tarball from GitHub cache
+        if: inputs.runner_provider == 'namespace'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CACHE_KEY: n8n-docker-image-v2-standard-${{ github.sha }}
+        run: gh cache delete "$CACHE_KEY"
 
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.

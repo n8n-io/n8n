@@ -64,7 +64,7 @@ on:
         type: string
 
 env:
-  NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
+  NODE_OPTIONS: ${{ (contains(inputs.runner, '2vcpu') || inputs.runner == 'namespace-profile-n8n-ci-e2e') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script.
   # Absolute so nested pnpm invocations (e.g. coverage shard runner) don't
