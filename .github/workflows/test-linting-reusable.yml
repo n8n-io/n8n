@@ -27,6 +27,9 @@ jobs:
   lint:
     name: Lint (${{ matrix.name }})
     runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    env:
+      # NODE_OPTIONS does not limit tsgolint's Go heap. Leave room for the concurrent lint task.
+      GOMEMLIMIT: ${{ inputs.runner-provider == 'namespace' && matrix.name == 'Backend' && '6GiB' || '' }}
     strategy:
       fail-fast: false
       matrix:
