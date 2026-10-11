@@ -5,6 +5,7 @@ import {
 	type Variables,
 	type VariablesRepository,
 	type FolderRepository,
+	CredentialsEntity,
 	type CredentialsRepository,
 	type SharedCredentialsRepository,
 	GLOBAL_ADMIN_ROLE,
@@ -155,6 +156,8 @@ describe('SourceControlImportService', () => {
 		// Default: nothing is published, so pull deletions never wait on an unpublish.
 		workflowPublishedVersionRepository.getPublishedVersionId.mockResolvedValue(null);
 		credentialsRepository.find.mockResolvedValue([]);
+		// Default: deleted projects own no credentials.
+		sharedCredentialsRepository.findOwnedCredentialsByProjects.mockResolvedValue([]);
 		variablesRepository.find.mockResolvedValue([]);
 		transactionManager.upsert.mockImplementation(
 			async (_entity, value, conflictPaths) =>
@@ -3298,14 +3301,45 @@ describe('SourceControlImportService', () => {
 			});
 		});
 
+		describe('deleteCredentialsNotInWorkfolder', () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+
+			it('should delete each candidate through the credentials service', async () => {
+				credentialsService.delete.mockResolvedValue(true);
+
+				await service.deleteCredentialsNotInWorkfolder(user, [
+					mock<SourceControlledFile>({ id: 'cred-1' }),
+				]);
+
+				expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-1', {
+					includeInstanceCredentials: true,
+				});
+				expect(credentialsService.deleteUnowned).not.toHaveBeenCalled();
+			});
+
+			it('should delete the candidate as a credential without an owner when the regular delete finds nothing', async () => {
+				credentialsService.delete.mockResolvedValue(false);
+
+				await service.deleteCredentialsNotInWorkfolder(user, [
+					mock<SourceControlledFile>({ id: 'cred-1' }),
+				]);
+
+				expect(credentialsService.deleteUnowned).toHaveBeenCalledWith(user, 'cred-1');
+			});
+		});
+
 		describe('deletionError resource listing', () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+
 			it('should cap the number of resources listed in the error message', async () => {
 				const candidates = Array.from({ length: 12 }, (_, i) =>
 					mock<SourceControlledFile>({ id: `project-${i}`, name: `Project ${i}` }),
 				);
 				sharedWorkflowRepository.find.mockRejectedValueOnce(new Error('boom'));
 
-				await expect(service.deleteTeamProjectsNotInWorkfolder(candidates)).rejects.toThrow(
+				await expect(
+					service.deleteTeamProjectsNotInWorkfolder(user, candidates, []),
+				).rejects.toThrow(
 					'"Project 9" (project-9) and 2 more while pulling from source control: boom',
 				);
 			});
@@ -3953,6 +3987,8 @@ describe('SourceControlImportService', () => {
 		});
 
 		describe('deleteTeamProjectsNotInWorkfolder', () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+
 			it('should delete candidate files', async () => {
 				const candidates = [
 					mock<SourceControlledFile>({ id: 'project-1' }),
@@ -3960,7 +3996,7 @@ describe('SourceControlImportService', () => {
 				];
 				sharedWorkflowRepository.find.mockResolvedValue([]);
 
-				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
 
 				expect(projectRepository.delete).toHaveBeenCalledWith({
 					id: In(['project-1', 'project-2']),
@@ -3968,9 +4004,46 @@ describe('SourceControlImportService', () => {
 			});
 
 			it('should handle empty candidates array', async () => {
-				await service.deleteTeamProjectsNotInWorkfolder([]);
+				await service.deleteTeamProjectsNotInWorkfolder(user, [], []);
 
 				expect(projectRepository.delete).not.toHaveBeenCalled();
+			});
+
+			it('should delete the credentials owned by the projects before deleting the projects', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValue([]);
+				sharedCredentialsRepository.findOwnedCredentialsByProjects.mockResolvedValueOnce([
+					Object.assign(new CredentialsEntity(), { id: 'cred-1' }),
+					Object.assign(new CredentialsEntity(), { id: 'cred-2' }),
+				]);
+
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
+
+				expect(sharedCredentialsRepository.findOwnedCredentialsByProjects).toHaveBeenCalledWith([
+					'project-1',
+				]);
+				expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-1');
+				expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-2');
+				expect(credentialsService.delete.mock.invocationCallOrder.at(-1)).toBeLessThan(
+					projectRepository.delete.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('should keep the owned credentials that are still in the work folder', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValue([]);
+				sharedCredentialsRepository.findOwnedCredentialsByProjects.mockResolvedValueOnce([
+					Object.assign(new CredentialsEntity(), { id: 'cred-kept' }),
+					Object.assign(new CredentialsEntity(), { id: 'cred-deleted' }),
+				]);
+
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, [
+					mock<SourceControlledFile>({ id: 'cred-kept' }),
+				]);
+
+				expect(credentialsService.delete).toHaveBeenCalledTimes(1);
+				expect(credentialsService.delete).toHaveBeenCalledWith(user, 'cred-deleted');
+				expect(projectRepository.delete).toHaveBeenCalledWith({ id: In(['project-1']) });
 			});
 
 			it('should unpublish and drain straggler workflows before deleting projects', async () => {
@@ -3987,7 +4060,7 @@ describe('SourceControlImportService', () => {
 						Object.assign(new WorkflowEntity(), { id: 'wf-inactive', activeVersionId: null }),
 					);
 
-				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
 
 				expect(sharedWorkflowRepository.find).toHaveBeenCalledWith({
 					select: ['workflowId'],
@@ -4014,7 +4087,7 @@ describe('SourceControlImportService', () => {
 						Object.assign(new WorkflowEntity(), { id: 'wf-inactive', activeVersionId: null }),
 					);
 
-				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
 
 				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledTimes(2);
 				// A pull is a system mutation: no acting user to attribute the deletes to.
@@ -4046,7 +4119,7 @@ describe('SourceControlImportService', () => {
 						Object.assign(new WorkflowEntity(), { id: 'wf-inactive', activeVersionId: null }),
 					);
 
-				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
 
 				// The sweep searches globally for orphaned requests, so one call covers the batch
 				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledTimes(1);
@@ -4063,7 +4136,7 @@ describe('SourceControlImportService', () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
 				sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 
-				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
 
 				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
 			});

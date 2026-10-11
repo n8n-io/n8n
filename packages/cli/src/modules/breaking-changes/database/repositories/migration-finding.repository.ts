@@ -116,6 +116,20 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		return total;
 	}
 
+	/** The given workflows that have at least one open finding for the version. */
+	async listWorkflowIdsWithOpenFindings(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[],
+		ctx: OperationContext,
+	): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+		const rows = await this.managerFor(ctx).find(MigrationFinding, {
+			select: { workflowId: true },
+			where: { targetVersion, status: 'open', workflowId: In(workflowIds) },
+		});
+		return [...new Set(rows.map((row) => row.workflowId))];
+	}
+
 	/**
 	 * Findings of one rule for the version in a status a user can set (open and
 	 * won't fix), each with its workflow's report columns. `workflowIds` limits

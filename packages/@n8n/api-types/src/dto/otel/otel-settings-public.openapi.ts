@@ -3,7 +3,8 @@ import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 export const otelSettingsPublicDescription =
 	'The OpenTelemetry configuration, matching the fields exposed in the UI. On a write this is a ' +
 	'full replacement: every field must be provided, except `exporterProtocol`, which defaults to ' +
-	'`http/protobuf` when omitted. Fields managed declaratively via environment variables are ' +
+	'`http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which ' +
+	'default to `false` when omitted. Fields managed declaratively via environment variables are ' +
 	'returned with their effective value. A write can repeat these values, but changing them returns 409.';
 
 export const otelSettingsPublicFieldDocs = {
@@ -62,6 +63,21 @@ export const otelSettingsPublicFieldDocs = {
 	includeNodeSpans: {
 		description: 'Whether to emit a span for each node execution in addition to the workflow span.',
 		example: true,
+	},
+	emitWorkflowStartSpan: {
+		description:
+			'Whether to emit a `workflow.execute.started` span with a duration of 0 ms when each ' +
+			'execution or resumed segment starts. Optional: a write that omits it selects `false`, but an ' +
+			'instance that sets this field to `true` with an environment variable rejects that write with 409.',
+		example: false,
+	},
+	emitNodeStartSpan: {
+		description:
+			'Whether to emit a `node.execute.started` span with a duration of 0 ms when each node span ' +
+			'starts. This doubles the number of node spans. Has no effect when `includeNodeSpans` is ' +
+			'false. Optional: a write that omits it selects `false`, but an instance that sets this field ' +
+			'to `true` with an environment variable rejects that write with 409.',
+		example: false,
 	},
 	injectOutbound: {
 		description:

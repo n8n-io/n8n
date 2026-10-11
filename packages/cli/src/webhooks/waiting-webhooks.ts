@@ -343,12 +343,16 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	private emitExecutionResumedEvent(execution: IExecutionResponse, executionId: string) {
+	private emitExecutionResumedEvent(
+		execution: IExecutionResponse,
+		executionId: string,
+		responseAt: Date,
+	) {
 		this.eventService.emit('execution-resumed', {
 			executionId,
 			workflowId: execution.workflowData.id,
 			resumeSource: 'webhook', // today, we only emit the 'execution-resumed' event for webhook wait nodes
-			responseAt: new Date(),
+			responseAt,
 		});
 	}
 
@@ -428,9 +432,10 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			const isWaitingForWebhook =
 				!this.includeForms && !this.isSendAndWaitRequest(workflow.nodes, suffix);
-			if (isWaitingForWebhook) {
-				this.emitExecutionResumedEvent(execution, executionId);
-			}
+			const responseAt = new Date();
+			const onResume = isWaitingForWebhook
+				? () => this.emitExecutionResumedEvent(execution, executionId, responseAt)
+				: undefined;
 
 			return await new Promise((resolve, reject) => {
 				WebhookHelpers.executeWebhook(
@@ -452,7 +457,7 @@ export class WaitingWebhooks implements IWebhookManager {
 						resolve(data);
 					},
 					undefined,
-					{ storedAt: execution.storedAt },
+					{ storedAt: execution.storedAt, onResume },
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
