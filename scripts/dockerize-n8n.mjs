@@ -162,7 +162,10 @@ async function buildWithBake(targets) {
 		...(isContainerDriver
 			? [
 					'--provenance=false',
-					...(tarballDir ? tarballOutputs : [shouldPush ? '--push' : '--load']),
+					// Bake requires a write grant for archive paths outside the build context.
+					...(tarballDir
+						? [`--allow=fs.write=${path.resolve(tarballDir)}`, ...tarballOutputs]
+						: [shouldPush ? '--push' : '--load']),
 				]
 			: []),
 	];
