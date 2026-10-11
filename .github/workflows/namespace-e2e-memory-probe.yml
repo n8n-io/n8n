@@ -45,7 +45,7 @@ jobs:
       TEST_IMAGE_N8N: n8nio/n8n:local
       N8N_SKIP_LICENSES: 'true'
       CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.provider }}
-      CURRENTS_PROJECT_ID: nHHLA5
+      CURRENTS_PROJECT_ID: qyhJh8 # n8n-sandbox
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
       - uses: ./.github/actions/setup-nodejs
