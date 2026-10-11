@@ -83,7 +83,21 @@ export function readResumedTurnOptions(value: unknown): AssistantTurnOptions {
 }
 
 export function toJsonObject(options: AssistantTurnOptions): Record<string, unknown> {
-	// deepCopy keeps the input type. The queue stores a plain record.
+	// deepCopy keeps the input type and keeps keys whose values are undefined.
+	// The queue stores a plain record, and a missing value must not become a key.
 	const copied: unknown = deepCopy(options);
-	return isRecord(copied) ? copied : {};
+	if (!isRecord(copied)) return {};
+	omitUndefined(copied);
+	return copied;
+}
+
+function omitUndefined(record: Record<string, unknown>): void {
+	for (const key of Object.keys(record)) {
+		const value = record[key];
+		if (value === undefined) {
+			delete record[key];
+			continue;
+		}
+		if (isRecord(value)) omitUndefined(value);
+	}
 }
