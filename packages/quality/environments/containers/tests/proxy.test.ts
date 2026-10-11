@@ -14,6 +14,7 @@ test('waits for MockServer status without a followed log stream', async () => {
 	const httpWait = vi.spyOn(Wait, 'forHttp');
 	const logWait = vi.spyOn(Wait, 'forLogMessage');
 	const withWaitStrategy = vi.spyOn(GenericContainer.prototype, 'withWaitStrategy');
+	const withLogConsumer = vi.spyOn(GenericContainer.prototype, 'withLogConsumer');
 	vi.spyOn(GenericContainer.prototype, 'start').mockResolvedValue({} as StartedTestContainer);
 	const { proxy } = await import('../services/proxy.js');
 	const network = { getName: () => 'test-network' } as StartedNetwork;
@@ -22,7 +23,8 @@ test('waits for MockServer status without a followed log stream', async () => {
 
 	expect(result.meta.internalUrl).toBe('http://proxyserver:1080');
 	expect(httpWait).toHaveBeenCalledWith('/mockserver/status', 1080);
-	// DEVP-1269: A log wait leaves a followed Docker stream attached to the worker.
+	// DEVP-1269: Log waits and consumers leave followed Docker streams attached to the worker.
 	expect(logWait).not.toHaveBeenCalled();
 	expect(withWaitStrategy).toHaveBeenCalledWith(httpWait.mock.results[0].value);
+	expect(withLogConsumer).not.toHaveBeenCalled();
 });

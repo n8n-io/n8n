@@ -11,14 +11,12 @@ import type {
 import { join } from 'path';
 import { GenericContainer, Wait } from 'testcontainers';
 
-import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'proxyserver';
 const PORT = 1080;
-// The status check alone proves readiness. A log wait strategy leaves a followed
-// log stream that buffers every MockServer log line in the test worker.
+// The status check proves readiness without following MockServer logs.
 const MOCKSERVER_WAIT_STRATEGY = Wait.forHttp('/mockserver/status', PORT)
 	.withMethod('PUT')
 	.forStatusCode(200)
@@ -48,36 +46,29 @@ export const proxy: Service<ProxyResult> = {
 	},
 
 	async start(network, projectName): Promise<ProxyResult> {
-		const { consumer, throwWithLogs } = createSilentLogConsumer();
+		const container = await new GenericContainer(TEST_CONTAINER_IMAGES.mockserver)
+			.withNetwork(network)
+			.withNetworkAliases(HOSTNAME)
+			.withExposedPorts(PORT)
+			// Keep MockServer heap predictable under parallel container load.
+			.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
+			.withWaitStrategy(MOCKSERVER_WAIT_STRATEGY)
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': HOSTNAME,
+			})
+			.withName(`${projectName}-${HOSTNAME}`)
+			.withReuse()
+			.start();
 
-		try {
-			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.mockserver)
-				.withNetwork(network)
-				.withNetworkAliases(HOSTNAME)
-				.withExposedPorts(PORT)
-				// Keep MockServer heap predictable under parallel container load.
-				.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
-				.withWaitStrategy(MOCKSERVER_WAIT_STRATEGY)
-				.withLabels({
-					'com.docker.compose.project': projectName,
-					'com.docker.compose.service': HOSTNAME,
-				})
-				.withName(`${projectName}-${HOSTNAME}`)
-				.withReuse()
-				.withLogConsumer(consumer)
-				.start();
-
-			return {
-				container,
-				meta: {
-					host: HOSTNAME,
-					port: PORT,
-					internalUrl: `http://${HOSTNAME}:${PORT}`,
-				},
-			};
-		} catch (error) {
-			return throwWithLogs(error);
-		}
+		return {
+			container,
+			meta: {
+				host: HOSTNAME,
+				port: PORT,
+				internalUrl: `http://${HOSTNAME}:${PORT}`,
+			},
+		};
 	},
 
 	env(result: ProxyResult, external?: boolean): Record<string, string> {
