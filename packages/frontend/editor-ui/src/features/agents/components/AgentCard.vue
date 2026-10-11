@@ -18,6 +18,9 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
+import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -27,10 +30,16 @@ import type { AgentResource } from '../types';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
-const props = defineProps<{
-	agent: AgentResource;
-	projectId: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		agent: AgentResource;
+		projectId: string;
+		showOwnershipBadge?: boolean;
+	}>(),
+	{
+		showOwnershipBadge: false,
+	},
+);
 
 const emit = defineEmits<{
 	select: [agentId: string];
@@ -46,6 +55,7 @@ const toast = useToast();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const mcpStore = useMCPStore();
+const projectsStore = useProjectsStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
@@ -54,6 +64,7 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 );
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
+const resourceTypeLabel = computed(() => locale.baseText('generic.agent').toLowerCase());
 
 // Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
 const hasUnpublishedChanges = computed(
@@ -226,6 +237,14 @@ async function toggleMCPAccess(enabled: boolean) {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<ProjectCardBadge
+					v-if="showOwnershipBadge && agent.project"
+					:resource="agent"
+					:resource-type="ResourceType.Agent"
+					:resource-type-label="resourceTypeLabel"
+					:personal-project="projectsStore.personalProject"
+					:show-badge-border="false"
+				/>
 				<PublicationIndicator
 					v-if="isPublished"
 					:label="

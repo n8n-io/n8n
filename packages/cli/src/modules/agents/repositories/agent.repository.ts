@@ -151,8 +151,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 			'activeVersion',
 		);
 
-		// Only cross-project consumers (MCP settings) label each agent by its home
-		// project; the overview lists don't read it, so they skip the extra join.
+		// Cross-project consumers label each agent by its home project. Project-specific
+		// lists do not read it, so they skip the extra join.
 		if (withProject) {
 			query.leftJoinAndSelect('agent.project', 'project');
 		}
