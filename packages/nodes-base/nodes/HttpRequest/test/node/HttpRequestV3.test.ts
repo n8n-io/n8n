@@ -751,6 +751,48 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Response parsing', () => {
+		const setupAutodetectRequest = (
+			responseOverride: Record<string, unknown>,
+			fullResponse = true,
+		) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return {
+								...options,
+								response: {
+									response: {
+										fullResponse,
+										responseFormat: 'autodetect',
+									},
+								},
+							};
+						case 'options.response.response.responseFormat':
+							return 'autodetect';
+						case 'options.response.response.fullResponse':
+							return fullResponse;
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				statusCode: 200,
+				statusMessage: 'OK',
+				...responseOverride,
+			});
+		};
+
 		it('should return empty object for autodetect JSON response with empty body', async () => {
 			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
 			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
@@ -812,6 +854,72 @@ describe('HttpRequestV3', () => {
 			const result = await node.execute.call(executeFunctions);
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should preserve a top-level JSON string in autodetect mode with fullResponse: true', async () => {
+			setupAutodetectRequest({ body: Buffer.from('"ordinary string"') }, true);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							body: 'ordinary string',
+							headers: { 'content-type': 'application/json' },
+							statusCode: 200,
+							statusMessage: 'OK',
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should preserve a top-level JSON string in autodetect mode with fullResponse: false', async () => {
+			setupAutodetectRequest({ body: Buffer.from('"ordinary string"') }, false);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: 'ordinary string', pairedItem: { item: 0 } }]]);
+		});
+
+		it('should preserve a numeric top-level JSON string ("42") as a string in autodetect mode', async () => {
+			setupAutodetectRequest({ body: Buffer.from('"42"') }, true);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toBe('42');
+		});
+
+		it('should preserve a numeric top-level JSON value (42) as a number in autodetect mode', async () => {
+			setupAutodetectRequest({ body: Buffer.from('42') }, true);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toBe(42);
+		});
+
+		it('should preserve a JSON object body in autodetect mode', async () => {
+			setupAutodetectRequest({ body: Buffer.from('{"value":"ordinary string"}') }, true);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toEqual({ value: 'ordinary string' });
+		});
+
+		it('should still parse a string JSON body in autodetect mode when __bodyResolved is true', async () => {
+			setupAutodetectRequest(
+				{
+					body: '{"value":"from-paginated-helper"}',
+					__bodyResolved: true,
+				},
+				true,
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toEqual({ value: 'from-paginated-helper' });
 		});
 	});
 

@@ -955,6 +955,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					const responseContentType = response.headers['content-type'] ?? '';
+					let isJsonBodyParsed = false;
 					if (autoDetectResponseFormat) {
 						if (responseContentType.includes('application/json')) {
 							responseFormat = 'json';
@@ -977,6 +978,7 @@ export class HttpRequestV3 implements INodeType {
 												? { fallbackValue: {} }
 												: { errorMessage: 'Invalid JSON in response body' }),
 										});
+								isJsonBodyParsed = true;
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 							responseFormat = 'file';
@@ -1098,7 +1100,11 @@ export class HttpRequestV3 implements INodeType {
 								returnItem[property] = response[property];
 							}
 
-							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+							if (
+								responseFormat === 'json' &&
+								!isJsonBodyParsed &&
+								typeof returnItem.body === 'string'
+							) {
 								if (isEmptyResponseBody(returnItem.body)) {
 									returnItem.body = {};
 								} else {
@@ -1121,7 +1127,7 @@ export class HttpRequestV3 implements INodeType {
 								},
 							});
 						} else {
-							if (responseFormat === 'json' && typeof response === 'string') {
+							if (responseFormat === 'json' && !isJsonBodyParsed && typeof response === 'string') {
 								if (isEmptyResponseBody(response)) {
 									response = {};
 								} else {
