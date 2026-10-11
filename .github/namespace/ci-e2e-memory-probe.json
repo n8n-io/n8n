@@ -1,0 +1,21 @@
+{
+	"tag": "n8n-ci-e2e-memory-probe",
+	"description": "Developer Platform: paired 2-vCPU, 8-GB E2E memory probe",
+	"os": "ubuntu-22.04",
+	"instance_shape": {
+		"virtual_cpu": 2,
+		"memory_megabytes": 8192,
+		"machine_arch": "amd64",
+		"os": "linux"
+	},
+	"builder_mode": "USE_REMOTE_BUILDER",
+	"cache_volume_settings": [
+		{
+			"volume_tag": "n8n-ci-e2e",
+			"volume_size_gb": 20,
+			"bundled_runner_actions_cache": true,
+			"bundled_runner_tools_cache": true,
+			"bundled_container_cache": true
+		}
+	]
+}

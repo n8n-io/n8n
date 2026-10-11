@@ -12,13 +12,23 @@ on:
         required: true
         default: namespace
         options: [namespace, blacksmith]
+      memory_probe:
+        description: 'Run only the paired 8-GB E2E memory probe'
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  memory-probe:
+    if: github.event_name == 'workflow_dispatch' && inputs.memory_probe
+    uses: ./.github/workflows/namespace-e2e-memory-probe.yml
+    secrets: inherit
+
   install-and-build:
+    if: ${{ !inputs.memory_probe }}
     name: Install & Build
     runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-build' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
@@ -271,6 +281,7 @@ jobs:
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
   format-check:
+    if: ${{ !inputs.memory_probe }}
     name: Format check
     runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tools' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     permissions:
@@ -582,7 +593,7 @@ jobs:
         security-checks,
         workflow-scripts,
       ]
-    if: always()
+    if: always() && !inputs.memory_probe
     runs-on: ubuntu-slim
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0

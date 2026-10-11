@@ -23,7 +23,8 @@ Use a Namespace workspace connected to this repository. Run these commands from 
 Manual trials run the full build, unit tests, lint, typecheck, packaging checks, DB tests, frontend checks, and E2E suites.
 They do not apply PR change scoping. Compare job timings with that difference in mind.
 Use `runner_provider=blacksmith` for a matched full-suite control run.
-The Namespace E2E profile uses 2 vCPU and 16 GB RAM to fit the full multi-main suite.
+The Namespace E2E profile uses 2 vCPU and 16 GB RAM as an OOM workaround.
+The cause of the excess worker memory is still under investigation.
 Record this memory difference when comparing with Blacksmith's 2-vCPU runners.
 
 Verify the Node and pnpm checks, test counts, Docker image restores, and final job results.
