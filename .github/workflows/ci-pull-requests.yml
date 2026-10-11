@@ -453,6 +453,8 @@ jobs:
       workers: '1'
       pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
+      # Manual runner trials report to n8n-sandbox to keep n8n-ci history clean.
+      currents-project-id: ${{ github.event_name == 'workflow_dispatch' && 'qyhJh8' || 'nHHLA5' }}
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
     secrets: inherit
 
@@ -478,6 +480,7 @@ jobs:
       test-command: pnpm --filter=n8n-playwright test:container:engine-v2:e2e
       workers: '1'
       artifact-prefix: e2e-engine
+      currents-project-id: ${{ github.event_name == 'workflow_dispatch' && 'qyhJh8' || 'nHHLA5' }}
     secrets: inherit
 
   # Boots the editor-ui against the Vite dev server and fails on any console
