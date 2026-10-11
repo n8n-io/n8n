@@ -17,14 +17,13 @@ import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'proxyserver';
 const PORT = 1080;
-const MOCKSERVER_WAIT_STRATEGY = Wait.forAll([
-	Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`),
-	Wait.forHttp('/mockserver/status', PORT)
-		.withMethod('PUT')
-		.forStatusCode(200)
-		.withStartupTimeout(60_000)
-		.withReadTimeout(250),
-]);
+// The status check alone proves readiness. A log wait strategy leaves a followed
+// log stream that buffers every MockServer log line in the test worker.
+const MOCKSERVER_WAIT_STRATEGY = Wait.forHttp('/mockserver/status', PORT)
+	.withMethod('PUT')
+	.forStatusCode(200)
+	.withStartupTimeout(60_000)
+	.withReadTimeout(250);
 
 export interface ProxyMeta {
 	host: string;
