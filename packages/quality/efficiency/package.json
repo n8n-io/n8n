@@ -9,7 +9,7 @@
 		"typecheck": "tsc --noEmit",
 		"format:check": "biome ci playwright.config.ts images"
 	},
-	"dependencies": {
+	"peerDependencies": {
 		"zod": "catalog:"
 	},
 	"devDependencies": {
@@ -18,7 +18,8 @@
 		"n8n-playwright": "workspace:*",
 		"oxlint": "catalog:",
 		"oxlint-tsgolint": "catalog:",
-		"typescript": "catalog:typescript"
+		"typescript": "catalog:typescript",
+		"zod": "catalog:"
 	},
 	"license": "LicenseRef-n8n-sustainable-use"
 }

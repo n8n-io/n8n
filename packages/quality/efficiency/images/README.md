@@ -42,6 +42,8 @@ These projects use the existing artifact and metrics reporters. They do not star
 
 4. Compare results for the same image type, platform, and Dive version.
    The metrics reporter sends measurements when the `QA_METRICS_WEBHOOK_*` variables are configured.
+   The `platform` dimension comes from the image, such as `linux/arm64` or `linux/amd64`, not the host OS.
+   Docker images built on Apple Silicon usually use `linux/arm64`.
 
    - `docker-image-layer-size-<image>` measures uncompressed layer content in MiB.
    - `docker-image-wasted-size-<image>` measures Dive's estimated wasted content in MiB.

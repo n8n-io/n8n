@@ -8078,10 +8078,6 @@ importers:
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/quality/efficiency:
-    dependencies:
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -8101,6 +8097,9 @@ importers:
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/quality/efficiency/microbenchmarks:
     devDependencies:

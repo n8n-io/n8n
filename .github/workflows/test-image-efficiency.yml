@@ -9,6 +9,10 @@ permissions:
 jobs:
   prepare-docker:
     uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets:
+      QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+      QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+      QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
   image-efficiency:
     name: Image Efficiency
