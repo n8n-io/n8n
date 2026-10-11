@@ -1,5 +1,7 @@
 # Run the Namespace CI trial
 
+**Owner:** Developer Platform.
+
 Use a Namespace workspace connected to this repository. Run these commands from the repository root.
 
 1. Authenticate with `nsc login`.
