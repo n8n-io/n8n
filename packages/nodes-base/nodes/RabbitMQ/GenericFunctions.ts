@@ -89,17 +89,7 @@ export async function rabbitmqConnectQueue(
 					arguments: queueArgs,
 				};
 
-				try {
-					await channel.assertQueue(queue, assertOptions);
-				} catch (error) {
-					if (
-						error.message.includes('PRECONDITION_FAILED') &&
-						error.message.includes('inequivalent arg')
-					) {
-						throw new Error(`Queue '${queue}' already exists with different settings.`);
-					}
-					throw error;
-				}
+				await channel.assertQueue(queue, assertOptions);
 			} else {
 				await channel.checkQueue(queue);
 			}

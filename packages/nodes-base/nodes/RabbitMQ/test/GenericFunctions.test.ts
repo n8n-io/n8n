@@ -18,6 +18,7 @@ connect.mockReturnValue(mockConnection);
 
 import {
 	parseMessage,
+	parseAssertOptionArguments,
 	rabbitmqConnect,
 	rabbitmqConnectExchange,
 	rabbitmqConnectQueue,
@@ -25,7 +26,7 @@ import {
 	MessageTracker,
 	handleMessage,
 } from '../GenericFunctions';
-import type { TriggerOptions } from '../types';
+import type { Options, TriggerOptions } from '../types';
 
 describe('RabbitMQ GenericFunctions', () => {
 	const credentials = {
@@ -127,22 +128,216 @@ describe('RabbitMQ GenericFunctions', () => {
 	describe('rabbitmqConnectQueue', () => {
 		it('should assert a queue', async () => {
 			context.getCredentials.mockResolvedValue(credentials);
-			const options = mock<TriggerOptions>({ assertQueue: true });
+			const options: TriggerOptions = {
+				assertQueue: true,
+				durable: false,
+				autoDelete: false,
+				exclusive: false,
+				arguments: { argument: [] },
+				headers: { header: [] },
+				assertExchange: false,
+				acknowledge: 'immediately',
+				parallelMessages: 1,
+				binding: { bindings: [] },
+				contentIsBinary: false,
+				jsonParseBody: true,
+				onlyContent: false,
+			};
 			await rabbitmqConnectQueue.call(context, 'queue', options);
 
-			expect(mockChannel.assertQueue).toHaveBeenCalledWith('queue', options);
+			expect(mockChannel.assertQueue).toHaveBeenCalledWith('queue', {
+				durable: false,
+				autoDelete: false,
+				exclusive: false,
+				arguments: {},
+			});
 			expect(mockChannel.checkQueue).not.toHaveBeenCalled();
 			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
 		});
 
 		it('should check a queue', async () => {
 			context.getCredentials.mockResolvedValue(credentials);
-			const options = mock<TriggerOptions>({ assertQueue: false });
+			const options: TriggerOptions = {
+				assertQueue: false,
+				durable: false,
+				autoDelete: false,
+				exclusive: false,
+				arguments: { argument: [] },
+				headers: { header: [] },
+				assertExchange: false,
+				acknowledge: 'immediately',
+				parallelMessages: 1,
+				binding: { bindings: [] },
+				contentIsBinary: false,
+				jsonParseBody: true,
+				onlyContent: false,
+			};
 			await rabbitmqConnectQueue.call(context, 'queue', options);
 
 			expect(mockChannel.assertQueue).not.toHaveBeenCalled();
 			expect(mockChannel.checkQueue).toHaveBeenCalledWith('queue');
 			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('parseAssertOptionArguments', () => {
+		it('should return empty object when no arguments provided', () => {
+			const options: Options = {
+				autoDelete: false,
+				assertExchange: false,
+				assertQueue: true,
+				durable: true,
+				exclusive: false,
+				arguments: { argument: [] },
+				headers: { header: [] },
+			};
+			const result = parseAssertOptionArguments(options);
+			expect(result).toEqual({});
+		});
+
+		it('should parse arguments from options', () => {
+			const options: Options = {
+				autoDelete: false,
+				assertExchange: false,
+				assertQueue: true,
+				durable: true,
+				exclusive: false,
+				arguments: {
+					argument: [{ key: 'x-queue-type', value: 'quorum' }],
+				},
+				headers: { header: [] },
+			};
+			const result = parseAssertOptionArguments(options);
+			expect(result).toEqual({
+				'x-queue-type': 'quorum',
+			});
+		});
+
+		it('should ignore arguments with empty key', () => {
+			const options: Options = {
+				autoDelete: false,
+				assertExchange: false,
+				assertQueue: true,
+				durable: true,
+				exclusive: false,
+				arguments: {
+					argument: [
+						{ key: 'valid-key', value: 'value' },
+						{ key: '', value: 'ignored' },
+					],
+				},
+				headers: { header: [] },
+			};
+			const result = parseAssertOptionArguments(options);
+			expect(result).toEqual({
+				'valid-key': 'value',
+			});
+		});
+	});
+
+	describe('rabbitmqConnectQueue with assertOptions', () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+			connect.mockReturnValue(mockConnection);
+			mockChannel.assertQueue.mockResolvedValue({
+				queue: 'test-queue',
+				messageCount: 0,
+				consumerCount: 0,
+			});
+		});
+
+		it('should call assertQueue with proper assertOptions including durable, autoDelete, exclusive, and arguments', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options: TriggerOptions = {
+				assertQueue: true,
+				durable: true,
+				autoDelete: false,
+				exclusive: false,
+				arguments: {
+					argument: [{ key: 'x-queue-type', value: 'quorum' }],
+				},
+				headers: { header: [] },
+				assertExchange: false,
+				acknowledge: 'immediately',
+				parallelMessages: 1,
+				binding: { bindings: [] },
+				contentIsBinary: false,
+				jsonParseBody: true,
+				onlyContent: false,
+			};
+			await rabbitmqConnectQueue.call(context, 'test-queue', options);
+
+			expect(mockChannel.assertQueue).toHaveBeenCalledWith('test-queue', {
+				durable: true,
+				autoDelete: false,
+				exclusive: false,
+				arguments: { 'x-queue-type': 'quorum' },
+			});
+		});
+
+		it('should succeed when queue exists with same arguments (no PRECONDITION_FAILED)', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options: TriggerOptions = {
+				assertQueue: true,
+				durable: true,
+				autoDelete: false,
+				exclusive: false,
+				arguments: {
+					argument: [{ key: 'x-queue-type', value: 'quorum' }],
+				},
+				headers: { header: [] },
+				assertExchange: false,
+				acknowledge: 'immediately',
+				parallelMessages: 1,
+				binding: { bindings: [] },
+				contentIsBinary: false,
+				jsonParseBody: true,
+				onlyContent: false,
+			};
+
+			// Mock successful assertQueue (queue exists with same args)
+			mockChannel.assertQueue.mockResolvedValue({
+				queue: 'test-queue',
+				messageCount: 0,
+				consumerCount: 0,
+			});
+
+			await expect(
+				rabbitmqConnectQueue.call(context, 'test-queue', options),
+			).resolves.toBeDefined();
+
+			expect(mockChannel.assertQueue).toHaveBeenCalledWith('test-queue', {
+				durable: true,
+				autoDelete: false,
+				exclusive: false,
+				arguments: { 'x-queue-type': 'quorum' },
+			});
+		});
+
+		it('should rethrow other errors from assertQueue', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options: TriggerOptions = {
+				assertQueue: true,
+				durable: true,
+				autoDelete: false,
+				exclusive: false,
+				arguments: { argument: [] },
+				headers: { header: [] },
+				assertExchange: false,
+				acknowledge: 'immediately',
+				parallelMessages: 1,
+				binding: { bindings: [] },
+				contentIsBinary: false,
+				jsonParseBody: true,
+				onlyContent: false,
+			};
+
+			const error = new Error('Connection closed');
+			mockChannel.assertQueue.mockRejectedValue(error);
+
+			await expect(rabbitmqConnectQueue.call(context, 'test-queue', options)).rejects.toThrow(
+				'Connection closed',
+			);
 		});
 	});
 
