@@ -46,7 +46,7 @@ const effectiveVariant = computed(() => {
 
 const computedIconSize = computed((): IconSize => {
 	if (effectiveSize.value === 'xsmall') return 'xsmall';
-	return effectiveSize.value as IconSize;
+	return effectiveSize.value;
 });
 
 const classes = computed(() =>

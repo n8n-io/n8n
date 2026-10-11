@@ -1709,7 +1709,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const ownerWorkflow = await createWorkflow({}, owner);
 
 					const jwtService = Container.get(JwtService);
-					const token = jwtService.sign({
+					const token = jwtService.sign('tokenExchange', {
 						iss: TOKEN_EXCHANGE_ISSUER,
 						sub: member.id,
 						iat: Math.floor(Date.now() / 1000),
@@ -1863,7 +1863,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const member = await createMemberWithApiKey({ scopes: ['workflowTags:list'] });
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const workflow = await createWorkflow({ tags }, member);
 
@@ -1890,7 +1890,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const member = await createMemberWithApiKey({ scopes: ['credential:create'] });
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const workflow = await createWorkflow({ tags }, member);
 
@@ -1911,7 +1911,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
 					const workflow = await createWorkflow({}, member);
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const payload = [
 						{
@@ -1975,7 +1975,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const authMemberAgent = testServer.publicApiAgentFor(member);
 
 					const workflow = await createWorkflow({}, member);
-					const tags = await Promise.all([await createTag({}), await createTag({})]);
+					const tags = [await createTag({}), await createTag({})];
 
 					const payload = [
 						{

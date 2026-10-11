@@ -1,10 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { sleep } from '@n8n/utils/sleep';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	ErrorReporter,
@@ -12,10 +17,10 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
-	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	ExecutionStorageLocation,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -26,13 +31,13 @@ import type {
 import {
 	createRunExecutionData,
 	ExecutionCancelledError,
+	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	Workflow,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
-
-import { EventService } from './events/event.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
@@ -46,6 +51,8 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -60,14 +67,28 @@ import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import { StreamingWebhookResponseHeartbeat } from '@/webhooks/streaming-webhook-response-heartbeat';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-/** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
-const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+/** How long to keep rechecking the execution status after a max-stalled-count error before failing the run */
+const MAX_STALLED_COUNT_GRACE_WINDOW_MS = 30 * Time.seconds.toMilliseconds;
 
-/** JSON chunk written periodically to keep the streaming connection alive through reverse proxies */
-const STREAMING_KEEPALIVE_CHUNK = '{"type":"keepalive"}\n';
+/** Delay between execution status rechecks inside the max-stalled-count grace window */
+const MAX_STALLED_COUNT_RECHECK_INTERVAL_MS = 1 * Time.seconds.toMilliseconds;
+
+/** Rechecks that fit in the grace window, on top of the first read */
+const MAX_STALLED_COUNT_RECHECK_ATTEMPTS = Math.floor(
+	MAX_STALLED_COUNT_GRACE_WINDOW_MS / MAX_STALLED_COUNT_RECHECK_INTERVAL_MS,
+);
+
+/**
+ * Symmetric spread applied to each recheck delay (0.2 = plus or minus 20%). Correlated stalls
+ * put every affected execution on the same recheck cadence, so the delay is spread to keep
+ * them off a single lockstep read against an already unhealthy instance. Same convention as
+ * the scheduler timeline.
+ */
+const MAX_STALLED_COUNT_RECHECK_JITTER_RATIO = 0.2;
 
 /**
  * Flush the response through the compression middleware.
@@ -104,6 +125,7 @@ export class WorkflowRunner {
 		private readonly externalHooks: ExternalHooks,
 		private readonly engineV2Dispatcher: EngineV2Dispatcher,
 		private readonly workflowPreExecute: WorkflowPreExecute,
+		private readonly executionCrashService: ExecutionCrashService,
 	) {}
 
 	/** The process did error */
@@ -113,6 +135,7 @@ export class WorkflowRunner {
 		executionMode: WorkflowExecuteMode,
 		executionId: string,
 		hooks?: ExecutionLifecycleHooks,
+		storedAt: ExecutionStorageLocation = this.storageConfig.modeTag,
 	) {
 		// This means the execution was probably cancelled and has already
 		// been cleaned up.
@@ -127,20 +150,147 @@ export class WorkflowRunner {
 			return;
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
-
 		const isQueueMode = this.executionsConfig.mode === 'queue';
 
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
 
 		if (isQueueMode) {
-			const executionWithoutData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
-			if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
-				// false positive, execution was successful
+			const isStalled = error instanceof MaxStalledCountError;
+			const rechecks = isStalled ? MAX_STALLED_COUNT_RECHECK_ATTEMPTS : 0;
+			const recheckUntil = Date.now() + (isStalled ? MAX_STALLED_COUNT_GRACE_WINDOW_MS : 0);
+
+			for (let recheck = 0; recheck <= rechecks; recheck++) {
+				const executionWithoutData = await this.executionRepository.findSingleExecution(
+					executionId,
+					{ includeData: false },
+				);
+				const status = executionWithoutData?.status;
+
+				// A `waiting` row means the worker finished its segment and no resume has claimed
+				// the execution yet, so the pause is left intact for the wait tracker to resume.
+				if (status === 'success' || status === 'waiting') {
+					// false positive, the execution was not lost
+					let storedRunData: IRun | undefined;
+
+					try {
+						const fullExecutionData = await this.executionPersistence.findSingleExecution(
+							executionId,
+							{
+								includeData: true,
+								unflattenData: true,
+							},
+						);
+
+						if (fullExecutionData?.data) {
+							storedRunData = {
+								// oxlint-disable-next-line typescript/no-deprecated
+								finished: fullExecutionData.finished,
+								mode: fullExecutionData.mode,
+								startedAt: fullExecutionData.startedAt,
+								stoppedAt: fullExecutionData.stoppedAt,
+								status: fullExecutionData.status,
+								waitTill: fullExecutionData.waitTill,
+								data: fullExecutionData.data,
+								storedAt: fullExecutionData.storedAt,
+							};
+						}
+
+						// No lifecycle hooks ran for this execution, so make the retention
+						// decision they would have made, regardless of data readability.
+						if (fullExecutionData && status === 'success') {
+							try {
+								const saveSettings = toSaveSettings(fullExecutionData.workflowData?.settings);
+								const isManualExecution = fullExecutionData.mode === 'manual';
+								if (isManualExecution && !saveSettings.manual) {
+									await this.executionRepository.softDelete(executionId);
+								} else if (!isManualExecution && !saveSettings.success) {
+									await this.executionPersistence.deleteInFlightExecution({
+										workflowId: fullExecutionData.workflowId,
+										executionId,
+										storedAt: fullExecutionData.storedAt,
+									});
+								}
+							} catch (pruneError) {
+								this.logger.warn('Could not prune a recovered false-positive success', {
+									executionId,
+									error: ensureError(pruneError),
+								});
+							}
+						}
+					} catch (readError) {
+						this.logger.warn('Could not read execution data for a recovered execution', {
+							executionId,
+							error: ensureError(readError),
+						});
+					}
+
+					const unreadableRunData: IRun =
+						status === 'waiting'
+							? {
+									data: createRunExecutionData({ resultData: { runData: {} } }),
+									finished: false,
+									mode: executionMode,
+									startedAt,
+									stoppedAt: new Date(),
+									status: 'waiting',
+									waitTill: executionWithoutData?.waitTill ?? undefined,
+									storedAt: this.storageConfig.modeTag,
+								}
+							: {
+									data: createRunExecutionData({
+										resultData: {
+											error: new WorkflowOperationError(
+												`Execution ${executionId} succeeded, but its result could not be read`,
+											),
+											runData: {},
+										},
+									}),
+									finished: false,
+									mode: executionMode,
+									startedAt,
+									stoppedAt: new Date(),
+									status: 'error',
+									storedAt: this.storageConfig.modeTag,
+								};
+
+					const runData: IRun = storedRunData ?? unreadableRunData;
+
+					this.activeExecutions.resolveExecutionResponsePromise(executionId);
+					this.activeExecutions.finalizeExecution(executionId, runData);
+
+					return;
+				}
+
+				// The user cancelled during the grace window; the execution is already
+				// finalized as canceled elsewhere, so don't overwrite it with a failure.
+				if (status === 'canceled') return;
+
+				// A terminal status will not change, and a missing row cannot become one, so
+				// stop rechecking and fail the run now.
+				if (status === undefined || isTerminalExecutionStatus(status)) break;
+
+				if (recheck >= rechecks || Date.now() >= recheckUntil) break;
+
+				const jitter =
+					MAX_STALLED_COUNT_RECHECK_INTERVAL_MS *
+					MAX_STALLED_COUNT_RECHECK_JITTER_RATIO *
+					(2 * Math.random() - 1);
+
+				await sleep(MAX_STALLED_COUNT_RECHECK_INTERVAL_MS + jitter);
+			}
+		}
+
+		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+		this.errorReporter.error(error, { executionId });
+
+		if (error instanceof MaxStalledCountError) {
+			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
+				executionId,
+				'stall',
+			);
+			if (claimed.length === 0) {
+				this.activeExecutions.finalizeExecution(executionId);
 				return;
 			}
 		}
@@ -150,6 +300,7 @@ export class WorkflowRunner {
 				resultData: {
 					error: {
 						...error,
+						name: error.constructor.name,
 						message: error.message,
 						stack: error.stack,
 					},
@@ -160,8 +311,8 @@ export class WorkflowRunner {
 			mode: executionMode,
 			startedAt,
 			stoppedAt: new Date(),
-			status: 'error',
-			storedAt: this.storageConfig.modeTag,
+			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
+			storedAt,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -257,7 +408,7 @@ export class WorkflowRunner {
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		// The engine 2.0 path owns the whole run: it keeps no control-plane
+		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
 			return await this.engineV2Dispatcher.start(data);
@@ -270,6 +421,7 @@ export class WorkflowRunner {
 				await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
+					data.userId,
 				);
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
@@ -300,20 +452,9 @@ export class WorkflowRunner {
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
-
-		// Set up streaming heartbeat on the main process that holds the HTTP response.
-		// This must happen BEFORE the queue/local decision because in queue mode the
-		// execution runs on a worker process that has no access to the HTTP response.
-		let heartbeatInterval: NodeJS.Timeout | undefined;
-		if (data.streamingEnabled === true && data.httpResponse) {
-			const res = data.httpResponse;
-			heartbeatInterval = setInterval(() => {
-				if (!res.writableEnded) {
-					res.write(STREAMING_KEEPALIVE_CHUNK);
-					flushResponse(res);
-				}
-			}, STREAMING_HEARTBEAT_INTERVAL_MS);
-		}
+		// The v1 main process owns the HTTP response. Start this before the
+		// queue/local decision because a worker cannot write to it.
+		const heartbeat = this.setupV1StreamingHeartbeat(data);
 
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
@@ -329,7 +470,7 @@ export class WorkflowRunner {
 					executionId,
 					workflowId,
 					data,
-					shouldReloadStaticData,
+					loadStaticData,
 					realtime,
 					existingExecution?.executionId,
 				);
@@ -338,14 +479,14 @@ export class WorkflowRunner {
 					executionId,
 					data,
 					shouldReloadStaticData,
-					existingExecution?.executionId,
+					existingExecution,
 					executionWorkflow,
 				);
 			}
 		} catch (error) {
 			// A failed start means the post-execute promise that normally clears the
 			// heartbeat never settles, so clear it here.
-			if (heartbeatInterval) clearInterval(heartbeatInterval);
+			heartbeat?.stop();
 			throw error;
 		}
 
@@ -375,14 +516,21 @@ export class WorkflowRunner {
 		}
 
 		// Clean up the streaming heartbeat when the execution finishes
-		if (heartbeatInterval) {
+		if (heartbeat) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			void postExecutePromise.finally(() => {
-				clearInterval(heartbeatInterval);
+				heartbeat.stop();
 			});
 		}
 
 		return executionId;
+	}
+
+	private setupV1StreamingHeartbeat(
+		data: IWorkflowExecutionDataProcess,
+	): StreamingWebhookResponseHeartbeat | undefined {
+		if (data.streamingEnabled !== true || !data.httpResponse) return undefined;
+		return new StreamingWebhookResponseHeartbeat(data.httpResponse);
 	}
 
 	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
@@ -416,7 +564,7 @@ export class WorkflowRunner {
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
-		restartExecutionId?: string,
+		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
@@ -458,12 +606,14 @@ export class WorkflowRunner {
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 			workflowSettings,
 		});
-		additionalData.restartExecutionId = restartExecutionId;
+		additionalData.restartExecutionId = existingExecution?.executionId;
 		additionalData.streamingEnabled = data.streamingEnabled;
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+
+		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -507,6 +657,7 @@ export class WorkflowRunner {
 					additionalData,
 					data.executionMode,
 					data.executionData,
+					storedAt,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
 			} else {
@@ -549,6 +700,7 @@ export class WorkflowRunner {
 				.then((fullRunData) => {
 					clearTimeout(executionTimeout);
 					if (workflowExecution.isCanceled) {
+						// oxlint-disable-next-line typescript/no-deprecated
 						fullRunData.finished = false;
 					}
 
@@ -563,20 +715,17 @@ export class WorkflowRunner {
 							data.executionMode,
 							executionId,
 							additionalData.hooks,
+							storedAt,
 						),
 				);
 		} catch (error) {
-			if (error instanceof WorkflowHasIssuesError) {
-				await this.failExecution(data, executionId, error);
-				return;
-			}
-
 			await this.processError(
 				error,
 				new Date(),
 				data.executionMode,
 				executionId,
 				additionalData.hooks,
+				storedAt,
 			);
 
 			throw error;
@@ -642,6 +791,8 @@ export class WorkflowRunner {
 			// "workflowExecuteAfter" which we require.
 			const lifecycleHooks = getLifecycleHooksForScalingWorker(data, executionId);
 			await this.processError(error, new Date(), data.executionMode, executionId, lifecycleHooks);
+			// Nobody will wait for this job, so drop any outcome the worker already reported
+			this.scalingService.popJobResult(executionId);
 			throw error;
 		}
 
@@ -667,7 +818,7 @@ export class WorkflowRunner {
 				});
 
 				try {
-					await job.finished();
+					await this.scalingService.waitForJob(job);
 				} catch (error) {
 					if (
 						error instanceof Error &&
@@ -708,18 +859,47 @@ export class WorkflowRunner {
 					!jobResult ||
 					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
 				) {
-					const fullExecutionData = await this.executionPersistence.findSingleExecution(
-						executionId,
-						{
+					let fullExecutionData: IExecutionResponse | undefined;
+					try {
+						fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
 							includeData: true,
 							unflattenData: true,
-						},
-					);
+						});
+					} catch (error) {
+						// An async executor's throw would never settle this promise, and the
+						// active execution would keep the request alive until restart
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
+						return reject(error);
+					}
+
 					if (!fullExecutionData) {
-						return reject(new Error(`Could not find execution with id "${executionId}"`));
+						// Not a bug by itself: the worker deletes an execution that is not saved.
+						// Finalizing with a failed run makes the webhook respond with an error
+						// instead of a success without data.
+						this.logger.warn(`Execution ${executionId} ended but its record is gone`, {
+							executionId,
+						});
+						const error = new WorkflowOperationError(
+							`Could not find execution with id "${executionId}"`,
+						);
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
+						return reject(error);
 					}
 
 					runData = {
+						// oxlint-disable-next-line typescript/no-deprecated
 						finished: fullExecutionData.finished,
 						mode: fullExecutionData.mode,
 						startedAt: fullExecutionData.startedAt,
@@ -767,7 +947,9 @@ export class WorkflowRunner {
 			// So we're just preventing crashes here.
 		});
 
-		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+			isQueueJob: true,
+		});
 	}
 
 	/**

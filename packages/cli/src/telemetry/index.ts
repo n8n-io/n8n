@@ -10,7 +10,7 @@ import {
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -28,6 +28,7 @@ import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -108,8 +109,6 @@ export class Telemetry {
 
 	private userCloudId?: string;
 
-	private pulseIntervalReference: NodeJS.Timeout;
-
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
@@ -117,6 +116,9 @@ export class Telemetry {
 	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
 
 	private agentSessionMetricsBuffer: IAgentSessionMetricsBuffer = {};
+
+	/** Event names already reported by `warnAboutMissingUserId`, so each one is said once. */
+	private readonly eventsMissingUserId = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -209,21 +211,14 @@ export class Telemetry {
 					this.errorReporter.error(error);
 				},
 			});
-
-			this.startPulse();
 		}
 	}
 
-	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			async () => {
-				void this.pulse();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
-	}
-
-	private async pulse() {
+	/**
+	 * Sends the events buffered in this process and empties the buffers. Does
+	 * nothing while diagnostics are off, because nothing buffers then.
+	 */
+	flushBuffers(): void {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -231,21 +226,18 @@ export class Telemetry {
 		this.flushWorkflowExecutionCounts();
 		this.flushAgentExecutionCounts();
 		this.flushAgentSessionMetrics();
+		this.flushApiInvocations();
+	}
 
-		// Flush API invocation counts
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
-			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
-					user_id: userId,
-					total_calls: entry.total_calls,
-					first: entry.first,
-					endpoints: JSON.stringify(entry.endpoints),
-					user_agents: JSON.stringify(entry.user_agents),
-				});
-			}
+	/**
+	 * Sends one `pulse` packet of license and usage counters. The counters
+	 * describe the whole instance, so a second sender reports the same numbers
+	 * again. Does nothing while diagnostics are off.
+	 */
+	async sendPulsePacket(): Promise<void> {
+		if (!this.rudderStack) {
+			return;
 		}
-		this.apiInvocationsBuffer = {};
 
 		const sourceControlPreferences = Container.get(
 			SourceControlPreferencesService,
@@ -265,6 +257,22 @@ export class Telemetry {
 		};
 
 		this.track('pulse', pulsePacket);
+	}
+
+	private flushApiInvocations() {
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -514,8 +522,6 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		clearInterval(this.pulseIntervalReference);
-
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
@@ -523,18 +529,25 @@ export class Telemetry {
 	groupIdentify({
 		userId,
 		traits,
+		postHog = { userId, traits },
 	}: {
 		userId?: string;
 		traits?: Record<string, string | number>;
+		/**
+		 * PostHog-only override. PostHog refuses a group update with no real person
+		 * behind it, while RudderStack accepts the bare instance ID. Use it when the
+		 * two destinations must diverge, e.g. to attribute startup facts to the owner.
+		 */
+		postHog?: { userId?: string; traits?: Record<string, string | number> };
 	}): void {
 		const { instanceId } = this.instanceSettings;
 		if (!instanceId) return;
 
-		if (this.postHog) {
+		if (this.postHog && postHog.userId) {
 			this.postHog.groupIdentify({
-				...(userId && { distinctId: `${instanceId}#${userId}` }),
+				distinctId: `${instanceId}#${postHog.userId}`,
 				instanceId,
-				properties: traits,
+				properties: postHog.traits,
 			});
 		}
 
@@ -596,7 +609,9 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
-			...properties,
+			...(eventName === USER_CALLED_MCP_TOOL_EVENT
+				? redactTelemetryProperties(properties)
+				: properties),
 			instance_id: instanceId,
 			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,
@@ -624,9 +639,31 @@ export class Telemetry {
 			return;
 		}
 
+		if (typeof event !== 'string' && !user_id) {
+			this.warnAboutMissingUserId(eventName);
+		}
+
 		this.postHog?.track(payload);
 
 		return this.rudderStack.track(rudderStackPayload);
+	}
+
+	/**
+	 * A registered event whose properties carry no `user_id` composes a distinct id of the bare
+	 * instance id, which `PostHogClient.track` drops to keep a phantom person profile out of
+	 * PostHog (#32344). The event still reaches RudderStack, so the loss is silent and only a
+	 * warehouse comparison finds it. This says so once for each event name, which is enough to
+	 * name the emit site and few enough to leave the logs readable.
+	 *
+	 * Only registered events are checked. A plain string event has no schema stating that it
+	 * describes a user action, and some of them are instance-level on purpose.
+	 */
+	private warnAboutMissingUserId(eventName: string): void {
+		if (this.eventsMissingUserId.has(eventName)) return;
+		this.eventsMissingUserId.add(eventName);
+		this.logger.warn(
+			`Telemetry event "${eventName}" carries no user_id, so PostHog drops it. Pass user_id in the event properties at the emit site.`,
+		);
 	}
 
 	// test helpers

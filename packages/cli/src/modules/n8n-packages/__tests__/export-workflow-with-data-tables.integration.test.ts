@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import type { Project, User } from '@n8n/db';
 import {
 	createTeamProject,
@@ -10,7 +11,6 @@ import {
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';

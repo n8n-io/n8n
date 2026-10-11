@@ -1,4 +1,5 @@
 import { CommaSeparatedStringArray, Config, Env } from '@n8n/config';
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
 
 // Keep in sync with AI_NODE_SDK_VERSION in
 // packages/@n8n/ai-utilities/src/ai-node-sdk-version.ts.
@@ -37,6 +38,9 @@ export class CommunityPackagesConfig {
 
 	/** Current AI Node SDK version from @n8n/ai-utilities, sent to Strapi API */
 	readonly aiNodeSdkVersion: number = AI_NODE_SDK_VERSION;
+
+	/** Highest community node API version this instance supports, sent to Strapi API */
+	readonly nodesApiVersion: number = N8N_NODES_API_VERSION;
 
 	@Env('N8N_DISABLED_MODULES')
 	private disabledModules: CommaSeparatedStringArray<string> = [];

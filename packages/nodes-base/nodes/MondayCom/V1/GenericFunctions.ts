@@ -19,7 +19,7 @@ export async function mondayComApiRequest(
 
 	let options: IRequestOptions = {
 		headers: {
-			'API-Version': '2023-10',
+			'API-Version': '2026-07',
 			'Content-Type': 'application/json',
 		},
 		method: 'POST',
@@ -30,16 +30,39 @@ export async function mondayComApiRequest(
 
 	options = Object.assign({}, options, option);
 
-	try {
-		let credentialType = 'mondayComApi';
+	let credentialType = 'mondayComApi';
 
-		if (authenticationMethod === 'oAuth2') {
-			credentialType = 'mondayComOAuth2Api';
-		}
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	if (authenticationMethod === 'oAuth2') {
+		credentialType = 'mondayComOAuth2Api';
+	}
+
+	let response: IDataObject;
+	try {
+		response = (await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		)) as IDataObject;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+
+	// Since API version 2025-01 errors are returned with HTTP 200 and an `errors`
+	// array. A query can also return partial data (both `data` and `errors`, with
+	// the failed fields set to null), so only throw when no data is present and
+	// pass the partial result through otherwise.
+	// https://developer.monday.com/api-reference/changelog/breaking-change-consistent-error-format
+	const errors = response?.errors as Array<{ message?: string }> | undefined;
+	if (errors?.length && !response?.data) {
+		throw new NodeApiError(this.getNode(), response as JsonObject, {
+			message: errors
+				.map((error) => error.message)
+				.filter(Boolean)
+				.join('\n'),
+		});
+	}
+
+	return response;
 }
 
 export async function mondayComApiRequestAllItems(

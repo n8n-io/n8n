@@ -156,6 +156,7 @@ function isEmpty(value: unknown): boolean {
 }
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
+// oxlint-disable-next-line typescript/no-deprecated
 export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOptions) {
 	const method = requestOptions.method ?? 'GET';
 	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
@@ -191,10 +192,7 @@ export async function httpRequest(
 	await validateProxySsrf(requestOptions.proxy, ssrfBridge);
 
 	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
-	if (
-		axiosRequest.data === undefined ||
-		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
-	) {
+	if (axiosRequest.data === undefined || axiosRequest.method?.toUpperCase() === 'GET') {
 		delete axiosRequest.data;
 	}
 

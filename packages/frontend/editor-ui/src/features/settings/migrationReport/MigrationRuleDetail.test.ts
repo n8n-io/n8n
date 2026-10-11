@@ -67,7 +67,7 @@ const mockRuleResult: BreakingChangeWorkflowRuleResult = {
 	ruleId: 'rule-1',
 	ruleTitle: 'Test Rule',
 	ruleDescription: 'This is a test rule description',
-	ruleSeverity: 'critical',
+	ruleImpact: 'executionsFail',
 	ruleDocumentationUrl: 'https://docs.example.com/rule-1',
 	recommendations: [
 		{
@@ -86,7 +86,7 @@ const createMockRuleResult = (
 		ruleId: 'rule-1',
 		ruleTitle: 'Test Rule',
 		ruleDescription: 'This is a test rule description',
-		ruleSeverity: 'critical',
+		ruleImpact: 'executionsFail',
 		ruleDocumentationUrl: 'https://docs.example.com/rule-1',
 		recommendations: [],
 		migratable: false,
@@ -135,9 +135,9 @@ describe('MigrationRuleDetail', () => {
 			});
 
 			await waitFor(() => {
-				// Title, severity tag, and affected count
+				// Title, impact tag, and affected count
 				expect(screen.getByText('Test Rule')).toBeInTheDocument();
-				expect(screen.getByText('Critical')).toBeInTheDocument();
+				expect(screen.getByText('Executions fail')).toBeInTheDocument();
 				expect(screen.getByText('2 affected')).toBeInTheDocument();
 
 				// Description
@@ -308,15 +308,16 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
-	describe('severity display', () => {
+	describe('impact display', () => {
 		it.each([
-			{ severity: 'critical', label: 'Critical' },
-			{ severity: 'medium', label: 'Medium' },
-			{ severity: 'low', label: 'Low' },
-		] as const)('should display $severity severity correctly', async ({ severity, label }) => {
+			{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
+			{ impact: 'executionsFail', label: 'Executions fail' },
+			{ impact: 'behaviorChanges', label: 'Behavior changes' },
+			{ impact: 'capabilityRemoved', label: 'Capability removed' },
+		] as const)('should display $impact impact correctly', async ({ impact, label }) => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
-					ruleSeverity: severity,
+					ruleImpact: impact,
 					affectedWorkflows: [mockWorkflowWithIssue],
 				}),
 			);

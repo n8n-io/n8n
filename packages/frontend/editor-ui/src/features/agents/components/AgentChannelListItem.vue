@@ -15,8 +15,6 @@ import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
 import type { AgentChannelConnectAction } from '../channels/types';
 
-type ChannelAction = 'edit' | 'disconnect';
-
 interface Props {
 	integration: ChatIntegrationDescriptor;
 	configured: boolean;
@@ -30,6 +28,18 @@ interface Props {
 	notRunning?: boolean;
 	/** Why it isn't running, shown on hover. */
 	runtimeError?: string;
+	/**
+	 * Overrides the connected/not-running label — for a channel with no
+	 * meaningful running state of its own (n8n Chat), which is simply available
+	 * or not.
+	 */
+	configuredLabel?: string;
+	/**
+	 * When set, clicking the configured trigger opens this menu instead of
+	 * emitting `edit` directly. Selecting the `edit` item still emits `edit`;
+	 * any other item emits `remove`.
+	 */
+	menuItems?: Array<DropdownMenuItemProps<string>>;
 }
 
 const props = defineProps<Props>();
@@ -37,35 +47,29 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	setup: [channelType: string];
 	edit: [channelType: string];
-	disconnect: [channelType: string];
+	remove: [channelType: string];
 }>();
 
 const i18n = useI18n();
-
-const configuredActions = computed<Array<DropdownMenuItemProps<ChannelAction>>>(() => {
-	const actions: Array<DropdownMenuItemProps<ChannelAction>> = [
-		{
-			id: 'edit',
-			label: i18n.baseText('generic.edit'),
-		},
-		{
-			id: 'disconnect',
-			label: i18n.baseText('generic.disconnect'),
-		},
-	];
-
-	return actions;
-});
 
 function isIconName(icon: string): icon is IconName {
 	return icon in updatedIconSet;
 }
 
 const statusLabel = computed(() => {
+	if (props.configuredLabel) return props.configuredLabel;
 	if (props.notRunning) return i18n.baseText('agents.channels.modal.notRunning');
 	if (props.connected) return i18n.baseText('agents.channels.modal.connected');
 	return i18n.baseText('agents.channels.modal.configured');
 });
+
+function selectMenuItem(itemId: string) {
+	if (itemId === 'edit') {
+		emit('edit', props.integration.type);
+		return;
+	}
+	emit('remove', props.integration.type);
+}
 
 /**
  * The tooltip is the only place the startup error is shown, so it must not be
@@ -76,15 +80,6 @@ const statusTooltip = computed(() => {
 	if (!props.notRunning) return '';
 	return props.runtimeError || i18n.baseText('agents.channels.modal.notRunning.tooltip');
 });
-
-function handleConfiguredAction(action: ChannelAction) {
-	if (action === 'edit') {
-		emit('edit', props.integration.type);
-		return;
-	}
-
-	emit('disconnect', props.integration.type);
-}
 </script>
 
 <template>
@@ -117,35 +112,50 @@ function handleConfiguredAction(action: ChannelAction) {
 
 			<div :class="$style.channelActions">
 				<N8nDropdownMenu
-					v-if="configured"
-					:items="configuredActions"
+					v-if="configured && menuItems && menuItems.length > 0"
+					:items="menuItems"
 					placement="bottom-end"
-					:modal="false"
-					@select="handleConfiguredAction"
+					@select="selectMenuItem"
 				>
 					<template #trigger>
-						<N8nTooltip :content="statusTooltip" :disabled="!notRunning" placement="top">
-							<N8nButton variant="ghost" size="medium" :class="$style.connectedTrigger">
-								<div
-									v-if="connected"
-									:class="$style.connectedDotContainer"
-									data-testid="agent-channel-connected-indicator"
-								>
-									<span :class="[$style.connectedDot, $style.ping]" />
-									<span :class="$style.connectedDot" />
-								</div>
-								<div
-									v-else-if="notRunning"
-									:class="$style.connectedDotContainer"
-									data-testid="agent-channel-not-running-indicator"
-								>
-									<span :class="[$style.connectedDot, $style.notRunningDot]" />
-								</div>
-								{{ statusLabel }}
-							</N8nButton>
-						</N8nTooltip>
+						<button
+							type="button"
+							:class="$style.connectedTrigger"
+							data-testid="agent-channel-connected-trigger"
+						>
+							<span :class="$style.connectedIcon" data-testid="agent-channel-connected-indicator">
+								<N8nIcon icon="check" :size="14" aria-hidden="true" />
+							</span>
+							{{ statusLabel }}
+						</button>
 					</template>
 				</N8nDropdownMenu>
+				<N8nTooltip
+					v-else-if="configured"
+					:content="statusTooltip"
+					:disabled="!notRunning"
+					placement="top"
+				>
+					<button
+						type="button"
+						:class="$style.connectedTrigger"
+						@click="emit('edit', integration.type)"
+					>
+						<span
+							v-if="!notRunning"
+							:class="$style.connectedIcon"
+							data-testid="agent-channel-connected-indicator"
+						>
+							<N8nIcon icon="check" :size="14" aria-hidden="true" />
+						</span>
+						<span
+							v-else-if="notRunning"
+							:class="$style.notRunningIndicator"
+							data-testid="agent-channel-not-running-indicator"
+						/>
+						{{ statusLabel }}
+					</button>
+				</N8nTooltip>
 				<N8nButton
 					v-else
 					variant="subtle"
@@ -161,7 +171,7 @@ function handleConfiguredAction(action: ChannelAction) {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/motion';
+@use '@n8n/design-system/css/mixins/focus';
 
 .channelItem {
 	display: flex;
@@ -172,8 +182,8 @@ function handleConfiguredAction(action: ChannelAction) {
 
 .iconWrapper {
 	flex-shrink: 0;
-	width: 32px;
-	height: 32px;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -188,8 +198,8 @@ function handleConfiguredAction(action: ChannelAction) {
 }
 
 .buttonSkeleton {
-	height: 32px;
-	width: 80px;
+	height: var(--spacing--xl);
+	width: calc(var(--spacing--xl) * 2.5);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -225,27 +235,35 @@ function handleConfiguredAction(action: ChannelAction) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: 0;
+	border-radius: var(--radius--2xs);
+	background: none;
+	color: var(--color--text--tint-1);
+	font-family: inherit;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	white-space: nowrap;
+	cursor: pointer;
 
-.connectedDotContainer {
-	display: grid;
-	place-content: center;
-
-	> * {
-		grid-area: 1 / 1;
+	&:hover {
+		background: var(--color--background--light-1);
 	}
+
+	@include focus.focus-visible-ring;
 }
 
-.connectedDot {
-	width: 6px;
-	height: 6px;
+.connectedIcon {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--color--success);
+}
+
+.notRunningIndicator {
+	flex-shrink: 0;
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
 	border-radius: var(--radius--full);
-	background: var(--color--green-500);
-}
-.notRunningDot {
 	background: var(--color--danger);
-}
-.ping {
-	@include motion.ping;
 }
 </style>

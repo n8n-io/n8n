@@ -1,5 +1,5 @@
 import type { CredentialListItem } from '@n8n/agents';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentModelCredentialConfig } from '@n8n/api-types';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -11,11 +11,6 @@ import { BuilderModelLiveLookupService } from './builder/builder-model-live-look
 import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { findVerifiedModelId } from './utils/provider-model-id';
-
-export interface ResolvedAgentDefaultModel {
-	model: string;
-	credential: string;
-}
 
 /**
  * Resolves a sensible default model+credential for a new agent, and answers
@@ -42,7 +37,7 @@ export class AgentDefaultModelResolverService {
 	 * personal LLM credential. Returns `null` when the choice is ambiguous
 	 * or the default is not live — the caller keeps the agent as a draft.
 	 */
-	async resolve(user: User, projectId: string): Promise<ResolvedAgentDefaultModel | null> {
+	async resolve(user: User, projectId: string): Promise<AgentModelCredentialConfig | null> {
 		const credentials = await createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -84,7 +79,7 @@ export class AgentDefaultModelResolverService {
 		provider: string,
 		credentialId: string,
 		verifiedModelIds: readonly string[],
-	): ResolvedAgentDefaultModel | null {
+	): AgentModelCredentialConfig | null {
 		const defaults = this.findProviderDefault(provider);
 		if (!defaults) return null;
 
@@ -110,7 +105,7 @@ export class AgentDefaultModelResolverService {
 	private async resolveManagedOpenAi(
 		user: User,
 		projectId: string,
-	): Promise<ResolvedAgentDefaultModel | null> {
+	): Promise<AgentModelCredentialConfig | null> {
 		const defaults = LLM_PROVIDER_DEFAULTS.openAiApi;
 		let credentialType: string | undefined;
 		try {
@@ -133,7 +128,7 @@ export class AgentDefaultModelResolverService {
 		user: User,
 		projectId: string,
 		credential: CredentialListItem | undefined,
-	): Promise<ResolvedAgentDefaultModel | null> {
+	): Promise<AgentModelCredentialConfig | null> {
 		if (!credential) return null;
 
 		const defaults = LLM_PROVIDER_DEFAULTS[credential.type];

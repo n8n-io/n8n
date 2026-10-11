@@ -139,6 +139,39 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 	});
 
+	it('publishes a @Param schema in place of the default bare string', () => {
+		const widgetId = z
+			.string()
+			.regex(/^\d+$/)
+			.openapi({ type: 'integer', minimum: 1, description: 'The ID of the widget.' });
+
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method(@Param('widgetId', widgetId) _widgetId: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape.widgetId).toBe(widgetId);
+	});
+
+	it('falls back to a bare string for a @Param that declares no schema', () => {
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method(@Param('widgetId') _widgetId: string) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		const params = operation.config.request?.params as z.AnyZodObject | undefined;
+		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
+	});
+
 	it('bare route: omits every optional field, but always adds success/auth responses and eov routing headers', () => {
 		class WidgetsPublicController {
 			@Get('/')
@@ -224,6 +257,38 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(operation.config.responses[415]).toEqual({
 			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+	});
+
+	it('documents a multipart body under its own content key, with 413, 415, and 500 responses', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(
+				_req: unknown,
+				_res: unknown,
+				@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) }) body: WidgetBodyDto,
+			) {
+				return body;
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.content).toEqual({
+			'multipart/form-data': { schema: WidgetBodyDto.schema },
+		});
+		expect(operation.config.responses[413]).toEqual({
+			$ref: '../../../../shared/spec/responses/contentTooLarge.yml',
+		});
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
+		// Multer's parsing errors can themselves 500 (an unmasked parse failure, or
+		// LIMIT_UNEXPECTED_FILE) - see multipart.request-body.ts's `toPublicApiError`.
+		expect(operation.config.responses[500]).toEqual({
+			$ref: '../../../../shared/spec/responses/internalServerError.yml',
 		});
 	});
 

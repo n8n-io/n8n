@@ -276,12 +276,6 @@ export class SchedulerConfig {
 	 * was and the next scheduled poll covers the same ground. It counts as a poll
 	 * failure, so a source that keeps timing out is polled at a widening interval.
 	 * Guards against a poll stuck on an unresponsive source running indefinitely.
-	 *
-	 * Keep it below {@link leaseDurationSeconds}: the deadline only starts after
-	 * the occurrence's setup reads, so a poll allowed to run as long as the claim
-	 * on its run can still be in flight when that claim expires and another
-	 * instance takes the run over. The default leaves that headroom, and the
-	 * scheduler warns at startup when the timeout reaches the lease duration.
 	 * Must be greater than 0 and at most one day.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
@@ -313,9 +307,32 @@ export class SchedulerConfig {
 	 * side (for example during a rolling deploy), the older instances still run
 	 * these jobs on their own timers, so the same job could run twice at the
 	 * same time.
+	 *
+	 * Give every instance the same value, and the same {@link enabled}.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;
+
+	/**
+	 * Whether the durable scheduler runs agent scheduled tasks instead of the
+	 * in-process timer of n8n. Off by default. Requires {@link enabled} to also
+	 * be on.
+	 *
+	 * In a multi-instance setup, turn this on only when every instance runs a
+	 * version of n8n that supports it. While older and newer versions run side by
+	 * side (for example during a rolling deploy), the older leader still runs
+	 * these tasks on its own timer. Then the same task can run twice.
+	 *
+	 * Give every main the same value. A main that starts with this flag off
+	 * removes the durable agent-task jobs, also the ones that a main with the
+	 * flag on has created.
+	 *
+	 * The two schedulers differ on a DST spring-forward: a time inside the
+	 * skipped hour runs at the moment the clock jumps on the in-process timer,
+	 * and shifts forward by the skipped hour on the durable scheduler.
+	 */
+	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
+	enabledForAgentTasks: boolean = false;
 
 	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).

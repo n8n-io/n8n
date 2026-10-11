@@ -173,11 +173,14 @@ export class ImportService {
 
 			let cleared: PolicyCleared<'contentImport'>;
 			try {
-				cleared = await this.policyEnforcementService.enforceContentImport({
-					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-					projectId: policyProjectId,
-					transport: 'cli',
-				});
+				cleared = await this.policyEnforcementService.enforceContentImport(
+					{
+						workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+						projectId: policyProjectId,
+						transport: 'cli',
+					},
+					{ kind: 'system', reason: 'cli-import' },
+				);
 			} catch (error) {
 				// A blocked workflow is skipped, not fatal — the operator gets the rest of the batch.
 				// A check that broke is not scoped to one workflow, so it fails the whole import

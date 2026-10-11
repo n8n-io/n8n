@@ -278,6 +278,31 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 		expect(system[1]?.content).toContain('Some memory.');
 	});
 
+	it('merges volatile sections into one system message when split messages are unsupported', () => {
+		const cacheOptions = {
+			anthropic: { cacheControl: { type: 'ephemeral' as const } },
+		};
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			cacheOptions,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+			'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+			false,
+		);
+
+		expect(system).toEqual({
+			role: 'system',
+			content: [
+				'Base instructions',
+				'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+				'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+				'<observations>\n* Some memory.\n</observations>',
+			].join('\n\n'),
+			providerOptions: cacheOptions,
+		});
+	});
+
 	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
 		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
 
@@ -332,6 +357,68 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 
 		expect(Array.isArray(system)).toBe(false);
 		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
+	});
+});
+
+describe('buildSystemMessages — recovered skill instructions', () => {
+	const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' as const } } };
+	const skills = { content: '<active_skills>\nBuild one workflow.\n</active_skills>' };
+
+	it('places skills in their own cached message between the base and volatile messages', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			cacheOptions,
+			undefined,
+			undefined,
+			true,
+			{ ...skills, providerOptions: cacheOptions },
+		);
+
+		expect(system).toEqual([
+			{ role: 'system', content: 'Base instructions', providerOptions: cacheOptions },
+			{ role: 'system', content: `\n\n${skills.content}`, providerOptions: cacheOptions },
+			{ role: 'system', content: '\n\n<observations>\n* Some memory.\n</observations>' },
+		]);
+	});
+
+	it('leaves the skills message uncached when it has no cache options', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			cacheOptions,
+			undefined,
+			undefined,
+			true,
+			skills,
+		);
+
+		expect(system).toEqual([
+			{ role: 'system', content: 'Base instructions', providerOptions: cacheOptions },
+			{ role: 'system', content: `\n\n${skills.content}` },
+		]);
+	});
+
+	it('merges skills after the base instructions when split messages are unsupported', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			cacheOptions,
+			undefined,
+			undefined,
+			false,
+			{ ...skills, providerOptions: cacheOptions },
+		);
+
+		expect(system).toEqual({
+			role: 'system',
+			content: [
+				'Base instructions',
+				skills.content,
+				'<observations>\n* Some memory.\n</observations>',
+			].join('\n\n'),
+			providerOptions: cacheOptions,
+		});
 	});
 });
 

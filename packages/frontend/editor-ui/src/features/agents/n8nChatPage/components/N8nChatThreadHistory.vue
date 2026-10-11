@@ -1,0 +1,158 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import type { ChatHistoryItem } from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
+import ChatHistoryDropdown from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
+import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
+import { N8nButton, N8nText, useDropdownSearch } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+
+import { usePagedN8nChatThreads } from '../usePagedN8nChatThreads';
+import { AGENT_N8N_CHAT_HISTORY_PAGE_SIZE, AGENT_N8N_CHAT_VIEW } from '../../constants';
+
+const props = defineProps<{
+	agentId: string;
+	/** The open thread's title, shown on the trigger instead of "Chat history". */
+	title?: string;
+}>();
+
+const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
+
+const NEW_CHAT_ITEM_ID = '__new-chat__';
+
+const open = ref(false);
+
+const currentThreadId = computed(() =>
+	typeof route.params.agentThreadId === 'string' ? route.params.agentThreadId : undefined,
+);
+
+const paged = usePagedN8nChatThreads({
+	agentId: () => props.agentId,
+	pageSize: AGENT_N8N_CHAT_HISTORY_PAGE_SIZE,
+});
+
+function handleOpenChange(isOpen: boolean): void {
+	open.value = isOpen;
+	// Reopening keeps the shown items and refreshes the first page in the background
+	// (replaced once it lands) — only a first-ever open has nothing to show meanwhile.
+	if (isOpen) {
+		paged.reset();
+		paged.loadNext();
+	}
+}
+
+function handleSelect(itemId: string): void {
+	if (itemId === NEW_CHAT_ITEM_ID) {
+		void router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agentId } });
+		return;
+	}
+	void router.push({
+		name: AGENT_N8N_CHAT_VIEW,
+		params: { agentId: props.agentId, agentThreadId: itemId },
+	});
+}
+
+// Retry and "load more" are the same action: fetch the next page. An error never
+// advances the cursor, so retrying re-requests the page that just failed.
+function loadMore(): void {
+	paged.loadNext();
+}
+
+const newChatItem: ChatHistoryItem = {
+	id: NEW_CHAT_ITEM_ID,
+	label: i18n.baseText('instanceAi.thread.new'),
+	testId: 'agent-n8n-chat-history-new',
+};
+
+const items = computed<ChatHistoryItem[]>(() =>
+	paged.items.value.map((thread) => ({
+		id: thread.id,
+		label: thread.title ?? i18n.baseText('commandBar.instanceAi.newThread'),
+		checked: thread.id === currentThreadId.value,
+		testId: 'agent-n8n-chat-history-item',
+		data: { updatedAt: thread.updatedAt },
+	})),
+);
+
+const { filteredItems, handleSearch } = useDropdownSearch(items);
+
+// Only the first, item-less load has nothing to show while it's in flight —
+// a background refresh (reopen) keeps the previous list visible instead.
+const showLoadingState = computed(() => paged.isLoading.value && paged.items.value.length === 0);
+// On error the footer below carries the one message and its retry button —
+// the body stays blank instead of repeating it.
+const emptyText = computed(() =>
+	paged.error.value ? '' : i18n.baseText('instanceAi.sidebar.noThreads'),
+);
+const showRetry = computed(() => paged.error.value);
+const showLoadMore = computed(
+	() =>
+		!paged.error.value &&
+		paged.hasMore.value &&
+		!paged.isLoading.value &&
+		paged.items.value.length > 0,
+);
+</script>
+
+<template>
+	<ChatHistoryDropdown
+		:model-value="open"
+		:items="filteredItems"
+		:leading-item="newChatItem"
+		:loading="showLoadingState"
+		:empty-text="emptyText"
+		:search-placeholder="i18n.baseText('generic.search')"
+		content-test-id="agent-n8n-chat-history-list"
+		:action-button-label="i18n.baseText('agentSessions.actions')"
+		@update:model-value="handleOpenChange"
+		@search="handleSearch"
+		@select="handleSelect"
+	>
+		<template #trigger>
+			<ChatHistoryDropdownTrigger
+				:title="props.title"
+				data-test-id="agent-n8n-chat-history-toggle"
+			/>
+		</template>
+
+		<template #footer>
+			<div v-if="showRetry || showLoadMore" :class="$style.footer">
+				<template v-if="showRetry">
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('instanceAi.threads.loadError') }}
+					</N8nText>
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						data-test-id="agent-n8n-chat-history-retry"
+						@click="loadMore"
+					>
+						{{ i18n.baseText('generic.retry') }}
+					</N8nButton>
+				</template>
+				<N8nButton
+					v-else
+					variant="ghost"
+					size="xsmall"
+					data-test-id="agent-n8n-chat-history-load-more"
+					@click="loadMore"
+				>
+					{{ i18n.baseText('agentSessions.loadMore') }}
+				</N8nButton>
+			</div>
+		</template>
+	</ChatHistoryDropdown>
+</template>
+
+<style lang="scss" module>
+.footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	border-top: var(--border);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+</style>

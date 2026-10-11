@@ -14,12 +14,7 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type {
-	NodeJSON,
-	NodeSchemaContext,
-	OutputSchemaLookup,
-	WorkflowJSON,
-} from '@n8n/workflow-sdk';
+import type { NodeSchemaContext, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	buildDateAnchors,
 	buildPinDataUserPrompt,
@@ -60,8 +55,7 @@ export interface PinDataGeneratorOptions {
  * describe the same serialized shape; the nominal mismatch is only in
  * credential details (`id: string | null` vs `id?: string`).
  */
-const toWorkflowJSON = (workflow: SimpleWorkflow): WorkflowJSON =>
-	workflow as unknown as WorkflowJSON;
+const toWorkflowJSON = (workflow: SimpleWorkflow): WorkflowJSON => workflow;
 
 // ---------------------------------------------------------------------------
 // Utility node deny-list
@@ -136,7 +130,7 @@ export function buildSchemaContexts(
 	nodes: INode[],
 	outputSchemaLookup?: OutputSchemaLookup,
 ): NodeSchemaContext[] {
-	return buildSchemaContextsShared(nodes as unknown as NodeJSON[], outputSchemaLookup);
+	return buildSchemaContextsShared(nodes, outputSchemaLookup);
 }
 
 /**
@@ -177,7 +171,7 @@ export async function generateEvalPinData(
 	const workflowJson = toWorkflowJSON(workflow);
 	const outputParserTargets = findOutputParserTargets(workflowJson);
 	const contexts = buildSchemaContextsShared(
-		eligibleNodes as unknown as NodeJSON[],
+		eligibleNodes,
 		outputSchemaLookup,
 		outputParserTargets,
 	);

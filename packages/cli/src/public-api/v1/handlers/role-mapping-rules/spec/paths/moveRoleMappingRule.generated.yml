@@ -11,6 +11,7 @@ parameters:
   - schema:
       type: string
     required: true
+    description: The ID of the role mapping rule.
     name: roleMappingRuleId
     in: path
 requestBody:

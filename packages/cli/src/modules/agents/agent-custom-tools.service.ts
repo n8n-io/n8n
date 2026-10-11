@@ -9,17 +9,16 @@ import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
-	diffAgentConfigParts,
+	type AgentMutationSnapshot,
+	buildAgentMutationEvent,
+	captureAgentMutation,
 } from './agent-modification-telemetry.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
-import { isUnconfiguredAgent } from './utils/agent-capabilities';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 type AgentToolEntries = Agent['tools'];
@@ -29,8 +28,7 @@ export class AgentCustomToolsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly saveCompletion: AgentSaveCompletionService,
 	) {}
 
 	/**
@@ -45,9 +43,13 @@ export class AgentCustomToolsService {
 		descriptor: ToolDescriptor,
 		context: AgentMutationTelemetryContext,
 		options: { recordTelemetry?: boolean } = {},
-	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor }> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor; changed: boolean }> {
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
 			throw new UserError(
@@ -58,41 +60,21 @@ export class AgentCustomToolsService {
 		const toolId = descriptor.name;
 		const nextEntry = { code, descriptor };
 		if (isEqual(entity.tools?.[toolId], nextEntry)) {
-			return { ok: true, id: toolId, descriptor };
+			return { ok: true, id: toolId, descriptor, changed: false };
 		}
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previous = captureAgentMutation(entity);
 
 		entity.tools = {
 			...entity.tools,
 			[toolId]: nextEntry,
 		};
 
-		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		if (options.recordTelemetry !== false) {
-			this.modificationTelemetry.record({
-				agent: saved,
-				projectId,
-				user: context.user,
-				by: context.modifiedBy,
-				changedParts: diffAgentConfigParts(
-					previousSchema,
-					saved.schema,
-					previousIntegrations,
-					saved.integrations ?? [],
-					{ tools: true },
-				),
-				wasUnconfigured,
-			});
-		}
+		await this.saveToolChanges(entity, projectId, context, previous, options.recordTelemetry);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
-		return { ok: true, id: toolId, descriptor };
+		return { ok: true, id: toolId, descriptor, changed: true };
 	}
 
 	/**
@@ -104,13 +86,15 @@ export class AgentCustomToolsService {
 		toolId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 		if (!entity.tools?.[toolId]) return;
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previous = captureAgentMutation(entity);
 
 		const tools = { ...entity.tools };
 		delete tools[toolId];
@@ -122,23 +106,7 @@ export class AgentCustomToolsService {
 			);
 		}
 
-		markAgentDraftDirty(entity);
-		this.runtimeCacheService.clearRuntimes(agentId);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ tools: true },
-			),
-			wasUnconfigured,
-		});
+		await this.saveToolChanges(entity, projectId, context, previous);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
 	}
@@ -154,6 +122,7 @@ export class AgentCustomToolsService {
 		const missing: string[] = [];
 
 		for (const ref of refs) {
+			if (ref.enabled === false) continue;
 			if (seen.has(ref.id)) continue;
 			seen.add(ref.id);
 			if (!tools[ref.id]) missing.push(ref.id);
@@ -179,5 +148,20 @@ export class AgentCustomToolsService {
 			if (tool) snapshot[ref.id] = tool;
 		}
 		return snapshot;
+	}
+	private async saveToolChanges(
+		entity: Agent,
+		projectId: string,
+		context: AgentMutationTelemetryContext,
+		previous: AgentMutationSnapshot,
+		recordTelemetry = true,
+	): Promise<void> {
+		markAgentDraftDirty(entity);
+		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		await this.saveCompletion.bodySaved(
+			buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
+			context.pushRef,
+			recordTelemetry,
+		);
 	}
 }

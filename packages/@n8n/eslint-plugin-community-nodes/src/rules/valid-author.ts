@@ -22,7 +22,7 @@ function parsePersonString(value: string): { name: string; email: string } {
 }
 
 function isNonEmptyStringLiteral(node: TSESTree.Property | null): boolean {
-	if (!node || node.value.type !== AST_NODE_TYPES.Literal) {
+	if (node?.value.type !== AST_NODE_TYPES.Literal) {
 		return false;
 	}
 	const { value } = node.value;

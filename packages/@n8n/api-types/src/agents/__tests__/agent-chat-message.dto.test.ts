@@ -21,6 +21,22 @@ describe('AgentChatMessageDto', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('requires a session when a valid client message UUID is supplied', () => {
+		const messageId = 'C4B02D7B-2088-41CE-9C6B-FAF8C7B83D8A';
+		const payload = { message: 'Hello', sessionId: 'session-1', messageId };
+		expect(AgentChatMessageDto.parse(payload)).toEqual(payload);
+		expect(new AgentChatMessageDto(payload)).toMatchObject(payload);
+		for (const invalid of [
+			{ ...payload, sessionId: undefined },
+			{ ...payload, sessionId: '' },
+			{ ...payload, messageId: 'invalid' },
+			{ ...payload, messageId: '' },
+		]) {
+			expect(AgentChatMessageDto.safeParse(invalid).success).toBe(false);
+			expect(() => AgentChatMessageDto.parse(invalid)).toThrow();
+		}
+	});
+
 	it('rejects a payload with neither message text nor attachments', () => {
 		expect(AgentChatMessageDto.safeParse({ message: '' }).success).toBe(false);
 		expect(AgentChatMessageDto.safeParse({ message: '   ' }).success).toBe(false);

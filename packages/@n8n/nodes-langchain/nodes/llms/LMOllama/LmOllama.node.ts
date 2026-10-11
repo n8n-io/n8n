@@ -74,7 +74,7 @@ export class LmOllama implements INodeType {
 				}
 			: undefined;
 
-		const lookup = this.helpers.getSecureEgressFilter().createSecureLookup();
+		const egressFilter = this.helpers.getSecureEgressFilter();
 
 		const model = new Ollama({
 			baseUrl,
@@ -84,7 +84,7 @@ export class LmOllama implements INodeType {
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			headers,
 			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
-				await proxyFetch({ input, init, lookup }),
+				await proxyFetch({ input, init, egressFilter }),
 		});
 
 		return {

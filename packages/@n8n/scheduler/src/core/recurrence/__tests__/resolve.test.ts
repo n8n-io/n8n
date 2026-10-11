@@ -22,6 +22,7 @@ function makeJob(overrides: Partial<ScheduledJob> = {}): ScheduledJob {
 		nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 		lastFiredAt: null,
 		maxAttempts: 1,
+		concurrencyLimit: null,
 		misfirePolicy: 'coalesce',
 		misfireGraceSeconds: 60,
 		ownerKey: 'owner-1',

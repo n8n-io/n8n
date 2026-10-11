@@ -1,8 +1,9 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
 
 /**
  * Expires agent checkpoints past their TTL, so a stale suspended run can no
@@ -12,22 +13,25 @@ import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 export class AgentCheckpointPruningTask implements SystemTask {
 	readonly name = 'agent-checkpoint-pruning';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = false;
-
-	readonly runOnTakeover = true;
+	readonly placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: true,
+		runOnTakeover: true,
+	};
 
 	readonly retryDelaySeconds = 30;
 
-	constructor(private readonly checkpointStorage: N8NCheckpointStorage) {}
+	constructor(
+		private readonly checkpointStorage: N8NCheckpointStorage,
+		private readonly backgroundJobs: AgentBackgroundJobService,
+	) {}
 
 	async run(): Promise<void> {
 		await this.checkpointStorage.pruneStaleSuspensions();
+		await this.backgroundJobs.pruneExpiredPausedJobs();
 	}
 }

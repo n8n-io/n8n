@@ -42,6 +42,7 @@ const PUBLIC_GOOGLE_OAUTH_URL =
 const PUBLIC_MICROSOFT_CREDENTIALS_URL =
 	'https://docs.n8n.io/integrations/builtin/credentials/microsoft/';
 const PUBLIC_FIGMA_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/figma/';
+const PUBLIC_SLACK_CREDENTIALS_URL = 'https://docs.n8n.io/integrations/builtin/credentials/slack/';
 const PUBLIC_CREATE_EDIT_URL =
 	'https://docs.n8n.io/build/understand-workflows/create-and-edit-credentials/';
 
@@ -212,6 +213,127 @@ describe('n8n-docs tool', () => {
 		expect(result.documents?.[0].content).toContain('<untrusted_data');
 		expect(result.documents?.[0].content).toContain(`source="${PUBLIC_GOOGLE_OAUTH_URL}"`);
 		expect(result.documents?.[0].content).toContain('OAuth Redirect URL');
+	});
+
+	// Without this the model has to chain `credentials(action="search-types")` to fetch
+	// the URL itself, and when it skips that step ranking falls back to query tokens,
+	// lands on the wrong pages, and the answer comes from memory (AGENT-743).
+	describe('resolving documentationUrl from the credential type', () => {
+		const contextWithDocsUrl = (getDocumentationUrl: ReturnType<typeof vi.fn>) => ({
+			...createMockContext(),
+			credentialService: {
+				getDocumentationUrl,
+			} as unknown as InstanceAiContext['credentialService'],
+		});
+
+		// `slackOAuth2Api` tokenizes to slack/oauth2/api, and on this fixture `oauth2`
+		// ranks "Google: OAuth2 single service" top — so the resolved URL, worth +500,
+		// is the only thing that promotes the Slack page. The paired negative control
+		// below keeps that discriminating: assert the ranking REASON, because a content
+		// assertion alone also passes when the wrongly-ranked page merely fails to fetch.
+		const scopeLookup = {
+			action: 'lookup',
+			query: 'which scopes for message search',
+			intent: 'credential-setup',
+			credentialType: 'slackOAuth2Api',
+		};
+
+		const stubAllCandidatePages = () =>
+			stubFetchWithMap({
+				[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+				[SLACK_CREDENTIALS_URL]:
+					'# Slack credentials\n\nsearch:read.public, search:read.private, search:read.im, search:read.mpim. search:read is deprecated by Slack.',
+				[GOOGLE_OAUTH_URL]: '# Google: OAuth2 single service\n\nGoogle OAuth setup.',
+				[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup guidance.',
+			});
+
+		it('reads the credential type own docs page when no URL was passed', async () => {
+			stubAllCandidatePages();
+			const getDocumentationUrl = vi
+				.fn()
+				.mockResolvedValue('https://docs.n8n.io/integrations/builtin/credentials/slack/');
+			const tool = createN8nDocsTool(contextWithDocsUrl(getDocumentationUrl));
+
+			const result = await executeTool<N8nDocsToolResult>(tool, scopeLookup);
+
+			expect(getDocumentationUrl).toHaveBeenCalledWith('slackOAuth2Api');
+			expect(result.matches?.[0].reason).toContain('documentation URL match');
+			expect(result.matches?.[0].url).toBe(PUBLIC_SLACK_CREDENTIALS_URL);
+			expect(result.documents?.[0].content).toContain('search:read.public');
+		});
+
+		// Negative control for the test above: same input, nothing to resolve. Without
+		// the resolution the Slack page is not even the top match, which is what makes
+		// the assertions above evidence that resolution did the work.
+		it('ranks a different page top when there is no URL to resolve', async () => {
+			stubAllCandidatePages();
+			const tool = createN8nDocsTool(contextWithDocsUrl(vi.fn().mockResolvedValue(null)));
+
+			const result = await executeTool<N8nDocsToolResult>(tool, scopeLookup);
+
+			expect(result.matches?.[0].reason).not.toContain('documentation URL match');
+			expect(result.matches?.[0].url).not.toBe(PUBLIC_SLACK_CREDENTIALS_URL);
+		});
+
+		it('leaves an explicitly passed URL alone', async () => {
+			stubFetchWithMap({
+				[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+				[FIGMA_CREDENTIALS_URL]: '# Figma credentials\n\nFigma setup.',
+				[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup guidance.',
+			});
+			const getDocumentationUrl = vi.fn();
+			const tool = createN8nDocsTool(contextWithDocsUrl(getDocumentationUrl));
+
+			const result = await executeTool<N8nDocsToolResult>(tool, {
+				action: 'lookup',
+				intent: 'credential-setup',
+				credentialType: 'figmaApi',
+				documentationUrl: PUBLIC_FIGMA_CREDENTIALS_URL,
+			});
+
+			expect(getDocumentationUrl).not.toHaveBeenCalled();
+			expect(result.documents?.[0].url).toBe(PUBLIC_FIGMA_CREDENTIALS_URL);
+		});
+
+		// An unknown type resolves to null; the lookup must still answer on query tokens.
+		it('still returns results when the type has no docs page', async () => {
+			stubFetchWithMap({
+				[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+				[SLACK_CREDENTIALS_URL]: '# Slack credentials\n\nSlack setup.',
+				[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup guidance.',
+			});
+			const getDocumentationUrl = vi.fn().mockResolvedValue(null);
+			const tool = createN8nDocsTool(contextWithDocsUrl(getDocumentationUrl));
+
+			const result = await executeTool<N8nDocsToolResult>(tool, {
+				action: 'lookup',
+				query: 'slack credentials',
+				intent: 'credential-setup',
+				credentialType: 'notARealType',
+			});
+
+			expect(getDocumentationUrl).toHaveBeenCalledWith('notARealType');
+			expect(result.documents?.length).toBeGreaterThan(0);
+		});
+
+		// The tool is also constructed without a credential service (e.g. sub-agents).
+		it('works when no credential service is available', async () => {
+			stubFetchWithMap({
+				[N8N_DOCS_REGISTRY_URL]: REGISTRY,
+				[SLACK_CREDENTIALS_URL]: '# Slack credentials\n\nSlack setup.',
+				[CREATE_EDIT_URL]: '# Create and edit credentials\n\nCredential setup guidance.',
+			});
+			const tool = createN8nDocsTool(createMockContext());
+
+			const result = await executeTool<N8nDocsToolResult>(tool, {
+				action: 'lookup',
+				query: 'slack credentials',
+				intent: 'credential-setup',
+				credentialType: 'slackOAuth2Api',
+			});
+
+			expect(result.documents?.length).toBeGreaterThan(0);
+		});
 	});
 
 	it('lookup derives the query from credential context when query is omitted', async () => {

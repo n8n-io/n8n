@@ -833,6 +833,60 @@ describe('establishExecutionContext', () => {
 				'parent-execution-id',
 			);
 		});
+
+		it('re-runs sub-execution hooks for inheritance via start-item metadata (error workflow)', async () => {
+			// Error workflows inherit through `startItem.metadata.parentExecution`, not
+			// the top-level `parentExecution`, so the child's own hooks must still run.
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: mock<INode>({
+								name: 'Error Trigger',
+								type: 'n8n-nodes-base.errorTrigger',
+							}),
+							data: { main: [[{ json: {} }]] },
+							source: null,
+							metadata: {
+								parentExecution: {
+									executionId: 'parent-execution-id',
+									workflowId: 'parent-workflow-id',
+									executionContext: {
+										version: 1,
+										establishedAt: 1000,
+										source: 'manual',
+										redaction: { version: 2, production: false, manual: false },
+									},
+								},
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+			const rederived: IExecutionContext = {
+				version: 1,
+				establishedAt: 2000,
+				source: 'error',
+				parentExecutionId: 'parent-execution-id',
+				usesDynamicCredentials: true,
+			};
+			mockExecutionContextService.augmentSubExecutionContext.mockResolvedValue(rederived);
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
+
+			expect(mockExecutionContextService.augmentSubExecutionContext).toHaveBeenCalledWith(
+				mockWorkflow,
+				runExecutionData.executionData!.nodeExecutionStack[0],
+				expect.objectContaining({ parentExecutionId: 'parent-execution-id' }),
+			);
+			expect(runExecutionData.executionData!.runtimeData).toBe(rederived);
+		});
 	});
 
 	describe('error workflow context inheritance', () => {
@@ -883,8 +937,9 @@ describe('establishExecutionContext', () => {
 
 			const errorContext = runExecutionData.executionData!.runtimeData!;
 
-			// Should inherit credentials from failed workflow
-			expect(errorContext.credentials).toBe('original-workflow-credentials');
+			// Must NOT inherit the failed run's identity carrier: the error workflow
+			// reports the failure, it does not act as that run's user.
+			expect(errorContext.credentials).toBeUndefined();
 
 			// Should have fresh establishedAt
 			expect(errorContext.establishedAt).toBeGreaterThanOrEqual(beforeTimestamp);
@@ -985,8 +1040,9 @@ describe('establishExecutionContext', () => {
 
 			const errorContext = runExecutionData.executionData!.runtimeData!;
 
-			// Should inherit root credentials
-			expect(errorContext.credentials).toBe('root-workflow-credentials');
+			// The carrier is dropped at every depth, so a failure nested under a
+			// sub-workflow cannot hand the root run's identity on either.
+			expect(errorContext.credentials).toBeUndefined();
 
 			// Should track the failed sub-workflow
 			expect(errorContext.parentExecutionId).toBe('failed-sub-workflow-id');
@@ -994,6 +1050,167 @@ describe('establishExecutionContext', () => {
 			// Should have fresh timing
 			expect(errorContext.source).toBe('error');
 			expect(errorContext.establishedAt).toBeGreaterThan(subWorkflowContext.establishedAt);
+		});
+	});
+
+	describe('error workflow identity isolation', () => {
+		// `executeErrorWorkflow` populates BOTH `runExecutionData.parentExecution`
+		// and the start item's metadata, and the first wins. Each case below drives
+		// one of the two branches so neither can regress on its own.
+		const sealedParentContext: IExecutionContext = {
+			version: 1,
+			establishedAt: 2000000000,
+			source: 'webhook',
+			credentials: 'sealed-identity-carrier',
+			secureArtifacts: 'stripped-trigger-values',
+			redaction: { version: 2, production: true, manual: false },
+			executedByUserId: 'user-who-ran-the-failed-workflow',
+			usesDynamicCredentials: true,
+		};
+
+		const errorTriggerNode = mock<INode>({
+			name: 'ErrorTrigger',
+			type: 'n8n-nodes-base.errorTrigger',
+		});
+
+		const buildErrorRun = (source: 'parentExecution' | 'startItemMetadata') => {
+			const parentExecution: RelatedExecution = {
+				executionId: 'failed-execution-id',
+				workflowId: 'failed-workflow-id',
+				executionContext: sealedParentContext,
+			};
+
+			return createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: errorTriggerNode,
+							data: { main: [[{ json: { error: 'boom' } }]] },
+							source: null,
+							...(source === 'startItemMetadata' && { metadata: { parentExecution } }),
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+				...(source === 'parentExecution' && { parentExecution }),
+			});
+		};
+
+		it.each(['parentExecution', 'startItemMetadata'] as const)(
+			'does not pass the identity carrier to an error workflow (via %s)',
+			async (source) => {
+				const runExecutionData = buildErrorRun(source);
+
+				await establishExecutionContext(
+					mockWorkflow,
+					runExecutionData,
+					mockAdditionalData,
+					'error',
+				);
+
+				const errorContext = runExecutionData.executionData!.runtimeData!;
+
+				expect(errorContext.credentials).toBeUndefined();
+				expect(errorContext.secureArtifacts).toBeUndefined();
+			},
+		);
+
+		it.each(['parentExecution', 'startItemMetadata'] as const)(
+			'still inherits the fields the error execution needs (via %s)',
+			async (source) => {
+				const runExecutionData = buildErrorRun(source);
+
+				await establishExecutionContext(
+					mockWorkflow,
+					runExecutionData,
+					mockAdditionalData,
+					'error',
+				);
+
+				const errorContext = runExecutionData.executionData!.runtimeData!;
+
+				// Redaction escalates top-down, so a failure of a redacted run must not
+				// produce an unredacted error record.
+				expect(errorContext.redaction).toEqual(sealedParentContext.redaction);
+				expect(errorContext.usesDynamicCredentials).toBe(true);
+				expect(errorContext.executedByUserId).toBe('user-who-ran-the-failed-workflow');
+				expect(errorContext.parentExecutionId).toBe('failed-execution-id');
+				expect(errorContext.source).toBe('error');
+			},
+		);
+
+		it('keeps passing the carrier to a sub-workflow, which is a different relationship', async () => {
+			const runExecutionData = buildErrorRun('parentExecution');
+
+			// Same shape, but an 'integrated' run: a sub-workflow the parent's own
+			// graph calls, not a handler named in an unversioned setting.
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'integrated',
+			);
+
+			const childContext = runExecutionData.executionData!.runtimeData!;
+
+			expect(childContext.credentials).toBe('sealed-identity-carrier');
+			expect(childContext.secureArtifacts).toBe('stripped-trigger-values');
+		});
+
+		// The two branches above are skipped when the run data already carries a
+		// context — a persisted error run that resumes after a Wait, or the second
+		// establish call once the main process has populated `runtimeData`.
+		it('strips a carrier from a context the error run already carries', async () => {
+			const runExecutionData = buildErrorRun('parentExecution');
+			runExecutionData.executionData!.runtimeData = { ...sealedParentContext };
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
+
+			const errorContext = runExecutionData.executionData!.runtimeData!;
+
+			expect(errorContext.credentials).toBeUndefined();
+			expect(errorContext.secureArtifacts).toBeUndefined();
+			// The rest of the established context survives untouched — this is the
+			// error run's own context, not an inheritance point.
+			expect(errorContext.establishedAt).toBe(sealedParentContext.establishedAt);
+			expect(errorContext.source).toBe('webhook');
+			expect(errorContext.redaction).toEqual(sealedParentContext.redaction);
+			expect(errorContext.executedByUserId).toBe('user-who-ran-the-failed-workflow');
+			expect(errorContext.usesDynamicCredentials).toBe(true);
+		});
+
+		it('leaves an already-established context alone for a non-error resume', async () => {
+			const runExecutionData = buildErrorRun('parentExecution');
+			runExecutionData.executionData!.runtimeData = { ...sealedParentContext };
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'webhook',
+			);
+
+			expect(runExecutionData.executionData!.runtimeData).toEqual(sealedParentContext);
+		});
+
+		// `encryptedRunnerIdentity` is a carrier, so it cannot be filtered — and it
+		// is spread onto the context AFTER the inheritance gate, so refusing it at
+		// the source is the only place the gate holds.
+		it('does not take the runner identity from additionalData on an error run', async () => {
+			const runExecutionData = buildErrorRun('parentExecution');
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				encryptedRunnerIdentity: 'encrypted-credential-blob',
+				executionId: undefined,
+			});
+
+			await establishExecutionContext(mockWorkflow, runExecutionData, additionalData, 'error');
+
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBeUndefined();
 		});
 	});
 

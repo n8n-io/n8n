@@ -4,6 +4,97 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it('explains a conflict between import and deletion', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-conflict',
+						sourceWorkflowId: 'source',
+						workflowId: 'target',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect(result).toBeInstanceOf(ApiError);
+		expect((result as ApiError).hint).toContain(
+			'Workflow target (source source) in project P1 is selected for both import and deletion. Remove it from one selection.',
+		);
+	});
+
+	it('explains a forbidden workflow removal', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-forbidden',
+						workflowId: 'w1',
+						name: 'Flow',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'workflow "Flow" (w1) in project P1 could not be removed — not in the package or selected for deletion, and you lack permission',
+		);
+	});
+
+	it('explains a data table schema mismatch and what overwrite would change', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'data-table-unresolved',
+						kind: 'schema-incompatible',
+						sourceId: 'dt1',
+						name: 'First',
+						missingColumns: ['BaaId'],
+						typeMismatches: [],
+						overwriteChanges: [
+							{ kind: 'remove-column', column: 'note', type: 'string', destructive: true },
+							{ kind: 'add-column', column: 'BaaId', type: 'string', destructive: false },
+						],
+						usedByWorkflows: ['wf1'],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain(
+			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow(s) wf1',
+		);
+		expect(hint).toContain(
+			'--data-table-schema-conflict-policy=overwrite would: remove column note (data lost), add column BaaId',
+		);
+	});
+
+	it('explains a data table rename to a name another table has', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'data-table-unresolved',
+						kind: 'name-conflict',
+						sourceId: 'orders1',
+						name: 'Sales',
+						currentName: 'Orders',
+						conflictingTableId: 'sales1',
+						usedByWorkflows: ['wf1'],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'data table "Orders" (orders1) cannot be renamed to "Sales": the name is also used by table sales1, used by workflow(s) wf1',
+		);
+	});
+
 	it('returns non-ApiError values unchanged', () => {
 		const error = new Error('boom');
 		expect(toPackagesError(error)).toBe(error);

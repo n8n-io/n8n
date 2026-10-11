@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -31,7 +32,7 @@ import type { WorkflowRequest } from '../workflow.request';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
@@ -128,6 +129,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		pollCursorService,
 		executionCrashService,
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -148,6 +150,44 @@ describe('WorkflowExecutionService', () => {
 			workflowRunner.run.mockResolvedValue('fake-execution-id');
 
 			await workflowExecutionService.runWorkflow(workflow, node, [[]], mock(), 'trigger');
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
+		test('still starts production trigger executions on a protected instance', async () => {
+			const instanceWriteAccess = mock<InstanceWriteAccessService>();
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+			const service = new WorkflowExecutionService(
+				logger,
+				errorReporter,
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock(),
+				mock(),
+				pollCursorService,
+				executionCrashService,
+				instanceWriteAccess,
+			);
+			const node = mock<INode>();
+			const workflow = mock<IWorkflowBase>({
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [node],
+			});
+
+			workflowRunner.run.mockClear();
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await service.runWorkflow(workflow, node, [[]], mock(), 'trigger');
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
@@ -364,7 +404,7 @@ describe('WorkflowExecutionService', () => {
 			const returned = await runPolledWorkflow();
 
 			expect(returned).toBe('exec-9');
-			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9');
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('exec-9', 'start-failure');
 			expect(responsePromise.reject).toHaveBeenCalledWith(runError);
 			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});
@@ -476,7 +516,7 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		test('never commits the cursor when the run fails to start', async () => {
-			const runError = new Error('engine 2.0 rejected the run');
+			const runError = new Error('engine v2 rejected the run');
 			workflowRunner.run.mockRejectedValue(runError);
 
 			await expect(runPolledWorkflowV2()).rejects.toBe(runError);
@@ -562,6 +602,41 @@ describe('WorkflowExecutionService', () => {
 				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
+		});
+
+		test('throws ForbiddenError when the instance is in read-only (protected) mode', async () => {
+			const instanceWriteAccess = mock<InstanceWriteAccessService>();
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+			const service = new WorkflowExecutionService(
+				logger,
+				errorReporter,
+				mock(),
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock(),
+				mock(),
+				pollCursorService,
+				executionCrashService,
+				instanceWriteAccess,
+			);
+			const user = mock<User>({ id: 'user-id' });
+			const workflowData = mock<IWorkflowBase>({ nodes: [webhookNode], connections: {} });
+			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+				triggerToStartFrom: { name: webhookNode.name },
+			};
+
+			await expect(service.executeManually(workflowData, runPayload, user)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		test('removes runData if the destination node is a trigger', async () => {
@@ -880,6 +955,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -953,6 +1029,7 @@ describe('WorkflowExecutionService', () => {
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
 				mock(),
 				pollCursorService,
+				mock(),
 				mock(),
 			);
 
@@ -1127,6 +1204,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 		});
 
@@ -1285,6 +1363,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1430,6 +1509,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1536,6 +1616,7 @@ describe('WorkflowExecutionService', () => {
 				workflowPublishedDataService,
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1591,6 +1672,7 @@ describe('WorkflowExecutionService', () => {
 				workflowPublishedDataService,
 				pollCursorService,
 				mock(),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1632,6 +1714,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				pollCursorService,
+				mock(),
 				mock(),
 			);
 

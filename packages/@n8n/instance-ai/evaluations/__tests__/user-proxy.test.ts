@@ -16,7 +16,8 @@ import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
 import {
 	confirmationDecisionSchema,
-	userTurnDecisionSchema,
+	createUserTurnDecisionSchema,
+	userTurnWithoutExecutionSchema,
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
@@ -75,6 +76,7 @@ function fakeCredentialClient(
 class FakeAgent implements UserProxyAgent {
 	readonly prompts: string[] = [];
 	readonly modes: ProxyDecisionMode[] = [];
+	readonly savedWorkflowIds: string[][] = [];
 	private queue: Array<Decision | undefined | Error> = [];
 
 	enqueue(...decisions: Array<Decision | undefined | Error>): void {
@@ -82,9 +84,14 @@ class FakeAgent implements UserProxyAgent {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
+	async decide(
+		userPrompt: string,
+		mode: ProxyDecisionMode,
+		savedWorkflowIds: string[] = [],
+	): Promise<Decision | undefined> {
 		this.prompts.push(userPrompt);
 		this.modes.push(mode);
+		this.savedWorkflowIds.push(savedWorkflowIds);
 		const next = this.queue.shift();
 		if (next instanceof Error) throw next;
 		return next;
@@ -862,6 +869,59 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
+	it("workflows(action='setup'): fills a wizard credential slot when the model picks the standalone manual action", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'choose_credential_setup_option',
+			option: 'manual',
+			credentialType: 'httpTemplatedCustomAuth',
+		});
+		const { client, createCredential, setThreadCredentialAllowlist } =
+			fakeCredentialClient('cred-resend');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Count our verified Resend domains every morning.' },
+				{ role: 'user', text: '[Set up the Resend credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Get Resend Domains',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					setupHint: {
+						template: { headers: { Authorization: 'Bearer {{api_key}}' } },
+						placeholders: [{ name: 'api_key', title: 'Resend API key', optional: false }],
+					},
+				},
+			]),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.any(String),
+			'httpTemplatedCustomAuth',
+			expect.objectContaining({ template: expect.stringContaining('Bearer') }),
+			undefined,
+		);
+		// Filling the slot means the credential works, so its test is bypassed.
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			'thread-1',
+			['cred-resend'],
+			['cred-resend'],
+		);
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeCredentials).toEqual({
+				'Get Resend Domains': { httpTemplatedCustomAuth: 'cred-resend' },
+			});
+		}
+	});
+
 	it("workflows(action='setup'): creates a real credential when the resolved slot has zero existing candidates", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
@@ -895,6 +955,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 		);
 		// The allowlist call must include the pre-existing id, not just the new
 		// one — setThreadCredentialAllowlist replaces the whole list.
@@ -1465,6 +1526,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect.any(String),
 			'slackApi',
 			expect.any(Object),
+			undefined,
 		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith('thread-1', ['cred-fresh'], []);
 		expect(response.kind).toBe('credentialSelection');
@@ -1623,6 +1685,44 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			}
 		},
 	);
+
+	it('approves a credential-destination review deterministically without consulting the agent', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Count our verified Resend domains every morning.' },
+				{ role: 'user', text: '[Set up the Resend credential now.]' },
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation({
+			timestamp: 100,
+			type: 'confirmation-request',
+			data: {
+				type: 'confirmation-request',
+				payload: {
+					requestId: 'req-dest',
+					toolCallId: 'tc-x',
+					toolName: 'workflows',
+					args: {},
+					severity: 'warning',
+					message: 'Review where this credential will be used',
+					credentialDestination: {
+						origin: 'https://api.resend.com',
+						nodeNames: ['Get Resend Domains'],
+					},
+				},
+			},
+		} as CapturedEvent);
+
+		expect(response).toEqual({
+			kind: 'credentialDestination',
+			origin: 'https://api.resend.com',
+			approved: true,
+		});
+		expect(agent.prompts).toHaveLength(0);
+	});
 
 	it('handles domain-access events deterministically with allow_all', async () => {
 		const agent = new FakeAgent();
@@ -1835,6 +1935,37 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 // ---------------------------------------------------------------------------
 
 describe('UserProxyLlm.decideFollowUp', () => {
+	it('shows saved workflow IDs and names for user executions', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({ action: 'declare_done' });
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'Build a contact log' }],
+			allowUserExecution: true,
+			agent,
+		});
+		proxy.ingestEvents([
+			{
+				timestamp: 0,
+				type: 'tool-result',
+				data: {
+					payload: {
+						toolCallId: 'build',
+						toolName: 'build-workflow',
+						result: {
+							success: true,
+							workflowId: 'wf-primary',
+							workflowName: 'Contact log',
+						},
+					},
+				},
+			},
+		]);
+		await proxy.decideFollowUp();
+		expect(agent.prompts[0]).toContain('wf-primary');
+		expect(agent.prompts[0]).toContain('Contact log');
+		expect(agent.savedWorkflowIds[0]).toEqual(['wf-primary']);
+	});
+
 	it('returns done immediately when messageBudget is 0 without invoking the agent', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
@@ -1992,6 +2123,31 @@ describe('UserProxyLlm.decideFollowUp', () => {
 // ---------------------------------------------------------------------------
 
 describe('mode-scoped decision schemas', () => {
+	const userTurnDecisionSchema = createUserTurnDecisionSchema(['workflow']);
+	it('restricts executions to saved IDs and omits the field without candidates', () => {
+		const schema = createUserTurnDecisionSchema(['primary-id', 'helper-id']);
+		const decision = { action: 'send_follow_up_message', message: 'I ran it' };
+		for (const runWorkflowId of ['primary-id', 'helper-id']) {
+			expect(schema.safeParse({ ...decision, runWorkflowId }).success).toBe(true);
+		}
+		for (const runWorkflowId of ['', 'Contact log', 'unknown-id']) {
+			expect(schema.safeParse({ ...decision, runWorkflowId }).success).toBe(false);
+		}
+		const emptySchema = createUserTurnDecisionSchema([]);
+		expect(emptySchema.safeParse({ ...decision, runWorkflowId: 'primary-id' }).success).toBe(false);
+		expect(emptySchema.safeParse(decision).success).toBe(true);
+	});
+
+	it('excludes user executions unless the case enables them', () => {
+		const decision = {
+			action: 'send_follow_up_message',
+			message: 'I ran it',
+			runWorkflowId: 'workflow',
+		};
+		expect(userTurnWithoutExecutionSchema.safeParse(decision).success).toBe(false);
+		expect(userTurnDecisionSchema.safeParse(decision).success).toBe(true);
+	});
+
 	it('user-turn schema does not offer confirmation actions', () => {
 		expect(
 			userTurnDecisionSchema.safeParse({

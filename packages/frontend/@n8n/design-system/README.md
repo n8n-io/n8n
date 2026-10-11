@@ -11,6 +11,8 @@ the directives plugin. Run `pnpm dev` to see the components in Storybook.
 - [Exports](#exports)
 - [Develop the package](#develop-the-package)
 - [Pack and publish](#pack-and-publish)
+- [Contributing](#contributing)
+- [Owners](#owners)
 - [License](#license)
 
 ## Consume the package
@@ -184,6 +186,15 @@ pnpm turbo run build --filter=@n8n/design-system
 pnpm pack --pack-destination /tmp/ds-pack
 ```
 
-## License
+## Contributing
+- Always follow the core `CONTRIBUTING.md` guidelines in the root repo. 
+- Design System components should be generic, reusable across multiple areas of the product.
+- Each component must have tests and stories attached
+- If replacing an existing component, make sure a migration path is considered
+- For brand new components, provide `component-*.md` spec using `specification/COMPONENT_API_SPEC_TEMPLATE.md` for review first
 
+## Owners
+@n8n/design
+
+## License
 You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

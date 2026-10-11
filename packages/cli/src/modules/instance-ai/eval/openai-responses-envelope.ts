@@ -383,7 +383,7 @@ function buildAssistantMessage(text: string): Record<string, unknown> {
 function extractResponsesContent(body: unknown): string {
 	if (body === null || body === undefined) return '';
 	if (typeof body === 'string') return body;
-	if (typeof body !== 'object') return String(body as number | boolean | bigint);
+	if (typeof body !== 'object') return String(body);
 
 	const obj = body as Record<string, unknown>;
 

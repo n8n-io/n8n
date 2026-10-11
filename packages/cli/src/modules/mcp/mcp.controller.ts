@@ -25,7 +25,7 @@ import type {
 	McpAuthenticatedRequest,
 	UserConnectedToMCPEventPayload,
 } from './mcp.types';
-import { getClientInfo, getProtocolVersion } from './mcp.utils';
+import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -131,8 +131,7 @@ export class McpController {
 		// telemetry. Legacy clients on the stateless fallback still send
 		// `initialize`.
 		const isDiscoverHandshake = isJSONRPCRequest(body) && body.method === MCP_DISCOVER_METHOD;
-		const isConnectionHandshake =
-			isDiscoverHandshake || (isJSONRPCRequest(body) && body.method === 'initialize');
+		const isHandshake = isConnectionHandshake(body);
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
@@ -146,7 +145,6 @@ export class McpController {
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
 			mcp_apps_enabled: featureFlags.mcpApps.enabled,
 			mcp_apps_variant: featureFlags.mcpApps.variant,
-			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request
@@ -154,7 +152,7 @@ export class McpController {
 		// when multiple clients connect concurrently.
 		try {
 			const transportError = await this.handleTransportRequest(req, res, featureFlags, req.body);
-			if (isConnectionHandshake) {
+			if (isHandshake) {
 				// The SDK answers a failed handshake with an error response instead of
 				// throwing, so a resolved call says nothing about the outcome: the
 				// status it wrote is what tells us whether the client connected.
@@ -182,7 +180,7 @@ export class McpController {
 			}
 		} catch (error) {
 			this.errorReporter.error(error);
-			if (isConnectionHandshake) {
+			if (isHandshake) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
 					mcp_connection_status: 'error',

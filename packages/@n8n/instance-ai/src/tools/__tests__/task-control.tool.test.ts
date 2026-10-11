@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { OrchestrationContext } from '../../types';
 import { createTaskControlTool } from '../task-control.tool';
 
@@ -209,6 +209,42 @@ describe('task-control tool', () => {
 			expect(result).toEqual({
 				result: 'Error: correction delivery not available.',
 			});
+		});
+	});
+});
+
+describe('task-control tool — checklist item contract', () => {
+	function checklistInput(description: string) {
+		return {
+			action: 'update-checklist',
+			tasks: [{ id: 'task-1', description, status: 'todo' }],
+		};
+	}
+
+	it('accepts a checklist item with a description', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('Create the Users data table'));
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects a checklist item whose description is blank', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('  '));
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('trims surrounding whitespace off the description', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('\nCreate the Users data table\n'));
+
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data).toMatchObject({
+			tasks: [{ description: 'Create the Users data table' }],
 		});
 	});
 });

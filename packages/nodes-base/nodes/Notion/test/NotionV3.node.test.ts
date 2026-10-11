@@ -533,6 +533,42 @@ describe('NotionV3', () => {
 		});
 	});
 
+	it('encodes a page ID as one URL path segment', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page_markdown', id: 'page-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'updateMarkdown',
+			pageId: { __rl: true, mode: 'id', value: 'page/id?view#section' },
+			markdownUpdateType: 'replace_content',
+			markdown: '# New content',
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'PATCH',
+			'/pages/page%2Fid%3Fview%23section/markdown',
+			{
+				type: 'replace_content',
+				replace_content: { new_str: '# New content' },
+			},
+		);
+	});
+
+	it('rejects a dot path segment before sending a request', async () => {
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'updateMarkdown',
+			pageId: { __rl: true, mode: 'id', value: '..' },
+			markdownUpdateType: 'replace_content',
+			markdown: '# New content',
+		});
+
+		await expect(node.execute.call(context)).rejects.toThrow('Invalid identifier');
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
+	});
+
 	it('extracts page IDs from full URLs with page query parameters', async () => {
 		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page_markdown', id: 'page-id' });
 
@@ -1289,6 +1325,25 @@ describe('NotionV3', () => {
 		await node.execute.call(context);
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith('GET', '/data_sources/data-source-id');
+	});
+
+	it('encodes a database ID as one URL path segment', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'database', id: 'database-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'database',
+			operation: 'get',
+			'databaseId.value': 'parent/child?view#section',
+			databaseId: { __rl: true, mode: 'id', value: 'parent/child?view#section' },
+			simple: false,
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/databases/parent%2Fchild%3Fview%23section',
+		);
 	});
 
 	it('simplifies a data source get response', async () => {

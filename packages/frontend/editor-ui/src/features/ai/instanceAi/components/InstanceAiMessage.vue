@@ -4,18 +4,21 @@ import type { RatingFeedback } from '@n8n/design-system';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nChatActions,
 	N8nChatMessage,
 	N8nIcon,
 	N8nIconButton,
-	N8nMessageRating,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -61,6 +64,13 @@ const outOfCreditsTitleKey = computed(() =>
 );
 
 const { goToUpgrade } = usePageRedirectionHelper();
+const { isEligible: isTopUpEligible } = useAssistantTopUpEligibility();
+
+const outOfCreditsCtaKey = computed(() =>
+	isTopUpEligible.value
+		? 'aiAssistant.builder.settings.getMoreCredits'
+		: 'instanceAi.error.outOfCredits.upgrade',
+);
 
 /** A run the user (or a timeout/shutdown) stopped before it completed. */
 const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
@@ -102,6 +112,29 @@ const attachments = computed(() =>
 	}),
 );
 
+/**
+ * Answered questions that end the timeline, like the onboarding card that the host answers with
+ * no model turn. They render below the actions, so copy and read aloud stay under the assistant
+ * text and not under the user's answer.
+ */
+const trailingAnswer = computed(() => {
+	const tree = props.message.agentTree;
+	// A live run appends after the answer. Only a settled message ends on it.
+	if (!tree || tree.status === 'active') return undefined;
+	const last = tree.timeline.at(-1);
+	if (last?.type !== 'tool-call') return undefined;
+	const toolCall = tree.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
+	return toolCall?.confirmation?.inputType === 'questions' && !toolCall.isLoading
+		? toolCall
+		: undefined;
+});
+
+const activityTree = computed(() => {
+	const tree = props.message.agentTree;
+	if (!tree || !trailingAnswer.value) return tree;
+	return { ...tree, timeline: tree.timeline.slice(0, -1) };
+});
+
 /** Transient status message from the backend (e.g. "Recalling conversation..."). */
 const statusMessage = computed(() => {
 	if (!isStreaming.value || !props.message.agentTree) return '';
@@ -118,9 +151,24 @@ const isRateable = computed(
 		!(responseId.value in thread.feedbackByResponseId),
 );
 
-const hasSubmittedFeedback = computed(
-	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
-);
+const hasSettledText = computed(function hasSettledAssistantText() {
+	return !isUser.value && !isStreaming.value && props.message.content.trim().length > 0;
+});
+
+const hasMessageActions = computed(function hasAvailableMessageActions() {
+	return hasSettledText.value || isRateable.value || (store.debugMode && !isUser.value);
+});
+const debugActionLabel = computed(function getDebugActionLabel() {
+	return i18n.baseText(
+		showDebugInfo.value
+			? 'instanceAi.message.actions.hideDebugInfo'
+			: 'instanceAi.message.actions.showDebugInfo',
+	);
+});
+
+function toggleDebugInfo() {
+	showDebugInfo.value = !showDebugInfo.value;
+}
 
 function onFeedback(payload: RatingFeedback) {
 	thread.submitFeedback(responseId.value, payload);
@@ -156,7 +204,12 @@ function formatJson(value: unknown): string {
 		<!-- Assistant message -->
 		<template v-else>
 			<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-			<AgentActivityTree v-if="props.message.agentTree" :agent-node="props.message.agentTree" />
+			<AgentActivityTree
+				v-if="activityTree"
+				:agent-node="activityTree"
+				:message-id="props.message.id"
+				:run-id="props.message.runId"
+			/>
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
 			<N8nCallout v-if="isQuotaExhausted" theme="warning" data-test-id="instance-ai-out-of-credits">
@@ -168,7 +221,7 @@ function formatJson(value: unknown): string {
 						data-test-id="instance-ai-out-of-credits-upgrade"
 						@click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 					>
-						{{ i18n.baseText('instanceAi.error.outOfCredits.upgrade') }}
+						{{ i18n.baseText(outOfCreditsCtaKey) }}
 					</N8nButton>
 				</template>
 			</N8nCallout>
@@ -218,31 +271,36 @@ function formatJson(value: unknown): string {
 				<span>{{ cancelledLabel }}</span>
 			</div>
 
-			<!-- Response feedback -->
-			<N8nMessageRating
-				v-if="isRateable"
-				minimal
-				data-test-id="instance-ai-message-rating"
-				@feedback="onFeedback"
-			/>
-			<p
-				v-else-if="hasSubmittedFeedback"
-				:class="$style.feedbackSuccess"
-				data-test-id="instance-ai-feedback-success"
-			>
-				{{ i18n.baseText('instanceAi.feedback.success') }}
-			</p>
-
 			<pre v-if="showDebugInfo" :class="$style.debugJson">{{ formatJson(props.message) }}</pre>
 		</template>
 
-		<template v-if="store.debugMode && !isUser" #actions>
-			<N8nIconButton
-				icon="code"
-				variant="ghost"
-				size="xsmall"
-				@click="showDebugInfo = !showDebugInfo"
-			/>
+		<template v-if="hasMessageActions" #actions>
+			<N8nChatActions
+				:content="props.message.content"
+				:show-copy="hasSettledText"
+				copy-test-id="instance-ai-message-copy"
+				:show-rating="isRateable"
+				:on-rating="onFeedback"
+				:show-read-aloud="hasSettledText"
+				read-aloud-test-id="instance-ai-message-read-aloud"
+			>
+				<N8nTooltip v-if="store.debugMode" placement="bottom" :content="debugActionLabel">
+					<N8nIconButton
+						icon="code"
+						variant="ghost"
+						size="small"
+						icon-size="medium"
+						data-test-id="instance-ai-message-debug"
+						:aria-label="debugActionLabel"
+						:aria-pressed="showDebugInfo"
+						@click="toggleDebugInfo"
+					/>
+				</N8nTooltip>
+			</N8nChatActions>
+		</template>
+
+		<template v-if="trailingAnswer" #after-actions>
+			<AnsweredQuestions :tool-call="trailingAnswer" />
 		</template>
 	</N8nChatMessage>
 </template>
@@ -340,12 +398,6 @@ function formatJson(value: unknown): string {
 	&:hover {
 		opacity: 1;
 	}
-}
-
-.feedbackSuccess {
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	margin: var(--spacing--2xs) 0 0;
 }
 
 .debugJson {

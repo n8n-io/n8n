@@ -141,6 +141,7 @@ export async function createOneCredential(
 	options?: {
 		logger?: EvalLogger;
 		setupHint?: InstanceAiCredentialSetupHint;
+		description?: string | null;
 		/** Seed with no field values, modelling a credential the user saved empty. */
 		blank?: boolean;
 	},
@@ -171,6 +172,7 @@ export async function createOneCredential(
 		resolvedName,
 		credentialType,
 		options?.blank ? {} : template.buildData(token),
+		options?.description,
 	);
 	return { id, name: resolvedName, type: credentialType };
 }
@@ -186,7 +188,11 @@ async function createTemplatedCustomAuthCredential(
 	client: N8nClient,
 	name: string | undefined,
 	usedNames: Map<string, number>,
-	options?: { logger?: EvalLogger; setupHint?: InstanceAiCredentialSetupHint },
+	options?: {
+		logger?: EvalLogger;
+		setupHint?: InstanceAiCredentialSetupHint;
+		description?: string | null;
+	},
 ): Promise<CreatedCredential> {
 	const hint = options?.setupHint;
 	if (!hint) {
@@ -218,16 +224,21 @@ async function createTemplatedCustomAuthCredential(
 	);
 
 	options?.logger?.verbose(`  Creating credential ${resolvedName} (httpTemplatedCustomAuth)`);
-	const { id } = await client.createCredential(resolvedName, 'httpTemplatedCustomAuth', {
-		template: JSON.stringify(hint.template),
-		placeholderDefs: JSON.stringify(hint.placeholders),
-		placeholderValues: JSON.stringify(placeholderValues),
-		serviceHost: hint.serviceHost ?? '',
-		serviceOrigin: hint.serviceOrigin ?? '',
-		docsUrl: hint.docsUrl ?? '',
-		testUrl: hint.testUrl ?? '',
-		acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
-	});
+	const { id } = await client.createCredential(
+		resolvedName,
+		'httpTemplatedCustomAuth',
+		{
+			template: JSON.stringify(hint.template),
+			placeholderDefs: JSON.stringify(hint.placeholders),
+			placeholderValues: JSON.stringify(placeholderValues),
+			serviceHost: hint.serviceHost ?? '',
+			serviceOrigin: hint.serviceOrigin ?? '',
+			docsUrl: hint.docsUrl ?? '',
+			testUrl: hint.testUrl ?? '',
+			acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
+		},
+		options?.description,
+	);
 	return { id, name: resolvedName, type: 'httpTemplatedCustomAuth' };
 }
 
@@ -263,6 +274,7 @@ export async function createDeclaredCredentials(
 	for (const decl of declared) {
 		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, {
 			logger,
+			...(decl.description !== undefined ? { description: decl.description } : {}),
 			...(decl.blank ? { blank: true } : {}),
 		});
 		options?.onCreated?.(cred.id);

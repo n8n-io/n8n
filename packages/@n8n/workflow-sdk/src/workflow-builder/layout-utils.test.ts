@@ -27,12 +27,15 @@ function createGraphNode(
 	]),
 	position?: [number, number],
 	parameters?: Record<string, unknown>,
+	version: string | number = 1,
+	id?: string,
 ): GraphNode {
 	return {
 		instance: {
 			type,
 			name,
-			version: 1,
+			version,
+			...(id ? { id } : {}),
 			config: {
 				...(position ? { position } : {}),
 				...(parameters ? { parameters } : {}),
@@ -236,6 +239,43 @@ describe('calculateNodePositionsDagre', () => {
 			expect(truePos[0]).toBe(falsePos[0]);
 			expect(truePos[1]).not.toBe(falsePos[1]);
 		});
+
+		it.each([
+			[3.1, 448],
+			[1, 224],
+		])(
+			'sizes message an agent by version when spacing its successors (v%s → successors at agent.x + %s)',
+			(version, successorOffset) => {
+				const nodes = new Map<string, GraphNode>();
+				const triggerConns = makeMainConns([[0, [makeTarget('agent')]]]);
+				const agentConns = makeMainConns([
+					[0, [makeTarget('first')]],
+					[1, [makeTarget('second')]],
+				]);
+				nodes.set('start', createGraphNode('start', 'n8n-nodes-base.manualTrigger', triggerConns));
+				nodes.set(
+					'agent',
+					createGraphNode(
+						'agent',
+						'n8n-nodes-base.messageAnAgent',
+						agentConns,
+						undefined,
+						undefined,
+						version,
+					),
+				);
+				nodes.set('first', createGraphNode('first', 'n8n-nodes-base.set'));
+				nodes.set('second', createGraphNode('second', 'n8n-nodes-base.set'));
+				const positions = calculateNodePositionsDagre(nodes);
+				const triggerPosition = positions.get('start')!;
+				const agentPosition = positions.get('agent')!;
+
+				expect(agentPosition[0]).toBeGreaterThan(triggerPosition[0]);
+				for (const successor of ['first', 'second']) {
+					expect(positions.get(successor)![0]).toBe(agentPosition[0] + successorOffset);
+				}
+			},
+		);
 	});
 
 	describe('disconnected subgraphs', () => {
@@ -462,6 +502,62 @@ describe('calculateNodePositionsDagre', () => {
 			expect(x + 400).toBeGreaterThanOrEqual(500 + DEFAULT_NODE_SIZE[0]);
 			expect(y).toBeLessThanOrEqual(600);
 			expect(y + 300).toBeGreaterThanOrEqual(600 + DEFAULT_NODE_SIZE[1]);
+		});
+	});
+
+	describe('node groups', () => {
+		it('lays out the surviving members when a persisted member ID is unresolved', () => {
+			const triggerConnections = makeMainConns([[0, [makeTarget('first')]]]);
+			const firstConnections = makeMainConns([[0, [makeTarget('second')]]]);
+			const nodes = new Map<string, GraphNode>([
+				[
+					'trigger',
+					createGraphNode(
+						'trigger',
+						'n8n-nodes-base.manualTrigger',
+						triggerConnections,
+						undefined,
+						undefined,
+						1,
+						'trigger-id',
+					),
+				],
+				[
+					'first',
+					createGraphNode(
+						'first',
+						'n8n-nodes-base.set',
+						firstConnections,
+						undefined,
+						undefined,
+						1,
+						'first-id',
+					),
+				],
+				[
+					'second',
+					createGraphNode(
+						'second',
+						'n8n-nodes-base.set',
+						undefined,
+						undefined,
+						undefined,
+						1,
+						'second-id',
+					),
+				],
+			]);
+
+			const withoutGroup = calculateNodePositionsDagre(nodes);
+			const withUnresolvedMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id', 'missing-id'] },
+			]);
+			const withOnlySurvivingMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id'] },
+			]);
+
+			expect(withUnresolvedMember).toEqual(withOnlySurvivingMember);
+			expect(withUnresolvedMember).not.toEqual(withoutGroup);
 		});
 	});
 });

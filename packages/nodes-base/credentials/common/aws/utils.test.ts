@@ -1704,6 +1704,14 @@ describe('uriEncodeS3Pathname', () => {
 		expect(uriEncodeS3Pathname('/bucket/a%252Fb.txt')).toBe('/bucket/a%252Fb.txt');
 	});
 
+	it('preserves encoded slashes when requested', () => {
+		const options = { preserveEncodedSlashes: true };
+
+		expect(uriEncodeS3Pathname('/bucket/a%2Fb.txt', options)).toBe('/bucket/a%2Fb.txt');
+		expect(uriEncodeS3Pathname('/bucket/a%2F..%2Fb.txt', options)).toBe('/bucket/a%2F..%2Fb.txt');
+		expect(uriEncodeS3Pathname('/bucket/a%252Fb.txt', options)).toBe('/bucket/a%252Fb.txt');
+	});
+
 	it('treats a stray % as literal text without poisoning valid escapes around it', () => {
 		expect(uriEncodeS3Pathname('/bucket/100%')).toBe('/bucket/100%25');
 		// '100% legit' after WHATWG: stray % stays raw, space became %20

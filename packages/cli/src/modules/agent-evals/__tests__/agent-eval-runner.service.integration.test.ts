@@ -15,6 +15,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { License } from '@/license';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -64,6 +65,7 @@ const buildRunner = () =>
 		// the env overrides — exercising the operator force-enable path the
 		// `agentEvalsEnabled` assignment in `beforeEach` relies on.
 		Container.get(AgentEvalsFlagGate),
+		Container.get(AgentsSettingsService),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
@@ -93,6 +95,7 @@ beforeEach(async () => {
 		'AgentEvalDataset',
 	]);
 	Container.get(GlobalConfig).evaluation.agentEvalsEnabled = true;
+	await Container.get(AgentsSettingsService).setEnabled(true);
 });
 
 afterAll(async () => {

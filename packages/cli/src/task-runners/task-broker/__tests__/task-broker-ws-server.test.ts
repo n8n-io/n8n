@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
@@ -8,7 +9,6 @@ import { ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import type { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import {
 	SHUTDOWN_TASK_BUDGET_RATIO,

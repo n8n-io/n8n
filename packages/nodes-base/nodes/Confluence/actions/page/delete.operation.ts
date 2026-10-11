@@ -7,6 +7,9 @@ import type { ConfluenceOperation } from '../router';
 
 const showOnDelete = { resource: ['page'], operation: ['delete'] };
 
+const NOT_FOUND_DESCRIPTION =
+	'The page may not exist or may already be in the trash. The ID may belong to another content type, such as a space or a blog post. The connected user may lack view or "Delete pages" permission in the page\'s space (Confluence reports permission failures as "not found"). The page may also be an unsaved draft.';
+
 export const description: INodeProperties[] = [
 	{
 		displayName:
@@ -44,8 +47,10 @@ export const execute: ConfluenceOperation = async function (
 	const pageId = await resolvePageId.call(this, itemIndex);
 	const endpoint = `/wiki/api/v2/pages/${encodeURIComponent(pageId)}`;
 
+	let trashConfirmed = false;
 	try {
 		await confluenceApiRequest.call(this, 'DELETE', endpoint);
+		trashConfirmed = true;
 	} catch (error) {
 		// The OAuth scope is only the ceiling — deleting also needs the space-level permission
 		if (error instanceof NodeApiError && error.httpCode === '403') {
@@ -60,8 +65,7 @@ export const execute: ConfluenceOperation = async function (
 		if (notFound && !purge) {
 			throw new NodeOperationError(this.getNode(), 'Confluence could not delete the page', {
 				itemIndex,
-				description:
-					'The page may not exist or may already be in the trash, the connected user may lack view or "Delete pages" permission in the page\'s space (Confluence reports permission failures as "not found"), or the page is an unsaved draft.',
+				description: NOT_FOUND_DESCRIPTION,
 			});
 		}
 		// A page that is already in the trash 404s on the plain DELETE; when purging,
@@ -76,16 +80,26 @@ export const execute: ConfluenceOperation = async function (
 		try {
 			await confluenceApiRequest.call(this, 'DELETE', endpoint, {}, { purge: true });
 		} catch (error) {
-			if (error instanceof NodeApiError && error.httpCode === '403') {
+			const forbidden = error instanceof NodeApiError && error.httpCode === '403';
+			const notFound = error instanceof NodeApiError && error.httpCode === '404';
+			// A 403 means the page exists, so it sits in the trash whether or not this
+			// run is what put it there
+			if (forbidden || (notFound && trashConfirmed)) {
 				throw new NodeOperationError(
 					this.getNode(),
-					'The page was moved to trash, but could not be purged',
+					'The page is in the trash, but could not be purged',
 					{
 						itemIndex,
 						description:
-							'Permanently deleting a page requires admin permission in its space. The page remains in the trash and can be restored from the Confluence UI.',
+							'Permanently deleting a page requires admin permission in its space. The page can be restored from the Confluence UI.',
 					},
 				);
+			}
+			if (notFound) {
+				throw new NodeOperationError(this.getNode(), 'Confluence could not delete the page', {
+					itemIndex,
+					description: NOT_FOUND_DESCRIPTION,
+				});
 			}
 			throw error;
 		}

@@ -1,8 +1,10 @@
 import { NodeConnectionTypes, NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import type {
+	DisplayCondition,
 	ExecuteWorkflowData,
 	IExecuteFunctions,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -13,6 +15,56 @@ import { localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
 import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
+// Two variants of the same property: 1.4+ sets `alwaysConvertFieldsToString`, so the
+// engine derives string casting from the description instead of the stored
+// `convertFieldsToString` value. Earlier versions keep reading the stored value,
+// because deriving it there would reject inputs that saved workflows pass through.
+const workflowInputsProperty = (
+	versionCondition: DisplayCondition,
+	alwaysConvertFieldsToString: boolean,
+): INodeProperties => ({
+	displayName: 'Workflow Inputs',
+	name: 'workflowInputs',
+	type: 'resourceMapper',
+	noDataExpression: true,
+	default: {
+		mappingMode: 'defineBelow',
+		value: null,
+	},
+	required: true,
+	builderHint: {
+		propertyHint:
+			"The default { mappingMode: 'defineBelow', value: null } is only a temporary UI initialization state and must never be emitted in a workflow. Omit workflowInputs when the selected sub-workflow's trigger is set to 'Accept all data'. When the trigger declares inputs, pass the full Resource Mapper object and make the value and schema fields exactly match the declared input names and types.",
+	},
+	typeOptions: {
+		loadOptionsDependsOn: ['workflowId.value'],
+		resourceMapper: {
+			localResourceMapperMethod: 'loadSubWorkflowInputs',
+			valuesLabel: 'Workflow Inputs',
+			mode: 'map',
+			fieldWords: {
+				singular: 'input',
+				plural: 'inputs',
+			},
+			addAllFields: true,
+			multiKeyMatch: false,
+			supportAutoMap: false,
+			showTypeConversionOptions: true,
+			alwaysConvertFieldsToString,
+			refreshStaleSchemaOnOpen: true,
+		},
+	},
+	displayOptions: {
+		show: {
+			source: ['database'],
+			'@version': [versionCondition],
+		},
+		hide: {
+			workflowId: [''],
+		},
+	},
+});
+
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Sub-workflow',
@@ -20,7 +72,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'node:execute-sub-workflow',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -66,7 +118,6 @@ workflowInputs: {
     },
   ],
   attemptToConvertTypes: false,
-  convertFieldsToString: true,
 }
 </pattern>
 </patterns>`,
@@ -253,47 +304,8 @@ workflowInputs: {
 				default: '',
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 1.1 } }] } },
 			},
-			{
-				displayName: 'Workflow Inputs',
-				name: 'workflowInputs',
-				type: 'resourceMapper',
-				noDataExpression: true,
-				default: {
-					mappingMode: 'defineBelow',
-					value: null,
-				},
-				required: true,
-				builderHint: {
-					propertyHint:
-						"The default { mappingMode: 'defineBelow', value: null } is only a temporary UI initialization state and must never be emitted in a workflow. Omit workflowInputs when the selected sub-workflow's trigger is set to 'Accept all data'. When the trigger declares inputs, pass the full Resource Mapper object and make the value and schema fields exactly match the declared input names and types.",
-				},
-				typeOptions: {
-					loadOptionsDependsOn: ['workflowId.value'],
-					resourceMapper: {
-						localResourceMapperMethod: 'loadSubWorkflowInputs',
-						valuesLabel: 'Workflow Inputs',
-						mode: 'map',
-						fieldWords: {
-							singular: 'input',
-							plural: 'inputs',
-						},
-						addAllFields: true,
-						multiKeyMatch: false,
-						supportAutoMap: false,
-						showTypeConversionOptions: true,
-						refreshStaleSchemaOnOpen: true,
-					},
-				},
-				displayOptions: {
-					show: {
-						source: ['database'],
-						'@version': [{ _cnd: { gte: 1.2 } }],
-					},
-					hide: {
-						workflowId: [''],
-					},
-				},
-			},
+			workflowInputsProperty({ _cnd: { between: { from: 1.2, to: 1.3 } } }, false),
+			workflowInputsProperty({ _cnd: { gte: 1.4 } }, true),
 			{
 				displayName: 'Mode',
 				name: 'mode',

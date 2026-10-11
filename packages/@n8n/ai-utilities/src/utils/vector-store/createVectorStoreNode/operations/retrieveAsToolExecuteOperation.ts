@@ -50,11 +50,15 @@ export async function handleRetrieveAsToolExecuteOperation<T extends VectorStore
 		);
 		assertParamIsBoolean('includeDocumentMetadata', includeDocumentMetadata, context.getNode());
 
-		// Embed the query to prepare for vector similarity search
-		const embeddedQuery = await embeddings.embedQuery(query);
-
-		// Get the most similar documents to the embedded query
-		let docs = await vectorStore.similaritySearchVectorWithScore(embeddedQuery, topK, filter);
+		// Get the most similar documents to the query
+		let docs =
+			args.searchByText === true
+				? await vectorStore.similaritySearchWithScore(query, topK, filter)
+				: await vectorStore.similaritySearchVectorWithScore(
+						await embeddings.embedQuery(query),
+						topK,
+						filter,
+					);
 
 		// If reranker is used, rerank the documents
 		if (useReranker && docs.length > 0) {

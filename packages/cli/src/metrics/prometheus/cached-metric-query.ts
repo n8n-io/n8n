@@ -1,6 +1,6 @@
 import type { JsonValue } from 'n8n-workflow';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 type CachedMetricQueryOpts<T extends JsonValue> = {
 	cacheService: CacheService;

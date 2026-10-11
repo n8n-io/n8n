@@ -45,7 +45,6 @@ describe('toolsAgentExecute', () => {
 		};
 		mockContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
 		mockContext.getExecutionId.mockReturnValue('exec-123');
-		mockContext.getExecuteData.mockReturnValue({} as any);
 	});
 
 	it('should process items sequentially when batchSize is not set', async () => {
@@ -1184,6 +1183,13 @@ describe('toolsAgentExecute', () => {
 
 		// @ts-expect-error isStreaming is not supported by SupplyDataFunctions, but mock object still resolves it
 		mockSupplyDataContext.isStreaming = undefined;
+
+		// Sub-node contexts carry `cloneWith`; `isExecuteFunctions` discriminates on it.
+		Object.assign(mockSupplyDataContext, { cloneWith: vi.fn() });
+
+		// Sub-agents are traced too, so the context must answer the same calls as a top-level one.
+		mockSupplyDataContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
+		mockSupplyDataContext.getExecutionId.mockReturnValue('exec-123');
 
 		mockSupplyDataContext.logger = {
 			debug: vi.fn(),

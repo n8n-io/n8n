@@ -23,10 +23,9 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
 import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	canManageInstanceAi,
@@ -35,6 +34,8 @@ import {
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
+const ConfirmEmailChangeView = async () =>
+	await import('@/features/core/auth/views/ConfirmEmailChangeView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
@@ -58,8 +59,6 @@ const SettingsPersonalView = async () =>
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
-const GitConnectionsView = async () =>
-	await import('@/features/integrations/gitConnections.ee/views/GitConnectionsView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -141,21 +140,6 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 }
 
 const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
-
-const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
-	let timeoutId: number | undefined;
-
-	await Promise.race([
-		posthogStore.waitForFeatureFlags(),
-		new Promise<void>((resolve) => {
-			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
-		}),
-	]);
-
-	if (timeoutId !== undefined) {
-		window.clearTimeout(timeoutId);
-	}
-};
 
 const allowResourceCenterRoute = (
 	posthogStore: ReturnType<typeof usePostHog>,
@@ -324,14 +308,14 @@ export const routes: RouteRecordRaw[] = [
 				return;
 			}
 
-			if (!posthogStore.hasPendingFeatureFlags()) {
-				next({ name: VIEWS.HOMEPAGE });
-				return;
-			}
-
-			void waitForPendingFeatureFlags(posthogStore).then(() => {
-				allowResourceCenterRoute(posthogStore, next);
-			});
+			// `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is
+			// pending, so re-checking the variant below still redirects right away
+			// for a user whose flags were already resolved as "off".
+			void waitForFeatureFlagsWithTimeout(posthogStore, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT).then(
+				() => {
+					allowResourceCenterRoute(posthogStore, next);
+				},
+			);
 		},
 	},
 
@@ -598,6 +582,19 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			layout: 'auth',
 			middleware: ['guest'],
+			telemetry: {
+				pageCategory: 'auth',
+			},
+		},
+	},
+	{
+		path: '/confirm-email-change',
+		name: VIEWS.CONFIRM_EMAIL_CHANGE,
+		component: ConfirmEmailChangeView,
+		// No auth middleware: the token authorizes the change, so the link works
+		// whether the user is signed in or not (the confirm endpoint is skipAuth).
+		meta: {
+			layout: 'auth',
 			telemetry: {
 				pageCategory: 'auth',
 			},
@@ -986,38 +983,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'environments',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'git-connections',
-				name: VIEWS.GIT_CONNECTIONS_SETTINGS,
-				component: GitConnectionsView,
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
-					middlewareOptions: {
-						rbac: {
-							scope: [
-								'gitConnection:list',
-								'gitConnection:read',
-								'gitConnection:create',
-								'gitConnection:update',
-								'gitConnection:delete',
-							],
-							options: { mode: 'allOf' },
-						},
-						custom: () => {
-							const { isEnabled } = usePromotionsEnabled();
-							return isEnabled.value;
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'git-connections',
 							};
 						},
 					},

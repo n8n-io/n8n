@@ -6,6 +6,7 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
+	N8nLoading,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -27,6 +28,9 @@ const store = useInstanceAiStore();
 const i18n = useI18n();
 const thread = useThread();
 const project = computed(() => {
+	// The project id arrives with thread hydration. Until then the lookup is
+	// pending, not unknown, so the template shows a skeleton instead.
+	if (!thread.projectId && thread.hydrationStatus !== 'ready') return undefined;
 	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
 	if (!match)
 		return {
@@ -222,11 +226,23 @@ async function dismissContext(key: string) {
 				</div>
 
 				<div :class="$style.artifactList">
-					<div :class="[$style.artifactRow]">
+					<div v-if="project" :class="[$style.artifactRow]">
 						<span :class="$style.artifactIconWrap">
 							<ProjectIcon :icon="project.icon" size="small" border-less />
 						</span>
 						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+					<div
+						v-else
+						:class="$style.artifactRow"
+						data-test-id="instance-ai-artifacts-project-loading"
+					>
+						<span :class="[$style.artifactIconWrap, $style.iconSkeleton]">
+							<N8nLoading variant="custom" />
+						</span>
+						<span :class="$style.nameSkeleton">
+							<N8nLoading variant="custom" />
+						</span>
 					</div>
 				</div>
 			</div>
@@ -306,6 +322,21 @@ async function dismissContext(key: string) {
 							{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
 						</span>
 					</a>
+				</div>
+
+				<div
+					v-else-if="thread.hydrationStatus !== 'ready'"
+					:class="$style.artifactList"
+					data-test-id="instance-ai-artifacts-list-loading"
+				>
+					<div :class="[$style.artifactRow, $style.artifactRowSkeleton]">
+						<span :class="[$style.artifactIconWrap, $style.artifactIconSkeleton]">
+							<N8nLoading variant="custom" />
+						</span>
+						<span :class="$style.nameSkeleton">
+							<N8nLoading variant="custom" />
+						</span>
+					</div>
 				</div>
 
 				<div v-else :class="$style.emptyState">
@@ -497,6 +528,28 @@ async function dismissContext(key: string) {
 	white-space: nowrap;
 	flex: 1;
 	min-width: 0;
+}
+
+/* Same footprint as the resolved project row (small ProjectIcon + one text line) */
+.iconSkeleton {
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+}
+
+.nameSkeleton {
+	flex: 1;
+	max-width: 50%;
+	height: var(--font-size--sm);
+}
+
+/* Artifact rows are shorter: one text line at its line height, plus the row padding (border-box) */
+.artifactRowSkeleton {
+	min-height: calc(var(--font-size--sm) * var(--line-height--lg) + 2 * var(--spacing--2xs));
+}
+
+.artifactIconSkeleton {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .artifactRowArchived {

@@ -96,6 +96,16 @@ describe('UpdateOtelSettingsDto', () => {
 		expect(result.data.exporterEndpoint).toBe(exporterEndpoint);
 	});
 
+	it('trims whitespace around the exporter endpoint', () => {
+		const result = UpdateOtelSettingsDto.safeParse({
+			...validSettings,
+			exporterEndpoint: '  http://localhost:4318  ',
+		});
+
+		assert(result.success);
+		expect(result.data.exporterEndpoint).toBe('http://localhost:4318');
+	});
+
 	it.each(['localhost:4318', 'grpc://host:4317', 'ftp://x'])(
 		'rejects %p as an exporter endpoint',
 		(exporterEndpoint) => {
@@ -196,6 +206,16 @@ describe('TestOtelTraceDto', () => {
 
 		assert(result.success, 'Expected an https exporter endpoint to be valid');
 		expect(result.data.exporterEndpoint).toBe('https://collector.example.com:4317');
+	});
+
+	it('trims whitespace around the exporter endpoint', () => {
+		const result = TestOtelTraceDto.safeParse({
+			...validConnection,
+			exporterEndpoint: '  http://localhost:4318  ',
+		});
+
+		assert(result.success);
+		expect(result.data.exporterEndpoint).toBe('http://localhost:4318');
 	});
 
 	it('rejects a non-http exporter endpoint scheme', () => {

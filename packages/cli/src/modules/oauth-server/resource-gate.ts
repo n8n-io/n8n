@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { ResourceUser } from '@n8n/inbound-auth';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
@@ -12,7 +12,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 export async function authorizeAgainstGrant(
 	workflowFinderService: WorkflowFinderService,
 	grant: OAuthResourceGrant,
-	user: User,
+	user: ResourceUser,
 ): Promise<boolean> {
 	if (!grant.executeAccessWorkflowId) return true;
 
@@ -39,7 +39,7 @@ export function triggerResourceGate(
 ): Pick<ProtectedResource, 'getGrant' | 'authorize'> {
 	return {
 		getGrant: () => grant,
-		authorize: async (user: User) =>
+		authorize: async (user: ResourceUser) =>
 			await authorizeAgainstGrant(workflowFinderService, grant, user),
 	};
 }

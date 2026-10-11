@@ -4,6 +4,7 @@ import {
 	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
+	buildSkillInstructionCacheOptions,
 	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../prompt-cache';
@@ -25,6 +26,65 @@ function makeUserMessage(text: string, providerOptions?: Record<string, unknown>
 function makeTool(providerOptions?: Record<string, unknown>): ToolSet[string] {
 	return { inputSchema: {}, providerOptions } as ToolSet[string];
 }
+
+describe('buildSkillInstructionCacheOptions', () => {
+	it('reuses the instruction cache options', () => {
+		expect(
+			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, { a: makeTool() }, [
+				makeUserMessage('hi'),
+			]),
+		).toEqual(ANTHROPIC_CACHE_CONTROL);
+	});
+
+	it('returns undefined when the instructions carry no Anthropic breakpoint', () => {
+		expect(buildSkillInstructionCacheOptions(undefined, {}, [])).toBeUndefined();
+		expect(
+			buildSkillInstructionCacheOptions({ openai: { promptCacheKey: 'key' } }, {}, []),
+		).toBeUndefined();
+	});
+
+	it('keeps a slot for the conversation breakpoint next to caller tool breakpoints', () => {
+		expect(
+			buildSkillInstructionCacheOptions(
+				ANTHROPIC_CACHE_CONTROL,
+				{ a: makeTool(ANTHROPIC_CACHE_CONTROL) },
+				[],
+			),
+		).toEqual(ANTHROPIC_CACHE_CONTROL);
+		expect(
+			buildSkillInstructionCacheOptions(
+				ANTHROPIC_CACHE_CONTROL,
+				{ a: makeTool(ANTHROPIC_CACHE_CONTROL), b: makeTool(ANTHROPIC_CACHE_CONTROL) },
+				[],
+			),
+		).toBeUndefined();
+	});
+
+	it('counts caller breakpoints on messages and content parts', () => {
+		const markedPart = {
+			role: 'user',
+			content: [{ type: 'text', text: 'b', providerOptions: ANTHROPIC_CACHE_CONTROL }],
+		} as ModelMessage;
+		expect(
+			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, {}, [
+				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
+			]),
+		).toEqual(ANTHROPIC_CACHE_CONTROL);
+		expect(
+			buildSkillInstructionCacheOptions(ANTHROPIC_CACHE_CONTROL, {}, [
+				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
+				markedPart,
+			]),
+		).toBeUndefined();
+		expect(
+			buildSkillInstructionCacheOptions(
+				ANTHROPIC_CACHE_CONTROL,
+				{ a: makeTool(ANTHROPIC_CACHE_CONTROL) },
+				[makeUserMessage('a', ANTHROPIC_CACHE_CONTROL)],
+			),
+		).toBeUndefined();
+	});
+});
 
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 	it('defaults to a 1h cache breakpoint when enabled with no ttl override', () => {
@@ -76,7 +136,8 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 		const result = buildCallPromptCacheOptions({ enabled: true }, 'openai/gpt-5.1', context);
 
 		expect(result?.openai).toMatchObject({ promptCacheRetention: '24h' });
-		expect(typeof (result?.openai as { promptCacheKey: string }).promptCacheKey).toBe('string');
+		if (!result?.openai) throw new Error('Expected OpenAI prompt cache options');
+		expect(typeof (result.openai as { promptCacheKey: string }).promptCacheKey).toBe('string');
 	});
 
 	it('passes through an explicit promptCacheKey and promptCacheRetention unchanged', () => {
@@ -120,7 +181,8 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 			...context,
 			...overrides,
 		});
-		return (result?.openai as { promptCacheKey: string }).promptCacheKey;
+		if (!result?.openai) throw new Error('Expected OpenAI prompt cache options');
+		return (result.openai as { promptCacheKey: string }).promptCacheKey;
 	}
 
 	it('is deterministic for the same agent, model, and instructions', () => {

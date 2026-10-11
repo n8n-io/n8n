@@ -13,7 +13,7 @@ export async function xeroApiRequest(
 	method: IHttpRequestMethods,
 	resource: string,
 
-	body: any = {},
+	{ organizationId, ...body }: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
@@ -21,6 +21,7 @@ export async function xeroApiRequest(
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
+			...(organizationId && { 'Xero-tenant-id': organizationId }),
 		},
 		method,
 		body,
@@ -29,10 +30,6 @@ export async function xeroApiRequest(
 		json: true,
 	};
 	try {
-		if (body.organizationId) {
-			options.headers = { ...options.headers, 'Xero-tenant-id': body.organizationId };
-			delete body.organizationId;
-		}
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
@@ -57,11 +54,11 @@ export async function xeroApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.page = 1;
+	let page = 1;
 
 	do {
-		responseData = await xeroApiRequest.call(this, method, endpoint, body, query);
-		query.page++;
+		responseData = await xeroApiRequest.call(this, method, endpoint, body, { ...query, page });
+		page++;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData[propertyName].length !== 0);
 

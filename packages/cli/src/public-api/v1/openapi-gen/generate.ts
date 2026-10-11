@@ -15,6 +15,7 @@ import {
 	type NamedResponseDto,
 	type SchemaResolver,
 } from './decorator-routes';
+import { stripUntypedNullable } from './untyped-nullable';
 
 const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
 const SHARED_SCHEMA_DIR = 'shared/spec/schemas';
@@ -88,6 +89,10 @@ export function buildArtifactsFromRegistry(
 		openapi: '3.0.0',
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
+
+	// zod-to-openapi emits `z.unknown()`/`z.any()` as `{ nullable: true }` with no `type` which
+	// express-openapi-validator rejects at schema-compile time once bundled.
+	stripUntypedNullable(document);
 
 	const artifacts: GeneratedArtifact[] = [];
 
@@ -228,6 +233,28 @@ function mergeComponents(
 	return merged;
 }
 
+function assertConsistentPathParameterNames(
+	...pathCollections: Array<OpenApiDocument['paths']>
+): void {
+	// Matches path parameters such as '{credentialId}'.
+	const PATH_PARAMETER_REGEX = /\{([^}]+)\}/g;
+	const pathByShape = new Map<string, string>();
+
+	for (const paths of pathCollections) {
+		for (const pathKey of Object.keys(paths ?? {})) {
+			const pathShape = pathKey.replace(PATH_PARAMETER_REGEX, '{}');
+			const equivalentPath = pathByShape.get(pathShape);
+			if (equivalentPath && equivalentPath !== pathKey) {
+				throw new UnexpectedError(
+					`Equivalent OpenAPI paths use different parameter names: '${equivalentPath}' and ` +
+						`'${pathKey}'. Use the same parameter name in both paths.`,
+				);
+			}
+			pathByShape.set(pathShape, pathKey);
+		}
+	}
+}
+
 /**
  * Merges the decorator-routed document into the hand-written (eov) one at *method* granularity, so a
  * path served partly by eov and partly by a controller (e.g. eov `POST /tags` + decorator `GET
@@ -239,6 +266,8 @@ export function mergeDecoratorDocument(
 	base: OpenApiDocument,
 	decorator: OpenApiDocument,
 ): OpenApiDocument {
+	assertConsistentPathParameterNames(base.paths, decorator.paths);
+
 	const paths: Record<string, Record<string, unknown>> = { ...(base.paths ?? {}) };
 
 	for (const [pathKey, methods] of Object.entries(decorator.paths ?? {})) {

@@ -1,4 +1,4 @@
-name: 'Test: DB Integration'
+name: 'Test: DB'
 
 on:
   workflow_call:
@@ -12,17 +12,22 @@ on:
         required: true
         type: string
       run-migrations:
-        description: 'Run the migration test step in each leg. The caller turns this off when no migration-relevant path changed.'
+        description: 'Run the migration test matrix. The caller turns this off when no migration-relevant path changed.'
         required: false
         type: boolean
         default: true
+      changed-files:
+        description: 'Newline-separated CHANGED_FILES from ci-filter. When set, coverage measures only the changed cli source files.'
+        required: false
+        type: string
+        default: ''
 
 env:
   NODE_OPTIONS: '--max-old-space-size=6144'
 
 jobs:
-  test:
-    name: ${{ matrix.name }}
+  integration:
+    name: ${{ matrix.name }} Integration
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
@@ -32,6 +37,9 @@ jobs:
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
+      # With a change signal, the shared vitest config measures only the changed files.
+      COVERAGE_SCOPE: ${{ inputs.changed-files != '' && 'changed-files' || 'all' }}
+      CHANGED_FILES: ${{ inputs.changed-files }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -43,14 +51,16 @@ jobs:
       - name: Pre-pull Test Container Images
         run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true
 
-      - name: Run Tests
+      - name: Run Integration Tests
         working-directory: packages/cli
         run: ${{ matrix.test-cmd }}
 
-      - name: Run Migration Tests
-        if: matrix.migration-cmd != '' && inputs.run-migrations
-        working-directory: packages/cli
-        run: ${{ matrix.migration-cmd }}
+      # A packaged backend module opts in by defining `test:postgres`.
+      - name: Run packaged backend module PostgreSQL tests
+        if: matrix.TEST_IMAGE_POSTGRES != ''
+        env:
+          COVERAGE_ENABLED: 'false'
+        run: pnpm --filter './packages/modules/*/backend' --if-present run test:postgres --maxWorkers=100%
 
       # Regenerates the schema docs for this leg's database (sqlite temp file /
       # postgres testcontainer) and fails if they differ from what's committed.
@@ -59,8 +69,9 @@ jobs:
         if: matrix.schema-check-cmd != ''
         run: ${{ matrix.schema-check-cmd }}
 
+      # No report exists when the PR changes no cli source files.
       - name: Upload coverage to Codecov
-        if: env.COVERAGE_ENABLED == 'true'
+        if: env.COVERAGE_ENABLED == 'true' && hashFiles('packages/cli/coverage/lcov.info') != ''
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -68,3 +79,29 @@ jobs:
           name: backend-integration-postgres
           files: ./packages/cli/coverage/lcov.info
           fail_ci_if_error: false
+
+  migration:
+    name: ${{ matrix.name }} Migrations
+    if: inputs.run-migrations
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.matrix) }}
+    env:
+      TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Pre-pull Test Container Images
+        run: pnpm --filter n8n-containers exec tsx pull-test-images.ts || true
+
+      - name: Run Migration Tests
+        working-directory: packages/cli
+        run: ${{ matrix.migration-cmd }}

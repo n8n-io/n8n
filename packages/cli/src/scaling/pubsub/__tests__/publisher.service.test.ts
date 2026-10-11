@@ -4,7 +4,7 @@ import type { Redis as SingleNodeClient } from 'ioredis';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { Publisher } from '../publisher.service';
 import type { PubSub } from '../pubsub.types';
@@ -171,6 +171,10 @@ describe('Publisher', () => {
 
 		it.each([
 			'relay-agent-execution-update',
+			'cancel-agent-chat-execution',
+			'relay-agent-background-tasks-update',
+			'relay-agent-message-queue-update',
+			'relay-agent-update',
 			'display-workflow-activation',
 			'display-workflow-deactivation',
 			'display-workflow-activation-error',

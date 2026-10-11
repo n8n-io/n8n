@@ -15,9 +15,12 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
 
-import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
-import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
+import {
+	compactInsights,
+	getCompactedInsightsByWorkflow,
+	initializeInsightsCollection,
+} from '@n8n/backend-module-insights/testing';
+import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -32,7 +35,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		process.env.N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS = '1'; // Flush every 1 second
 		process.env.N8N_INSIGHTS_COMPACTION_BATCH_SIZE = '100'; // Process up to 100 items per batch
 
-		await testModules.loadModules(['insights']);
+		await testModules.loadModules(['insights'], packagedModules);
 		await testDb.init();
 
 		// Load required node types from dist folder
@@ -65,9 +68,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		await testDb.terminate();
 	});
 
-	let insightsCollectionService: InsightsCollectionService;
-	let insightsCompactionService: InsightsCompactionService;
-	let insightsByPeriodRepository: InsightsByPeriodRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 	let workflowRunner: WorkflowRunner;
 	let executionRepository: ExecutionRepository;
@@ -84,15 +84,12 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// This must be done BEFORE any workflows are executed
 		Container.get(WorkflowStatisticsService);
 
-		insightsCollectionService = Container.get(InsightsCollectionService);
-		insightsCompactionService = Container.get(InsightsCompactionService);
-		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 		workflowRunner = Container.get(WorkflowRunner);
 		executionRepository = Container.get(ExecutionRepository);
 
 		// Initialize insights collection service (config already set via env vars)
-		insightsCollectionService.init();
+		initializeInsightsCollection();
 	});
 
 	beforeEach(async () => {
@@ -181,14 +178,9 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const controller = new AbortController();
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			await insightsCompactionService.compactInsights(controller.signal);
+			await compactInsights(controller.signal);
 
-			const compactedInsights = await insightsByPeriodRepository.find({
-				where: {
-					metadata: { workflowId },
-				},
-				relations: ['metadata'],
-			});
+			const compactedInsights = await getCompactedInsightsByWorkflow(workflowId);
 
 			const successCount = compactedInsights
 				.filter((insight) => insight.type === 'success')
@@ -262,12 +254,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		// ============================================================
 		// ASSERT: Query insights data (compacted)
 		// ============================================================
-		const allInsights1 = await insightsByPeriodRepository.find({
-			where: {
-				metadata: { workflowId: workflow.id },
-			},
-			relations: ['metadata'],
-		});
+		const allInsights1 = await getCompactedInsightsByWorkflow(workflow.id);
 
 		// Filter by type 'success'
 		const insights1 = allInsights1.filter((insight) => insight.type === 'success');
@@ -286,5 +273,41 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const insights1TimeSaved = allInsights1.filter((insight) => insight.type === 'time_saved_min');
 		const totalTimeSaved1 = insights1TimeSaved.reduce((sum, insight) => sum + insight.value, 0);
 		expect(totalTimeSaved1).toBe(10 * 5); // 10 executions * 5 minutes saved per execution
+	}, 60000);
+
+	test('should keep billable insights in sync with root production executions', async () => {
+		const executionCount = 10;
+		const executionIds: string[] = [];
+		for (let i = 0; i < executionCount; i++) {
+			executionIds.push(await executeWorkflow(workflow, 'webhook'));
+		}
+
+		await Promise.all(executionIds.map(async (id) => await waitForExecution(id)));
+		await waitForStatistics(workflow.id, executionCount);
+		await waitForCompaction(workflow.id, executionCount);
+
+		const productionSuccess = await workflowStatisticsRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				name: StatisticsNames.productionSuccess,
+			},
+		});
+		const productionError = await workflowStatisticsRepository.findOne({
+			where: {
+				workflowId: workflow.id,
+				name: StatisticsNames.productionError,
+			},
+		});
+
+		const rootProductionCount =
+			(productionSuccess?.rootCount ?? 0) + (productionError?.rootCount ?? 0);
+
+		const compactedInsights = await getCompactedInsightsByWorkflow(workflow.id);
+		const billableCount = compactedInsights
+			.filter((insight) => insight.type === 'billable')
+			.reduce((sum, insight) => sum + insight.value, 0);
+
+		expect(rootProductionCount).toBe(executionCount);
+		expect(billableCount).toBe(rootProductionCount);
 	}, 60000);
 });

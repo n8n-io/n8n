@@ -16,6 +16,7 @@ const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
 	invalidResolvable: 'cm-invalid-resolvable',
 	pendingResolvable: 'cm-pending-resolvable',
+	redactedResolvable: 'cm-redacted-resolvable',
 	plaintext: 'cm-plaintext',
 };
 
@@ -32,12 +33,17 @@ const resolvablesTheme = EditorView.theme({
 		color: 'var(--expression-editor--resolvable--color--foreground--pending)',
 		backgroundColor: 'var(--expression-editor--resolvable--color--background--pending)',
 	},
+	['.' + cssClasses.redactedResolvable]: {
+		color: 'var(--expression-editor--resolvable--color--foreground--pending)',
+		fontStyle: 'italic',
+	},
 });
 
 const resolvableStateToDecoration: Record<ResolvableState, Decoration> = {
 	valid: Decoration.mark({ class: cssClasses.validResolvable }),
 	invalid: Decoration.mark({ class: cssClasses.invalidResolvable }),
 	pending: Decoration.mark({ class: cssClasses.pendingResolvable }),
+	redacted: Decoration.mark({ class: cssClasses.redactedResolvable }),
 };
 
 const coloringStateEffects = {

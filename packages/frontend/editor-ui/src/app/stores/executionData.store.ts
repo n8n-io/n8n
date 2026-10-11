@@ -9,7 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import {
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
-	WAIT_INDEFINITELY,
+	isIndefiniteWait,
 	type ExecutionStatus,
 	type INode,
 	type IPinData,
@@ -286,7 +286,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				return i18n.baseText('node.theNodeIsWaitingFormCall');
 			}
 			const waitDate = new Date(waitTill);
-			if (waitDate.getTime() === WAIT_INDEFINITELY.getTime()) {
+			if (isIndefiniteWait(waitDate)) {
 				return i18n.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
 			}
 			return i18n.baseText('node.nodeIsWaitingTill', {
@@ -613,6 +613,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 									items.find((item) => item.redaction?.redacted)?.redaction?.reason ??
 									'workflow_redaction_policy',
 								canReveal: false,
+								provisional: true,
 							};
 							break;
 						}

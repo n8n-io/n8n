@@ -99,17 +99,21 @@ function handleSelect(key: string): void {
 <template>
 	<N8nDropdownMenu :items="menuItems" placement="bottom-end" @select="handleSelect">
 		<template #trigger>
-			<N8nTooltip :content="i18n.baseText('agentSessions.timeline.events')" placement="top">
-				<span :class="$style.trigger">
-					<N8nButton
-						variant="outline"
-						icon="funnel"
-						icon-only
-						:aria-label="i18n.baseText('agentSessions.timeline.events')"
-						data-test-id="filter-trigger"
-					/>
+			<N8nTooltip
+				as-child
+				:content="i18n.baseText('agentSessions.timeline.events')"
+				placement="top"
+			>
+				<N8nButton
+					variant="outline"
+					icon="funnel"
+					icon-only
+					:aria-label="i18n.baseText('agentSessions.timeline.events')"
+					:class="$style.trigger"
+					data-test-id="filter-trigger"
+				>
 					<span v-if="props.selected.size > 0" :class="$style.activeIndicator" aria-hidden="true" />
-				</span>
+				</N8nButton>
 			</N8nTooltip>
 		</template>
 

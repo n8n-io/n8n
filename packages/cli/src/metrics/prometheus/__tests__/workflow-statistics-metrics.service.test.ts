@@ -4,7 +4,7 @@ import type { LicenseMetricsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowStatisticsMetricsService } from '../workflow-statistics-metrics.service';
 

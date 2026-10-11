@@ -7,7 +7,7 @@ import { UserError } from 'n8n-workflow';
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 @RestController('/consent')
 export class OAuthConsentController {
@@ -41,6 +41,19 @@ export class OAuthConsentController {
 				} else {
 					this.sendErrorResponse(res, 422, 'Authorization target is no longer available');
 				}
+				return;
+			}
+
+			if (consentDetails.autoApproved) {
+				// The session's decision is already made — consume it, same as a manual approval.
+				this.oauthSessionService.clearSession(res);
+				res.json({
+					data: {
+						autoApproved: true,
+						redirectUrl: consentDetails.redirectUrl,
+						uiHints: consentDetails.uiHints,
+					},
+				});
 				return;
 			}
 

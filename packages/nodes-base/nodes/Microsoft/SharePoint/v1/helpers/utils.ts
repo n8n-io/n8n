@@ -9,10 +9,12 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import type { IErrorResponse } from './interfaces';
 import { microsoftSharePointApiRequest } from '../transport';
 
-export const escapeFilterValue = (value: string) => value.replaceAll("'", "''");
+export const escapeFilterValue = escapeODataValue;
 
 export async function simplifyItemPostReceive(
 	this: IExecuteSingleFunctions,
@@ -135,8 +137,8 @@ export async function itemColumnsPreSend(
 				{},
 				{
 					$filter: mapperValue.matchingColumns
-						.map((x) => `fields/${x} eq '${mapperValue.value![x]}'`)
-						.join(' and'),
+						.map((x) => `fields/${x} eq '${escapeFilterValue(mapperValue.value![x])}'`)
+						.join(' and '),
 				},
 				{
 					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',

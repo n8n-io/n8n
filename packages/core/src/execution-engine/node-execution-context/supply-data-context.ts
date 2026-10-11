@@ -157,6 +157,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.abortSignal,
 			this.parentNode,
 		);
+		// oxlint-disable-next-line typescript/no-deprecated - Still used by some edge cases
 		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
 		return context;
 	}
@@ -325,7 +326,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 			taskData.data = {
 				[connectionType]: data,
-			} as ITaskDataConnections;
+			};
 		}
 
 		if (type === 'output') {
@@ -338,7 +339,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				// TODO: remove inputOverride
 				taskData.inputOverride = {
 					[connectionType]: data,
-				} as ITaskDataConnections;
+				};
 			}
 
 			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {

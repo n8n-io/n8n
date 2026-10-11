@@ -3,6 +3,10 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	collectSubWorkflowOutput,
+	getLastExecutedNodeData,
+	Workflow,
+	UnexpectedError,
 	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
@@ -23,17 +27,20 @@ import {
 	type IWorkflowSettings,
 	type RelatedExecution,
 	type GetNodeTypeForGrouping,
+	type NodeGroupRuleOptions,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { NodeTypes } from '@/node-types';
 
 import { OwnershipService } from './services/ownership.service';
 
 export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
+export { getLastExecutedNodeData, getLastExecutedNodeRuns } from 'n8n-workflow';
 
 /**
  * Validates that pinned data does not exceed size limits.
@@ -63,56 +70,6 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
 		);
 	}
-}
-
-/**
- * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
- */
-export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
-	const { runData, lastNodeExecuted } = inputData.data.resultData;
-	if (lastNodeExecuted === undefined) {
-		return [];
-	}
-	const runs = runData[lastNodeExecuted];
-	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
-}
-
-/**
- * Final-run output of the last executed node, with pinData substituted in manual mode.
- */
-export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, lastNodeExecuted } = inputData.data.resultData;
-	const pinData = inputData.data.resultData.pinData ?? {};
-
-	if (lastNodeExecuted === undefined) {
-		return undefined;
-	}
-
-	if (runData[lastNodeExecuted] === undefined) {
-		return undefined;
-	}
-
-	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
-
-	let lastNodePinData = pinData[lastNodeExecuted];
-
-	if (lastNodePinData && inputData.mode === 'manual') {
-		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
-
-		const itemsPerRun = lastNodePinData.map((item, index) => {
-			return { json: item, pairedItem: { item: index } };
-		});
-
-		return {
-			startTime: 0,
-			executionIndex: 0,
-			executionTime: 0,
-			data: { main: [itemsPerRun] },
-			source: lastNodeRunData.source,
-		};
-	}
-
-	return lastNodeRunData;
 }
 
 /**
@@ -166,13 +123,16 @@ export function validateWorkflowNodeGroups(
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
+	rules: NodeGroupRuleOptions = {},
 ) {
 	const result = validateWorkflowGroups({
 		nodes: workflow.nodes,
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
+		...rules,
 	});
+
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
@@ -482,16 +442,18 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns whether the parent's stack was patched: `false` when the child carried no usable
+ * result, or the parent was not in a state that can take one
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<void> {
+	childWorkflowData?: IWorkflowBase,
+): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return false;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -499,14 +461,27 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return false;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return false;
+	}
+
+	// The parent may have moved on to a later wait since this child was spawned, and that wait
+	// belongs to whichever children it parked on. A child left over from an earlier wait would
+	// otherwise overwrite the node's input and resume the parent past the wait it is sitting in.
+	// A parent parked by an older build carries no ids, so an untagged stack entry takes any child.
+	const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+	if (
+		childExecution &&
+		waitingChildExecutionIds?.length &&
+		!waitingChildExecutionIds.includes(childExecution.executionId)
+	) {
+		return false;
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
@@ -562,13 +537,30 @@ export async function updateParentExecutionWithChildResults(
 		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 		// so that the Execute Workflow node returns the correct data when parent execution is resumed
 		// and the Execute Workflow node is executed again in disabled mode.
-		nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		const policy = subworkflowResults.data.subWorkflowOutput;
+		if (policy) {
+			if (!childWorkflowData) {
+				throw new UnexpectedError('The saved child workflow is required to collect its output.');
+			}
+			const workflow = new Workflow({
+				...childWorkflowData,
+				nodeTypes: Container.get(NodeTypes),
+			});
+			nodeExecutionStack[0].data = {
+				main: await collectSubWorkflowOutput(subworkflowResults, workflow, policy),
+			};
+		} else {
+			// Executions saved without a policy keep the legacy resume behavior.
+			nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		}
 	}
 
 	await executionPersistence.updateExistingExecution(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+
+	return true;
 }
 
 /**

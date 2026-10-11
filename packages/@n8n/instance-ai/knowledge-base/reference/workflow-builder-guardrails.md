@@ -6,8 +6,10 @@ nodes. They are a runtime checklist, not extra user-facing output.
 
 Code-node runtime limits (no network, forbidden imports, nested template
 literals) and unsolicited stickies are enforced by `workflow-sdk validate` —
-fix those findings before `build-workflow`. Prefer built-in nodes for simple
-split, map, filter, merge, and aggregate work.
+fix those findings before `build-workflow`. Use built-in nodes (Edit Fields
+(Set), Filter, IF / Switch, Sort, Remove Duplicates, Aggregate, Split Out, Merge)
+for shaping, filtering, routing, sorting, de-duplicating and aggregating work; a
+Code node is only for the reserved cases the workflow-builder skill lists.
 
 ## Preserve Source Data
 

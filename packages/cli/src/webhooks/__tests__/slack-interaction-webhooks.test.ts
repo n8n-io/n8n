@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
@@ -5,7 +6,6 @@ import { buildHitlCallbackReference, isSlackInteractionRequest } from 'n8n-core'
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
@@ -249,6 +249,19 @@ describe('SlackInteractionWebhooks', () => {
 		executionPersistence.findSingleExecution.mockResolvedValue(
 			waitingExecutionWithNode('node-1', 'SlackNode', 'n8n-nodes-base.telegram'),
 		);
+
+		const result = await slackInteractionWebhooks.executeWebhook(req, res);
+
+		expect(status).toHaveBeenCalledWith(404);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
+	});
+
+	it('responds 404 without resuming when the resumed node has no id', async () => {
+		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const req = createRequest(reference);
+		const { res, status } = createResponse();
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingExecutionWithNode(''));
 
 		const result = await slackInteractionWebhooks.executeWebhook(req, res);
 

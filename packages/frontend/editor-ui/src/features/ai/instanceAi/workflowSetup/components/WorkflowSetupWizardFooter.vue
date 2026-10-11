@@ -4,38 +4,33 @@ import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-syste
 import { useI18n } from '@n8n/i18n';
 import ConfirmationFooter from '../../components/ConfirmationFooter.vue';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
-import { getStepSections } from '../workflowSetup.helpers';
 
 const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 
-const totalSteps = computed(() => ctx.steps.value.length);
+const totalSteps = computed(() => ctx.sections.value.length);
 const showArrows = computed(() => totalSteps.value > 1);
 const isPrevDisabled = computed(() => ctx.currentStepIndex.value === 0);
 const isNextDisabled = computed(() => ctx.currentStepIndex.value >= totalSteps.value - 1);
 
-const isActiveStepHandled = computed(() =>
-	ctx.activeStep.value ? ctx.isStepHandled(ctx.activeStep.value) : false,
-);
-
-const isPrimaryActionBlockedByCredentialTest = computed(() => {
-	const step = ctx.activeStep.value;
-	if (!step) return false;
-
-	return getStepSections(step).some(
-		(section) => !ctx.isSectionSkipped(section) && ctx.isCredentialTestFailed(section),
-	);
+// Gates both the primary action and the skip button: the user still owes input.
+const isActiveSectionUnhandled = computed(() => {
+	const section = ctx.activeSection.value;
+	return section !== undefined && !ctx.isSectionHandled(section);
 });
 
-const isPrimaryActionDisabled = computed(
-	() => ctx.activeStep.value !== undefined && !isActiveStepHandled.value,
-);
+const isPrimaryActionBlockedByCredentialTest = computed(() => {
+	const section = ctx.activeSection.value;
+	if (!section) return false;
+
+	return !ctx.isSectionSkipped(section) && ctx.isCredentialTestFailed(section);
+});
 
 const primaryActionTooltip = computed(() => {
 	if (isPrimaryActionBlockedByCredentialTest.value) {
 		return i18n.baseText('instanceAi.workflowSetup.credentialTestFailedTooltip');
 	}
-	if (isPrimaryActionDisabled.value) {
+	if (isActiveSectionUnhandled.value) {
 		return i18n.baseText('instanceAi.workflowSetup.stepIncompleteTooltip');
 	}
 	return undefined;
@@ -43,9 +38,6 @@ const primaryActionTooltip = computed(() => {
 
 const isFinalize = computed(() => ctx.credentialFlow.value?.stage === 'finalize');
 
-const showSkipButton = computed(
-	() => ctx.activeStep.value !== undefined && !isActiveStepHandled.value,
-);
 const showContinueButton = computed(() => ctx.hasOtherUnhandledSteps.value);
 
 const skipLabel = computed(() =>
@@ -114,7 +106,7 @@ function onPrimaryAction() {
 
 		<div :class="$style.actions">
 			<N8nButton
-				v-if="showSkipButton"
+				v-if="isActiveSectionUnhandled"
 				variant="outline"
 				size="medium"
 				:label="skipLabel"
@@ -126,7 +118,7 @@ function onPrimaryAction() {
 				<N8nButton
 					size="medium"
 					:label="primaryActionLabel"
-					:disabled="isPrimaryActionDisabled"
+					:disabled="isActiveSectionUnhandled"
 					:data-test-id="primaryActionTestId"
 					@click="onPrimaryAction"
 				/>

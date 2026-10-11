@@ -34,6 +34,9 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 
 @Config
 export class AgentsConfig {
+	@Env('N8N_AGENTS_PLAN_TOOLS_ENABLED')
+	planToolsEnabled: boolean = false;
+
 	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
@@ -98,7 +101,7 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
-	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	/** When true, the sandbox provider deletes the knowledge sandbox once it goes idle. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
 

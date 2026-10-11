@@ -1,6 +1,9 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -28,6 +31,19 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
+}));
+
+const rollouts = { computerUse: true };
+const device = { supportsBrowserUse: true };
+
+vi.mock('@/experiments/instanceAiComputerUse', () => ({
+	useInstanceAiComputerUseExperiment: () => ({
+		isFeatureEnabled: computed(() => rollouts.computerUse),
+	}),
+}));
+
+vi.mock('../utils/browserUseSupport', () => ({
+	isBrowserUseSupportedOnDevice: () => device.supportsBrowserUse,
 }));
 
 const mockFetchSettings = vi.fn();
@@ -80,6 +96,7 @@ function makeModuleSettings(
 ): InstanceAiModuleSettings {
 	return {
 		enabled: true,
+		mcpConnectionsAvailable: true,
 		localGatewayDisabled: false,
 		browserUseEnabled: true,
 		proxyEnabled: false,
@@ -112,6 +129,8 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		rollouts.computerUse = true;
+		device.supportsBrowserUse = true;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -140,6 +159,21 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	it.each(['control', 'variant', false, undefined])('uses the setup panel flag %s', (variant) => {
+		if (variant !== undefined)
+			usePostHog().overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: variant };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(variant === 'variant');
+	});
+
+	it('updates the setup flow when the standard feature flag override changes', () => {
+		const posthog = usePostHog();
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'variant' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(true);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'control' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+	});
+
 	describe('isInstanceAiDisabled', () => {
 		it('returns true when module settings has enabled=false', () => {
 			setModuleSettings(settingsStore, {
@@ -164,6 +198,21 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns true when module settings is undefined', () => {
 			settingsStore.moduleSettings = {};
 			expect(store.isInstanceAiDisabled).toBe(true);
+		});
+	});
+
+	describe('isMcpAvailable', () => {
+		it('uses public module settings', () => {
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: true });
+			expect(store.isMcpAvailable).toBe(true);
+
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: false });
+			expect(store.isMcpAvailable).toBe(false);
+		});
+
+		it('returns false before module settings load', () => {
+			settingsStore.moduleSettings = {};
+			expect(store.isMcpAvailable).toBe(false);
 		});
 	});
 
@@ -497,7 +546,6 @@ describe('useInstanceAiSettingsStore', () => {
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
-				instanceAiSetupPanelEnabled: true,
 			});
 
 			const adminResponse = {
@@ -527,7 +575,6 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.sandboxEnabled).toBe(false);
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
-			expect(ms?.instanceAiSetupPanelEnabled).toBe(true);
 		});
 	});
 
@@ -655,6 +702,46 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.setupCommandExpiresAt).toBeNull();
 			expect(store.setupCommandTtlSeconds).toBeNull();
 			expect(store.setupCommandFetchedAt).toBeNull();
+		});
+	});
+
+	describe('computerUseChannels', () => {
+		it('reports both entries when the rollout and admin switches allow them', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['localComputer', 'browser']);
+		});
+
+		it('reports nothing when neither the rollout nor the admin allows an entry', () => {
+			rollouts.computerUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: false });
+
+			expect(store.computerUseChannels).toEqual([]);
+		});
+
+		it('drops the local computer when the admin disabled the gateway', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: true, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['browser']);
+		});
+
+		it('drops the browser when the admin disabled browser-use', () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: false });
+
+			expect(store.computerUseChannels).toEqual(['localComputer']);
+		});
+
+		it('drops the browser on phones and tablets', () => {
+			device.supportsBrowserUse = false;
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+
+			expect(store.computerUseChannels).toEqual(['localComputer']);
+		});
+
+		it('reports nothing while the module settings have not loaded', () => {
+			settingsStore.moduleSettings = {};
+
+			expect(store.computerUseChannels).toEqual([]);
 		});
 	});
 });

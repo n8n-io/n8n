@@ -94,16 +94,23 @@ vi.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
 vi.mock('../../tracing/langsmith-tracing', () => ({
 	buildAgentTraceInputs: vi.fn().mockReturnValue({}),
 	mergeTraceRunInputs: vi.fn(),
+	setTracePromptVersion: vi.fn(),
+	setTraceModelId: vi.fn(),
+	modelIdTraceMetadata: (modelId: unknown) =>
+		typeof modelId === 'string' && modelId.length > 0 ? { model_id: modelId } : {},
 }));
 
 vi.mock('../system-prompt', () => ({
 	getSystemPrompt: vi.fn().mockReturnValue('system prompt'),
+	// `prompt-profiles` builds the other published system prompt versions with this.
+	createSystemPromptRenderer: vi.fn(() => vi.fn().mockReturnValue('system prompt')),
 }));
 
 import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
@@ -172,7 +179,7 @@ describe('createInstanceAgent', () => {
 				modelId: 'test-model',
 				context: {
 					runLabel: runId,
-					localGatewayStatus: undefined,
+					computerUseState: undefined,
 					licenseHints: undefined,
 					localMcpServer: undefined,
 				},
@@ -205,41 +212,37 @@ describe('createInstanceAgent', () => {
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
 	});
 
-	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
-		const baseOptions = (executeMcpTool?: string) =>
-			({
-				modelId: 'test-model',
-				context: {
-					runLabel: 'mcp-approval-run',
-					localGatewayStatus: undefined,
-					licenseHints: undefined,
-					localMcpServer: undefined,
-					permissions: executeMcpTool ? { executeMcpTool } : undefined,
-				},
-				orchestrationContext: { runId: 'mcp-approval-run' },
-				memoryConfig: {},
-			}) as never;
+	it('shares one domain context between domain and orchestration tools', async () => {
+		const orchestrationContext: { runId: string; domainContext?: unknown } = {
+			runId: 'shared-context',
+		};
 
-		const requireApprovalManager = createMcpManagerStub();
 		await createInstanceAgent({
-			...(baseOptions('require_approval') as object),
-			mcpManager: requireApprovalManager,
+			modelId: 'test-model',
+			context: { runLabel: 'shared-context' },
+			orchestrationContext,
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
 
-		const alwaysAllowManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions('always_allow') as object),
-			mcpManager: alwaysAllowManager,
-		} as never);
-		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], undefined, false);
+		const domainToolContext = createOrchestratorDomainTools.mock.lastCall?.[0];
+		expect(orchestrationContext.domainContext).toBe(domainToolContext);
+	});
 
-		const noPermissionsManager = createMcpManagerStub();
+	it('applies the selected profile exclusions to domain and orchestration tools', async () => {
 		await createInstanceAgent({
-			...(baseOptions() as object),
-			mcpManager: noPermissionsManager,
+			modelId: 'test-model',
+			context: { runLabel: 'profile' },
+			orchestrationContext: {
+				runId: 'profile',
+				disabledToolNames: new Set(['create-tasks', 'nodes']),
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
+		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
+		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
+		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
@@ -247,7 +250,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'checkpoint-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -273,7 +276,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'builder-skill-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -303,7 +306,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'docs-parity-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -335,7 +338,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -356,7 +359,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -372,27 +375,37 @@ describe('createInstanceAgent', () => {
 
 	it('attaches native telemetry from the trace context when present', async () => {
 		const telemetry = { provider: 'langsmith' };
+		const tracing = {
+			getTelemetry: vi.fn().mockReturnValue(telemetry),
+			wrapTools: vi.fn((tools: unknown) => tools),
+		};
 
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
 				runLabel: 'trace-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
 			orchestrationContext: {
 				runId: 'trace-test',
-				tracing: {
-					getTelemetry: vi.fn().mockReturnValue(telemetry),
-					wrapTools: vi.fn((tools: unknown) => tools),
-				},
+				promptConfiguration: { version: 'default@1' },
+				tracing,
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
 		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
+		expect(setTracePromptVersion).toHaveBeenCalledWith(tracing, 'default@1');
+		expect(setTraceModelId).toHaveBeenCalledWith(tracing, 'test-model');
+		expect(tracing.getTelemetry).toHaveBeenCalledWith({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+			executionMode: 'foreground',
+			metadata: { model_id: 'test-model' },
+		});
 	});
 
 	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
@@ -424,7 +437,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'skills-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -437,6 +450,89 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
+		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
+			expect.objectContaining({ runtimeSkillCatalog: runtimeSkills }),
+		);
+	});
+
+	it('starts preparing runtime skills in the background without waiting for them', async () => {
+		let finishPrepare: () => void = () => {};
+		const prepare = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishPrepare = resolve;
+				}),
+		);
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+			},
+			prepare,
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkills },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(prepare).toHaveBeenCalledTimes(1);
+		finishPrepare();
+	});
+
+	it('logs a background skill preparation failure instead of rejecting', async () => {
+		const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
+		const runtimeSkills = {
+			registry: {
+				schemaVersion: 1,
+				skillsHash: 'skills-hash',
+				skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+			},
+			prepare: vi.fn(async () => await Promise.reject(new Error('sandbox unavailable'))),
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkills, logger },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		await vi.waitFor(() =>
+			expect(logger.warn).toHaveBeenCalledWith('Failed to warm runtime skills in the background', {
+				error: 'sandbox unavailable',
+			}),
+		);
+	});
+
+	it('passes the selected catalog to domain tools before workspace materialization', async () => {
+		const runtimeSkillCatalog = {
+			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
+			loadSkill: vi.fn(),
+		};
+		const runtimeSkills = {
+			registry: { schemaVersion: 1, skillsHash: 'workspace-skills', skills: [] },
+			loadSkill: vi.fn(),
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {},
+			orchestrationContext: { runId: 'skills-test', runtimeSkillCatalog, runtimeSkills },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
+			expect.objectContaining({ runtimeSkillCatalog }),
+		);
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
@@ -461,7 +557,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'browser-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -483,7 +579,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-prompt',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -508,7 +604,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'project-scope-prompt',
 				projectId: 'project-1',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -600,7 +696,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-eager-prompt',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -632,7 +728,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-mcp-prompt',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -667,7 +763,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-priority',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -706,7 +802,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'reserved-names',
 				conversationHistoryService: {},
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -726,7 +822,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'inactive-native-tools',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -762,7 +858,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'active-native-tools',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -795,7 +891,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'memory-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -821,12 +917,42 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 
+	it('forwards midRunObservation to the Memory builder when provided', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					midRunObservation: false,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+			midRunObservation: false,
+		});
+	});
+
 	it('enables adaptive thinking by default for Anthropic models', async () => {
 		await createInstanceAgent({
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-test',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -848,7 +974,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-off',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -873,7 +999,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'mcp-failure-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -893,7 +1019,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'no-mcp-failure-run',
-				localGatewayStatus: undefined,
+				computerUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -916,7 +1042,7 @@ describe('createInstanceAgent', () => {
 		const context = {
 			threadId: 'thread-sticky-1',
 			runLabel: 'modal-sticky-run',
-			localGatewayStatus: undefined,
+			computerUseState: undefined,
 			licenseHints: undefined,
 			localMcpServer: undefined,
 			modelId: modalModel,

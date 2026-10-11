@@ -416,6 +416,8 @@ async function reconstructWithClient(
 			// Likewise no projects: a replayed thread ran in whatever project it ran in,
 			// and a seeded project is a fixture an author declares, not something a trace records.
 			projects: [],
+			// And no folders: a trace records which workflows ran, not where they sat.
+			folders: [],
 		},
 		liveTurn,
 		runCount: runs.length,
@@ -843,7 +845,7 @@ function tryParseSeedWorkflow(code: string): { workflow: ParsedSeedWorkflow } | 
 			workflow: {
 				name: workflow.name,
 				nodes: (workflow.nodes ?? []) as unknown as Array<Record<string, unknown>>,
-				connections: (workflow.connections ?? {}) as Record<string, unknown>,
+				connections: workflow.connections ?? {},
 			},
 		};
 	} catch (error) {

@@ -1,13 +1,16 @@
-import { ExportPackageRequestDto, ImportPackageRequestDto } from '@n8n/api-types';
+import {
+	ExportPackageRequestDto,
+	ImportPackageRequestDto,
+	ImportPackageSelectionRequestDto,
+} from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
@@ -15,7 +18,10 @@ import {
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import type { ExportPackageResult } from '@/modules/n8n-packages/n8n-packages.types';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
-import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
+import {
+	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+	resolveImportPackageUpload,
+} from '@/modules/n8n-packages/utils/import-package-upload';
 
 import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
@@ -50,9 +56,14 @@ type ImportPackageRequest = PackageRequest.Import & {
 	files?: Express.Multer.File[];
 };
 
+type ImportPackageSelectionRequest = PackageRequest.ImportSelection & {
+	files?: Express.Multer.File[];
+};
+
 type N8nPackagesHandlers = {
 	exportPackage: PublicAPIEndpoint<ExportPackageRequest>;
 	importPackage: PublicAPIEndpoint<ImportPackageRequest>;
+	importPackageSelection: PublicAPIEndpoint<ImportPackageSelectionRequest>;
 };
 
 function assertPackageExportApiKeyScopes(
@@ -235,6 +246,49 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					reason: classifyPackageFailure(error),
 					...(projectId ? { projectId } : {}),
 					...(folderId ? { folderId } : {}),
+				});
+				throw error;
+			}
+		},
+	],
+	importPackageSelection: [
+		publicApiCompositeScope('workflow:import'),
+		async (req, res) => {
+			try {
+				const payload = ImportPackageSelectionRequestDto.safeParse(req.body ?? {});
+				if (!payload.success) {
+					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
+				}
+
+				assertPackageImportApiKeyScopes(req);
+
+				const packageFile = resolveImportPackageUpload(
+					req,
+					IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
+				);
+
+				const result = await Container.get(N8nPackagesService).importPackageSelection(
+					{
+						user: req.user,
+						apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+						workflowConflictPolicy: payload.data.workflowConflictPolicy,
+						workflowIdPolicy: payload.data.workflowIdPolicy,
+						overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
+						packageBuffer: packageFile.buffer,
+					},
+					{
+						selectedProjectId: payload.data.selectedProjectId,
+						selectedWorkflowIds: payload.data.selectedWorkflowIds,
+						...(payload.data.deletedWorkflowIds !== undefined
+							? { deletedWorkflowIds: payload.data.deletedWorkflowIds }
+							: {}),
+					},
+				);
+				return res.status(200).json(result);
+			} catch (error) {
+				Container.get(EventService).emit('n8n-package-import-failed', {
+					user: req.user,
+					reason: classifyPackageFailure(error),
 				});
 				throw error;
 			}

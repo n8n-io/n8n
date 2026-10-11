@@ -18,12 +18,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import type {
-	StreamOutput,
-	AgentMessageChunk,
-	WorkflowUpdateChunk,
-	SessionMessagesChunk,
-} from '../types/streaming';
+import type { StreamOutput } from '../types/streaming';
 import type { ChatPayload } from '../workflow-builder-agent';
 import {
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
@@ -318,7 +313,7 @@ export class CodeBuilderAgent {
 							type: 'workflow-updated',
 							codeSnippet: JSON.stringify(workflow, null, 2),
 							iterationCount: iteration,
-						} as WorkflowUpdateChunk,
+						},
 					],
 				};
 			} else {
@@ -335,7 +330,7 @@ export class CodeBuilderAgent {
 					{
 						type: 'session-messages',
 						messages,
-					} as SessionMessagesChunk,
+					},
 				],
 			};
 
@@ -371,7 +366,7 @@ export class CodeBuilderAgent {
 						role: 'assistant',
 						type: 'message',
 						text: `I encountered an error while generating the workflow. ${userFacingMessage}`,
-					} as AgentMessageChunk,
+					},
 				],
 			};
 

@@ -49,7 +49,8 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
+import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -153,6 +154,7 @@ export class ChatHubWorkflowService {
 
 		newWorkflow.versionId = uuidv4();
 		newWorkflow.name = `Chat ${sessionId}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = nodes;
@@ -161,7 +163,7 @@ export class ChatHubWorkflowService {
 			executionOrder: 'v1',
 		};
 
-		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId, { id: userId });
 
 		return await this.workflowRepository.runInTransaction(
 			{ ...ctx, policyCleared: cleared },
@@ -189,12 +191,19 @@ export class ChatHubWorkflowService {
 	 * Chat workflows are system-generated but policed like any other: the nodes are real, so a
 	 * blocked node type has to block the run rather than reach the engine.
 	 */
-	private async enforceChatWorkflowSave(workflow: WorkflowEntity, projectId: string) {
-		return await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-			storedWorkflow: null,
-			projectId,
-		});
+	private async enforceChatWorkflowSave(
+		workflow: WorkflowEntity,
+		projectId: string,
+		user: UserLike,
+	) {
+		return await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+				storedWorkflow: null,
+				projectId,
+			},
+			{ kind: 'user', user },
+		);
 	}
 
 	async createTitleGenerationWorkflow(
@@ -230,6 +239,7 @@ export class ChatHubWorkflowService {
 
 		newWorkflow.versionId = uuidv4();
 		newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = nodes;
@@ -241,7 +251,7 @@ export class ChatHubWorkflowService {
 			saveDataSuccessExecution: 'all',
 		};
 
-		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId, { id: userId });
 
 		return await this.workflowRepository.runInTransaction(
 			{ ...ctx, policyCleared: cleared },
@@ -279,7 +289,7 @@ export class ChatHubWorkflowService {
 			return ['text'];
 		}
 
-		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+		if (!allowedFilesMimeTypes || this.allowsAllMimeTypes(allowedFilesMimeTypes)) {
 			return ['text', 'image', 'audio', 'video', 'file'];
 		}
 
@@ -306,11 +316,17 @@ export class ChatHubWorkflowService {
 		}
 
 		const allowedFilesMimeTypes = options.allowedFilesMimeTypes;
-		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+		if (!allowedFilesMimeTypes || this.allowsAllMimeTypes(allowedFilesMimeTypes)) {
 			return '*/*';
 		}
 
 		return allowedFilesMimeTypes;
+	}
+
+	private allowsAllMimeTypes(allowedFilesMimeTypes: string): boolean {
+		return allowedFilesMimeTypes
+			.split(',')
+			.some((mimeType) => mimeType.trim() === '*' || mimeType.trim() === '*/*');
 	}
 
 	/**
@@ -1875,6 +1891,7 @@ You can update the most recent document using the commands described above, or c
 		newWorkflow.id = workflowId;
 		newWorkflow.versionId = uuidv4();
 		newWorkflow.name = `Chat files insertion ${uuidv4()}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = nodes;
@@ -1883,7 +1900,7 @@ You can update the most recent document using the commands described above, or c
 			executionOrder: 'v1',
 		};
 
-		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId);
+		const cleared = await this.enforceChatWorkflowSave(newWorkflow, projectId, user);
 
 		return await this.workflowRepository.runInTransaction(
 			{ ...ctx, policyCleared: cleared },

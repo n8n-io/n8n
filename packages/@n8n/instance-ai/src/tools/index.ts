@@ -4,6 +4,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
+import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
@@ -30,20 +31,27 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadSearchModelsTool = lazyMod(
+	() => require('./search-models.tool') as typeof import('./search-models.tool'),
+);
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
+);
+const loadActivityTool = lazyMod(
+	() => require('./activity.tool') as typeof import('./activity.tool'),
+);
+const loadSaveUserPreferenceTool = lazyMod(
+	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
 );
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
-const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
+const loadAgentContextTool = lazyMod(
+	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
+);
 const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
-);
-const loadListAgentCapabilitiesTool = lazyMod(
-	() =>
-		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
@@ -69,6 +77,10 @@ const loadResearchTool = lazyMod(
 );
 const loadAskUserTool = lazyMod(
 	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
+);
+const loadLeaveOnboardingTool = lazyMod(
+	() =>
+		require('./shared/leave-onboarding.tool') as typeof import('./shared/leave-onboarding.tool'),
 );
 const loadTaskControlTool = lazyMod(
 	() => require('./task-control.tool') as typeof import('./task-control.tool'),
@@ -102,12 +114,22 @@ function getOrchestratorDomainToolFactories(
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
-		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
+		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
+		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool(context)],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
 		],
 	];
+
+	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
+	// the chat chrome when it sees the call.
+	if (context.onboardingThread) {
+		tools.push([
+			DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
+			() => loadLeaveOnboardingTool().createLeaveOnboardingTool(),
+		]);
+	}
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
@@ -135,6 +157,34 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 			() => loadConversationHistoryTool().createConversationHistoryTool(context),
+		]);
+	}
+
+	// Same pattern: the adapter wires `activityService` only when the reader is enabled, so
+	// presence is the flag as far as the tool layer is concerned. Orchestrator only, because the
+	// block that hands the agent ids to expand rides the orchestrator's turn.
+	if (context.activityService) {
+		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
+	}
+
+	if (context.agentContextService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.AGENT_CONTEXT,
+			() =>
+				loadAgentContextTool().createAgentContextTool({
+					reader: context.agentContextService!,
+					resolveDefaultAgentId: async () => (await resolveAgentBuilderTarget(context))?.agentId,
+					logger: context.logger,
+				}),
+		]);
+	}
+
+	// Presence is the gate, as with activity: the adapter wires `aiPreferenceService`
+	// only when saved preferences are enabled for this user.
+	if (context.aiPreferenceService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+			() => loadSaveUserPreferenceTool().createSaveUserPreferenceTool(context),
 		]);
 	}
 
@@ -167,14 +217,15 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
-	const tools: Array<[string, BuiltTool]> = [
-		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
+	const tools: Array<[string, BuiltTool]> = [];
+	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
+	tools.push(
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
 			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
 		],
-	];
+	);
 
 	if (context.workflowTaskService) {
 		tools.push([
@@ -199,11 +250,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
 		]);
-		tools.push([
-			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
-			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
-		]);
-		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

@@ -4,9 +4,7 @@ import type { Project, User } from '@n8n/db';
 import { FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';

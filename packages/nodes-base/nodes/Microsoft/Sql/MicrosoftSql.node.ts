@@ -15,11 +15,13 @@ import {
 import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 import {
+	bindQueryParameters,
 	configurePool,
 	createTableStruct,
 	deleteOperation,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
+	normalizeQueryReplacement,
 	updateOperation,
 } from './GenericFunctions';
 import type { ITables } from './interfaces';
@@ -305,22 +307,9 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 
-					let queryValues: Array<string | number | IDataObject> = [];
-					let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '') as
-						| string
-						| string[];
-
-					if (typeof queryReplacement === 'string' && queryReplacement) {
-						queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
-					}
-					if (queryReplacement !== '' && !Array.isArray(queryReplacement)) {
-						// convert non-string single expression values to arrays
-						queryReplacement = [queryReplacement];
-					}
-
-					if (Array.isArray(queryReplacement)) {
-						queryValues = queryReplacement;
-					}
+					const queryValues = normalizeQueryReplacement(
+						this.getNodeParameter('options.queryReplacement', i, ''),
+					);
 
 					const results = await executeSqlQueryAndPrepareResults.call(
 						this,
@@ -352,10 +341,19 @@ export class MicrosoftSql implements INodeType {
 				let rawQuery = this.getNodeParameter('query', 0) as string;
 
 				for (const resolvable of getResolvables(rawQuery)) {
-					rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+					rawQuery = rawQuery.replace(
+						resolvable,
+						() => this.evaluateExpression(resolvable, 0) as string,
+					);
 				}
 
-				const { recordsets }: IResult<any[]> = await pool.request().query(rawQuery);
+				const queryValues = normalizeQueryReplacement(
+					this.getNodeParameter('options.queryReplacement', 0, ''),
+				);
+
+				const request = pool.request();
+				const processedQuery = bindQueryParameters(request, rawQuery, queryValues);
+				const { recordsets }: IResult<any[]> = await request.query(processedQuery);
 
 				const result = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
 

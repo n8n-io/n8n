@@ -668,9 +668,9 @@
 	--background--disabled: var(--color--neutral-800);
 
 	/* stylelint-disable @n8n/css-var-naming */
-	--border-color: var(--border-color-base, var(--color--white-alpha-100));
+	--border-color: var(--border-color-base, var(--color--white-alpha-150));
 	/* stylelint-enable @n8n/css-var-naming */
-	--border-color--subtle: var(--color--white-alpha-50);
+	--border-color--subtle: var(--color--white-alpha-100);
 	--border-color--strong: var(--color--white-alpha-200);
 	--border-color--stronger: var(--color--white-alpha-400);
 

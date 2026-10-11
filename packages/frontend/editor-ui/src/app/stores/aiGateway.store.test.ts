@@ -425,6 +425,97 @@ describe('aiGateway.store', () => {
 		});
 	});
 
+	describe('isNodeEligible()', () => {
+		const nodeType = '@n8n/n8n-nodes-langchain.openAi';
+		const config = {
+			nodes: [nodeType],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+			minNodeTypeVersion: { [nodeType]: 2 },
+			supportedActions: { [nodeType]: { text: ['message'] } },
+			hiddenNodeProperties: { [nodeType]: ['baseURL'] },
+		};
+		const node = {
+			type: nodeType,
+			typeVersion: 2,
+			parameters: {},
+		};
+
+		it('should return true for a supported node using a defaulted action', async () => {
+			mockGetGatewayConfig.mockResolvedValue(config);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeEligible(node, 'openAiApi', { resource: 'text', operation: 'message' }),
+			).toBe(true);
+		});
+
+		it('should ignore hidden properties present only in resolved defaults', async () => {
+			mockGetGatewayConfig.mockResolvedValue(config);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeEligible(node, 'openAiApi', {
+					resource: 'text',
+					operation: 'message',
+					baseURL: 'https://api.openai.com/v1',
+				}),
+			).toBe(true);
+		});
+
+		it.each([
+			['unsupported node', { ...node, type: 'unknownNode' }, 'openAiApi'],
+			['unsupported credential type', node, 'anthropicApi'],
+			['unsupported node version', { ...node, typeVersion: 1 }, 'openAiApi'],
+		])('should return false for an %s', async (_name, inputNode, credentialType) => {
+			mockGetGatewayConfig.mockResolvedValue(config);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeEligible(inputNode, credentialType, {
+					resource: 'text',
+					operation: 'message',
+				}),
+			).toBe(false);
+		});
+
+		it('should return false for an unsupported action', async () => {
+			mockGetGatewayConfig.mockResolvedValue(config);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeEligible(node, 'openAiApi', {
+					resource: 'text',
+					operation: 'classify',
+				}),
+			).toBe(false);
+		});
+
+		it('should return false when a hidden property is set inside a collection', async () => {
+			mockGetGatewayConfig.mockResolvedValue(config);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isNodeEligible(
+					{ ...node, parameters: { options: { baseURL: 'https://example.com' } } },
+					'openAiApi',
+					{ resource: 'text', operation: 'message' },
+				),
+			).toBe(false);
+		});
+
+		it('should return false when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(store.isNodeEligible(node, 'openAiApi')).toBe(false);
+		});
+	});
+
 	describe('isCredentialTypeSupported()', () => {
 		it('should return true when the credential type is in the config', async () => {
 			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);

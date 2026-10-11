@@ -271,9 +271,8 @@ function publishEvents(
 
 		if (event.type === 'confirmation-request') {
 			const isPrimarySuspension =
-				suspension !== undefined &&
-				event.payload.requestId === suspension.requestId &&
-				event.payload.toolCallId === suspension.toolCallId;
+				event.payload.requestId === suspension?.requestId &&
+				event.payload.toolCallId === suspension?.toolCallId;
 			if (!isPrimarySuspension || confirmationEventPublished || confirmationEvent) {
 				shouldPublishEvent = false;
 			}

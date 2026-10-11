@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 
 import type { ToolCall, ToolCallState } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
@@ -17,11 +18,6 @@ type PersistedToolCall = Pick<
 	InstanceAiEvalAgentToolCallRecord,
 	'tool' | 'input' | 'output' | 'error'
 >;
-
-/** `Array.isArray` widens an `unknown` to `any[]`; this keeps the elements opaque. */
-function isUnknownArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
-}
 
 function isPersistedToolCall(value: unknown): value is PersistedToolCall {
 	return isRecord(value) && typeof value.tool === 'string';

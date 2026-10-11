@@ -103,6 +103,49 @@ scope, RBAC denial. Add whichever apply, matching the nearest existing tests:
   unchanged. Tests alone cannot show this — see
   [Verifying a migration](#verifying-a-migration).
 
+## Request body media types
+
+`@Body` defaults to `application/json`; the body is already parsed by the
+app-wide `bodyParser` before the registry sees it. Declaring
+`@Body({ mediaType: 'multipart/form-data', uploadLimits })` instead takes a
+`multipart/form-data` body:
+
+- `uploadLimits: () => MultipartUploadLimits` is a thunk, read once the route
+  handles its first request (not at startup) — read live config inside it
+  (e.g. `Container.get(GlobalConfig)`), don't inline a literal.
+- The route's `@Body` DTO validates text fields merged with uploaded files,
+  not `req.body` alone. A text field and a file share the same flat object;
+  a file field uses `publicApiUploadedFileSchema` (`@n8n/api-types`) — a
+  multer-file-shaped schema that documents itself as `{ type: 'string',
+  format: 'binary' }`. Several files under the same field name become an
+  array.
+- An unknown field (one the DTO doesn't declare, on a `{ strict: true }` DTO)
+  fails with `Unexpected form field "<name>"` — not the default "unrecognized
+  keys" wording.
+- Multer's own parsing errors map to the same statuses express-openapi-validator
+  used: `413` for a size/count limit, `400` for any other multer error, `500`
+  — unmasked, since this is a `ResponseError` — for anything else (a
+  malformed body; a missing boundary gives `400` with `multipart file(s)
+  required`).
+- The body is parsed **after** every auth/scope/license/quota gate and
+  **before** controller/route middlewares — a caller those gates would reject
+  never has their (possibly huge) body read off the socket, and a middleware
+  that reads `req.body` sees it already parsed.
+- `/discover` shows no request schema for a multipart route (same as a legacy
+  multipart route today) — a client can't assume a JSON schema it never gets.
+- The generator documents the body under the `multipart/form-data` content
+  key (not `application/json`) and adds `413` alongside `415` to the route's
+  documented responses automatically.
+
+Everything above lives in `packages/cli/src/public-api/media-types/`, one
+handler per media type (`REQUEST_BODY_HANDLERS` in
+`media-types/request-body/index.ts`). Adding a further media type (e.g.
+`application/octet-stream`) means: add it to `RequestBodyMediaOptions` in
+`@n8n/decorators`'s `controller/types.ts`, write a handler implementing
+`RequestBodyHandler` in `media-types/request-body/`, and register it in
+`REQUEST_BODY_HANDLERS` — the registry, resolver, generator and `/discover`
+need no change, since they all read the handler, not the media type.
+
 ## Migrating legacy EOV endpoints
 
 Legacy `express-openapi-validator` endpoints live under
@@ -146,8 +189,10 @@ not templates.
   entry from the `off` allowlists for `no-repository-in-public-api-handler` and
   `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only
   — never extend them).
-- For complex legacy-only, multipart, or non-standard endpoints, study the
-  nearest existing handler first.
+- A `multipart/form-data` legacy endpoint migrates onto `@Body({ mediaType:
+  'multipart/form-data', uploadLimits })` — see
+  [Request body media types](#request-body-media-types). For any other
+  non-standard endpoint, study the nearest existing handler first.
 - Keep each field in its original position when you extract a request shape shared
   by two routes, and destructure out the ones a route doesn't take. The generator
   emits properties in shape order, so a moved field rewrites the `*.generated.yml`

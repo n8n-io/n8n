@@ -17,7 +17,7 @@ import type { Response, Request, RequestHandler, Router } from 'express';
 
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
@@ -81,10 +81,17 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
 const registerRouter = clientRegistrationHandler({
 	clientsStore: oauthServerService.clientsStore,
+	rateLimit: false,
 }) as Router;
-const authorizeRouter = authorizationHandler({ provider: oauthServerService }) as Router;
-const tokenRouter = tokenHandler({ provider: oauthServerService }) as Router;
-const revokeRouter = revocationHandler({ provider: oauthServerService }) as Router;
+const authorizeRouter = authorizationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
+const tokenRouter = tokenHandler({ provider: oauthServerService, rateLimit: false }) as Router;
+const revokeRouter = revocationHandler({
+	provider: oauthServerService,
+	rateLimit: false,
+}) as Router;
 
 const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterMetadata[] => [
 	{
@@ -190,6 +197,8 @@ export class OAuthController {
 			token_endpoint: `${baseUrl}/mcp-oauth/token`,
 			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
 			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
+			// RFC 8414 §2: public keys that verify the access tokens this server signs.
+			jwks_uri: this.urlService.getInstanceJwksUri(),
 			response_types_supported: ['code'],
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],

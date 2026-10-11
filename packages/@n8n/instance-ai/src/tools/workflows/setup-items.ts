@@ -10,7 +10,9 @@ import {
 	type InstanceAiCredentialSetupHint,
 	type InstanceAiSetupItem,
 } from '@n8n/api-types';
+import { OperationalError } from 'n8n-workflow';
 
+import { isAiGatewayManagedCredential } from './credential-utils';
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiEventBus } from '../../event-bus/event-bus.interface';
 import type { InstanceAiContext, SetupItemsEmitter } from '../../types';
@@ -35,10 +37,24 @@ export function createSetupItemsEmitter(options: {
 	threadId: string;
 	runId: string;
 	agentId: string;
+	/**
+	 * The thread's latest persisted snapshot per workflow, oldest first. Seeds
+	 * the dedupe cache so a run that recomputes an unchanged list publishes
+	 * nothing, and lets `merge` build on a snapshot from an earlier run.
+	 */
+	initialSnapshots?: ReadonlyArray<{ workflowId: string; items: InstanceAiSetupItem[] }>;
+	/** The host drains pending events before reading this snapshot. */
+	readPersistedSnapshot?: (workflowId: string) => Promise<InstanceAiSetupItem[] | undefined>;
 }): SetupItemsEmitter {
 	const { eventBus, threadId, runId, agentId } = options;
 	const lastSnapshots = new Map<string, { fingerprint: string; items: InstanceAiSetupItem[] }>();
 	let lastWorkflowId: string | undefined;
+	for (const snapshot of options.initialSnapshots ?? []) {
+		lastSnapshots.set(snapshot.workflowId, {
+			fingerprint: fingerprint(snapshot.items),
+			items: snapshot.items,
+		});
+	}
 
 	const publish = (workflowId: string, items: InstanceAiSetupItem[]): boolean => {
 		const next = fingerprint(items);
@@ -51,6 +67,8 @@ export function createSetupItemsEmitter(options: {
 		});
 		// Cache only what was published, so a failed publish is retried by the
 		// next identical snapshot instead of being treated as already sent.
+		// Re-insert so the most recently announced workflow is last.
+		lastSnapshots.delete(workflowId);
 		lastSnapshots.set(workflowId, { fingerprint: next, items });
 		return true;
 	};
@@ -62,6 +80,26 @@ export function createSetupItemsEmitter(options: {
 			// move it, the agent may announce against an older workflow.
 			lastWorkflowId = workflowId;
 			return publish(workflowId, items);
+		},
+		workflowIds: () => [...lastSnapshots.keys()],
+		async announce(workflowId, items) {
+			if (!options.readPersistedSnapshot) {
+				throw new OperationalError('Setup checklist persistence is unavailable');
+			}
+			let failure: unknown = new OperationalError('Setup checklist was not persisted');
+			for (let attempt = 0; attempt < 2; attempt++) {
+				try {
+					lastWorkflowId = workflowId;
+					publish(workflowId, items);
+					const persisted = await options.readPersistedSnapshot(workflowId);
+					if (persisted && fingerprint(persisted) === fingerprint(items)) return;
+				} catch (error) {
+					failure = error;
+				}
+				// A queued event can fail later in the durable drain. Let the next call retry it.
+				lastSnapshots.delete(workflowId);
+			}
+			throw failure;
 		},
 		merge(workflowId, items) {
 			const byId = new Map<string, InstanceAiSetupItem>();
@@ -112,7 +150,19 @@ export function parametersSetupItemId(workflowId: string, nodeName: string): str
 export interface AnnouncedCredentialRequest {
 	credentialType: string;
 	reason?: string;
+	preferNew?: boolean;
 	setupHint?: InstanceAiCredentialSetupHint;
+}
+
+function mergeCredentialRequests(requests: readonly AnnouncedCredentialRequest[]) {
+	const byType = new Map<string, AnnouncedCredentialRequest>();
+	for (const request of requests) {
+		const existing = byType.get(request.credentialType);
+		if (!existing || request.preferNew) {
+			byType.set(request.credentialType, existing ? { ...existing, preferNew: true } : request);
+		}
+	}
+	return byType;
 }
 
 /**
@@ -125,20 +175,20 @@ export function buildSetupItemsFromCredentialRequests(
 	workflowId: string,
 	requests: readonly AnnouncedCredentialRequest[],
 ): InstanceAiSetupItem[] {
-	const byType = new Map<string, InstanceAiSetupItem>();
-	for (const request of requests) {
+	const items: InstanceAiSetupItem[] = [];
+	for (const request of mergeCredentialRequests(requests).values()) {
 		if (GENERIC_AUTH_CREDENTIAL_TYPES.has(request.credentialType)) continue;
 		const id = credentialSetupItemId(workflowId, request.credentialType);
-		if (byType.has(id)) continue;
-		byType.set(id, {
+		items.push({
 			id,
 			kind: 'credential',
 			credentialType: request.credentialType,
+			...(request.preferNew !== undefined ? { preferNew: request.preferNew } : {}),
 			...(request.reason ? { reason: request.reason } : {}),
 			...(request.setupHint ? { setupHint: request.setupHint } : {}),
 		});
 	}
-	return [...byType.values()];
+	return items;
 }
 
 /**
@@ -153,12 +203,7 @@ export function buildSetupItemsFromAnnouncement(
 	requests: readonly AnnouncedCredentialRequest[],
 	analyzedRequests: readonly SetupRequest[],
 ): InstanceAiSetupItem[] {
-	const requestByType = new Map<string, AnnouncedCredentialRequest>();
-	for (const request of requests) {
-		if (!requestByType.has(request.credentialType)) {
-			requestByType.set(request.credentialType, request);
-		}
-	}
+	const requestByType = mergeCredentialRequests(requests);
 	const coveredTypes = new Set<string>();
 	const items = buildSetupItemsFromSetupRequests(workflowId, analyzedRequests).map((item) => {
 		if (item.kind !== 'credential') return item;
@@ -167,6 +212,7 @@ export function buildSetupItemsFromAnnouncement(
 		coveredTypes.add(item.credentialType);
 		return {
 			...item,
+			...(request.preferNew !== undefined ? { preferNew: request.preferNew } : {}),
 			...(request.reason ? { reason: request.reason } : {}),
 			...(request.setupHint ? { setupHint: request.setupHint } : {}),
 		};
@@ -184,6 +230,20 @@ function isBoundToStoredCredential(request: SetupRequest): boolean {
 	if (!request.credentialType) return false;
 	const bound = request.node.credentials?.[request.credentialType];
 	return typeof bound?.id === 'string' && bound.id.length > 0;
+}
+
+/** A request for a first account does not replace an existing binding. */
+export function requestsCredentialReplacement(
+	requests: readonly SetupRequest[],
+	credentialTypes: readonly string[] = [],
+): boolean {
+	return requests.some(
+		(request) =>
+			request.credentialType !== undefined &&
+			credentialTypes.includes(request.credentialType) &&
+			(isBoundToStoredCredential(request) ||
+				isAiGatewayManagedCredential(request.node.credentials?.[request.credentialType])),
+	);
 }
 
 /**
@@ -213,11 +273,13 @@ export function buildSetupItemsFromSetupRequests(
 					existing.nodeBindings = [...(existing.nodeBindings ?? []), { nodeName }];
 				}
 				if (!existing.setupHint && request.setupHint) existing.setupHint = request.setupHint;
+				if (request.preferNewCredential) existing.preferNew = true;
 			} else {
 				credentialItems.set(id, {
 					id,
 					kind: 'credential',
 					credentialType,
+					...(request.preferNewCredential ? { preferNew: true } : {}),
 					nodeBindings: [{ nodeName }],
 					...(request.setupHint ? { setupHint: request.setupHint } : {}),
 				});

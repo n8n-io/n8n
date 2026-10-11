@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { In, IsNull, MoreThan, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -236,6 +236,37 @@ describe('WorkflowRepository', () => {
 					searchWord0: '%users%',
 					searchWord1: '%database%',
 				}),
+			);
+		});
+	});
+
+	describe('applyIdsFilter', () => {
+		it('should filter by the requested workflow ids', async () => {
+			await workflowRepository.getMany(['permitted-workflow'], {
+				filter: { ids: ['workflow-1', 'workflow-2'] },
+			});
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.id IN (:...filteredWorkflowIds)',
+				{ filteredWorkflowIds: ['workflow-1', 'workflow-2'] },
+			);
+		});
+
+		it('should return no workflows for an empty ids filter', async () => {
+			await workflowRepository.getMany(['permitted-workflow'], { filter: { ids: [] } });
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.id IN (:...filteredWorkflowIds)',
+				{ filteredWorkflowIds: [''] },
+			);
+		});
+
+		it('should return no workflows for a malformed ids filter', async () => {
+			await workflowRepository.getMany(['permitted-workflow'], { filter: { ids: [1] } });
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+				'workflow.id IN (:...filteredWorkflowIds)',
+				{ filteredWorkflowIds: [''] },
 			);
 		});
 	});
@@ -571,6 +602,67 @@ describe('WorkflowRepository', () => {
 				select: ['id', 'name'],
 			});
 			expect(result).toEqual([first, last]);
+		});
+	});
+
+	describe('getIdsAfter', () => {
+		it('should return the first ids when no cursor is given', async () => {
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValue([Object.assign(new WorkflowEntity(), { id: 'a' })]);
+
+			const result = await workflowRepository.getIdsAfter(undefined, 100);
+
+			expect(result).toEqual(['a']);
+			expect(findSpy).toHaveBeenCalledWith({
+				select: { id: true },
+				where: {},
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+
+		it('should return only ids greater than the cursor', async () => {
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValue([
+					Object.assign(new WorkflowEntity(), { id: 'b' }),
+					Object.assign(new WorkflowEntity(), { id: 'c' }),
+				]);
+
+			const result = await workflowRepository.getIdsAfter('a', 100);
+
+			expect(result).toEqual(['b', 'c']);
+			expect(findSpy).toHaveBeenCalledWith({
+				select: { id: true },
+				where: { id: MoreThan('a') },
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+	});
+
+	describe('findExistingIds', () => {
+		it('returns only the ids that still exist', async () => {
+			entityManager.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), { id: 'a' }),
+				Object.assign(new WorkflowEntity(), { id: 'c' }),
+			]);
+
+			const result = await workflowRepository.findExistingIds(['a', 'b', 'c']);
+
+			expect(result).toEqual(['a', 'c']);
+			expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+				select: { id: true },
+				where: { id: In(['a', 'b', 'c']) },
+			});
+		});
+
+		it('does not query when no ids are given', async () => {
+			const result = await workflowRepository.findExistingIds([]);
+
+			expect(result).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
 		});
 	});
 

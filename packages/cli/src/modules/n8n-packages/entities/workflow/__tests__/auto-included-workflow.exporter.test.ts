@@ -17,7 +17,7 @@ import { WorkflowSerializer } from '../workflow.serializer';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	return {
-		id: 'wf-1',
+		id: 'wf_1',
 		name: 'My Workflow',
 		nodes: [],
 		connections: {},
@@ -42,7 +42,7 @@ function includedWorkflow(overrides: Partial<AutoIncludedWorkflow> = {}): AutoIn
 	return {
 		workflow: makeWorkflow(),
 		placement: 'top-level',
-		ownerProject: makeProject('proj-1', 'Owner Project'),
+		ownerProject: makeProject('proj_1', 'Owner Project'),
 		folderChain: [],
 		...overrides,
 	};
@@ -79,27 +79,27 @@ describe('AutoIncludedWorkflowExporter', () => {
 	it('writes a top-level workflow under workflows/', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-triage', name: 'Triage' });
+		const workflow = makeWorkflow({ id: 'wf_triage', name: 'Triage' });
 
 		const result = await exporter.export(
 			emptyRequest(writer, [includedWorkflow({ workflow, placement: 'top-level' })]),
 		);
 
 		expect(result.workflowEntries).toEqual([
-			{ id: 'wf-triage', name: 'Triage', target: 'workflows/triage-wf-triage' },
+			{ id: 'wf_triage', name: 'Triage', target: 'workflows/triage-wf_triage' },
 		]);
-		expect(writer.files.map((f) => f.path)).toContain('workflows/triage-wf-triage/workflow.json');
+		expect(writer.files.map((f) => f.path)).toContain('workflows/triage-wf_triage/workflow.json');
 	});
 
 	it('skips a workflow already present in the existing workflow entries', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-dup', name: 'Already Here' });
+		const workflow = makeWorkflow({ id: 'wf_dup', name: 'Already Here' });
 
 		const result = await exporter.export({
 			...emptyRequest(writer, [includedWorkflow({ workflow })]),
 			existingWorkflowEntries: [
-				{ id: 'wf-dup', name: 'Already Here', target: 'workflows/already-here-wf-dup' },
+				{ id: 'wf_dup', name: 'Already Here', target: 'workflows/already-here-wf_dup' },
 			],
 		});
 
@@ -110,23 +110,23 @@ describe('AutoIncludedWorkflowExporter', () => {
 	it('gives a workflow its own target when another entry already shares its name', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-new', name: 'Same Name' });
+		const workflow = makeWorkflow({ id: 'wf_new', name: 'Same Name' });
 
 		const result = await exporter.export({
 			...emptyRequest(writer, [includedWorkflow({ workflow })]),
 			existingWorkflowEntries: [
-				{ id: 'wf-existing', name: 'Same Name', target: 'workflows/same-name-wf-existing' },
+				{ id: 'wf_existing', name: 'Same Name', target: 'workflows/same-name-wf_existing' },
 			],
 		});
 
-		expect(result.workflowEntries[0].target).toBe('workflows/same-name-wf-new');
+		expect(result.workflowEntries[0].target).toBe('workflows/same-name-wf_new');
 	});
 
 	it('places a folder workflow under its serialized folder chain', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-nested', name: 'Nested' });
-		const chain = [makeFolder('f-root', 'Root'), makeFolder('f-child', 'Child')];
+		const workflow = makeWorkflow({ id: 'wf_nested', name: 'Nested' });
+		const chain = [makeFolder('f_root', 'Root'), makeFolder('f_child', 'Child')];
 
 		const result = await exporter.export(
 			emptyRequest(writer, [
@@ -135,42 +135,42 @@ describe('AutoIncludedWorkflowExporter', () => {
 		);
 
 		expect(result.workflowEntries[0].target).toBe(
-			'folders/root-f-root/child-f-child/workflows/nested-wf-nested',
+			'folders/root-f_root/child-f_child/workflows/nested-wf_nested',
 		);
 		expect(result.folderEntries).toEqual([
-			{ id: 'f-root', name: 'Root', target: 'folders/root-f-root' },
-			{ id: 'f-child', name: 'Child', target: 'folders/root-f-root/child-f-child' },
+			{ id: 'f_root', name: 'Root', target: 'folders/root-f_root' },
+			{ id: 'f_child', name: 'Child', target: 'folders/root-f_root/child-f_child' },
 		]);
 
 		const childFolder = jsonParse<{ parentFolderId: string | null }>(
-			writer.files.find((f) => f.path === 'folders/root-f-root/child-f-child/folder.json')!.content,
+			writer.files.find((f) => f.path === 'folders/root-f_root/child-f_child/folder.json')!.content,
 		);
-		expect(childFolder.parentFolderId).toBe('f-root');
+		expect(childFolder.parentFolderId).toBe('f_root');
 	});
 
 	it('reuses an existing folder entry instead of recreating it', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-nested', name: 'Nested' });
-		const chain = [makeFolder('f-root', 'Root')];
+		const workflow = makeWorkflow({ id: 'wf_nested', name: 'Nested' });
+		const chain = [makeFolder('f_root', 'Root')];
 
 		const result = await exporter.export({
 			...emptyRequest(writer, [
 				includedWorkflow({ workflow, placement: 'folder', folderChain: chain }),
 			]),
-			existingFolderEntries: [{ id: 'f-root', name: 'Root', target: 'folders/root-f-root' }],
+			existingFolderEntries: [{ id: 'f_root', name: 'Root', target: 'folders/root-f_root' }],
 		});
 
 		expect(result.folderEntries).toEqual([]);
-		expect(result.workflowEntries[0].target).toBe('folders/root-f-root/workflows/nested-wf-nested');
-		expect(writer.files.some((f) => f.path === 'folders/root-f-root/folder.json')).toBe(false);
+		expect(result.workflowEntries[0].target).toBe('folders/root-f_root/workflows/nested-wf_nested');
+		expect(writer.files.some((f) => f.path === 'folders/root-f_root/folder.json')).toBe(false);
 	});
 
 	it('creates a project shell for a project workflow and reports its target', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-p', name: 'In Project' });
-		const project = makeProject('proj-9', 'Marketing');
+		const workflow = makeWorkflow({ id: 'wf_p', name: 'In Project' });
+		const project = makeProject('proj_9', 'Marketing');
 
 		const result = await exporter.export(
 			emptyRequest(writer, [
@@ -184,13 +184,13 @@ describe('AutoIncludedWorkflowExporter', () => {
 		);
 
 		expect(result.projectEntries).toEqual([
-			{ id: 'proj-9', name: 'Marketing', target: 'projects/marketing-proj-9' },
+			{ id: 'proj_9', name: 'Marketing', target: 'projects/marketing-proj_9' },
 		]);
 		expect(result.workflowEntries[0].target).toBe(
-			'projects/marketing-proj-9/workflows/in-project-wf-p',
+			'projects/marketing-proj_9/workflows/in-project-wf_p',
 		);
-		expect(result.projectTargetsById.get('proj-9')).toBe('projects/marketing-proj-9');
-		expect(writer.files.some((f) => f.path === 'projects/marketing-proj-9/project.json')).toBe(
+		expect(result.projectTargetsById.get('proj_9')).toBe('projects/marketing-proj_9');
+		expect(writer.files.some((f) => f.path === 'projects/marketing-proj_9/project.json')).toBe(
 			true,
 		);
 	});
@@ -198,9 +198,9 @@ describe('AutoIncludedWorkflowExporter', () => {
 	it('nests a project workflow with a folder chain under the project folders/', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-pf', name: 'Deep' });
-		const project = makeProject('proj-9', 'Marketing');
-		const chain = [makeFolder('f-a', 'Campaigns')];
+		const workflow = makeWorkflow({ id: 'wf_pf', name: 'Deep' });
+		const project = makeProject('proj_9', 'Marketing');
+		const chain = [makeFolder('f_a', 'Campaigns')];
 
 		const result = await exporter.export(
 			emptyRequest(writer, [
@@ -214,15 +214,15 @@ describe('AutoIncludedWorkflowExporter', () => {
 		);
 
 		expect(result.workflowEntries[0].target).toBe(
-			'projects/marketing-proj-9/folders/campaigns-f-a/workflows/deep-wf-pf',
+			'projects/marketing-proj_9/folders/campaigns-f_a/workflows/deep-wf_pf',
 		);
 	});
 
 	it('reuses an existing project entry and preserves its target', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-p', name: 'In Project' });
-		const project = makeProject('proj-9', 'Marketing');
+		const workflow = makeWorkflow({ id: 'wf_p', name: 'In Project' });
+		const project = makeProject('proj_9', 'Marketing');
 
 		const result = await exporter.export({
 			...emptyRequest(writer, [
@@ -234,16 +234,16 @@ describe('AutoIncludedWorkflowExporter', () => {
 				}),
 			]),
 			existingProjectEntries: [
-				{ id: 'proj-9', name: 'Marketing', target: 'projects/marketing-proj-9' },
+				{ id: 'proj_9', name: 'Marketing', target: 'projects/marketing-proj_9' },
 			],
 		});
 
 		expect(result.projectEntries).toEqual([]);
-		expect(result.projectTargetsById.get('proj-9')).toBe('projects/marketing-proj-9');
+		expect(result.projectTargetsById.get('proj_9')).toBe('projects/marketing-proj_9');
 		expect(result.workflowEntries[0].target).toBe(
-			'projects/marketing-proj-9/workflows/in-project-wf-p',
+			'projects/marketing-proj_9/workflows/in-project-wf_p',
 		);
-		expect(writer.files.some((f) => f.path === 'projects/marketing-proj-9/project.json')).toBe(
+		expect(writer.files.some((f) => f.path === 'projects/marketing-proj_9/project.json')).toBe(
 			false,
 		);
 	});
@@ -252,16 +252,16 @@ describe('AutoIncludedWorkflowExporter', () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
 		credentialExtractor.extract.mockReturnValue([
 			{
-				workflowId: 'wf-1',
+				workflowId: 'wf_1',
 				credentialId: 'cred-1',
 				credentialName: 'My Cred',
 				credentialType: 'httpHeaderAuth',
 			},
 		]);
 		const dataTableExtractor = mock<DataTableRequirementsExtractor>();
-		dataTableExtractor.extract.mockReturnValue([{ workflowId: 'wf-1', dataTableId: 'dt-1' }]);
+		dataTableExtractor.extract.mockReturnValue([{ workflowId: 'wf_1', dataTableId: 'dt-1' }]);
 		const variableExtractor = mock<VariableRequirementsExtractor>();
-		variableExtractor.extract.mockReturnValue([{ workflowId: 'wf-1', variableName: 'API_KEY' }]);
+		variableExtractor.extract.mockReturnValue([{ workflowId: 'wf_1', variableName: 'API_KEY' }]);
 
 		const exporter = makeExporter(credentialExtractor, dataTableExtractor, variableExtractor);
 		const writer = new CapturingWriter();
@@ -270,15 +270,15 @@ describe('AutoIncludedWorkflowExporter', () => {
 
 		expect(result.requirements.credentials).toEqual([
 			{
-				workflowId: 'wf-1',
+				workflowId: 'wf_1',
 				credentialId: 'cred-1',
 				credentialName: 'My Cred',
 				credentialType: 'httpHeaderAuth',
 			},
 		]);
-		expect(result.requirements.dataTables).toEqual([{ workflowId: 'wf-1', dataTableId: 'dt-1' }]);
+		expect(result.requirements.dataTables).toEqual([{ workflowId: 'wf_1', dataTableId: 'dt-1' }]);
 		expect(result.requirements.variables).toEqual([
-			{ workflowId: 'wf-1', variableName: 'API_KEY' },
+			{ workflowId: 'wf_1', variableName: 'API_KEY' },
 		]);
 	});
 
@@ -291,8 +291,8 @@ describe('AutoIncludedWorkflowExporter', () => {
 			position: [0, 0],
 			parameters: {},
 		} as INode;
-		const a = makeWorkflow({ id: 'wf-a', name: 'Alpha', nodes: [nodeA] });
-		const b = makeWorkflow({ id: 'wf-b', name: 'Beta' });
+		const a = makeWorkflow({ id: 'wf_a', name: 'Alpha', nodes: [nodeA] });
+		const b = makeWorkflow({ id: 'wf_b', name: 'Beta' });
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 
@@ -301,8 +301,8 @@ describe('AutoIncludedWorkflowExporter', () => {
 		);
 
 		expect(result.requirements.nodeTypes).toEqual([
-			{ workflowId: 'wf-a', nodes: [nodeA] },
-			{ workflowId: 'wf-b', nodes: [] },
+			{ workflowId: 'wf_a', nodes: [nodeA] },
+			{ workflowId: 'wf_b', nodes: [] },
 		]);
 	});
 
@@ -311,12 +311,12 @@ describe('AutoIncludedWorkflowExporter', () => {
 		credentialExtractor.extract.mockReturnValue([]);
 		const exporter = makeExporter(credentialExtractor);
 		const writer = new CapturingWriter();
-		const workflow = makeWorkflow({ id: 'wf-dup', name: 'Already Here' });
+		const workflow = makeWorkflow({ id: 'wf_dup', name: 'Already Here' });
 
 		const result = await exporter.export({
 			...emptyRequest(writer, [includedWorkflow({ workflow })]),
 			existingWorkflowEntries: [
-				{ id: 'wf-dup', name: 'Already Here', target: 'workflows/already-here-wf-dup' },
+				{ id: 'wf_dup', name: 'Already Here', target: 'workflows/already-here-wf_dup' },
 			],
 		});
 
@@ -327,50 +327,50 @@ describe('AutoIncludedWorkflowExporter', () => {
 	it('keeps a child folder named "workflows" clear of its parent workflow directory', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const root = makeFolder('f-root', 'Root');
-		const wfFolder = makeFolder('f-wf', 'Workflows');
+		const root = makeFolder('f_root', 'Root');
+		const wfFolder = makeFolder('f_wf', 'Workflows');
 
 		const result = await exporter.export(
 			emptyRequest(writer, [
 				// A workflow placed directly in Root, so Root gets a workflows/ directory
 				includedWorkflow({
-					workflow: makeWorkflow({ id: 'wf-a', name: 'Alpha' }),
+					workflow: makeWorkflow({ id: 'wf_a', name: 'Alpha' }),
 					placement: 'folder',
 					folderChain: [root],
 				}),
 				// A workflow nested under Root's child folder literally named "Workflows"
 				includedWorkflow({
-					workflow: makeWorkflow({ id: 'wf-b', name: 'Beta' }),
+					workflow: makeWorkflow({ id: 'wf_b', name: 'Beta' }),
 					placement: 'folder',
 					folderChain: [root, wfFolder],
 				}),
 			]),
 		);
 
-		const rootWorkflow = result.workflowEntries.find((e) => e.id === 'wf-a');
-		const nestedWorkflow = result.workflowEntries.find((e) => e.id === 'wf-b');
-		const nestedFolder = result.folderEntries.find((e) => e.id === 'f-wf');
+		const rootWorkflow = result.workflowEntries.find((e) => e.id === 'wf_a');
+		const nestedWorkflow = result.workflowEntries.find((e) => e.id === 'wf_b');
+		const nestedFolder = result.folderEntries.find((e) => e.id === 'f_wf');
 
-		expect(rootWorkflow?.target).toBe('folders/root-f-root/workflows/alpha-wf-a');
+		expect(rootWorkflow?.target).toBe('folders/root-f_root/workflows/alpha-wf_a');
 		// The id suffix is what keeps the folder out of Root's own workflows/ directory.
-		expect(nestedFolder?.target).toBe('folders/root-f-root/workflows-f-wf');
-		expect(nestedWorkflow?.target).toBe('folders/root-f-root/workflows-f-wf/workflows/beta-wf-b');
+		expect(nestedFolder?.target).toBe('folders/root-f_root/workflows-f_wf');
+		expect(nestedWorkflow?.target).toBe('folders/root-f_root/workflows-f_wf/workflows/beta-wf_b');
 	});
 
 	it('shares one folder shell between two workflows in the same folder', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
-		const chain = [makeFolder('f-root', 'Root')];
+		const chain = [makeFolder('f_root', 'Root')];
 
 		const result = await exporter.export(
 			emptyRequest(writer, [
 				includedWorkflow({
-					workflow: makeWorkflow({ id: 'wf-a', name: 'Alpha' }),
+					workflow: makeWorkflow({ id: 'wf_a', name: 'Alpha' }),
 					placement: 'folder',
 					folderChain: chain,
 				}),
 				includedWorkflow({
-					workflow: makeWorkflow({ id: 'wf-b', name: 'Beta' }),
+					workflow: makeWorkflow({ id: 'wf_b', name: 'Beta' }),
 					placement: 'folder',
 					folderChain: chain,
 				}),
@@ -379,11 +379,11 @@ describe('AutoIncludedWorkflowExporter', () => {
 
 		// The folder is serialized once, both workflows land inside it.
 		expect(result.folderEntries).toEqual([
-			{ id: 'f-root', name: 'Root', target: 'folders/root-f-root' },
+			{ id: 'f_root', name: 'Root', target: 'folders/root-f_root' },
 		]);
 		expect(result.workflowEntries.map((e) => e.target)).toEqual([
-			'folders/root-f-root/workflows/alpha-wf-a',
-			'folders/root-f-root/workflows/beta-wf-b',
+			'folders/root-f_root/workflows/alpha-wf_a',
+			'folders/root-f_root/workflows/beta-wf_b',
 		]);
 	});
 });

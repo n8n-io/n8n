@@ -12,6 +12,11 @@ import { z } from 'zod';
 import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
 import { reconcileSimulationPlan } from './reconcile-simulation-plan';
 import { buildCredentialMap } from './resolve-credentials';
+import {
+	describeSavedPublishState,
+	savedWorkflowStateSchema,
+	type SavedWorkflowState,
+} from './saved-workflow-state';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
 
@@ -31,6 +36,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 		.output(
 			z.object({
 				success: z.boolean(),
+				...savedWorkflowStateSchema.shape,
 				appliedNodes: z.array(z.string()).optional(),
 				error: z.string().optional(),
 			}),
@@ -66,7 +72,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				const mockedTypes = mockedCredentialsByNode[nodeName];
 				if (!mockedTypes?.length) continue;
 
-				node.credentials ??= {};
+				let credentialApplied = false;
 
 				for (const credType of mockedTypes) {
 					const credId = input.credentials[credType];
@@ -75,8 +81,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
 					if (!resolved.resolved) return { success: false, error: resolved.error };
 					assignCredentialToNode(node, credType, resolved.credential);
+					credentialApplied = true;
 				}
-				appliedNodes.push(nodeName);
+				if (credentialApplied) appliedNodes.push(nodeName);
 			}
 
 			if (appliedNodes.length === 0) {
@@ -84,8 +91,10 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			// Save the workflow with applied credentials
+			let savedState: SavedWorkflowState;
 			try {
 				const saved = await workflowService.updateFromWorkflowJSON(input.workflowId, json);
+				savedState = describeSavedPublishState(saved);
 				await refreshWorkflowSourceFileBindingFromSave(context.domainContext, input.workflowId, {
 					versionId: saved.versionId,
 					checksum: saved.checksum,
@@ -120,7 +129,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 				// intentional: plan refresh is advisory
 			}
 
-			return { success: true, appliedNodes };
+			return { success: true, ...savedState, appliedNodes };
 		})
 		.build();
 }

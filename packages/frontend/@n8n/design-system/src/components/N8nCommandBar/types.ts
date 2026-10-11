@@ -11,4 +11,5 @@ export interface CommandBarItem {
 	placeholder?: string;
 	hasMoreChildren?: boolean;
 	matchAnySearchTerm?: boolean;
+	disabled?: boolean;
 }

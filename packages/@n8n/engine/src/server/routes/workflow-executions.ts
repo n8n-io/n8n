@@ -2,10 +2,15 @@ import { UUID_V7_PATTERN } from '@n8n/constants';
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
-import { createGetExecutionHandler } from './workflow-executions.handlers';
+import {
+	createCancelExecutionHandler,
+	createGetExecutionHandler,
+	createSearchExecutionsHandler,
+} from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import { responseExpectationSchema } from '../../response-channel';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
 
@@ -53,15 +58,18 @@ const StartExecutionBody = z.object({
 		.object({
 			userId: z.string().min(1).optional(),
 			projectId: z.string().min(1).optional(),
-			hostMode: z.string().min(1).optional(),
+			hostMode: z.string().min(1),
 		})
 		.strict(),
+	/** What kind of a response the caller expects. */
+	responseExpectation: responseExpectationSchema.optional(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });
 
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
+	router.post('/search', createSearchExecutionsHandler(deps.executionQuery));
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
@@ -91,6 +99,7 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	});
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
+	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
 
 	return router;
 }

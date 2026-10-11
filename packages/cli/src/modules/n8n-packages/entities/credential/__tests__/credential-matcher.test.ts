@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { CredentialMatcherContext, UsableCredential } from '../credential-matcher';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';

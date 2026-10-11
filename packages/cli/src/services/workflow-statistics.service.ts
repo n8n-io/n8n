@@ -1,4 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
+import { EventService, isBillableExecution } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
@@ -19,47 +20,10 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
 
 import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
-
-const isStatusRootExecution = {
-	success: true,
-	crashed: true,
-	error: true,
-
-	canceled: false,
-	new: false,
-	running: false,
-	unknown: false,
-	waiting: false,
-} satisfies Record<ExecutionStatus, boolean>;
-
-const isModeRootExecution = {
-	cli: true,
-	retry: true,
-	trigger: true,
-	webhook: true,
-	evaluation: true,
-
-	// sub workflows
-	integrated: false,
-
-	// error workflows
-	error: false,
-
-	internal: false,
-
-	manual: false,
-
-	// n8n Chat hub messages
-	chat: false,
-
-	// Agent executions
-	agent: false,
-} satisfies Record<WorkflowExecuteMode, boolean>;
 
 type CompletedRunOutcome = {
 	mode: WorkflowExecuteMode;
@@ -88,10 +52,6 @@ function getStatisticsNameForCompletedRun(
 	return runData.status === 'success'
 		? StatisticsNames.productionSuccess
 		: StatisticsNames.productionError;
-}
-
-function isRootExecutionForRun(runData: CompletedRunOutcome): boolean {
-	return isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 }
 
 type WorkflowStatisticsEvents = {
@@ -143,8 +103,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	): Promise<void> {
 		const statisticsName = getStatisticsNameForCompletedRun(runData, source);
 
-		// Instance AI runs mimic trigger modes but are not root production runs.
-		const isRoot = source !== 'instance_ai' && isRootExecutionForRun(runData);
+		const isRoot = isBillableExecution(runData, source);
 
 		if (!statisticsName) return;
 
@@ -178,7 +137,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				statisticsName,
 				workflowId,
 				workflowName,
-				isRoot: isRootExecutionForRun(outcome),
+				isRoot: isBillableExecution(outcome),
 				firstEventMs: Date.now(),
 			});
 		} catch (error) {
@@ -305,17 +264,10 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		userId: string | null,
 		activatedAt: number,
 	): Promise<void> {
-		const alreadyActivated = await this.settingsRepository.findByKey(
+		await this.settingsRepository.insertIfAbsent(
 			INSTANCE_ACTIVATED_SETTINGS_KEY,
+			JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
 		);
-
-		if (alreadyActivated) return;
-
-		await this.settingsRepository.save({
-			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
-			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
-			loadOnStartup: false,
-		});
 	}
 
 	private async emitInstanceFirstProductionWorkflowFailed(
@@ -343,16 +295,18 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		owner ??= await this.ownershipService.getInstanceOwner();
 
-		await this.settingsRepository.save({
-			key: 'instance.firstProductionFailure',
-			value: JSON.stringify({
+		const isFirstFailure = await this.settingsRepository.insertIfAbsent(
+			'instance.firstProductionFailure',
+			JSON.stringify({
 				workflowId,
 				projectId: project.id,
 				userId: owner.id,
 				timestamp: timestampMs,
 			}),
-			loadOnStartup: false,
-		});
+		);
+		if (!isFirstFailure) {
+			return;
+		}
 
 		this.eventService.emit('instance-first-production-workflow-failed', {
 			projectId: project.id,

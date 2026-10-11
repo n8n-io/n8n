@@ -1,3 +1,4 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type {
 	InstanceAiPermissionMode,
 	InstanceGatewayResourceDecision,
@@ -18,7 +19,6 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '@n8n/mcp-browser';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export interface BrowserDomainGate {
 	tracker: DomainAccessTracker;
@@ -51,7 +51,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			const candidate = {
 				name: tool.name,
 				description: tool.description,
-				inputSchema: zodToJsonSchema(tool.inputSchema),
+				inputSchema: zodSchemaToJsonSchema(tool.inputSchema),
 				annotations: { category: 'browser' },
 			};
 			const parsed = mcpToolSchema.safeParse(candidate);

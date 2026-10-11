@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 
 import type { N8nClient } from '../../clients/n8n-client';
 import type { EvalLogger } from '../../harness/logger';
-import { createOneCredential } from '../seeder';
+import { createDeclaredCredentials, createOneCredential } from '../seeder';
 
 const makeClient = (createCredential: N8nClient['createCredential']) =>
 	({ createCredential }) as unknown as N8nClient;
@@ -131,5 +131,55 @@ describe('createOneCredential — static template path (regression)', () => {
 		expect(second.name).toBe('[eval] Slack #2');
 		expect(createCredential).toHaveBeenCalledTimes(2);
 		expect(createCredential.mock.calls[0][1]).toBe('slackApi');
+	});
+});
+
+describe('credential descriptions', () => {
+	it('keeps descriptions with their declared credentials outside the secret data', async () => {
+		const createCredential = vi
+			.fn<N8nClient['createCredential']>()
+			.mockResolvedValue({ id: 'cred-1' });
+		const client = makeClient(createCredential);
+
+		await createDeclaredCredentials(client, [
+			{ type: 'slackApi', name: 'Account A', description: 'Staging checks' },
+			{ type: 'slackApi', name: 'Account B', description: 'Production reports' },
+			{ type: 'slackApi', name: 'Account C' },
+			{ type: 'slackApi', name: 'Account D', description: null },
+		]);
+
+		expect(
+			createCredential.mock.calls.map(([name, , , description]) => ({ name, description })),
+		).toEqual([
+			{ name: 'Account A', description: 'Staging checks' },
+			{ name: 'Account B', description: 'Production reports' },
+			{ name: 'Account C', description: undefined },
+			{ name: 'Account D', description: null },
+		]);
+		for (const [, , data] of createCredential.mock.calls) {
+			expect(data).not.toHaveProperty('description');
+		}
+	});
+
+	it('passes descriptions through custom authentication setup', async () => {
+		const createCredential = vi
+			.fn<N8nClient['createCredential']>()
+			.mockResolvedValue({ id: 'cred-1' });
+		await createOneCredential(
+			makeClient(createCredential),
+			'httpTemplatedCustomAuth',
+			'Account A',
+			new Map(),
+			{
+				setupHint: baseHint,
+				description: 'Production reports',
+			},
+		);
+		expect(createCredential).toHaveBeenCalledWith(
+			'Account A',
+			'httpTemplatedCustomAuth',
+			expect.any(Object),
+			'Production reports',
+		);
 	});
 });

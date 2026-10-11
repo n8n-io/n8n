@@ -1,3 +1,8 @@
+import type { StreamTextTransform, TextStreamPart, ToolSet } from 'ai';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { raceWithAbort } from '../../sdk/abort';
+
+import { finalizeRun } from './run-output-sink';
 import type {
 	CompleteEmission,
 	ModelCallContext,
@@ -5,10 +10,11 @@ import type {
 	RunOutputSink,
 	RunServices,
 	SuspendEmission,
-} from './run-output-sink';
+} from '../../types/runtime/agent-loop';
 import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
-import type { AgentMessage } from '../../types/sdk/message';
+import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
+import { isAttachmentValidationError } from '../model/attachment-validation-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
@@ -18,12 +24,13 @@ import {
 	DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
 	DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
 	MAX_MODEL_STREAM_STALL_RETRIES,
+	MAX_MODEL_STREAM_TIMEOUT_MS,
 	ModelStreamStallError,
 	raceWithStallDeadline,
 	withChunkIdleTimeout,
 } from '../streaming/stream-stall';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
-import type { ToolCallBatchResult } from '../tools/tool-call-executor';
+import type { ToolCallBatchResult } from '../../types/runtime/tool-execution';
 
 /**
  * Chunk types that are pure transport bookkeeping: an attempt that stalled
@@ -48,6 +55,25 @@ const STALL_RETRY_SAFE_CHUNK_TYPES = new Set<string>([
  * chunks. Owns the smooth-stream transform option.
  */
 export class StreamSink implements RunOutputSink<void> {
+	async inputBoundary(signal: AbortSignal): Promise<void> {
+		const acknowledged = createDeferredPromise();
+		await raceWithAbort(
+			async () => {
+				await this.guard.write({
+					type: 'input-boundary',
+					acknowledge: () => acknowledged.resolve(),
+				});
+				if (this.guard.isClosed) throw new Error('Agent stream closed before input consumption');
+				await acknowledged.promise;
+			},
+			AbortSignal.any([signal, this.guard.closedSignal]),
+		);
+	}
+
+	async emitInput(message: AgentDbMessage): Promise<void> {
+		await this.guard.write({ type: 'input', message });
+	}
+
 	private lastUsage: TokenUsage | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The
@@ -115,58 +141,111 @@ export class StreamSink implements RunOutputSink<void> {
 		return { role: 'assistant', content: [{ type: 'text', text: this.partialText }] };
 	}
 
-	private buildSmoothStreamTransformOptions(): {
-		experimental_transform?: ReturnType<ReturnType<typeof loadAi>['smoothStream']>;
+	/**
+	 * Timestamps every chunk (keepalives included) for the stall watchdog, then
+	 * consumes `raw` chunks: the readers get their raw values here, and nothing
+	 * downstream ever sees them. Must run BEFORE smoothStream — it flushes its
+	 * word buffer on every non-text chunk, so raw chunks interleaved with text
+	 * deltas would silently defeat smoothing.
+	 *
+	 * The readers are bound per attempt, not read off `this`: an abandoned
+	 * attempt's pipeline can still drain buffered chunks after a stall retry
+	 * swapped in fresh readers, which would bill its usage against the retry.
+	 */
+	private buildRawChunkTap(
+		activity: { lastAt: number },
+		readers: { usage: RawUsageReader | undefined; error: RawErrorReader | undefined },
+	): StreamTextTransform<ToolSet> {
+		return () =>
+			new TransformStream({
+				transform: (chunk, controller) => {
+					activity.lastAt = Date.now();
+					if (chunk.type === 'raw') {
+						readers.usage?.capture(chunk.rawValue);
+						readers.error?.capture(chunk.rawValue);
+						return;
+					}
+					controller.enqueue(chunk);
+				},
+			});
+	}
+
+	private buildTransformOptions(rawChunkTap: StreamTextTransform<ToolSet> | undefined): {
+		experimental_transform?: Array<StreamTextTransform<ToolSet>>;
 	} {
-		if (this.options?.smoothStream === false) return {};
-		const { smoothStream } = loadAi();
-		return { experimental_transform: smoothStream(this.options?.smoothStream ?? {}) };
+		const transforms: Array<StreamTextTransform<ToolSet>> = [];
+		if (rawChunkTap) transforms.push(rawChunkTap);
+		if (this.options?.smoothStream !== false) {
+			const { smoothStream } = loadAi();
+			transforms.push(smoothStream(this.options?.smoothStream ?? {}));
+		}
+		return transforms.length > 0 ? { experimental_transform: transforms } : {};
+	}
+
+	private getStreamDeadlines(): { idleMs: number; firstOutputMs: number } {
+		// Clamped to MAX_MODEL_STREAM_TIMEOUT_MS: above it setTimeout fires after
+		// 1ms, turning an "effectively disable" override into instant stalls.
+		const idleMs = Math.min(
+			this.options?.modelStreamIdleTimeoutMs ?? DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS,
+			MAX_MODEL_STREAM_TIMEOUT_MS,
+		);
+		// Pre-first-output silence tolerates prompt processing (large cache-miss
+		// prompts send nothing for minutes); never let it undercut the idle limit.
+		const firstOutputMs = Math.min(
+			Math.max(
+				idleMs,
+				this.options?.modelStreamFirstOutputTimeoutMs ??
+					DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
+			),
+			MAX_MODEL_STREAM_TIMEOUT_MS,
+		);
+		return { idleMs, firstOutputMs };
 	}
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
-		const idleMs = this.options?.modelStreamIdleTimeoutMs ?? DEFAULT_MODEL_STREAM_IDLE_TIMEOUT_MS;
-		// Pre-first-output silence tolerates prompt processing (large cache-miss
-		// prompts send nothing for minutes); never let it undercut the idle limit.
-		const firstOutputMs = Math.max(
-			idleMs,
-			this.options?.modelStreamFirstOutputTimeoutMs ?? DEFAULT_MODEL_STREAM_FIRST_OUTPUT_TIMEOUT_MS,
-		);
+		const deadlines = this.getStreamDeadlines();
 		for (let attempt = 0; ; attempt++) {
-			// Opt-in: only build the reader (and request raw chunks) when the host bills
-			// stopped runs. Also requires a reader for the provider, so an unsupported
-			// provider never pays the cost even with the option on. Re-created per
-			// attempt so a retried turn starts from a clean raw capture.
-			this.rawUsageReader = this.options?.recoverUsageOnAbort
-				? createRawUsageReader(this.services.modelId)
-				: undefined;
-			// Some providers report failures (e.g. prompt safety blocks) only on the
-			// raw stream — no error, no content — so raw chunks are required to
-			// explain an otherwise silent empty response.
-			this.rawErrorReader = createRawErrorReader(this.services.modelId);
+			this.resetRawReaders();
 			// Per-attempt controller: a stall must be able to cancel this attempt's
 			// fetch (releasing the socket the 1h network timeout would otherwise
 			// hold) without touching the run-level signal.
 			const turnAbort = new AbortController();
 			const attemptState = { streamedContent: false };
 			try {
-				return await this.streamModelTurn(ctx, turnAbort, { idleMs, firstOutputMs }, attemptState);
+				return await this.streamModelTurn(ctx, turnAbort, deadlines, attemptState);
 			} catch (error) {
-				// A stall before any content is invisible to the user (and to the
-				// host's persistence) — re-issue the request instead of failing the
-				// run for what is usually a dead connection at request time. Once
-				// content has streamed, a retry would duplicate segments and orphan
-				// already-persisted tool-call facts, so the error surfaces instead.
-				// The abandoned attempt's prompt processing goes unbilled — accepted:
-				// it only has usage at all when the stream died between message_start
-				// and the first content chunk.
-				const retryable =
-					error instanceof ModelStreamStallError &&
-					attempt < MAX_MODEL_STREAM_STALL_RETRIES &&
-					!attemptState.streamedContent &&
-					!ctx.abortSignal.aborted;
-				if (!retryable) throw error;
+				if (isAttachmentValidationError(error)) {
+					if (!attemptState.streamedContent) await ctx.onInputRejected?.(error);
+					throw error;
+				}
+				if (!this.canRetryStream(error, attempt, attemptState, ctx.abortSignal)) throw error;
 			}
 		}
+	}
+
+	private resetRawReaders(): void {
+		// Each attempt needs fresh readers so a retry does not reuse captured usage.
+		this.rawUsageReader = this.options?.recoverUsageOnAbort
+			? createRawUsageReader(this.services.modelId)
+			: undefined;
+		// Some providers report a blocked prompt only in raw chunks.
+		this.rawErrorReader = createRawErrorReader(this.services.modelId);
+	}
+
+	private canRetryStream(
+		error: unknown,
+		attempt: number,
+		attemptState: { streamedContent: boolean },
+		abortSignal: AbortSignal,
+	): boolean {
+		// Retry only before content is visible or persisted. The abandoned attempt stays unbilled.
+		return (
+			(error instanceof ModelStreamStallError ||
+				loadAi().NoOutputGeneratedError.isInstance(error)) &&
+			attempt < MAX_MODEL_STREAM_STALL_RETRIES &&
+			!attemptState.streamedContent &&
+			!abortSignal.aborted
+		);
 	}
 
 	private async streamModelTurn(
@@ -176,7 +255,50 @@ export class StreamSink implements RunOutputSink<void> {
 		attemptState: { streamedContent: boolean },
 	): Promise<ModelTurnResult> {
 		const { idleMs, firstOutputMs } = deadlines;
-		const { streamText } = loadAi();
+		const { NoOutputGeneratedError, streamText } = loadAi();
+		const { result, activity } = this.startModelStream(ctx, turnAbort, idleMs, streamText);
+
+		// Use the longer deadline before the first output to allow prompt processing.
+		const chunkStream =
+			idleMs > 0
+				? withChunkIdleTimeout(
+						result.stream,
+						() => (attemptState.streamedContent ? idleMs : firstOutputMs),
+						() => turnAbort.abort(),
+						() => activity.lastAt,
+					)
+				: result.stream;
+
+		for await (const chunk of chunkStream) {
+			if (chunk.type === 'error' && isAttachmentValidationError(chunk.error)) throw chunk.error;
+			// Result promises report this error. Do not forward it or count it as content before a retry.
+			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
+			if (!this.captureStreamChunk(chunk, attemptState)) continue;
+			await this.writeStreamChunk(chunk);
+		}
+
+		return await this.resolveModelTurn(result, ctx, idleMs, turnAbort);
+	}
+
+	private startModelStream(
+		ctx: ModelCallContext,
+		turnAbort: AbortController,
+		idleMs: number,
+		streamText: ReturnType<typeof loadAi>['streamText'],
+	) {
+		// Raw chunks serve two consumers: the usage/error readers parse them, and
+		// the stall watchdog counts them as liveness — keepalive events the SDK
+		// otherwise drops (e.g. Anthropic `ping`, a gateway's empty-delta frames)
+		// are the only sign of life on a slow turn. Deliberately not gated by
+		// provider: keepalives are injected by proxies and gateways too, and a
+		// false stall is worse than the extra chunk volume. The raw-chunk tap
+		// (see buildRawChunkTap) consumes them right inside the SDK pipeline.
+		const needsRawChunks =
+			idleMs > 0 || this.rawUsageReader !== undefined || this.rawErrorReader !== undefined;
+		// Liveness bookkeeping the chunk iterator cannot see: the tap stamps this
+		// on every chunk before the raw ones are consumed, and the stall deadline
+		// re-arms while it stays fresh.
+		const activity = { lastAt: Date.now() };
 		const result = streamText({
 			model: ctx.model,
 			instructions: ctx.system,
@@ -186,85 +308,73 @@ export class StreamSink implements RunOutputSink<void> {
 			// this attempt's fetch.
 			abortSignal: AbortSignal.any([ctx.abortSignal, turnAbort.signal]),
 			...(ctx.reasoning ? { reasoning: ctx.reasoning } : {}),
-			// Surface the provider's raw message_start/message_delta events so an
-			// aborted run can recover its usage — the SDK reports none on abort.
-			...(this.rawUsageReader !== undefined || this.rawErrorReader !== undefined
-				? { include: { rawChunks: true } }
-				: {}),
+			...(needsRawChunks ? { include: { rawChunks: true } } : {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
 			...(ctx.maxOutputTokens !== undefined ? { maxOutputTokens: ctx.maxOutputTokens } : {}),
 			...ctx.aiSdkOptions,
-			...this.buildSmoothStreamTransformOptions(),
+			...this.buildTransformOptions(
+				needsRawChunks
+					? this.buildRawChunkTap(activity, {
+							usage: this.rawUsageReader,
+							error: this.rawErrorReader,
+						})
+					: undefined,
+			),
 		});
+		return { result, activity };
+	}
 
-		// A healthy streaming response emits chunks continuously (raw provider
-		// events included), so prolonged silence means the connection or provider
-		// is wedged — fail the turn instead of hanging until the network timeout.
-		// Pre-first-output silence gets the longer deadline (prompt processing on
-		// large cache-miss prompts sends nothing for minutes); once content has
-		// streamed, the tighter idle limit applies.
-		const chunkStream =
-			idleMs > 0
-				? withChunkIdleTimeout(
-						result.stream,
-						() => (attemptState.streamedContent ? idleMs : firstOutputMs),
-						() => turnAbort.abort(),
-					)
-				: result.stream;
+	private captureStreamChunk(
+		chunk: TextStreamPart<ToolSet>,
+		attemptState: { streamedContent: boolean },
+	): boolean {
+		// Capture raw chunks here when a stream does not use the tap, such as a test stream.
+		if (chunk.type === 'raw') {
+			this.rawUsageReader?.capture(chunk.rawValue);
+			this.rawErrorReader?.capture(chunk.rawValue);
+			return false;
+		}
+		if (!STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) attemptState.streamedContent = true;
+		// The runtime writes its own finish chunk after the loop completes.
+		if (chunk.type === 'finish') return false;
+		// Retain partial text so cancellation can save an unfinished response.
+		if (chunk.type === 'text-delta') this.partialText += chunk.text ?? '';
+		return true;
+	}
 
-		// Consume the stream. When the AbortSignal fires mid-stream the AI SDK
-		// cancels the underlying fetch and the async iterator throws; the error
-		// propagates to the StreamSession which closes the consumer stream.
-		for await (const chunk of chunkStream) {
-			// Anything beyond transport bookkeeping counts as content: once seen,
-			// a stalled attempt is no longer silently retryable (see callModel).
-			if (!STALL_RETRY_SAFE_CHUNK_TYPES.has(chunk.type)) attemptState.streamedContent = true;
-			// Track usage from raw provider events so an aborted turn (which never
-			// reaches the post-loop awaits) can still be billed via getTerminalFinish.
-			if (chunk.type === 'raw') {
-				this.rawUsageReader?.capture(chunk.rawValue);
-				this.rawErrorReader?.capture(chunk.rawValue);
-				continue;
-			}
-			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
-			// own consolidated `finish` after the loop completes. `start-step` /
-			// `finish-step` are passed through as LLM-iteration boundaries.
-			if (chunk.type === 'finish') continue;
-
-			// Accumulate streamed text so an abort mid-response can persist it (the
-			// turn's `newMessages` are only built below, which the abort never reaches).
-			if (chunk.type === 'text-delta') this.partialText += chunk.text ?? '';
-
-			// Provider-executed tools (e.g. native web search) skip the local
-			// execution loop that emits tool-execution lifecycle events via the
-			// event bus. Stamp them here at chunk-arrival time so live chat and the
-			// persisted timeline both show a duration. A failed call arrives as a
-			// `tool-error` part (never a `tool-result`), so close its timing there.
-			if ((chunk.type === 'tool-result' || chunk.type === 'tool-error') && chunk.providerExecuted) {
-				await this.guard.write({
-					type: 'tool-execution-end',
-					toolCallId: chunk.toolCallId,
-					toolName: chunk.toolName ?? '',
-					isError: chunk.type === 'tool-error',
-					endTime: Date.now(),
-				});
-			}
-
-			const converted = convertChunk(chunk);
-			if (converted) await this.guard.write(converted);
-
-			if (chunk.type === 'tool-call' && chunk.providerExecuted) {
-				await this.guard.write({
-					type: 'tool-execution-start',
-					toolCallId: chunk.toolCallId,
-					toolName: chunk.toolName ?? '',
-					startTime: Date.now(),
-				});
-			}
+	private async writeStreamChunk(chunk: TextStreamPart<ToolSet>): Promise<void> {
+		// Provider tools skip the local executor. Record their timing when chunks arrive.
+		if ((chunk.type === 'tool-result' || chunk.type === 'tool-error') && chunk.providerExecuted) {
+			await this.guard.write({
+				type: 'tool-execution-end',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName ?? '',
+				isError: chunk.type === 'tool-error',
+				endTime: Date.now(),
+			});
 		}
 
+		const converted = convertChunk(chunk);
+		if (converted) await this.guard.write(converted);
+
+		if (chunk.type === 'tool-call' && chunk.providerExecuted) {
+			await this.guard.write({
+				type: 'tool-execution-start',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName ?? '',
+				startTime: Date.now(),
+			});
+		}
+	}
+
+	private async resolveModelTurn(
+		result: ReturnType<StreamSink['startModelStream']>['result'],
+		ctx: ModelCallContext,
+		idleMs: number,
+		turnAbort: AbortController,
+	): Promise<ModelTurnResult> {
 		// The result promises settle as part of stream close on a healthy turn;
 		// guard them with the same stall deadline so an SDK-internal promise that
 		// never settles cannot hang the turn after the chunk loop ended.
@@ -275,7 +385,9 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await settle(result.finishReason);
 		const usage = await settle(result.usage);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const providerMetadata = await settle(result.providerMetadata);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const response = await settle(result.response);
 		const newMessages = fromAiMessages(response.messages);
 		const errorReason = classifyModelTurnError({
@@ -304,6 +416,7 @@ export class StreamSink implements RunOutputSink<void> {
 				toolName: r.toolName,
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
+				...(r.mcpServerName !== undefined ? { mcpServerName: r.mcpServerName } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });
@@ -341,7 +454,7 @@ export class StreamSink implements RunOutputSink<void> {
 		const costUsage = this.services.applyCost(emission.usage);
 		await this.guard.write({
 			type: 'finish',
-			finishReason: 'tool-calls',
+			finishReason: emission.finishReason ?? 'tool-calls',
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 		});
@@ -349,13 +462,10 @@ export class StreamSink implements RunOutputSink<void> {
 	}
 
 	async finishComplete(emission: CompleteEmission): Promise<void> {
-		const { list, options, finishReason, usage, structuredOutput } = emission;
+		const { list, finishReason, usage, structuredOutput } = emission;
 		const costUsage = this.services.applyCost(usage);
 
-		await this.services.saveToMemory(list, options);
-		await this.services.maybeGenerateTitle(list, options);
-		await this.services.cleanupRun();
-		await this.services.flushTelemetry(options);
+		await finalizeRun(this.services, emission);
 
 		await this.guard.write({
 			type: 'finish',
@@ -363,6 +473,7 @@ export class StreamSink implements RunOutputSink<void> {
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 			...(structuredOutput !== undefined && { structuredOutput }),
+			...(emission.guardrail && { guardrail: emission.guardrail }),
 		});
 		this.services.updateState({ status: 'success', messageList: list.serialize() });
 		this.services.emitAgentEnd(list.responseDelta());

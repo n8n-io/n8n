@@ -14,6 +14,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const WORKSPACE_FILE = 'pnpm-workspace.yaml';
+const ROOT_MANIFEST = 'package.json';
 
 const BUMP_ONLY = [/^pnpm-workspace\.yaml$/, /^pnpm-lock\.yaml$/, /(^|\/)package\.json$/];
 
@@ -69,6 +70,14 @@ export function nativePinsChanged(baseText, headText) {
 	return { changed: false, reason: 'no buildable dependency pin changed' };
 }
 
+export function packageManagerChanged(baseText, headText) {
+	try {
+		return JSON.parse(baseText).packageManager !== JSON.parse(headText).packageManager;
+	} catch {
+		return true;
+	}
+}
+
 function fileAt(ref, path) {
 	try {
 		return execFileSync('git', ['show', `${ref}:${path}`], { encoding: 'utf8' });
@@ -88,12 +97,25 @@ function main(argv) {
 	let reason = 'a Docker-chain file changed';
 
 	if (isBumpOnly(files)) {
-		const baseText = fileAt(base, WORKSPACE_FILE);
-		const headText = fileAt('HEAD', WORKSPACE_FILE);
-		if (baseText === null || headText === null) {
-			reason = `could not read ${WORKSPACE_FILE} on both sides of the diff`;
+		const baseManifest = fileAt(base, ROOT_MANIFEST);
+		const headManifest = fileAt('HEAD', ROOT_MANIFEST);
+		if (files.includes(ROOT_MANIFEST) && (baseManifest === null || headManifest === null)) {
+			reason = `could not read ${ROOT_MANIFEST} on both sides of the diff`;
+		} else if (
+			files.includes(ROOT_MANIFEST) &&
+			baseManifest !== null &&
+			headManifest !== null &&
+			packageManagerChanged(baseManifest, headManifest)
+		) {
+			reason = 'the package manager pin changed';
 		} else {
-			({ changed: build, reason } = nativePinsChanged(baseText, headText));
+			const baseWorkspace = fileAt(base, WORKSPACE_FILE);
+			const headWorkspace = fileAt('HEAD', WORKSPACE_FILE);
+			if (baseWorkspace === null || headWorkspace === null) {
+				reason = `could not read ${WORKSPACE_FILE} on both sides of the diff`;
+			} else {
+				({ changed: build, reason } = nativePinsChanged(baseWorkspace, headWorkspace));
+			}
 		}
 	}
 

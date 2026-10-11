@@ -88,7 +88,7 @@ describe('Confluence listSearch.getPages', () => {
 				const cql = (qs as { cql: string }).cql;
 				if (cql === 'type=page AND space = "DOCS" AND title = "plan"') return { results: [] };
 				expect(cql).toBe(
-					'type=page AND space = "DOCS" AND title ~ "plan*" ORDER BY lastmodified DESC',
+					'type=page AND space = "DOCS" AND (title ~ "plan*" OR title ~ "plan") ORDER BY lastmodified DESC',
 				);
 				return {
 					results: [
@@ -181,26 +181,114 @@ describe('Confluence listSearch.getPages', () => {
 		expect(result.paginationToken).toBe('51');
 	});
 
-	it('escapes quotes and backslashes in the CQL title filter', async () => {
+	it.each(['He said "hi" back', 'He said hi \\ back'])(
+		'skips the exact-title query for %j and searches the bare terms',
+		async (filter) => {
+			apiRequest.mockResolvedValue({ results: [] });
+
+			await getPages.call(ctx, filter);
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/rest/api/search',
+				{},
+				expect.objectContaining({
+					cql: 'type=page AND (title ~ "He said hi back*" OR title ~ "He said hi back") ORDER BY lastmodified DESC',
+				}),
+			);
+		},
+	);
+
+	it.each([
+		['plan', 'plan'],
+		['BB2-12', 'BB2 12'],
+		['BB2-', 'BB2'],
+		['2026-09 notes', '2026 09 notes'],
+		['  Release   pla ', 'Release pla'],
+		['Dev/Prod_v1.2', 'Dev Prod_v1.2'],
+		['SO_R8', 'SO_R8'],
+		['Iroha 1.0.', 'Iroha 1.0'],
+		['September 26,2022', 'September 26,2022'],
+		['a, b', 'a b'],
+		['a\u2013b', 'a b'],
+		['*plan*', 'plan'],
+		['Win*95', 'Win 95'],
+		['title:(foo', 'title foo'],
+		['Caf\u00e9', 'Caf\u00e9'],
+		['Buy OR Build', 'Buy Build'],
+		['NOT Draft', 'Draft'],
+		["Developer's Landing", "Developer's Landing"],
+		['Developer\u2019s Landing', 'Developer\u2019s Landing'],
+		["'plan'", 'plan'],
+		['\u2019plan\u2019', 'plan'],
+		['Buy or Build', 'Buy or Build'],
+	])('searches %j as title terms with and without a trailing wildcard', async (filter, terms) => {
 		apiRequest.mockResolvedValue({ results: [] });
 
-		await getPages.call(ctx, 'He said "hi" \\ back');
+		await getPages.call(ctx, filter);
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/wiki/rest/api/search',
 			{},
 			expect.objectContaining({
-				cql: 'type=page AND title = "He said \\"hi\\" \\\\ back"',
+				cql: `type=page AND (title ~ "${terms}*" OR title ~ "${terms}") ORDER BY lastmodified DESC`,
 			}),
 		);
+	});
+
+	it.each([
+		[' BB2-12 ', 'BB2-12'],
+		["Developer's Landing", "Developer's Landing"],
+	])('keeps the exact-title query on the trimmed text of %j', async (filter, title) => {
+		apiRequest.mockResolvedValue({ results: [] });
+
+		await getPages.call(ctx, filter);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/wiki/rest/api/search',
 			{},
-			expect.objectContaining({
-				cql: 'type=page AND title ~ "He said \\"hi\\" \\\\ back*" ORDER BY lastmodified DESC',
-			}),
+			expect.objectContaining({ cql: `type=page AND title = "${title}"` }),
+		);
+	});
+
+	it.each(['---', 'AND'])(
+		'lists recent pages when the filter %j has no searchable term',
+		async (filter) => {
+			apiRequest.mockResolvedValue({ results: [] });
+
+			await getPages.call(ctx, filter);
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/rest/api/search',
+				{},
+				expect.objectContaining({ cql: `type=page AND title = "${filter}"` }),
+			);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/rest/api/search',
+				{},
+				expect.objectContaining({ cql: 'type=page ORDER BY lastmodified DESC' }),
+			);
+		},
+	);
+
+	it('treats a whitespace-only filter like no filter', async () => {
+		apiRequest.mockResolvedValue({ results: [] });
+
+		await getPages.call(ctx, '   ');
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/rest/api/search',
+			{},
+			expect.objectContaining({ cql: 'type=page ORDER BY lastmodified DESC' }),
 		);
 	});
 
@@ -211,7 +299,9 @@ describe('Confluence listSearch.getPages', () => {
 			if (cql === 'type=page AND title = "Notes"') {
 				return { results: [{ content: { id: 1, title: 'Notes' } }] };
 			}
-			expect(cql).toBe('type=page AND title ~ "Notes*" ORDER BY lastmodified DESC');
+			expect(cql).toBe(
+				'type=page AND (title ~ "Notes*" OR title ~ "Notes") ORDER BY lastmodified DESC',
+			);
 			return {
 				results: [
 					{ content: { id: 2, title: 'Notes 2026' } },
@@ -235,7 +325,10 @@ describe('Confluence listSearch.getPages', () => {
 			'GET',
 			'/wiki/rest/api/search',
 			{},
-			expect.objectContaining({ start: 50 }),
+			expect.objectContaining({
+				cql: 'type=page AND (title ~ "Notes*" OR title ~ "Notes") ORDER BY lastmodified DESC',
+				start: 50,
+			}),
 		);
 	});
 

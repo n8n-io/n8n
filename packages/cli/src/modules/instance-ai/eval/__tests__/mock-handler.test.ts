@@ -521,6 +521,31 @@ describe('createLlmMockHandler', () => {
 		expect(second.body).not.toBe(first.body);
 	});
 
+	it('lets timers run before it serves a cached repeat, like a real request', async () => {
+		llmSubmits({ type: 'json', body: { records: [] } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const order: string[] = [];
+		setTimeout(() => order.push('timer'), 0);
+		await callHandler(handler).then(() => order.push('cached reply'));
+
+		// A loop of instant repeats would starve the timer that ends the run's budget.
+		expect(order).toEqual(['timer', 'cached reply']);
+	});
+
+	it('fails every request once the run is aborted, like a cancelled request', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const abort = new AbortController();
+		const handler = createLlmMockHandler({ signal: abort.signal });
+		await callHandler(handler);
+
+		abort.abort();
+
+		await expect(handler(baseRequest, baseNode)).rejects.toThrow(/cancelled/);
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
+	});
+
 	it('evicts a soft-fallback response so the next identical request regenerates', async () => {
 		// json + textBody soft-captures the spec and rejects it; the agent never
 		// resubmits, so the first response is served as a soft fallback.

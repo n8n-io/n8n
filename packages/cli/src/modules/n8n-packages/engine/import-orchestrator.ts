@@ -68,7 +68,7 @@ import type {
 import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
 import { toImportBlockedError } from './import-blocked.error';
-import { assertVariableWritesAllowed } from './import-gates';
+import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -84,6 +84,8 @@ export interface ImportOrchestrationInput {
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
 	importSource?: PackageImportSource;
+	/** Destination workflow IDs to remove, even under `merge`. */
+	explicitDeleteWorkflowIds?: string[];
 }
 
 /**
@@ -156,6 +158,10 @@ export class ImportOrchestrator {
 			hasCreations: creations.length > 0,
 			hasOverwrites: overwrites.length > 0,
 		});
+		assertDataTableWritesAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.dataTablePlan),
+		);
 
 		for (const { input, variablePlan } of plans) {
 			if (variablePlan.creations.length > 0) {
@@ -232,6 +238,7 @@ export class ImportOrchestrator {
 			subWorkflowRequirementIds: input.subWorkflowRequirements?.map(({ id }) => id),
 			projectPendingCreation: input.projectPendingCreation,
 			importSource: input.importSource,
+			explicitDeleteIds: input.explicitDeleteWorkflowIds,
 		});
 
 		// Which folders end up empty depends on which workflows survive, so this follows the plan above
@@ -254,6 +261,7 @@ export class ImportOrchestrator {
 			workflowPlan.items,
 			context.projectId,
 			contentImportTransport(input.importSource),
+			{ kind: 'user', user: context.user },
 		);
 
 		const blockingIssues = this.collectBlockingIssues({
@@ -424,6 +432,9 @@ export class ImportOrchestrator {
 			),
 			...removalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'workflow-removal-forbidden', ...failure }),
+			),
+			...removalPlan.conflicts.map(
+				(conflict): BlockingIssue => ({ type: 'workflow-removal-conflict', ...conflict }),
 			),
 			...folderRemovalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),

@@ -801,7 +801,7 @@ describe('N8nChatInput', () => {
 	});
 
 	describe('exposed methods', () => {
-		it('should expose focusInput method and focus the textarea', async () => {
+		it('should expose the textarea and focus it', async () => {
 			const wrapper = mount(N8nChatInput, {
 				props: {
 					modelValue: 'test',
@@ -817,6 +817,7 @@ describe('N8nChatInput', () => {
 
 			// Get the textarea element
 			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+			expect(wrapper.vm.getInputElement()).toBe(textarea);
 
 			// Spy on the focus method
 			const focusSpy = vi.spyOn(textarea, 'focus');

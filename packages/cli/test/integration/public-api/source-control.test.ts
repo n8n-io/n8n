@@ -1,11 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
@@ -55,7 +54,7 @@ describe('Source Control (Public API)', () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().post(pullUrl).send(validBody);
 
 			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+			expect(response.body).toEqual({ message: 'Unauthorized' });
 		});
 
 		it('should return 401 when API key is invalid', async () => {
@@ -78,14 +77,12 @@ describe('Source Control (Public API)', () => {
 			expect(response.body).toEqual({ message: 'Forbidden' });
 		});
 
-		it('should return 401 when Source Control is not licensed', async () => {
+		it('should return 403 when Source Control is not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).post(pullUrl).send(validBody);
 
-			expect(response.status).toBe(401);
-			expect(response.body).toEqual({
-				status: 'Error',
-				message: 'Source Control feature is not licensed',
-			});
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message');
+			expect(response.body.message).toContain('feat:sourceControl');
 		});
 
 		it('should return 400 when licensed but Source Control is not connected', async () => {
@@ -159,7 +156,20 @@ describe('Source Control (Public API)', () => {
 			expect(response.text).toBe('Git operation failed');
 		});
 
-		it('should return 400 as plain text when body fails PullWorkFolderRequestDto validation', async () => {
+		it('should return HTTP 415 for a request with no body and no Content-Type', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const pullSpy = vi.spyOn(Container.get(SourceControlService), 'pullWorkfolder');
+
+			const response = await testServer.publicApiAgentFor(owner).post(pullUrl);
+
+			expect(response.status).toBe(415);
+			expect(response.body).toEqual({ message: 'unsupported media type undefined' });
+			expect(pullSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return HTTP 400 for an invalid body', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
@@ -169,7 +179,10 @@ describe('Source Control (Public API)', () => {
 				.send({ autoPublish: 'not-a-valid-mode' });
 
 			expect(response.status).toBe(400);
-			expect(response.text.length).toBeGreaterThan(0);
+			expect(response.body).toEqual({
+				message:
+					"request/body/autoPublish Invalid enum value. Expected 'none' | 'all' | 'published', received 'not-a-valid-mode'",
+			});
 		});
 	});
 

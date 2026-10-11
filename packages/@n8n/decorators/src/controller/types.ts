@@ -3,6 +3,7 @@ import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type { RequestHandler, Router } from 'express';
+import type { ZodTypeAny } from 'zod';
 
 import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
 
@@ -23,7 +24,37 @@ export interface ErrorResponse {
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
-export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
+/** Multer limits for a `multipart/form-data` `@Body`. Every key matches multer's own `limits` option. */
+export interface MultipartUploadLimits {
+	fieldNameSize?: number;
+	fieldSize?: number;
+	fields?: number;
+	fileSize?: number;
+	files?: number;
+	parts?: number;
+	headerPairs?: number;
+}
+
+/**
+ * Accepted options for `@Body` media type. This is where supported media types are first
+ * registered.
+ */
+export interface RequestBodyMediaOptions {
+	'application/json': object;
+	'multipart/form-data': { uploadLimits: () => MultipartUploadLimits };
+}
+
+export type RequestBodyMediaType = keyof RequestBodyMediaOptions;
+
+/** One request-body media type, tagged with `mediaType` and carrying that type's own options. */
+export type RequestBodyMedia = {
+	[K in RequestBodyMediaType]: { mediaType: K } & RequestBodyMediaOptions[K];
+}[RequestBodyMediaType];
+
+export type Arg =
+	| { type: 'body'; required?: boolean; media?: RequestBodyMedia }
+	| { type: 'query' }
+	| { type: 'param'; key: string; schema?: ZodTypeAny };
 
 export interface CorsOptions {
 	allowedOrigins: string[];
@@ -63,6 +94,8 @@ export interface RouteMetadata {
 	/** Whether to apply keyed rate limiting to the route */
 	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
+	/** Public API only: gate the route on the instance being within its licensed users quota. */
+	requiresUserQuota?: boolean;
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;

@@ -1,22 +1,31 @@
 import type {
-	CredentialDecryptContext,
 	EnforcementPoint,
+	PolicedWorkflow,
 	PolicyCheckFailure,
 	PolicyDecision,
 	PolicyViolation,
 	PolicyVersionRef,
 } from '@n8n/decorators';
 
-import type { PolicyContext } from '@/policy/policy-enforcement-backend';
+import type { UserLike } from '@/types/user-like.types';
+import type {
+	PolicyActor,
+	PolicyContext,
+	PolicySystemReason,
+} from '@/policy/policy-enforcement-backend';
 
 /** Every context, as one union — a generic `PolicyContext<Point>` narrows against none. */
 type AnyPolicyContext = PolicyContext<EnforcementPoint>;
 
-/** The violation as the audit line records it. No `message`: free text saying what the fields say. */
-type AuditedViolation = Pick<
-	PolicyViolation,
-	'checkId' | 'kind' | 'subject' | 'subjectType' | 'scope' | 'matchedRuleId'
->;
+type OptionalAuditedKey = 'subject' | 'subjectType' | 'scope' | 'matchedRuleId';
+
+/**
+ * The violation as the audit line records it. Every key is present, `null` when the check left
+ * it out, so a SIEM can map fixed fields. No `message`: free text saying what the fields say.
+ */
+type AuditedViolation = Pick<PolicyViolation, 'checkId' | 'kind'> & {
+	[Key in OptionalAuditedKey]-?: Exclude<PolicyViolation[Key], undefined> | null;
+};
 
 /**
  * One decision-audit line.
@@ -46,26 +55,23 @@ export type PolicyDecisionAudit = {
 	/** `null` for a create, which has no id yet — read `workflowName` instead. */
 	workflowId?: string | null;
 	workflowName?: string;
-	credentialId?: string;
+	/** Same rule as `workflowId`: `null` for a create. */
+	agentId?: string | null;
+	agentName?: string;
+	/** `null` for a credential create, which has no id yet — read `credentialType` instead. */
+	credentialId?: string | null;
 	credentialType?: string;
 	consumerNodeType?: string;
 	projectId: string | null;
 };
 
-const auditedViolation = ({
-	checkId,
-	kind,
-	subject,
-	subjectType,
-	scope,
-	matchedRuleId,
-}: PolicyViolation): AuditedViolation => ({
-	checkId,
-	kind,
-	subject,
-	subjectType,
-	scope,
-	matchedRuleId,
+const auditedViolation = (violation: PolicyViolation): AuditedViolation => ({
+	checkId: violation.checkId,
+	kind: violation.kind,
+	subject: violation.subject ?? null,
+	subjectType: violation.subjectType ?? null,
+	scope: violation.scope ?? null,
+	matchedRuleId: violation.matchedRuleId ?? null,
 });
 
 /**
@@ -75,11 +81,22 @@ const auditedViolation = ({
  * than a committed row — the seal discards it for the same reason. `workflowName` is what
  * identifies a create.
  */
-const policedWorkflowId = (context: Exclude<AnyPolicyContext, CredentialDecryptContext>) =>
-	'storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id;
+const policedWorkflowId = (context: {
+	workflow: PolicedWorkflow;
+	storedWorkflow?: PolicedWorkflow | null;
+}) => ('storedWorkflow' in context ? (context.storedWorkflow?.id ?? null) : context.workflow.id);
 
 /** What was policed, read off the context. */
 function targetOf(context: AnyPolicyContext) {
+	// Same rule as a workflow save: a create has no committed id, whatever the payload claims.
+	if ('storedCredential' in context) {
+		return {
+			credentialId: context.storedCredential?.id ?? null,
+			credentialType: context.credential.type,
+			projectId: context.projectId,
+		};
+	}
+
 	if ('credentialId' in context) {
 		return {
 			credentialId: context.credentialId,
@@ -89,10 +106,33 @@ function targetOf(context: AnyPolicyContext) {
 		};
 	}
 
+	if ('credential' in context && 'targetProjectId' in context) {
+		return {
+			credentialId: context.credential.id,
+			credentialType: context.credential.type,
+			projectId: context.targetProjectId,
+		};
+	}
+
+	// A credential save or transfer returned above, so this is a credential import.
+	if ('credential' in context) {
+		return {
+			credentialId: context.credential.id,
+			credentialType: context.credential.type,
+			projectId: context.projectId,
+		};
+	}
+
+	const projectId = 'targetProjectId' in context ? context.targetProjectId : context.projectId;
+
+	if (context.workflow.artifactKind === 'agent') {
+		return { agentId: policedWorkflowId(context), agentName: context.workflow.name, projectId };
+	}
+
 	return {
 		workflowId: policedWorkflowId(context),
 		workflowName: context.workflow.name,
-		projectId: 'targetProjectId' in context ? context.targetProjectId : context.projectId,
+		projectId,
 	};
 }
 
@@ -126,5 +166,24 @@ export function decisionAudit({
 			correlationIds: failures.map((failure) => failure.correlationId),
 		}),
 		...targetOf(context),
+	};
+}
+
+/**
+ * The actor as the log streaming event records it. `user` is always the accountable human, or
+ * `null` when there is none, and stays a field of its own so the relay can redact it.
+ */
+export type AuditedActor =
+	| { actorType: 'user'; user: UserLike }
+	| { actorType: 'system'; user: null; systemReason: PolicySystemReason; executionId?: string };
+
+export function auditedActor(actor: PolicyActor): AuditedActor {
+	if (actor.kind === 'user') return { actorType: 'user', user: actor.user };
+
+	return {
+		actorType: 'system',
+		user: null,
+		systemReason: actor.reason,
+		...(actor.executionId !== undefined && { executionId: actor.executionId }),
 	};
 }

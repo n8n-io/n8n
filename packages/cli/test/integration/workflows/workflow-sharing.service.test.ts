@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 import { createUser } from '../shared/db/users';
 

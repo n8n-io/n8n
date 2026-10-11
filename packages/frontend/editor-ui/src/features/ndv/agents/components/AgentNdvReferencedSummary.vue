@@ -44,6 +44,7 @@ const agentRecord = computed(() => referenced?.agent.value ?? null);
 const appliedSkills = computed(() => referenced?.appliedSkills.value ?? []);
 const loading = computed(() => referenced?.loading.value ?? false);
 const isUnavailable = computed(() => referenced?.isUnavailable.value ?? false);
+const agentsDisabled = computed(() => referenced?.agentsDisabled.value ?? false);
 
 const parsedModel = computed(() => {
 	const model = config.value?.model;
@@ -98,7 +99,7 @@ const chips = computed(() => {
 watch(
 	projectId,
 	(id) => {
-		if (!id) return;
+		if (!id || agentsDisabled.value) return;
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },
@@ -117,9 +118,19 @@ async function onEditInBuilder() {
 		:class="$style.summary"
 		data-test-id="agent-ndv-referenced-summary"
 	>
+		<N8nText
+			v-if="agentsDisabled"
+			:class="$style.unavailable"
+			color="danger"
+			size="small"
+			data-test-id="agent-ndv-agents-disabled"
+		>
+			{{ i18n.baseText('agentNode.agentsDisabled') }}
+		</N8nText>
+
 		<!-- Terminal state: the referenced agent was deleted or access was lost. -->
 		<N8nText
-			v-if="isUnavailable"
+			v-else-if="isUnavailable"
 			:class="$style.unavailable"
 			color="danger"
 			size="small"
@@ -183,7 +194,7 @@ async function onEditInBuilder() {
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 .header {
 	display: flex;
@@ -231,7 +242,7 @@ async function onEditInBuilder() {
 		transparent 100%
 	);
 
-	@include ds-mixins.scroll-bar;
+	@include scrollbar-mixins.scroll-bar;
 }
 
 .unavailable {

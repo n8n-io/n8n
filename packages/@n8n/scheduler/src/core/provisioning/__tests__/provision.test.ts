@@ -1,3 +1,4 @@
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
 import { provision, deprovision } from '../provision';
@@ -7,7 +8,7 @@ import type {
 	RunInProvisionTransaction,
 	RunInDeprovisionTransaction,
 } from '../transaction';
-import type { DesiredJob, ExistingJob, ScheduleDefinition } from '../types';
+import type { DesiredJob, ExistingJob, ScheduleDefinition, StoredJobs } from '../types';
 
 const cronSchedule = (cronExpression: string): ScheduleDefinition => ({
 	kind: 'cron',
@@ -41,6 +42,7 @@ describe('provision', () => {
 		const tx = mock<ProvisionTransaction>();
 		tx.findExisting.mockResolvedValue(existing);
 		tx.insert.mockResolvedValue([]);
+		tx.readJobs.mockResolvedValue({ now: new Date(), jobs: [] });
 		return tx;
 	};
 
@@ -134,6 +136,106 @@ describe('provision', () => {
 			unchanged: [],
 			removed: [{ id: 10, name: 'wf:node:0' }],
 		});
+	});
+});
+
+describe('provision seeding first occurrences', () => {
+	const NOW = new Date('2026-01-05T08:00:00.000Z');
+
+	const storedJob = (id: number, overrides: Partial<StoredJobs['jobs'][number]> = {}) => ({
+		id,
+		taskType: 'test',
+		payload: {},
+		kind: 'interval' as const,
+		cronExpression: null,
+		timezone: null,
+		intervalSeconds: 10,
+		fireAt: null,
+		recurrenceUnit: null,
+		recurrenceSize: null,
+		nextRunAt: new Date(NOW.getTime() + 10_000),
+		lastFiredAt: null,
+		maxAttempts: 1,
+		concurrencyLimit: null,
+		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+		misfireGraceSeconds: 60,
+		ownerKey: 'owner-a',
+		enabled: true,
+		...overrides,
+	});
+
+	const seedingTx = (
+		existing: ExistingJob[],
+		insertedIds: number[],
+		stored: StoredJobs['jobs'],
+	) => {
+		const tx = mock<ProvisionTransaction>();
+		tx.findExisting.mockResolvedValue(existing);
+		tx.insert.mockResolvedValue(insertedIds);
+		tx.readJobs.mockResolvedValue({ now: NOW, jobs: stored });
+		tx.recordOccurrences.mockImplementation(async (rows) => ({
+			recorded: rows.length,
+			created: [],
+		}));
+		tx.retireSuperseded.mockResolvedValue(0);
+		return tx;
+	};
+
+	it('records the first window of inserted and redefined jobs and advances their clock', async () => {
+		const tx = seedingTx(
+			[existingJob(10, 'wf:node:0', '0 0 9 * * *')],
+			[100],
+			[storedJob(100), storedJob(10)],
+		);
+
+		await provision(runnerWith(tx), [
+			desiredJob('wf:node:0', '0 0 18 * * *'),
+			desiredJob('wf:node:1', '0 0 9 * * *'),
+		]);
+
+		expect(tx.readJobs).toHaveBeenCalledWith([100, 10]);
+		const recordedJobIds = tx.recordOccurrences.mock.calls[0][0].map((row) => row.jobId);
+		expect(new Set(recordedJobIds)).toEqual(new Set([100, 10]));
+		const advanced = tx.advanceJobs.mock.calls[0][0];
+		expect(advanced.map(({ job }) => job.id)).toEqual([100, 10]);
+		for (const { plan } of advanced) {
+			expect(plan.nextRunAt!.getTime()).toBeGreaterThan(NOW.getTime());
+		}
+	});
+
+	it('skips a disabled job and a job with no clock', async () => {
+		const tx = seedingTx(
+			[],
+			[100, 101],
+			[storedJob(100, { enabled: false }), storedJob(101, { nextRunAt: null })],
+		);
+
+		await provision(runnerWith(tx), [
+			desiredJob('wf:node:0', '0 0 9 * * *'),
+			desiredJob('wf:node:1', '0 0 9 * * *'),
+		]);
+
+		expect(tx.readJobs).toHaveBeenCalledWith([100, 101]);
+		expect(tx.recordOccurrences).not.toHaveBeenCalled();
+		expect(tx.advanceJobs).not.toHaveBeenCalled();
+	});
+
+	it("withdraws a redefined job's stale tasks before it seeds new ones", async () => {
+		const tx = seedingTx([existingJob(10, 'wf:node:0', '0 0 9 * * *')], [], [storedJob(10)]);
+
+		await provision(runnerWith(tx), [desiredJob('wf:node:0', '0 0 18 * * *')]);
+
+		expect(tx.withdrawPendingTasks.mock.invocationCallOrder[0]).toBeLessThan(
+			tx.recordOccurrences.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('reads no jobs back when nothing was inserted or redefined', async () => {
+		const tx = seedingTx([existingJob(10, 'wf:node:0', '0 0 9 * * *')], [], []);
+
+		await provision(runnerWith(tx), [desiredJob('wf:node:0', '0 0 9 * * *')]);
+
+		expect(tx.readJobs).not.toHaveBeenCalled();
 	});
 });
 

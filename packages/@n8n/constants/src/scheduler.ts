@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 /**
  * The durable scheduler's shared vocabulary: schedule definitions, recurrence
  * kinds, misfire handling and the task lifecycle.

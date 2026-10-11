@@ -188,6 +188,121 @@ n8n-cli user list
 n8n-cli user get <id>
 ```
 
+## Promotions
+
+Move projects between instances through a Git repository. A **provider** holds
+the credentials, a **connection** names the repository, and a **configuration**
+sets up one direction on it: `promote` pushes to Git, `apply` imports from Git.
+
+```bash
+# 1. Create a provider. An SSH provider returns a public key to add as a deploy key.
+#    The response carries the provider fields at the top level, so `.id` and
+#    `.publicKey` both work with --jq and --format=id-only.
+echo '{"name":"GitHub","type":"git","auth":{"authType":"ssh-key","keyType":"ed25519"}}' \
+  | n8n-cli promotion-provider create --stdin --json > provider.json
+jq -r '.id' provider.json          # use as providerId in step 2
+jq -r '.publicKey' provider.json   # add to the repository as a deploy key
+
+# 2. Create a connection on that provider, with the directions you need.
+#    Leave out "configs" to configure no direction yet.
+n8n-cli promotion-connection create --file=connection.json
+
+# 3. Clone each direction before you use it.
+n8n-cli promotion-connection clone <id> promote
+n8n-cli promotion-connection clone <id> apply
+
+# 4. Promote from this instance, or apply to it.
+n8n-cli promotion-connection promote <id> -m "Promote team projects"
+n8n-cli promotion-connection apply <id>
+```
+
+Apply a reviewed commit only:
+
+```bash
+# Review the changes. Take the commit SHA from the same response as the rows:
+# a second request can read a newer commit.
+n8n-cli promotion-connection list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
+jq '{commitSha, changes}' reviewed-changes.json
+# The config ID and branch come from the connection.
+n8n-cli promotion-connection get <id> --jq '.configs.apply.id'
+n8n-cli promotion-connection get <id> --jq '.configs.apply.settings.branchName'
+
+n8n-cli promotion-connection apply <id> \
+  --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Exit 3: the source changed since the review. Review again.
+# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
+# then run the apply-continue command that apply printed:
+n8n-cli promotion-connection apply-continue <id> \
+  --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+```
+
+Connection JSON for step 2:
+
+```json
+{
+  "name": "Production",
+  "scope": "instance",
+  "providerId": "prov-1",
+  "target": { "schemaVersion": 1, "remoteUrl": "git@github.com:acme/flows.git" },
+  "configs": {
+    "promote": {
+      "settings": {
+        "schemaVersion": 1,
+        "baseBranchName": "main",
+        "createBranchOnPromotion": false
+      }
+    },
+    "apply": { "settings": { "schemaVersion": 1, "branchName": "main" } }
+  }
+}
+```
+
+```bash
+# Providers
+n8n-cli promotion-provider list
+n8n-cli promotion-provider get <id>          # re-read the public key; the list omits it
+echo '{"name":"New name"}' | n8n-cli promotion-provider update <id> --stdin
+n8n-cli promotion-provider delete <id>       # fails while a connection uses it
+
+# Connections
+n8n-cli promotion-connection list --scope=instance
+n8n-cli promotion-connection list --provider=<providerId>
+n8n-cli promotion-connection get <id>
+echo '{"name":"New name"}' | n8n-cli promotion-connection update <id> --stdin
+n8n-cli promotion-connection delete <id>
+
+# Change one direction. The write replaces the whole configuration,
+# so send every setting you want to keep.
+echo '{"settings":{"schemaVersion":1,"branchName":"main"}}' \
+  | n8n-cli promotion-connection set-config <id> apply --stdin
+echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":false}}' \
+  | n8n-cli promotion-connection set-config <id> promote --stdin
+n8n-cli promotion-connection delete-config <id> apply
+n8n-cli promotion-connection disconnect <id> promote
+
+# Link projects to a "projects"-scoped connection
+n8n-cli promotion-connection list-projects <id>
+n8n-cli promotion-connection add-project <id> <projectId>
+n8n-cli promotion-connection remove-project <id> <projectId>
+```
+
+Key points:
+- Pass every JSON body through `--stdin` or `--file`, never through a flag. This
+  keeps credentials off the command line.
+- `authType` is `ssh-key` or `token`. `token` means an HTTP(S) username and
+  password, not a Git host API token. `publicKey` is `null` for a `token` provider.
+- `createBranchOnPromotion` is always required in a promote configuration.
+- `promote` and `apply` work on the `instance` connection only, and need their
+  direction cloned first. Cloning one direction does not make the other ready.
+- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
+  or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
+  read `counts`. With `--json`, a `blocked` result lists what is missing under
+  `preflight`.
+- The `--expected-*` flags go together: pass all three or none. The commit SHA
+  must be the full SHA.
+- API key scopes for this group are named `gitConnection:*`. `promote` also needs
+  `variable:list` when the workflows reference variables.
+
 ## Other
 
 ```bash

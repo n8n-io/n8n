@@ -1,4 +1,3 @@
-import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig, type AgentSkill } from '@n8n/api-types';
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import {
@@ -35,13 +34,7 @@ export class AgentHistory extends WithTimestamps {
 	schema: AgentJsonConfig | null;
 
 	@JsonColumn({ nullable: true, default: null })
-	tools: Record<
-		string,
-		{
-			code: string;
-			descriptor: ToolDescriptor;
-		}
-	> | null;
+	tools: Agent['tools'] | null;
 
 	@JsonColumn({ nullable: true, default: null })
 	skills: Record<string, AgentSkill> | null;

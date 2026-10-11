@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
@@ -9,7 +10,6 @@ import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
 import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
@@ -22,7 +22,7 @@ import {
 	type TaskRunnerLifecycleEventMap,
 } from '@/task-runners/task-runner-lifecycle-events';
 
-import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
+import { TaskBroker, type TaskRunner } from './task-broker.service';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -188,7 +188,7 @@ export class TaskBrokerWsServer {
 								lastSeen: new Date(),
 								name: message.name,
 							},
-							this.sendMessage.bind(this, id) as MessageCallback,
+							this.sendMessage.bind(this, id),
 							() => this.isRunnerReachable(id, connection),
 						);
 
@@ -214,9 +214,7 @@ export class TaskBrokerWsServer {
 		});
 
 		connection.on('message', onMessage);
-		connection.send(
-			JSON.stringify({ type: 'broker:inforequest' } as BrokerMessage.ToRunner.InfoRequest),
-		);
+		connection.send(JSON.stringify({ type: 'broker:inforequest' }));
 	}
 
 	async removeConnection(

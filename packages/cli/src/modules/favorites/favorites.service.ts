@@ -11,8 +11,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 import type {

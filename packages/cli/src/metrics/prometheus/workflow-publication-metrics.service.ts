@@ -5,8 +5,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, EventService } from '@n8n/backend-services';
 
 import type { PrometheusMetricsCollector } from './base';
 import { CachedMetricQuery } from './cached-metric-query';

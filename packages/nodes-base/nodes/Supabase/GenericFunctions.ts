@@ -1,17 +1,163 @@
 import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, UserError } from 'n8n-workflow';
+import { NodeApiError, toPathSegment, UserError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
+
+type SupabaseCredentials = {
+	host: string;
+	serviceRole: string;
+};
+
+export type SupabaseProject = {
+	name: string;
+	ref: string;
+};
+
+type SupabaseProjectApiKey = {
+	api_key?: string;
+	name?: string;
+	type?: string;
+};
+
+const N8N_SECRET_KEY_NAME = 'n8n_managed_data_api';
+
+function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions) {
+	const authentication = context.getNodeParameter('authentication', 0) as string;
+	return authentication === 'oAuth2' ? 'supabaseOAuth2Api' : 'supabaseApi';
+}
+
+function getProjectRef(context: IExecuteFunctions | ILoadOptionsFunctions, itemIndex = 0) {
+	const project = context.getNodeParameter('projectRef', itemIndex);
+	if (typeof project !== 'string' || !project) throw new UserError('Select a Supabase project');
+	if (!/^[a-z0-9]+$/.test(project)) throw new UserError('The Supabase project ID is invalid');
+
+	return project;
+}
+
+async function supabaseManagementApiRequest<T>(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	resource: string,
+	qs: IDataObject = {},
+	method: IHttpRequestMethods = 'GET',
+	body: IDataObject = {},
+) {
+	try {
+		const options: IHttpRequestOptions = {
+			method,
+			url: `https://api.supabase.com/v1${resource}`,
+			qs,
+			body,
+			json: true,
+		};
+		if (Object.keys(body).length === 0) delete options.body;
+
+		return (await context.helpers.httpRequestWithAuthentication.call(
+			context,
+			'supabaseOAuth2Api',
+			options,
+		)) as T;
+	} catch (error) {
+		throw new NodeApiError(context.getNode(), error as JsonObject);
+	}
+}
+
+export async function getSupabaseProjects(this: ILoadOptionsFunctions) {
+	return await supabaseManagementApiRequest<SupabaseProject[]>(this, '/projects');
+}
+
+const projectSecretKeyCache = new Map<string, Promise<string>>();
+
+function getOAuthCredentialId(context: IExecuteFunctions | ILoadOptionsFunctions) {
+	const credentialId = context.getNode().credentials?.supabaseOAuth2Api?.id;
+	return typeof credentialId === 'string' ? credentialId : undefined;
+}
+
+function getProjectSecretKeyCacheKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+) {
+	const credentialId = getOAuthCredentialId(context);
+	return credentialId ? `${credentialId}:${projectRef}` : undefined;
+}
+
+async function resolveProjectSecretKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+) {
+	const keys = await supabaseManagementApiRequest<SupabaseProjectApiKey[]>(
+		context,
+		`/projects/${toPathSegment(projectRef)}/api-keys`,
+		{ reveal: true },
+	);
+	const secretKey = keys.find(
+		(key) => key.type === 'secret' && key.name === N8N_SECRET_KEY_NAME && key.api_key,
+	);
+
+	if (secretKey?.api_key) return secretKey.api_key;
+
+	const createdKey = await supabaseManagementApiRequest<SupabaseProjectApiKey>(
+		context,
+		`/projects/${toPathSegment(projectRef)}/api-keys`,
+		{ reveal: true },
+		'POST',
+		{
+			type: 'secret',
+			name: N8N_SECRET_KEY_NAME,
+			description:
+				"The n8n Supabase Node uses this key to access the Data API. Don't delete it if you want the node to keep working.",
+		},
+	);
+
+	if (!createdKey.api_key) {
+		throw new UserError(
+			'Supabase did not return the new secret key. Give the OAuth app Secrets Read and Write access, then reconnect the credential.',
+		);
+	}
+
+	return createdKey.api_key;
+}
+
+async function getProjectSecretKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+) {
+	const cacheKey = getProjectSecretKeyCacheKey(context, projectRef);
+	if (!cacheKey) return await resolveProjectSecretKey(context, projectRef);
+
+	const cached = projectSecretKeyCache.get(cacheKey);
+	if (cached) return await cached;
+
+	const request = resolveProjectSecretKey(context, projectRef);
+	projectSecretKeyCache.set(cacheKey, request);
+	try {
+		return await request;
+	} catch (error) {
+		if (projectSecretKeyCache.get(cacheKey) === request) projectSecretKeyCache.delete(cacheKey);
+		throw error;
+	}
+}
+
+async function invalidateProjectSecretKey(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	projectRef: string,
+	projectKey: string,
+) {
+	const cacheKey = getProjectSecretKeyCacheKey(context, projectRef);
+	if (!cacheKey) return;
+
+	const cached = projectSecretKeyCache.get(cacheKey);
+	if (cached && (await cached) === projectKey && projectSecretKeyCache.get(cacheKey) === cached) {
+		projectSecretKeyCache.delete(cacheKey);
+	}
+}
 
 export function getSchemaHeader(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -56,20 +202,36 @@ export async function supabaseApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	itemIndex = 0,
 ) {
-	const credentials = await this.getCredentials<{
-		host: string;
-		serviceRole: string;
-	}>('supabaseApi');
+	const credentialType = getCredentialType(this);
+	let host: string;
+	let projectKey: string | undefined;
+	let projectRef: string | undefined;
 
-	const options: IRequestOptions = {
+	if (credentialType === 'supabaseOAuth2Api') {
+		projectRef = getProjectRef(this, itemIndex);
+		host = `https://${projectRef}.supabase.co`;
+		projectKey = await getProjectSecretKey(this, projectRef);
+	} else {
+		const credentials = await this.getCredentials<SupabaseCredentials>(credentialType);
+		host = credentials.host;
+	}
+
+	const options: IHttpRequestOptions = {
 		headers: {
 			Prefer: 'return=representation',
+			...(projectKey
+				? {
+						apikey: projectKey,
+						Authorization: `Bearer ${projectKey}`,
+					}
+				: {}),
 		},
 		method,
 		qs,
 		body,
-		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
+		url: uri ?? `${host.replace(/\/$/, '')}/rest/v1${resource}`,
 		json: true,
 	};
 
@@ -78,7 +240,23 @@ export async function supabaseApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
+		if (credentialType === 'supabaseOAuth2Api') {
+			try {
+				return await this.helpers.httpRequest(options);
+			} catch (error) {
+				if (error.response?.status !== 401 || !projectRef || !projectKey) throw error;
+
+				await invalidateProjectSecretKey(this, projectRef, projectKey);
+				projectKey = await getProjectSecretKey(this, projectRef);
+				options.headers = {
+					...options.headers,
+					apikey: projectKey,
+					Authorization: `Bearer ${projectKey}`,
+				};
+				return await this.helpers.httpRequest(options);
+			}
+		}
+		return await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		if (error.description) {
 			error.message = `${error.message}: ${error.description}`;
@@ -104,13 +282,17 @@ const apiDefinitionsInFlight = new Map<string, Promise<SupabaseApiDefinition>>()
 export async function getApiDefinition(
 	this: ILoadOptionsFunctions,
 ): Promise<SupabaseApiDefinition> {
-	const { host, serviceRole } = await this.getCredentials<{
-		host: string;
-		serviceRole: string;
-	}>('supabaseApi');
+	const credentialType = getCredentialType(this);
 	const header = getSchemaHeader(this, 'GET', 'loadOptions');
+	let credentialIdentity: unknown;
+	if (credentialType === 'supabaseOAuth2Api') {
+		credentialIdentity = [getOAuthCredentialId(this), getProjectRef(this)];
+	} else {
+		const { host, serviceRole } = await this.getCredentials<SupabaseCredentials>(credentialType);
+		credentialIdentity = [host, serviceRole];
+	}
 	const key = createHash('sha256')
-		.update(JSON.stringify([host, serviceRole, header]))
+		.update(JSON.stringify([credentialType, credentialIdentity, header]))
 		.digest('hex');
 
 	const inFlight = apiDefinitionsInFlight.get(key);
@@ -341,6 +523,39 @@ export function getFilters(
 			},
 			default: '',
 			placeholder: 'name=eq.jhon',
+			hint: 'Use $1, $2, etc. and the parameters below to reference dynamic values, rather than building this string with an expression, to avoid PostgREST filter injection',
+		},
+		{
+			displayName: 'Filters (String) Parameters',
+			name: 'filterStringParameters',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: true,
+			},
+			displayOptions: {
+				show: {
+					resource: resources,
+					operation: operations,
+					filterType: ['string'],
+				},
+			},
+			default: {},
+			placeholder: 'Add Parameter',
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						{
+							displayName: 'Value',
+							name: 'value',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+			description: 'Values to substitute for $1, $2, etc. in the filter string above.',
 		},
 	];
 }
@@ -402,27 +617,35 @@ export const buildOrQuery = (value: IDataObject) =>
 export const buildGetQuery = (query: Map<string, string>, value: IDataObject) =>
 	query.set(quotePostgrestComponent(value.keyName), `eq.${String(value.keyValue)}`);
 
-export async function validateCredentials(
-	this: ICredentialTestFunctions,
-	decryptedCredentials: ICredentialDataDecryptedObject,
-): Promise<any> {
-	const credentials = decryptedCredentials;
+export function applyFilterStringParameters(filterString: string, parameters: IDataObject[]) {
+	if (parameters.length === 0) return filterString;
 
-	const { serviceRole } = credentials as {
-		serviceRole: string;
-	};
+	return filterString.replace(/\$(\d+)/g, (_match, index: string) => {
+		const position = Number(index) - 1;
+		if (position < 0 || position >= parameters.length) {
+			throw new UserError(
+				`Filters (String) references parameter $${index}, but only ${parameters.length} parameter(s) were provided`,
+			);
+		}
 
-	const options: IRequestOptions = {
-		headers: {
-			apikey: serviceRole,
-			Authorization: 'Bearer ' + serviceRole,
-		},
-		method: 'GET',
-		uri: `${credentials.host}/rest/v1/`,
-		json: true,
-	};
+		return encodeURIComponent(quotePostgrestComponent(parameters[position].value));
+	});
+}
 
-	return await this.helpers.request(options);
+export function appendFilterStringToEndpoint(
+	context: IExecuteFunctions,
+	endpoint: string,
+	itemIndex: number,
+) {
+	const filterString = context.getNodeParameter('filterString', itemIndex) as string;
+	const filterStringParameters = context.getNodeParameter(
+		'filterStringParameters.values',
+		itemIndex,
+		[],
+	) as IDataObject[];
+
+	const encodedTemplate = encodeURI(filterString);
+	return `${endpoint}?${applyFilterStringParameters(encodedTemplate, filterStringParameters)}`;
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

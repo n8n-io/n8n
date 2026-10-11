@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowsConfig } from '@n8n/config';
 import type {
 	WorkflowEntity,
@@ -16,7 +17,6 @@ import type {
 	Tracing,
 } from 'n8n-core';
 
-import type { EventService } from '@/events/event.service';
 import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
 import type { PublishedWorkflowTriggerDeactivator } from '../published-workflow-trigger-deactivator';

@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -148,7 +149,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 			if (isFormDataInstance(requestObject.formData)) {
 				axiosConfig.data = requestObject.formData;
 			} else {
-				axiosConfig.data = createFormDataObject(requestObject.formData as Record<string, unknown>);
+				axiosConfig.data = createFormDataObject(requestObject.formData);
 			}
 			// Mix in headers as FormData creates the boundary.
 
@@ -180,7 +181,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 		axiosConfig.method = requestObject.method;
 	}
 
-	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
+	if (requestObject.qs !== undefined && Object.keys(requestObject.qs).length > 0) {
 		axiosConfig.params = requestObject.qs;
 	}
 

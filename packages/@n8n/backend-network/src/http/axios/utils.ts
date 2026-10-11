@@ -260,7 +260,7 @@ export function isFormDataInstance(data: unknown): data is FormData {
 		(typeof data === 'object' &&
 			data !== null &&
 			'getHeaders' in data &&
-			typeof (data as { getHeaders: unknown }).getHeaders === 'function' &&
+			typeof data.getHeaders === 'function' &&
 			'append' in data &&
 			typeof (data as { append: unknown }).append === 'function')
 	);
@@ -441,11 +441,13 @@ export async function validateProxySsrf(
  * pre-flight SSRF check and the dispatched request can never read different
  * fields.
  */
+// oxlint-disable-next-line typescript/no-deprecated
 export function resolveLegacyRequestTarget(requestObject: IRequestOptions): string | undefined {
 	return (requestObject.url ?? requestObject.uri)?.toString();
 }
 
 /** Resolves the absolute target of a legacy request object, honouring `baseURL`. */
+// oxlint-disable-next-line typescript/no-deprecated
 export function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
 	const rawUrl = resolveLegacyRequestTarget(requestObject);
 	const baseURL = requestObject.baseURL?.toString();

@@ -6,15 +6,27 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJobService, BackgroundJobView } from '../agent-background-job.service';
+import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import { EXECUTION_METADATA_KEY } from '../../types/agent-queued-message';
 import {
 	createCancelBackgroundJobTool,
 	createCheckBackgroundJobsTool,
+	createResumeBackgroundJobsTool,
 	createSpawnBackgroundSubAgentTool,
 	type BackgroundJobToolsOptions,
 } from '../background-job-tools';
 import type { SubAgentBackgroundRunner } from '../sub-agent-background-runner';
+import {
+	BACKGROUND_PAUSE_USER_TURN_KEY,
+	PARENT_TASK_CANCELLED_REASON,
+} from '../sub-agent-background-state';
 
-const persistence = { threadId: 'thread-1', resourceId: 'resource-1' };
+const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+const persistence = {
+	threadId: 'thread-1',
+	resourceId: 'resource-1',
+	hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-1', principalHash }),
+};
 
 function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView {
 	return {
@@ -27,6 +39,8 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
+		notifiedAt: null,
+		pauseRequestId: null,
 		childExecutionId: null,
 		...overrides,
 	};
@@ -48,6 +62,25 @@ function setup() {
 }
 
 describe('spawn_background_subagent', () => {
+	it.each([true, false])(
+		'handles a Stop during registration without treating disconnects as cancellation (%s)',
+		async (stop) => {
+			const { backgroundRunner, jobService, options } = setup();
+			const controller = new AbortController();
+			backgroundRunner.spawn.mockImplementation(async () => {
+				controller.abort(stop ? PARENT_TASK_CANCELLED_REASON : new Error('Connection closed'));
+				return { status: 'started', jobId: 'job-1' };
+			});
+			const tool = createSpawnBackgroundSubAgentTool(options);
+			await tool.handler!(
+				{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+				{ persistence, abortSignal: controller.signal },
+			);
+			if (stop) expect(jobService.cancel).toHaveBeenCalledWith('thread-1', 'job-1');
+			else expect(jobService.cancel).not.toHaveBeenCalled();
+		},
+	);
+
 	it('reads the parent thread from ctx.persistence at call time', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
@@ -63,6 +96,32 @@ describe('spawn_background_subagent', () => {
 			parentThreadId: 'thread-1',
 			parentResourceId: 'resource-1',
 		});
+	});
+
+	it('rejects background jobs in task sessions', async () => {
+		const { backgroundRunner, options } = setup();
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence: { ...persistence, resourceId: 'task:task-1' } },
+		);
+
+		expect(output).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
+	});
+
+	it('rejects when the thread carries no host metadata', async () => {
+		const { backgroundRunner, options } = setup();
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(output).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
 	});
 
 	it('rejects when no persisted thread is active', async () => {
@@ -113,11 +172,10 @@ describe('spawn_background_subagent', () => {
 		});
 	});
 
-	it('forwards the sandbox principal only when the host scope matches the project', async () => {
+	it('forwards the sandbox principal when the host scope matches the project', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createSpawnBackgroundSubAgentTool(options);
-		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 		const input = { subAgentId: 'sub-1', taskName: 'research', goal: 'find things' };
 
 		await tool.handler!(input, {
@@ -130,15 +188,14 @@ describe('spawn_background_subagent', () => {
 			parentSandboxPrincipalHash: principalHash,
 		});
 
-		await tool.handler!(input, {
+		const rejected = await tool.handler!(input, {
 			persistence: {
 				...persistence,
 				hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-other', principalHash }),
 			},
 		});
-		expect(backgroundRunner.spawn.mock.calls[1][0]).not.toHaveProperty(
-			'parentSandboxPrincipalHash',
-		);
+		expect(rejected).toMatchObject({ status: 'rejected' });
+		expect(backgroundRunner.spawn).toHaveBeenCalledTimes(1);
 	});
 
 	it('spawns a copy of the parent for inline self-delegation, with its difficulty', async () => {
@@ -221,6 +278,20 @@ describe('check_background_jobs', () => {
 		});
 	});
 
+	it('marks only the returned settled jobs as delivered', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView(),
+			jobView({ id: 'job-2', status: 'completed', settledAt: new Date() }),
+			jobView({ id: 'job-3', status: 'failed', settledAt: new Date() }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		await tool.handler!({}, { persistence });
+
+		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-2', 'job-3']);
+	});
+
 	it('truncates oversized results in the echo', async () => {
 		const { jobService, options } = setup();
 		jobService.listForThread.mockResolvedValue([
@@ -259,6 +330,84 @@ describe('check_background_jobs', () => {
 
 		expect(output).toMatchObject({ jobs: [], note: expect.stringContaining('No persisted') });
 		expect(jobService.listForThread).not.toHaveBeenCalled();
+	});
+});
+
+describe('resume_background_jobs', () => {
+	it('requires a user turn, rejects early continuation, and reports each admitted resume', async () => {
+		const { options, jobService, backgroundRunner } = setup();
+		const tool = createResumeBackgroundJobsTool(options);
+		expect(await tool.handler!({}, { persistence })).toMatchObject({ status: 'unavailable' });
+		expect(jobService.preparePausedResume).not.toHaveBeenCalled();
+		const userPersistence = {
+			...persistence,
+			hostMetadata: {
+				...persistence.hostMetadata,
+				[BACKGROUND_PAUSE_USER_TURN_KEY]: true,
+				[EXECUTION_METADATA_KEY]: 'execution-1',
+			},
+		};
+		for (const status of ['stopping', 'limit-reached', 'expired'] as const) {
+			jobService.preparePausedResume.mockResolvedValue({ status, jobs: [] });
+			expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({ status });
+		}
+		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
+		expect(jobService.releaseResumeReservations).not.toHaveBeenCalled();
+		const jobs = [
+			mock<AgentBackgroundJob>({ id: 'job-1' }),
+			mock<AgentBackgroundJob>({ id: 'job-2' }),
+		];
+		const timeoutAt = new Date(Date.now() + 60_000);
+		const workflowsToRestart = [
+			{
+				jobId: 'workflow-job',
+				title: 'Send request',
+				workflowId: 'workflow-1',
+				previousExecutionId: 'execution-1',
+			},
+		];
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs,
+			timeoutAt,
+			workflowsToRestart,
+		});
+		backgroundRunner.resumePaused
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('checkpoint has expired'));
+		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
+			status: 'resumed',
+			jobs: [
+				{ jobId: 'job-1', status: 'resumed' },
+				{
+					jobId: 'job-2',
+					status: 'failed',
+					error: expect.stringContaining('checkpoint has expired'),
+				},
+			],
+			workflowsToRestart,
+		});
+		expect(jobService.preparePausedResume).toHaveBeenLastCalledWith(
+			'agent-1',
+			'thread-1',
+			'resource-1',
+			'execution-1',
+		);
+		expect(backgroundRunner.resumePaused).toHaveBeenCalledTimes(2);
+		expect(jobService.releaseResumeReservations).toHaveBeenCalledWith(jobs, timeoutAt);
+		backgroundRunner.resumePaused.mockClear();
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs: [],
+			timeoutAt,
+			workflowsToRestart,
+		});
+		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
+			status: 'ready',
+			jobs: [],
+			workflowsToRestart,
+		});
+		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
 	});
 });
 

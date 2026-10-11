@@ -1,4 +1,4 @@
-import { findSchemaIncompatibility } from '../data-table-compat';
+import { diffDataTableSchema, findSchemaIncompatibility } from '../data-table-compat';
 
 const packageColumns = [
 	{ name: 'email', type: 'string' as const, index: 0 },
@@ -70,5 +70,89 @@ describe('findSchemaIncompatibility', () => {
 			missingColumns: ['email'],
 			typeMismatches: [{ column: 'age', expectedType: 'number', actualType: 'date' }],
 		});
+	});
+});
+
+describe('diffDataTableSchema', () => {
+	const packageTable = { id: 'dt1', name: 'Customers', columns: packageColumns };
+
+	it('reports no changes for an identical table', () => {
+		expect(
+			diffDataTableSchema(packageTable, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string', index: 0 },
+					{ name: 'age', type: 'number', index: 1 },
+				],
+			}),
+		).toEqual([]);
+	});
+
+	it('detects every kind of change and lists them in a fixed order', () => {
+		expect(
+			diffDataTableSchema(packageTable, {
+				name: 'Orders',
+				columns: [
+					{ name: 'age', type: 'string', index: 0 },
+					{ name: 'extra', type: 'boolean', index: 1 },
+				],
+			}),
+		).toEqual([
+			{ kind: 'remove-column', column: 'extra', type: 'boolean', destructive: true },
+			{
+				kind: 'change-column-type',
+				column: 'age',
+				from: 'string',
+				to: 'number',
+				destructive: true,
+			},
+			{ kind: 'add-column', column: 'email', type: 'string', destructive: false },
+			{ kind: 'reorder-columns', destructive: false },
+			{ kind: 'rename-table', from: 'Orders', to: 'Customers', destructive: false },
+		]);
+	});
+
+	it('treats a column that differs only in case as removed and added', () => {
+		expect(
+			diffDataTableSchema(packageTable, {
+				name: 'Customers',
+				columns: [
+					{ name: 'Email', type: 'string', index: 0 },
+					{ name: 'age', type: 'number', index: 1 },
+				],
+			}),
+		).toEqual([
+			{ kind: 'remove-column', column: 'Email', type: 'string', destructive: true },
+			{ kind: 'add-column', column: 'email', type: 'string', destructive: false },
+		]);
+	});
+
+	it('lists changes in column order when the target columns arrive unsorted', () => {
+		expect(
+			diffDataTableSchema(packageTable, {
+				name: 'Customers',
+				columns: [
+					{ name: 'second', type: 'string', index: 3 },
+					{ name: 'email', type: 'string', index: 0 },
+					{ name: 'first', type: 'string', index: 2 },
+					{ name: 'age', type: 'number', index: 1 },
+				],
+			}),
+		).toEqual([
+			{ kind: 'remove-column', column: 'first', type: 'string', destructive: true },
+			{ kind: 'remove-column', column: 'second', type: 'string', destructive: true },
+		]);
+	});
+
+	it('reports a reorder when the target has a gap in its column positions', () => {
+		expect(
+			diffDataTableSchema(packageTable, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string', index: 0 },
+					{ name: 'age', type: 'number', index: 2 },
+				],
+			}),
+		).toEqual([{ kind: 'reorder-columns', destructive: false }]);
 	});
 });

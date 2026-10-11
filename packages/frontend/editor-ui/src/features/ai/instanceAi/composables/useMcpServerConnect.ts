@@ -1,8 +1,9 @@
-import { effectScope } from 'vue';
+import { effectScope, shallowReactive } from 'vue';
 import { camelCase } from 'change-case';
 import type { INode } from 'n8n-workflow';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { TIME } from '@/app/constants/durations';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import {
 	listenForCredentialChanges,
@@ -19,7 +20,21 @@ export interface McpConnectTarget {
 	credentialTypes?: readonly string[];
 }
 
-const inFlightConnectsByServerSlug = new Map<string, Promise<string | null>>();
+interface McpConnectAttemptState {
+	acceptCredential: boolean;
+	reopen: (() => void) | undefined;
+	unlockTimer: ReturnType<typeof setTimeout> | undefined;
+}
+
+interface McpConnectAttempt {
+	promise: Promise<string | null>;
+	state: McpConnectAttemptState;
+}
+
+const QUICK_CONNECT_LOCK = 2 * TIME.SECOND;
+const connectAttemptsByServerSlug = new Map<string, McpConnectAttempt>();
+const oauthLockedServerSlugs = shallowReactive(new Set<string>());
+const credentialRequestLockedServerSlugs = shallowReactive(new Set<string>());
 
 /**
  * The credential half of connecting an MCP server, shared by the tools
@@ -41,27 +56,26 @@ export function useMcpServerConnect() {
 		serverSlug: string,
 		credentialId: string,
 	): Promise<string | null> {
-		const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+		credentialRequestLockedServerSlugs.add(serverSlug);
+		try {
+			const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
+			if (existing?.credentialId === credentialId) return null;
 
-		if (!existing) {
-			const created = await mcpStore.connect({ serverSlug, credentialId });
-			if (!created) return null;
+			const connection = existing
+				? await mcpStore.updateConnection(existing.id, { credentialId })
+				: await mcpStore.connect({ serverSlug, credentialId });
+			if (!connection) return null;
+
 			toast.showMessage({
 				type: 'success',
-				title: i18n.baseText('instanceAi.mcp.success.connect'),
+				title: i18n.baseText(
+					existing ? 'instanceAi.mcp.success.changeCredential' : 'instanceAi.mcp.success.connect',
+				),
 			});
-			return created.id;
+			return connection.id;
+		} finally {
+			credentialRequestLockedServerSlugs.delete(serverSlug);
 		}
-
-		if (existing.credentialId === credentialId) return null;
-
-		const updated = await mcpStore.updateConnection(existing.id, { credentialId });
-		if (!updated) return null;
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('instanceAi.mcp.success.changeCredential'),
-		});
-		return updated.id;
 	}
 
 	/**
@@ -70,25 +84,82 @@ export function useMcpServerConnect() {
 	 * modal. Resolves once the user is done, with null if they backed out.
 	 */
 	async function connectServer(server: McpConnectTarget): Promise<string | null> {
-		const inFlight = inFlightConnectsByServerSlug.get(server.slug);
-		if (inFlight) return await inFlight;
-
-		const attempt = startConnect(server);
-		inFlightConnectsByServerSlug.set(server.slug, attempt);
-		try {
-			return await attempt;
-		} finally {
-			inFlightConnectsByServerSlug.delete(server.slug);
+		const activeAttempt = connectAttemptsByServerSlug.get(server.slug);
+		if (activeAttempt) {
+			if (!isConnectLocked(server.slug) && activeAttempt.state.reopen) {
+				activeAttempt.state.acceptCredential = true;
+				activeAttempt.state.reopen();
+				lockConnect(server.slug, activeAttempt);
+			}
+			return await activeAttempt.promise;
 		}
+
+		const hasOneOption = (server.credentialTypes?.length ?? 0) <= 1;
+		const isQuickConnect = hasOneOption && canOAuthCredentialQuickConnect(server.credentialType);
+		const state: McpConnectAttemptState = {
+			acceptCredential: true,
+			reopen: undefined,
+			unlockTimer: undefined,
+		};
+
+		const connecting = isQuickConnect
+			? connectViaOAuth(server, state)
+			: connectViaCredentialModal(server);
+		const promise = connecting.finally(() => {
+			if (state.unlockTimer) clearTimeout(state.unlockTimer);
+			connectAttemptsByServerSlug.delete(server.slug);
+			oauthLockedServerSlugs.delete(server.slug);
+		});
+		const attempt: McpConnectAttempt = {
+			promise,
+			state,
+		};
+		connectAttemptsByServerSlug.set(server.slug, attempt);
+
+		if (isQuickConnect) lockConnect(server.slug, attempt);
+
+		return await promise;
 	}
 
-	async function startConnect(server: McpConnectTarget): Promise<string | null> {
-		const hasOneOption = (server.credentialTypes?.length ?? 0) <= 1;
-		if (hasOneOption && canOAuthCredentialQuickConnect(server.credentialType)) {
-			const credential = await createAndAuthorize(server.credentialType);
-			return credential ? await connectWithCredential(server.slug, credential.id) : null;
+	function lockConnect(serverSlug: string, attempt: McpConnectAttempt): void {
+		const { state } = attempt;
+		if (state.unlockTimer) clearTimeout(state.unlockTimer);
+		oauthLockedServerSlugs.add(serverSlug);
+		state.unlockTimer = setTimeout(() => {
+			oauthLockedServerSlugs.delete(serverSlug);
+			state.unlockTimer = undefined;
+		}, QUICK_CONNECT_LOCK);
+	}
+
+	async function connectViaOAuth(
+		server: McpConnectTarget,
+		state: McpConnectAttemptState,
+	): Promise<string | null> {
+		const credential = await createAndAuthorize(server.credentialType, undefined, {
+			onAuthorizationStarted: (reopen) => {
+				state.reopen = reopen;
+			},
+		}).finally(() => {
+			state.reopen = undefined;
+		});
+		if (!credential || !state.acceptCredential) return null;
+		return await connectWithCredential(server.slug, credential.id);
+	}
+
+	function isConnectLocked(serverSlug: string): boolean {
+		return (
+			oauthLockedServerSlugs.has(serverSlug) || credentialRequestLockedServerSlugs.has(serverSlug)
+		);
+	}
+
+	function ignorePendingConnectResult(serverSlug: string): void {
+		const attempt = connectAttemptsByServerSlug.get(serverSlug);
+		if (attempt) {
+			attempt.state.acceptCredential = false;
+			if (attempt.state.unlockTimer) clearTimeout(attempt.state.unlockTimer);
+			attempt.state.unlockTimer = undefined;
 		}
-		return await connectViaCredentialModal(server);
+		oauthLockedServerSlugs.delete(serverSlug);
 	}
 
 	function registryContextNode(server: McpConnectTarget): INode {
@@ -215,5 +286,11 @@ export function useMcpServerConnect() {
 		};
 	}
 
-	return { connectServer, connectWithCredential, createCredentialAdapter };
+	return {
+		connectServer,
+		connectWithCredential,
+		createCredentialAdapter,
+		ignorePendingConnectResult,
+		isConnectLocked,
+	};
 }

@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import type { EngineResponse } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -421,6 +422,96 @@ describe('buildSteps', () => {
 				});
 			});
 
+			it('should preserve a tool argument named id in reconstructed history', () => {
+				// AI-2805: The resource ID and the tool-call ID are separate values.
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Linear MCP Client',
+								input: { id: 'DEVP-1168' },
+								type: NodeConnectionTypes.AiTool,
+								id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+								metadata: {
+									itemIndex: 0,
+								},
+							},
+							data: {
+								data: {
+									ai_tool: [[{ json: { identifier: 'DEVP-1168' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+							},
+						},
+					],
+					metadata: {},
+				};
+
+				const result = buildSteps(response, itemIndex);
+
+				expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]).toMatchObject({
+					id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+					args: { id: 'DEVP-1168' },
+				});
+			});
+
+			it('should keep user ID arguments separate from engine action IDs', () => {
+				const reservedFields = new Set(['id', 'log', 'type', 'tool', 'toolCallId']);
+				const toolArgumentsArbitrary = fc.dictionary(
+					fc.string({ minLength: 1, maxLength: 20 }).filter((key) => !reservedFields.has(key)),
+					fc.jsonValue(),
+					{ maxKeys: 8 },
+				);
+
+				fc.assert(
+					fc.property(
+						toolArgumentsArbitrary,
+						fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 3 }),
+						(toolArguments, [userId, actionId, changedActionId]) => {
+							const input = { ...toolArguments, id: userId };
+							const createResponse = (id: string): EngineResponse<RequestResponseMetadata> => ({
+								actionResponses: [
+									{
+										action: {
+											actionType: 'ExecutionNodeAction',
+											nodeName: 'Tool',
+											input,
+											type: NodeConnectionTypes.AiTool,
+											id,
+											metadata: { itemIndex },
+										},
+										data: {
+											data: { ai_tool: [[{ json: {} }]] },
+											executionTime: 0,
+											startTime: 0,
+											executionIndex: 0,
+											source: [],
+										},
+									},
+								],
+								metadata: {},
+							});
+
+							const [step] = buildSteps(createResponse(actionId), itemIndex);
+							const [changedIdStep] = buildSteps(createResponse(changedActionId), itemIndex);
+							const toolCall = step.action.messageLog?.[0]?.tool_calls?.[0];
+							const changedIdToolCall = changedIdStep.action.messageLog?.[0]?.tool_calls?.[0];
+
+							expect(toolCall?.args).toEqual(input);
+							expect(toolCall?.id).toBe(actionId);
+							expect(step.action.toolCallId).toBe(actionId);
+							expect(changedIdToolCall?.id).toBe(changedActionId);
+							expect(changedIdStep.action.toolCallId).toBe(changedActionId);
+							expect(changedIdToolCall?.args).toEqual(toolCall?.args);
+						},
+					),
+				);
+			});
+
 			it('should use custom log if provided', () => {
 				const response: EngineResponse<RequestResponseMetadata> = {
 					actionResponses: [
@@ -820,6 +911,59 @@ describe('buildSteps', () => {
 				id: 'call_123',
 				name: 'Calculator',
 			});
+		});
+
+		it('should reconstruct thinking blocks with empty thinking text', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_omitted_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_omitted_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'encrypted_signature_abc',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.messageLog?.[0].content).toEqual([
+				{
+					type: 'thinking',
+					thinking: '',
+					signature: 'encrypted_signature_abc',
+				},
+				{
+					type: 'tool_use',
+					id: 'call_omitted_1',
+					name: 'Calculator',
+					input: { expression: '2+2' },
+				},
+			]);
 		});
 
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {

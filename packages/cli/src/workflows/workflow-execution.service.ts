@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -41,7 +42,7 @@ import {
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
@@ -77,6 +78,7 @@ export class WorkflowExecutionService {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionCrashService: ExecutionCrashService,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	async runWorkflow(
@@ -260,7 +262,7 @@ export class WorkflowExecutionService {
 	}
 
 	/**
-	 * Starts a polled execution on engine 2.0, then advances the cursor.
+	 * Starts a polled execution on engine v2, then advances the cursor.
 	 *
 	 * The v2 path keeps no control-plane execution row, so the cursor cannot
 	 * commit in the same transaction as the run the way {@link runPolledWorkflow}
@@ -323,7 +325,7 @@ export class WorkflowExecutionService {
 
 		responsePromise?.reject(ensureError(error));
 
-		await this.executionCrashService.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
 	}
 
 	private isDestinationNodeATrigger(destinationNode: string, workflow: IWorkflowBase) {
@@ -345,6 +347,8 @@ export class WorkflowExecutionService {
 		pushRef?: string,
 		n8nAuthCookie?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		this.assertManualExecutionAllowed();
+
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(workflowData.id);
 
@@ -495,6 +499,9 @@ export class WorkflowExecutionService {
 						userId: data.userId,
 						dirtyNodeNames: data.dirtyNodeNames,
 						triggerToStartFrom: data.triggerToStartFrom,
+						// A run of a single tool node needs this to reach the worker, or the
+						// tool runs on empty arguments.
+						agentRequest: data.agentRequest,
 						source: data.source,
 					},
 					// Set this to null so `createRunExecutionData` doesn't initialize it.
@@ -824,6 +831,15 @@ export class WorkflowExecutionService {
 			payload.destinationNode.nodeName,
 			payload.runData,
 		);
+	}
+
+	/** Production triggers still run on a protected instance. Block only user-started manual runs. */
+	private assertManualExecutionAllowed() {
+		if (this.instanceWriteAccess.isReadOnly()) {
+			throw new ForbiddenError(
+				'Cannot run workflows manually on a protected instance. This instance is in read-only mode.',
+			);
+		}
 	}
 }
 

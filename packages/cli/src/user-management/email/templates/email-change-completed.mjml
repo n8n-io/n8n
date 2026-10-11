@@ -1,0 +1,17 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-section padding="0 20px">
+			<mj-column>
+				<mj-include path="./_logo.mjml" />
+				<mj-text font-size="22px" font-weight="400">Completed n8n email change</mj-text>
+				<mj-text>Hi {{ firstName }},</mj-text>
+				<mj-text
+					>Your n8n email was changed to <b>{{ newEmail }}</b
+					>. All other sessions were signed out. Contact support if this was not you.</mj-text
+				>
+				<mj-include path="./_footer.mjml" />
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

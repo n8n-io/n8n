@@ -55,6 +55,8 @@ import CredentialTypeSelector from './CredentialTypeSelector.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '../../gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { ProjectType } from '@/features/collaboration/projects/projects.types';
@@ -87,6 +89,8 @@ type Props = {
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
 	contextNode?: INode | null;
+	showAiGatewayErrorNudge?: boolean;
+	aiGatewayCreditsAreFree?: boolean;
 	hideAskAssistant?: boolean;
 	/** Instance AI credential setup-help behavior, supplied by whoever opened the
 	 *  modal (the editor capability, or the credentials list). Absent → no Instance
@@ -112,6 +116,7 @@ const emit = defineEmits<{
 	disconnect: [];
 	quickConnect: [];
 	claimed: [];
+	useGatewayCredits: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
@@ -126,6 +131,9 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+const { promotionText } = useGatewayCreditsPromotion({
+	credentialType: () => props.credentialType.name,
+});
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -458,6 +466,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:text="quickConnectBannerText"
 					:disclaimer="quickConnectOption?.disclaimer"
 				/>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -467,6 +476,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</template>
 
 			<template v-else>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<N8nCallout
 					v-if="
 						!isInstanceAiCredentialHelpAvailable &&
@@ -584,6 +594,44 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						</div>
 					</template>
 				</Banner>
+
+				<N8nCallout
+					v-if="showAiGatewayErrorNudge"
+					:class="$style.aiGatewayErrorNudge"
+					theme="custom"
+					icon="sparkles"
+					icon-size="large"
+					data-test-id="gateway-credits-credential-error-nudge"
+				>
+					<span :class="$style.aiGatewayErrorNudgeCopy">
+						<strong>
+							{{ i18n.baseText('credentialEdit.credentialConfig.aiGatewayErrorNudge.title') }}
+						</strong>
+						<span>
+							{{
+								i18n.baseText(
+									aiGatewayCreditsAreFree
+										? 'credentialEdit.credentialConfig.aiGatewayErrorNudge.description.free'
+										: 'credentialEdit.credentialConfig.aiGatewayErrorNudge.description',
+								)
+							}}
+						</span>
+					</span>
+					<template #trailingContent>
+						<N8nButton
+							size="small"
+							:label="
+								i18n.baseText(
+									aiGatewayCreditsAreFree
+										? 'credentialEdit.credentialConfig.aiGatewayErrorNudge.action.free'
+										: 'credentialEdit.credentialConfig.aiGatewayErrorNudge.action',
+								)
+							"
+							data-test-id="gateway-credits-credential-error-nudge-action"
+							@click="$emit('useGatewayCredits')"
+						/>
+					</template>
+				</N8nCallout>
 
 				<!-- Type selection stays above the connection banners: the connect /
 					 connected banner always renders below the selector, so it keeps a
@@ -775,6 +823,31 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.aiGatewayErrorNudge {
+	--callout--border-color--info: light-dark(var(--color--purple-300), var(--color--purple-500));
+	--callout--color--text--info: var(--color--text--shade-1);
+	--callout--icon-color--info: var(--color--secondary);
+	padding: var(--spacing--sm);
+	background: linear-gradient(
+		110deg,
+		light-dark(
+			var(--color--orange-50),
+			color-mix(in srgb, var(--color--orange-500) 15%, var(--background--surface))
+		),
+		light-dark(
+			var(--color--purple-100),
+			color-mix(in srgb, var(--color--purple-500) 18%, var(--background--surface))
+		)
+	);
+	box-shadow: var(--shadow--xs);
+}
+
+.aiGatewayErrorNudgeCopy {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 // Outline button tinted for the destructive "Disconnect" action so it reads as
