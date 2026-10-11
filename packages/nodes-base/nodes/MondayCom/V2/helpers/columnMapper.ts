@@ -139,7 +139,7 @@ function isCreateSubitemMode(context: ILoadOptionsFunctions): boolean {
 	try {
 		return context.getCurrentNodeParameter('createAs') === 'subitem';
 	} catch {
-		// Legacy saved workflows have no createAs parameter at all.
+		// createAs is only shown on Create; other operations have no such parameter.
 		return false;
 	}
 }
@@ -162,9 +162,8 @@ export async function getColumnFields(this: ILoadOptionsFunctions): Promise<Reso
 	// On classic boards, subitems live on their own board — map ITS columns,
 	// not the parent's. On multi-level boards the subtasks column points at
 	// the board itself (all depths share one schema), so this resolves to
-	// the same board. 'createSubitem' is the legacy operation value from
-	// before Create absorbed it.
-	if (operation === 'createSubitem' || isCreateSubitemMode(this)) {
+	// the same board.
+	if (isCreateSubitemMode(this)) {
 		const subitemBoardId = await resolveSubitemBoardId(this, boardId);
 		if (!subitemBoardId) {
 			return {

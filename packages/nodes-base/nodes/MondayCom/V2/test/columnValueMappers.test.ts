@@ -17,6 +17,11 @@ describe('mapColumnValue', () => {
 		expect(mapColumnValue('status', '{"index": 2}')).toEqual({ index: 2 });
 	});
 
+	it('keeps JSON-looking strings as text for text columns', () => {
+		expect(mapColumnValue('text', '{"a": 1}')).toBe('{"a": 1}');
+		expect(mapColumnValue('long_text', '{not json')).toEqual({ text: '{not json' });
+	});
+
 	it('passes objects through untouched', () => {
 		expect(mapColumnValue('timeline', { from: '2026-01-01', to: '2026-01-31' })).toEqual({
 			from: '2026-01-01',
@@ -44,15 +49,48 @@ describe('mapColumnValue', () => {
 		});
 	});
 
-	it('maps dates with and without time', () => {
+	it('sends date-only values as-is', () => {
 		expect(mapColumnValue('date', '2026-07-14')).toEqual({ date: '2026-07-14' });
-		expect(mapColumnValue('date', '2026-07-14 15:30')).toEqual({
+		expect(mapColumnValue('date', '2026-07-14', { timezone: 'Asia/Tokyo' })).toEqual({
+			date: '2026-07-14',
+		});
+	});
+
+	it('converts timed dates with an explicit offset to UTC', () => {
+		expect(mapColumnValue('date', '2026-10-05T07:30:00-04:00')).toEqual({
+			date: '2026-10-05',
+			time: '11:30:00',
+		});
+		expect(mapColumnValue('date', '2026-07-14T23:30:45+02:00', { timezone: 'Asia/Tokyo' })).toEqual(
+			{ date: '2026-07-14', time: '21:30:45' },
+		);
+	});
+
+	it('applies the workflow timezone to timed dates without an offset', () => {
+		expect(mapColumnValue('date', '2026-07-14 15:30', { timezone: 'America/New_York' })).toEqual({
+			date: '2026-07-14',
+			time: '19:30:00',
+		});
+		expect(mapColumnValue('date', '2026-07-14T23:30:45', { timezone: 'Asia/Tokyo' })).toEqual({
+			date: '2026-07-14',
+			time: '14:30:45',
+		});
+	});
+
+	it('maps Date objects to UTC date and time', () => {
+		expect(mapColumnValue('date', new Date('2026-07-14T15:30:00Z'))).toEqual({
 			date: '2026-07-14',
 			time: '15:30:00',
 		});
-		expect(mapColumnValue('date', '2026-07-14T15:30:45')).toEqual({
-			date: '2026-07-14',
-			time: '15:30:45',
+	});
+
+	it('hands unparseable dates to the API unchanged', () => {
+		expect(mapColumnValue('date', 'someday')).toEqual({ date: 'someday' });
+	});
+
+	it('maps world clock timezones', () => {
+		expect(mapColumnValue('world_clock', ' Europe/Athens ')).toEqual({
+			timezone: 'Europe/Athens',
 		});
 	});
 
@@ -130,9 +168,11 @@ describe('buildColumnValues', () => {
 });
 
 describe('READ_ONLY_COLUMN_TYPES', () => {
-	it('excludes formula and mirror columns', () => {
+	it('excludes formula, mirror, and color picker columns', () => {
 		expect(READ_ONLY_COLUMN_TYPES.has('formula')).toBe(true);
 		expect(READ_ONLY_COLUMN_TYPES.has('mirror')).toBe(true);
+		expect(READ_ONLY_COLUMN_TYPES.has('color_picker')).toBe(true);
 		expect(READ_ONLY_COLUMN_TYPES.has('status')).toBe(false);
+		expect(READ_ONLY_COLUMN_TYPES.has('world_clock')).toBe(false);
 	});
 });

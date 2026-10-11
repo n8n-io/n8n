@@ -3,8 +3,10 @@ import { NodeApiError } from 'n8n-workflow';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import {
+	isMutation,
 	MondayGraphQLClient,
 	MondayErrorCode,
+	sanitizeMimeType,
 	type MondayGraphQLResponse,
 } from '../transport/MondayGraphQLClient';
 
@@ -196,6 +198,33 @@ describe('MondayGraphQLClient', () => {
 				expect(error).toBeInstanceOf(NodeApiError);
 				const apiError = error as NodeApiError;
 				expect(apiError.message).toContain('Invalid column value');
+				expect(apiError.description).toContain('Invalid column value provided');
+			}
+		});
+
+		it('should name the rejected column in ColumnValueException details', async () => {
+			const mockError: MondayGraphQLResponse = {
+				errors: [
+					{
+						message: 'This status label does not exist, possible labels are: {"0":"Done"}',
+						extensions: {
+							code: 'ColumnValueException',
+							status_code: 200,
+							error_data: { column_id: 'status', column_type: 'status', column_title: 'Status' },
+						},
+					} as any,
+				],
+			};
+			mockContext.helpers.httpRequestWithAuthentication.mockResolvedValue(mockError);
+
+			try {
+				await client.execute('mutation { ... }', 0);
+				expect.fail('Should have thrown');
+			} catch (error) {
+				const apiError = error as NodeApiError;
+				expect(apiError.description).toContain('This status label does not exist');
+				expect(apiError.description).toContain('Status');
+				expect(apiError.description).toContain('status');
 			}
 		});
 
@@ -466,10 +495,9 @@ describe('MondayGraphQLClient', () => {
 	});
 
 	describe('retry logic', () => {
-		it('should retry on HTTP 5xx errors', async () => {
-			// First call throws 500, second succeeds
+		it('should retry on HTTP 429 and succeed', async () => {
 			mockContext.helpers.httpRequestWithAuthentication
-				.mockRejectedValueOnce(new Error('Internal Server Error'))
+				.mockRejectedValueOnce(Object.assign(new Error('Too Many Requests'), { httpCode: '429' }))
 				.mockResolvedValueOnce({
 					data: { me: { id: '123' } },
 					errors: undefined,
@@ -478,6 +506,26 @@ describe('MondayGraphQLClient', () => {
 			const result = await client.execute('{ me { id } }', 0, undefined, 1);
 			expect(result).toEqual({ me: { id: '123' } });
 			expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+		});
+
+		it('should not retry HTTP 5xx errors (the request may have been applied)', async () => {
+			mockContext.helpers.httpRequestWithAuthentication.mockRejectedValue(
+				Object.assign(new Error('Bad Gateway'), { httpCode: '502' }),
+			);
+
+			await expect(
+				client.execute('mutation { create_item(...) { id } }', 0, undefined, 3),
+			).rejects.toThrow();
+			expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not retry network errors', async () => {
+			mockContext.helpers.httpRequestWithAuthentication.mockRejectedValue(
+				new Error('socket hang up'),
+			);
+
+			await expect(client.execute('{ me { id } }', 0, undefined, 3)).rejects.toThrow();
+			expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 
 		it('should not retry non-transient GraphQL errors', async () => {
@@ -495,15 +543,73 @@ describe('MondayGraphQLClient', () => {
 			expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 
-		it('should respect max retry attempts', async () => {
+		it('should respect max retry attempts on rate limits', async () => {
 			mockContext.helpers.httpRequestWithAuthentication.mockRejectedValue(
-				new Error('Network error'),
+				Object.assign(new Error('Too Many Requests'), { httpCode: '429' }),
 			);
 
 			await expect(client.execute('{ me { id } }', 0, undefined, 2)).rejects.toThrow();
 
 			// Called once initially + 2 retries = 3 times
 			expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(3);
+		});
+	});
+
+	describe('idempotency', () => {
+		const headersOfCall = (index: number): Record<string, string> =>
+			mockContext.helpers.httpRequestWithAuthentication.mock.calls[index][1].headers;
+
+		it('sends an Idempotency-Key on mutations only', async () => {
+			mockContext.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				data: { ok: true },
+			});
+
+			await client.execute('mutation { create_item(board_id: 1) { id } }', 0);
+			await client.execute('{ me { id } }', 0);
+			await client.execute('  query ($ids: [ID!]) { boards(ids: $ids) { id } }', 0, { ids: ['1'] });
+
+			expect(headersOfCall(0)['Idempotency-Key']).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(headersOfCall(1)['Idempotency-Key']).toBeUndefined();
+			expect(headersOfCall(2)['Idempotency-Key']).toBeUndefined();
+		});
+
+		it('reuses the same key across rate-limit retries and uses a new one per call', async () => {
+			const rateLimited: MondayGraphQLResponse = {
+				errors: [{ message: 'Rate limited', error_code: MondayErrorCode.MutationCallsExceeded }],
+			};
+			mockContext.helpers.httpRequestWithAuthentication
+				.mockResolvedValueOnce(rateLimited)
+				.mockResolvedValueOnce({ data: { create_item: { id: '1' } } })
+				.mockResolvedValueOnce({ data: { create_item: { id: '2' } } });
+
+			await client.execute('mutation { create_item(board_id: 1) { id } }', 0, undefined, 1);
+			await client.execute('mutation { create_item(board_id: 1) { id } }', 0, undefined, 1);
+
+			const first = headersOfCall(0)['Idempotency-Key'];
+			expect(headersOfCall(1)['Idempotency-Key']).toBe(first);
+			expect(headersOfCall(2)['Idempotency-Key']).not.toBe(first);
+		});
+	});
+
+	describe('helpers', () => {
+		it('isMutation detects mutation documents regardless of leading whitespace', () => {
+			expect(isMutation('mutation { x }')).toBe(true);
+			expect(isMutation('\n\t mutation ($a: ID!) { x(a: $a) }')).toBe(true);
+			expect(isMutation('query { x }')).toBe(false);
+			expect(isMutation('{ mutation_like_field }')).toBe(false);
+		});
+
+		it('sanitizeMimeType keeps valid types and falls back otherwise', () => {
+			expect(sanitizeMimeType('text/csv')).toBe('text/csv');
+			expect(sanitizeMimeType('application/vnd.ms-excel; charset=utf-8')).toBe(
+				'application/vnd.ms-excel; charset=utf-8',
+			);
+			expect(sanitizeMimeType('image/png\r\nX-Injected: 1')).toBe('application/octet-stream');
+			expect(sanitizeMimeType('text/plain; name="a"; b')).toBe('application/octet-stream');
+			expect(sanitizeMimeType(undefined)).toBe('application/octet-stream');
+			expect(sanitizeMimeType('')).toBe('application/octet-stream');
 		});
 	});
 

@@ -1,4 +1,10 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INode,
+	INodeListSearchResult,
+	INodeProperties,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SEARCH_MAX_LIMIT } from './accountSearch';
 import { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
@@ -56,6 +62,19 @@ interface BoardSearchRow {
 	url: string;
 	type?: string;
 	workspace?: { name?: string } | null;
+}
+
+/**
+ * The error every board-scoped read throws when `boards(ids:)` comes back
+ * empty. monday answers an unknown or inaccessible board ID with an empty
+ * list, not an error, so without this a typo looks like an empty board.
+ */
+export function boardNotFoundError(node: INode, boardId: string, itemIndex: number) {
+	return new NodeOperationError(
+		node,
+		`Board ${boardId} was not found. It may never have existed, or your API token may not have access to it.`,
+		{ itemIndex },
+	);
 }
 
 /**

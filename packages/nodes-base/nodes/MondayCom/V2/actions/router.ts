@@ -32,18 +32,19 @@ import {
 	bulkImportItems,
 	clearColumnValues,
 	createItem,
-	createSubitem,
 	getBulkImportJobStatus,
 	getColumnValue,
 	getItem,
 	getManyItems,
 	moveItem,
 	resolveArchiveOrDeleteAction,
+	withArchiveOrDeleteOutcome,
 	searchAcrossAccount,
 	updateItem,
 } from './item/item.execute';
 import { addFileToUpdate, buildMentionsList, getManyUpdates } from './update/update.execute';
 import { SEARCH_OPERATION_ENTITY } from '../helpers/accountSearch';
+import { boardNotFoundError } from '../helpers/boardLocator';
 import { normalizeIdList } from '../helpers/filterOptions';
 import { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
 
@@ -80,12 +81,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		try {
 			if (operation === 'createItem') {
 				const data = await createItem.call(this, client, i);
-				returnData.push({ json: data, pairedItem: { item: i } });
-				continue;
-			}
-
-			if (operation === 'createSubitem') {
-				const data = await createSubitem.call(this, client, i);
 				returnData.push({ json: data, pairedItem: { item: i } });
 				continue;
 			}
@@ -157,16 +152,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				continue;
 			}
 
-			// 'archiveItem'/'deleteItem' are the legacy operation values from
-			// before the ops were unified — old workflow JSON still runs.
-			if (
-				operation === 'archiveOrDeleteItem' ||
-				operation === 'archiveItem' ||
-				operation === 'deleteItem'
-			) {
-				const action = resolveArchiveOrDeleteAction.call(this, operation, i);
+			if (operation === 'archiveOrDeleteItem') {
+				const action = resolveArchiveOrDeleteAction.call(this, i);
 				const itemsMode = this.getNodeParameter('itemsMode', i, 'single') as string;
-				if (operation === 'archiveOrDeleteItem' && itemsMode === 'multiple') {
+				if (itemsMode === 'multiple') {
 					const rows = await archiveOrDeleteManyItems.call(this, client, i, action);
 					for (const row of rows) {
 						returnData.push({ json: row, pairedItem: { item: i } });
@@ -182,12 +171,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						: 'mutation ($itemId: ID!) { delete_item(item_id: $itemId) { id name state } }';
 				const data = await client.execute(mutation, i, { itemId });
 				const payload = (data.archive_item ?? data.delete_item ?? {}) as IDataObject;
-				returnData.push({ json: { ...payload, action }, pairedItem: { item: i } });
+				returnData.push({
+					json: withArchiveOrDeleteOutcome(payload, action, 'item'),
+					pairedItem: { item: i },
+				});
 				continue;
 			}
 
 			if (operation === 'archiveOrDeleteBoard') {
-				const action = resolveArchiveOrDeleteAction.call(this, operation, i);
+				const action = resolveArchiveOrDeleteAction.call(this, i);
 				const boardId = this.getNodeParameter('boardId', i, undefined, {
 					extractValue: true,
 				}) as string;
@@ -197,12 +189,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						: 'mutation ($boardId: ID!) { delete_board(board_id: $boardId) { id name state } }';
 				const data = await client.execute(mutation, i, { boardId });
 				const payload = (data.archive_board ?? data.delete_board ?? {}) as IDataObject;
-				returnData.push({ json: { ...payload, action }, pairedItem: { item: i } });
+				returnData.push({
+					json: withArchiveOrDeleteOutcome(payload, action, 'board'),
+					pairedItem: { item: i },
+				});
 				continue;
 			}
 
 			if (operation === 'archiveOrDeleteGroup') {
-				const action = resolveArchiveOrDeleteAction.call(this, operation, i);
+				const action = resolveArchiveOrDeleteAction.call(this, i);
 				const boardId = this.getNodeParameter('boardId', i, undefined, {
 					extractValue: true,
 				}) as string;
@@ -219,7 +214,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							}`;
 				const data = await client.execute(mutation, i, { boardId, groupId });
 				const payload = (data.archive_group ?? data.delete_group ?? {}) as IDataObject;
-				returnData.push({ json: { ...payload, action }, pairedItem: { item: i } });
+				returnData.push({
+					json: withArchiveOrDeleteOutcome(payload, action, 'group'),
+					pairedItem: { item: i },
+				});
 				continue;
 			}
 
@@ -408,8 +406,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					i,
 					{ ids: [boardId] },
 				);
-				const columns =
-					((data.boards ?? []) as Array<{ columns?: IDataObject[] }>)[0]?.columns ?? [];
+				const board = ((data.boards ?? []) as Array<{ columns?: IDataObject[] }>)[0];
+				if (!board) throw boardNotFoundError(this.getNode(), boardId, i);
+				const columns = board.columns ?? [];
 				for (const column of columns) {
 					returnData.push({ json: formatColumnSchemaRow(column), pairedItem: { item: i } });
 				}
@@ -515,10 +514,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				});
 				continue;
 			}
-
-			// Respond to Agent Mention is Update: Create with the targeting
-			// abstracted away: item and parent update come from the mention
-			// event data the trigger emitted, not from parameters.
 
 			if (operation === 'getUpdates') {
 				const rows = await getManyUpdates.call(this, client, i);
@@ -704,7 +699,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					i,
 					{ boardId: [boardId], groupIds: groupIds.length > 0 ? groupIds : null },
 				);
-				const groups = ((data.boards ?? []) as Array<{ groups?: IDataObject[] }>)[0]?.groups ?? [];
+				const board = ((data.boards ?? []) as Array<{ groups?: IDataObject[] }>)[0];
+				if (!board) throw boardNotFoundError(this.getNode(), boardId, i);
+				const groups = board.groups ?? [];
 				for (const group of groups) {
 					returnData.push({ json: group, pairedItem: { item: i } });
 				}

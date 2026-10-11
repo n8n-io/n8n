@@ -568,6 +568,19 @@ export async function createColumn(
 	if (!rawDefaults && columnType === 'dropdown') {
 		const rows = ((this.getNodeParameter('dropdownLabels', itemIndex, {}) as IDataObject).label ??
 			[]) as Array<{ label: string }>;
+		// create_dropdown_column requires labels, so the selection limit can
+		// only be applied together with them — fail loudly instead of dropping it.
+		if (rows.length === 0 && typeSettings.limitSelect === true) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Limit Selection requires at least one dropdown label',
+				{
+					itemIndex,
+					description:
+						'Add the labels under Dropdown Labels, or turn off Limit Selection and set the limit later with Column: Update.',
+				},
+			);
+		}
 		const defaults = buildDropdownColumnDefaults(rows, {
 			limitSelect: typeSettings.limitSelect as boolean | undefined,
 			labelLimitCount: typeSettings.labelLimitCount as number | undefined,

@@ -235,7 +235,7 @@ export async function searchUsersAndTeams(
 
 	const page = paginationToken ? Number.parseInt(paginationToken, 10) : 1;
 
-	const requests: [Promise<IDataObject>, Promise<IDataObject> | undefined] = [
+	const [usersData, teamsData] = await Promise.all([
 		client.execute(
 			`query ($limit: Int!, $page: Int!) {
 				users(limit: $limit, page: $page) { id name email }
@@ -244,9 +244,10 @@ export async function searchUsersAndTeams(
 			{ limit: USERS_PAGE_SIZE, page },
 		),
 		// Teams ride on the first page only — later pages are user overflow.
-		page === 1 ? client.execute('query { teams { id name } }', 0) : undefined,
-	];
-	const [usersData, teamsData] = await Promise.all(requests);
+		page === 1
+			? client.execute('query { teams { id name } }', 0)
+			: Promise.resolve<IDataObject | undefined>(undefined),
+	]);
 
 	const users = (usersData.users ?? []) as UserSearchRow[];
 	const teams = (teamsData?.teams ?? []) as TeamRow[];
@@ -372,8 +373,7 @@ export function extractUserRowIds(value: unknown): string[] {
 /**
  * Splits a combined users+teams selection into separate user and team ID
  * lists. Dropdown values carry `user:`/`team:` prefixes; expression-mode CSV
- * may pass bare numeric IDs, which are treated as USER IDs — that keeps
- * workflows saved with the old CSV-of-user-IDs fields working unchanged.
+ * may pass bare numeric IDs, which are treated as USER IDs (the common case).
  */
 export function splitUserTeamIds(ids: string[]): { userIds: string[]; teamIds: string[] } {
 	const userIds: string[] = [];

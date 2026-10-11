@@ -1,11 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	SEARCH_OPERATION_VALUES,
-	SEARCH_STRATEGY_OPTIONS,
-	SEARCH_TIMELINE_KIND_OPTIONS,
-	SEARCH_TIMELINE_PRODUCT_OPTIONS,
-} from '../../helpers/accountSearch';
+import { SEARCH_OPERATION_VALUES, SEARCH_STRATEGY_OPTIONS } from '../../helpers/accountSearch';
 import { boardResourceLocator } from '../../helpers/boardLocator';
 import {
 	HIDE_UNTIL_BOARD_SELECTED,
@@ -143,10 +138,6 @@ export const itemFields: INodeProperties[] = [
 					'deleteColumn',
 					'addColumnLabel',
 					'updateColumnLabel',
-					'addFileToColumn',
-					'createSubitem',
-					'createTimelineItem',
-					'getTimelineItems',
 				],
 			},
 		},
@@ -155,15 +146,7 @@ export const itemFields: INodeProperties[] = [
 		...itemResourceLocator,
 		displayOptions: {
 			show: {
-				operation: [
-					'updateItem',
-					'getColumnValue',
-					'moveItem',
-					'duplicateItem',
-					'addFileToColumn',
-					'createTimelineItem',
-					'getTimelineItems',
-				],
+				operation: ['updateItem', 'getColumnValue', 'moveItem', 'duplicateItem'],
 			},
 		},
 	},
@@ -231,21 +214,18 @@ export const itemFields: INodeProperties[] = [
 	},
 	{
 		// Dedicated board/item pickers for Archive or Delete: hidden in
-		// bulk mode. This MUST be a hide rule, not show: { itemsMode:
-		// ['single'] } — display evaluation reads raw workflow values
-		// without falling back to parameter defaults, so legacy saved
-		// workflows (which never set itemsMode) would fail a show rule
-		// and lose their pickers ("Could not find property" at runtime).
+		// bulk mode. A hide rule (not show: { itemsMode: ['single'] }) keeps
+		// the pickers visible when itemsMode has no stored value yet.
 		...boardResourceLocator,
 		displayOptions: {
-			show: { operation: ['archiveOrDeleteItem', 'archiveItem', 'deleteItem'] },
+			show: { operation: ['archiveOrDeleteItem'] },
 			hide: { itemsMode: ['multiple'] },
 		},
 	},
 	{
 		...itemResourceLocator,
 		displayOptions: {
-			show: { operation: ['archiveOrDeleteItem', 'archiveItem', 'deleteItem'] },
+			show: { operation: ['archiveOrDeleteItem'] },
 			hide: { itemsMode: ['multiple'] },
 		},
 	},
@@ -294,12 +274,6 @@ export const itemFields: INodeProperties[] = [
 				operation: ['archiveOrDeleteItem', 'archiveOrDeleteBoard', 'archiveOrDeleteGroup'],
 			},
 		},
-	},
-	{
-		...itemResourceLocator,
-		displayName: 'Parent Item',
-		description: 'The item to create the subitem under',
-		displayOptions: { show: { operation: ['createSubitem'] } },
 	},
 	{
 		displayName: 'Column Name or ID',
@@ -453,11 +427,6 @@ export const itemFields: INodeProperties[] = [
 	},
 	{
 		// Top-level item vs subitem for the unified Create operation.
-		// Legacy saved workflows (operation createSubitem, or createItem
-		// without this key) keep working: the execute path treats a
-		// missing createAs as 'item', and the dependent pickers below
-		// use hide rules (see the itemsMode comment) so their absence
-		// of the key leaves the right pickers visible.
 		displayName: 'Create As',
 		name: 'createAs',
 		type: 'options',
@@ -501,22 +470,7 @@ export const itemFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: 'The name of the new item',
-		displayOptions: { show: { operation: ['createItem', 'createSubitem'] } },
-	},
-	{
-		displayName: 'Group Name or ID',
-		name: 'groupId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoardGroups',
-			loadOptionsDependsOn: ['boardId.value'],
-		},
-		default: '',
-		description:
-			'The group to create the item in; leave empty for the board\'s top group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		// Hide (not show) on createAs so legacy workflows without the
-		// key keep their group picker — see the itemsMode comment.
-		displayOptions: { show: { operation: ['createItem'] }, hide: { createAs: ['subitem'] } },
+		displayOptions: { show: { operation: ['createItem'] } },
 	},
 	{
 		displayName: 'Column Values',
@@ -536,7 +490,7 @@ export const itemFields: INodeProperties[] = [
 			},
 		],
 		default: 'mapper',
-		displayOptions: { show: { operation: ['createItem', 'updateItem', 'createSubitem'] } },
+		displayOptions: { show: { operation: ['createItem', 'updateItem'] } },
 	},
 	{
 		displayName: 'Columns',
@@ -556,7 +510,7 @@ export const itemFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['createItem', 'updateItem', 'createSubitem'],
+				operation: ['createItem', 'updateItem'],
 				columnValuesMode: ['mapper'],
 			},
 		},
@@ -570,7 +524,7 @@ export const itemFields: INodeProperties[] = [
 			'Column values in the monday API format, keyed by column ID (e.g. {"status": {"label": "Done"}}). See <a href="https://developer.monday.com/api-reference/reference/column-types-reference">the column types reference</a>.',
 		displayOptions: {
 			show: {
-				operation: ['createItem', 'updateItem', 'createSubitem'],
+				operation: ['createItem', 'updateItem'],
 				columnValuesMode: ['json'],
 			},
 		},
@@ -581,8 +535,26 @@ export const itemFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		displayOptions: { show: { operation: ['createItem', 'updateItem', 'createSubitem'] } },
+		displayOptions: { show: { operation: ['createItem', 'updateItem'] } },
 		options: [
+			{
+				// Optional, so it lives here rather than as a top-level
+				// dropdown whose empty default renders as an unsupported value.
+				displayName: 'Group Name or ID',
+				name: 'groupId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getBoardGroups',
+					loadOptionsDependsOn: ['boardId.value'],
+				},
+				default: '',
+				description:
+					'The group to create the item in; defaults to the board\'s top group. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				displayOptions: {
+					show: { '/operation': ['createItem'] },
+					hide: { '/createAs': ['subitem'] },
+				},
+			},
 			{
 				displayName: 'Create Labels If Missing',
 				name: 'createLabelsIfMissing',
@@ -1003,7 +975,7 @@ export const itemFields: INodeProperties[] = [
 				typeOptions: { minValue: 1, maxValue: 1000 },
 				default: 50,
 				description: 'Max number of results to return',
-				hint: 'Higher limits consume more of your account’s API complexity budget per run — see the Get Rate Limits operation',
+				hint: 'Higher limits consume more of your account’s API complexity budget per run',
 			},
 			{
 				displayName: 'Match',
@@ -1095,12 +1067,7 @@ export const itemFields: INodeProperties[] = [
 					'Only return results from these boards. The list shows only the 500 most recently used boards; for boards beyond that window, pass explicit IDs via an expression (an array or a comma-separated string). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'searchItemsAccount',
-							'searchBoardsAccount',
-							'searchUpdatesAccount',
-							'searchTimelineItemsAccount',
-						],
+						'/operation': ['searchItemsAccount', 'searchBoardsAccount', 'searchUpdatesAccount'],
 					},
 				},
 			},
@@ -1126,15 +1093,6 @@ export const itemFields: INodeProperties[] = [
 				displayOptions: { show: { '/operation': ['searchUpdatesAccount'] } },
 			}),
 			{
-				displayName: 'Item IDs',
-				name: 'itemIds',
-				type: 'string',
-				default: '',
-				description:
-					'Only return timeline items belonging to these items (comma-separated item IDs)',
-				displayOptions: { show: { '/operation': ['searchTimelineItemsAccount'] } },
-			},
-			{
 				// Named searchLimit (not the node-wide `limit` convention) on
 				// purpose: search is hard-capped at 20 results by the API, so
 				// the standard 50 default cannot apply.
@@ -1153,25 +1111,7 @@ export const itemFields: INodeProperties[] = [
 				options: SEARCH_STRATEGY_OPTIONS,
 				default: 'BALANCED',
 				description:
-					'The trade-off between search quality and response time. Update and timeline item search always use keyword matching regardless of strategy.',
-			},
-			{
-				displayName: 'Timeline Item Product',
-				name: 'timelineProductKind',
-				type: 'options',
-				options: SEARCH_TIMELINE_PRODUCT_OPTIONS,
-				default: 'crm',
-				description: 'Only return timeline items originating from this monday.com product',
-				displayOptions: { show: { '/operation': ['searchTimelineItemsAccount'] } },
-			},
-			{
-				displayName: 'Timeline Item Type',
-				name: 'timelineType',
-				type: 'options',
-				options: SEARCH_TIMELINE_KIND_OPTIONS,
-				default: 'email',
-				description: 'Only return timeline items of this kind',
-				displayOptions: { show: { '/operation': ['searchTimelineItemsAccount'] } },
+					'The trade-off between search quality and response time. Update search always uses keyword matching regardless of strategy.',
 			},
 			{
 				displayName: 'Updated After',
@@ -1197,15 +1137,7 @@ export const itemFields: INodeProperties[] = [
 				description:
 					'Only return results from these workspaces. Expressions accept an array or a comma-separated string. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: {
-						'/operation': [
-							'searchItemsAccount',
-							'searchBoardsAccount',
-							'searchDocsAccount',
-							'searchWorkspacesAccount',
-							'searchTimelineItemsAccount',
-						],
-					},
+					show: { '/operation': ['searchItemsAccount', 'searchBoardsAccount'] },
 				},
 			},
 		],

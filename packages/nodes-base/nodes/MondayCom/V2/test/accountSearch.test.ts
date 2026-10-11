@@ -31,7 +31,7 @@ describe('accountSearch', () => {
 		});
 
 		it('maps every operation value to a known entity with query support', () => {
-			expect(SEARCH_OPERATION_VALUES).toHaveLength(7);
+			expect(SEARCH_OPERATION_VALUES).toHaveLength(3);
 			for (const operation of SEARCH_OPERATION_VALUES) {
 				const entity = SEARCH_OPERATION_ENTITY[operation];
 				const plan = buildAccountSearchPlan('q', [entity], false, 5);
@@ -40,9 +40,9 @@ describe('accountSearch', () => {
 		});
 
 		it('adds live_data selections when requested', () => {
-			const plan = buildAccountSearchPlan('q', ['users'], true, 10);
+			const plan = buildAccountSearchPlan('q', ['updates'], true, 10);
 
-			expect(plan.query).toContain('live_data { id name email title kind status url');
+			expect(plan.query).toContain('live_data { id body text_body created_at updated_at');
 		});
 
 		it('clamps the limit to the API hard cap and floor', () => {
@@ -76,7 +76,7 @@ describe('accountSearch', () => {
 		it('attaches each filter only to the entities whose field accepts it', () => {
 			const plan = buildAccountSearchPlan(
 				'q',
-				['items', 'docs', 'users', 'updates', 'timeline_items'],
+				['items', 'boards', 'updates'],
 				false,
 				10,
 				undefined,
@@ -84,51 +84,37 @@ describe('accountSearch', () => {
 					boardIds: ['111'],
 					workspaceIds: ['222'],
 					creatorIds: ['333'],
-					itemIds: ['444'],
-					timelineType: 'email',
-					timelineProductKind: 'crm',
 				},
 			);
 
-			// items: board + workspace filters, no creator/item/type args.
+			// items/boards: board + workspace filters, no creator arg.
 			expect(plan.query).toMatch(
 				/items\(query: \$q, limit: \$limit, board_ids: \$boardIds, workspace_ids: \$workspaceIds\)/,
 			);
-			// docs: workspace filter only (the API has no doc board filter).
 			expect(plan.query).toMatch(
-				/docs\(query: \$q, limit: \$limit, workspace_ids: \$workspaceIds\)/,
+				/boards\(query: \$q, limit: \$limit, board_ids: \$boardIds, workspace_ids: \$workspaceIds\)/,
 			);
-			// users: no filters at all.
-			expect(plan.query).toMatch(/users\(query: \$q, limit: \$limit\)/);
-			// updates: board + creator.
+			// updates: board + creator (the API has no workspace filter there).
 			expect(plan.query).toMatch(
 				/updates\(query: \$q, limit: \$limit, board_ids: \$boardIds, creator_ids: \$creatorIds\)/,
-			);
-			// timeline_items: everything.
-			expect(plan.query).toMatch(
-				/timeline_items\(query: \$q, limit: \$limit, board_ids: \$boardIds, workspace_ids: \$workspaceIds, item_ids: \$itemIds, type: \$timelineType, product_kind: \$timelineProductKind\)/,
 			);
 
 			// Each variable declared exactly once.
 			expect(plan.query.match(/\$boardIds: \[ID!\]/g)).toHaveLength(1);
 			expect(plan.query.match(/\$workspaceIds: \[ID!\]/g)).toHaveLength(1);
-			expect(plan.query).toContain('$timelineType: TimelineItemKind');
-			expect(plan.query).toContain('$timelineProductKind: TimelineItemProductKind');
+			expect(plan.query.match(/\$creatorIds: \[ID!\]/g)).toHaveLength(1);
 			expect(plan.variables.boardIds).toEqual(['111']);
-			expect(plan.variables.itemIds).toEqual(['444']);
+			expect(plan.variables.creatorIds).toEqual(['333']);
 		});
 
 		it('omits filter variables no selected entity accepts', () => {
-			// creatorIds only applies to updates — searching users must not declare it.
-			const plan = buildAccountSearchPlan('q', ['users'], false, 10, undefined, {
+			// creatorIds only applies to updates — searching items must not declare it.
+			const plan = buildAccountSearchPlan('q', ['items'], false, 10, undefined, {
 				creatorIds: ['333'],
-				boardIds: ['111'],
 			});
 
 			expect(plan.query).not.toContain('$creatorIds');
-			expect(plan.query).not.toContain('$boardIds');
 			expect(plan.variables.creatorIds).toBeUndefined();
-			expect(plan.variables.boardIds).toBeUndefined();
 		});
 
 		it('ignores empty filter arrays and unknown entities', () => {
@@ -152,22 +138,22 @@ describe('accountSearch', () => {
 					},
 				],
 			},
-			users: {
-				results: [{ id: '2', indexed_data: { id: '2', name: 'Ada', email: 'ada@x.com' } }],
+			boards: {
+				results: [{ id: '2', indexed_data: { id: '2', name: 'Roadmap', workspace_id: '5' } }],
 			},
 		};
 
 		it('emits one tagged row per result across entity types', () => {
-			const rows = flattenSearchResults(searchData, ['items', 'users'], false);
+			const rows = flattenSearchResults(searchData, ['items', 'boards'], false);
 
 			expect(rows).toEqual([
 				{ entityType: 'item', id: '1', name: 'alpha', board_id: '9' },
-				{ entityType: 'user', id: '2', name: 'Ada', email: 'ada@x.com' },
+				{ entityType: 'board', id: '2', name: 'Roadmap', workspace_id: '5' },
 			]);
 		});
 
 		it('carries liveData when requested, null when the API returned none', () => {
-			const rows = flattenSearchResults(searchData, ['items', 'users'], true);
+			const rows = flattenSearchResults(searchData, ['items', 'boards'], true);
 
 			expect(rows[0].liveData).toEqual({ id: '1', name: 'alpha-renamed' });
 			expect(rows[1].liveData).toBeNull();
@@ -179,14 +165,14 @@ describe('accountSearch', () => {
 			expect(flattenSearchResults({ items: { results: [] } }, ['items'], false)).toEqual([]);
 		});
 
-		it('tags timeline_items rows with the camelCase entityType', () => {
+		it('tags update rows with the singular entityType', () => {
 			const rows = flattenSearchResults(
-				{ timeline_items: { results: [{ id: '3', indexed_data: { title: 'call' } }] } },
-				['timeline_items'],
+				{ updates: { results: [{ id: '3', indexed_data: { body: 'hello' } }] } },
+				['updates'],
 				false,
 			);
 
-			expect(rows[0].entityType).toBe('timelineItem');
+			expect(rows[0].entityType).toBe('update');
 		});
 	});
 });

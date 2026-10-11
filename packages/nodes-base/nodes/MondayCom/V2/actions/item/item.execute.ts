@@ -1,3 +1,5 @@
+import type { Readable } from 'stream';
+
 import { sleep } from '@n8n/utils/sleep';
 import {
 	NodeOperationError,
@@ -30,7 +32,13 @@ import {
 	fetchColumnTypes,
 	resolveSubitemBoardId,
 } from '../../helpers/columnMapper';
+import { boardNotFoundError } from '../../helpers/boardLocator';
 import { buildColumnValues } from '../../helpers/columnValueMappers';
+import {
+	assertPresignedStorageUrl,
+	PRESIGNED_URL_REQUEST_OPTIONS,
+	resolveBinaryUpload,
+} from '../../helpers/fileTransfer';
 import { normalizeIdList, toIso8601 } from '../../helpers/filterOptions';
 import {
 	buildFilterRules,
@@ -56,17 +64,35 @@ import type { MondayGraphQLClient } from '../../transport/MondayGraphQLClient';
 
 /**
  * Resolves the archive-vs-delete choice for the unified Archive or Delete
- * operations. Legacy operation values (archiveItem/deleteItem) map directly;
- * the unified value reads the Action parameter (default: archive — the safe
- * choice by design).
+ * operations from the Action parameter (default: archive — the safe choice
+ * by design).
  */
+export type ArchiveOrDeleteAction = 'archive' | 'delete';
+
+/**
+ * Shapes the output row of an archive/delete mutation. monday echoes the
+ * entity's state from BEFORE the change (`state: "active"`,
+ * `archived: false`), so the state fields are set from the action taken —
+ * a downstream IF on them must see the new state, like Odoo V2's
+ * `{ id, deleted: true }`.
+ */
+export function withArchiveOrDeleteOutcome(
+	payload: IDataObject,
+	action: ArchiveOrDeleteAction,
+	entity: 'item' | 'board' | 'group',
+): IDataObject {
+	if (entity === 'group') {
+		return action === 'archive'
+			? { ...payload, archived: true, action }
+			: { ...payload, deleted: true, action };
+	}
+	return { ...payload, state: action === 'archive' ? 'archived' : 'deleted', action };
+}
+
 export function resolveArchiveOrDeleteAction(
 	this: IExecuteFunctions,
-	operation: string,
 	itemIndex: number,
-): 'archive' | 'delete' {
-	if (operation === 'archiveItem') return 'archive';
-	if (operation === 'deleteItem') return 'delete';
+): ArchiveOrDeleteAction {
 	const action = this.getNodeParameter('archiveOrDeleteAction', itemIndex, 'archive') as string;
 	return action === 'delete' ? 'delete' : 'archive';
 }
@@ -105,7 +131,7 @@ async function resolveColumnValues(
 	const mapped = extractMappedValues(this.getNodeParameter('columns', itemIndex, {}));
 	if (Object.keys(mapped).length === 0) return undefined;
 	const columnTypes = await fetchColumnTypes(this, boardId, itemIndex);
-	return buildColumnValues(mapped, columnTypes);
+	return buildColumnValues(mapped, columnTypes, { timezone: this.getTimezone() });
 }
 
 /** Item: Create — create_item with column values from the shared builder. */
@@ -114,8 +140,7 @@ export async function createItem(
 	client: MondayGraphQLClient,
 	itemIndex: number,
 ): Promise<IDataObject> {
-	// Unified Create: Subitem mode routes to create_subitem. Legacy saved
-	// workflows have no createAs key and default to a top-level item.
+	// Unified Create: Subitem mode routes to create_subitem.
 	const createAs = this.getNodeParameter('createAs', itemIndex, 'item') as string;
 	if (createAs === 'subitem') {
 		return await createSubitem.call(this, client, itemIndex);
@@ -125,8 +150,8 @@ export async function createItem(
 		extractValue: true,
 	}) as string;
 	const name = this.getNodeParameter('name', itemIndex) as string;
-	const groupId = this.getNodeParameter('groupId', itemIndex, '') as string;
 	const createOptions = this.getNodeParameter('createOptions', itemIndex, {}) as IDataObject;
+	const groupId = (createOptions.groupId as string) || '';
 	const columnValues = await resolveColumnValues.call(this, itemIndex, boardId);
 
 	const data = await client.execute(
@@ -162,8 +187,8 @@ export async function createItem(
 }
 
 /**
- * Item: Create in Subitem mode (and the legacy Create Subitem operation) —
- * create_subitem under a parent item, through the same column builder as
+ * Item: Create in Subitem mode — create_subitem under a parent item,
+ * through the same column builder as
  * Create. Mapper values are typed against the SUBITEM board, resolved via
  * the parent board's subtasks column — on multi-level boards that resolves
  * to the parent board itself (one shared schema at every depth), and the
@@ -441,8 +466,10 @@ async function fetchBulkImportReportRows(
 	fallbackItemIndex: number,
 	inputItemCount: number,
 ): Promise<INodeExecutionData[]> {
+	assertPresignedStorageUrl(this.getNode(), reportUrl, 'report', fallbackItemIndex);
 	const reportText = (await this.helpers.httpRequest({
 		url: reportUrl,
+		...PRESIGNED_URL_REQUEST_OPTIONS,
 	})) as string;
 
 	return parseReportRows(String(reportText)).map((row) => {
@@ -482,13 +509,16 @@ export async function bulkImportItems(
 	const rowCap = isBackfill ? MAX_BACKFILL_ROWS : MAX_INGEST_ROWS;
 
 	// Assemble the CSV before starting the job — the upload URL only lives
-	// 10 minutes, so everything slow happens first.
-	let csvBuffer: Buffer;
+	// 10 minutes, so everything slow happens first. A file source is
+	// streamed from binary storage rather than buffered.
+	let csvBody: Buffer | Readable;
+	let csvLength: number;
 	let mappedMode = false;
 	if (source === 'file') {
 		const binaryPropertyName = this.getNodeParameter('bulkImportBinaryPropertyName', 0) as string;
-		this.helpers.assertBinaryData(0, binaryPropertyName);
-		csvBuffer = await this.helpers.getBinaryDataBuffer(0, binaryPropertyName);
+		const upload = await resolveBinaryUpload(this, 0, binaryPropertyName);
+		csvBody = upload.body;
+		csvLength = upload.contentLength;
 	} else {
 		mappedMode = true;
 		if (inputItemCount > rowCap) {
@@ -510,7 +540,8 @@ export async function bulkImportItems(
 				columnTypes,
 				columns.map((column) => column.id),
 			);
-			csvBuffer = Buffer.from(built.csv, 'utf-8');
+			csvBody = Buffer.from(built.csv, 'utf-8');
+			csvLength = csvBody.length;
 		} catch (error) {
 			if (error instanceof BulkImportInputError) {
 				throw new NodeOperationError(this.getNode(), error.message, { itemIndex: 0 });
@@ -565,14 +596,17 @@ export async function bulkImportItems(
 		);
 	}
 	const jobId = jobInit.job_id;
+	assertPresignedStorageUrl(this.getNode(), jobInit.upload_url, 'upload', 0);
 
-	// Pre-signed S3 PUT: no auth header, and no extra headers at all — an
-	// unsigned x-amz-checksum-crc32 header makes S3 reject the upload (403).
+	// Pre-signed S3 PUT: no auth header, and no extra headers beyond the
+	// standard ones — an unsigned x-amz-checksum-crc32 header makes S3
+	// reject the upload (403). Content-Length is required for a stream body.
 	await this.helpers.httpRequest({
 		method: 'PUT',
 		url: jobInit.upload_url,
-		body: csvBuffer,
-		headers: { 'Content-Type': 'text/csv' },
+		body: csvBody,
+		headers: { 'Content-Type': 'text/csv', 'Content-Length': String(csvLength) },
+		...PRESIGNED_URL_REQUEST_OPTIONS,
 	});
 
 	if (!wait) {
@@ -736,7 +770,7 @@ export async function archiveOrDeleteManyItems(
 	const rows = itemIds.map((itemId, index) => {
 		const payload = data[`item${index}`] as IDataObject | null | undefined;
 		if (payload) {
-			return { ...payload, action } as IDataObject;
+			return withArchiveOrDeleteOutcome(payload, action, 'item');
 		}
 		const failure = errors.find((error) => error.path?.[0] === `item${index}`);
 		const message = failure?.message ?? 'Unknown error';
@@ -820,9 +854,8 @@ export function completeMoveColumnsMapping(
  * Item: Move — move_item_to_group within the board, or move_item_to_board
  * with an optional columns_mapping for cross-board moves. The mapping comes
  * from the guided mapper rows when any are configured, otherwise from the
- * raw-JSON escape hatch in Options (which is also what legacy saved
- * workflows use); either way it is completed to the full-board mapping the
- * API demands. Exported for unit tests.
+ * raw-JSON escape hatch in Options; either way it is completed to the
+ * full-board mapping the API demands. Exported for unit tests.
  */
 export async function moveItem(
 	this: IExecuteFunctions,
@@ -1098,9 +1131,6 @@ export async function searchAcrossAccount(
 		boardIds: normalizeIdList(options.boardIds),
 		workspaceIds: normalizeIdList(options.workspaceIds),
 		creatorIds: extractUserRowIds(options.creatorIds),
-		itemIds: normalizeIdList(options.itemIds),
-		timelineType: options.timelineType as string | undefined,
-		timelineProductKind: options.timelineProductKind as string | undefined,
 		createdAfter: toIso8601(options.createdAfter),
 		createdBefore: toIso8601(options.createdBefore),
 		updatedAfter: toIso8601(options.updatedAfter),
@@ -1380,7 +1410,9 @@ export async function getManyItems(
 			queryParams,
 		},
 		extractFirstPage: (data) => {
-			const page = (data as ItemsPagePayload).boards?.[0]?.items_page;
+			const board = (data as ItemsPagePayload).boards?.[0];
+			if (!board) throw boardNotFoundError(this.getNode(), boardId, itemIndex);
+			const page = board.items_page;
 			return page ? { cursor: page.cursor, items: page.items } : undefined;
 		},
 		itemFields,

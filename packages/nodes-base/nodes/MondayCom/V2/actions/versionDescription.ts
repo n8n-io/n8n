@@ -67,7 +67,6 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{ name: 'Board', value: 'board' },
-				// The value stays 'group' so workflows saved before the rename keep working.
 				{ name: 'Board Group', value: 'group' },
 				{ name: 'Column', value: 'column' },
 				{ name: 'Item', value: 'item' },

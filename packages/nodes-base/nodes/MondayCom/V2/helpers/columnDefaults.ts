@@ -155,14 +155,27 @@ export interface ExistingLabel {
  * UpdateStatusLabelInput rows. The update mutations REPLACE the whole label
  * set, so every unchanged label must be re-sent — with its id (identity),
  * its color translated back from numeric id to enum name, and its index.
+ *
+ * Labels monday created without an index (e.g. via create_labels_if_missing)
+ * get the next free one, in label order — the API requires unique indexes.
  */
 export function statusSettingsToInputRows(labels: ExistingLabel[]): IDataObject[] {
+	const usedIndexes = new Set(
+		labels.map((label) => label.index).filter((index): index is number => index !== undefined),
+	);
+	let nextFree = 0;
+	const takeNextFreeIndex = (): number => {
+		while (usedIndexes.has(nextFree)) nextFree += 1;
+		usedIndexes.add(nextFree);
+		return nextFree;
+	};
+
 	return labels.map((label) => {
 		const row: IDataObject = {
 			id: label.id,
 			label: label.label,
 			color: STATUS_COLOR_BY_ID[label.color ?? -1] ?? 'working_orange',
-			index: label.index ?? 0,
+			index: label.index ?? takeNextFreeIndex(),
 		};
 		if (label.description) row.description = label.description;
 		if (label.is_done) row.is_done = true;
@@ -180,9 +193,14 @@ export function dropdownSettingsToInputRows(labels: ExistingLabel[]): IDataObjec
 	});
 }
 
-/** The index a newly appended status label should get (after all existing). */
+/**
+ * The index a newly appended status label should get: after every existing
+ * label, counting the ones that had no index and got one assigned.
+ */
 export function nextStatusLabelIndex(labels: ExistingLabel[]): number {
-	return labels.reduce((max, label) => Math.max(max, label.index ?? 0), -1) + 1;
+	return (
+		statusSettingsToInputRows(labels).reduce((max, row) => Math.max(max, Number(row.index)), -1) + 1
+	);
 }
 
 export type StatusLabelPosition = 'first' | 'last' | 'after' | 'before';

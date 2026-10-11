@@ -318,7 +318,7 @@ describe('splitUserTeamIds', () => {
 		});
 	});
 
-	it('treats bare IDs as user IDs (legacy CSV workflows)', () => {
+	it('treats bare IDs from expressions as user IDs', () => {
 		expect(splitUserTeamIds(['123', 'team:10', '456'])).toEqual({
 			userIds: ['123', '456'],
 			teamIds: ['10'],

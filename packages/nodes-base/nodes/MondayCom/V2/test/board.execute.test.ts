@@ -1,12 +1,87 @@
-import { describe, expect, it } from 'vitest';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	buildBoardFieldSelection,
 	buildReplacePlan,
 	buildSubscriberRows,
 	buildSubscribersSelection,
+	changeBoardSubscribers,
 	formatActivityLogRow,
 } from '../actions/board/board.execute';
+import type { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
+
+/** Context whose getNodeParameter resolves from a name → value map. */
+function makeParamsContext(params: Record<string, unknown>): IExecuteFunctions {
+	return {
+		getNodeParameter: (name: string, _index: number, fallback?: unknown) =>
+			params[name] !== undefined ? params[name] : fallback,
+		getNode: () => ({ name: 'monday.com', type: 'CUSTOM.monday', typeVersion: 2 }),
+	} as unknown as IExecuteFunctions;
+}
+
+function makeClient(response: IDataObject) {
+	const execute = vi.fn(async () => response);
+	return { client: { execute } as unknown as MondayGraphQLClient, execute };
+}
+
+describe('changeBoardSubscribers', () => {
+	const baseParams = {
+		boardId: '123',
+		subscriberUserIds: { rows: [{ user: { value: '7' } }] },
+		subscriberTeamIds: ['9'],
+		subscribersAction: 'add',
+	};
+
+	it('sends the subscriber kind as a $kind variable, not inline', async () => {
+		const { client, execute } = makeClient({ users: [{ id: '7' }], teams: [{ id: '9' }] });
+		const result = await changeBoardSubscribers.call(
+			makeParamsContext({ ...baseParams, subscriberKind: 'owner' }),
+			client,
+			0,
+		);
+
+		const [query, , variables] = execute.mock.calls[0] as unknown as [
+			string,
+			number,
+			Record<string, unknown>,
+		];
+		expect(query).toContain('$kind: BoardSubscriberKind');
+		expect(query).toContain('kind: $kind');
+		expect(query).not.toContain('kind: owner');
+		expect(variables.kind).toBe('owner');
+		expect(result.kind).toBe('owner');
+	});
+
+	it('rejects a kind outside the owner/subscriber enum before calling the API', async () => {
+		const { client, execute } = makeClient({});
+		await expect(
+			changeBoardSubscribers.call(
+				makeParamsContext({ ...baseParams, subscriberKind: 'admin) { id } #' }),
+				client,
+				0,
+			),
+		).rejects.toThrow(/Subscriber Kind must be "owner" or "subscriber"/);
+		expect(execute).not.toHaveBeenCalled();
+	});
+
+	it('does not send a kind when removing', async () => {
+		const { client, execute } = makeClient({ users: [], teams: [] });
+		const result = await changeBoardSubscribers.call(
+			makeParamsContext({ ...baseParams, subscribersAction: 'remove', subscriberKind: 'bogus' }),
+			client,
+			0,
+		);
+		const [query, , variables] = execute.mock.calls[0] as unknown as [
+			string,
+			number,
+			Record<string, unknown>,
+		];
+		expect(query).not.toContain('$kind');
+		expect(variables.kind).toBeUndefined();
+		expect(result.kind).toBeUndefined();
+	});
+});
 
 describe('buildBoardFieldSelection', () => {
 	it('always returns the enriched base fields', () => {

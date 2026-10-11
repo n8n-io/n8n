@@ -177,6 +177,17 @@ describe('statusSettingsToInputRows', () => {
 			{ id: 3, label: 'X', color: 'working_orange', index: 0 },
 		]);
 	});
+
+	it('gives labels without an index the next free one', () => {
+		const rows = statusSettingsToInputRows([
+			{ id: 0, label: 'Todo', color: 0, index: 0 },
+			{ id: 1, label: 'Done', color: 1, index: 1 },
+			{ id: 7, label: 'Auto-created', color: 2 },
+			{ id: 8, label: 'Also auto', color: 2 },
+			{ id: 3, label: 'Stuck', color: 3, index: 3 },
+		]);
+		expect(rows.map((row) => row.index)).toEqual([0, 1, 2, 4, 3]);
+	});
 });
 
 describe('dropdownSettingsToInputRows', () => {
@@ -202,6 +213,16 @@ describe('nextStatusLabelIndex', () => {
 			]),
 		).toBe(6);
 		expect(nextStatusLabelIndex([])).toBe(0);
+	});
+
+	it('counts labels that had no index and were assigned one', () => {
+		expect(
+			nextStatusLabelIndex([
+				{ id: 0, label: 'A', index: 0 },
+				{ id: 1, label: 'B', index: 1 },
+				{ id: 9, label: 'Auto-created' },
+			]),
+		).toBe(3);
 	});
 });
 

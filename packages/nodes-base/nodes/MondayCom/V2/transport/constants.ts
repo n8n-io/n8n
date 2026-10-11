@@ -30,23 +30,17 @@ export const MONDAY_FILE_API_URL = 'https://api.monday.com/v2/file';
 export const DEFAULT_LIMIT = 50;
 
 /**
- * The agents API (update_custom_agent and the custom_agents query) is
- * pre-release: it only exists in the "dev" API schema and is not part of
- * any dated version yet. Only the trigger's agent-connection lifecycle may
- * use this — never pin regular operations to dev.
+ * Pre-signed URLs handed back by the API (bulk-import upload_url and
+ * report_url) are only followed when they are https and their hostname ends
+ * with one of these suffixes. Per monday's storage team (2026-10) the URLs
+ * are either raw S3 presigns (`<bucket>.s3.<region>.amazonaws.com`) or
+ * CloudFront rewrites (`bulk-import-<region>.monday.com`); regions and
+ * hosts change over time, so the list is deliberately loose.
  */
-export const MONDAY_AGENTS_API_VERSION = 'dev';
-
-/**
- * REST endpoint of the monday.com Platform Agent (Sidekick-style agent).
- * One user message per request (`prompt`), optional `contextId` for
- * conversation continuity; the reply comes back as `response`. The API
- * echoes `contextId` when sent — it never mints one. The node generates
- * a 32-char hex hash when Context ID is left empty so output always has a session key.
- * Auth = the same raw API token header as the GraphQL API (no Bearer).
- */
-export const MONDAY_PLATFORM_AGENT_URL =
-	'https://api.monday.com/platform-ai-gateway/platform-agent';
+export const PRESIGNED_URL_ALLOWED_HOST_SUFFIXES: readonly string[] = [
+	'monday.com',
+	'amazonaws.com',
+];
 
 /** User-Agent on every authenticated monday.com API request from this node. */
 export const MONDAY_USER_AGENT = 'n8n-monday';

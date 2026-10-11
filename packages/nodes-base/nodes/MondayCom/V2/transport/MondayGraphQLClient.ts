@@ -1,4 +1,6 @@
 import { sleep } from '@n8n/utils/sleep';
+import { randomUUID } from 'crypto';
+import FormData from 'form-data';
 import {
 	jsonParse,
 	NodeApiError,
@@ -9,6 +11,7 @@ import {
 	type IDataObject,
 	type JsonObject,
 } from 'n8n-workflow';
+import type { Readable } from 'stream';
 
 /** Any n8n context that can make authenticated HTTP requests. */
 type RequestContext =
@@ -86,22 +89,6 @@ export interface MondayGraphQLResponse<T = IDataObject> {
 }
 
 /**
- * Metadata about a single request, for the GraphQL operation's
- * "Include Request Info" option.
- */
-export interface MondayRequestInfo {
-	/** monday's request ID — quote this in support tickets. */
-	requestId?: string;
-	/** The API version the server actually used (api-version response header). */
-	apiVersion?: string;
-	statusCode?: number;
-	/** Parsed RateLimit header: remaining budget per quota policy. */
-	rateLimit?: IDataObject;
-	/** Parsed RateLimit-Policy header: the account's quota limits. */
-	rateLimitPolicy?: IDataObject;
-}
-
-/**
  * Support-ticket trace line appended to every error description, so users
  * can quote the request ID and status code to monday support.
  */
@@ -110,47 +97,6 @@ function formatErrorTrace(requestId?: string, statusCode?: number): string {
 	if (statusCode !== undefined) parts.push(`HTTP status: ${statusCode}`);
 	if (requestId) parts.push(`Request ID: ${requestId}`);
 	return parts.join(' · ');
-}
-
-/** Maps RFC structured-header param keys to readable names. */
-const RATE_LIMIT_PARAM_NAMES: Record<string, string> = {
-	r: 'remaining',
-	q: 'limit',
-	w: 'windowSeconds',
-	t: 'resetSeconds',
-	qu: 'unit',
-};
-
-/**
- * Parses monday's structured rate-limit headers, e.g.
- * `"minuteRate";r=4999, "concurrency";r=249, "complexityMinute";r=4950000;t=45`
- * into `{ minuteRate: { remaining: 4999 }, ..., complexityMinute: { remaining: 4950000, resetSeconds: 45 } }`.
- */
-export function parseRateLimitHeader(value?: string): IDataObject | undefined {
-	if (!value) return undefined;
-
-	const result: IDataObject = {};
-	for (const entry of value.split(',')) {
-		const [rawName, ...rawParams] = entry.trim().split(';');
-		const name = rawName?.replace(/"/g, '').trim();
-		if (!name) continue;
-
-		const params: IDataObject = {};
-		for (const rawParam of rawParams) {
-			const separatorIndex = rawParam.indexOf('=');
-			if (separatorIndex === -1) continue;
-			const key = rawParam.slice(0, separatorIndex).trim();
-			const rawValue = rawParam
-				.slice(separatorIndex + 1)
-				.replace(/"/g, '')
-				.trim();
-			const numeric = Number(rawValue);
-			params[RATE_LIMIT_PARAM_NAMES[key] ?? key] =
-				rawValue !== '' && !Number.isNaN(numeric) ? numeric : rawValue;
-		}
-		result[name] = params;
-	}
-	return result;
 }
 
 /**
@@ -172,6 +118,44 @@ export function formatValidationFailures(
 }
 
 /**
+ * Names the column a ColumnValueException refers to, from whichever of the
+ * identifying keys monday put in error_data (shape varies by column type).
+ * Exported for tests.
+ */
+export function describeRejectedColumn(errorData: IDataObject | IDataObject[] | undefined): string {
+	if (!errorData || Array.isArray(errorData)) return '';
+	const title = errorData.column_title ?? errorData.column_name;
+	const id = errorData.column_id;
+	const type = errorData.column_type;
+	const parts: string[] = [];
+	if (typeof title === 'string' && title) parts.push(`"${title}"`);
+	if (typeof id === 'string' && id) parts.push(`id: ${id}`);
+	if (typeof type === 'string' && type) parts.push(`type: ${type}`);
+	if (parts.length === 0) return '';
+	return parts.length === 1 ? parts[0] : `${parts[0]} (${parts.slice(1).join(', ')})`;
+}
+
+/**
+ * Whether a GraphQL document is a mutation. Only mutations get an
+ * Idempotency-Key — monday ignores the header on queries.
+ */
+export function isMutation(query: string): boolean {
+	return /^\s*mutation\b/.test(query);
+}
+
+/**
+ * Sanitizes a MIME type for a multipart part header: only a plain
+ * `type/subtype` (with optional parameters) is allowed through; anything
+ * else falls back to application/octet-stream. Exported for tests.
+ */
+export function sanitizeMimeType(mimeType: string | undefined): string {
+	const candidate = (mimeType ?? '').trim();
+	return /^[\w.+-]+\/[\w.+-]+(?:\s*;\s*[\w.-]+=[^\s;"]+)*$/.test(candidate)
+		? candidate
+		: 'application/octet-stream';
+}
+
+/**
  * Marker fields attached to errors this client produces, so retry decisions
  * are explicit rather than inferred from message text.
  */
@@ -185,7 +169,14 @@ interface RetryableErrorMarker {
  * Handles:
  * - Single POST endpoint
  * - Error mapping to actionable messages
- * - Retry with exponential backoff for rate limits and complexity budget
+ * - Retry with backoff for rate limits and the complexity budget only.
+ *   5xx and network errors are NOT retried here: monday may already have
+ *   applied the mutation when the reply was lost, so repeating it can
+ *   create duplicates. Those cases are left to the node's Retry On Fail
+ *   setting, where the user decides whether a write is safe to repeat.
+ * - Idempotency-Key on every mutation (one key per logical request, reused
+ *   across this client's retries) so a repeated delivery is deduplicated
+ *   server-side.
  * - API version pinning
  */
 export class MondayGraphQLClient {
@@ -234,26 +225,6 @@ export class MondayGraphQLClient {
 	}
 
 	/**
-	 * Like execute(), but also returns request metadata (request ID, effective
-	 * API version, status code, parsed rate-limit headers) and supports a
-	 * per-request API version override. Used by the raw GraphQL operation.
-	 */
-	async executeWithInfo(
-		query: string,
-		_itemIndex: number,
-		variables?: Record<string, unknown>,
-		options: { apiVersion?: string; retryAttempts?: number } = {},
-	): Promise<{ data: IDataObject; requestInfo: MondayRequestInfo }> {
-		const { data, requestInfo } = await this.executeInternal(
-			query,
-			variables,
-			options.retryAttempts ?? 3,
-			{ apiVersion: options.apiVersion, captureInfo: true },
-		);
-		return { data, requestInfo: requestInfo ?? {} };
-	}
-
-	/**
 	 * Like execute(), but for aliased batch mutations: when the response
 	 * carries partial data (some aliases succeeded, some failed), it returns
 	 * BOTH the data and the raw per-alias errors instead of throwing, so the
@@ -277,18 +248,21 @@ export class MondayGraphQLClient {
 		query: string,
 		variables?: Record<string, unknown>,
 		retryAttempts = 3,
-		options: { apiVersion?: string; captureInfo?: boolean; allowPartial?: boolean } = {},
+		options: { allowPartial?: boolean } = {},
 	): Promise<{
 		data: IDataObject;
-		requestInfo?: MondayRequestInfo;
 		errors?: MondayGraphQLError[];
 	}> {
 		let lastError: Error | null = null;
 		let lastRetryDelay = this.baseRetryDelayMs;
+		// Generated once per logical request and reused on every retry, as
+		// monday's idempotency docs require — a fresh key per attempt would
+		// defeat the deduplication.
+		const idempotencyKey = isMutation(query) ? randomUUID() : undefined;
 
 		for (let attempt = 0; attempt <= retryAttempts; attempt++) {
 			try {
-				const { response, requestInfo } = await this.makeRequest(query, variables, options);
+				const response = await this.makeRequest(query, variables, idempotencyKey);
 
 				if (response.errors && response.errors.length > 0) {
 					// Aliased batch mutations return partial data alongside errors
@@ -299,7 +273,7 @@ export class MondayGraphQLClient {
 						response.data &&
 						Object.values(response.data).some((value) => value !== null && value !== undefined)
 					) {
-						return { data: response.data, requestInfo, errors: response.errors };
+						return { data: response.data, errors: response.errors };
 					}
 					const error = response.errors[0];
 					throw this.mapError(error, response);
@@ -311,11 +285,7 @@ export class MondayGraphQLClient {
 					} as unknown as JsonObject);
 				}
 
-				if (requestInfo && response.extensions?.request_id) {
-					requestInfo.requestId = response.extensions.request_id;
-				}
-
-				return { data: response.data, requestInfo };
+				return { data: response.data };
 			} catch (error) {
 				lastError = error as Error;
 
@@ -352,30 +322,27 @@ export class MondayGraphQLClient {
 	}
 
 	/**
-	 * Execute a file-upload mutation against the /v2/file endpoint. The
-	 * multipart body is assembled manually (community nodes can't add a
-	 * form-data dependency); the file lands in the mutation's $file variable
-	 * via the `variables[file]` form field.
+	 * Execute a file-upload mutation against the /v2/file endpoint. The file
+	 * lands in the mutation's $file variable via the `variables[file]` form
+	 * field. Accepts a stream so large files never have to be held in memory
+	 * — when the binary data is stored on disk/S3 the caller passes
+	 * `getBinaryStream()` output plus the known size.
 	 */
 	async uploadFile(
 		query: string,
-		file: Buffer,
+		file: Buffer | Readable,
 		fileName: string,
-		mimeType: string,
+		mimeType: string | undefined,
+		knownLength?: number,
 	): Promise<IDataObject> {
-		const boundary = `----n8n-monday-${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
-		// The filename travels inside a quoted string; strip quotes/CRLF to keep the part header intact.
-		const safeFileName = fileName.replace(/["\r\n]/g, '_');
-		const body = Buffer.concat([
-			Buffer.from(
-				`--${boundary}\r\nContent-Disposition: form-data; name="query"\r\n\r\n${query}\r\n`,
-			),
-			Buffer.from(
-				`--${boundary}\r\nContent-Disposition: form-data; name="variables[file]"; filename="${safeFileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`,
-			),
-			file,
-			Buffer.from(`\r\n--${boundary}--\r\n`),
-		]);
+		const form = new FormData();
+		form.append('query', query);
+		form.append('variables[file]', file, {
+			// The filename travels inside a quoted string; strip quotes/CRLF to keep the part header intact.
+			filename: fileName.replace(/["\r\n]/g, '_'),
+			contentType: sanitizeMimeType(mimeType),
+			...(knownLength !== undefined ? { knownLength } : {}),
+		});
 
 		const raw = await this.context.helpers.httpRequestWithAuthentication.call(
 			this.context,
@@ -383,11 +350,9 @@ export class MondayGraphQLClient {
 			{
 				method: 'POST',
 				url: MONDAY_FILE_API_URL,
-				body,
-				headers: mondayRequestHeaders({
-					'Content-Type': `multipart/form-data; boundary=${boundary}`,
-					'API-Version': this.apiVersion,
-				}),
+				body: form,
+				// Content-Type (with the boundary) comes from the FormData instance.
+				headers: mondayRequestHeaders({ 'API-Version': this.apiVersion }),
 			},
 		);
 
@@ -405,14 +370,12 @@ export class MondayGraphQLClient {
 
 	/**
 	 * Make the raw HTTP request to monday.com GraphQL endpoint.
-	 * With captureInfo, requests the full response (headers + status) and
-	 * extracts request metadata from it.
 	 */
 	private async makeRequest(
 		query: string,
 		variables?: Record<string, unknown>,
-		options: { apiVersion?: string; captureInfo?: boolean } = {},
-	): Promise<{ response: MondayGraphQLResponse; requestInfo?: MondayRequestInfo }> {
+		idempotencyKey?: string,
+	): Promise<MondayGraphQLResponse> {
 		const body: IDataObject = { query };
 		if (variables) {
 			body.variables = variables;
@@ -427,31 +390,14 @@ export class MondayGraphQLClient {
 					url: MONDAY_API_URL,
 					body,
 					json: true,
-					returnFullResponse: options.captureInfo === true,
 					headers: mondayRequestHeaders({
-						'API-Version': options.apiVersion ?? this.apiVersion,
+						'API-Version': this.apiVersion,
+						...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
 					}),
 				},
 			);
 
-			if (!options.captureInfo) {
-				return { response: raw as MondayGraphQLResponse };
-			}
-
-			const full = raw as {
-				body: MondayGraphQLResponse;
-				statusCode?: number;
-				headers?: Record<string, string>;
-			};
-			const headers = full.headers ?? {};
-			const requestInfo: MondayRequestInfo = {
-				requestId: headers['x-request-id'],
-				apiVersion: headers['api-version'],
-				statusCode: full.statusCode,
-				rateLimit: parseRateLimitHeader(headers.ratelimit),
-				rateLimitPolicy: parseRateLimitHeader(headers['ratelimit-policy']),
-			};
-			return { response: full.body, requestInfo };
+			return raw as MondayGraphQLResponse;
 		} catch (error) {
 			// HTTP-level errors (4xx, 5xx) and network failures
 			if (error instanceof Error) {
@@ -474,9 +420,10 @@ export class MondayGraphQLClient {
 						description,
 					},
 				);
-				// 429 and 5xx are transient; so are network errors with no status at all.
-				(nodeApiError as NodeApiError & RetryableErrorMarker).mondayRetryable =
-					statusCode === undefined || statusCode === 429 || statusCode >= 500;
+				// Only a 429 is known not to have been processed. A 5xx or a
+				// dropped connection may have landed after monday applied the
+				// mutation, so those are not retried here (see class docs).
+				(nodeApiError as NodeApiError & RetryableErrorMarker).mondayRetryable = statusCode === 429;
 				throw nodeApiError;
 			}
 			// Non-Error throw (can't happen in practice); keep the raw value.
@@ -513,7 +460,7 @@ export class MondayGraphQLClient {
 
 	/**
 	 * Check if an error is retryable — only errors this client explicitly
-	 * marked as transient (rate limit, complexity budget, 5xx, network).
+	 * marked as transient (rate limit, complexity budget, HTTP 429).
 	 */
 	private isRetryableError(error: unknown): boolean {
 		return (error as RetryableErrorMarker)?.mondayRetryable === true;
@@ -551,12 +498,17 @@ export class MondayGraphQLClient {
 				}
 				break;
 
-			case MondayErrorCode.ColumnValueException:
+			case MondayErrorCode.ColumnValueException: {
+				// monday's own message names the problem precisely (e.g. the
+				// valid status labels), so lead with it and the column it hit.
 				userMessage = 'Invalid column value';
-				description =
-					'The column value format is invalid. Check the column type and ensure the value matches ' +
-					'the expected format (status label IDs, dropdown IDs, people IDs, etc.).';
+				const column = describeRejectedColumn(error.extensions?.error_data);
+				description = `monday.com rejected the value${column ? ` for column ${column}` : ''}: ${error.message}. `;
+				description +=
+					'Check the column type and ensure the value matches the expected format ' +
+					'(status label IDs, dropdown IDs, people IDs, etc.).';
 				break;
+			}
 
 			case MondayErrorCode.InvalidBoardIdException:
 				userMessage = 'Invalid or inaccessible board';
@@ -600,7 +552,7 @@ export class MondayGraphQLClient {
 				const failures = formatValidationFailures(error.extensions?.error_data);
 				description = failures
 					? `The board's validation rules or required columns rejected this request: ${failures}. ` +
-						'Fix the offending values, or review the board validations (Validation resource).'
+						'Fix the offending values, or review the validation rules on the board.'
 					: 'The board has validation rules or required columns that this request violates.';
 				break;
 			}

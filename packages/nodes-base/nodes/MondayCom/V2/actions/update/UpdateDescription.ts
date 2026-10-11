@@ -64,7 +64,7 @@ export const updateFields: INodeProperties[] = [
 		default: 'data',
 		required: true,
 		hint: 'The name of the input binary field containing the file to upload',
-		displayOptions: { show: { operation: ['addFileToColumn', 'addFileToUpdate'] } },
+		displayOptions: { show: { operation: ['addFileToUpdate'] } },
 	},
 
 	{
@@ -185,7 +185,7 @@ export const updateFields: INodeProperties[] = [
 				typeOptions: { minValue: 1, maxValue: 1000 },
 				default: 50,
 				description: 'Max number of results to return',
-				hint: 'Higher limits consume more of your account’s API complexity budget per run — see the Get Rate Limits operation',
+				hint: 'Higher limits consume more of your account’s API complexity budget per run',
 			},
 			{
 				displayName: 'Page',

@@ -8,7 +8,7 @@ import {
 	type AggregateCalculationRow,
 	type AggregateQueryPlan,
 } from '../../helpers/aggregate';
-import { isRealBoard } from '../../helpers/boardLocator';
+import { boardNotFoundError, isRealBoard } from '../../helpers/boardLocator';
 import { fetchColumns } from '../../helpers/columnMapper';
 import { normalizeIdList, toIso8601 } from '../../helpers/filterOptions';
 import {
@@ -188,6 +188,9 @@ export function buildReplacePlan(
 	return { removeUserIds, removeTeamIds, keptExecutingUser };
 }
 
+/** The BoardSubscriberKind enum values; the field accepts expressions, so validate. */
+const BOARD_SUBSCRIBER_KINDS = new Set(['owner', 'subscriber']);
+
 /**
  * Board: Update Subscribers — one operation with an Add/Remove Action
  * selector. Add = add_users_to_board/add_teams_to_board (with
@@ -222,6 +225,13 @@ export async function changeBoardSubscribers(
 	const kind = removing
 		? undefined
 		: (this.getNodeParameter('subscriberKind', itemIndex, 'subscriber') as string);
+	if (kind !== undefined && !BOARD_SUBSCRIBER_KINDS.has(kind)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Subscriber Kind must be "owner" or "subscriber", got "${kind}"`,
+			{ itemIndex },
+		);
+	}
 	const options = removing
 		? {}
 		: (this.getNodeParameter('updateSubscribersOptions', itemIndex, {}) as IDataObject);
@@ -255,6 +265,10 @@ export async function changeBoardSubscribers(
 	const varDefs = ['$boardId: ID!'];
 	const selections: string[] = [];
 	const variables: Record<string, unknown> = { boardId };
+	if (kind !== undefined) {
+		varDefs.push('$kind: BoardSubscriberKind');
+		variables.kind = kind;
+	}
 
 	// Deletions go first: top-level mutation fields run serially, so the adds
 	// below see the post-removal state.
@@ -278,7 +292,7 @@ export async function changeBoardSubscribers(
 		selections.push(
 			removing
 				? 'users: delete_subscribers_from_board(board_id: $boardId, user_ids: $userIds) { id name email }'
-				: `users: add_users_to_board(board_id: $boardId, user_ids: $userIds, kind: ${kind}) { id name email }`,
+				: 'users: add_users_to_board(board_id: $boardId, user_ids: $userIds, kind: $kind) { id name email }',
 		);
 	}
 	if (teamIds.length > 0) {
@@ -287,7 +301,7 @@ export async function changeBoardSubscribers(
 		selections.push(
 			removing
 				? 'teams: delete_teams_from_board(board_id: $boardId, team_ids: $teamIds) { id name }'
-				: `teams: add_teams_to_board(board_id: $boardId, team_ids: $teamIds, kind: ${kind}) { id name }`,
+				: 'teams: add_teams_to_board(board_id: $boardId, team_ids: $teamIds, kind: $kind) { id name }',
 		);
 	}
 
@@ -662,11 +676,7 @@ export async function getSingleBoard(
 
 	const boards = (data.boards ?? []) as IDataObject[];
 	if (boards.length === 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Board ${boardId} was not found. It may never have existed, or your API token may not have access to it.`,
-			{ itemIndex },
-		);
+		throw boardNotFoundError(this.getNode(), boardId, itemIndex);
 	}
 	return boards[0];
 }

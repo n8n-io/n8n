@@ -451,7 +451,7 @@ export const boardFields: INodeProperties[] = [
 				typeOptions: { minValue: 1, maxValue: 1000 },
 				default: 50,
 				description: 'Max number of results to return',
-				hint: 'Higher limits consume more of your account’s API complexity budget per run — see the Get Rate Limits operation',
+				hint: 'Higher limits consume more of your account’s API complexity budget per run',
 			},
 			{
 				displayName: 'Page',
@@ -751,7 +751,7 @@ export const boardFields: INodeProperties[] = [
 				typeOptions: { minValue: 1, maxValue: 1000 },
 				default: 50,
 				description: 'Max number of results to return',
-				hint: 'Higher limits consume more of your account’s API complexity budget per run — see the Get Rate Limits operation',
+				hint: 'Higher limits consume more of your account’s API complexity budget per run',
 			},
 			{
 				displayName: 'Page',

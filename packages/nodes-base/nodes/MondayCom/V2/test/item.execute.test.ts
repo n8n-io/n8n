@@ -12,6 +12,7 @@ import {
 	formatColumnValueOutput,
 	moveItem,
 	resolveArchiveOrDeleteAction,
+	withArchiveOrDeleteOutcome,
 } from '../actions/item/item.execute';
 import { MondayComV2 } from '../MondayComV2.node';
 import type { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
@@ -340,23 +341,41 @@ describe('flattenItemColumns', () => {
 describe('resolveArchiveOrDeleteAction', () => {
 	it('defaults the unified operation to archive (the safe default)', () => {
 		const context = makeContext('archive');
-		expect(resolveArchiveOrDeleteAction.call(context, 'archiveOrDeleteItem', 0)).toBe('archive');
+		expect(resolveArchiveOrDeleteAction.call(context, 0)).toBe('archive');
 	});
 
 	it('honors an explicit delete selection', () => {
 		const context = makeContext('delete');
-		expect(resolveArchiveOrDeleteAction.call(context, 'archiveOrDeleteBoard', 0)).toBe('delete');
+		expect(resolveArchiveOrDeleteAction.call(context, 0)).toBe('delete');
 	});
 
 	it('falls back to archive for any unexpected parameter value', () => {
 		const context = makeContext('something-else');
-		expect(resolveArchiveOrDeleteAction.call(context, 'archiveOrDeleteGroup', 0)).toBe('archive');
+		expect(resolveArchiveOrDeleteAction.call(context, 0)).toBe('archive');
+	});
+});
+
+describe('withArchiveOrDeleteOutcome', () => {
+	it('overrides the pre-change state monday echoes for items and boards', () => {
+		expect(withArchiveOrDeleteOutcome({ id: '1', state: 'active' }, 'archive', 'item')).toEqual({
+			id: '1',
+			state: 'archived',
+			action: 'archive',
+		});
+		expect(withArchiveOrDeleteOutcome({ id: '2', state: 'active' }, 'delete', 'board')).toEqual({
+			id: '2',
+			state: 'deleted',
+			action: 'delete',
+		});
 	});
 
-	it('maps the legacy operation values without reading the parameter', () => {
-		const context = makeContext(undefined);
-		expect(resolveArchiveOrDeleteAction.call(context, 'archiveItem', 0)).toBe('archive');
-		expect(resolveArchiveOrDeleteAction.call(context, 'deleteItem', 0)).toBe('delete');
+	it('sets the archived/deleted flags for groups', () => {
+		expect(
+			withArchiveOrDeleteOutcome({ id: 'g1', title: 'G', archived: false }, 'archive', 'group'),
+		).toEqual({ id: 'g1', title: 'G', archived: true, action: 'archive' });
+		expect(
+			withArchiveOrDeleteOutcome({ id: 'g1', title: 'G', deleted: false }, 'delete', 'group'),
+		).toEqual({ id: 'g1', title: 'G', deleted: true, action: 'delete' });
 	});
 });
 

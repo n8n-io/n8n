@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
+import { resolveBinaryUpload } from '../../helpers/fileTransfer';
 import { normalizeIdList } from '../../helpers/filterOptions';
 import { extractUserRowIds } from '../../helpers/userLocator';
 import { DEFAULT_LIMIT } from '../../transport/constants';
@@ -43,8 +44,9 @@ export async function addFileToUpdate(
 		throw new NodeOperationError(this.getNode(), 'Update ID must be a number', { itemIndex });
 	}
 
-	const binaryMetadata = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
-	const fileBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+	// Streamed from binary storage when possible — monday accepts files up
+	// to 500 MB, which must not be buffered in memory.
+	const upload = await resolveBinaryUpload(this, itemIndex, binaryPropertyName);
 
 	const data = await client.uploadFile(
 		`mutation ($file: File!) {
@@ -57,9 +59,10 @@ export async function addFileToUpdate(
 				file_size
 			}
 		}`,
-		fileBuffer,
-		binaryMetadata.fileName ?? 'file',
-		binaryMetadata.mimeType ?? 'application/octet-stream',
+		upload.body,
+		upload.fileName,
+		upload.mimeType,
+		upload.contentLength,
 	);
 
 	return {

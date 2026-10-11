@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { tryToParseDateTime } from 'n8n-workflow';
 
 /**
  * Converts friendly per-type inputs into the column_values JSON that the
@@ -9,10 +10,19 @@ import type { IDataObject } from 'n8n-workflow';
  * - null / undefined / '' clears the column (monday accepts null in
  *   change_multiple_column_values / create_item JSON).
  * - A string that parses as a JSON object is passed through untouched, so
- *   power users can always hand the API its native format.
+ *   power users can always hand the API its native format. Text columns are
+ *   the exception: a value starting with "{" there is just text.
  */
 
-type Mapper = (value: unknown) => unknown;
+export interface MapperOptions {
+	/** Workflow timezone, applied to date-times that carry no offset. */
+	timezone?: string;
+}
+
+type Mapper = (value: unknown, options: MapperOptions) => unknown;
+
+/** Column types whose friendly value is free text, never API JSON. */
+const TEXT_COLUMN_TYPES = new Set(['text', 'long_text']);
 
 function asStringList(value: unknown): string[] {
 	if (Array.isArray(value)) return value.map(String).filter((entry) => entry.trim() !== '');
@@ -47,14 +57,30 @@ function mapPeople(value: unknown): unknown {
 	return { personsAndTeams };
 }
 
-/** date: "YYYY-MM-DD", optionally with a time ("T" or space separated). */
-function mapDate(value: unknown): unknown {
-	const text = String(value).trim();
-	const match = text.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}(?::\d{2})?))?/);
-	if (!match) return { date: text };
-	const [, date, time] = match;
-	if (!time) return { date };
-	return { date, time: time.length === 5 ? `${time}:00` : time };
+/**
+ * date: a date-only "YYYY-MM-DD" is sent as-is (monday stores it without a
+ * time). Anything with a time is parsed like the Wait node does — an
+ * explicit offset wins, otherwise the workflow timezone applies — and sent
+ * as UTC date + time, which is what monday expects for timed dates.
+ */
+function mapDate(value: unknown, { timezone }: MapperOptions): unknown {
+	if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+		return { date: value.trim() };
+	}
+	let parsed;
+	try {
+		parsed = tryToParseDateTime(value, timezone);
+	} catch {
+		// Not a date we recognise — hand it to the API so the error names the column.
+		return { date: String(value).trim() };
+	}
+	const utc = parsed.toUTC();
+	return { date: utc.toFormat('yyyy-MM-dd'), time: utc.toFormat('HH:mm:ss') };
+}
+
+/** world_clock: an IANA timezone name, e.g. "Europe/Athens". */
+function mapWorldClock(value: unknown): unknown {
+	return { timezone: String(value).trim() };
 }
 
 /** checkbox: any boolean-ish value; false clears the checkbox. */
@@ -175,12 +201,17 @@ const MAPPERS: Record<string, Mapper> = {
 	text: mapText,
 	timeline: mapTimeline,
 	week: mapWeek,
+	world_clock: mapWorldClock,
 };
 
-/** Column types the API cannot write to; excluded from the mapper UI. */
+/**
+ * Column types the API cannot write to; excluded from the mapper UI.
+ * color_picker is not supported by the API at all.
+ */
 export const READ_ONLY_COLUMN_TYPES = new Set([
 	'auto_number',
 	'button',
+	'color_picker',
 	'creation_log',
 	'file',
 	'formula',
@@ -199,11 +230,20 @@ export const READ_ONLY_COLUMN_TYPES = new Set([
  * Unknown types pass objects through untouched and send anything else as a
  * plain string — the raw-JSON escape hatch for types without a mapper.
  */
-export function mapColumnValue(columnType: string, value: unknown): unknown {
+export function mapColumnValue(
+	columnType: string,
+	value: unknown,
+	options: MapperOptions = {},
+): unknown {
 	if (value === null || value === undefined || value === '') return null;
 
-	// A JSON-object string is the API's native format; pass it through.
-	if (typeof value === 'string' && value.trim().startsWith('{')) {
+	// A JSON-object string is the API's native format; pass it through —
+	// except for text columns, where "{...}" is simply the text to store.
+	if (
+		typeof value === 'string' &&
+		value.trim().startsWith('{') &&
+		!TEXT_COLUMN_TYPES.has(columnType)
+	) {
 		try {
 			return JSON.parse(value);
 		} catch {
@@ -211,10 +251,13 @@ export function mapColumnValue(columnType: string, value: unknown): unknown {
 		}
 	}
 	// Objects (e.g. from expressions) are assumed to be API-format already.
-	if (typeof value === 'object' && !Array.isArray(value)) return value;
+	// Date objects are the exception: they are input for the date mapper.
+	if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+		return value;
+	}
 
 	const mapper = MAPPERS[columnType];
-	return mapper ? mapper(value) : String(value);
+	return mapper ? mapper(value, options) : String(value);
 }
 
 /**
@@ -225,10 +268,11 @@ export function mapColumnValue(columnType: string, value: unknown): unknown {
 export function buildColumnValues(
 	values: Record<string, unknown>,
 	columnTypes: Record<string, string>,
+	options: MapperOptions = {},
 ): IDataObject {
 	const result: IDataObject = {};
 	for (const [columnId, value] of Object.entries(values)) {
-		result[columnId] = mapColumnValue(columnTypes[columnId] ?? 'text', value) as never;
+		result[columnId] = mapColumnValue(columnTypes[columnId] ?? 'text', value, options) as never;
 	}
 	return result;
 }

@@ -10,9 +10,13 @@ import {
 
 const httpRequestWithAuthentication = vi.fn();
 
-function makeContext(boardId = '111', operation = 'createItem') {
+function makeContext(boardId = '111', operation = 'createItem', createAs = 'item') {
 	return {
-		getCurrentNodeParameter: (name: string) => (name === 'operation' ? operation : boardId),
+		getCurrentNodeParameter: (name: string) => {
+			if (name === 'operation') return operation;
+			if (name === 'createAs') return createAs;
+			return boardId;
+		},
 		getNode: () => ({ name: 'monday.com', type: 'CUSTOM.monday', typeVersion: 1 }),
 		helpers: { httpRequestWithAuthentication },
 	} as any;
@@ -54,7 +58,7 @@ describe('getColumnFields', () => {
 		expect(result.fields.map((field) => field.id)).toEqual(['name', 'text_1']);
 	});
 
-	it('maps the SUBITEM board columns for Create Subitem', async () => {
+	it('maps the SUBITEM board columns for Create in Subitem mode', async () => {
 		// First call: parent board columns (with the subtasks column pointing at board 222).
 		mockColumns([
 			{ id: 'name', title: 'Name', type: 'name' },
@@ -71,7 +75,7 @@ describe('getColumnFields', () => {
 			{ id: 'sub_text', title: 'Sub Notes', type: 'text' },
 		]);
 
-		const result = await getColumnFields.call(makeContext('111', 'createSubitem'));
+		const result = await getColumnFields.call(makeContext('111', 'createItem', 'subitem'));
 
 		expect(result.fields.map((field) => field.id)).toEqual(['sub_text']);
 		const secondCallBody = httpRequestWithAuthentication.mock.calls[1][1].body;
@@ -80,7 +84,7 @@ describe('getColumnFields', () => {
 
 	it('returns a notice when the parent board has no subitems board yet', async () => {
 		mockColumns([{ id: 'name', title: 'Name', type: 'name' }]);
-		const result = await getColumnFields.call(makeContext('111', 'createSubitem'));
+		const result = await getColumnFields.call(makeContext('111', 'createItem', 'subitem'));
 		expect(result.fields).toEqual([]);
 		expect(result.emptyFieldsNotice).toMatch(/no subitems yet/i);
 	});

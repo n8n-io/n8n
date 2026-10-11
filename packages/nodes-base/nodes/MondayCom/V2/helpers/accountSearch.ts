@@ -2,7 +2,7 @@ import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
 
 /**
  * Cross-entity account search (the `search` root query, API 2026-07+;
- * users/updates/timeline_items need 2026-10+ — covered by the node's pin).
+ * updates need 2026-10+ — covered by the node's pin).
  *
  * The query returns a SearchNamespace with one field per entity type, so a
  * single request can search every selected type at once. Facts verified live
@@ -16,9 +16,10 @@ import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
  * - GraphQL rejects declared-but-unused variables, so the variable
  *   definitions are built from the entity/filter combination actually used.
  * - Filter args differ per entity (introspected; the docs are incomplete):
- *   items/boards take board_ids+workspace_ids, docs only workspace_ids,
- *   users none, updates board_ids+creator_ids, timeline_items
- *   board_ids+workspace_ids+item_ids+type+product_kind.
+ *   items/boards take board_ids+workspace_ids, updates board_ids+creator_ids.
+ *
+ * The namespace also searches docs, users, workspaces and timeline items;
+ * those come in with the resources that need them.
  */
 
 /** The API's hard cap on results per entity type (no pagination exists). */
@@ -34,12 +35,8 @@ export const SEARCH_DEFAULT_LIMIT = 10;
  */
 export const SEARCH_OPERATION_ENTITY: Record<string, string> = {
 	searchBoardsAccount: 'boards',
-	searchDocsAccount: 'docs',
 	searchItemsAccount: 'items',
-	searchTimelineItemsAccount: 'timeline_items',
 	searchUpdatesAccount: 'updates',
-	searchUsersAccount: 'users',
-	searchWorkspacesAccount: 'workspaces',
 };
 
 /** All Search operation values — for shared displayOptions in the node. */
@@ -56,49 +53,11 @@ export const SEARCH_STRATEGY_OPTIONS: INodePropertyOptions[] = [
 	{ name: 'Speed', value: 'SPEED', description: 'Fastest response, simpler matching' },
 ];
 
-/** TimelineItemKind enum of the pinned version (introspected live 2026-07-19). */
-export const SEARCH_TIMELINE_KIND_OPTIONS: INodePropertyOptions[] = [
-	{ name: 'Activity', value: 'activity' },
-	{ name: 'AI Assistant', value: 'aiAssistant' },
-	{ name: 'AI Reply', value: 'aiReply' },
-	{ name: 'AI Summary', value: 'aiSummary' },
-	{ name: 'Campaigns', value: 'campaigns' },
-	{ name: 'Custom', value: 'custom' },
-	{ name: 'Custom Internal App', value: 'customInternalApp' },
-	{ name: 'Demo Email', value: 'demoEmail' },
-	{ name: 'Email', value: 'email' },
-	{ name: 'Form', value: 'form' },
-	{ name: 'Google Calendar', value: 'googleCalendar' },
-	{ name: 'Meeting', value: 'meeting' },
-	{ name: 'Merged Tickets', value: 'mergedTickets' },
-	{ name: 'Note', value: 'note' },
-	{ name: 'Outlook Calendar', value: 'outlookCalendar' },
-	{ name: 'Outreach Expert Phone Call', value: 'outreachExpertPhoneCall' },
-	{ name: 'Outreach Expert Phone Call V2', value: 'outreachExpertPhoneCallV2' },
-	{ name: 'Phone Call', value: 'phoneCall' },
-	{ name: 'Portal', value: 'portal' },
-	{ name: 'Portfolio Status', value: 'portfolio_status' },
-	{ name: 'Sequences Email', value: 'sequencesEmail' },
-	{ name: 'Video Meeting', value: 'videoMeeting' },
-	{ name: 'Zoom', value: 'zoom' },
-];
-
-/** TimelineItemProductKind enum (introspected live 2026-07-19). */
-export const SEARCH_TIMELINE_PRODUCT_OPTIONS: INodePropertyOptions[] = [
-	{ name: 'CRM', value: 'crm' },
-	{ name: 'Service', value: 'service' },
-];
-
 /** indexed_data field selection per entity (introspected — full field sets). */
 const INDEXED_FIELDS: Record<string, string> = {
 	items: 'id name url board_id workspace_id',
 	boards: 'id name description url workspace_id creator_id',
-	docs: 'id name workspace_id',
-	users: 'id name email',
-	workspaces: 'id name kind description state',
 	updates: 'id body creator_id item_id board_id created_at updated_at',
-	timeline_items:
-		'id title summary content type product_kind item_id board_id account_id created_at updated_at',
 };
 
 /**
@@ -109,33 +68,21 @@ const INDEXED_FIELDS: Record<string, string> = {
 const LIVE_FIELDS: Record<string, string> = {
 	items: 'id name state url created_at updated_at board { id name } group { id title }',
 	boards: 'id name state board_kind type url items_count workspace { id name }',
-	docs: 'id object_id name url created_at workspace_id created_by { id name }',
-	users: 'id name email title kind status url photo_url { thumb_small }',
-	workspaces: 'id name kind description state',
 	updates: 'id body text_body created_at updated_at creator { id name } item_id',
-	timeline_items: 'id title type content created_at user { id name } item { id name } board { id }',
 };
 
 /** Singular entityType tag emitted on each output row, per namespace field. */
 const ENTITY_TYPE_TAG: Record<string, string> = {
 	items: 'item',
 	boards: 'board',
-	docs: 'doc',
-	users: 'user',
-	workspaces: 'workspace',
 	updates: 'update',
-	timeline_items: 'timelineItem',
 };
 
 /** Which optional filter args each entity field accepts (introspected). */
 const ENTITY_FILTER_ARGS: Record<string, string[]> = {
 	items: ['board_ids', 'workspace_ids'],
 	boards: ['board_ids', 'workspace_ids'],
-	docs: ['workspace_ids'],
-	users: [],
-	workspaces: ['workspace_ids'],
 	updates: ['board_ids', 'creator_ids'],
-	timeline_items: ['board_ids', 'workspace_ids', 'item_ids', 'type', 'product_kind'],
 };
 
 /** Maps a filter arg name to its GraphQL variable name and type. */
@@ -143,18 +90,12 @@ const FILTER_VARIABLES: Record<string, { variable: string; type: string }> = {
 	board_ids: { variable: 'boardIds', type: '[ID!]' },
 	workspace_ids: { variable: 'workspaceIds', type: '[ID!]' },
 	creator_ids: { variable: 'creatorIds', type: '[ID!]' },
-	item_ids: { variable: 'itemIds', type: '[ID!]' },
-	type: { variable: 'timelineType', type: 'TimelineItemKind' },
-	product_kind: { variable: 'timelineProductKind', type: 'TimelineItemProductKind' },
 };
 
 export interface AccountSearchFilters {
 	boardIds?: string[];
 	workspaceIds?: string[];
 	creatorIds?: string[];
-	itemIds?: string[];
-	timelineType?: string;
-	timelineProductKind?: string;
 	/** ISO8601 timestamps for CrossEntityDateRangeInput. */
 	createdAfter?: string;
 	createdBefore?: string;
@@ -172,8 +113,8 @@ export interface AccountSearchPlan {
  * Only entities the caller selected appear in the document, and only
  * variables that are actually referenced get declared (GraphQL rejects
  * unused variable definitions). Filters ride only on the entities whose
- * field accepts them — e.g. a boards filter is silently inapplicable to
- * user search because the API offers no such argument there.
+ * field accepts them — e.g. a workspace filter is silently inapplicable to
+ * update search because the API offers no such argument there.
  */
 export function buildAccountSearchPlan(
 	searchText: string,
@@ -211,9 +152,6 @@ export function buildAccountSearchPlan(
 		board_ids: filters.boardIds?.length ? filters.boardIds : undefined,
 		workspace_ids: filters.workspaceIds?.length ? filters.workspaceIds : undefined,
 		creator_ids: filters.creatorIds?.length ? filters.creatorIds : undefined,
-		item_ids: filters.itemIds?.length ? filters.itemIds : undefined,
-		type: filters.timelineType || undefined,
-		product_kind: filters.timelineProductKind || undefined,
 	};
 
 	const declaredFilterVars = new Set<string>();
