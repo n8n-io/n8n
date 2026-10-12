@@ -45,7 +45,7 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 			:status="status"
 		/>
 		<div v-if="previewOutput && !hideBanner && status !== 'waiting'" :class="$style.callout">
-			<N8nCallout :theme="isFailing ? 'warning' : 'success'" iconless>
+			<N8nCallout :theme="isFailing ? 'secondary' : 'success'" iconless>
 				<strong>{{
 					i18n.baseText(
 						isFailing

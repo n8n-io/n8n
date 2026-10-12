@@ -60,7 +60,7 @@ describe('AiPreferenceRepository', () => {
 					{ userId: 'user-1', id: In(['a', 'b']) },
 					{ projectId: In(['p-1']), id: In(['a', 'b']) },
 				],
-				relations: { project: true, user: true },
+				relations: { project: true, user: true, createdBy: true },
 				order: { createdAt: 'ASC', id: 'ASC' },
 				skip: 0,
 				take: 2,

@@ -173,7 +173,7 @@ async function exportTo(targetDir: string): Promise<PackageManifest> {
 			includeTags: true,
 			includeVariableValues: true,
 			canExportVariableValues: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 		},
 		{ targetDir },
 	);

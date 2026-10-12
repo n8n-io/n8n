@@ -491,10 +491,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.searchPlaceholder ?? modalAttrs['search-placeholder']).toBe(
 			'Search workflows',
 		);
-		expect(modalAttrs.createAction ?? modalAttrs['create-action']).toMatchObject({
+		const createAction = modalAttrs.createAction ?? modalAttrs['create-action'];
+		expect(createAction).toMatchObject({
 			category: 'workflows',
 			label: 'Create workflow',
 		});
+		expect(createAction).not.toHaveProperty('description');
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
@@ -1259,6 +1261,22 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(connected).toMatchObject({
 				restriction: { available: false, scope: 'instance' },
 			});
+		});
+
+		it('opens the existing configuration of a connected restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const ref = toolRef(SLACK.name);
+
+			render([ref]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(data.kind !== 'mcpServer' && data.toolRef).toEqual(ref);
+			expect(data.onRemove).toBeDefined();
 		});
 
 		it('adds nothing when the installed community tool turns out to be restricted', async () => {

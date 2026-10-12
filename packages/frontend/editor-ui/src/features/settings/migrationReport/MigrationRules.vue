@@ -218,13 +218,23 @@ const sortedInstanceResults = computed(() => {
 						v-if="state?.report.generatedAt"
 						size="small"
 						color="text-light"
-						data-test-id="migration-report-last-synced"
+						:class="$style.NoLineBreak"
+						data-test-id="migration-report-last-updated"
 					>
-						<I18nT keypath="settings.migrationReport.lastSynced" tag="span" scope="global">
+						<I18nT keypath="settings.migrationReport.lastUpdated" tag="span" scope="global">
 							<template #time>
 								<TimeAgo :date="state.report.generatedAt.toString()" />
 							</template>
 						</I18nT>
+					</N8nText>
+					<N8nText
+						v-else-if="state"
+						size="small"
+						color="text-light"
+						:class="$style.NoLineBreak"
+						data-test-id="migration-report-last-updated"
+					>
+						{{ i18n.baseText('settings.migrationReport.neverUpdated') }}
 					</N8nText>
 					<N8nButton
 						v-if="canManageReport"

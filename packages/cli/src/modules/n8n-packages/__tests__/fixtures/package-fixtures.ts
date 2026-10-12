@@ -11,6 +11,7 @@ import type { PackageManifest } from '../../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageDataTableRequirement,
+	PackageRequirementConsumer,
 	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
@@ -151,13 +152,15 @@ export function workflowRequirementsFromWorkflows(
 		if (!referencedId) return;
 		const existing = byId.get(referencedId);
 		if (existing) {
-			if (!existing.usedByWorkflows.includes(workflowId)) existing.usedByWorkflows.push(workflowId);
+			if (!existing.usedBy.some(({ id }) => id === workflowId)) {
+				existing.usedBy.push({ kind: 'workflow', id: workflowId });
+			}
 			return;
 		}
 		byId.set(referencedId, {
 			id: referencedId,
 			name: nameById.get(referencedId) ?? referencedId,
-			usedByWorkflows: [workflowId],
+			usedBy: [{ kind: 'workflow', id: workflowId }],
 		});
 	};
 
@@ -206,8 +209,8 @@ export function credentialRequirementsFromWorkflows(
 
 				const existing = byId.get(details.id);
 				if (existing) {
-					if (!existing.usedByWorkflows.includes(workflow.id)) {
-						existing.usedByWorkflows.push(workflow.id);
+					if (!existing.usedBy.some(({ id }) => id === workflow.id)) {
+						existing.usedBy.push({ kind: 'workflow', id: workflow.id });
 					}
 					continue;
 				}
@@ -216,7 +219,7 @@ export function credentialRequirementsFromWorkflows(
 					id: details.id,
 					name: details.name,
 					type: credentialType,
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				});
 			}
 		}
@@ -319,9 +322,13 @@ export function serializedWorkflowWithDataTable(options: {
 /** Builds a manifest data table requirement (simulates export). */
 export function dataTableRequirement(
 	table: SerializedDataTable,
-	usedByWorkflows: string[],
+	usedBy: PackageRequirementConsumer[],
 ): PackageDataTableRequirement {
-	return { id: table.id, name: table.name, usedByWorkflows };
+	return {
+		id: table.id,
+		name: table.name,
+		usedBy,
+	};
 }
 
 export function serializedFolder(overrides: Partial<SerializedFolder> = {}): SerializedFolder {

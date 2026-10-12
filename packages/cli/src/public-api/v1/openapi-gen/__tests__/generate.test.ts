@@ -9,6 +9,7 @@ import {
 	registerSharedSchemas,
 	type OpenApiDocument,
 } from '../generate';
+import { buildBinarySuccessResponse } from '../decorator-routes';
 
 function makeNamedResponseDto(className: string, shape: Parameters<typeof Z.class>[0]) {
 	return { [className]: class extends Z.class(shape) {} }[className];
@@ -267,5 +268,33 @@ describe('shared schema registry', () => {
 
 		expect(registered.get(dtoA)).toBeDefined();
 		expect(registered.get(dtoB)).toBeDefined();
+	});
+
+	it('emits a binary response body with format: binary and its header descriptions', () => {
+		const registry = new OpenAPIRegistry();
+		registry.registerPath({
+			method: 'get',
+			path: '/exports',
+			responses: {
+				200: buildBinarySuccessResponse({
+					mediaType: 'application/gzip',
+					description: 'An archive.',
+					headers: { 'X-Archive-Size': { description: 'Size of the archive' } },
+				}),
+			},
+		});
+
+		const [artifact] = buildArtifactsFromRegistry(registry, [
+			{
+				outputPath: 'handlers/exports/spec/paths/export.generated.yml',
+				pathKey: '/exports',
+				method: 'get',
+			},
+		]);
+
+		expect(artifact.content).toContain('application/gzip:');
+		expect(artifact.content).toContain('format: binary');
+		expect(artifact.content).toContain('X-Archive-Size:');
+		expect(artifact.content).toContain('Size of the archive');
 	});
 });

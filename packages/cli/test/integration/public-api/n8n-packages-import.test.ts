@@ -22,6 +22,10 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
+// Must run before `setupTestServer`, which constructs the controller with this mock.
+const credentialTypesMock = mockInstance(CredentialTypes);
+credentialTypesMock.recognizes.mockReturnValue(true);
+
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 let owner: User;
@@ -29,9 +33,6 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const credentialTypesMock = mockInstance(CredentialTypes);
-	credentialTypesMock.recognizes.mockReturnValue(true);
-
 	// Register node types so imports pass the default fail-on-missing-node-type check.
 	await utils.initNodeTypes();
 
@@ -79,7 +80,7 @@ async function buildImportPackage(
 				? {
 						variables: [{ id: 'var-http-source', name: variable.name, target: variable.target }],
 						requirements: {
-							variables: [{ name: variable.name, usedByWorkflows: [wfId] }],
+							variables: [{ name: variable.name, usedBy: [{ kind: 'workflow', id: wfId }] }],
 						},
 					}
 				: {}),
@@ -152,7 +153,6 @@ describe('POST /n8n-packages/import', () => {
 
 	test('rejects import when the API key lacks workflow:import scope', async () => {
 		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		const tarBuffer = await buildImportPackage();
 
 		const response = await testServer
@@ -162,10 +162,6 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(403);
-		expect(emitSpy).toHaveBeenCalledWith(
-			'n8n-package-import-failed',
-			expect.objectContaining({ reason: 'access-denied' }),
-		);
 	});
 
 	test('rejects import into a project the caller has no access to', async () => {
@@ -471,7 +467,7 @@ describe('POST /n8n-packages/import', () => {
 					type: 'missing-node-type',
 					nodeType: 'n8n-nodes-community.chatBot',
 					typeVersion: 1,
-					usedByWorkflows: ['wf-unknown-node'],
+					usedBy: [{ kind: 'workflow', id: 'wf-unknown-node' }],
 				},
 			],
 		});

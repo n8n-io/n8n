@@ -354,7 +354,11 @@ const serverUrlDescription = computed(() =>
 						layout="vertical"
 						:show-divider="false"
 						:title="i18n.baseText('settings.mcp.connectDialog.configure.title')"
-						:description="i18n.baseText('settings.mcp.connectDialog.configure.description')"
+						:description="
+							activeClient.id === 'antigravity'
+								? i18n.baseText('settings.mcp.connectDialog.configure.antigravity.description')
+								: i18n.baseText('settings.mcp.connectDialog.configure.description')
+						"
 					>
 						<template #action>
 							<McpConfigSnippet

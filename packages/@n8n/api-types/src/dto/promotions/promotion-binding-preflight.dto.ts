@@ -119,6 +119,12 @@ const dataTableChangeSchema = z.discriminatedUnion('kind', [
 		to: dataTableColumnTypeSchema,
 		destructive: z.literal(true),
 	}),
+	z.object({
+		kind: z.literal('rename-column'),
+		from: z.string(),
+		to: z.string(),
+		destructive: z.literal(false),
+	}),
 	z.object({ kind: z.literal('reorder-columns'), destructive: z.literal(false) }),
 	z.object({
 		kind: z.literal('rename-table'),
@@ -128,7 +134,10 @@ const dataTableChangeSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
-/** Conflicts need a package or target correction before creation can proceed. */
+/**
+ * Continue can confirm a `destructive-change` conflict.
+ * The other conflicts need a package or target correction before creation can proceed.
+ */
 export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),
