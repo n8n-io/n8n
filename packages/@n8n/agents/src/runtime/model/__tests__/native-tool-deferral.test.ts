@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Tool } from '../../../sdk/tool';
 import type { AgentRuntimeConfig } from '../../../types/runtime/agent-runtime';
 import type { ModelConfig } from '../../../types/sdk/agent';
-import type { AgentMessage } from '../../../types/sdk/message';
+import type { AgentMessage, Message } from '../../../types/sdk/message';
 import { RuntimeContextBuilder } from '../../loop/runtime-context';
 import { InMemoryMemory } from '../../memory/memory-store';
 import { AgentMessageList } from '../message-list';
@@ -252,34 +252,103 @@ describe('native tool catalog', () => {
 		},
 	);
 
-	it('keeps caller cache markers and explicit eager options', async () => {
-		const callerCache = {
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' }, deferLoading: true },
-		};
-		const tools = toAiSdkTools([
-			new Tool('cached')
-				.description('Read cached data.')
-				.input(input)
-				.providerOptions(callerCache)
-				.handler(async ({ query }) => ({ query }))
-				.build(),
-			new Tool('eager')
-				.description('Read data eagerly.')
-				.input(input)
-				.providerOptions({ anthropic: { deferLoading: false }, openai: { strict: false } })
-				.handler(async ({ query }) => ({ query }))
-				.build(),
-			makeTool('lookup'),
+	it('omits failed tool searches from replay and preserves stored history', async () => {
+		const failedSearches = ['unavailable', 'too_many_requests'].map(
+			(errorCode, index): Message => ({
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: `failed_search_${index}`,
+						toolName: 'anthropic.tool_search',
+						input: { query: 'lookup' },
+						providerExecuted: true,
+						state: 'rejected',
+						error: JSON.stringify({ type: 'tool_search_tool_result_error', errorCode }),
+					},
+				],
+			}),
+		);
+		failedSearches[1].content.push(
+			{ type: 'text', text: 'Search was unavailable.' },
+			{
+				type: 'tool-call',
+				toolCallId: 'web_search_0',
+				toolName: 'anthropic.web_search_20250305',
+				input: { query: 'lookup' },
+				providerExecuted: true,
+				state: 'rejected',
+				error: JSON.stringify({ type: 'web_search_tool_result_error', errorCode: 'unavailable' }),
+			},
+		);
+		const list = new AgentMessageList();
+		list.addHistory([
+			{ role: 'user', content: [{ type: 'text', text: 'Find lookup tools.' }] },
+			failedSearches[0],
+			{ role: 'user', content: [{ type: 'text', text: 'Try again.' }] },
+			failedSearches[1],
 		]);
-		const { tools: native } = await applyNativeToolDeferral(tools, anthropicToolDeferral, policy);
-		expect(native.cached.providerOptions?.anthropic).toEqual({
-			...tools.cached.providerOptions?.anthropic,
-			deferLoading: false,
+		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'Continue.' }] }]);
+		const before = structuredClone(list.serialize());
+		const { context, aiProviderTools } = makeContext({
+			tools: [makeTool('workspace_read_file'), makeTool('workflow_lookup')],
+			providerTools: [{ name: 'anthropic.web_search_20250305', args: {} }],
 		});
-		expect(native.eager.providerOptions).toEqual(tools.eager.providerOptions);
-		expect(native.lookup.providerOptions?.anthropic?.deferLoading).toBe(true);
-		expect(tools.cached.providerOptions?.anthropic?.deferLoading).toBe(true);
+		const tools = await context.buildToolLoopContext(aiProviderTools);
+		const prompt = context.buildModelPrompt({
+			list,
+			tools,
+			instructionProviderOptions: undefined,
+			hostVolatileInstructions: undefined,
+			activeSkills: undefined,
+		});
+		expect(prompt.messages.filter((message) => message.role === 'assistant')).toMatchObject([
+			{
+				content: [
+					{ type: 'text', text: 'Search was unavailable.' },
+					{ type: 'tool-call', toolCallId: 'web_search_0' },
+					{
+						type: 'tool-result',
+						toolCallId: 'web_search_0',
+						output: { type: 'error-json' },
+					},
+				],
+			},
+		]);
+		expect(list.serialize()).toEqual(before);
 	});
+
+	it.each(['cacheControl', 'cache_control'])(
+		'keeps caller %s markers and explicit eager options',
+		async (marker) => {
+			const callerCache = {
+				anthropic: { [marker]: { type: 'ephemeral', ttl: '5m' }, deferLoading: true },
+			};
+			const tools = toAiSdkTools([
+				new Tool('cached')
+					.description('Read cached data.')
+					.input(input)
+					.providerOptions(callerCache)
+					.handler(async ({ query }) => ({ query }))
+					.build(),
+				new Tool('eager')
+					.description('Read data eagerly.')
+					.input(input)
+					.providerOptions({ anthropic: { deferLoading: false }, openai: { strict: false } })
+					.handler(async ({ query }) => ({ query }))
+					.build(),
+				makeTool('lookup'),
+			]);
+			const { tools: native } = await applyNativeToolDeferral(tools, anthropicToolDeferral, policy);
+			expect(native.cached.providerOptions?.anthropic).toEqual({
+				...tools.cached.providerOptions?.anthropic,
+				deferLoading: false,
+			});
+			expect(native.eager.providerOptions).toEqual(tools.eager.providerOptions);
+			expect(native.lookup.providerOptions?.anthropic?.deferLoading).toBe(true);
+			expect(tools.cached.providerOptions?.anthropic?.deferLoading).toBe(true);
+		},
+	);
 
 	it.each(['openai', 'anthropic'] as const)(
 		'adds no %s search for an empty or eager catalog',

@@ -101,7 +101,8 @@ Call and result provider options are stored separately. This preserves the
 separate OpenAI search-result item ID through memory and approval checkpoints.
 The catalog carries the registered search tool name into prompt preparation.
 When the catalog changes, the runtime uses that name to remove unavailable
-Anthropic tool references from search results in the outgoing prompt. Stored
+Anthropic tool references from search results in the outgoing prompt. It also
+omits failed Anthropic search calls and their results from that prompt. Stored
 messages keep the original search results.
 
 Native deferral does not reduce the number of definitions sent over HTTP.

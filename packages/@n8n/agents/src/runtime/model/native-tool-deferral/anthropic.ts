@@ -48,6 +48,7 @@ async function prepareTools(
 
 function filterToolReferences(part: ToolResultPart, tools: ToolSet): ToolResultPart {
 	if (part.output.type !== 'json' || !Array.isArray(part.output.value)) return part;
+	// Anthropic rejects saved references when a tool leaves the authorized catalog.
 	const value = part.output.value.filter((reference) => {
 		if (
 			!isRecord(reference) ||
@@ -69,17 +70,30 @@ function prepareMessages(
 ): ModelMessage[] {
 	if (!searchToolName) return messages;
 
-	// Anthropic rejects saved references when a tool leaves the authorized catalog.
-	return messages.map((message) => {
-		if (message.role !== 'assistant' || typeof message.content === 'string') return message;
-		return {
-			...message,
-			content: message.content.map((part) =>
+	return messages.flatMap<ModelMessage>((message) => {
+		if (message.role !== 'assistant' || typeof message.content === 'string') return [message];
+
+		// The adapter drops search errors but keeps their calls. Remove each failed pair.
+		const failedSearchIds = new Set(
+			message.content.flatMap((part) =>
+				part.type === 'tool-result' &&
+				part.toolName === searchToolName &&
+				(part.output.type === 'error-json' || part.output.type === 'error-text')
+					? [part.toolCallId]
+					: [],
+			),
+		);
+		const content = message.content
+			.filter((part) => {
+				if (part.type !== 'tool-call' && part.type !== 'tool-result') return true;
+				return !failedSearchIds.has(part.toolCallId);
+			})
+			.map((part) =>
 				part.type === 'tool-result' && part.toolName === searchToolName
 					? filterToolReferences(part, tools)
 					: part,
-			),
-		};
+			);
+		return content.length > 0 ? [{ ...message, content }] : [];
 	});
 }
 

@@ -89,10 +89,10 @@ function buildAnthropicCacheControl(config: PromptCachingConfig | undefined): Pr
 	};
 }
 
-/** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
+/** True when `providerOptions` carries an Anthropic cache marker. */
 export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
 	const anthropic = providerOptions?.anthropic;
-	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
+	return isRecord(anthropic) && isRecord(anthropic.cacheControl ?? anthropic.cache_control);
 }
 
 export function isAnthropicToolDeferred(tool: ToolSet[string]): boolean {
