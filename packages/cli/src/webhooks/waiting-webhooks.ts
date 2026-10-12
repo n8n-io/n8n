@@ -3,6 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ExecutionSnapshot, ResumeTargetResponse } from '@n8n/engine';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
@@ -27,15 +28,46 @@ import type {
 } from './webhook.types';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { isExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { withExpressionIsolate } from '@/utils';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
+
+/** An execution that can still reach a wait, or waits for a deadline only. */
+const isLiveSnapshot = ({ status }: ExecutionSnapshot): boolean =>
+	status === 'queued' || status === 'running' || status === 'waiting';
+
+/**
+ * Puts the waiting node where the v1 resume path expects it: at the top of the
+ * node execution stack and as the last node executed. The data plane keeps no
+ * stack, so the stand-in gets one entry. The node is a copy, because
+ * `disableNode` flags the stack entry, and a disabled workflow node has no
+ * webhooks to look up. `preserveInputOverride` pops the node's last run, so one
+ * must exist.
+ */
+function seedResumingNode(execution: IExecutionResponse, node: INode): void {
+	const { data } = execution;
+	data.resultData.lastNodeExecuted = node.name;
+	data.resultData.runData[node.name] ??= [
+		{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
+	];
+	data.executionData = {
+		contextData: {},
+		nodeExecutionStack: [{ node: structuredClone(node), data: { main: [[]] }, source: null }],
+		metadata: {},
+		waitingExecution: {},
+		waitingExecutionSource: null,
+	};
+}
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -54,6 +86,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly endpointsConfig: EndpointsConfig,
+		private readonly dataPlane: EngineDataPlaneProxyService,
+		private readonly executionReader: EngineV2ExecutionReader,
 	) {}
 
 	async getWebhookMethods(executionId: string) {
@@ -280,6 +314,12 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		this.logReceivedWebhook(req.method, executionId);
 
+		// The shape of the id picks the engine, as the other execution routes do.
+		// A v2 execution has no control-plane row; the data plane holds its wait.
+		if (isExecutionIdV2(executionId)) {
+			return await this.resumeEngineV2Execution(req, res, executionId, suffix);
+		}
+
 		sanitizeWebhookRequest(req);
 
 		// Reset request parameters
@@ -373,6 +413,128 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
+	/**
+	 * Resumes a wait that lives on the engine v2 data plane.
+	 *
+	 * Authorize first, run node code second: the data plane verifies the token,
+	 * which this plane cannot read, and names the waiting step. Only then runs
+	 * the node's `webhook()`, here, as in v1 and for the same reason: it needs
+	 * the HTTP request and the HTTP response. What it produces goes back to the
+	 * data plane as the step's outputs, through `WorkflowRunner.run` and
+	 * `EngineV2Dispatcher.resume`. One request, one locate: the data plane holds
+	 * a request for a short time when the execution runs but has not reached its
+	 * wait yet, and this plane adds no check of its own, because it has no row
+	 * for the execution.
+	 */
+	protected async resumeEngineV2Execution(
+		req: WaitingWebhookRequest,
+		res: express.Response,
+		executionId: ExecutionIdV2,
+		routeSuffix: string | undefined,
+	): Promise<IWebhookResponseCallbackData> {
+		req.params = {} as WaitingWebhookRequest['params'];
+
+		const { token, webhookPath } = this.parseSignatureParam(req);
+		if (token === undefined) return this.respondInvalidToken(res);
+
+		const located = await this.dataPlane.locateResumeTarget(executionId, { token });
+		if (!located.ok) {
+			// Relayed without detail, so a caller learns no more than in v1.
+			if (located.status === 401) return this.respondInvalidToken(res);
+			if (located.status === 404) {
+				throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+			}
+			throw new ConflictError(
+				`The execution "${executionId}" cannot be resumed: ${located.error}.`,
+			);
+		}
+
+		this.stripTokenFromRequest(req);
+		const suffix = routeSuffix ?? webhookPath;
+		const { execution: snapshot, target } = located.value;
+
+		const statusResult = this.answerEngineV2Status({ snapshot, target, suffix, req, res });
+		if (statusResult) return statusResult;
+
+		if (target === null) return this.answerEngineV2WithoutTarget(executionId, snapshot, res);
+
+		const execution = await this.executionReader.fromSnapshot(snapshot);
+		if (!execution) throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+
+		const node = execution.workflowData.nodes.find((candidate) => candidate.id === target.nodeId);
+		if (!node) throw new NotFoundError('Could not find node to process webhook.');
+
+		this.sanitizeEngineV2Request(req, node);
+		seedResumingNode(execution, node);
+
+		if (
+			!this.includeForms &&
+			this.isFormResumeExecution(execution) &&
+			this.redirectToFormWaiting(req, res)
+		) {
+			return { noWebhookResponse: true };
+		}
+
+		applyCors(req, res);
+
+		return await this.getWebhookExecutionData({
+			execution,
+			req,
+			res,
+			lastNodeExecuted: node.name,
+			executionId,
+			suffix,
+			engineResume: { stepId: target.stepId, token },
+		});
+	}
+
+	/** The 401 of this route: JSON here, a page on the form route. */
+	protected respondInvalidToken(res: express.Response): IWebhookResponseCallbackData {
+		res.status(401).json({ error: 'Invalid token' });
+		return { noWebhookResponse: true };
+	}
+
+	/**
+	 * A request that reads the execution's state instead of resuming it. Only
+	 * the form route has one, the status poll of the form page.
+	 */
+	protected answerEngineV2Status(_located: {
+		snapshot: ExecutionSnapshot;
+		target: ResumeTargetResponse['target'];
+		suffix: string | undefined;
+		req: WaitingWebhookRequest;
+		res: express.Response;
+	}): IWebhookResponseCallbackData | undefined {
+		return undefined;
+	}
+
+	/**
+	 * The data plane found no step that accepts the request. The execution's
+	 * status says why, and the answer is v1's for the same state: a live
+	 * execution has not reached its wait yet, or waits for a deadline only; any
+	 * other execution has ended.
+	 */
+	protected answerEngineV2WithoutTarget(
+		executionId: string,
+		snapshot: ExecutionSnapshot,
+		_res: express.Response,
+	): IWebhookResponseCallbackData {
+		throw new ConflictError(
+			isLiveSnapshot(snapshot)
+				? `The execution "${executionId}" is running already.`
+				: `The execution "${executionId}" has finished already.`,
+		);
+	}
+
+	/**
+	 * Strips the auth cookies before node code sees the request. After the data
+	 * plane named the node, so the form route can keep them for a node that opts
+	 * in; the data plane itself reads nothing of the request but the token.
+	 */
+	protected sanitizeEngineV2Request(req: WaitingWebhookRequest, _resumeNode: INode): void {
+		sanitizeWebhookRequest(req);
+	}
+
 	private emitExecutionResumedEvent(
 		execution: IExecutionResponse,
 		executionId: string,
@@ -393,6 +555,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		lastNodeExecuted,
 		executionId,
 		suffix,
+		engineResume,
 	}: {
 		execution: IExecutionResponse;
 		req: WaitingWebhookRequest;
@@ -400,6 +563,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		lastNodeExecuted: string;
 		executionId: string;
 		suffix?: string;
+		/** For an engine v2 execution: the wait that the resume ends on the data plane. */
+		engineResume?: EngineV2ResumeRequest;
 	}): Promise<IWebhookResponseCallbackData> {
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
@@ -486,7 +651,7 @@ export class WaitingWebhooks implements IWebhookManager {
 						resolve(data);
 					},
 					undefined,
-					{ storedAt: execution.storedAt, onResume },
+					{ storedAt: execution.storedAt, onResume, engineResume },
 				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
