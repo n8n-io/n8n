@@ -1,3 +1,12 @@
+## [2.42.7](https://github.com/n8n-io/n8n/compare/n8n@2.42.6...n8n@2.42.7) (2026-10-12)
+
+
+### Bug Fixes
+
+* **core:** Keep concurrent credential tests from sharing one node type registry ([#40783](https://github.com/n8n-io/n8n/issues/40783)) ([c17fdee](https://github.com/n8n-io/n8n/commit/c17fdeeb8bab87b838f69a95572010b920f55ebc))
+* **core:** Resume tool calls for deferred tools that a skill loaded ([#40747](https://github.com/n8n-io/n8n/issues/40747)) ([fd2586e](https://github.com/n8n-io/n8n/commit/fd2586ea74b5c1dac1e5b1827906a83ba5e1eebb))
+
+
 ## [2.42.6](https://github.com/n8n-io/n8n/compare/n8n@2.42.5...n8n@2.42.6) (2026-10-09)
 
 
