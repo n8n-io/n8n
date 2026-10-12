@@ -5,8 +5,9 @@ import type {
 	IAgentConfigurationTelemetryProperties,
 } from '@/interfaces';
 
-import type { Agent } from './entities/agent.entity';
 import type { MessageRecord } from './execution-recorder';
+import { toAgentDocument } from './json-config/agent-document';
+import type { AgentRunSource } from './utils/agent-published-snapshot';
 import {
 	capabilityCountTelemetryProperties,
 	countAgentCapabilities,
@@ -31,10 +32,14 @@ export function buildAgentCapabilityTelemetryProperties(
 	return { ...capabilityCountTelemetryProperties(counts), model, tool_types };
 }
 
-export function buildAgentConfigurationTelemetry(
-	agent: Agent,
-): IAgentConfigurationTelemetryProperties {
-	return buildAgentConfigurationTelemetryFromConfig(agent.schema, agent.integrations);
+export function buildAgentConfigurationTelemetry({
+	agent,
+	skillRefs,
+}: AgentRunSource): IAgentConfigurationTelemetryProperties {
+	return buildAgentConfigurationTelemetryFromConfig(
+		agent.schema ? toAgentDocument(agent.schema, skillRefs) : null,
+		agent.integrations,
+	);
 }
 
 export function buildAgentConfigurationTelemetryFromConfig(

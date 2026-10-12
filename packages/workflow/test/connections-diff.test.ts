@@ -366,6 +366,35 @@ describe('compareConnections', () => {
 	});
 
 	describe('multiple source indices', () => {
+		it('should append added and removed entries across source indices', () => {
+			const kept = createConnection('kept', 'main', 0);
+			const removedFirst = createConnection('removedFirst', 'main', 0);
+			const removedSecond = createConnection('removedSecond', 'main', 0);
+			const addedFirst = createConnection('addedFirst', 'main', 0);
+			const addedSecond = createConnection('addedSecond', 'main', 0);
+			const prev: IConnections = { node1: { main: [[removedFirst, kept], [removedSecond]] } };
+			const next: IConnections = { node1: { main: [[kept, addedFirst], [addedSecond]] } };
+
+			expect(compareConnections(prev, next)).toEqual({
+				added: {
+					node1: {
+						main: [
+							{ sourceIndex: 0, value: { index: 1, connection: addedFirst } },
+							{ sourceIndex: 1, value: { index: 0, connection: addedSecond } },
+						],
+					},
+				},
+				removed: {
+					node1: {
+						main: [
+							{ sourceIndex: 0, value: { index: 0, connection: removedFirst } },
+							{ sourceIndex: 1, value: { index: 0, connection: removedSecond } },
+						],
+					},
+				},
+			});
+		});
+
 		it('should handle multiple source indices (switch-like nodes)', () => {
 			const prev: IConnections = {
 				node1: {
