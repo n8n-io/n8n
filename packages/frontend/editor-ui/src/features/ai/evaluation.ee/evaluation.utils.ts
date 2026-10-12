@@ -269,7 +269,7 @@ export function getMetricValueFormat(
 ): MetricValueFormat {
 	if (options.scale || options.category !== 'custom') return 'percentage';
 	const num = normalizeMetricValue(value);
-	return num !== undefined && Math.abs(num) > 1 ? 'number' : 'percentage';
+	return num !== undefined && (num < 0 || num > 1) ? 'number' : 'percentage';
 }
 
 function formatMetricNumber(value: number): string {

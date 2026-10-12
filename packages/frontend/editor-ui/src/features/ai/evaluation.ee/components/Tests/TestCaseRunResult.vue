@@ -136,7 +136,11 @@ const metricBadges = computed<MetricBadge[]>(() => {
 		return {
 			key,
 			label,
-			text: formatMetricValue(value, { key, category }),
+			text: formatMetricValue(value, {
+				key,
+				category,
+				scale: targetRun.value?.metricScales?.[key],
+			}),
 			passed: casePassed(value),
 		};
 	});

@@ -1332,6 +1332,10 @@ describe('utils', () => {
 			expect(formatMetricValue(0.73, { category: 'custom' })).toBe('73%');
 		});
 
+		it('renders negative unscaled custom metrics as numbers', () => {
+			expect(formatMetricValue(-0.5, { category: 'custom' })).toBe('-0.5');
+		});
+
 		it('lets an explicit scale override the custom-metric heuristic', () => {
 			expect(formatMetricValue(5, { category: 'custom', scale: 'oneToFive' })).toBe('100%');
 		});

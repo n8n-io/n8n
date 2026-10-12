@@ -54,7 +54,7 @@ describe('MetricSummaryStrip', () => {
 
 		expect(getByText('706')).toBeVisible();
 		expect(container.textContent).not.toContain('706%');
-		expect(deltaText(container)).toContain('+6');
+		expect(deltaText(container)).toBe('+6');
 		expect(deltaText(container)).not.toContain('%');
 	});
 

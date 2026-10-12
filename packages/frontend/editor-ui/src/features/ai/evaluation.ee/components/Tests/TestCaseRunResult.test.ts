@@ -107,4 +107,21 @@ describe('TestCaseRunResult', () => {
 		expect(badge.textContent).toContain('706');
 		expect(badge.textContent).not.toContain('706%');
 	});
+
+	it('uses the target run scale when formatting a custom metric', () => {
+		const evaluationStore = seedTwoRuns();
+		evaluationStore.testRunsById['run-old'] = {
+			...evaluationStore.testRunsById['run-old'],
+			metricScales: { customScore: 'oneToFive' },
+		} as never;
+		evaluationStore.testCaseExecutionsById.eo = {
+			...evaluationStore.testCaseExecutionsById.eo,
+			metrics: { customScore: 5 },
+		} as never;
+
+		const { getByTestId } = renderComponent({ props: { index: 0, runId: 'run-old' } });
+		const badge = getByTestId('tests-result-badge-0-customScore');
+
+		expect(badge.textContent).toContain('100%');
+	});
 });
