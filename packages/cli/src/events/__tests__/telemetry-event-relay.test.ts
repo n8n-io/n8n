@@ -1,5 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type OwnershipService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
@@ -41,7 +41,6 @@ import { OtelConfig } from '@/modules/otel/otel.config';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));

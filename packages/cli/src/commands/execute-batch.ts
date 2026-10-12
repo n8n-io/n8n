@@ -12,7 +12,7 @@ import { sep } from 'path';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { findCliWorkflowStart } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 

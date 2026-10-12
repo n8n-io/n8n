@@ -3,7 +3,7 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnerSetupService } from '@/services/owner-setup.service';
 
 import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
@@ -45,7 +45,7 @@ const ownerEnvSchema = z
 export class OwnerInstanceSettingsLoader {
 	constructor(
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
-		private readonly ownershipService: OwnershipService,
+		private readonly ownerSetupService: OwnerSetupService,
 		private logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
@@ -67,7 +67,7 @@ export class OwnerInstanceSettingsLoader {
 			throw new InstanceBootstrappingError(result.error.issues[0].message);
 		}
 
-		await this.ownershipService.setupOwner(result.data.payload, result.data.options);
+		await this.ownerSetupService.setupOwner(result.data.payload, result.data.options);
 
 		return 'created';
 	}

@@ -12,7 +12,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
@@ -50,7 +50,6 @@ import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';

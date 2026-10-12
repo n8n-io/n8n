@@ -26,7 +26,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { PostHogClient } from '@/posthog';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { WorkflowRunner } from '@/workflow-runner';

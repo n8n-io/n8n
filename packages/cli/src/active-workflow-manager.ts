@@ -54,7 +54,7 @@ import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-tri
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

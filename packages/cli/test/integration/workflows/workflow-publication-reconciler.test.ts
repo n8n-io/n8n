@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import {
 	createWorkflowHistory,
 	createWorkflowWithHistory,
@@ -25,7 +25,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationReconciler } from '@/workflows/publication/workflow-publication-reconciler.service';

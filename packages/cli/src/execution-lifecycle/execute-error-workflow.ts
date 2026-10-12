@@ -7,8 +7,7 @@ import { toErrorWorkflowContext } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@n8n/backend-services';
+import { OwnershipService, UrlService } from '@n8n/backend-services';
 
 /**
  * Resolved lazily. A static import would close the cycle

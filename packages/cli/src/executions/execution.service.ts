@@ -1,7 +1,7 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -52,7 +52,6 @@ import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';

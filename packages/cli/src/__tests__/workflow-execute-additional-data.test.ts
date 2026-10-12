@@ -1,5 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { EventService, UrlService, OwnershipService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
@@ -47,7 +47,6 @@ import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
-import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
 import {

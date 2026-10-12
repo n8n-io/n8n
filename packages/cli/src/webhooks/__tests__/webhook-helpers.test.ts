@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
@@ -67,7 +67,6 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';

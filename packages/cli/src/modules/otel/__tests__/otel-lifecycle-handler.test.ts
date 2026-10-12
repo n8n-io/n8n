@@ -1,5 +1,5 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type OwnershipService } from '@n8n/backend-services';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -11,7 +11,6 @@ import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import type { OwnershipService } from '@/services/ownership.service';
 
 import type { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';

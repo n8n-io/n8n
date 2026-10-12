@@ -20,7 +20,7 @@ import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 

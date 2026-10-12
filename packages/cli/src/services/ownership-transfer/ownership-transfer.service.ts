@@ -1,4 +1,4 @@
-import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
+import { OwnershipTransferHandlerRegistry, OwnershipService } from '@n8n/backend-services';
 import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -11,7 +11,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 /**

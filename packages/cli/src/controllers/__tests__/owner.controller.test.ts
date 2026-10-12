@@ -6,14 +6,14 @@ import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@n8n/errors';
 import type { PostHogClient } from '@/posthog';
 import type { BannerService } from '@/services/banner.service';
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnerSetupService } from '@/services/owner-setup.service';
 import type { UserService } from '@/services/user.service';
 
 describe('OwnerController', () => {
 	const authService = mock<AuthService>();
 	const bannerService = mock<BannerService>();
 	const userService = mock<UserService>();
-	const ownershipService = mock<OwnershipService>();
+	const ownerSetupService = mock<OwnerSetupService>();
 	const postHogClient = mock<PostHogClient>();
 
 	const controller = new OwnerController(
@@ -21,12 +21,12 @@ describe('OwnerController', () => {
 		bannerService,
 		userService,
 		postHogClient,
-		ownershipService,
+		ownerSetupService,
 	);
 
 	describe('setupOwner', () => {
 		it('should pass on errors from the service', async () => {
-			ownershipService.setupOwner.mockRejectedValueOnce(
+			ownerSetupService.setupOwner.mockRejectedValueOnce(
 				new BadRequestError('Instance owner already setup'),
 			);
 

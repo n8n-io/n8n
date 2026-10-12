@@ -24,7 +24,7 @@ import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 

@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
@@ -30,7 +30,6 @@ import {
 } from 'n8n-workflow';
 
 import { INSTANCE_ACTIVATED_SETTINGS_KEY } from '@/services/instance-activation.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { createUser } from '@test-integration/db/users';

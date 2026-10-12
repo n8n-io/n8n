@@ -1,6 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
@@ -42,7 +42,6 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';

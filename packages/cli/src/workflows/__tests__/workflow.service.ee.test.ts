@@ -15,11 +15,10 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, OwnershipService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';

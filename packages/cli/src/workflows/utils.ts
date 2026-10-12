@@ -5,7 +5,7 @@ import type { Scope } from '@n8n/permissions';
 import { NodeApiError, NodeError, WorkflowActivationError } from 'n8n-workflow';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 
 type RedactionMode = 'manual' | 'nonManual';
 

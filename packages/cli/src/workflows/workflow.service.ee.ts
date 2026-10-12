@@ -32,7 +32,7 @@ import {
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, OwnershipService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
@@ -41,7 +41,6 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { WorkflowFinderService } from './workflow-finder.service';

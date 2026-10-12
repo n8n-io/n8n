@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -7,7 +7,6 @@ import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';

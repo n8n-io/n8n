@@ -19,7 +19,7 @@ import { DateTime } from 'luxon';
 import { PROJECT_ROOT, UnexpectedError } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import {
 	createCredentials,
 	getCredentialSharings,

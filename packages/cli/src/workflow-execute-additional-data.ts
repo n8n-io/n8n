@@ -352,7 +352,7 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
-	const { OwnershipService } = await import('@/services/ownership.service.js');
+	const { OwnershipService } = await import('@n8n/backend-services');
 	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 		Container.get(OwnershipService),
 		workflowData.id,
@@ -423,7 +423,7 @@ export async function executeAgent(
 	// `webhooks/*`, `scaling/job-processor`). Resolve it from the workflow's
 	// owning project so the agent runs under the correct project scope.
 	if (!projectId && additionalData.workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service.js');
+		const { OwnershipService } = await import('@n8n/backend-services');
 		const ownershipService = Container.get(OwnershipService);
 		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
 		projectId = project.id;
@@ -883,7 +883,7 @@ export async function getBase({
 	// matching `getVariables`'s own pre-existing lookup below: an unresolvable owner
 	// project fails execution setup, it isn't silently tolerated.
 	if (!projectId && workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service.js');
+		const { OwnershipService } = await import('@n8n/backend-services');
 		const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
 		projectId = project?.id;
 	}

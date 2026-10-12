@@ -1,5 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { OnLifecycleEvent, OnPubSubEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -18,7 +18,6 @@ import type { CustomAttributes } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
 import { TraceContextService } from './tracing-context';
-import { OwnershipService } from '../../services/ownership.service';
 
 const isCustomTelemetryTag = (value: unknown): value is ICustomTelemetryTag =>
 	typeof value === 'object' &&

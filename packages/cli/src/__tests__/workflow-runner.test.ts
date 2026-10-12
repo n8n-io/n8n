@@ -53,7 +53,7 @@ import {
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';

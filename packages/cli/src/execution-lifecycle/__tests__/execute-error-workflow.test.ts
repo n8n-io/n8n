@@ -8,8 +8,7 @@ import { createRunExecutionData, NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@n8n/backend-services';
+import { OwnershipService, UrlService } from '@n8n/backend-services';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { executeErrorWorkflow } from '../execute-error-workflow';

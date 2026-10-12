@@ -49,7 +49,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';

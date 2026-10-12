@@ -3,7 +3,7 @@ import type { WorkflowExecuteBeforeContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 
 /**
  * The execution backstop. Every way an execution starts — main, queue worker,

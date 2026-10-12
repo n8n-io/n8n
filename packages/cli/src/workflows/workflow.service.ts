@@ -1,7 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus, WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, RoleService, OwnershipService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -82,7 +82,6 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';

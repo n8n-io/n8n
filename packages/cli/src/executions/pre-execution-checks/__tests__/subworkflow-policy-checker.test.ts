@@ -11,8 +11,7 @@ import {
 	SubworkflowPolicyDenialError,
 } from '@/errors/subworkflow-policy-denial.error';
 import type { AccessService } from '@/services/access.service';
-import { OwnershipService } from '@/services/ownership.service';
-import type { UrlService } from '@n8n/backend-services';
+import { OwnershipService, type UrlService } from '@n8n/backend-services';
 
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker';
 

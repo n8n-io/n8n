@@ -17,9 +17,8 @@ import { TransferCredentialError } from '@/errors/response-errors/transfer-crede
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialsService } from './credentials.service';

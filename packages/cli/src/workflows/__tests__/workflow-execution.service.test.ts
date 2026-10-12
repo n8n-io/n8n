@@ -1,5 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import type { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
+import type {
+	EventService,
+	InstanceWriteAccessService,
+	OwnershipService,
+} from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -36,7 +40,6 @@ import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';

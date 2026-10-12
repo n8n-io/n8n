@@ -20,7 +20,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';

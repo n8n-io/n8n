@@ -10,7 +10,7 @@ import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 
 import { createUserShell } from './shared/db/users';
 import * as utils from './shared/utils/';

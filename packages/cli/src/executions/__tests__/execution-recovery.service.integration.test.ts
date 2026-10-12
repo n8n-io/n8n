@@ -34,11 +34,9 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService, type EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { EventService } from '@n8n/backend-services';
-import { WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';

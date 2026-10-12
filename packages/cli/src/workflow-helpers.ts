@@ -37,7 +37,7 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';
 
-import { OwnershipService } from './services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 
 export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 export { getLastExecutedNodeData, getLastExecutedNodeRuns } from 'n8n-workflow';

@@ -1,4 +1,4 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, OwnershipService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, Project } from '@n8n/db';
@@ -9,7 +9,6 @@ import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resumi
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 

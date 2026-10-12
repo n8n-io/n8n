@@ -1,6 +1,7 @@
 import {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
+	type OwnershipService,
 } from '@n8n/backend-services';
 import type {
 	CredentialsEntity,
@@ -18,7 +19,6 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { FolderService } from '@/services/folder.service';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { OwnershipTransferService } from '../ownership-transfer.service';

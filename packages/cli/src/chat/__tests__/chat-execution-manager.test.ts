@@ -17,7 +17,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { NodeTypes } from '../../node-types';
-import { OwnershipService } from '../../services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { ChatExecutionManager } from '../chat-execution-manager';
 import type { ChatMessage } from '../chat-service.types';
 

@@ -6,8 +6,8 @@ import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { PostHogClient } from '@/posthog';
 import { BannerService } from '@/services/banner.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
+import { OwnerSetupService } from '@/services/owner-setup.service';
 
 @RestController('/owner')
 export class OwnerController {
@@ -16,7 +16,7 @@ export class OwnerController {
 		private readonly bannerService: BannerService,
 		private readonly userService: UserService,
 		private readonly postHog: PostHogClient,
-		private readonly ownershipService: OwnershipService,
+		private readonly ownerSetupService: OwnerSetupService,
 	) {}
 
 	/**
@@ -24,7 +24,7 @@ export class OwnerController {
 	 */
 	@Post('/setup', { skipAuth: true })
 	async setupOwner(req: AuthenticatedRequest, res: Response, @Body payload: OwnerSetupRequestDto) {
-		const owner = await this.ownershipService.setupOwner(payload);
+		const owner = await this.ownerSetupService.setupOwner(payload);
 		this.authService.issueCookie(res, owner, req.authInfo?.usedMfa ?? false, req.browserId);
 		return await this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}

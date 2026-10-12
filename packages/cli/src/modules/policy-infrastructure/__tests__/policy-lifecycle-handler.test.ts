@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 
 import { PolicyCheckFailedError } from '../policy-check-failed.error';
 import { PolicyDecisionService } from '../policy-decision.service';

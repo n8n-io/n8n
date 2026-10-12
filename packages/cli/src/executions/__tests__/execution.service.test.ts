@@ -1,5 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, OwnershipService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -33,7 +33,6 @@ import type { ExecutionRequest } from '@/executions/execution.types';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';

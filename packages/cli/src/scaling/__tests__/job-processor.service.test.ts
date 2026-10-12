@@ -1,6 +1,6 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import { type EventService, OwnershipService } from '@n8n/backend-services';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository, Project } from '@n8n/db';
 import { WorkflowPublishHistoryRepository } from '@n8n/db';
@@ -49,7 +49,6 @@ import { ExternalHooks } from '@/external-hooks';
 import type { ManualExecutionService } from '@/manual-execution.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
-import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';

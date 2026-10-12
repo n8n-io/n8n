@@ -1,5 +1,10 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import { type EventService, UrlService, type RoleService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type OwnershipService,
+	type RoleService,
+	UrlService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -32,7 +37,6 @@ import type { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from '../jwt.service';
 import type { OwnershipTransferService } from '../ownership-transfer/ownership-transfer.service';
-import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
 

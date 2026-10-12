@@ -11,7 +11,7 @@ import { BinaryDataConfig, InstanceSettings, type Types } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, OwnershipService } from '@n8n/backend-services';
 
 import { AiUsageService } from './ai-usage.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
@@ -28,7 +28,6 @@ import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import { resolveFrontendHealthEndpointPath } from '@/utils/health-endpoint.util';

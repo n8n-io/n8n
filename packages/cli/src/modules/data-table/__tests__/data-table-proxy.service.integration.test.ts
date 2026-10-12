@@ -15,9 +15,8 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceWriteAccessService } from '@n8n/backend-services';
+import type { InstanceWriteAccessService, OwnershipService } from '@n8n/backend-services';
 import * as checkAccess from '@/permissions.ee/check-access';
-import type { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
 import { DataTableProxyService } from '../data-table-proxy.service';

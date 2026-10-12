@@ -26,6 +26,7 @@ export {
 } from './services/workflow-sharing.service';
 export { FolderFinderService } from './services/folder-finder.service';
 export { InstanceWriteAccessService } from './services/instance-write-access.service';
+export { OwnershipService } from './services/ownership.service';
 export { UrlService } from './services/url.service';
 export {
 	classifyRestError,

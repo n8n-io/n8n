@@ -1,5 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
-import { EventService, isBillableExecution } from '@n8n/backend-services';
+import { EventService, isBillableExecution, OwnershipService } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
@@ -23,7 +23,6 @@ import {
 import { UserService } from '@/services/user.service';
 
 import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
-import { OwnershipService } from './ownership.service';
 
 type CompletedRunOutcome = {
 	mode: WorkflowExecuteMode;

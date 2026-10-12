@@ -18,7 +18,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';

@@ -27,7 +27,7 @@ import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resumi
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';

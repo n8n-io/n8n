@@ -27,8 +27,7 @@ import {
 
 import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { OwnershipService } from '@/services/ownership.service';
+import { InstanceWriteAccessService, OwnershipService } from '@n8n/backend-services';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';

@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -81,7 +81,6 @@ import {
 	OAuthTokenVerifierProxy,
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';

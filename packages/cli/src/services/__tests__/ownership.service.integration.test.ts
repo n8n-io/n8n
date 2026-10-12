@@ -3,11 +3,13 @@ import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { HooksService } from '@/services/hooks.service';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
+import { OwnerSetupService } from '@/services/owner-setup.service';
 import { createUserShell } from '@test-integration/db/users';
 
 let hookService: HooksService;
 let ownershipService: OwnershipService;
+let ownerSetupService: OwnerSetupService;
 
 // See PAY-4247 - This test case can be deleted when the ticket is complete
 describe('Ownership Service integration test', () => {
@@ -21,6 +23,7 @@ describe('Ownership Service integration test', () => {
 		await testDb.init();
 		hookService = Container.get(HooksService);
 		ownershipService = Container.get(OwnershipService);
+		ownerSetupService = Container.get(OwnerSetupService);
 	});
 
 	afterAll(async () => {
@@ -49,7 +52,7 @@ describe('Ownership Service integration test', () => {
 
 	it('should recognise ownership creation from api', async () => {
 		expect(await ownershipService.hasInstanceOwner()).toBeFalsy();
-		await ownershipService.setupOwner({
+		await ownerSetupService.setupOwner({
 			firstName: 'TEST',
 			lastName: 'LN',
 			password: 'PW',

@@ -25,7 +25,7 @@ import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
 import { findResumeNode, redirectIfToolExecutor } from './utils';
 import { NodeTypes } from '../node-types';
-import { OwnershipService } from '../services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { stripToolSuffix } from '../utils';
 
 @Service()

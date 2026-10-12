@@ -27,7 +27,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { Push } from '@/push';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';

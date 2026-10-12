@@ -1,6 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, RoleService, OwnershipService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -36,8 +36,6 @@ import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
-
-import { OwnershipService } from './ownership.service';
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";

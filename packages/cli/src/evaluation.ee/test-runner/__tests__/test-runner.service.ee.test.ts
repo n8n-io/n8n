@@ -29,7 +29,7 @@ import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';

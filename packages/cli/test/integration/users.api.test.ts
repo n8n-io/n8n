@@ -42,7 +42,7 @@ import { validateUser } from './shared/utils/users';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
 import { Telemetry } from '@/telemetry';
 

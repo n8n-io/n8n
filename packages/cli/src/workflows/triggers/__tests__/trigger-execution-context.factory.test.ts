@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, OwnershipService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -39,7 +39,6 @@ import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';

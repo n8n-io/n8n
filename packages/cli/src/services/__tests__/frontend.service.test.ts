@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Mock } from 'vitest';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { OwnershipService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -19,10 +20,8 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
-import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
-import type { OwnershipService } from '../ownership.service';
 
 // Mock the workflow history helper functions to avoid DI container issues in tests
 vi.mock('@/workflows/workflow-history/workflow-history-helper', () => ({

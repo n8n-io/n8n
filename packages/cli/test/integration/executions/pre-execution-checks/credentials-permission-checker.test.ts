@@ -20,7 +20,7 @@ import { v4 as uuid } from 'uuid';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
 import { createOwner, createUser } from '@test-integration/db/users';

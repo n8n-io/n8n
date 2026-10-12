@@ -18,7 +18,7 @@ import {
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 

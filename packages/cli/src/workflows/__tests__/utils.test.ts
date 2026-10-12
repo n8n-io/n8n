@@ -4,7 +4,7 @@ import type { Project } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 import { dropRedactionPolicy, getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 describe('dropRedactionPolicy', () => {

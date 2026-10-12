@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
+import type { EventService, WorkflowSharingService, OwnershipService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -45,7 +45,6 @@ import type {
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
-import type { OwnershipService } from '@/services/ownership.service';
 import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';

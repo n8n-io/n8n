@@ -1,6 +1,6 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import type { EventService, OwnershipService, RoleService } from '@n8n/backend-services';
 import {
 	type FolderRepository,
 	type Project,
@@ -21,7 +21,6 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';

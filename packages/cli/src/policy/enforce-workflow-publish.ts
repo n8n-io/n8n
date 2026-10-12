@@ -1,6 +1,6 @@
 import type { PolicedWorkflow } from '@n8n/decorators';
 
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@n8n/backend-services';
 
 import type { PolicyActor } from './policy-enforcement-backend';
 import type { PolicyEnforcementService } from './policy-enforcement.service';

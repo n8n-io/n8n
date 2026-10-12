@@ -16,7 +16,7 @@ import type {
 } from 'simple-git';
 
 import { buildHttpsGitConfig, buildSshCommand } from '@/modules/promotions.ee/promotions-git.utils';
-import { OwnershipService } from '@/services/ownership.service';
+import { OwnershipService } from '@n8n/backend-services';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH,

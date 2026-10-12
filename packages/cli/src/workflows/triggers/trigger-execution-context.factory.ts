@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, OwnershipService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
@@ -39,7 +39,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
-import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { EngineV2ActiveTriggerEmit } from '@/workflows/triggers/engine-v2-active-triggers';
 import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
