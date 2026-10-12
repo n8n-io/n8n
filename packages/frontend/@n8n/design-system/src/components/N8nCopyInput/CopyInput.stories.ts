@@ -18,6 +18,8 @@ export default {
 		loading: { control: 'boolean' },
 		allowCopy: { control: 'boolean' },
 		redact: { control: 'boolean' },
+		copyLabel: { control: 'text' },
+		copiedLabel: { control: 'text' },
 	},
 	parameters: {
 		docs: {
@@ -26,7 +28,10 @@ export default {
 					'A readonly input with an attached copy button, rendered as one continuous bordered field. ' +
 					'Clicking the field selects the whole value; the copy button and Cmd/Ctrl+C both write the ' +
 					'full `value` to the clipboard and morph the copy icon into a check mark through the ' +
-					'blur-swap motion. Use `displayValue` to show a truncated secret while still copying the ' +
+					'blur-swap motion. Hovering the button shows a tooltip naming the action ("Copy" by ' +
+					'default; "Copied to clipboard" while the feedback shows); pass `copyLabel` / ' +
+					'`copiedLabel` to name the thing being copied, e.g. "Copy token" (see "Custom Copy Label"). ' +
+					'Use `displayValue` to show a truncated secret while still copying the ' +
 					'full value, `redact` to keep it out of session recordings, and the `actions` slot for ' +
 					'extra controls next to the copy button. `label` names the field for assistive tech; ' +
 					'compose a visible label and hint at the call site (see "With Label And Hint").',
@@ -56,6 +61,24 @@ TruncatedSecret.args = {
 	value: 'n8n_api_3f9d2c1b8a7e6f5d4c3b2a1908f7e6d5c4b3a291',
 	displayValue: 'n8n_api_3f9d2c1b8a7e...6d5c4b3a291',
 	redact: true,
+};
+
+export const CustomCopyLabel = Template.bind({});
+CustomCopyLabel.args = {
+	label: 'Access token',
+	value: 'n8n_mcp_9f1c2d3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d',
+	copyLabel: 'Copy token',
+	copiedLabel: 'Token copied',
+};
+CustomCopyLabel.parameters = {
+	docs: {
+		description: {
+			story:
+				'`copyLabel` and `copiedLabel` replace the default tooltip and accessible name of the copy ' +
+				'button. Name the thing being copied when the field sits next to other actions or when ' +
+				'several copy fields share a view.',
+		},
+	},
 };
 
 export const Disabled = Template.bind({});
@@ -101,6 +124,7 @@ WithActions.args = {
 	value: 'n8n_mcp_9f1c2d3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d',
 	displayValue: 'n8n_mcp_9f1c2d3e4a5b...5f6a7b8c9d',
 	size: 'large',
+	copyLabel: 'Copy token',
 };
 
 export const WithLabelAndHint: StoryFn = (args) => ({
