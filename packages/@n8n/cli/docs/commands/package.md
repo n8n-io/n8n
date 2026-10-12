@@ -29,28 +29,28 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 | `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
 | `--include-archived-workflows` | `false` (default) or `true`. Whether folder and project exports include their archived workflows. When `true`, they travel with `isArchived: true` and are archived on import. Workflows given by `--workflow-id` always export, also when archived. |
-| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
-| `--workflow-version-policy` | Which version of each workflow travels in the package: `latest` (default) exports the latest version whether or not it is published, `published-strict` exports the published version and aborts when any workflow has none, `prefer-published` falls back to the latest version where there is no published one, and `ignore-unpublished` leaves unpublished workflows out of the package entirely. |
+| `--dependency-policy` | Policy for workflow and agent dependencies outside the selected package contents. `fail` (default) aborts when a required definition is absent from the package. `include-in-package` adds accessible dependencies recursively. `reference-only` records external requirements without including their definitions. |
+| `--version-policy` | Which version of each workflow and agent to export. `latest` (default) exports the current draft. `published-strict` requires a published version. `prefer-published` uses the published version when available and the draft otherwise. `ignore-unpublished` skips unpublished selections. |
 | `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. Literal values never travel either way. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
 the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
 
-A workflow has a latest version (what you see in the editor) and, once
-published, a published version; `--workflow-version-policy` picks which one
-travels. The chosen version decides which credentials, data tables, variables
-and sub-workflows are bundled alongside it, but the workflow's name, settings
-(including `errorWorkflow`) and tags are not versioned and always come from the
-latest version.
+`--version-policy` applies to workflows and agents, including agents in a
+project export. The selected version supplies the definition and its references.
+Workflow names, settings (including `errorWorkflow`), and tags always use their
+current values. Agent IDs, names, and MCP availability also use their current
+values. Under `ignore-unpublished`, dependencies that cannot be included cause
+the export to fail only when `--dependency-policy` is `fail` or
+`include-in-package`. With `reference-only`, the export records them as external
+requirements.
 
-Statically referenced sub-workflows are dependencies of the package. How
-missing ones are handled depends on
-`--missing-workflow-dependency-policy`. With the default `fail` policy you include them yourself. With `include-in-package`, n8n resolves the static dependency graph and adds any
-missing sub-workflows to the package automatically, so you don't need to list
-them explicitly. With `reference-only`, missing sub-workflows stay out of the
-package and are only listed in the package requirements (by id, with a
-best-effort name), on the assumption that they and their own dependencies
+`--dependency-policy` also applies to workflows and agents. Dependencies include
+static workflow references and disabled agent references. With `fail`, include
+the required definitions in your selection. With `include-in-package`, n8n adds
+accessible dependencies recursively. With `reference-only`, external dependencies
+are listed in the package requirements. Their definitions and dependencies must
 already exist on the target instance.
 
 ## `package import`
@@ -79,8 +79,8 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
-| `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Matched tables are always used as-is and schema-validated (all package columns present with the same name and type), even under `do-nothing`. |
-| `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Every package column must exist on the matched target table with the same name and type — a missing column or a type mismatch always rejects. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. Neither policy alters the matched target table — package columns are never added to it. |
+| `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Under the `keep-existing` and `fail` schema conflict policies, matched tables are schema-validated (all package columns present with the same name and type), even under `do-nothing`. Under `overwrite-non-destructive`, a matched table blocks the import only when a change removes or retypes a column. The import never imports table rows. Matched tables change only under `--data-table-schema-conflict-policy=overwrite` or `overwrite-non-destructive`, which keep their rows. |
+| `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Under `keep-existing` and `fail`, every package column must exist on the matched target table with the same name and type. A missing column or a type mismatch rejects the import. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. `keep-existing` and `fail` never alter the matched target table. `overwrite` changes the matched target table to match the package and can delete data in specific columns while preserving rows. Removing, retyping, or renaming a column deletes the data in that column. The changes apply to all workflows that use the table. `overwrite-non-destructive` makes the same changes as `overwrite`, but rejects the import and writes nothing when a change removes or retypes a column. A renamed or target-only column counts as removed. |
 | `--variable-missing-mode` | What to do when a referenced variable is absent from both the target project and global scope: `create-with-value` (instance default) creates it with the package value and reports it under `variables.created`, falling back to an empty stub under `variables.stubbed` when the package carries no value for it; `create-stub` always creates an empty value; `do-nothing` reports unresolved names without creating anything; `must-preexist` rejects the import. What happens to a variable that *does* resolve is `--variable-conflict-policy`'s job. Requires a variables-enabled license only when the import creates a variable. |
 | `--variable-conflict-policy` | What to do when a referenced variable resolves in the target project or global scope but the package bundles a different value for it. `keep-existing` (instance default) leaves the target value alone and reports the name under `variables.matched`; `overwrite` silently replaces the value of the existing variable at whichever scope it was found — including a global variable other projects also read — and reports the name under `variables.updated`; `fail` rejects the import. No policy touches a resolved variable when there is nothing to change: either the package bundles no value for it (values excluded at export, or an exported value that was itself empty), or the value it bundles already matches the target's. Under `overwrite`, a project package whose projects hold *different* values for a name they all resolve to one row — a global none of them shadows — is rejected: one row cannot carry both values. Requires a variables-enabled license only when the import overwrites. |
 | `--variable-parent-policy` | Where `create-with-value` and `create-stub` place missing variables for workflow/folder packages (`project`, the behaviour when omitted, uses the target project; `global` uses global scope). Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout, so a variable bundled under a project is created in that project and one bundled at the top level is created globally. |
@@ -93,6 +93,7 @@ Requires the API key to hold:
 - `workflow:import` — always
 - `workflow:delete` and `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
+- `dataTable:update` — when `--data-table-schema-conflict-policy` is `overwrite` or `overwrite-non-destructive` and changes at least one matched table
 - `variable:create` — when the import actually creates a variable, i.e. `--variable-missing-mode` is `create-with-value` (the default) or `create-stub` and at least one referenced variable does not already resolve. A package whose variables all resolve creates nothing and needs neither this scope nor a variables-enabled license.
 - `variable:update` — when the import would overwrite a variable, i.e. `--variable-conflict-policy=overwrite` and at least one resolved variable's value differs from the package's. `keep-existing` (the default) never overwrites and needs neither this scope nor a variables-enabled license.
 - `tag:create` — when the import would create a tag (under `--tag-missing-mode create`, the instance default; tags that match, are dropped, or belong only to skipped workflows need no scope)

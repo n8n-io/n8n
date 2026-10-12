@@ -17,10 +17,22 @@ export {
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
 export {
+	FavoriteResourceResolverRegistry,
+	type FavoriteResourceMeta,
+	type FavoriteResourceResolver,
+	type ResolvedFavoriteResourceType,
+} from './services/favorite-resource-resolver.registry';
+export { WorkflowProjectService } from './services/workflow-project.service';
+export {
+	OwnershipTransferHandlerRegistry,
+	type ProjectOwnershipTransferHandler,
+} from './services/ownership-transfer-handler.registry';
+export {
 	WorkflowSharingService,
 	type ShareWorkflowOptions,
 } from './services/workflow-sharing.service';
 export { FolderFinderService } from './services/folder-finder.service';
+export { InstanceWriteAccessService } from './services/instance-write-access.service';
 export { UrlService } from './services/url.service';
 export {
 	classifyRestError,

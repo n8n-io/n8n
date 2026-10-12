@@ -24,7 +24,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -35,6 +35,7 @@ import { AgentIntegrationManagementService } from '@/modules/agents/agent-integr
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
@@ -378,7 +379,13 @@ const callAgentRequestSchema = z.discriminatedUnion('type', [
 		.object({
 			type: z.literal('message'),
 			message: z.string().trim().min(1),
-			sessionId: z.string().trim().min(1).optional(),
+			sessionId: z
+				.string()
+				.trim()
+				.optional()
+				.describe(
+					'Exact sessionId from an earlier call_agent result. Omit it to start a new conversation. An unknown sessionId starts a new conversation and the result has a sessionNote.',
+				),
 		})
 		.strict(),
 	z
@@ -449,6 +456,7 @@ export class McpAgentToolsService {
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly slackSetup: McpAgentSlackSetup,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -611,6 +619,7 @@ export class McpAgentToolsService {
 
 					// Agents created over MCP stay operable over MCP.
 					const agent = await this.agentsService.create(projectId, name, {
+						actor: { kind: 'user', user },
 						availableInMCP: true,
 					});
 					let configHash: string | null;
@@ -623,7 +632,7 @@ export class McpAgentToolsService {
 								initialConfig,
 								user,
 								{
-									baseConfigHash: getAgentConfigHash(this.configFromEntity(agent)),
+									baseConfigHash: getAgentConfigHash(await this.configFromEntity(agent)),
 									modifiedBy: 'mcp',
 								},
 							);
@@ -678,7 +687,7 @@ export class McpAgentToolsService {
 						const agent = await this.resolveAgent(user, input.agentId);
 						const projectId = agent.projectId;
 						await this.assertScope(user, projectId, 'agent:update');
-						const config = this.configFromEntity(agent);
+						const config = await this.configFromEntity(agent);
 						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
 							return {
@@ -893,7 +902,7 @@ export class McpAgentToolsService {
 							agentId,
 							versionId: agent.versionId,
 							activeVersionId: agent.activeVersionId,
-							configHash: getAgentConfigHash(this.configFromEntity(agent)),
+							configHash: getAgentConfigHash(await this.configFromEntity(agent)),
 							url: this.getAgentUrl(projectId, agentId),
 						};
 					},
@@ -1105,7 +1114,7 @@ export class McpAgentToolsService {
 
 	private async getAgentSnapshot(user: User, agent: Agent) {
 		const { id: agentId, projectId } = agent;
-		const config = this.configFromEntity(agent);
+		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [runnable, skills, tasks] = await Promise.all([
 			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, credentialProvider),
@@ -1154,16 +1163,17 @@ export class McpAgentToolsService {
 	 * must not be usable as a mutate_agent baseConfigHash.
 	 */
 	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
-		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+		const { agent, version, definition } = await this.agentPublishService.getVersion(
 			agentId,
 			projectId,
 			versionId,
 		);
-		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		if (!definition.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
 		// Integrations are managed separately and are not versioned, so omit any
 		// legacy snapshot field here for the same reason as in getAgentSnapshot.
-		const { integrations: _integrations, ...editableConfig } = version.schema;
+		const { integrations: _integrations, ...editableConfig } = definition.schema;
 
+		const enabledTasks = new Map((editableConfig.tasks ?? []).map((ref) => [ref.id, ref.enabled]));
 		return {
 			agent: {
 				id: agent.id,
@@ -1180,16 +1190,16 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: version.skills ?? {},
-			tasks: tasks.map((task) => ({
-				id: task.taskId,
+			skills: definition.skills,
+			tasks: [...definition.tasks].map(([id, task]) => ({
+				id,
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
 				timezone: task.timezone,
-				enabled: task.enabled,
+				enabled: enabledTasks.get(id) ?? false,
 			})),
-			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+			customTools: Object.entries(definition.tools).map(([id, tool]) => ({
 				id,
 				descriptor: tool.descriptor,
 			})),
@@ -1200,8 +1210,8 @@ export class McpAgentToolsService {
 		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
 	}
 
-	private configFromEntity(agent: Agent): AgentJsonConfig {
-		const config = composeJsonConfig(agent);
+	private async configFromEntity(agent: Agent): Promise<AgentJsonConfig> {
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		if (!config) throw new UserError('Agent has no JSON config yet.');
 		return config;
 	}
@@ -1221,17 +1231,30 @@ export class McpAgentToolsService {
 
 		try {
 			let result: AgentTestRunResult;
+			let note: { sessionNote?: string } = {};
 			if (request.type === 'message') {
-				result = await this.agentTestRunService.executeDraftRun({
-					agentId,
-					projectId,
-					message: request.message,
-					sessionId: request.sessionId,
-					credentialProvider: this.credentialProvider(user, projectId),
-					user,
-					source: 'mcp',
-					abortSignal,
-				});
+				const execute = async (sessionId: string | undefined) =>
+					await this.agentTestRunService.executeDraftRun({
+						agentId,
+						projectId,
+						message: request.message,
+						sessionId,
+						credentialProvider: this.credentialProvider(user, projectId),
+						user,
+						source: 'mcp',
+						abortSignal,
+					});
+				const sessionId = request.sessionId?.trim() || undefined;
+				result = await execute(sessionId);
+				// The session check runs before the agent, so a retry has no side effects.
+				if (result.status === 'session_not_found' && sessionId !== undefined) {
+					result = await execute(undefined);
+					note = {
+						sessionNote:
+							'The sessionId you passed was not found, so this test started a new conversation. ' +
+							'To continue this conversation, pass the sessionId from this result.',
+					};
+				}
 			} else {
 				result = await this.agentTestRunService.resumeDraftApproval({
 					agentId,
@@ -1249,7 +1272,8 @@ export class McpAgentToolsService {
 					ok: false,
 					status: 'error',
 					code: 'session_not_found',
-					message: 'Session not found.',
+					message:
+						'This test session is no longer available. Send a message request without sessionId to start a new test.',
 				};
 			}
 			if (result.status === 'agent_misconfigured') {
@@ -1261,7 +1285,7 @@ export class McpAgentToolsService {
 					missing: result.missing,
 				};
 			}
-			if (result.status === 'completed') return { ok: true, ...result };
+			if (result.status === 'completed') return { ok: true, ...result, ...note };
 
 			const approvals = collectStandardApprovals(result);
 			if (approvals) {
@@ -1273,6 +1297,7 @@ export class McpAgentToolsService {
 					sessionId: result.sessionId,
 					...(result.executionId ? { executionId: result.executionId } : {}),
 					approvals,
+					...note,
 				};
 			}
 
@@ -1297,6 +1322,7 @@ export class McpAgentToolsService {
 					sessionId: result.sessionId,
 					previewUrl,
 					...(previewAccessNote ? { previewAccessNote } : {}),
+					...note,
 				};
 			}
 
@@ -1313,6 +1339,7 @@ export class McpAgentToolsService {
 				})),
 				previewUrl,
 				...(previewAccessNote ? { previewAccessNote } : {}),
+				...note,
 			};
 		} catch (error) {
 			if (error instanceof InvalidAgentTestRunCheckpointError) {
@@ -1596,7 +1623,7 @@ export class McpAgentToolsService {
 	 */
 	private async validateAgent(user: User, agent: Agent) {
 		const projectId = agent.projectId;
-		const config = this.configFromEntity(agent);
+		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [schema, configuration] = await Promise.all([
 			this.agentConfigService.validateConfig(config),
@@ -1709,28 +1736,35 @@ export class McpAgentToolsService {
 			await this.requireAccessibleCredential(credentialProvider, input.credential);
 		}
 
-		const tools = await listMcpServerTools(
-			{
-				name: input.name,
-				url: input.url,
-				transport: input.transport,
-				authentication: input.authentication,
-				credential: input.credential,
-				metadata: input.metadata,
-				...(input.connectionTimeoutMs !== undefined
-					? { connectionTimeoutMs: input.connectionTimeoutMs }
-					: {}),
-			},
-			{
-				credentialProvider,
-				oauthService: this.oauthService,
-				projectId: input.projectId,
-				proxyFetch: createAiMcpFetch(this.outboundHttp),
-				resolveRegistryConnection: async (nodeTypeName) =>
-					await this.mcpRegistryService.getConnection(nodeTypeName),
-			},
-		);
-		return { ok: true, tools };
+		try {
+			const tools = await listMcpServerTools(
+				{
+					name: input.name,
+					url: input.url,
+					transport: input.transport,
+					authentication: input.authentication,
+					credential: input.credential,
+					metadata: input.metadata,
+					...(input.connectionTimeoutMs !== undefined
+						? { connectionTimeoutMs: input.connectionTimeoutMs }
+						: {}),
+				},
+				{
+					credentialProvider,
+					oauthService: this.oauthService,
+					projectId: input.projectId,
+					proxyFetch: createAiMcpFetch(this.outboundHttp),
+					resolveRegistryConnection: async (nodeTypeName) =>
+						await this.mcpRegistryService.getConnection(nodeTypeName),
+				},
+			);
+			return { ok: true, tools };
+		} catch (error) {
+			if (error instanceof OperationalError) {
+				return { ok: false, error: error.message };
+			}
+			throw error;
+		}
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
@@ -1763,7 +1797,7 @@ export class McpAgentToolsService {
 			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 	}
 
@@ -1870,7 +1904,7 @@ export class McpAgentToolsService {
 			connected: published,
 			published,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 	}
 
@@ -1901,7 +1935,7 @@ export class McpAgentToolsService {
 			configured: true,
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 		if (saved.activeVersionId === null) return { ...result, connected: false };
 		return {

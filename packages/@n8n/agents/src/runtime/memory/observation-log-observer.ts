@@ -440,7 +440,9 @@ function shouldStripBlob(
 		toolResult &&
 		key === 'data' &&
 		'type' in toolResult &&
-		(toolResult.type === 'image-data' || toolResult.type === 'file-data')
+		(toolResult.type === 'image-data' ||
+			toolResult.type === 'file-data' ||
+			toolResult.type === 'data')
 	) {
 		return true;
 	}

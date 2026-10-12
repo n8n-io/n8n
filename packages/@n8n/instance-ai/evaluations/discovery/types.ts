@@ -10,6 +10,8 @@
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
 import type { ComputerUseState } from '../../src/types';
+import type { CaseSeed } from '../harness/schema';
+import type { ConversationTurn, TestCaseCredential } from '../types';
 
 /**
  * Pass condition for tool invocations.
@@ -94,12 +96,37 @@ export interface DiscoveryTestCase {
 	timeoutMs?: number;
 }
 
+/** What the runner reads from a case. Routing cases carry no tool expectations. */
+export type DiscoveryScenario = Pick<
+	DiscoveryTestCase,
+	'userMessage' | 'instanceState' | 'confirmations' | 'maxSteps' | 'timeoutMs'
+> & {
+	/** Routing cases: state the stub instance holds before the turn. */
+	seed?: Extract<CaseSeed, { mode: 'inline' }>;
+	/** Routing cases: the seeded workflow or Agent the user has open. */
+	attach?: ConversationTurn['attach'];
+	/** Routing cases: accounts the stub instance holds. */
+	credentials?: TestCaseCredential[];
+};
+
 export type DiscoveryStreamStatus =
 	| 'completed'
 	| 'errored'
 	| 'timed-out'
 	| 'suspended'
-	| 'step-exhausted';
+	| 'step-exhausted'
+	/** The runner ended the run before an orchestrator tool call, because the route was picked. */
+	| 'stopped-on-route';
+
+/** Only the orchestrator's calls pick a route; sub-agents act on its choice. */
+export const ORCHESTRATOR_AGENT_ID = 'n8n-instance-agent';
+
+/** An orchestrator tool call that is about to run. */
+export interface PendingToolCall {
+	toolCallId: string;
+	toolName: string;
+	args: Record<string, unknown>;
+}
 
 export interface DiscoveryTrialFacts {
 	streamStatus: DiscoveryStreamStatus;

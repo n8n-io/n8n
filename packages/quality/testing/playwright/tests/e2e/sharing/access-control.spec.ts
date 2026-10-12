@@ -113,6 +113,13 @@ test.describe(
 		test('should enforce project isolation for team projects', async ({ n8n, api }) => {
 			await api.setMaxTeamProjectsQuota(-1);
 
+			const personalCredName = `Personal Credential ${nanoid()}`;
+			await api.credentials.createCredential({
+				name: personalCredName,
+				type: 'notionApi',
+				data: { apiKey: TEST_API_KEY },
+			});
+
 			const devProject = await api.projects.createProject(`Development ${nanoid()}`);
 			const testProject = await api.projects.createProject(`Testing ${nanoid()}`);
 
@@ -141,6 +148,7 @@ test.describe(
 
 			await n8n.ndv.getNodeCredentialsSelect().click();
 			await expect(n8n.ndv.credentials.getOptionByText(testCredName)).toBeVisible();
+			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeHidden();
 			await expect(n8n.ndv.credentials.getOptionByText(devCredName)).toBeHidden();
 		});
 

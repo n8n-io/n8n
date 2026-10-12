@@ -9,7 +9,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	AiEvent,
 	EnvProviderState,
@@ -41,6 +41,7 @@ import type {
 import {
 	OperationalError,
 	UnexpectedError,
+	UserError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -50,10 +51,9 @@ import {
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
-import {
-	createWorkflowAgentStreamObserver,
-	type WorkflowAgentStreamObserver,
-} from './modules/agents/workflow-agent-stream';
+import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
+import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
+import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -76,6 +76,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
@@ -156,6 +157,11 @@ async function fetchWorkflowData(
 	} else {
 		const workflowData = workflowInfo.code;
 		if (workflowData) {
+			// The save-time check does not see inline JSON, so it runs here.
+			Container.get(DeprecatedNodesValidationService).validateOnCreate(
+				workflowData.nodes ?? [],
+				parentWorkflowId,
+			);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
 			workflowData.id = parentWorkflowId;
@@ -212,6 +218,7 @@ export async function getPublishedWorkflowData(
 		}
 		return {
 			...publishedData.workflow,
+			versionId: publishedData.publishedVersion.versionId,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
 		};
@@ -232,6 +239,7 @@ export async function getPublishedWorkflowData(
 	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
 		return {
 			...workflowData,
+			versionId: workflowData.activeVersion.versionId,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
 		};
@@ -380,6 +388,15 @@ export async function executeWorkflow(
 	return await executionPromise;
 }
 
+/** Workflows that already use agent nodes still load, so fail clearly when the module is off. */
+function assertAgentsModuleActive() {
+	if (!Container.get(ModuleRegistry).isActive('agents')) {
+		throw new UserError(
+			'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+		);
+	}
+}
+
 /**
  * Executes an agent — a saved one by ID, or an inline definition embedded in
  * the calling node's parameters.
@@ -394,7 +411,10 @@ export async function executeAgent(
 	outputSchema?: JSONSchema7,
 	workflowContext?: ExecuteAgentWorkflowContext,
 	invocationContext?: ExecuteAgentInvocationContext,
+	prepareForEval?: PrepareWorkflowAgentForEval,
 ): Promise<ExecuteAgentData> {
+	assertAgentsModuleActive();
+
 	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
 
@@ -426,14 +446,15 @@ export async function executeAgent(
 				invocation: invocationContext,
 			})
 		: undefined;
-	const streamObserverArguments: [] | [WorkflowAgentStreamObserver] = streamObserver
-		? [streamObserver]
-		: [];
+	const runOptions: [] | [WorkflowAgentRunOptions] =
+		streamObserver || prepareForEval ? [{ streamObserver, prepareForEval }] : [];
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
 	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
+	// Eval runs grade what was built, so they run the draft, as a manual run does.
+	const useDraftVersion = prepareForEval !== undefined || isManualOrChatExecution(executionMode);
 
 	if (source.inlineAgent) {
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
@@ -443,15 +464,14 @@ export async function executeAgent(
 			scopedThreadId,
 			projectId,
 			telemetryUserId,
-			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			useDraftVersion ? 'test' : 'production',
 			outputSchema,
 			workflowContext,
-			...streamObserverArguments,
+			...runOptions,
 		);
 	}
 
 	const { hashAgentSandboxPrincipal } = await import('@/modules/agents/agent-sandbox-principal.js');
-	const useDraftVersion = isManualOrChatExecution(executionMode);
 	const sandboxScope =
 		workflowContext?.hasCallerSessionId === true
 			? {
@@ -480,7 +500,7 @@ export async function executeAgent(
 		outputSchema,
 		workflowContext,
 		sandboxScope,
-		...streamObserverArguments,
+		...runOptions,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so
@@ -493,6 +513,12 @@ export async function executeAgent(
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+	assertAgentsModuleActive();
+
+	// Executions check the Settings > Agents switch in the agents services. The listing must too.
+	const { AgentsSettingsService } = await import('@/modules/agents/agents-settings.service.js');
+	await Container.get(AgentsSettingsService).assertEnabled();
+
 	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
@@ -676,6 +702,7 @@ async function startExecution(
 			additionalDataIntegrated,
 			runData.executionMode,
 			runExecutionData,
+			Container.get(StorageConfig).modeTag,
 		);
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);

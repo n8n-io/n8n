@@ -2,6 +2,7 @@ import { retryabilityFromError } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
 import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
+	IAdditionalCredentialOptions,
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestOptions,
@@ -29,6 +30,7 @@ export async function databricksApiRequest(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
 	const requestOptions: IHttpRequestOptions = {
 		...options,
@@ -46,6 +48,8 @@ export async function databricksApiRequest(
 				context,
 				credentialType,
 				requestOptions,
+				// Spread so callers that pass nothing keep a two-argument call
+				...(additionalCredentialOptions ? [additionalCredentialOptions] : []),
 			);
 		} catch (error) {
 			const { status, retryAfterMs } = retryabilityFromError(error);

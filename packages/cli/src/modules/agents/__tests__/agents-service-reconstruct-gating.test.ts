@@ -58,6 +58,7 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
+import { storedRunSource } from './test-utils/stored-agent-config';
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -184,7 +185,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
 	});
@@ -208,7 +213,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			],
 		});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(buildMcpClientForServerMock).toHaveBeenCalledTimes(2);
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
@@ -230,7 +239,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		});
 
 		await service.reconstructFromAgentEntity(
-			entity,
+			storedRunSource(entity),
 			credentialProvider,
 			'production',
 			undefined,
@@ -267,7 +276,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 	const reconstructWithWorkspace = async (service: AgentRuntimeReconstructionService) =>
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 			undefined,
@@ -392,7 +401,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 
 		await expect(
 			service.reconstructFromAgentEntity(
-				makeAgentEntity(),
+				storedRunSource(makeAgentEntity()),
 				mock<CredentialProvider>(),
 				'production',
 			),
@@ -432,7 +441,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity(undefined, subAgents !== undefined ? { subAgents } : {});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
@@ -505,7 +518,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService();
 
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: SUB_AGENT_MAX_CHILDREN_DEFAULT,
@@ -517,7 +534,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService();
 		const entity = makeAgentEntity(undefined, { subAgents: { maxChildren: 2 } });
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 2,
@@ -552,7 +573,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			});
 
 			await service.reconstructFromAgentEntity(
-				entity,
+				storedRunSource(entity),
 				credentialProvider,
 				'production',
 				undefined,
@@ -601,7 +622,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			},
 		});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedAvailableSubAgents()).toEqual([
 			{
@@ -677,7 +702,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			},
 		});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedInlineSubAgentModelsByDifficulty()).toEqual({
 			low: {
@@ -713,7 +742,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			},
 		);
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		const resolveInlineSubAgentProviderTools = getInjectedResolveInlineSubAgentProviderTools();
 		expect(resolveInlineSubAgentProviderTools).toBeDefined();
@@ -730,7 +763,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService();
 
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedInlineSubAgentModelsByDifficulty()).toBeUndefined();
 	});
@@ -764,7 +801,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		const entity = makeAgentEntity();
 
 		await service.reconstructFromAgentEntity(
-			entity,
+			storedRunSource(entity),
 			credentialProvider,
 			'production',
 			N8N_CHAT_INTEGRATION_TYPE,
@@ -780,7 +817,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		// Same entity, reconstruct WITHOUT integrationType.
 		const entity = makeAgentEntity();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
@@ -791,7 +832,12 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production', 'slack');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+			'slack',
+		);
 
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
@@ -816,7 +862,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService({ n8nCheckpointStorage });
 
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+		);
 
 		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
@@ -882,7 +932,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 	it('keeps write_todos and omits planning instructions when disabled', async () => {
 		Container.get(AgentsConfig).planToolsEnabled = false;
 		await makeReconstructionService().reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -897,7 +947,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			Container.get(AgentsConfig).planToolsEnabled = true;
 			Container.get(AgentsConfig).backgroundTasksEnabled = backgroundTasksEnabled;
 			await makeReconstructionService().reconstructFromAgentEntity(
-				makeAgentEntity(),
+				storedRunSource(makeAgentEntity()),
 				mock<CredentialProvider>(),
 				'production',
 			);
@@ -921,7 +971,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 	it('keeps write_todos when the caller disables plan tools', async () => {
 		Container.get(AgentsConfig).planToolsEnabled = true;
 		await makeReconstructionService().reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 			undefined,
@@ -958,7 +1008,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
 	const BACKGROUND_TOOL_NAMES = [
-		'spawn_background_subagent',
+		'resume_background_jobs',
 		'check_background_jobs',
 		'cancel_background_job',
 	];
@@ -991,13 +1041,21 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const { service, credentialProvider } = setupWithRoster();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, { subAgents }),
+			storedRunSource(makeAgentEntity(undefined, { subAgents })),
 			credentialProvider,
 			'production',
 		);
 
 		const toolNames = getInjectedToolNames();
 		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
+		const delegate = getInjectedDelegateTool();
+		await expect(
+			delegate?.handler?.(
+				{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+				{},
+			),
+		).rejects.toThrow('Background delegation is unavailable');
+		expect(Container.get(SubAgentBackgroundRunner).spawn).not.toHaveBeenCalled();
 	});
 
 	it('injects all three background tools when the flag is on and sub-agents are configured', async () => {
@@ -1005,12 +1063,16 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const { service, credentialProvider } = setupWithRoster();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, { subAgents }),
+			storedRunSource(makeAgentEntity(undefined, { subAgents })),
 			credentialProvider,
 			'production',
 		);
 
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
+		expect(getInjectedToolNames()).not.toContain('spawn_background_subagent');
+		expect(
+			getInjectedToolNames().filter((name) => name === DELEGATE_SUB_AGENT_TOOL_NAME),
+		).toHaveLength(1);
 	});
 
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
@@ -1019,9 +1081,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: 'disabled-agent' }));
 		const service = makeReconstructionService({ agentRepository });
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, {
-				subAgents: { agents: [{ agentId: 'disabled-agent', enabled: false }] },
-			}),
+			storedRunSource(
+				makeAgentEntity(undefined, {
+					subAgents: { agents: [{ agentId: 'disabled-agent', enabled: false }] },
+				}),
+			),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -1030,8 +1094,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			Array.isArray(tool) ? tool : [tool],
 		) as BuiltTool[];
 		const delegate = tools.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
-		const background = tools.find((tool) => tool.name === 'spawn_background_subagent');
-		if (!delegate?.handler || !background?.handler) throw new Error('Expected delegation tools');
+		if (!delegate?.handler) throw new Error('Expected delegation tool');
 		expect(getInlineDelegateSubAgentToolOptions(delegate)?.availableSubAgents).toEqual([]);
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		const request = { subAgentId: 'disabled-agent', taskName: 'Review', goal: 'Review notes' };
@@ -1047,7 +1110,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			},
 		};
 		await expect(delegate.handler(request, context)).resolves.toMatchObject({ status: 'failed' });
-		await expect(background.handler(request, context)).resolves.toMatchObject({
+		await expect(
+			delegate.handler({ ...request, mode: 'background' }, context),
+		).resolves.toMatchObject({
 			status: 'rejected',
 		});
 		expect(Container.get(SubAgentRunner).run).not.toHaveBeenCalled();
@@ -1059,7 +1124,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const service = makeReconstructionService();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -1067,11 +1132,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
 	});
 
-	function getInjectedSpawnBackgroundTool() {
+	function getInjectedDelegateTool() {
 		for (const call of builtAgent.tool.mock.calls) {
 			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
 				const tool = item as BuiltTool;
-				if (tool.name === 'spawn_background_subagent') return tool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) return tool;
 			}
 		}
 		return undefined;
@@ -1095,7 +1160,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		});
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 			undefined,
@@ -1105,10 +1170,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			principalHash,
 		);
 
-		const spawnTool = getInjectedSpawnBackgroundTool();
-		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		const spawnTool = getInjectedDelegateTool();
+		if (!spawnTool?.handler) throw new Error('Expected delegate_subagent handler');
 		await spawnTool.handler(
-			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'inline', taskName: 'research', goal: 'find things' },
 			{
 				persistence: {
 					threadId: 'thread-1',
@@ -1151,15 +1216,15 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const service = makeReconstructionService();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity({ guardrails: { budget } }),
+			storedRunSource(makeAgentEntity({ guardrails: { budget } })),
 			mock<CredentialProvider>(),
 			'production',
 		);
 
-		const spawnTool = getInjectedSpawnBackgroundTool();
-		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		const spawnTool = getInjectedDelegateTool();
+		if (!spawnTool?.handler) throw new Error('Expected delegate_subagent handler');
 		await spawnTool.handler(
-			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'inline', taskName: 'research', goal: 'find things' },
 			{
 				persistence: {
 					threadId: 'thread-1',
@@ -1177,7 +1242,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const { service, credentialProvider } = setupWithRoster();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, { subAgents }),
+			storedRunSource(makeAgentEntity(undefined, { subAgents })),
 			credentialProvider,
 			'production',
 			undefined,
@@ -1190,5 +1255,13 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 
 		const toolNames = getInjectedToolNames();
 		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
+		const delegate = getInjectedDelegateTool();
+		await expect(
+			delegate?.handler?.(
+				{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+				{},
+			),
+		).rejects.toThrow('Background delegation is unavailable');
+		expect(Container.get(SubAgentBackgroundRunner).spawn).not.toHaveBeenCalled();
 	});
 });

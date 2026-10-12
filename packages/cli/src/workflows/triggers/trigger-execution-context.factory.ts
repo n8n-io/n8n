@@ -25,6 +25,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
 	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -49,6 +50,16 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** What the trigger node waits on from the run it starts. A done promise outranks a response. */
+function awaitedByTrigger(
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+	donePromise: IDeferredPromise<IRun | undefined> | undefined,
+): NonNullable<IWorkflowExecutionDataProcess['callerAwaitsOutcome']> {
+	if (donePromise) return 'completion';
+	if (responsePromise) return 'response';
+	return 'none';
+}
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -218,6 +229,8 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							deduplicationKey,
+							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					})
 					.catch((error: unknown) => {
@@ -311,15 +324,12 @@ export class TriggerExecutionContextFactory {
 		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
-			// A poll must finish inside both the handler's abandon deadline and the task
-			// lease; past either, its commits are fenced out or discarded. The margin —
-			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
-			// hand-off and cursor commit.
+			// A poll must finish inside the handler's abandon deadline; past it, its
+			// commits are discarded. The lease is renewed while the poll runs, so it
+			// does not bound the poll. The margin — 20%, at least 5s, at most half the
+			// ceiling — leaves room for the trailing hand-off and cursor commit.
 			const ceilingMs =
-				Math.min(
-					this.globalConfig.scheduler.pollTimeoutSeconds,
-					this.globalConfig.scheduler.leaseDurationSeconds,
-				) * Time.seconds.toMilliseconds;
+				this.globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
 			const pollBudgetMs = ceilingMs - marginMs;
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
@@ -393,6 +403,8 @@ export class TriggerExecutionContextFactory {
 							runAdditionalData,
 							mode,
 							responsePromise,
+							undefined,
+							awaitedByTrigger(responsePromise, donePromise),
 						);
 					}
 
@@ -416,6 +428,7 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
+								awaitedByTrigger(responsePromise, donePromise),
 							);
 				});
 
@@ -474,7 +487,7 @@ export class TriggerExecutionContextFactory {
 				__commitCursor,
 				__runPoll,
 				resolveNodeStaticData,
-				// Only a leased (durable) poll is bounded by the timeout and lease; a
+				// Only a leased (durable) poll is bounded by the timeout; a
 				// legacy in-memory poll keeps PollContext's generous default.
 				fence ? () => pollBudgetMs : undefined,
 			);

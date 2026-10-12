@@ -24,10 +24,12 @@ export const TOKEN_PURPOSES = {
 	teamsArmTemplate: 'n8n:teams-arm-template',
 	publicApiKey: 'public-api',
 	mcpApiKey: 'mcp-server-api',
+	scimApiKey: 'scim-api',
 } as const satisfies Record<string, string> & {
-	// Keep these two in step with the persisted `api_key.audience` values.
+	// Keep these three in step with the persisted `api_key.audience` values.
 	publicApiKey: ApiKeyAudience;
 	mcpApiKey: ApiKeyAudience;
+	scimApiKey: ApiKeyAudience;
 };
 
 export type TokenPurpose = keyof typeof TOKEN_PURPOSES;
@@ -51,6 +53,7 @@ export type TokenPurpose = keyof typeof TOKEN_PURPOSES;
 export const API_KEY_PURPOSES = {
 	'public-api': 'publicApiKey',
 	'mcp-server-api': 'mcpApiKey',
+	'scim-api': 'scimApiKey',
 } as const satisfies Record<ApiKeyAudience, TokenPurpose>;
 
 const isNonEmptyString = (value: unknown): value is string =>

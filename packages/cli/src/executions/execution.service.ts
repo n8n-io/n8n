@@ -280,6 +280,8 @@ export class ExecutionService {
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
+			// The retry caller awaits the result below, so a worker must not park it.
+			callerAwaitsOutcome: 'completion',
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;
@@ -661,7 +663,8 @@ export class ExecutionService {
 		return await this.stopDuringRun(execution);
 	}
 
-	private async stopDuringRun(execution: IExecutionResponse) {
+	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
+		const expectedStatus = execution.status;
 		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data = execution.data ?? createEmptyRunExecutionData();
@@ -674,7 +677,22 @@ export class ExecutionService {
 		execution.waitTill = null;
 		execution.status = 'canceled';
 
-		await this.executionPersistence.updateExistingExecution(execution.id, execution);
+		const stopped = await this.executionPersistence.updateExistingExecution(
+			execution.id,
+			execution,
+			{ requireStatus: expectedStatus },
+		);
+		if (!stopped) {
+			const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
+				execution.workflowId,
+			]);
+			if (!current) throw new MissingExecutionStopError(execution.id);
+			if (current.status === 'canceled') return current;
+			this.assertStoppable(current);
+			return this.globalConfig.executions.mode === 'regular'
+				? await this.stopInRegularMode(current)
+				: await this.stopInScalingMode(current);
+		}
 
 		return execution;
 	}

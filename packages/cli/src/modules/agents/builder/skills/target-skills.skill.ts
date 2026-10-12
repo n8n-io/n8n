@@ -89,6 +89,11 @@ skill.
   fields and preserving its id and existing config reference. Pass the
   \`skillHash\` from the \`agent-context({ type: "skill", skillId: "<id>" })\` result you based the change on as
   \`baseSkillHash\`; on a stale skill error, read the skill again and retry once.
+  To change part of the body, pass \`instructionEdits\` with exact \`oldText\`
+  copied from the current body and its \`newText\`. Send \`instructions\` only
+  when you rewrite most of the body. If an edit fails, nothing changed: fix
+  \`oldText\` so it matches exactly one place and retry with the same
+  \`baseSkillHash\`.
   Do not create a replacement skill. Pass \`null\` for \`allowedTools\` to remove the tool
   restriction or for \`references\` to remove all references; do not pass empty
   arrays. When replacing \`references\`, first read the content of every existing
@@ -103,13 +108,13 @@ skill.
 - For new skills, call \`create_skills\` once with a \`skills\` array containing every skill you
   currently know how to write — do not spread multiple fully-specified skills
   across separate calls. A single skill is still a one-item array.
-- \`create_skills\` stores the skill bodies only; it does not attach them. The
+- \`create_skills\` stores the skill bodies and attaches a
+  \`{ "type": "skill", "id": "<returned id>" }\` ref per skill to \`skills\`. Do
+  not patch those refs in yourself. The agent config must already exist. The
   batch is all-or-nothing: an invalid or duplicate-named skill rejects the
   whole call.
-- After it returns an id per new skill, call \`agent-context({ type: "config" })\` again for a fresh
-  config and hash.
-- Use \`patch_config\` or \`write_config\` to add a \`{ "type": "skill", "id": "<returned id>" }\`
-  entry per skill to \`skills\`.
+- It returns the new \`configHash\`. Use it as the \`baseConfigHash\` of your
+  next config write; do not read the config again first.
 
 ## Extended fields
 
@@ -141,7 +146,8 @@ skill.
 
 ## Gotchas
 
-- \`create_skills\` does not attach any skill to the target agent config.
+- \`create_skills\` already attaches its skills; do not add a second ref for the
+  same id with \`patch_config\`.
 - \`update_skill\` edits the existing body in place and needs no config patch.
 - A skill that is useful for every request probably belongs in instructions, not in \`skills\`.
 - A vague description creates a vague skill, even if the body is excellent.
@@ -152,8 +158,8 @@ skill.
 
 ## Verify
 
-- Every returned skill id is attached in config as a \`{ "type": "skill", "id": "<returned id>" }\`
-  entry.
+- \`create_skills\` returned \`ok: true\`, so every new skill id is attached in
+  config.
 - Each skill description clearly states when it should load.
 - Each body follows the template, with each applicable section filled with
   concrete content (no placeholders), and tells the target agent what to do when

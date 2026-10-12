@@ -4,20 +4,21 @@ import { NotFoundError } from '@n8n/errors';
 import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
+	TrustedSourceStore,
 	type SurfaceId,
+	type TrustedSource,
 	type TrustedSourceConfigInput,
 	type TrustedSourceConfigLatest,
+	type TrustedSourceMetadata,
+	TrustedSourceMetadataSchema,
+	type TrustedSourceStatus,
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
-import type {
-	TrustedSourceEntity,
-	TrustedSourceManagedBy,
-	TrustedSourceStatus,
-	TrustedSourceType,
-} from './database/entities/trusted-source.entity';
+import type { TrustedSourceEntity } from './database/entities/trusted-source.entity';
 import { TrustedSourceIdentityRepository } from './database/repositories/trusted-source-identity.repository';
 import {
 	TrustedSourceRepository,
@@ -26,24 +27,6 @@ import {
 import { TransactionRunner } from '@n8n/db';
 import { Time } from '@n8n/constants';
 import { CacheService } from '@n8n/backend-services';
-
-/**
- * A trusted source as consumers see it: decrypted, validated and migrated to the latest config
- * version. Dates are ISO strings so the shape survives a Redis round-trip unchanged.
- */
-export type TrustedSource = {
-	id: string;
-	name: string;
-	type: TrustedSourceType;
-	issuer: string;
-	managedBy: TrustedSourceManagedBy;
-	status: TrustedSourceStatus;
-	lastError: string | null;
-	lastCheckedAt: string | null;
-	createdAt: string;
-	updatedAt: string;
-	config: TrustedSourceConfigLatest;
-};
 
 /** The store still validates `config`: the admin-vs-system rules depend on the row, not the type. */
 export type CreateTrustedSourceInput = {
@@ -65,9 +48,22 @@ const ALL_KEY = 'trusted-source:all';
 // Reads are look-aside, so a read that started before a concurrent write can re-cache the old
 // row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
 const CACHE_TTL = 5 * Time.minutes.toMilliseconds;
+// A run that dies mid-discovery leaves its lease behind; the next run takes it over after this.
+const DISCOVERY_LEASE_SECONDS = 60;
+/** A failed source is retried soon; a healthy one is refreshed on a slow cadence. */
+export const ERROR_RETRY_SECONDS = 5 * Time.minutes.toSeconds;
+// ponytail: 1 h staleness ceiling after key rotation.
+export const HEALTHY_REFRESH_SECONDS = 1 * Time.hours.toSeconds;
+
+/** What one discovery run leaves behind. `metadata` omitted keeps the previous documents. */
+export type DiscoveryResult = {
+	metadata?: TrustedSourceMetadata;
+	status: TrustedSourceStatus;
+	lastError: string | null;
+};
 
 @Service()
-export class TrustedSourceStore {
+export class TrustedSourceDbStore extends TrustedSourceStore {
 	constructor(
 		private readonly logger: Logger,
 		private readonly trustedSourceRepository: TrustedSourceRepository,
@@ -75,7 +71,9 @@ export class TrustedSourceStore {
 		private readonly cacheService: CacheService,
 		private readonly trustedSourceIdentityRepository: TrustedSourceIdentityRepository,
 		private readonly transactionRunner: TransactionRunner,
-	) {}
+	) {
+		super();
+	}
 
 	async getById(id: string): Promise<TrustedSource | undefined> {
 		return await this.cacheService.get(idKey(id), {
@@ -93,12 +91,52 @@ export class TrustedSourceStore {
 	}
 
 	async listBySurface(surface: SurfaceId): Promise<TrustedSource[]> {
-		const allSources =
+		const all =
 			(await this.cacheService.get(ALL_KEY, {
 				ttl: CACHE_TTL,
 				refreshFn: async () => await this.loadAll(),
 			})) ?? [];
-		return allSources.filter((source) => source.config.surfaces[surface] !== undefined);
+		return all.filter((source) => source.config.surfaces[surface] !== undefined);
+	}
+
+	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
+	async listDue(limit: number): Promise<TrustedSource[]> {
+		const rows = await this.trustedSourceRepository.findDue({
+			errorRetrySeconds: ERROR_RETRY_SECONDS,
+			healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
+			limit,
+		});
+		const sources = await Promise.all(rows.map(async (row) => await this.load(row)));
+		return sources.filter((source): source is TrustedSource => source !== undefined);
+	}
+
+	/** Takes the discovery lease on `source`; the run's token, or `null` when another run holds it. */
+	async claimDiscovery(source: TrustedSource): Promise<string | null> {
+		const token = randomUUID();
+		const claimed = await this.trustedSourceRepository.claimForDiscovery(
+			source.id,
+			token,
+			DISCOVERY_LEASE_SECONDS,
+		);
+		if (!claimed) return null;
+		await this.invalidateCache(source);
+		return token;
+	}
+
+	/** Writes the run's result and releases the lease; `false` when the lease was lost. */
+	async recordDiscovery(
+		source: TrustedSource,
+		token: string,
+		result: DiscoveryResult,
+	): Promise<boolean> {
+		// Metadata is never cleared: an error keeps the last good documents readable.
+		const recorded = await this.trustedSourceRepository.recordDiscovery(source.id, token, {
+			status: result.status,
+			lastError: result.lastError,
+			...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
+		});
+		if (recorded) await this.invalidateCache(source);
+		return recorded;
 	}
 
 	async create(input: CreateTrustedSourceInput): Promise<TrustedSource> {
@@ -115,6 +153,7 @@ export class TrustedSourceStore {
 			lastCheckedAt: null,
 			configVersion: config.version,
 			config: await this.cipher.encryptV2(config),
+			metadata: null,
 		});
 		await this.invalidateCache(row);
 		return this.toRuntime(row, config);
@@ -135,6 +174,16 @@ export class TrustedSourceStore {
 			);
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
+		}
+		// A new issuer or config starts from nothing: the old documents must not vouch for it, the
+		// source is due again, and a discovery run that started on the old configuration loses its
+		// lease, so it cannot record its result against the new one.
+		if (input.issuer !== undefined || input.config !== undefined) {
+			changes.metadata = null;
+			changes.status = 'unchecked';
+			changes.lastError = null;
+			changes.discoveryClaimToken = null;
+			changes.discoveryClaimedAt = null;
 		}
 		await this.transactionRunner.run({}, async (ctx) => {
 			if (Object.keys(changes).length > 0) {
@@ -162,7 +211,10 @@ export class TrustedSourceStore {
 	}
 
 	/** `row` is the state before the write, so `row.issuer` is the old issuer. */
-	private async invalidateCache(row: TrustedSourceEntity, newIssuer = row.issuer) {
+	private async invalidateCache(
+		row: Pick<TrustedSourceEntity, 'id' | 'issuer'>,
+		newIssuer = row.issuer,
+	) {
 		await this.cacheService.deleteMany([
 			idKey(row.id),
 			issuerKey(row.issuer),
@@ -206,6 +258,21 @@ export class TrustedSourceStore {
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			config,
+			metadata: this.parseMetadata(row),
 		};
+	}
+
+	/** Discovery data is advisory: an unreadable column reads as "not discovered yet". */
+	private parseMetadata(row: TrustedSourceEntity): TrustedSourceMetadata | null {
+		if (row.metadata === null) return null;
+		const parsed = TrustedSourceMetadataSchema.safeParse(
+			jsonParse<unknown>(row.metadata, { fallbackValue: null }),
+		);
+		if (parsed.success) return parsed.data;
+		this.logger.warn('Ignoring unreadable trusted source metadata', {
+			id: row.id,
+			reason: parsed.error.message,
+		});
+		return null;
 	}
 }

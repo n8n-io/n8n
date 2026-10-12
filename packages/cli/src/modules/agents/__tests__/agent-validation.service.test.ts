@@ -1,18 +1,20 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
-import type { WorkflowRepository } from '@n8n/db';
+import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -47,6 +49,7 @@ function makeAgent(
 		skills,
 		tools: {},
 		integrations: [],
+		revision: 0,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -63,6 +66,7 @@ function makeCredentialProvider(
 
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
+	agentRepository.hasRevision.mockResolvedValue(true);
 	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
@@ -78,12 +82,18 @@ function makeService() {
 	return {
 		service: new AgentValidationService(
 			agentRepository,
-			agentTaskRepository,
-			agentTaskSnapshotRepository,
+			new AgentDefinitionService(
+				agentTaskRepository,
+				agentTaskSnapshotRepository,
+				agentRepository,
+				mock<TransactionRunner>(),
+				createAgentSkillRefsService(agentRepository),
+			),
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
+			createAgentSkillRefsService(agentRepository),
 		),
 		agentRepository,
 		agentSkillsService,
@@ -1231,12 +1241,14 @@ describe('AgentValidationService — structured issues', () => {
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 			'publish',
 		);
+		agentTaskRepository.findByAgentId.mockClear();
 		const runtimeResult = await service.validateAgentIsRunnable(
 			agentId,
 			projectId,
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 		);
 
+		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
 		expect(publishResult.status).toBe('invalid');
 		expect(publishResult.issues).toEqual(
 			expect.arrayContaining([
@@ -1440,6 +1452,7 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 
 		const result = await service.validateAgentEntityConfiguration(
 			agent,
+			storedSkillRefs(agent),
 			projectId,
 			tasks,
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),

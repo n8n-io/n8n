@@ -20,6 +20,19 @@ exports[`viewsData > AIView > should return the AI view 1`] = `
       "uuid": "ai_templates_root",
     },
     {
+      "key": "n8n-nodes-base.messageAnAgent",
+      "properties": {
+        "description": "",
+        "displayName": "Message an Agent",
+        "group": [],
+        "icon": "fa:pen",
+        "iconUrl": "nodes/test-node/icon.svg",
+        "name": "n8n-nodes-base.messageAnAgent",
+        "title": "Message an Agent",
+      },
+      "type": "node",
+    },
+    {
       "key": "agent",
       "properties": {
         "description": "example mock agent node",

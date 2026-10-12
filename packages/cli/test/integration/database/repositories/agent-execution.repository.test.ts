@@ -42,6 +42,7 @@ import type {
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentRunTracingService } from '@/modules/agents/agent-run-tracing.service';
 import type { AgentSandboxRuntimeService } from '@/modules/agents/agent-sandbox-runtime.service';
@@ -237,7 +238,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-			connection ? new AgentRepository(connection) : agentRepo,
+			connection ? new AgentRepository(connection, txRunner) : agentRepo,
 			attachmentService,
 			queueUpdates,
 			messageRepository,
@@ -1484,6 +1485,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobRepository>(),
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
+				mock<AgentSkillRefsService>(),
 			);
 			const resume = async (
 				user: User,
@@ -1576,7 +1578,9 @@ describe('AgentExecutionRepository', () => {
 			timeline,
 		});
 		await repository.update(executionId, {
-			updatedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS - 1),
+			updatedAt: new Date(
+				Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * 1000 - 1,
+			),
 		});
 		const sweeper = new AgentInterruptedExecutionSweeper(
 			mockLogger(),
@@ -1661,7 +1665,14 @@ describe('AgentExecutionRepository', () => {
 				];
 				const pending = await enqueue(remote, pendingInput);
 				const steered = await enqueue(remote, input(threadId, 'Accepted steering'));
-				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
+				};
 				await local.queue.steer({
 					...target,
 					queueId: steered.id,
@@ -1776,7 +1787,7 @@ describe('AgentExecutionRepository', () => {
 						services.turns.execute({
 							...common,
 							agentInstance: runtime,
-							previewChat: true,
+							chatSurface: 'preview',
 							automaticPreviewContinuation,
 							onExecutionStarted: (id) => {
 								executionId = id;
@@ -1907,7 +1918,14 @@ describe('AgentExecutionRepository', () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview' as const,
+				resourceId: `draft-chat:${owner.id}`,
+			};
 			await enqueue(local, input(threadId, 'A', 'new'));
 			const active = await claim(local, threadId);
 			const executionId = active.admission.executionId;
@@ -2042,7 +2060,14 @@ describe('AgentExecutionRepository', () => {
 		it('rolls back messages and timeline markers if consumption fails', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview' as const,
+				resourceId: `draft-chat:${owner.id}`,
+			};
 			await enqueue(services, input(threadId, 'A', 'new'));
 			const active = await claim(services, threadId);
 			const executionId = active.admission.executionId;
@@ -2096,7 +2121,14 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
+				};
 				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
@@ -2194,6 +2226,7 @@ describe('AgentExecutionRepository', () => {
 					threadId,
 					userId: owner.id,
 					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
 					queueId: c.id,
 					executionId,
 				};
@@ -2834,6 +2867,7 @@ describe('AgentExecutionRepository', () => {
 					userId: owner.id,
 					queueId: pending.id,
 					executionId: active.admission.executionId,
+					kind: 'preview',
 				});
 				const runId = uuid();
 				const state: SerializableAgentState = {

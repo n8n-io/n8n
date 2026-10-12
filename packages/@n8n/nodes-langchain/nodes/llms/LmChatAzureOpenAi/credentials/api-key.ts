@@ -25,7 +25,7 @@ export async function setupApiKeyAuthentication(
 		if (!configCredentials.apiKey) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'API Key is missing in the selected Azure OpenAI API credential. Please configure the API Key or choose Entra ID authentication.',
+				'API Key is missing in the selected Microsoft Foundry (API Key) credential. Please configure the API Key or choose Entra ID authentication.',
 			);
 		}
 

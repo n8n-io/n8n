@@ -62,6 +62,26 @@ beforeEach(() => {
 });
 
 describe('Agent plan tools', () => {
+	it('returns presentation text on creation and full-document updates', async () => {
+		const presentation = { label: 'Researching', detail: 'Checking three sources.' };
+		expect(
+			await call('create_plan', { document: { ...document(task()), presentation } }),
+		).toMatchObject({ document: { presentation } });
+		const { startedAt, endedAt, ...existingTask } = original.data.items[0];
+		const proposed = {
+			...document(existingTask),
+			presentation: { label: 'Research complete', detail: 'Found three sources.' },
+		};
+		expect(await call('update_plan', { ...write, document: proposed })).toMatchObject({
+			revision: 2,
+			document: proposed,
+		});
+		expect(service.replacePlan.mock.calls[0][0].data).toMatchObject({
+			presentation: proposed.presentation,
+			items: [{ ...existingTask, startedAt, endedAt }],
+		});
+	});
+
 	it('generates permanent IDs and resolves forward, group, and child references', async () => {
 		const result = await call('create_plan', {
 			document: document(
@@ -92,19 +112,47 @@ describe('Agent plan tools', () => {
 			planId: input.id,
 			revision: 1,
 			closed: false,
+			startedAt: null,
+			closedAt: null,
 			readiness: { ready: [phase.id, phase.tasks[1].id] },
 		});
-		for (const hidden of [
-			'startedAt',
-			'endedAt',
-			'createdAt',
-			'updatedAt',
-			'threadId',
-			'formatVersion',
-		]) {
+		for (const hidden of ['endedAt', 'createdAt', 'updatedAt', 'threadId', 'formatVersion']) {
 			expect(JSON.stringify(result)).not.toContain(`"${hidden}"`);
 		}
 		expect(JSON.stringify(result)).not.toContain('new:');
+		expect(result).not.toHaveProperty('document.items.0.startedAt');
+		expect(result).not.toHaveProperty('document.items.1.tasks.0.startedAt');
+	});
+
+	it('returns the earliest stored start and the plan closure time outside the document', async () => {
+		const startedAt = '2026-10-01T10:00:00.000Z';
+		const later = '2026-10-01T10:02:00.000Z';
+		const closedAt = new Date('2026-10-01T10:05:00.000Z');
+		const plan = {
+			...stored(
+				parseAgentPlan(
+					document(
+						{ ...task(randomUUID()), startedAt: later, status: 'done', endedAt: later },
+						{
+							...task(randomUUID()),
+							kind: 'group',
+							startedAt: later,
+							tasks: [{ ...task(randomUUID()), startedAt, status: 'done', endedAt: later }],
+						},
+					),
+					1,
+				),
+			),
+			closedAt,
+		};
+		service.closePlan.mockResolvedValue(plan);
+		expect(await call('close_plan', write)).toMatchObject({
+			startedAt,
+			closedAt: closedAt.toISOString(),
+			closed: true,
+		});
+		service.findActivePlan.mockResolvedValue({ ...plan, closedAt: null });
+		expect(await call('read_plan', {})).toMatchObject({ startedAt, closedAt: null, closed: false });
 	});
 
 	it.each([
@@ -117,6 +165,7 @@ describe('Agent plan tools', () => {
 		['new UUIDs', document(task(randomUUID()))],
 		['invalid aliases', document(task('new:'))],
 		['unknown fields', { ...document(task()), extra: true }],
+		['invalid presentation', { ...document(task()), presentation: { label: '' } }],
 		['caller timestamps', document({ ...task(), startedAt: null })],
 		[
 			'child timestamps',

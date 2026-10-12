@@ -15,7 +15,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 

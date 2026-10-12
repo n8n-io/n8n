@@ -178,6 +178,7 @@ jobs:
               packages/core/src/execution-engine/eval-mock-helpers.ts
               .github/workflows/test-evals-discovery.yml
             db:
+              packages/modules/*/backend/**
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
               packages/cli/src/modules/**/*.entity.ts
@@ -185,8 +186,7 @@ jobs:
               packages/cli/test/integration/**
               packages/cli/test/migration/**
               packages/cli/test/shared/db/**
-              packages/cli/test/setup-testcontainers.js
-              packages/cli/test/teardown-testcontainers.js
+              packages/cli/test/setup-testcontainers.ts
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
@@ -195,6 +195,7 @@ jobs:
               packages/cli/vitest.*
               packages/quality/environments/containers/services/postgres.ts
               packages/quality/environments/containers/services/redis.ts
+              packages/quality/environments/containers/test-db-global-setup.ts
               packages/quality/environments/containers/postgres-versions.json
               packages/quality/environments/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
@@ -209,8 +210,7 @@ jobs:
               packages/@n8n/backend-test-utils/**
               packages/cli/test/migration/**
               packages/cli/test/shared/db/**
-              packages/cli/test/setup-testcontainers.js
-              packages/cli/test/teardown-testcontainers.js
+              packages/cli/test/setup-testcontainers.ts
               packages/cli/vitest.config.base.ts
               packages/cli/vitest.config.migration.ts
               packages/cli/vitest.config.migration.testcontainers.ts

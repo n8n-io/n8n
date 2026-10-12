@@ -165,6 +165,30 @@ paths:
       $ref: ./handlers/settings/spec/paths/getLdapSync.generated.yml
     post:
       $ref: ./handlers/settings/spec/paths/runLdapSync.generated.yml
+  /settings/log-streaming/event-types:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
+  /settings/log-streaming/destinations:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingDestinations.generated.yml
+    post:
+      $ref: ./handlers/settings/spec/paths/createLogStreamingDestination.generated.yml
+  /settings/log-streaming/destinations/{destinationId}:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingDestination.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateLogStreamingDestination.generated.yml
+    delete:
+      $ref: ./handlers/settings/spec/paths/deleteLogStreamingDestination.generated.yml
+  /settings/log-streaming/destinations/{destinationId}/test:
+    post:
+      $ref: ./handlers/settings/spec/paths/testLogStreamingDestination.generated.yml
+  /n8n-packages/import:
+    post:
+      $ref: ./handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  /n8n-packages/import-selection:
+    post:
+      $ref: ./handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
@@ -414,3 +438,6 @@ paths:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
     put:
       $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  /workflows/{workflowId}/{workflowVersionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml

@@ -100,6 +100,13 @@ function prepareDocument(
 function presentPlan(plan: AgentPlanSnapshot | null) {
 	if (!plan) return null;
 
+	const startedAt =
+		plan.data.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.map((item) => item.startedAt)
+			.filter((timestamp): timestamp is string => timestamp !== null)
+			.sort()[0] ?? null;
+
 	const withoutTiming = <Item extends AgentPlanItem>(item: Item) => {
 		const { startedAt, endedAt, ...visible } = item;
 		return visible;
@@ -109,6 +116,8 @@ function presentPlan(plan: AgentPlanSnapshot | null) {
 		planId: plan.id,
 		revision: plan.revision,
 		closed: plan.closedAt !== null,
+		startedAt,
+		closedAt: plan.closedAt?.toISOString() ?? null,
 		document: {
 			...plan.data,
 			items: plan.data.items.map((item) =>
@@ -199,10 +208,10 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'Do not add final communication-only tasks, such as "Presented findings to user", to the plan. ' +
 					'Include such a task only when it requires a sub-agent or a tool call beyond plan maintenance. ' +
 					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
-					'For sub-agent work on a plan task, always use spawn_background_subagent, even for short or sequential tasks. ' +
-					'Do not use delegate_subagent for plan work. ' +
+					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
+					'Do not use foreground delegation for plan work. ' +
 					'This rule overrides the default foreground-delegation guidance for plan work. ' +
-					'If spawn_background_subagent is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
+					'If background mode is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
 					'Keep task and group statuses current. Accept results before marking work Done. ' +
 					'Before announcing plan changes or task progress to the user, always update the plan with that information. ' +
 					'Wait for the plan update to succeed before announcing the change. ' +

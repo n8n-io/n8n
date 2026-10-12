@@ -12,7 +12,7 @@ export function requireFoundryEndpoint(node: INode, foundryEndpoint: string | un
 	if (!endpoint) {
 		throw new NodeOperationError(
 			node,
-			'Foundry endpoint is missing in the selected Azure OpenAI credential.',
+			'Foundry endpoint is missing in the selected Microsoft Foundry credential.',
 		);
 	}
 	return endpoint;

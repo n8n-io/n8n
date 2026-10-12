@@ -157,6 +157,7 @@ export class WorkflowDependencyQueryService {
 		resourceIds: string[],
 		resourceType: DependencyResourceType,
 		user: User,
+		options: { listUnavailableCredentials?: boolean } = {},
 	): Promise<DependenciesBatchResponse> {
 		const loaded = await this.loadDepsForResources(resourceIds, resourceType, user);
 		if (!loaded) return {};
@@ -218,6 +219,7 @@ export class WorkflowDependencyQueryService {
 		const agentNames = new Map<string, { name: string; projectId: string }>();
 		const wfNames = new Map<string, { name: string; projectId?: string }>();
 		const credNames = new Map<string, string>();
+		const unavailableCredNames = new Map<string, string>();
 		const dtNames = new Map<string, { name: string; projectId: string }>();
 		const existingAgentIds = new Set<string>();
 		const existingWfIds = new Set<string>();
@@ -234,9 +236,26 @@ export class WorkflowDependencyQueryService {
 				});
 			}
 		}
+		// Same usability rule as the node credential field, so a user with only
+		// see-rights sees the credential as unavailable in both places.
+		const listUnavailable =
+			options.listUnavailableCredentials === true &&
+			resourceType === 'workflow' &&
+			isCredSharingEnabled();
+		const unusableCredIds = new Set(
+			listUnavailable
+				? (
+						await this.credentialsFinderService.findUnusableCredentialsForUser(
+							user,
+							credentials.map((c) => c.id),
+						)
+					).map((c) => c.id)
+				: [],
+		);
 		for (const c of credentials) {
 			existingCredIds.add(c.id);
-			if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
+			if (unusableCredIds.has(c.id)) unavailableCredNames.set(c.id, c.name ?? c.id);
+			else if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
 		}
 		for (const w of workflows) {
 			existingWfIds.add(w.id);
@@ -261,6 +280,7 @@ export class WorkflowDependencyQueryService {
 				agentNames,
 				wfNames,
 				credNames,
+				unavailableCredNames,
 				dtNames,
 			},
 			{ existingAgentIds, existingWfIds, existingCredIds, existingDtIds },
@@ -405,6 +425,7 @@ export class WorkflowDependencyQueryService {
 			agentNames: Map<string, { name: string; projectId: string }>;
 			wfNames: Map<string, { name: string; projectId?: string }>;
 			credNames: Map<string, string>;
+			unavailableCredNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
 		},
 		existing: {
@@ -444,8 +465,11 @@ export class WorkflowDependencyQueryService {
 				for (const id of ids ?? []) {
 					if (!existingIds.has(id)) continue;
 					const name = nameMap.get(id);
+					const unavailableName = accessMaps.unavailableCredNames.get(id);
 					if (name !== undefined) {
 						dependencies.push({ id, name, type });
+					} else if (type === 'credentialId' && unavailableName !== undefined) {
+						dependencies.push({ id, name: unavailableName, type, unavailable: true });
 					} else {
 						inaccessibleCount++;
 					}

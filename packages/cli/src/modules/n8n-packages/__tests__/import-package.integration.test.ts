@@ -1289,6 +1289,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1388,6 +1389,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1457,6 +1459,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -1528,6 +1531,7 @@ describe('Package import event emission', () => {
 				dataTables: {
 					matched: 0,
 					created: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				variables: {
@@ -2825,13 +2829,16 @@ describe('Package import missing node type mode', () => {
 						type: 'missing-node-type',
 						nodeType: 'n8n-nodes-community.chatBot',
 						typeVersion: 1,
-						usedByWorkflows: ['wf-alpha', 'wf-beta'],
+						usedBy: [
+							{ kind: 'workflow', id: 'wf-alpha' },
+							{ kind: 'workflow', id: 'wf-beta' },
+						],
 					},
 					{
 						type: 'missing-node-type',
 						nodeType: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 9,
-						usedByWorkflows: ['wf-gamma'],
+						usedBy: [{ kind: 'workflow', id: 'wf-gamma' }],
 					},
 				]),
 			},

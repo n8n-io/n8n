@@ -40,7 +40,7 @@ export interface McpServerConfig {
 	// URL-based transports (exactly one of url or command must be provided)
 	/** Server endpoint URL for SSE or Streamable HTTP transport. */
 	url?: string;
-	/** Transport type for URL-based servers. Defaults to 'sse'. */
+	/** Transport type for URL-based servers. Defaults to Streamable HTTP. Legacy SSE is also supported. */
 	transport?: 'sse' | 'streamableHttp';
 
 	// Stdio transport

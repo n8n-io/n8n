@@ -6,7 +6,7 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 	name = 'azureEntraCognitiveServicesOAuth2Api';
 
 	// eslint-disable-next-line n8n-nodes-base/cred-class-field-display-name-missing-oauth2
-	displayName = 'Azure Entra ID (Azure Active Directory) API';
+	displayName = 'Microsoft Foundry (Entra ID)';
 
 	extends = ['oAuth2Api'];
 
@@ -26,11 +26,11 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			type: 'options',
 			options: [
 				{ name: 'Classic', value: 'classic' },
-				{ name: 'Azure AI Foundry', value: 'foundry' },
+				{ name: 'Microsoft Foundry', value: 'foundry' },
 			],
 			default: 'classic',
 			description:
-				'Classic targets *.openai.azure.com (resource name + deployment-based URLs). Azure AI Foundry targets *.services.ai.azure.com/openai/v1 (full endpoint URL).',
+				'Classic targets *.openai.azure.com (resource name + deployment-based URLs). Microsoft Foundry targets *.services.ai.azure.com/openai/v1 (full endpoint URL).',
 		},
 		{
 			displayName: 'Resource Name',
@@ -56,7 +56,7 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 			default: '',
 			placeholder: 'https://<resource>.services.ai.azure.com/openai/v1',
 			displayOptions: { show: { endpointType: ['foundry'] } },
-			hint: 'The full Azure AI Foundry OpenAI-compatible base URL.',
+			hint: 'The full Microsoft Foundry OpenAI-compatible base URL.',
 		},
 		{
 			displayName: 'Endpoint',

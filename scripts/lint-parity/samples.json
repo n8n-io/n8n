@@ -203,7 +203,6 @@
 		"src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts",
 		"src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts",
 		"src/modules/favorites/favorites.service.ts",
-		"src/modules/insights/insights-collection.service.ts",
 		"src/modules/instance-ai/__tests__/agent-preview-handoff.test.ts",
 		"src/modules/instance-ai/instance-ai.adapter.service.ts",
 		"src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts",
@@ -281,11 +280,6 @@
 		"src/__tests__/credentials.test.ts",
 		"src/binary-data/binary-data.config.ts",
 		"test/helpers/constants.ts"
-	],
-	"packages/extensions/insights": [
-		"src/backend/index.ts",
-		"src/frontend/InsightsDashboard.vue",
-		"src/frontend/index.ts"
 	],
 	"packages/frontend/@n8n/chat": [
 		"src/App.vue",
@@ -374,7 +368,10 @@
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
 	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
-	"packages/quality/environments/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
+	"packages/quality/environments/containers": [
+		"services/keycloak.ts",
+		"tests/resource-tracker.test.ts"
+	],
 	"packages/quality/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
 	"packages/quality/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
 	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],

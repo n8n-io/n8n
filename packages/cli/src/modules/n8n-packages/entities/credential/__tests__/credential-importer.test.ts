@@ -51,7 +51,7 @@ describe('CredentialImporter', () => {
 	): CredentialRequirement => ({
 		name: 'Source GitHub',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		...overrides,
 	});
 
@@ -63,7 +63,6 @@ describe('CredentialImporter', () => {
 		sourceId: credential.id,
 		name: credential.name,
 		type: credential.type,
-		usedByWorkflows: credential.usedByWorkflows,
 		...overrides,
 	});
 
@@ -95,7 +94,7 @@ describe('CredentialImporter', () => {
 				id: 'cred-manifest',
 				name: 'Manifest GitHub',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 			},
 		]);
 		const credentialResolution = await importer.plan(context, request);
@@ -109,7 +108,15 @@ describe('CredentialImporter', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 
 		const request = bindingRequest([
-			{ id: 'cred-missing', name: 'Missing', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+			{
+				id: 'cred-missing',
+				name: 'Missing',
+				type: 'githubApi',
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'agent', id: 'wf-1' },
+				],
+			},
 		]);
 		const credentialResolution = await importer.plan(context, request);
 
@@ -120,7 +127,6 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 		expect(importer.blockingFailures(request, credentialResolution)).toEqual([
@@ -129,7 +135,6 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 	});
@@ -145,7 +150,7 @@ describe('CredentialImporter', () => {
 					id: 'source-cred',
 					name: 'Source GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-cred']]) },
@@ -172,7 +177,6 @@ describe('CredentialImporter', () => {
 				kind: 'source_not_found',
 				sourceId: 'missing-source',
 				targetId: 'target-cred',
-				usedByWorkflows: [],
 			},
 		]);
 	});
@@ -188,7 +192,7 @@ describe('CredentialImporter', () => {
 					id: 'source-cred',
 					name: 'Source GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-missing']]) },
@@ -203,7 +207,6 @@ describe('CredentialImporter', () => {
 				name: 'Source GitHub',
 				type: 'githubApi',
 				targetId: 'target-missing',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 	});
@@ -215,7 +218,10 @@ describe('CredentialImporter', () => {
 			const missingCredential = packageCredential({
 				id: 'missing-cred',
 				name: 'Missing GitHub',
-				usedByWorkflows: ['wf-1', 'wf-2'],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
 			});
 			const request = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const resolution = {

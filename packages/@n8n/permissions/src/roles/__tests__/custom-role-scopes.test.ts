@@ -1,4 +1,11 @@
 import { API_KEY_RESOURCES } from '@/constants.ee';
+import {
+	ADMIN_API_KEY_SCOPES,
+	API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+	CHAT_USER_API_KEY_SCOPES,
+	MEMBER_API_KEY_SCOPES,
+	OWNER_API_KEY_SCOPES,
+} from '@/public-api-permissions.ee';
 import type { Scope } from '@/types.ee';
 import {
 	CUSTOM_ROLE_SCOPE_WHITELIST,
@@ -27,6 +34,38 @@ import {
 	REGULAR_PROJECT_ADMIN_SCOPES,
 } from '@/roles/scopes/project-scopes.ee';
 import { ALL_SCOPES } from '@/scope-information';
+
+describe('Agent package export scope', () => {
+	it.each(
+		Object.entries({
+			owner: GLOBAL_OWNER_SCOPES,
+			admin: GLOBAL_ADMIN_SCOPES,
+			personalOwner: PERSONAL_PROJECT_OWNER_SCOPES,
+			projectAdmin: REGULAR_PROJECT_ADMIN_SCOPES,
+			editor: PROJECT_EDITOR_SCOPES,
+			viewer: PROJECT_VIEWER_SCOPES,
+		}),
+	)('grants Agent export to %s', (_role, scopes) => {
+		expect(scopes).toContain('agent:export');
+	});
+	it('keeps export separate from chat access', () => {
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('agent:export');
+		expect(CHAT_USER_API_KEY_SCOPES).not.toContain('agent:export');
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('agent:export');
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
+		expect(API_KEY_RESOURCES.agent).toEqual(['export']);
+	});
+	it.each(
+		Object.entries({
+			owner: OWNER_API_KEY_SCOPES,
+			admin: ADMIN_API_KEY_SCOPES,
+			member: MEMBER_API_KEY_SCOPES,
+			personalProject: API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+		}),
+	)('allows Agent export on a %s API key', (_role, scopes) => {
+		expect(scopes).toContain('agent:export');
+	});
+});
 
 describe('custom role scope whitelists', () => {
 	const allScopes = new Set<string>(ALL_SCOPES);

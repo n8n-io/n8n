@@ -59,7 +59,6 @@ import {
 } from './agent-sandbox-runtime.service';
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './agent-runtime-instrumentation';
-import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import {
 	createIntegrationActionTool,
@@ -76,6 +75,7 @@ import {
 	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
+import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentFileRepository } from './repositories/agent-file.repository';
@@ -90,6 +90,7 @@ import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
+import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
@@ -290,7 +291,7 @@ export class AgentRuntimeReconstructionService {
 	) {}
 
 	async reconstructFromAgentEntity(
-		agentEntity: Agent,
+		{ agent: agentEntity, skillRefs }: AgentRunSource,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		integrationType?: string,
@@ -315,10 +316,10 @@ export class AgentRuntimeReconstructionService {
 			attributionUserId?: string;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
-		let config = agentEntity.schema;
-		if (!config) {
+		if (!agentEntity.schema) {
 			throw new UserError('Agent has no JSON config.');
 		}
+		let config = toAgentDocument(agentEntity.schema, skillRefs);
 
 		// Published/integration runs have no interactive n8n user and keep
 		// today's project-scoped trust boundary. When a user is present (in-app
@@ -836,6 +837,7 @@ export class AgentRuntimeReconstructionService {
 		);
 		const context = {
 			workflowLoader: Container.get(WorkflowToolWorkflowLoader),
+			executor: this.ephemeralNodeExecutor,
 			workflowRunner: await getWorkflowRunner(),
 			subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
 			activeExecutions: this.activeExecutions,
@@ -1046,6 +1048,18 @@ export class AgentRuntimeReconstructionService {
 			user,
 			instrumentation,
 		};
+		let runBackgroundSubAgent: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
+		if (backgroundTasksEnabled) {
+			// Background tools attach only to the root agent, so its cap is the root cap.
+			const budget = config.config?.guardrails?.budget;
+			const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+			const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
+			runBackgroundSubAgent = await this.attachBackgroundJobTools({
+				...delegationParams,
+				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
+				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
+			});
+		}
 		await this.attachSubAgentDelegationTool({
 			...delegationParams,
 			config,
@@ -1053,6 +1067,7 @@ export class AgentRuntimeReconstructionService {
 			rootSessionId: params.rootSessionId,
 			rootSessionCapUsd: params.rootSessionCapUsd,
 			budgetForwarded: params.budgetForwarded,
+			runBackgroundSubAgent,
 		});
 		if (params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled) {
 			const { AgentPlanService } = await import('./agent-plan.service.js');
@@ -1063,15 +1078,6 @@ export class AgentRuntimeReconstructionService {
 		}
 		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
-		// Background tools attach only to the root agent, so its cap is the root cap.
-		const budget = config.config?.guardrails?.budget;
-		const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
-		const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
-		await this.attachBackgroundJobTools({
-			...delegationParams,
-			...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
-			...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
-		});
 		agent.volatileInstructionsProvider(async ({ persistence }) => {
 			if (!persistence?.threadId) return undefined;
 			const { AgentWakeService } = await import('./background/agent-wake.service.js');
@@ -1097,6 +1103,7 @@ export class AgentRuntimeReconstructionService {
 		rootSessionId?: string;
 		rootSessionCapUsd?: number;
 		budgetForwarded?: boolean;
+		runBackgroundSubAgent?: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
 	}): Promise<void> {
 		const {
 			agent,
@@ -1113,6 +1120,7 @@ export class AgentRuntimeReconstructionService {
 			rootSessionId,
 			rootSessionCapUsd,
 			budgetForwarded,
+			runBackgroundSubAgent,
 		} = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
@@ -1131,6 +1139,7 @@ export class AgentRuntimeReconstructionService {
 				user,
 				instrumentation,
 				parentBudget: config.config?.guardrails?.budget,
+				runBackgroundSubAgent,
 				...(budgetForwarded ? { rootSessionId, rootSessionCapUsd, budgetForwarded: true } : {}),
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined
@@ -1181,10 +1190,10 @@ export class AgentRuntimeReconstructionService {
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;
-	}): Promise<void> {
+	}): Promise<NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']>> {
 		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
 		const {
-			createSpawnBackgroundSubAgentTool,
+			createBackgroundSubAgentHandler,
 			createCheckBackgroundJobsTool,
 			createCancelBackgroundJobTool,
 			createResumeBackgroundJobsTool,
@@ -1209,20 +1218,16 @@ export class AgentRuntimeReconstructionService {
 			}),
 		);
 
-		// Attached even with no configured sub-agents: inline self-delegation is
-		// always available.
-		agent.tool(
-			createSpawnBackgroundSubAgentTool({
-				jobService,
-				backgroundRunner: Container.get(SubAgentBackgroundRunner),
-				sourcesById: delegation.sourcesById,
-				availableSubAgents: delegation.availableSubAgents,
-				projectId,
-				parentAgentId,
-				runContext,
-			}),
-		);
 		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
+		return createBackgroundSubAgentHandler({
+			jobService,
+			backgroundRunner: Container.get(SubAgentBackgroundRunner),
+			sourcesById: delegation.sourcesById,
+			availableSubAgents: delegation.availableSubAgents,
+			projectId,
+			parentAgentId,
+			runContext,
+		});
 	}
 
 	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
