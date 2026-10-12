@@ -2,7 +2,7 @@ import type { ConsentUiHints } from '@n8n/api-types';
 import type { AuthPrincipal, SecurityContext } from '@n8n/permissions';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
-import type { Extracted, Inbound, Result, Verified } from './pipeline';
+import type { Credential, Extracted, Inbound, Result, Verified } from './pipeline';
 import type { AuthorizationServerMetadata, Jwk, TrustedSource } from './trusted-source';
 import type { SurfaceId } from './trusted-source-config';
 
@@ -99,6 +99,25 @@ export abstract class AuthenticationService {
 	abstract advertise(
 		resource: AdvertisedResource,
 	): Promise<{ authorizationServers: string[]; challenges: string[] }>;
+}
+
+/**
+ * One driver per credential kind and protocol family (`bearer` x `oauth2`). How the driver
+ * verifies (signed JWT, introspection) is the driver's business, not a boundary.
+ */
+export abstract class AuthenticationDriver {
+	abstract readonly credentialKind: Credential['kind'];
+
+	abstract readonly sourceTypes: Array<TrustedSource['type']>;
+
+	abstract selectSource(extracted: Extracted): Promise<TrustedSource | undefined>;
+
+	abstract verify(extracted: Extracted, source: TrustedSource): Promise<Result<Verified>>;
+
+	abstract advertise(
+		resource: AdvertisedResource,
+		sources: TrustedSource[],
+	): { authorizationServers?: string[]; challenge?: string };
 }
 
 export abstract class IdentityService {

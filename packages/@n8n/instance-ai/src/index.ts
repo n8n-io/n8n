@@ -35,6 +35,7 @@ import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
 import type * as EvalAgentsMod from './utils/eval-agents';
+import type * as EvalUsageMod from './utils/eval-usage';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
@@ -147,6 +148,7 @@ const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
+const loadEvalUsage = lazyModule(() => require('./utils/eval-usage') as typeof EvalUsageMod);
 const loadAgentTree = lazyModule(() => require('./utils/agent-tree') as typeof AgentTreeMod);
 const loadBuilderTemplatesService = lazyModule(
 	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
@@ -449,6 +451,9 @@ export const createEvalAgent: typeof EvalAgentsMod.createEvalAgent = lazyFunctio
 );
 export const extractText: typeof EvalAgentsMod.extractText = lazyFunction(
 	() => loadEvalAgents().extractText,
+);
+export const meterEvalUsage: typeof EvalUsageMod.meterEvalUsage = lazyFunction(
+	() => loadEvalUsage().meterEvalUsage,
 );
 defineLazyExport('PURE_REPLAY_TOOLS', () => loadTraceReplay().PURE_REPLAY_TOOLS);
 defineLazyExport(

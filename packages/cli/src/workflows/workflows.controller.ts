@@ -230,6 +230,7 @@ export class WorkflowsController {
 					includeTags: !this.globalConfig.tags.disabled,
 					includeParentFolder: true,
 					includeActiveVersion: true,
+					publishHistory: 'latestActivation',
 				},
 			);
 
@@ -263,6 +264,7 @@ export class WorkflowsController {
 				includeTags: !this.globalConfig.tags.disabled,
 				includeParentFolder: true,
 				includeActiveVersion: true,
+				publishHistory: 'latestActivation',
 			},
 		);
 
@@ -307,7 +309,15 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
+		const {
+			tags,
+			parentFolderId,
+			aiBuilderAssisted,
+			expectedChecksum,
+			autosaved,
+			restoredFromVersionId,
+			...rest
+		} = body;
 
 		// Validate timeSavedMode if present
 		if (
@@ -329,6 +339,7 @@ export class WorkflowsController {
 			expectedChecksum,
 			aiBuilderAssisted,
 			autosaved,
+			restoredFromVersionId,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -463,6 +474,7 @@ export class WorkflowsController {
 			name,
 			description,
 			expectedChecksum,
+			publishHistory: 'latestActivation',
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);

@@ -79,6 +79,57 @@
         "locale": {
             "type": "string"
         },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "mentioned": {
+                        "type": "object",
+                        "properties": {
+                            "application": {
+                                "type": "null"
+                            },
+                            "conversation": {
+                                "type": "null"
+                            },
+                            "device": {
+                                "type": "null"
+                            },
+                            "tag": {
+                                "type": "null"
+                            },
+                            "user": {
+                                "type": "object",
+                                "properties": {
+                                    "@odata.type": {
+                                        "type": "string"
+                                    },
+                                    "displayName": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "tenantId": {
+                                        "type": "string"
+                                    },
+                                    "userIdentityType": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "mentionText": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "messageType": {
             "type": "string"
         },
@@ -98,5 +149,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }

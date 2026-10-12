@@ -64,6 +64,7 @@ describe('TelemetryEventRelay', () => {
 	const globalConfig = mock<GlobalConfig>({
 		deployment: {
 			type: 'default',
+			artifact: 'helm-chart/1.14.0',
 		},
 		userManagement: {
 			emails: {
@@ -801,6 +802,7 @@ describe('TelemetryEventRelay', () => {
 					delegate_rule_count: 1,
 					name_selector_count: 2,
 					package_selector_count: 1,
+					extends_selector_count: 0,
 					evaluated_type_count: 3,
 					blocked_type_count: 2,
 					allowed_type_count: 1,
@@ -844,6 +846,41 @@ describe('TelemetryEventRelay', () => {
 					allowed_type_count: 2,
 					blocked_types: ['notionApi'],
 					allowed_types: ['slackApi', 'httpBasicAuth'],
+				}),
+			);
+		});
+
+		it('should count a credential type built on the base an extends rule names as blocked', () => {
+			Object.defineProperty(loadNodesAndCredentials, 'knownCredentials', {
+				configurable: true,
+				value: {
+					oAuth2Api: {},
+					googleOAuth2Api: { extends: ['oAuth2Api'] },
+					googleSheetsOAuth2Api: { extends: ['googleOAuth2Api'] },
+					slackApi: {},
+				},
+			});
+
+			eventService.emit('node-type-policy-saved', {
+				updatedBy: 'user123',
+				kind: 'credential-types',
+				projectId: null,
+				scopeId: 'scope-1',
+				before: null,
+				after: { defaultAction: 'allow', version: 1 },
+				rulesBefore: null,
+				rulesAfter: [
+					{ id: 'rule-1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } },
+				],
+				warningCount: 0,
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_SAVED_TYPE_AVAILABILITY_POLICY,
+				expect.objectContaining({
+					extends_selector_count: 1,
+					blocked_types: ['oAuth2Api', 'googleOAuth2Api', 'googleSheetsOAuth2Api'],
+					allowed_types: ['slackApi'],
 				}),
 			);
 		});
@@ -3232,9 +3269,11 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				agentIds: ['agent1', 'agent2'],
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				projectIds: ['proj1'],
 				counts: {
+					agents: 2,
 					workflows: 3,
 					folders: 1,
 					credentials: 2,
@@ -3250,6 +3289,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
+				agent_count: 2,
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
@@ -3264,6 +3304,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
 			const event: RelayEventMap['n8n-package-export-failed'] = {
 				user: { id: 'user123' },
+				agentIds: ['agent1', 'agent2'],
 				reason: 'access-denied',
 				workflowIds: ['wf1', 'wf2'],
 			};
@@ -3272,6 +3313,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
 				user_id: 'user123',
+				agent_count: 2,
 				reason: 'access-denied',
 				workflow_count: 2,
 				folder_count: 0,
@@ -3530,6 +3572,7 @@ describe('TelemetryEventRelay', () => {
 				n8n_host: expect.any(String),
 				version_cli: N8N_VERSION,
 				n8n_deployment_type: 'default',
+				n8n_deployment_artifact: 'helm-chart/1.14.0',
 			});
 			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
 				traits: instanceGroupFacts,
@@ -3552,6 +3595,7 @@ describe('TelemetryEventRelay', () => {
 					},
 					n8n_binary_data_mode: 'default',
 					n8n_deployment_type: 'default',
+					n8n_deployment_artifact: 'helm-chart/1.14.0',
 					saml_enabled: false,
 					smtp_set_up: true,
 					system_info: {
@@ -3609,6 +3653,21 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+		});
+
+		it('should leave out the deployment artifact on `server-started` when it is unset', async () => {
+			globalConfig.deployment.artifact = '';
+			try {
+				eventService.emit('server-started');
+				await flushPromises();
+			} finally {
+				globalConfig.deployment.artifact = 'helm-chart/1.14.0';
+			}
+
+			const [{ traits }] = telemetry.groupIdentify.mock.calls[0];
+			const [info] = telemetry.identify.mock.calls[0];
+			expect(traits?.n8n_deployment_artifact).toBeUndefined();
+			expect(info?.n8n_deployment_artifact).toBeUndefined();
 		});
 
 		it('should skip the PostHog group update on `server-started` before owner setup', async () => {
@@ -4554,6 +4613,67 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
 		});
 	});
+	describe('migration report events', () => {
+		it('tracks the overview counts when the report is viewed', () => {
+			const payload: RelayEventMap['migration-report-viewed'] = {
+				user: { id: 'user-1' },
+				targetVersion: 'v3',
+				refreshed: true,
+				report: {
+					report: {
+						generatedAt: new Date('2026-01-01T00:00:00.000Z'),
+						targetVersion: 'v3',
+						currentVersion: '2.0.0',
+						instanceResults: [
+							{
+								ruleId: 'docker-only-deployment-v3',
+								ruleTitle: 'Title',
+								ruleDescription: 'Description',
+								ruleImpact: 'upgradeBlocked',
+								ruleDocumentationUrl: 'https://docs.n8n.io',
+								recommendations: [],
+								migratable: false,
+								instanceIssues: [],
+							},
+						],
+						workflowResults: [
+							{
+								ruleId: 'removed-nodes-v3',
+								ruleTitle: 'Title',
+								ruleDescription: 'Description',
+								ruleImpact: 'executionsFail',
+								ruleDocumentationUrl: 'https://docs.n8n.io',
+								recommendations: [],
+								migratable: false,
+								nbAffectedWorkflows: 4,
+								nbWontFixWorkflows: 1,
+							},
+						],
+					},
+					totalWorkflows: 10,
+					totalAffectedWorkflows: 4,
+					shouldCache: false,
+				},
+			};
+
+			eventService.emit('migration-report-viewed', payload);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT,
+				{
+					user_id: 'user-1',
+					target_version: 'v3',
+					refreshed: true,
+					total_workflows: 10,
+					affected_workflows: 4,
+					affected_instance_rules: 1,
+					rules: [{ rule_id: 'removed-nodes-v3', impact: 'executionsFail', affected_workflows: 4 }],
+					synced_at: '2026-01-01T00:00:00.000Z',
+				},
+			);
+		});
+	});
+
 	describe('workflow history compaction events', () => {
 		it('should call telemetry.track when compacting history finishes', async () => {
 			const payload = {

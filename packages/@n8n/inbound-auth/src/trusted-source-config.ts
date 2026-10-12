@@ -16,7 +16,6 @@ export const JwtAlgorithmSchema = z.enum([
 	'PS256',
 	'PS384',
 	'PS512',
-	'EdDSA',
 ]);
 export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 
@@ -68,6 +67,7 @@ export const Oauth2AuthenticationSchema = z.object({
 	verification: z
 		.discriminatedUnion('mode', [z.object({ mode: z.literal('jwt') })])
 		.default({ mode: 'jwt' }),
+	allowedTokenTypes: z.array(z.string().min(1)).min(1).default(['at+jwt', 'application/at+jwt']),
 	algorithms: z
 		.array(JwtAlgorithmSchema)
 		.min(1)

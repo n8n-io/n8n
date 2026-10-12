@@ -8,7 +8,7 @@ import { observeSystemTaskRun } from './system-task-run-observer';
 
 /**
  * Runs one durable occurrence of a system task. The signal aborts on shutdown.
- * Lease loss or expiry also aborts it unless the dispatch marker is stored.
+ * Lease loss or expiry also aborts it.
  *
  * Errors propagate: the executor is what retries the occurrence or gives up on
  * it, following the attempt limit carried by the occurrence's job row.
@@ -28,9 +28,6 @@ export class SystemTaskHandler implements TaskHandler {
 		report: DispatchReporter,
 		leaseSignal: AbortSignal,
 	): Promise<DispatchDecision> {
-		const decision =
-			this.systemTask.effects === 'non-idempotent' ? report.dispatched() : report.notDispatched();
-
 		const outcome = await observeSystemTaskRun(
 			this.eventService,
 			this.tracing,
@@ -58,6 +55,7 @@ export class SystemTaskHandler implements TaskHandler {
 			jobId: task.jobId,
 		});
 
-		return decision;
+		// The marker is stamped only after the run, so a thrown run is recorded as failed.
+		return report.dispatched();
 	}
 }

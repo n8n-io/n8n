@@ -39,6 +39,7 @@ import type {
 	WebhookResponseData,
 	IDestinationNode,
 	IUser,
+	ExecutionStorageLocation,
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -120,9 +121,18 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'hostedChat',
 ]);
 
+/** Modes where the caller is answered as soon as the run is enqueued, so the run itself owes no response. */
+const IMMEDIATE_RESPONSE_MODES = new Set<WebhookResponseMode>([
+	'onReceived',
+	'formPage',
+	'hostedChat',
+]);
+
 interface WebhookInvocationResult {
 	webhookResultData: IWebhookResponseData;
 	runExecutionDataChanges: WebhookExecutionDataChanges;
+	/** If true, the response callback was called with an error. */
+	failed: boolean;
 }
 
 interface WebhookExecutionDataChanges {
@@ -221,6 +231,8 @@ async function prepareMcpQueueExecution(
 
 	runData.isMcpExecution = true;
 	runData.mcpType = 'trigger';
+	// The worker relays the MCP response when the run ends, so a paused segment would be taken for the result.
+	runData.callerAwaitsOutcome = 'completion';
 	runData.mcpSessionId = mcpSessionId;
 	runData.mcpMessageId = mcpMessageId;
 
@@ -571,7 +583,7 @@ export async function invokeWebhook({
 			node: workflowStartNode,
 		});
 
-		return { webhookResultData, runExecutionDataChanges: {} };
+		return { webhookResultData, runExecutionDataChanges: {}, failed: false };
 	} catch (e: unknown) {
 		const error = ensureError(e);
 		const errorMessage = _privateGetWebhookErrorMessage(error, webhookType);
@@ -603,6 +615,7 @@ export async function invokeWebhook({
 				noWebhookResponse: true,
 				workflowData: [[{ json: {} }]],
 			},
+			failed: true,
 		};
 	}
 }
@@ -884,11 +897,13 @@ async function prepareWebhookAdditionalData({
 				: (await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource))?.getGrant?.();
 
 		if (!grant) {
-			// Not fatal now, but this is the state a queued or parked run later fails in.
-			Container.get(Logger).warn(
-				'Established a trigger identity without a resource grant; this run will depend on the protected resource still resolving',
-				{ workflowId: workflow.id, resource },
-			);
+			// Every trigger resource builds its grant with `triggerResourceGate`, so only a bug
+			// gets here. A seal without a grant cannot re-take the admission decision later.
+			Container.get(Logger).error('Cannot establish a trigger identity without a resource grant', {
+				workflowId: workflow.id,
+				resource,
+			});
+			throw new UnexpectedError('Cannot establish a trigger identity without a resource grant');
 		}
 
 		additionalData.encryptedRunnerIdentity = await Container.get(
@@ -975,6 +990,10 @@ export async function executeWebhook(
 		 * a node that establishes its own carrier below still wins.
 		 */
 		encryptedRunnerIdentity?: string;
+		/** Store recorded on the execution being resumed. Unset for a new execution. */
+		storedAt?: ExecutionStorageLocation;
+		/** Called before WorkflowRunner.run for an existing execution. */
+		onResume?: () => void;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1116,6 +1135,9 @@ export async function executeWebhook(
 			webhookType: ['formTrigger', 'form'].includes(nodeType.description.name) ? 'Form' : 'Webhook',
 			responder,
 		});
+
+		if (invocationResult.failed && executionId !== undefined) return;
+
 		const { webhookResultData } = invocationResult;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
 		if (routesToEngineV2) engineV2Payload = webhookResultData.workflowData;
@@ -1184,6 +1206,7 @@ export async function executeWebhook(
 			projectName: project?.name,
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
+			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
@@ -1285,13 +1308,17 @@ export async function executeWebhook(
 		// data plane does not accept the run.
 		engineV2Payload = undefined;
 
+		if (executionId) options?.onResume?.();
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
-			executionId ? { executionId, expectedStatus: 'waiting' } : undefined,
+			executionId
+				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				: undefined,
 			responsePromise,
 		);
 

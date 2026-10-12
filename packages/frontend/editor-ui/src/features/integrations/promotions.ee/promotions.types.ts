@@ -23,6 +23,12 @@ export type CreatedPromotionBinding =
 
 export type CreatedPromotionProject = { id: string; name: string };
 
+// The endpoint that Continue resumes. 'instance' applies every team project and deletes the
+// projects that are not in the package, so each caller must choose it explicitly.
+export type ContinueTarget =
+	| { kind: 'instance' }
+	| { kind: 'selection'; projectId: string; workflowIds: string[] };
+
 // Resolve after the editor closes. Return null on cancellation. Save errors keep the editor open.
 // Report a setup error, then reject.
 export type CreatePromotionBinding = (

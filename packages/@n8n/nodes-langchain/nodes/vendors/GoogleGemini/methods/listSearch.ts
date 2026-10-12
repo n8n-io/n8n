@@ -2,6 +2,11 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 
 import { apiRequest } from '../transport';
 
+/** Nano Banana ids do not contain the word "image". */
+function isImageModel(model: string): boolean {
+	return model.includes('image') || model.includes('nano-banana');
+}
+
 async function baseModelSearch(
 	this: ILoadOptionsFunctions,
 	modelFilter: (model: string) => boolean,
@@ -32,9 +37,9 @@ export async function modelSearch(
 	return await baseModelSearch.call(
 		this,
 		(model) =>
+			!isImageModel(model) &&
 			!model.includes('embedding') &&
 			!model.includes('aqa') &&
-			!model.includes('image') &&
 			!model.includes('vision') &&
 			!model.includes('veo') &&
 			!model.includes('audio') &&
@@ -50,9 +55,9 @@ export async function audioModelSearch(
 	return await baseModelSearch.call(
 		this,
 		(model) =>
+			!isImageModel(model) &&
 			!model.includes('embedding') &&
 			!model.includes('aqa') &&
-			!model.includes('image') &&
 			!model.includes('vision') &&
 			!model.includes('veo') &&
 			!model.includes('tts'), // we don't have a tts operation
@@ -64,8 +69,17 @@ export async function imageGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const rawResult = await baseModelSearch.call(this, (model) => model.includes('image'));
+	const rawResult = await baseModelSearch.call(this, isImageModel);
 	let results = rawResult.results.map((r) => {
+		if (r.name.includes('gemini-nano-banana-2.1')) {
+			return { name: `${r.name} (Nano Banana 2.1)`, value: r.value };
+		}
+
+		// The Lite id also contains "gemini-3.1-flash-image". Match it first.
+		if (r.name.includes('gemini-3.1-flash-lite-image')) {
+			return { name: `${r.name} (Nano Banana 2 Lite)`, value: r.value };
+		}
+
 		if (r.name.includes('gemini-3.1-flash-image')) {
 			return { name: `${r.name} (Nano Banana 2)`, value: r.value };
 		}

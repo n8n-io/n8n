@@ -30,6 +30,11 @@ export const MLFLOW_ATTRIBUTE = {
 	MessageFormat: 'mlflow.message.format',
 } as const;
 
+/** `TraceMetadataKey` in mlflow-tracing 0.1.3. */
+export const MLFLOW_TRACE_METADATA = {
+	TokenUsage: 'mlflow.trace.tokenUsage',
+} as const;
+
 /**
  * Databricks serves the OpenAI protocol, so messages are reported in that shape
  * and the MLflow UI renders them as a chat transcript instead of raw LangChain
