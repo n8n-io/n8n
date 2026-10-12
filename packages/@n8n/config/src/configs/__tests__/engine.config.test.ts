@@ -32,6 +32,15 @@ describe('EngineConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_AUTH_SECRET'));
 	});
 
+	it('should reject a shorter resume secret and fall back to the default', () => {
+		process.env.N8N_ENGINE_RESUME_SECRET = 'r'.repeat(31);
+
+		expect(Container.get(EngineConfig).resumeSecret).toBe('');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_RESUME_SECRET'),
+		);
+	});
+
 	it('should leave the control plane base URL empty so the host picks the default', () => {
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('');
 	});
