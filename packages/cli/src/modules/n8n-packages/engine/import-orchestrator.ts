@@ -82,7 +82,6 @@ import type {
 	ImportContext,
 	ImportedFolderSummary,
 	ImportWorkflowProperties,
-	ImportAgentProperties,
 	MissingNodeTypeMode,
 	PackageImportBindings,
 	PackageImportSource,
@@ -118,9 +117,7 @@ export interface ImportOrchestrationInput {
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
 	tagRequest: TagImportRequest;
-	options: ImportWorkflowProperties &
-		Partial<ImportAgentProperties> &
-		ResolvedImportFolderProperties;
+	options: ImportWorkflowProperties & ResolvedImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
@@ -365,11 +362,7 @@ export class ImportOrchestrator {
 		return await Container.get(AgentImporter).plan(
 			{ ...input.context, projectPendingCreation: input.projectPendingCreation },
 			input.agents,
-			{
-				conflictPolicy: input.options.conflictPolicy,
-				agentIdPolicy: input.options.agentIdPolicy ?? 'source',
-				agentPublishingPolicy: input.options.agentPublishingPolicy ?? 'preserve-published-state',
-			},
+			input.options,
 		);
 	}
 
@@ -391,7 +384,7 @@ export class ImportOrchestrator {
 			await this.workflowPublisher.assertCanPublish(
 				context.user,
 				context.projectId,
-				options.workflowPublishingPolicy,
+				options.publishingPolicy,
 				input.projectPendingCreation,
 			);
 

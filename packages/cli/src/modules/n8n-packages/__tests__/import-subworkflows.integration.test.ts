@@ -27,9 +27,7 @@ import {
 import { executeWorkflowNode } from './utils/test-builders';
 
 type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
-	Partial<
-		Pick<ImportPackageRequest, 'workflowIdPolicy' | 'workflowPublishingPolicy' | 'conflictPolicy'>
-	>;
+	Partial<Pick<ImportPackageRequest, 'idPolicy' | 'publishingPolicy' | 'conflictPolicy'>>;
 
 async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage(importPackageRequest(params));
@@ -101,7 +99,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.New,
+			idPolicy: WorkflowIdPolicy.New,
 		});
 
 		const importedParent = await findImported(result, 'CHEDDAR');
@@ -128,7 +126,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.Source,
+			idPolicy: WorkflowIdPolicy.Source,
 		});
 
 		const importedParent = await findImported(result, 'CHEDDAR');
@@ -157,7 +155,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.New,
+			idPolicy: WorkflowIdPolicy.New,
 		});
 
 		const importedParent = await findImported(result, 'CHEDDAR');
@@ -183,7 +181,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([main, errorHandler]),
-			workflowIdPolicy: WorkflowIdPolicy.New,
+			idPolicy: WorkflowIdPolicy.New,
 		});
 
 		const importedMain = await findImported(result, 'CHEDDAR');
@@ -204,7 +202,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([v1]),
-			workflowIdPolicy: WorkflowIdPolicy.Source,
+			idPolicy: WorkflowIdPolicy.Source,
 		});
 
 		const v2 = serializedWorkflow({
@@ -217,7 +215,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([v2, errorHandler]),
-			workflowIdPolicy: WorkflowIdPolicy.Source,
+			idPolicy: WorkflowIdPolicy.Source,
 			conflictPolicy: 'new-version',
 		});
 
@@ -269,8 +267,8 @@ describe('Package import of workflows with sub-workflows', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildSubWorkflowPackage([parent, subWorkflow]),
-			workflowIdPolicy: WorkflowIdPolicy.Source,
-			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			idPolicy: WorkflowIdPolicy.Source,
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
 		});
 
 		const importedSub = await findImported(result, 'BRIE');

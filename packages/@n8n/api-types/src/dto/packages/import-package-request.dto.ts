@@ -20,10 +20,8 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'credentialConflictPolicy',
 	'bindings',
 	'conflictPolicy',
-	'workflowPublishingPolicy',
-	'workflowIdPolicy',
-	'agentIdPolicy',
-	'agentPublishingPolicy',
+	'publishingPolicy',
+	'idPolicy',
 	'missingNodeTypeMode',
 	'projectConflictPolicy',
 	'folderConflictPolicy',
@@ -125,20 +123,11 @@ export class ImportPackageRequestDto extends Z.class(
 		conflictPolicy: z
 			.enum(['new-version', 'fail', 'skip'])
 			.openapi(importPackageRequestFieldDocs.conflictPolicy),
-		workflowPublishingPolicy: optionalEnum(
+		publishingPolicy: optionalEnum(
 			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
 			'preserve-published-state',
-		).openapi(importPackageRequestFieldDocs.workflowPublishingPolicy),
-		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
-			importPackageRequestFieldDocs.workflowIdPolicy,
-		),
-		agentIdPolicy: optionalEnum(['source'], 'source').openapi(
-			importPackageRequestFieldDocs.agentIdPolicy,
-		),
-		agentPublishingPolicy: optionalEnum(
-			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
-			'preserve-published-state',
-		).openapi(importPackageRequestFieldDocs.agentPublishingPolicy),
+		).openapi(importPackageRequestFieldDocs.publishingPolicy),
+		idPolicy: optionalEnum(['source'], 'source').openapi(importPackageRequestFieldDocs.idPolicy),
 		missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail').openapi(
 			importPackageRequestFieldDocs.missingNodeTypeMode,
 		),
@@ -188,7 +177,7 @@ export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
 	'conflictPolicy',
-	'workflowIdPolicy',
+	'idPolicy',
 	'overwriteDeletionPolicy',
 ] as const;
 
@@ -254,8 +243,8 @@ export class ImportPackageSelectionRequestDto extends Z.class(
 		conflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
 			importPackageSelectionRequestFieldDocs.conflictPolicy,
 		),
-		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
-			importPackageSelectionRequestFieldDocs.workflowIdPolicy,
+		idPolicy: optionalEnum(['source'], 'source').openapi(
+			importPackageSelectionRequestFieldDocs.idPolicy,
 		),
 		overwriteDeletionPolicy: optionalEnum(['archive', 'hard-delete'], 'archive').openapi(
 			importPackageSelectionRequestFieldDocs.overwriteDeletionPolicy,

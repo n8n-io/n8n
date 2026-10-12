@@ -297,7 +297,7 @@ describe('project shell import', () => {
 			expect(project?.name).toBe('brie');
 			expect(project?.description).toBeNull();
 			expect(await findProject('P2')).toBeNull();
-			// Counted across every project: `workflowIdPolicy: 'new'` mints a fresh id, so counting
+			// Counted across every project: `idPolicy: 'new'` mints a fresh id, so counting
 			// the package's source id would pass even if the workflow had been written.
 			expect(await Container.get(WorkflowRepository).count()).toBe(0);
 		});
@@ -1038,7 +1038,7 @@ describe('project shell import', () => {
 		// is created. A project being created has no row to look up, so the import must not fail — its
 		// creator is admin and can always publish.
 		const result = await importProjects(owner, packageBuffer, undefined, {
-			workflowPublishingPolicy: 'publish-all',
+			publishingPolicy: 'publish-all',
 		});
 
 		expect(result.projects).toEqual([
@@ -2139,7 +2139,7 @@ describe('project shell import', () => {
 		});
 
 		const result = await importProjects(owner, packageBuffer, undefined, {
-			workflowPublishingPolicy: 'publish-all',
+			publishingPolicy: 'publish-all',
 		});
 
 		const summaryFor = (sourceWorkflowId: string) =>

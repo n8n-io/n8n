@@ -561,7 +561,7 @@ it.each<ImportConflictPolicy>(['new-version', 'skip'])(
 		const requests = [input([agent('first')]), input([agent('second')], otherProject.id)];
 		requests[0].options.conflictPolicy = policy;
 		for (const request of requests) {
-			request.options.agentIdPolicy = 'source';
+			request.options.idPolicy = 'source';
 			request.agents![0].tasks.task_shared = {
 				name: 'Summary',
 				objective: 'Summarize.',
@@ -691,7 +691,7 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 			publish: 'publish-all',
 			unpublish: 'unpublish-all',
 		};
-		request.options.agentPublishingPolicy = policies[action];
+		request.options.publishingPolicy = policies[action];
 		const before = await records();
 		await expect(planner.plan(request)).rejects.toBeInstanceOf(ForbiddenError);
 		const permittedRole = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });

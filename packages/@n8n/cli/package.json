@@ -73,7 +73,7 @@
         "description": "Pull changes from the configured source control provider"
       },
       "package": {
-        "description": "Export and import workflows as n8n packages (beta)"
+        "description": "Export and import Agents and workflows as n8n packages (beta)"
       },
       "skill": {
         "description": "Install n8n CLI skills for AI coding agents"
@@ -84,6 +84,7 @@
     "@oclif/core": "^4.5.2"
   },
   "devDependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
