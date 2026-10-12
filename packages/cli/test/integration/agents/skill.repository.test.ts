@@ -650,18 +650,17 @@ describe('SkillRepository', () => {
 			expect(await skills.findFollowingAgentIds([id])).toEqual([]);
 		});
 
-		it('fails while a published agent version pins the skill', async () => {
+		it('removes the pins of published agent versions with the skill', async () => {
 			const id = await createSkill();
 			const agent = await createAgent('Support');
+			const agentVersionId = await publish(agent.id);
 			await skills.insertPins([
-				{
-					agentVersionId: await publish(agent.id),
-					skillId: id,
-					skillVersionId: await latestVersionId(id),
-				},
+				{ agentVersionId, skillId: id, skillVersionId: await latestVersionId(id) },
 			]);
 
-			await expect(skills.deleteSkill(id)).rejects.toThrow();
+			await skills.deleteSkill(id);
+
+			expect(await skills.findPinned(agentVersionId)).toEqual(new Map());
 		});
 	});
 

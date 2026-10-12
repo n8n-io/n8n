@@ -28,7 +28,7 @@ export const skillScopeSchema = z.enum(['user', 'project', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'upload' | 'agent';
+export type SkillSource = 'ui' | 'agent';
 
 /** One row of the skills list. Name and description come from the latest version. */
 export type SkillListItem = {

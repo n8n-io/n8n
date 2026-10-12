@@ -23,5 +23,6 @@ describe('SkillsController routes', () => {
 
 		expect(route?.accessScope).toBeUndefined();
 		expect(route?.skipAuth).toBe(false);
+		expect(route?.allowUnauthenticated).toBe(false);
 	});
 });

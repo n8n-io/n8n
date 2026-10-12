@@ -13,7 +13,7 @@ import type { SkillUsage } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { AgentHistorySkill } from '../entities/agent-history-skill.entity';
+import { AgentVersionSkillDependency } from '../entities/agent-version-skill-dependency.entity';
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentSkillDependency } from '../entities/agent-skill-dependency.entity';
 import { Agent } from '../entities/agent.entity';
@@ -200,7 +200,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 		agentVersionId: string,
 		ctx: OperationContext = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
-		const pins = await this.managerFor(ctx).find(AgentHistorySkill, { where: { agentVersionId } });
+		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+			where: { agentVersionId },
+		});
 		const versions = await this.findVersionsByIds(
 			pins.map((pin) => pin.skillVersionId),
 			ctx,
@@ -261,7 +263,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		if (pins.length === 0) return;
-		await this.managerFor(ctx).insert(AgentHistorySkill, pins);
+		await this.managerFor(ctx).insert(AgentVersionSkillDependency, pins);
 	}
 
 	/**
@@ -383,7 +385,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 					.subQuery()
 					.select('history.agentId')
 					.from(AgentHistory, 'history')
-					.innerJoin(AgentHistorySkill, 'pin', 'pin.agentVersionId = history.versionId')
+					.innerJoin(AgentVersionSkillDependency, 'pin', 'pin.agentVersionId = history.versionId')
 					.where('pin.skillId = :skillId')
 					.getQuery();
 				return `agent.id IN ${pinned}`;
@@ -431,7 +433,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				where: { skillId: In(chunk) },
 			});
 			const pins = await manager
-				.createQueryBuilder(AgentHistorySkill, 'pin')
+				.createQueryBuilder(AgentVersionSkillDependency, 'pin')
 				.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
 				.where('pin.skillId IN (:...chunk)', { chunk })
 				.select('pin.skillId', 'skillId')
@@ -461,8 +463,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 	}
 
 	/**
-	 * Deletes the skill. Its versions, files and dependency rows go by cascade. A pin
-	 * blocks the delete at the database, so callers check usage first.
+	 * Deletes the skill. Its versions, files, dependency rows and pins go by cascade,
+	 * so callers check usage first.
 	 */
 	async deleteSkill(skillId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).delete(Skill, { id: skillId });
@@ -506,7 +508,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 			agentVersionIds,
 			async (chunk) =>
 				await manager
-					.createQueryBuilder(AgentHistorySkill, 'pin')
+					.createQueryBuilder(AgentVersionSkillDependency, 'pin')
 					.innerJoin(SkillVersion, 'version', 'version.id = pin.skillVersionId')
 					.where('pin.skillId = :skillId', { skillId })
 					.andWhere('pin.agentVersionId IN (:...chunk)', { chunk })
