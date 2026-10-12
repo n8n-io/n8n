@@ -93,4 +93,18 @@ describe('TestCaseRunResult', () => {
 		expect(queryByTestId('tests-result-running-1')).toBeNull();
 		expect(queryByTestId('tests-result-result-1')).toBeNull();
 	});
+
+	it('renders an out-of-range custom metric as a raw number', () => {
+		const evaluationStore = seedTwoRuns();
+		evaluationStore.testCaseExecutionsById.eo = {
+			...evaluationStore.testCaseExecutionsById.eo,
+			metrics: { renderedWidth: 706 },
+		} as never;
+
+		const { getByTestId } = renderComponent({ props: { index: 0, runId: 'run-old' } });
+		const badge = getByTestId('tests-result-badge-0-renderedWidth');
+
+		expect(badge.textContent).toContain('706');
+		expect(badge.textContent).not.toContain('706%');
+	});
 });

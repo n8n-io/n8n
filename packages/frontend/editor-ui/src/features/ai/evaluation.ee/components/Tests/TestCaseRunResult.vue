@@ -13,8 +13,8 @@ import {
 	casePassed,
 	extractCaseAnswer,
 	formatDuration,
-	formatMetricPercent,
 	formatMetricRawScore,
+	formatMetricValue,
 	formatShortDateTime,
 	formatTokens,
 	getMetricCategory,
@@ -136,7 +136,7 @@ const metricBadges = computed<MetricBadge[]>(() => {
 		return {
 			key,
 			label,
-			text: formatMetricPercent(value, { category }),
+			text: formatMetricValue(value, { key, category }),
 			passed: casePassed(value),
 		};
 	});

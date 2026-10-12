@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { formatDeltaPercent, getDeltaTone, type DeltaTone } from '../../evaluation.utils';
+import {
+	formatMetricDelta,
+	getDeltaTone,
+	type DeltaTone,
+	type MetricValueFormat,
+} from '../../evaluation.utils';
 
-// `delta` is an already-normalized [-1, 1] score difference, so it renders
-// straight as percentage points — no per-scale conversion here.
+// Render normalized score deltas as percentage points. Render raw custom metric
+// deltas as numbers.
 const props = defineProps<{
 	delta: number | undefined;
+	format?: MetricValueFormat;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
-const label = computed(() => formatDeltaPercent(props.delta));
+const label = computed(() => formatMetricDelta(props.delta, props.format));
 const icon = computed(() => (tone.value === 'negative' ? 'trending-down' : 'trending-up'));
 </script>
 

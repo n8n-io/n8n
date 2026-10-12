@@ -241,6 +241,8 @@ export function stringifyValue(value: unknown): string {
 // AI-based handlers (correctness, helpfulness) return 1-5; others return 0-1.
 export type MetricDisplayScale = 'oneToFive' | 'normalized';
 
+export type MetricValueFormat = 'percentage' | 'number';
+
 export function getMetricScale(category: MetricCategory | undefined): MetricDisplayScale {
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
 }
@@ -254,6 +256,24 @@ function resolveDisplayScale(options: {
 }): MetricDisplayScale {
 	if (options.scale) return options.scale === 'oneToFive' ? 'oneToFive' : 'normalized';
 	return getMetricScale(options.category);
+}
+
+/**
+ * Set Metrics nodes do not declare a scale for custom metrics. Keep 0–1 values
+ * as percentages. Display values outside that range as plain numbers. Explicit
+ * scales and built-in metrics keep score formatting.
+ */
+export function getMetricValueFormat(
+	value: number | undefined,
+	options: { category?: MetricCategory; scale?: MetricScale } = {},
+): MetricValueFormat {
+	if (options.scale || options.category !== 'custom') return 'percentage';
+	const num = normalizeMetricValue(value);
+	return num !== undefined && Math.abs(num) > 1 ? 'number' : 'percentage';
+}
+
+function formatMetricNumber(value: number): string {
+	return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
@@ -298,6 +318,17 @@ export function formatMetricPercent(
 				? num * 100
 				: num;
 	return `${Math.round(scaled)}%`;
+}
+
+/** Format a metric for display, preserving score formatting where the scale is known. */
+export function formatMetricValue(
+	value: number | undefined,
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '–';
+	if (getMetricValueFormat(num, options) === 'number') return formatMetricNumber(num);
+	return formatMetricPercent(num, options);
 }
 
 // snake_case / camelCase → Title Case (e.g. count_accuracy → "Count Accuracy").
@@ -399,6 +430,16 @@ export function formatDeltaPercent(
 	const rounded = Math.round(scaled);
 	const sign = rounded > 0 ? '+' : '';
 	return `${sign}${rounded}%`;
+}
+
+export function formatMetricDelta(
+	delta: number | undefined,
+	format: MetricValueFormat = 'percentage',
+): string {
+	if (delta === undefined || Number.isNaN(delta)) return '';
+	if (format === 'percentage') return formatDeltaPercent(delta);
+	const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+	return `${sign}${formatMetricNumber(Math.abs(delta))}`;
 }
 
 // Compact duration: <1s → "243ms", <60s → "8s"/"1.2s", ≥60s → "1m 30s"/"2m".

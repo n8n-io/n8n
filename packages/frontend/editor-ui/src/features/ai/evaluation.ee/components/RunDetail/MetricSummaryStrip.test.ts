@@ -40,4 +40,40 @@ describe('MetricSummaryStrip', () => {
 
 		expect(deltaText(container)).toContain('+20%');
 	});
+
+	it('renders out-of-range custom metrics and their deltas as raw numbers', () => {
+		const { container, getByText } = renderComponent({
+			props: {
+				currentMetrics: { 'Rendered width': 706 },
+				previousMetrics: { 'Rendered width': 700 },
+				metricSources: {
+					'Rendered width': { category: 'custom', nodeName: 'Set Metrics' },
+				},
+			},
+		});
+
+		expect(getByText('706')).toBeVisible();
+		expect(container.textContent).not.toContain('706%');
+		expect(deltaText(container)).toContain('+6');
+		expect(deltaText(container)).not.toContain('%');
+	});
+
+	it('renders all metric cards when a run has more than ten metrics', () => {
+		const currentMetrics = Object.fromEntries(
+			Array.from({ length: 17 }, (_, index) => [`metric_${index + 1}`, index + 2]),
+		);
+		const metricSources = Object.fromEntries(
+			Object.keys(currentMetrics).map((name) => [
+				name,
+				{ category: 'custom' as const, nodeName: 'Set Metrics' },
+			]),
+		);
+
+		const { getAllByTestId } = renderComponent({
+			props: { currentMetrics, previousMetrics: null, metricSources },
+		});
+
+		const cards = getAllByTestId('metric-summary-card');
+		expect(cards).toHaveLength(17);
+	});
 });
