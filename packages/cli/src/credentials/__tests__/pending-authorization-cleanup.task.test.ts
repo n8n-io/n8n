@@ -30,7 +30,7 @@ describe('PendingAuthorizationCleanupTask', () => {
 		await task().run();
 
 		const [now] = credentialsRepository.deleteExpiredPendingAuthorizations.mock.calls[0];
-		expect(Date.now() - now.getTime()).toBeLessThan(1_000);
+		expect(Math.abs(Date.now() - now.getTime())).toBeLessThan(1_000);
 		expect(scopedLogger.debug).toHaveBeenCalledWith(
 			'Deleted 3 credentials with expired pending authorization',
 		);
