@@ -554,6 +554,16 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
+	 * Finds every agent with a channel of the given type in its `integrations`
+	 * JSON column. Filters in memory for the same reason as
+	 * `findByIntegrationCredentialAnyProject`, and reads only those columns.
+	 */
+	async findWithIntegrationType(type: string): Promise<Array<Pick<Agent, 'id' | 'integrations'>>> {
+		const agents = await this.find({ select: ['id', 'integrations'] });
+		return agents.filter((agent) => (agent.integrations ?? []).some((i) => i.type === type));
+	}
+
+	/**
 	 * Finds agents within a project whose `integrations` JSON column contains an
 	 * entry matching the given `type` + `credentialId`, excluding `excludeAgentId`.
 	 *

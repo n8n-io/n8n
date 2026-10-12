@@ -262,4 +262,63 @@ describe('AgentChatAttachmentService', () => {
 			expect(repository.delete).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('deleteFromSourceCreatedBefore', () => {
+		const BATCH_SIZE = 500;
+		const scope = { agentId: 'agent-1', source: 'whatsapp' };
+		const before = new Date('2026-01-01T00:00:00.000Z');
+
+		const attachments = (count: number, prefix: string) =>
+			Array.from({ length: count }, (_, i) => ({
+				id: `${prefix}-${i}`,
+				binaryDataId: `filesystem-v2:${prefix}-${i}`,
+			})) as AgentChatAttachment[];
+
+		beforeEach(() => {
+			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		});
+
+		it('deletes in batches until a batch is smaller than the batch size', async () => {
+			repository.findFromSourceCreatedBefore
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'a'))
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'b'))
+				.mockResolvedValueOnce(attachments(3, 'c'));
+
+			const deleted = await service.deleteFromSourceCreatedBefore(scope, before);
+
+			expect(deleted).toBe(BATCH_SIZE * 2 + 3);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(3);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledWith(
+				scope,
+				before,
+				BATCH_SIZE,
+			);
+			expect(repository.delete).toHaveBeenCalledTimes(3);
+			expect(repository.delete).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2']);
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenLastCalledWith([
+				'filesystem-v2:c-0',
+				'filesystem-v2:c-1',
+				'filesystem-v2:c-2',
+			]);
+		});
+
+		it('queries again after a full batch and stops at an empty one', async () => {
+			repository.findFromSourceCreatedBefore
+				.mockResolvedValueOnce(attachments(BATCH_SIZE, 'a'))
+				.mockResolvedValueOnce([]);
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(BATCH_SIZE);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
+			expect(repository.delete).toHaveBeenCalledTimes(1);
+		});
+
+		it('returns 0 and deletes nothing when no file is overdue', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce([]);
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(0);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
+			expect(repository.delete).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+	});
 });
