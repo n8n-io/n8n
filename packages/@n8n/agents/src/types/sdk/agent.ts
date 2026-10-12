@@ -345,7 +345,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;

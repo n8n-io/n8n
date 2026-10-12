@@ -15,6 +15,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { getModelPromptCachingCapability } from '@n8n/ai-utilities/agent-config/model-capabilities';
 
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
@@ -259,7 +260,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
 	const promptCachingChanges = normalizePromptCachingForModelChange(
 		webSearchConfig,
-		capabilities?.promptCaching ?? false,
+		getModelPromptCachingCapability(model),
 	);
 	const normalizedConfig =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
