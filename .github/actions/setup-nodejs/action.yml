@@ -47,6 +47,15 @@ runs:
           echo 'preloaded=true' >> "$GITHUB_OUTPUT"
         fi
 
+    # Manual runner trials can measure uncached task and image build times.
+    # Called workflows share the caller's github context, so every job sees the input.
+    - name: Disable task and image build caches for an uncached trial
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.no_cache == 'true'
+      shell: bash
+      run: | # zizmor: ignore[github-env] Fixed values contain no external input.
+        echo "TURBO_FORCE=true" >> "$GITHUB_ENV"
+        echo "DOCKER_BUILD_NO_CACHE=true" >> "$GITHUB_ENV"
+
     # An empty key makes the builder use a local, uncached one. The job stays
     # green and loses the cache. Fail here instead.
     - name: Verify Docker cache key is set

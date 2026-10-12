@@ -1,5 +1,5 @@
 name: 'CI: Pull Requests (Build, Test, Lint)'
-run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI runner trial: {0} ({1})', inputs.runner_provider, github.ref_name) || '' }}"
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI runner trial: {0}{1} ({2})', inputs.runner_provider, inputs.no_cache && ', uncached' || '', github.ref_name) || '' }}"
 
 on:
   pull_request:
@@ -12,6 +12,10 @@ on:
         required: true
         default: namespace
         options: [namespace, blacksmith]
+      no_cache:
+        description: 'Force every Turbo task and Docker image layer to rebuild'
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
