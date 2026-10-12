@@ -187,7 +187,10 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 }
 
 .content {
-	--n8n-dialog-region--padding: var(--n8n-dialog-content--padding, var(--spacing--md));
+	/* Include the focus outline so a focused control stays inside the dialog edge. */
+	--n8n-dialog-region--padding: calc(
+		var(--n8n-dialog-content--padding, var(--spacing--md)) + var(--focus--border-width)
+	);
 	--n8n-dialog-close--size: var(--spacing--lg);
 	--n8n-dialog-title--line: calc(var(--font-size--lg) * var(--line-height--xl));
 	--n8n-dialog-close--inset-block-start: calc(
