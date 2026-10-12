@@ -12,3 +12,4 @@ export * from './genie/operations';
 export * from './genie/parameters';
 export * from './job/operations';
 export * from './job/parameters';
+export * from './lakebase/parameters';

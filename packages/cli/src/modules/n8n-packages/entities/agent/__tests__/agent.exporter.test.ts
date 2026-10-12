@@ -11,7 +11,7 @@ import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 import { looseAgentsFixture } from '../../../__tests__/fixtures/agent-package-fixtures';
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { HashingPackageWriter } from '../../../io/hashing-package-writer';
-import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../../n8n-packages.types';
 import { serializedAgentSchema } from '../../../spec/serialized/agent.schema';
 import { AgentExporter } from '../agent.exporter';
 import { AgentSerializer } from '../agent.serializer';
@@ -73,11 +73,11 @@ function setup() {
 describe('AgentExporter', () => {
 	it.each([
 		{ policy: undefined, published: true, selected: 'draft' },
-		{ policy: WorkflowVersionPolicy.Latest, published: false, selected: 'draft' },
-		{ policy: WorkflowVersionPolicy.PublishedStrict, published: true, selected: 'published' },
-		{ policy: WorkflowVersionPolicy.PreferPublished, published: true, selected: 'published' },
-		{ policy: WorkflowVersionPolicy.PreferPublished, published: false, selected: 'draft' },
-		{ policy: WorkflowVersionPolicy.IgnoreUnpublished, published: true, selected: 'published' },
+		{ policy: ExportVersionPolicy.Latest, published: false, selected: 'draft' },
+		{ policy: ExportVersionPolicy.PublishedStrict, published: true, selected: 'published' },
+		{ policy: ExportVersionPolicy.PreferPublished, published: true, selected: 'published' },
+		{ policy: ExportVersionPolicy.PreferPublished, published: false, selected: 'draft' },
+		{ policy: ExportVersionPolicy.IgnoreUnpublished, published: true, selected: 'published' },
 	] as const)(
 		'prepares $selected for policy $policy with published=$published',
 		async (testCase) => {
@@ -112,14 +112,14 @@ describe('AgentExporter', () => {
 		const { agent, exporter } = setup();
 		agent.activeVersionId = null;
 		await expect(
-			exporter.prepare(agent, WorkflowVersionPolicy.IgnoreUnpublished),
+			exporter.prepare(agent, ExportVersionPolicy.IgnoreUnpublished),
 		).resolves.toBeUndefined();
 	});
 
 	it('rejects an unpublished Agent under published-strict', async () => {
 		const { agent, exporter } = setup();
 		agent.activeVersionId = null;
-		await expect(exporter.prepare(agent, WorkflowVersionPolicy.PublishedStrict)).rejects.toThrow(
+		await expect(exporter.prepare(agent, ExportVersionPolicy.PublishedStrict)).rejects.toThrow(
 			'Agent "support_source" has no published version',
 		);
 	});
@@ -127,7 +127,7 @@ describe('AgentExporter', () => {
 	it('fails when the selected published snapshot is missing', async () => {
 		const { agent, exporter } = setup();
 		agent.activeVersion = null;
-		await expect(exporter.prepare(agent, WorkflowVersionPolicy.PreferPublished)).rejects.toThrow(
+		await expect(exporter.prepare(agent, ExportVersionPolicy.PreferPublished)).rejects.toThrow(
 			'Published version was not loaded for Agent',
 		);
 	});
@@ -143,7 +143,7 @@ describe('AgentExporter', () => {
 		const { agent, published, exporter } = setup();
 		agent.integrations.push({ type: 'n8n_chat', credentialId: '' });
 		published.schema!.integrations = [];
-		const snapshot = await exporter.prepare(agent, WorkflowVersionPolicy.PublishedStrict);
+		const snapshot = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
 		expect(snapshot?.content.config?.integrations).toEqual([
 			{ type: 'slack', credentialId: 'current-slack' },
 		]);

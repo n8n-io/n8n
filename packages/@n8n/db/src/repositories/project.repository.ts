@@ -6,7 +6,7 @@ import { UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { Project, ProjectRelation } from '../entities';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
@@ -103,6 +103,27 @@ export class ProjectRepository extends BaseRepository<Project> {
 		const rows: Array<Pick<Project, 'id' | 'type'>> = [];
 		for (const batch of chunkIds(ids)) {
 			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
+		}
+		return rows;
+	}
+
+	/**
+	 * Id, name, type and description of the team projects among these ids.
+	 * Personal projects are excluded, because a rule must never grant access to one.
+	 */
+	async findTeamProjectInfoByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>>> {
+		const manager = this.managerFor(ctx);
+		const rows: Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(
+				...(await manager.find(Project, {
+					where: { id: In(batch), type: 'team' },
+					select: ['id', 'name', 'type', 'description'],
+				})),
+			);
 		}
 		return rows;
 	}

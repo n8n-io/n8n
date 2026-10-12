@@ -51,10 +51,9 @@ import {
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
-import {
-	createWorkflowAgentStreamObserver,
-	type WorkflowAgentStreamObserver,
-} from './modules/agents/workflow-agent-stream';
+import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
+import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
+import { createWorkflowAgentStreamObserver } from './modules/agents/workflow-agent-stream';
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -412,6 +411,7 @@ export async function executeAgent(
 	outputSchema?: JSONSchema7,
 	workflowContext?: ExecuteAgentWorkflowContext,
 	invocationContext?: ExecuteAgentInvocationContext,
+	prepareForEval?: PrepareWorkflowAgentForEval,
 ): Promise<ExecuteAgentData> {
 	assertAgentsModuleActive();
 
@@ -446,14 +446,15 @@ export async function executeAgent(
 				invocation: invocationContext,
 			})
 		: undefined;
-	const streamObserverArguments: [] | [WorkflowAgentStreamObserver] = streamObserver
-		? [streamObserver]
-		: [];
+	const runOptions: [] | [WorkflowAgentRunOptions] =
+		streamObserver || prepareForEval ? [{ streamObserver, prepareForEval }] : [];
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
 	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
+	// Eval runs grade what was built, so they run the draft, as a manual run does.
+	const useDraftVersion = prepareForEval !== undefined || isManualOrChatExecution(executionMode);
 
 	if (source.inlineAgent) {
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
@@ -463,15 +464,14 @@ export async function executeAgent(
 			scopedThreadId,
 			projectId,
 			telemetryUserId,
-			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			useDraftVersion ? 'test' : 'production',
 			outputSchema,
 			workflowContext,
-			...streamObserverArguments,
+			...runOptions,
 		);
 	}
 
 	const { hashAgentSandboxPrincipal } = await import('@/modules/agents/agent-sandbox-principal.js');
-	const useDraftVersion = isManualOrChatExecution(executionMode);
 	const sandboxScope =
 		workflowContext?.hasCallerSessionId === true
 			? {
@@ -500,7 +500,7 @@ export async function executeAgent(
 		outputSchema,
 		workflowContext,
 		sandboxScope,
-		...streamObserverArguments,
+		...runOptions,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so

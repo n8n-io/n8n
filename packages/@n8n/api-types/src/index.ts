@@ -329,6 +329,9 @@ export type {
 	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
+	BreakingChangeWorkflowOwner,
+	MigrationWorkflowOwnerResponse,
+	MigrationOwnerSource,
 	BreakingChangeInstanceIssue,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
@@ -349,6 +352,7 @@ export {
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
+	migrationOwnerSourceSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {

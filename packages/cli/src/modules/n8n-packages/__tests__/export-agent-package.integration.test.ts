@@ -24,11 +24,12 @@ import { DirectoryPackageWriter } from '../io/directory/directory-package-writer
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { PackageImportConfig } from '../n8n-packages.config';
-import { WorkflowVersionPolicy } from '../n8n-packages.types';
+import { ExportVersionPolicy } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
 const limits = new PackageImportConfig();
@@ -80,7 +81,7 @@ beforeAll(async () => {
 			id: draft.id,
 			name: draft.name,
 			projectId: project.id,
-			schema: draft.config,
+			schema: draft.config && storedAgentConfig(draft.config),
 			skills: draft.skills,
 			tools: draft.tools,
 			availableInMCP: draft.availableInMCP,
@@ -95,7 +96,7 @@ beforeAll(async () => {
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,
 			agentId: agent.id,
-			schema: published.config,
+			schema: storedAgentConfig(published.config),
 			skills: published.skills,
 			tools: published.tools,
 			publishedBy: 'Package test',
@@ -129,12 +130,12 @@ afterEach(async () => {
 });
 
 it.each([
-	{ prefix: '', policy: WorkflowVersionPolicy.Latest, selected: 'draft' },
-	{ prefix: '', policy: WorkflowVersionPolicy.PublishedStrict, selected: 'published' },
-	{ prefix: 'projects/operations', policy: WorkflowVersionPolicy.Latest, selected: 'draft' },
+	{ prefix: '', policy: ExportVersionPolicy.Latest, selected: 'draft' },
+	{ prefix: '', policy: ExportVersionPolicy.PublishedStrict, selected: 'published' },
+	{ prefix: 'projects/operations', policy: ExportVersionPolicy.Latest, selected: 'draft' },
 	{
 		prefix: 'projects/operations',
-		policy: WorkflowVersionPolicy.PublishedStrict,
+		policy: ExportVersionPolicy.PublishedStrict,
 		selected: 'published',
 	},
 ] as const)(

@@ -25,6 +25,14 @@ the chip text before the action moves outside the panel.
 Show session details on separate lines when the session list is narrow. Keep the
 title, origin, date, token count, and actions visible without overlap.
 
+Stack a setting label above its control when the row is narrow. Give the label
+the full row width. Give a wide control, such as a model picker, the full row
+width. Keep a short control at its natural width. Keep the control inside the
+row. The model menu uses the control width, so the menu stays inside the editor
+column.
+
+Reduce the editor column side padding when the column is narrow.
+
 ## Preview history
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
@@ -206,14 +214,14 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 
 ### Exceptions
 
-| Case                      | Exception                                                                                                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Case                      | Exception                                                                                                                                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
-| Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal. |
-| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                            |
-| Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                     |
-| Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
-| Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
+| Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal.                           |
+| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                                                      |
+| Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
+| Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
+| Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
