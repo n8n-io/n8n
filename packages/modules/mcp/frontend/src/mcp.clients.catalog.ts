@@ -1,5 +1,6 @@
 import type { Component } from 'vue';
 
+import AntigravityIcon from './assets/client-icons/antigravity.svg?component';
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CodexIcon from './assets/client-icons/codex.svg?component';
 import CursorIcon from './assets/client-icons/cursor.svg?component';
@@ -158,7 +159,7 @@ url = "${serverUrl}"`;
 					id: 'antigravity',
 					name: 'Antigravity',
 					category: 'ide',
-					icon: null,
+					icon: AntigravityIcon,
 					configSnippet: serverUrlSnippet,
 				},
 				{

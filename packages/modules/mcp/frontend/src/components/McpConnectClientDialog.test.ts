@@ -76,8 +76,15 @@ describe('McpConnectClientDialog', () => {
 			expect(body().getByTestId('mcp-connect-client-picker-trigger')).toBeInTheDocument();
 		});
 		await userEvent.click(body().getByTestId('mcp-connect-client-picker-trigger'));
-		await userEvent.click(await body().findByText('Antigravity'));
+		const menuLabel = await body().findByText('Antigravity');
+		expect(
+			menuLabel.closest('[role="menuitem"]')?.querySelector('svg.brand-icon'),
+		).toBeInTheDocument();
+		await userEvent.click(menuLabel);
 
+		expect(
+			body().getByTestId('mcp-connect-client-picker-trigger').querySelector('svg.brand-icon'),
+		).toBeInTheDocument();
 		expect(body().getByText(/~\/\.gemini\/config\/mcp_config\.json/)).toHaveTextContent(
 			'IDE, desktop app, and CLI (agy) share this file',
 		);
