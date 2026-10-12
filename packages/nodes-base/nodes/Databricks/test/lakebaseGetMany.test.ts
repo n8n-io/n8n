@@ -66,13 +66,14 @@ describe('Lakebase -> Get Many', () => {
 	});
 
 	it('returns one item per row, paired to the input item', async () => {
-		const { context, result } = feedPages([rows(1, 2)]);
+		const { context, result } = feedPages([rows(1, 2), []]);
 
 		expect(await result).toEqual([
 			{ json: { id: 1 }, pairedItem: { item: 0 } },
 			{ json: { id: 2 }, pairedItem: { item: 0 } },
 		]);
-		expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		// The first answer did not fill the request, so the scan confirms the end
+		expect(apiMock(context)).toHaveBeenCalledTimes(2);
 	});
 
 	it('reaches the Data API with the OAuth2 credential', async () => {
@@ -125,6 +126,18 @@ describe('Lakebase -> Get Many', () => {
 		expect(await result).toHaveLength(2003);
 		expect(apiMock(context)).toHaveBeenCalledTimes(3);
 		expect(qsOf(context, 2)).toEqual(expect.objectContaining({ offset: 2000 }));
+	});
+
+	it('keeps paging when the project caps a response below the page size', async () => {
+		// The project's Maximum rows setting answers 400 to a request for 1000, so a
+		// full page here is 400 and only a shorter answer than that ends the scan
+		const capped = 400;
+		const { context, result } = feedPages([rows(1, capped), rows(401, capped), rows(801, 7), []], {
+			returnAll: true,
+		});
+
+		expect(await result).toHaveLength(capped * 2 + 7);
+		expect(qsOf(context, 1)).toEqual(expect.objectContaining({ offset: capped }));
 	});
 
 	it('stops at the page cap rather than looping forever', async () => {
@@ -195,7 +208,7 @@ describe('Lakebase -> Get Many', () => {
 	});
 
 	it('reads the item index it was handed', async () => {
-		const { result } = feedPages([rows(1, 1)], {}, 2);
+		const { result } = feedPages([rows(1, 1), []], {}, 2);
 
 		expect(await result).toEqual([{ json: { id: 1 }, pairedItem: { item: 2 } }]);
 	});

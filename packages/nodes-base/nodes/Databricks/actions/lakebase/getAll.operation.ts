@@ -57,25 +57,32 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const rows: IDataObject[] = [];
 
+	// A project caps how many rows one response may carry, so a short page does not
+	// have to be the last one. Only once the API has filled a request can a shorter
+	// answer be read as the end of the table.
+	let apiHasFilledAPage = false;
+
 	for (let page = 0; page < LAKEBASE_MAX_PAGES; page++) {
-		const pageSize = returnAll
+		const requested = returnAll
 			? LAKEBASE_PAGE_SIZE
 			: Math.min(limit - rows.length, LAKEBASE_PAGE_SIZE);
-		if (pageSize <= 0) break;
+		if (requested <= 0) break;
 
 		const response = await lakebaseApiRequest(this, {
 			method: 'GET',
 			url,
-			qs: { ...qs, limit: pageSize, offset: rows.length },
+			qs: { ...qs, limit: requested, offset: rows.length },
 			headers: { Accept: 'application/json' },
 			json: true,
 		});
 
 		const batch = Array.isArray(response) ? (response as IDataObject[]) : [];
 		rows.push(...batch);
+		if (batch.length === 0) break;
 
-		// A short page is the last page
-		if (batch.length < pageSize) break;
+		if (batch.length >= requested) apiHasFilledAPage = true;
+		else if (apiHasFilledAPage) break;
+
 		if (!returnAll && rows.length >= limit) break;
 	}
 
