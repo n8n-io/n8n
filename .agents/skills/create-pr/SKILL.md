@@ -78,8 +78,7 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    body structure, then populate each section with actual content before
    creating the PR:
    - **Summary**: describe what the PR does
-   - **Why**: add this section after the Summary, even though the template
-     does not have it
+   - **Why**: explain why the change is needed (see Why below)
    - **How to test**: describe how to test the changes. Include an example workflow if appropriate
    - **Related tickets**: add the Linear ticket URL (`https://linear.app/n8n/issue/[TICKET-ID]`) and any GitHub issue links
    - **Checklist**: keep as-is from the template
@@ -134,7 +133,7 @@ Simplified Technical English: short sentences, active voice.
 5. Include screenshots or videos for UI changes.
 
 ### Why: the reasoning
-Add a `## Why` section after the Summary. The Summary and the core of the
+Always fill the `## Why` section. The Summary and the core of the
 Why are what the reviewer needs most. Keep the core short:
 1. Do not repeat the Summary.
 2. State the problem or the constraint that makes the pre-existing code unfit.
