@@ -168,16 +168,18 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
  */
 export function identifyRequirements<T extends { usedBy: PackageRequirementConsumer[] }>(
 	requirements: T[] | undefined,
-	workflows: PreparedWorkflow[],
+	workflows: Array<Pick<PreparedWorkflow, 'sourceWorkflowId'>>,
+	agents: Array<{ sourceAgentId: string }> = [],
 ): T[] | undefined {
 	if (!requirements) return undefined;
 
 	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));
+	const agentIds = new Set(agents.map((agent) => agent.sourceAgentId));
 	return requirements
 		.map((requirement) => ({
 			...requirement,
-			usedBy: requirement.usedBy.filter(
-				({ kind, id }) => kind === 'workflow' && importedIds.has(id),
+			usedBy: requirement.usedBy.filter(({ kind, id }) =>
+				kind === 'workflow' ? importedIds.has(id) : agentIds.has(id),
 			),
 		}))
 		.filter((requirement) => requirement.usedBy.length > 0);

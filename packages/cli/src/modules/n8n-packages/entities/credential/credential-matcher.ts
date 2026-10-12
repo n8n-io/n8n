@@ -36,6 +36,8 @@ export interface ResolvedCredentialMatch {
 }
 
 export abstract class CredentialMatcher {
+	protected matchesById = false;
+
 	constructor(
 		protected readonly credentialTypes: CredentialTypes,
 		protected readonly credentialsService: CredentialsService,
@@ -46,7 +48,11 @@ export abstract class CredentialMatcher {
 		context: CredentialMatcherContext,
 	): Promise<CredentialResolution> {
 		const orphanFailures = orphanBindingFailures(context.credentialBindings, requirements);
-		const { known, unknownTypeFailures } = partitionByKnownType(requirements, this.credentialTypes);
+		const { known, unknownTypeFailures } = partitionByKnownType(
+			requirements,
+			this.credentialTypes,
+			(reference) => this.matchesById || context.credentialBindings?.has(reference.id) === true,
+		);
 		const { bound, unbound } = partitionByExplicitBinding(known, context.credentialBindings);
 
 		const usableCredentials =
@@ -71,7 +77,7 @@ export abstract class CredentialMatcher {
 				notFoundFailures.push(
 					createNotFoundFailure(reference, context.credentialBindings?.get(reference.id)),
 				);
-			} else if (match.targetType !== reference.type) {
+			} else if (reference.type !== undefined && match.targetType !== reference.type) {
 				typeMismatchFailures.push(createTypeMismatchFailure(reference, match));
 			} else {
 				successes.set(reference.id, match.targetId);
@@ -141,6 +147,7 @@ function resolveExplicitBindings(
 function partitionByKnownType(
 	requirements: PackageCredentialRequirement[] | undefined,
 	credentialTypes: CredentialTypes,
+	canMatchUntyped: (reference: PackageCredentialRequirement) => boolean,
 ): {
 	known: PackageCredentialRequirement[];
 	unknownTypeFailures: CredentialResolutionFailure[];
@@ -149,7 +156,15 @@ function partitionByKnownType(
 	const unknownTypeFailures: CredentialResolutionFailure[] = [];
 
 	for (const reference of requirements ?? []) {
-		if (reference.type !== undefined && credentialTypes.recognizes(reference.type)) {
+		const untypedAgentReference =
+			reference.type === undefined &&
+			reference.usedBy.length > 0 &&
+			reference.usedBy.every(({ kind }) => kind === 'agent') &&
+			canMatchUntyped(reference);
+		if (
+			untypedAgentReference ||
+			(reference.type !== undefined && credentialTypes.recognizes(reference.type))
+		) {
 			known.push(reference);
 		} else {
 			unknownTypeFailures.push(createFailure(reference, 'unknown_type'));

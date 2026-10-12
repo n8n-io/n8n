@@ -83,6 +83,27 @@ describe('IdBasedCredentialMatcher', () => {
 		});
 	});
 
+	it.each(['id-only', 'name-and-type'] as const)(
+		'resolves an untyped Agent credential through %s',
+		async (mode) => {
+			const requirement: PackageCredentialRequirement = {
+				id: 'source',
+				usedBy: [{ kind: 'agent', id: 'agent' }],
+			};
+			const targetId = mode === 'id-only' ? 'source' : 'target';
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([usable(targetId)]);
+			if (mode === 'name-and-type') context.credentialBindings = new Map([['source', targetId]]);
+			const resolution = await matcherFactory.getMatcher(mode).match([requirement], context);
+			expect(resolution).toEqual({ successes: new Map([['source', targetId]]), failures: [] });
+			if (mode === 'name-and-type') {
+				delete context.credentialBindings;
+				expect(
+					(await matcherFactory.getMatcher(mode).match([requirement], context)).failures,
+				).toEqual([createFailure(requirement, 'unknown_type')]);
+			}
+		},
+	);
+
 	it('does not query the database for unknown credential types', async () => {
 		credentialTypes.recognizes.mockReturnValue(false);
 
