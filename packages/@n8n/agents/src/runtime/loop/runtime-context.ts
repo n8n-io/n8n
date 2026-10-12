@@ -1,5 +1,9 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import {
+	getProviderPrefix,
+	isGoogleVertexAnthropicModel,
+	isOpenRouterAnthropicModel,
+} from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
@@ -21,10 +25,10 @@ import {
 	FLAG_MEMORY_TOOL_NAME,
 	resolveEpisodicMemoryCapture,
 } from '../memory/episodic-memory-capture';
-import { isGoogleVertexAnthropicModel } from '../model/google-vertex';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel, supportsSplitSystemMessages } from '../model/model-factory';
+import { applyOpenRouterPromptCache } from '../model/openrouter-prompt-cache';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
@@ -154,12 +158,14 @@ export class RuntimeContextBuilder {
 		list,
 		tools,
 		instructionProviderOptions,
+		providerOptions,
 		hostVolatileInstructions,
 		activeSkills,
 	}: {
 		list: AgentMessageList;
 		tools: ReturnType<RuntimeContextBuilder['buildToolLoopContext']>;
 		instructionProviderOptions: ProviderOptions | undefined;
+		providerOptions?: ProviderOptions;
 		hostVolatileInstructions: string | undefined;
 		activeSkills: ActiveSkills | undefined;
 	}) {
@@ -176,12 +182,14 @@ export class RuntimeContextBuilder {
 			skillContent
 				? {
 						content: skillContent,
-						cacheOptions: (messages) =>
-							buildSkillInstructionCacheOptions(
+						cacheOptions: (messages) => {
+							if (isOpenRouterAnthropicModel(this.modelId)) return undefined;
+							return buildSkillInstructionCacheOptions(
 								instructionProviderOptions,
 								tools.aiTools,
 								messages,
-							),
+							);
+						},
 					}
 				: undefined,
 		);
@@ -194,7 +202,14 @@ export class RuntimeContextBuilder {
 			modelId: this.modelId,
 			staticToolCacheName: tools.staticToolCacheName,
 		});
-		return { system, ...cached };
+		const openRouterCache = applyOpenRouterPromptCache({
+			system,
+			messages: cached.messages,
+			providerOptions,
+			promptCaching: this.config.promptCaching,
+			modelId: this.modelId,
+		});
+		return { ...cached, ...openRouterCache };
 	}
 
 	/**

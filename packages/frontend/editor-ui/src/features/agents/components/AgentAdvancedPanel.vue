@@ -5,26 +5,18 @@ import { useDebounceFn } from '@vueuse/core';
 import { AGENT_REASONING_LEVELS, type AgentReasoningLevel } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { getModelPromptCachingCapability } from '@n8n/ai-utilities/agent-config/model-capabilities';
 import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
 import AgentPanel from './AgentPanel.vue';
 
 import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
-import {
-	PROVIDER_CAPABILITIES,
-	ANTHROPIC_CACHE_TTL_OPTIONS,
-	type AnthropicCacheTtl,
-} from '../provider-capabilities';
-import { modelToString, parseModelString, parseProvider } from '../utils/model-string';
+import { ANTHROPIC_CACHE_TTL_OPTIONS, type AnthropicCacheTtl } from '../provider-capabilities';
+import { modelToString, parseModelString } from '../utils/model-string';
 import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const { catalog, ensureLoaded } = useModelCatalog();
-const DEFAULT_CAPABILITIES = {
-	promptCaching: false,
-	webSearch: false,
-	providerTools: [],
-} as const;
 
 function normalizeReasoningLevel(value: unknown): AgentReasoningLevel {
 	return AGENT_REASONING_LEVELS.find((level) => level === value) ?? 'medium';
@@ -42,7 +34,6 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
-const provider = computed(() => parseProvider(props.config?.model));
 const selectedModel = computed(() => parseModelString(modelToString(props.config?.model)));
 const selectedCatalogModel = computed(() => {
 	if (!selectedModel.value) return undefined;
@@ -58,7 +49,9 @@ const reasoningHintKey = computed(() => {
 	}
 	return 'agents.builder.advanced.reasoning.hint';
 });
-const capabilities = computed(() => PROVIDER_CAPABILITIES[provider.value] ?? DEFAULT_CAPABILITIES);
+const promptCachingCapability = computed(() =>
+	getModelPromptCachingCapability(modelToString(props.config?.model)),
+);
 
 watch(
 	() => props.projectId,
@@ -298,7 +291,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 				</div>
 
-				<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
+				<div v-if="promptCachingCapability === 'ttl'" :class="$style.settingGroup">
 					<div :class="shared.settingRow">
 						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{

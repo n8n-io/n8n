@@ -217,12 +217,13 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 });
 
 describe('getEffectiveAnthropicCacheTtl', () => {
-	it.each(['anthropic/claude-sonnet-4-5', 'google-vertex/claude-opus-5@default'])(
-		'returns the default 1h TTL for %s with caching enabled',
-		(modelId) => {
-			expect(getEffectiveAnthropicCacheTtl({ enabled: true }, modelId)).toBe('1h');
-		},
-	);
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'google-vertex/claude-opus-5@default',
+		'openrouter/anthropic/claude-sonnet-4.5',
+	])('returns the default 1h TTL for %s with caching enabled', (modelId) => {
+		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, modelId)).toBe('1h');
+	});
 
 	it('returns an explicit 5m override for an Anthropic model', () => {
 		expect(

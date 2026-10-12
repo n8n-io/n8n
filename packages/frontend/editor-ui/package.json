@@ -42,6 +42,7 @@
     "@internationalized/date": "catalog:frontend",
     "@lezer/common": "catalog:",
     "@lezer/highlight": "catalog:",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/chat": "workspace:*",
     "@n8n/chat-hub": "workspace:*",

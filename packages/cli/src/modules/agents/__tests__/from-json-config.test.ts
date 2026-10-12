@@ -75,10 +75,28 @@ describe('buildFromJson()', () => {
 		executeToMessage: vi.fn().mockResolvedValue(undefined),
 	});
 
-	const makeMockCredentialProvider = () => ({
-		resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
-		list: vi.fn().mockResolvedValue([]),
-	});
+	const makeMockCredentialProvider = (model = '') => {
+		const isVertex = model.startsWith('google-vertex/');
+		return {
+			resolve: vi.fn().mockResolvedValue(
+				isVertex
+					? {
+							projectId: 'test-project',
+							region: 'global',
+							email: 'test@example.com',
+							privateKey: 'test-key',
+						}
+					: { apiKey: 'test-api-key' },
+			),
+			list: vi
+				.fn()
+				.mockResolvedValue(
+					isVertex
+						? [{ id: 'my-anthropic-key', name: 'Test Vertex', type: 'googleVertexAiApi' }]
+						: [],
+				),
+		};
+	};
 
 	const makeToolDescriptor = (overrides: Partial<ToolDescriptor> = {}): ToolDescriptor => ({
 		name: 'search',
@@ -666,8 +684,13 @@ describe('buildFromJson()', () => {
 		expect(snap.reasoning).toBe('high');
 	});
 
-	it('sets prompt caching config with an Anthropic ttl', async () => {
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('preserves the saved cache TTL for %s', async (model) => {
 		const config = makeConfig({
+			model,
 			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
 		});
 
@@ -676,7 +699,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
+				credentialProvider: makeMockCredentialProvider(model),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -704,8 +727,13 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: true });
 	});
 
-	it('passes through promptCaching verbatim even if enabled=false was somehow saved (mapping is not a policy enforcer)', async () => {
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+		'google-vertex/claude-sonnet-4-5',
+	])('preserves disabled caching for %s', async (model) => {
 		const config = makeConfig({
+			model,
 			config: { promptCaching: { enabled: false } },
 		});
 
@@ -714,7 +742,7 @@ describe('buildFromJson()', () => {
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
+				credentialProvider: makeMockCredentialProvider(model),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
@@ -723,21 +751,43 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: false });
 	});
 
-	it('does not set prompt caching config when omitted', async () => {
-		const config = makeConfig();
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'openrouter/openai/gpt-5',
+		'google-vertex/gemini-2.5-pro',
+	])('keeps the runtime cache default for %s when config is omitted', async (model) => {
+		const config = makeConfig({ model });
 
 		const agent = await buildFromJson(
 			config,
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
+				credentialProvider: makeMockCredentialProvider(model),
 				memoryFactory: makeMockMemoryFactory(),
 			},
 		);
 
 		expect(agent.snapshot.promptCaching).toBeNull();
 	});
+
+	it.each(['openrouter/anthropic/claude-sonnet-4.5', 'google-vertex/claude-sonnet-4-5'])(
+		'enables caching for an existing %s agent without a config update',
+		async (model) => {
+			const config = makeConfig({ model });
+			const agent = await buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(model),
+				},
+			);
+
+			expect(agent.snapshot.promptCaching).toEqual({ enabled: true });
+			expect(config.config).toBeUndefined();
+		},
+	);
 
 	it('builds native provider tools for an inline child model, not the parent model', () => {
 		const config = makeConfig({
