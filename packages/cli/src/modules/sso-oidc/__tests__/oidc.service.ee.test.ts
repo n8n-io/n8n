@@ -841,7 +841,7 @@ describe('OidcService', () => {
 			);
 		});
 
-		// IAM-1473: UserInfo is optional when the ID token contains the profile claims.
+		// UserInfo is optional when the ID token contains the profile claims.
 		it('logs in with ID token profile claims when the endpoint is absent', async () => {
 			const user = mock<User>({ id: 'user-id', email: claims.email });
 			vi.mocked(authIdentityRepository.findOne).mockResolvedValue(mock<AuthIdentity>({ user }));
