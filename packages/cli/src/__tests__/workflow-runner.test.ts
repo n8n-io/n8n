@@ -958,6 +958,28 @@ describe('run', () => {
 			expect(addSpy).not.toHaveBeenCalled();
 		});
 
+		it('hands a v2 resume to the dispatcher without taking over a control-plane row', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);
+			const resumeSpy = vi.spyOn(dispatcher, 'resume').mockResolvedValueOnce('dp-uuid');
+			const addSpy = vi.spyOn(Container.get(ActiveExecutions), 'add');
+			const data = mock<IWorkflowExecutionDataProcess>();
+			const existingExecution = {
+				executionId: 'dp-uuid',
+				expectedStatus: 'waiting' as const,
+				engineResume: { stepId: 'step-1', token: 't' },
+			};
+
+			// ACT
+			const executionId = await runner.run(data, true, true, existingExecution);
+
+			// ASSERT
+			expect(executionId).toBe('dp-uuid');
+			expect(resumeSpy).toHaveBeenCalledWith(existingExecution, data);
+			expect(addSpy).not.toHaveBeenCalled();
+		});
+
 		it('leaves the v1 path alone when the run does not route to engine v2', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);

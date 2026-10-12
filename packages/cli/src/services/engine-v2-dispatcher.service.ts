@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
-import { NotImplementedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -8,7 +8,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
+import {
+	classifyTriggerIdentity,
+	isTriggerNodeType,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
@@ -57,6 +62,20 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 /**
+ * The data plane's refusal of phase two, as the caller sees it. The node's
+ * resume method has already run by then, so the token can only be stale: a
+ * second request for the same wait lost the compare-and-set (`not_waiting`), or
+ * the execution ended in between. Both answer 409, as v1 does for a wait that
+ * is over. Phase one verified the token, so a 401 here means the step is gone
+ * with its execution: the data plane answers a missing step as a bad token.
+ */
+function toResumeRefusal(executionId: string, status: number, reason: string): Error {
+	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
+	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
+	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);
+}
+
+/**
  * Routes a run to the engine v2 data plane and starts it there.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
@@ -100,6 +119,43 @@ export class EngineV2Dispatcher {
 	 */
 	handlesWorkflow(workflowData: IWorkflowBase, executionMode: WorkflowExecuteMode): boolean {
 		return workflowData.settings?.engineType === 'v2' && ROUTED_MODES.has(executionMode);
+	}
+
+	/**
+	 * Ends the wait of a data-plane execution with what the node's resume method
+	 * produced. The waiting-webhook route located the step and ran the node's
+	 * `webhook()` on this plane; `prepareExecutionData` put its items on the
+	 * resuming node's stack entry, as v1 does before it re-enters the node. Those
+	 * items are the step's outputs. The engine emits them itself and runs no node
+	 * code (ADR-20260902-steps-declare-waits, decision 3).
+	 *
+	 * Of the v1 pre-run gates only the credential check applies: there is no
+	 * control-plane row to take over, and the trigger's identity was established
+	 * when the run started.
+	 */
+	async resume(
+		existingExecution: ResumableExecution,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<string> {
+		const { executionId, engineResume } = existingExecution;
+		assert(engineResume, 'A v2 resume needs the step and the token the route located');
+
+		const { workflowData } = data;
+		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
+
+		const items = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main;
+		if (!items) {
+			throw new UnexpectedError('The resume request carries no payload for the waiting node');
+		}
+
+		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		const outcome = await this.proxy.resolveStep(engineResume.stepId, {
+			token: engineResume.token,
+			outputs: toStepOutputs(withoutNullSlots(items)),
+		});
+		if (!outcome.ok) throw toResumeRefusal(executionId, outcome.status, outcome.error);
+
+		return executionId;
 	}
 
 	/**
