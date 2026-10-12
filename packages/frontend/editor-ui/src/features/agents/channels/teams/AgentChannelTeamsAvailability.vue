@@ -9,9 +9,9 @@ import { computed, ref } from 'vue';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import {
+	N8nButton,
 	N8nCallout,
 	N8nIconButton,
-	N8nLink,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSwitch2,
@@ -123,6 +123,11 @@ const fileAccess = computed(() => {
 const clipboard = useClipboard();
 const toast = useToast();
 
+/** A button, not a link: the callout paints every link inside it as text. */
+function openFileAccess() {
+	if (fileAccess.value) window.open(fileAccess.value.url, '_blank', 'noopener');
+}
+
 /** The person setting this up is often not the administrator who approves it. */
 async function copyFileAccessLink() {
 	if (!fileAccess.value) return;
@@ -189,14 +194,14 @@ const summary = computed(() => {
 			{{ i18n.baseText(fileAccess.text) }}
 			<template #trailingContent>
 				<div :class="$style.fileAccessActions">
-					<N8nLink
-						:to="fileAccess.url"
-						new-window
+					<N8nButton
+						variant="outline"
 						size="small"
 						data-testid="teams-file-access-link"
+						@click="openFileAccess"
 					>
 						{{ i18n.baseText(fileAccess.link) }}
-					</N8nLink>
+					</N8nButton>
 					<N8nIconButton
 						icon="copy"
 						variant="ghost"

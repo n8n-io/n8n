@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent } from '@testing-library/vue';
+import type { RenderResult } from '@testing-library/vue';
 
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import { availabilityFrom } from './constants';
@@ -15,6 +16,13 @@ const renderComponent = createComponentRenderer(AgentChannelTeamsAvailability, {
 	pinia: createTestingPinia(),
 });
 
+/** Clicks the action and returns the URL it opened. */
+async function openedUrl({ getByTestId }: Pick<RenderResult, 'getByTestId'>) {
+	const open = vi.spyOn(window, 'open').mockReturnValue(null);
+	await fireEvent.click(getByTestId('teams-file-access-link'));
+	return String(open.mock.calls[0][0]);
+}
+
 const CONSENT_URL = 'https://login.microsoftonline.com/tenant-1/adminconsent?client_id=app-1';
 
 describe('AgentChannelTeamsAvailability', () => {
@@ -26,7 +34,7 @@ describe('AgentChannelTeamsAvailability', () => {
 		expect(queryByTestId('teams-file-access')).toBeNull();
 	});
 
-	it('links to the one-step approval for an app n8n created', () => {
+	it('opens the one-step approval for an app n8n created', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				modelValue: availabilityFrom({ teamChannels: true }),
@@ -35,10 +43,10 @@ describe('AgentChannelTeamsAvailability', () => {
 			},
 		});
 
-		expect(getByTestId('teams-file-access-link').getAttribute('href')).toBe(CONSENT_URL);
+		expect(await openedUrl({ getByTestId })).toBe(CONSENT_URL);
 	});
 
-	it("links to the API permissions of the user's own app", () => {
+	it("opens the API permissions of the user's own app", async () => {
 		const { getByTestId } = renderComponent({
 			props: { modelValue: availabilityFrom({ groupChats: true }), appId: 'app-1' },
 		});
@@ -46,19 +54,15 @@ describe('AgentChannelTeamsAvailability', () => {
 		expect(getByTestId('teams-file-access')).toHaveTextContent('Files.Read.All');
 		// The portal opens on Delegated permissions, which the agent cannot use.
 		expect(getByTestId('teams-file-access')).toHaveTextContent('Application permissions');
-		expect(getByTestId('teams-file-access-link').getAttribute('href')).toContain(
-			'/CallAnAPI/appId/app-1',
-		);
+		expect(await openedUrl({ getByTestId })).toContain('/CallAnAPI/appId/app-1');
 	});
 
-	it('points to app registrations before a credential is picked', () => {
+	it('opens app registrations before a credential is picked', async () => {
 		const { getByTestId } = renderComponent({
 			props: { modelValue: availabilityFrom({ groupChats: true }) },
 		});
 
-		expect(getByTestId('teams-file-access-link').getAttribute('href')).toContain(
-			'ApplicationsListBlade',
-		);
+		expect(await openedUrl({ getByTestId })).toContain('ApplicationsListBlade');
 	});
 
 	it('copies the link, to send to an administrator', async () => {
