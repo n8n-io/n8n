@@ -28,11 +28,11 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 
 	readonly retryDelaySeconds = 30;
 
-	// The checkpoint steps are one UPDATE and one DELETE that ignore the signal. A
-	// timeout that stops the run before they end lets the next run start them
-	// again, so it waits for the statement timeout first.
+	// The pass runs three statements in a row that ignore the signal, so it can
+	// take three statement timeouts. A timeout that stops the run before they end
+	// lets the next run start them again, so it waits for all three first.
 	readonly timeoutSeconds = timeoutAfterLimit(
-		statementTimeoutSeconds(this.databaseConfig),
+		3 * statementTimeoutSeconds(this.databaseConfig),
 		5 * Time.minutes.toSeconds,
 	);
 
