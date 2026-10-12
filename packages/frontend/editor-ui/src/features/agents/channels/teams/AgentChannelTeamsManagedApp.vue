@@ -31,9 +31,9 @@ const props = defineProps<{
 	/** What the channel runs on, which is what the published app must match. */
 	settings?: AgentTeamsIntegrationSettings;
 	/**
-	 * Whether the form holds a manifest change that is not saved yet. Publishing
-	 * from here sends the saved settings, so during that window the save is the
-	 * only route that puts the right thing in the catalogue.
+	 * Whether the form holds a manifest change that is not saved yet. This button
+	 * publishes what n8n has saved, so it waits for the save to catch up --
+	 * otherwise the catalogue gets the version the user is replacing.
 	 */
 	unsavedChanges?: boolean;
 }>();

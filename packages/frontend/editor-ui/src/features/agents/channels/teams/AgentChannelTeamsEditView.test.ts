@@ -18,8 +18,13 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
+const { showMessage, showError } = vi.hoisted(() => ({
+	showMessage: vi.fn(),
+	showError: vi.fn(),
+}));
+
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: vi.fn(), showError: vi.fn() }),
+	useToast: () => ({ showMessage, showError }),
 }));
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
@@ -197,10 +202,11 @@ describe('AgentChannelTeamsEditView', () => {
 	});
 
 	/**
-	 * A managed channel updates its app by publishing again, so the save is just
-	 * a save -- offering a download would hand over a package nobody uses.
+	 * Both of the managed route's answers are buttons on the card, and one of
+	 * them reaches the whole organisation. The save takes neither: it stays a
+	 * save, whatever the label would otherwise have promised.
 	 */
-	it('offers to publish rather than to download, where the app is published for you', async () => {
+	it('keeps the save a plain save on a managed channel', async () => {
 		const { getByTestId, queryByTestId } = renderHost({
 			props: { props: { ...viewProps, runtime: managedRuntime() } },
 			pinia: createTestingPinia(),
@@ -214,11 +220,10 @@ describe('AgentChannelTeamsEditView', () => {
 		);
 		await fireEvent.click(getByTestId('teams-scope-groups'));
 
-		// The package is the manual route's answer; this one's is a new version
-		// in the catalogue, and the save is what carries it there.
-		expect(getByTestId('save-label')).toHaveTextContent(
-			'agents.channels.teams.settings.saveAndPublish',
-		);
+		// Empty, so the modal falls back to its own Save.
+		expect(getByTestId('save-label')).toBeEmptyDOMElement();
+		// The route is still offered, by the button that names what it does.
+		expect(getByTestId('teams-settings-publish')).toBeInTheDocument();
 	});
 
 	/**
@@ -322,11 +327,12 @@ describe('AgentChannelTeamsEditView', () => {
 	});
 
 	/**
-	 * A manifest change saved in n8n and absent from Teams is the state this
-	 * avoids: on a managed channel the save publishes the new version, the way
-	 * it hands over a new package on a manual one.
+	 * Publishing reaches every person in the organisation, or asks an
+	 * administrator to approve it. A save must not do either on the user's
+	 * behalf, even where the app is published already and a republish is the
+	 * step they most likely want next.
 	 */
-	it('publishes the new version when a managed channel is saved', async () => {
+	it('does not publish when a managed channel is saved', async () => {
 		const publishApp = vi.fn();
 		const { getByTestId } = renderHost({
 			props: {
@@ -349,20 +355,51 @@ describe('AgentChannelTeamsEditView', () => {
 		await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
 		await fireEvent.click(getByTestId('teams-scope-channels'));
 
-		await waitFor(() =>
-			expect(getByTestId('save-label')).toHaveTextContent(
-				'agents.channels.teams.settings.saveAndPublish',
-			),
+		await fireEvent.click(getByTestId('save'));
+		await flushPromises();
+
+		expect(publishApp).not.toHaveBeenCalled();
+		// The modal closes on the save, so the drift is said here or nowhere.
+		expect(showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'agents.channels.teams.settings.appOutOfDate' }),
 		);
+	});
+
+	/**
+	 * The bug this guards: n8n built the app for both install routes, so
+	 * provenance alone says nothing about whether anybody published. A channel
+	 * somebody installed only for themselves must stay that way.
+	 */
+	it.each([
+		['nothing read back yet', null],
+		['an app the catalogue does not list', { status: 'unknown' as const, teamsAppId: null }],
+	])('does not publish a channel n8n made but nobody published, with %s', async (_name, state) => {
+		const publishApp = vi.fn();
+		const { getByTestId } = renderHost({
+			props: {
+				props: {
+					...viewProps,
+					savedSettings: { teamChannels: false },
+					runtime: managedRuntime({ catalogState: ref(state), publishApp }),
+				},
+			},
+			pinia: createTestingPinia(),
+		});
+
+		// The card is right to be here -- only the save was wrong.
+		await waitFor(() => expect(getByTestId('teams-managed-app')).toBeVisible());
+		await fireEvent.click(
+			within(getByTestId('teams-availability')).getByLabelText(`Toggle ${WHERE_TITLE}`),
+		);
+		await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+		await fireEvent.click(getByTestId('teams-scope-channels'));
+
+		expect(getByTestId('save-label')).toBeEmptyDOMElement();
 
 		await fireEvent.click(getByTestId('save'));
+		await flushPromises();
 
-		// The change itself, not just that something was published: the saved
-		// settings still say `teamChannels: false`, so asserting the call alone
-		// would pass on a publish of the stale version.
-		await waitFor(() =>
-			expect(publishApp).toHaveBeenCalledWith(expect.objectContaining({ teamChannels: true })),
-		);
+		expect(publishApp).not.toHaveBeenCalled();
 	});
 
 	/**

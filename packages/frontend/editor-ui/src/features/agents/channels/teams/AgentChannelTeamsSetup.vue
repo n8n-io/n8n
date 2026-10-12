@@ -9,7 +9,6 @@ import type {
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
 } from '@n8n/api-types';
-import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -102,10 +101,10 @@ const showEndpoint = ref(false);
 const availability = ref<TeamsAvailability>(availabilityFrom(props.savedSettings));
 
 /**
- * The settings offer publishing and adding only where the recommended setup
- * could run: it needs the instance to carry the n8n app registration, and a
- * Microsoft sign-in to act with. Without both, the package is the only route
- * and the manual block stays.
+ * Whether this channel's app is one n8n made, which is what the managed card
+ * acts on: it publishes that app, and it builds that app's package. Provenance
+ * only -- it says nothing about whether anybody published, so nothing here may
+ * publish on its own.
  */
 const offerManagedApp = computed(() => {
 	const managed = props.managedRuntime?.managedSetup.value;
@@ -474,21 +473,28 @@ async function downloadSaved() {
 }
 
 /**
- * A manifest change has to reach Teams, and which route does that depends on
- * how the channel was set up: the managed one publishes the new version, the
- * manual one hands over a new package. Either way the save carries it, so the
- * change cannot be left saved in n8n and absent from Teams.
+ * A manifest change on a hand-made channel reaches Teams one way, as a new
+ * package, so the save hands it over: the modal closes on the save, and a
+ * download costs the user nothing.
+ *
+ * The managed route keeps a plain Save. Publishing reaches everyone in the
+ * organisation, or asks an administrator to approve it, and a channel somebody
+ * installed only for themselves has asked for neither. The card below offers
+ * both routes by name, and the notice above it says to take one.
  */
 const saveLabel = computed(() => {
-	if (!manifestChanged.value) return undefined;
-	return offerManagedApp.value
-		? i18n.baseText('agents.channels.teams.settings.saveAndPublish')
-		: i18n.baseText('agents.channels.teams.settings.saveAndDownload');
+	if (!manifestChanged.value || offerManagedApp.value) return undefined;
+	return i18n.baseText('agents.channels.teams.settings.saveAndDownload');
 });
 
 // Captured before the save, because the saved settings then catch up with the form.
 let pendingPackage: { settings: AgentTeamsIntegrationSettings; credentialId: string } | null = null;
-let pendingPublish: AgentTeamsIntegrationSettings | null = null;
+/**
+ * Whether the save left the installed app a version behind. Nothing is sent for
+ * it: publishing reaches the whole organisation, and uploading is a step in
+ * Teams, so both are the user's to choose on the card. The save only says so.
+ */
+let appLeftBehind = false;
 
 async function beforeSave() {
 	// A save that carries a manifest change picks its route from the provenance,
@@ -499,7 +505,7 @@ async function beforeSave() {
 		manifestChanged.value && !offerManagedApp.value
 			? { settings: currentSettings.value, credentialId: credentialId.value }
 			: null;
-	pendingPublish = manifestChanged.value && offerManagedApp.value ? currentSettings.value : null;
+	appLeftBehind = manifestChanged.value && offerManagedApp.value;
 }
 
 /**
@@ -508,14 +514,15 @@ async function beforeSave() {
  * here and can be repeated from the card.
  */
 async function afterSave() {
-	const publishing = pendingPublish;
-	pendingPublish = null;
-	if (publishing && props.managedRuntime) {
-		try {
-			await props.managedRuntime.publishApp(publishing);
-		} catch (error) {
-			toast.showMessage({ type: 'error', title: getErrorMessage(error) });
-		}
+	if (appLeftBehind) {
+		appLeftBehind = false;
+		// The modal closes on the save, so this is the last place left to say that
+		// Teams still carries the version before this one.
+		toast.showMessage({
+			type: 'info',
+			title: i18n.baseText('agents.channels.teams.settings.appOutOfDate'),
+			message: i18n.baseText('agents.channels.teams.settings.appOutOfDateHint'),
+		});
 		return;
 	}
 

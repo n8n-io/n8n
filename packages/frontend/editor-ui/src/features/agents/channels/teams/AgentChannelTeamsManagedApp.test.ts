@@ -130,10 +130,11 @@ describe('AgentChannelTeamsManagedApp', () => {
 	});
 
 	/**
-	 * The card publishes the saved settings, so an unsaved change would go to
-	 * the catalogue as the old version. Saving is the route that carries it.
+	 * The card publishes the saved settings, so publishing now would put the
+	 * version the user is replacing in the catalogue. It waits for the save to
+	 * catch up -- the save itself publishes nothing.
 	 */
-	it('leaves publishing to the save while the form holds an unsaved change', async () => {
+	it('waits for the save before it publishes an unsaved change', async () => {
 		const runtime = buildRuntime({
 			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
 		});
