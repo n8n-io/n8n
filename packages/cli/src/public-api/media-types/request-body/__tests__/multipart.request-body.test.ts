@@ -62,13 +62,13 @@ describe('multipartRequestBody', () => {
 	describe('readInput', () => {
 		it('merges text fields with files', () => {
 			const req = {
-				body: { workflowConflictPolicy: 'new-version' },
+				body: { conflictPolicy: 'new-version' },
 				files: [fakeFile('package')],
 			} as unknown as Request;
 
 			const input = multipartRequestBody.readInput(req) as Record<string, unknown>;
 
-			expect(input.workflowConflictPolicy).toBe('new-version');
+			expect(input.conflictPolicy).toBe('new-version');
 			expect(input.package).toMatchObject({ fieldname: 'package' });
 		});
 
@@ -131,8 +131,8 @@ describe('multipartRequestBody', () => {
 
 	describe('formatValidationError', () => {
 		it('reports an unrecognized key as an unexpected form field', () => {
-			const schema = z.object({ workflowConflictPolicy: z.string() }).strict();
-			const result = schema.safeParse({ workflowConflictPolicy: 'new-version', evil: 'x' });
+			const schema = z.object({ conflictPolicy: z.string() }).strict();
+			const result = schema.safeParse({ conflictPolicy: 'new-version', evil: 'x' });
 
 			assert(!result.success, 'expected an unrecognized-key error');
 
@@ -142,13 +142,13 @@ describe('multipartRequestBody', () => {
 		});
 
 		it('falls back to the default formatter for any other issue', () => {
-			const schema = z.object({ workflowConflictPolicy: z.string() }).strict();
+			const schema = z.object({ conflictPolicy: z.string() }).strict();
 			const result = schema.safeParse({});
 
 			assert(!result.success, 'expected a required-property error');
 
 			expect(multipartRequestBody.formatValidationError(result.error)).toBe(
-				"request/body must have required property 'workflowConflictPolicy'",
+				"request/body must have required property 'conflictPolicy'",
 			);
 		});
 	});

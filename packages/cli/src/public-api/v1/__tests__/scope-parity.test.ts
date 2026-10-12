@@ -2,6 +2,13 @@ import { API_KEY_RESOURCES } from '@n8n/permissions';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'yaml';
+import { mock } from 'vitest-mock-extended';
+
+import {
+	requiredAgentScopes,
+	type AgentImportPlan,
+	type AgentPlanItem,
+} from '@/modules/n8n-packages/entities/agent/agent-import.types';
 
 import { resolvePublicApiRoutes, scopesInRequirement } from '../../public-api-route-resolver';
 
@@ -28,6 +35,19 @@ describe('Public API scope parity', () => {
 				route.apiKeyScope ? scopesInRequirement(route.apiKeyScope) : [],
 			),
 		);
+		// Package imports check these grants after the planner selects the actions.
+		expect(ops).toContainEqual(
+			expect.objectContaining({ method: 'post', pathStr: '/n8n-packages/import' }),
+		);
+		const plannedScopes = requiredAgentScopes(
+			mock<AgentImportPlan>({
+				items: [
+					mock<AgentPlanItem>({ action: 'create', publishingAction: 'publish' }),
+					mock<AgentPlanItem>({ action: 'update', publishingAction: 'unpublish' }),
+				],
+			}),
+		);
+		for (const scope of plannedScopes) consumed.add(scope);
 		const declared = new Set<string>();
 		for (const [resource, operations] of Object.entries(API_KEY_RESOURCES)) {
 			for (const operation of operations) {
