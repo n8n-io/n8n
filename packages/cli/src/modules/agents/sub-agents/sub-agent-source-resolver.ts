@@ -10,6 +10,8 @@ import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { AgentSkillRefsService } from '../agent-skill-refs.service';
+import { toAgentDocument } from '../json-config/agent-document';
 import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -36,6 +38,7 @@ export class SubAgentSourceResolver {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -94,7 +97,9 @@ export class SubAgentSourceResolver {
 				source: {
 					sourceId: source.agentId,
 					versionId: source.versionId,
-					config: this.toRunnableConfig(version.schema),
+					config: this.toRunnableConfig(
+						toAgentDocument(version.schema, await this.agentSkillRefs.refsForVersion(version, {})),
+					),
 				},
 				...getAgentRuntimeAssets(version),
 			};
@@ -112,7 +117,12 @@ export class SubAgentSourceResolver {
 				source: {
 					sourceId: source.agentId,
 					versionId: activeVersion.versionId,
-					config: this.toRunnableConfig(activeVersion.schema),
+					config: this.toRunnableConfig(
+						toAgentDocument(
+							activeVersion.schema,
+							await this.agentSkillRefs.refsForVersion(activeVersion, {}),
+						),
+					),
 				},
 				...getAgentRuntimeAssets(activeVersion),
 			};
@@ -125,7 +135,9 @@ export class SubAgentSourceResolver {
 		return {
 			source: {
 				sourceId: source.agentId,
-				config: this.toRunnableConfig(agent.schema),
+				config: this.toRunnableConfig(
+					toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {})),
+				),
 			},
 			...getAgentRuntimeAssets(agent),
 		};
