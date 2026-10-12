@@ -3426,6 +3426,7 @@
 	"settings.context.preferences.columns.scope": "Scope",
 	"settings.context.preferences.columns.createdBy": "Created by",
 	"settings.context.preferences.createdBy.withSource": "{name} ({source})",
+	"settings.context.preferences.columns.updatedAt": "Last updated",
 	"settings.context.preferences.source.ui": "Settings",
 	"settings.context.preferences.source.aia": "n8n assistant",
 	"settings.context.preferences.source.mcp": "MCP",
