@@ -123,7 +123,12 @@ describe('WorkflowImporter.apply', () => {
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
-			{ publicApi: true, source: 'import', allowArchivedUpdate: false },
+			{
+				publicApi: true,
+				source: 'import',
+				allowArchivedUpdate: false,
+				allowUnresolvedErrorWorkflow: true,
+			},
 		);
 	});
 
@@ -291,6 +296,7 @@ describe('WorkflowImporter.apply', () => {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: true,
+			allowUnresolvedErrorWorkflow: true,
 		});
 		expect(archive).not.toHaveBeenCalled();
 		expect(unarchive).not.toHaveBeenCalled();

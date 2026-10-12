@@ -76,7 +76,7 @@ function mountPanel({
 	const settingsStore = useSettingsStore();
 	settingsStore.setSettings({
 		...defaultSettings,
-		aiAssistant: { enabled: true, setup: true },
+		aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 	});
 	settingsStore.moduleSettings = {
 		agents: {

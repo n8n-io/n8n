@@ -14,9 +14,10 @@ export type SystemTaskMode = 'leader_timer' | 'instance_timer' | 'durable';
 
 /**
  * How a run settled. A rejection after the run's abort signal fired is the task
- * honoring the abort, so it is `aborted`, not `failure`.
+ * honoring the abort, so it is `aborted`, not `failure`. A durable run stopped
+ * because its claim was lost is `lease_lost`.
  */
-export type SystemTaskRunResult = 'success' | 'failure' | 'aborted';
+export type SystemTaskRunResult = 'success' | 'failure' | 'aborted' | 'lease_lost';
 
 /**
  * Why an occurrence did not run: the previous run was still going, another
@@ -24,7 +25,14 @@ export type SystemTaskRunResult = 'success' | 'failure' | 'aborted';
  * after the run signal had already aborted during stepdown, or the process
  * slept through it and the timer coalesced it into one late fire.
  */
-export type SystemTaskSkipReason = 'overlap' | 'provisioned_elsewhere' | 'aborted' | 'coalesced';
+export const SYSTEM_TASK_SKIP_REASONS = [
+	'overlap',
+	'provisioned_elsewhere',
+	'aborted',
+	'coalesced',
+] as const;
+
+export type SystemTaskSkipReason = (typeof SYSTEM_TASK_SKIP_REASONS)[number];
 
 export type SystemTaskMetricsEventMap = {
 	'system-task-routed': {

@@ -1,6 +1,8 @@
 import { fetchProviderCatalog, type ModelInfo, type ProviderCatalog } from '@n8n/agents/catalog';
 
 const MODEL_RECOMMENDATION_FETCH_TIMEOUT_MS = 5000;
+/** After a failed fetch, skip retries for this long so each builder turn does not wait on the timeout. */
+const MODEL_RECOMMENDATION_RETRY_AFTER_MS = 10 * 60 * 1000;
 const MAX_RECOMMENDED_MODELS_PER_PROVIDER = 3;
 
 interface RecommendedProvider {
@@ -18,6 +20,7 @@ const RECOMMENDED_PROVIDERS: RecommendedProvider[] = [
 
 let modelRecommendationsSection: string | null | undefined;
 let modelRecommendationsPromise: Promise<string | null> | undefined;
+let modelRecommendationsRetryAt = 0;
 
 function getReleaseTime(model: ModelInfo): number | null {
 	if (!model.releaseDate) return null;
@@ -110,6 +113,7 @@ async function fetchProviderCatalogWithTimeout(): Promise<ProviderCatalog | null
 
 export async function getModelRecommendationsSection(): Promise<string | null> {
 	if (modelRecommendationsSection !== undefined) return modelRecommendationsSection;
+	if (!modelRecommendationsPromise && Date.now() < modelRecommendationsRetryAt) return null;
 
 	modelRecommendationsPromise ??= fetchProviderCatalogWithTimeout()
 		.then((catalog) => (catalog ? buildModelRecommendationsSection(catalog) : null))
@@ -119,6 +123,17 @@ export async function getModelRecommendationsSection(): Promise<string | null> {
 		});
 
 	const section = await modelRecommendationsPromise;
-	if (section) modelRecommendationsSection = section;
+	if (section) {
+		modelRecommendationsSection = section;
+	} else {
+		modelRecommendationsRetryAt = Date.now() + MODEL_RECOMMENDATION_RETRY_AFTER_MS;
+	}
 	return section;
+}
+
+/** Test-only: clear the module-level cache. */
+export function resetModelRecommendationsCacheForTest(): void {
+	modelRecommendationsSection = undefined;
+	modelRecommendationsPromise = undefined;
+	modelRecommendationsRetryAt = 0;
 }

@@ -66,9 +66,9 @@ export function createExecutorTracing(tracer: Tracer): ExecutorTracing {
  */
 export function withHandoffTracing(tracer: Tracer, handler: TaskHandler): TaskHandler {
 	return {
-		// The dispatch reporter is threaded through untouched: the wrapper adds a span,
-		// not semantics, so the handler's dispatch decision keeps flowing to the executor.
-		async execute(task, report) {
+		// The dispatch reporter and signal are threaded through untouched: the wrapper adds
+		// a span, not semantics, so the handler's dispatch decision keeps flowing to the executor.
+		async execute(task, report, signal) {
 			return await tracer.startSpan(
 				{
 					name: 'Scheduler handoff',
@@ -76,7 +76,7 @@ export function withHandoffTracing(tracer: Tracer, handler: TaskHandler): TaskHa
 					attributes: pickSchedulerTaskIdentity(task),
 				},
 				async (span) => {
-					const decision = await handler.execute(task, report);
+					const decision = await handler.execute(task, report, signal);
 					span.setStatus({ code: SpanStatus.ok });
 					return decision;
 				},

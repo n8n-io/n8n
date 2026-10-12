@@ -1,12 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
-import { isPreferenceCardEvent, resolvePreferenceCard } from '../preferenceCard.utils';
+import {
+	isPreferenceCardEvent,
+	isPreferenceWriteOutcome,
+	resolvePreferenceCard,
+	resolvePreferenceRejection,
+} from '../preferenceCard.utils';
 
 describe('resolvePreferenceCard', () => {
 	const saved = {
 		ok: true,
-		preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		preference: {
+			id: 'pref-1',
+			content: 'Keep replies short.',
+			scope: 'user',
+			userId: 'user-1',
+			projectId: null,
+		},
 	};
 	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
 		toolCallId: 'tc-1',
@@ -17,11 +28,27 @@ describe('resolvePreferenceCard', () => {
 		...overrides,
 	});
 
-	it('resolves the save tool result to a saved card', () => {
+	it('resolves the save tool result to a saved card with its scope and owner', () => {
 		expect(resolvePreferenceCard(toolCall({}))).toEqual({
 			state: 'saved',
 			preferenceId: 'pref-1',
 			content: 'Keep replies short.',
+			scope: 'user',
+			projectId: null,
+			userId: 'user-1',
+		});
+	});
+
+	it('accepts a result from before the owner travelled with it', () => {
+		const result = {
+			ok: true,
+			preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user' },
+		};
+		expect(resolvePreferenceCard(toolCall({ result }))).toMatchObject({
+			state: 'saved',
+			scope: 'user',
+			projectId: null,
+			userId: null,
 		});
 	});
 
@@ -29,24 +56,161 @@ describe('resolvePreferenceCard', () => {
 		expect(resolvePreferenceCard(toolCall({ toolName: 'workflows' }))).toBeNull();
 	});
 
-	it('ignores a refusal and a call that is still running', () => {
+	it('ignores a refusal, a call that is still running, and a scope outside the enum', () => {
 		expect(
 			resolvePreferenceCard(toolCall({ result: { ok: false, reason: 'too_long' } })),
 		).toBeNull();
 		expect(resolvePreferenceCard(toolCall({ result: undefined, isLoading: true }))).toBeNull();
-	});
-
-	it('lets a later fact override the state and the text', () => {
 		expect(
 			resolvePreferenceCard(
-				toolCall({ preferenceCard: { state: 'edited', content: 'Keep replies brief.' } }),
+				toolCall({
+					result: { ok: true, preference: { id: 'pref-1', content: 'x', scope: 'team' } },
+				}),
 			),
-		).toEqual({ state: 'edited', preferenceId: 'pref-1', content: 'Keep replies brief.' });
+		).toBeNull();
+	});
+
+	it('lets a later fact override the state, the text and the scope', () => {
+		expect(
+			resolvePreferenceCard(
+				toolCall({
+					preferenceCard: {
+						state: 'edited',
+						content: 'Keep replies brief.',
+						scope: 'project',
+						projectId: 'p-1',
+					},
+				}),
+			),
+		).toEqual({
+			state: 'edited',
+			preferenceId: 'pref-1',
+			content: 'Keep replies brief.',
+			scope: 'project',
+			projectId: 'p-1',
+			userId: 'user-1',
+		});
 		expect(resolvePreferenceCard(toolCall({ preferenceCard: { state: 'undone' } }))).toEqual({
 			state: 'undone',
 			preferenceId: 'pref-1',
 			content: 'Keep replies short.',
+			scope: 'user',
+			projectId: null,
+			userId: 'user-1',
 		});
+	});
+
+	it('drops the project when a fact moves the row back to the user', () => {
+		const moved = toolCall({
+			result: {
+				ok: true,
+				preference: { id: 'pref-1', content: 'x', scope: 'project', projectId: 'p-1' },
+			},
+			preferenceCard: { state: 'edited', content: 'x', scope: 'user', projectId: null },
+		});
+		expect(resolvePreferenceCard(moved)).toMatchObject({ scope: 'user', projectId: null });
+	});
+});
+
+describe('resolvePreferenceRejection', () => {
+	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
+		toolCallId: 'tc-1',
+		toolName: 'save_user_preference',
+		args: { content: '  Keep replies short.  ', scope: 'user' },
+		isLoading: false,
+		result: { ok: false, reason: 'duplicate', message: 'Already saved.' },
+		...overrides,
+	});
+
+	it('resolves a refusal to its reason, the server message and the attempted text', () => {
+		expect(resolvePreferenceRejection(toolCall({}))).toEqual({
+			reason: 'duplicate',
+			message: 'Already saved.',
+			content: 'Keep replies short.',
+		});
+	});
+
+	it('accepts a reason the frontend does not know, so nothing is swallowed', () => {
+		expect(
+			resolvePreferenceRejection(toolCall({ result: { ok: false, reason: 'new_rule' } })),
+		).toMatchObject({ reason: 'new_rule', message: undefined });
+	});
+
+	it('leaves the message out when the result has none or a blank one', () => {
+		expect(
+			resolvePreferenceRejection(
+				toolCall({ result: { ok: false, reason: 'failed', message: ' ' } }),
+			),
+		).toEqual({ reason: 'failed', message: undefined, content: 'Keep replies short.' });
+	});
+
+	it('leaves the text out when the call arguments carry none', () => {
+		expect(resolvePreferenceRejection(toolCall({ args: {} }))).toEqual({
+			reason: 'duplicate',
+			message: 'Already saved.',
+			content: undefined,
+		});
+	});
+
+	it('treats a tool that threw as failed, without exposing the error text', () => {
+		expect(resolvePreferenceRejection(toolCall({ result: undefined, error: 'boom' }))).toEqual({
+			reason: 'failed',
+			content: 'Keep replies short.',
+		});
+	});
+
+	it('treats a call the run ended mid-flight as unconfirmed, not as failed', () => {
+		expect(
+			resolvePreferenceRejection(
+				toolCall({
+					result: undefined,
+					error: 'Interrupted by a process restart',
+					interrupted: true,
+				}),
+			),
+		).toEqual({ reason: 'interrupted', content: 'Keep replies short.' });
+	});
+
+	it.each([
+		[
+			'a saved result',
+			{ result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } } },
+		],
+		['a call still running', { result: undefined, isLoading: true }],
+		['another tool', { toolName: 'workflows' }],
+		['a result without a reason', { result: { ok: false } }],
+	] as const)('returns null for %s', (_label, overrides) => {
+		expect(resolvePreferenceRejection(toolCall(overrides))).toBeNull();
+	});
+});
+
+describe('isPreferenceWriteOutcome', () => {
+	const toolCall = (overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState => ({
+		toolCallId: 'tc-1',
+		toolName: 'save_user_preference',
+		args: {},
+		isLoading: false,
+		...overrides,
+	});
+
+	it.each([
+		[
+			'a saved result',
+			{ result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } } },
+		],
+		['a refusal', { result: { ok: false, reason: 'too_long' } }],
+		['a thrown tool', { error: 'boom' }],
+		['an interrupted call', { error: 'Interrupted', interrupted: true }],
+	] as const)('is true for %s', (_label, overrides) => {
+		expect(isPreferenceWriteOutcome(toolCall(overrides))).toBe(true);
+	});
+
+	it.each([
+		['a call still running', { isLoading: true }],
+		['another tool', { toolName: 'workflows', result: { ok: false, reason: 'x' } }],
+		['no result and no error', {}],
+	] as const)('is false for %s', (_label, overrides) => {
+		expect(isPreferenceWriteOutcome(toolCall(overrides))).toBe(false);
 	});
 });
 

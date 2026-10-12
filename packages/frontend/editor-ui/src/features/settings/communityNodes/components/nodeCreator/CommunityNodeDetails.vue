@@ -9,6 +9,7 @@ import OfficialIcon from 'virtual:icons/mdi/verified';
 import { computed } from 'vue';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import {
+	getNodeCreatorSearchItems,
 	prepareCommunityNodeDetailsViewStack,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
@@ -47,7 +48,12 @@ const updateViewStack = (key: string) => {
 
 		popViewStack();
 
-		updateCurrentViewStack({ searchItems: nodeCreatorStore.mergedNodes });
+		updateCurrentViewStack({
+			searchItems: getNodeCreatorSearchItems(
+				nodeCreatorStore.mergedNodes,
+				activeViewStack.searchItems ?? [],
+			),
+		});
 
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			installedNode,

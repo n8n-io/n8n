@@ -2,17 +2,16 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import { LockNamespace, type LockService } from '@n8n/backend-common';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 export interface CallbackPayload {
 	actionId: string;
 	value: string;
-	kind?: 'approval';
 	groupId?: string;
 	label?: string;
 }
 
-export type CallbackMetadata = Pick<CallbackPayload, 'kind' | 'groupId'>;
+export type CallbackMetadata = Pick<CallbackPayload, 'groupId'>;
 type CallbackStoreMetadata = CallbackMetadata & Pick<CallbackPayload, 'label'>;
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;

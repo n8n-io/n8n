@@ -145,6 +145,13 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === 'main-only',
 		},
 		{
+			envVar: 'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
+			message:
+				'This variable is deprecated and will be removed in v4. While it is set to `false`, n8n Assistant cannot create or edit workflows.',
+			checkValue: (value?: string) =>
+				value !== undefined && ['false', '0'].includes(value.toLowerCase()),
+		},
+		{
 			envVar: 'EXECUTIONS_PROCESS',
 			message: SAFE_TO_REMOVE,
 			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',

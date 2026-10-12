@@ -437,6 +437,39 @@ export async function provisionWorkflowThread(
 	return threadId;
 }
 
+/** The n8n Cloud signup survey answers the onboarding thread reads, keyed like the cloud stores them. */
+export interface InstanceAiOnboardingSurvey {
+	what_team_are_you_on?: string;
+}
+
+/** The survey and where it came from, so telemetry can tell a `?team=` test run from a signup. */
+export type InstanceAiOnboardingLaunch = {
+	survey: InstanceAiOnboardingSurvey;
+	surveySource: 'cloud' | 'url';
+};
+
+/**
+ * Provision the agent-first onboarding thread for the `/assistant?source=onboarding` router
+ * guard. The backend seeds the greeting and the first question card, so nothing is stashed for
+ * the destination view to send. Returns the thread id, or null if persistence failed.
+ */
+export async function provisionOnboardingThread(
+	projectId: string,
+	launch: InstanceAiOnboardingLaunch | undefined,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, {
+			source: 'onboarding',
+			origin: 'external',
+			sourceContext: launch,
+		});
+	} catch {
+		return null;
+	}
+	return threadId;
+}
+
 /**
  * Mint a thread bound to a subject: the id, the target metadata (a pending
  * marker or a bound target), and — for the agent variant — the stashed

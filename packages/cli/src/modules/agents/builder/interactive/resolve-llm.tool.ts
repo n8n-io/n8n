@@ -309,7 +309,7 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 			'Resolve the agent main LLM without showing a picker. ' +
 				'A fresh agent may already have a model and credential persisted by the system at creation ' +
 				'(a sensible default was auto-selected). Before calling this tool on a fresh agent, call ' +
-				'read_config first: if model and credential are already set, keep them, mention the choice ' +
+				'agent-context with type "config" first: if model and credential are already set, keep them, mention the choice ' +
 				'in your summary as changeable, and do not call resolve_llm. Only when model is empty call ' +
 				'resolve_llm once, silently, before the first config write to detect existing credentials — ' +
 				'with provider/model when the user named them, otherwise without arguments. ' +

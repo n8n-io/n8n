@@ -3,11 +3,10 @@ import type { User, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { BadRequestError } from '@n8n/errors';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 describe('ActiveWorkflowsService', () => {
 	const user = mock<User>();

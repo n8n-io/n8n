@@ -8,6 +8,7 @@ import type {
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 } from '../agentTimeline.utils';
 
@@ -86,6 +87,15 @@ describe('extractArtifacts', () => {
 				completedAt: undefined,
 			},
 		]);
+	});
+
+	test('does not return an unchanged Agent target as an artifact', () => {
+		const node = makeAgentNode({
+			agentChange: 'none',
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([]);
 	});
 
 	test('falls back to subtitle when targetResource has no name', () => {
@@ -301,6 +311,47 @@ describe('extractArtifacts', () => {
 	});
 });
 
+describe('extractBuiltWorkflowArtifacts', () => {
+	test('returns each successfully built workflow once', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'build-workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'build-workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+			}),
+			makeToolCall({
+				toolCallId: 'tc-3',
+				toolName: 'build-workflow',
+				result: { success: false, workflowId: 'wf-2', errors: ['invalid'] },
+			}),
+			makeToolCall({ toolCallId: 'tc-4', toolName: 'workflows', result: { workflowId: 'wf-3' } }),
+		];
+
+		expect(extractBuiltWorkflowArtifacts(toolCalls)).toEqual([
+			{
+				type: 'workflow',
+				resourceId: 'wf-1',
+				name: 'Hello World',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores build-workflow calls that have no result yet', () => {
+		expect(
+			extractBuiltWorkflowArtifacts([
+				makeToolCall({ toolName: 'build-workflow', isLoading: true }),
+			]),
+		).toEqual([]);
+	});
+});
+
 describe('buildTimelineBlocks', () => {
 	const reasoning = (responseId?: string): InstanceAiTimelineEntry => ({
 		type: 'reasoning',
@@ -414,6 +465,20 @@ describe('buildTimelineBlocks', () => {
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
+	});
+
+	test('the reply before a leave-onboarding call stays user-facing and the call is hidden', () => {
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('Explore the app and come back with a task.', 'r1'),
+				toolEntry('tc-leave', 'r1'),
+			],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave-onboarding' })],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(1);
 	});
 
 	test('text before a tool call that suspended on a setup card stays user-facing', () => {
@@ -834,13 +899,21 @@ describe('buildTimelineBlocks', () => {
 			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
 		});
 
-		test('hides the call while loading and when the write was rejected', () => {
+		// A refusal the person cannot see is a silent failure, so it renders as a card too.
+		test('renders a preference block when the write was rejected or the tool threw', () => {
 			for (const tc of [
-				makeToolCall({ ...base, isLoading: true }),
 				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+				makeToolCall({ ...base, error: 'boom' }),
 			]) {
-				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([
+					{ type: 'preference', key: 'preference-0', toolCall: tc },
+				]);
 			}
+		});
+
+		test('hides the call while it is still running', () => {
+			const tc = makeToolCall({ ...base, isLoading: true });
+			expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
 		});
 	});
 });

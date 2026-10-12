@@ -227,8 +227,6 @@ export class MonicaCrm implements INodeType {
 						//             activity: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/activities#create-an-activity
-
 						const contacts = this.getNodeParameter('contacts', i) as string;
 						const happenedAt = this.getNodeParameter('happenedAt', i) as string;
 
@@ -251,8 +249,6 @@ export class MonicaCrm implements INodeType {
 						//             activity: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/activities#delete-an-activity
-
 						const activityId = this.getNodeParameter('activityId', i);
 
 						const endpoint = `/activities/${activityId}`;
@@ -263,8 +259,6 @@ export class MonicaCrm implements INodeType {
 						//              activity: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/activities#get-a-specific-activity
-
 						const activityId = this.getNodeParameter('activityId', i);
 
 						const endpoint = `/activities/${activityId}`;
@@ -274,16 +268,12 @@ export class MonicaCrm implements INodeType {
 						//             activity: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/activities#list-all-the-activities-in-your-account
-
 						const endpoint = '/activities';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             activity: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/activities#update-an-activity
 
 						const activityId = this.getNodeParameter('activityId', i);
 
@@ -325,8 +315,6 @@ export class MonicaCrm implements INodeType {
 						//               call: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/calls#create-a-call
-
 						const body = {
 							called_at: this.getNodeParameter('calledAt', i),
 							contact_id: this.getNodeParameter('contactId', i),
@@ -339,8 +327,6 @@ export class MonicaCrm implements INodeType {
 						//               call: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contactfields#delete-a-call
-
 						const callId = this.getNodeParameter('callId', i);
 
 						responseData = await monicaCrmApiRequest.call(this, 'DELETE', `/calls/${callId}`);
@@ -350,8 +336,6 @@ export class MonicaCrm implements INodeType {
 						//                call: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/calls#get-a-specific-call
-
 						const callId = this.getNodeParameter('callId', i);
 
 						responseData = await monicaCrmApiRequest.call(this, 'GET', `/calls/${callId}`);
@@ -360,16 +344,12 @@ export class MonicaCrm implements INodeType {
 						//               call: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/calls#list-all-the-calls-in-your-account
-
 						const endpoint = '/calls';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               call: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/calls#update-a-call
 
 						const callId = this.getNodeParameter('callId', i);
 
@@ -396,8 +376,6 @@ export class MonicaCrm implements INodeType {
 						// ----------------------------------------
 						//             contact: create
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/contacts#create-a-contact
 
 						const body = {
 							first_name: this.getNodeParameter('firstName', i),
@@ -448,8 +426,6 @@ export class MonicaCrm implements INodeType {
 						//             contact: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contacts#delete-a-contact
-
 						const contactId = this.getNodeParameter('contactId', i);
 
 						const endpoint = `/contacts/${contactId}`;
@@ -460,8 +436,6 @@ export class MonicaCrm implements INodeType {
 						//               contact: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contacts#get-a-specific-contact
-
 						const contactId = this.getNodeParameter('contactId', i);
 
 						const endpoint = `/contacts/${contactId}`;
@@ -470,8 +444,6 @@ export class MonicaCrm implements INodeType {
 						// ----------------------------------------
 						//             contact: getAll
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/contacts#list-all-your-contacts
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
@@ -545,8 +517,6 @@ export class MonicaCrm implements INodeType {
 						//           contactField: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contactfields#create-a-contact-field
-
 						const body = {
 							contact_field_type_id: this.getNodeParameter('contactFieldTypeId', i),
 							contact_id: this.getNodeParameter('contactId', i),
@@ -559,8 +529,6 @@ export class MonicaCrm implements INodeType {
 						//           contactField: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contactfields#delete-a-contact-field
-
 						const contactFieldId = this.getNodeParameter('contactFieldId', i);
 
 						const endpoint = `/contactfields/${contactFieldId}`;
@@ -571,8 +539,6 @@ export class MonicaCrm implements INodeType {
 						//            contactField: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contactfields#get-a-specific-contact-field
-
 						const contactFieldId = this.getNodeParameter('contactFieldId', i);
 
 						const endpoint = `/contactfields/${contactFieldId}`;
@@ -582,8 +548,6 @@ export class MonicaCrm implements INodeType {
 						//           contactField: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contactfields#list-all-the-contact-fields-of-a-specific-contact
-
 						const contactId = this.getNodeParameter('contactId', i);
 
 						const endpoint = `/contact/${contactId}/contactfields`;
@@ -592,8 +556,6 @@ export class MonicaCrm implements INodeType {
 						// ----------------------------------------
 						//           contactField: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/contactfields#update-a-contact-field
 
 						const body = {
 							contact_field_type_id: this.getNodeParameter('contactFieldTypeId', i),
@@ -616,8 +578,6 @@ export class MonicaCrm implements INodeType {
 						//            contactTag: add
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/tags#associate-a-tag-to-a-contact
-
 						const body = {
 							tags: this.getNodeParameter('tagsToAdd', i),
 						} as IDataObject;
@@ -630,8 +590,6 @@ export class MonicaCrm implements INodeType {
 						// ----------------------------------------
 						//              tag: remove
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/tags#remove-a-specific-tag-from-a-contact
 
 						const body = {
 							tags: this.getNodeParameter('tagsToRemove', i),
@@ -652,8 +610,6 @@ export class MonicaCrm implements INodeType {
 						//           conversation: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/conversations#create-a-conversation
-
 						const body = {
 							contact_field_type_id: this.getNodeParameter('contactFieldTypeId', i),
 							contact_id: this.getNodeParameter('contactId', i),
@@ -666,8 +622,6 @@ export class MonicaCrm implements INodeType {
 						//           conversation: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/contactfields#delete-a-contact-field
-
 						const conversationId = this.getNodeParameter('conversationId', i);
 
 						const endpoint = `/conversations/${conversationId}`;
@@ -678,8 +632,6 @@ export class MonicaCrm implements INodeType {
 						//            conversation: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/conversations#get-a-specific-conversation
-
 						const conversationId = this.getNodeParameter('conversationId', i);
 
 						const endpoint = `/conversations/${conversationId}`;
@@ -688,8 +640,6 @@ export class MonicaCrm implements INodeType {
 						// ----------------------------------------
 						//           conversation: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/conversations#update-a-conversation
 
 						const body = {
 							contact_field_type_id: this.getNodeParameter('contactFieldTypeId', i),
@@ -706,8 +656,6 @@ export class MonicaCrm implements INodeType {
 						// ----------------------------------------
 						//         conversationMessage: add
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/conversations#add-a-message-to-a-conversation
 
 						const conversationId = this.getNodeParameter('conversationId', i);
 
@@ -732,7 +680,6 @@ export class MonicaCrm implements INodeType {
 						//       conversationMessage: update
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/conversations#update-a-message-in-a-conversation
 						const conversationId = this.getNodeParameter('conversationId', i);
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const endpoint = `/conversations/${conversationId}/messages/${messageId}`;
@@ -772,8 +719,6 @@ export class MonicaCrm implements INodeType {
 						//           journalEntry: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#create-a-journal-entry
-
 						const body = {
 							title: this.getNodeParameter('title', i),
 							post: this.getNodeParameter('post', i),
@@ -785,8 +730,6 @@ export class MonicaCrm implements INodeType {
 						//           journalEntry: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/journal#delete-a-journal-entry
-
 						const journalId = this.getNodeParameter('journalId', i);
 
 						await monicaCrmApiRequest.call(this, 'DELETE', `/journal/${journalId}`);
@@ -796,8 +739,6 @@ export class MonicaCrm implements INodeType {
 						//            journalEntry: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/journal#get-a-specific-journal-entry
-
 						const journalId = this.getNodeParameter('journalId', i);
 
 						responseData = await monicaCrmApiRequest.call(this, 'GET', `/journal/${journalId}`);
@@ -806,15 +747,11 @@ export class MonicaCrm implements INodeType {
 						//           journalEntry: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/journal#list-all-the-entries-in-your-journal
-
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/journal');
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//           journalEntry: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/journal#update-a-journal-entry
 
 						const journalId = this.getNodeParameter('journalId', i);
 
@@ -848,8 +785,6 @@ export class MonicaCrm implements INodeType {
 						//               note: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#create-a-note
-
 						const body = {
 							body: this.getNodeParameter('body', i),
 							contact_id: this.getNodeParameter('contactId', i),
@@ -863,8 +798,6 @@ export class MonicaCrm implements INodeType {
 						//               note: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#delete-a-note
-
 						const noteId = this.getNodeParameter('noteId', i);
 
 						await monicaCrmApiRequest.call(this, 'DELETE', `/notes/${noteId}`);
@@ -874,8 +807,6 @@ export class MonicaCrm implements INodeType {
 						//                note: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#get-a-specific-note
-
 						const noteId = this.getNodeParameter('noteId', i);
 
 						responseData = await monicaCrmApiRequest.call(this, 'GET', `/notes/${noteId}`);
@@ -884,16 +815,12 @@ export class MonicaCrm implements INodeType {
 						//               note: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#list-all-the-notes-in-your-account
-
 						const endpoint = '/notes';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               note: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/notes#update-a-note
 
 						const noteId = this.getNodeParameter('noteId', i);
 
@@ -922,8 +849,6 @@ export class MonicaCrm implements INodeType {
 						//             reminder: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#create-a-reminder
-
 						const initialDate = this.getNodeParameter('initialDate', i) as string;
 
 						const body = {
@@ -946,8 +871,6 @@ export class MonicaCrm implements INodeType {
 						//             reminder: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/reminder#delete-a-reminder
-
 						const reminderId = this.getNodeParameter('reminderId', i);
 
 						const endpoint = `/reminders/${reminderId}`;
@@ -958,8 +881,6 @@ export class MonicaCrm implements INodeType {
 						//              reminder: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/reminder#get-a-specific-reminder
-
 						const reminderId = this.getNodeParameter('reminderId', i);
 
 						const endpoint = `/reminders/${reminderId}`;
@@ -969,15 +890,11 @@ export class MonicaCrm implements INodeType {
 						//             reminder: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/reminders#list-all-the-reminders-in-your-account
-
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/reminders');
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             reminder: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/reminders#update-a-reminder
 
 						const reminderId = this.getNodeParameter('reminderId', i);
 
@@ -1016,8 +933,6 @@ export class MonicaCrm implements INodeType {
 						//               tag: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/tags#create-a-tag
-
 						const body = {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
@@ -1028,8 +943,6 @@ export class MonicaCrm implements INodeType {
 						//               tag: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/tag#delete-a-tag
-
 						const tagId = this.getNodeParameter('tagId', i);
 
 						await monicaCrmApiRequest.call(this, 'DELETE', `/tags/${tagId}`);
@@ -1039,8 +952,6 @@ export class MonicaCrm implements INodeType {
 						//                 tag: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/task#get-a-specific-tag
-
 						const tagId = this.getNodeParameter('tagId', i);
 
 						responseData = await monicaCrmApiRequest.call(this, 'GET', `/tags/${tagId}`);
@@ -1049,15 +960,11 @@ export class MonicaCrm implements INodeType {
 						//               tag: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/tags#list-all-your-tags
-
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/tags');
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               tag: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/tags#update-a-tag
 
 						const body = {
 							name: this.getNodeParameter('name', i),
@@ -1077,8 +984,6 @@ export class MonicaCrm implements INodeType {
 						//               task: create
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/notes#create-a-task
-
 						const body = {
 							contact_id: this.getNodeParameter('contactId', i),
 							title: this.getNodeParameter('title', i),
@@ -1096,8 +1001,6 @@ export class MonicaCrm implements INodeType {
 						//               task: delete
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/task#delete-a-task
-
 						const taskId = this.getNodeParameter('taskId', i);
 
 						await monicaCrmApiRequest.call(this, 'DELETE', `/tasks/${taskId}`);
@@ -1107,8 +1010,6 @@ export class MonicaCrm implements INodeType {
 						//                task: get
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/task#get-a-specific-task
-
 						const taskId = this.getNodeParameter('taskId', i);
 
 						responseData = await monicaCrmApiRequest.call(this, 'GET', `/tasks/${taskId}`);
@@ -1117,16 +1018,12 @@ export class MonicaCrm implements INodeType {
 						//               task: getAll
 						// ----------------------------------------
 
-						// https://www.monicahq.com/api/tasks#list-all-the-tasks-of-a-specific-contact
-
 						const endpoint = '/tasks';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               task: update
 						// ----------------------------------------
-
-						// https://www.monicahq.com/api/task#update-a-task
 
 						const taskId = this.getNodeParameter('taskId', i);
 

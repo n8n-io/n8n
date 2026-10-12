@@ -64,6 +64,7 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
@@ -80,9 +81,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
+import {
+	MCP_SETTINGS_VIEW,
+	useMCPStore,
+	type ToggleWorkflowsMcpAccessResponse,
+} from '@n8n/frontend-module-mcp';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -112,7 +115,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -400,10 +402,6 @@ const currentBreadcrumbsProjectName = computed(() => {
 		: project.name;
 });
 
-const currentParentName = computed(
-	() => currentFolder.value?.name ?? currentBreadcrumbsProjectName.value,
-);
-
 const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	const project = currentBreadcrumbsProject.value;
 	if (!project) return [];
@@ -684,6 +682,11 @@ const refreshWorkflows = async () => {
 	]);
 };
 
+const onFolderCreated = async (payload: { projectId: string }) => {
+	if (currentBreadcrumbsProject.value?.id !== payload.projectId) return;
+	await refreshWorkflows();
+};
+
 const onFolderDeleted = async (payload: {
 	folderId: string;
 	workflowCount: number;
@@ -757,6 +760,7 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.on('folder-created', onFolderCreated);
 	promotionEventBus.on('applied', onPromotionApplied);
 });
 
@@ -769,6 +773,7 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.off('folder-created', onFolderCreated);
 });
 
 /**
@@ -1288,6 +1293,19 @@ const onWorkflowUnpublished = async (data: { id: string }) => {
 	workflow.activeVersionId = null;
 	// A stale server-derived status would keep the card indicator lit; clear it too.
 	workflow.publicationStatus = undefined;
+};
+
+const onWorkflowPublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Refresh the item so activeVersionId reflects the newly published version.
+	// Publication status updates separately via the publication-status push.
+	const updated = await workflowsListStore.fetchWorkflow(data.id).catch(() => null);
+	if (!updated) return;
+	workflow.activeVersionId = updated.activeVersionId ?? null;
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -2239,30 +2257,6 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showRegisteredCommunityCTA" #add-button>
-			<N8nTooltip placement="top">
-				<template #content>
-					<span>
-						{{
-							currentParentName
-								? i18n.baseText('folders.add.to.parent.message', {
-										interpolate: { parent: currentParentName },
-									})
-								: i18n.baseText('folders.add.here.message')
-						}}
-					</span>
-				</template>
-				<N8nButton
-					variant="outline"
-					size="medium"
-					iconOnly
-					icon="folder-plus"
-					:aria-label="i18n.baseText('workflows.addFolder')"
-					data-test-id="add-folder-button"
-					@click="createFolderInCurrent"
-				/>
-			</N8nTooltip>
-		</template>
 		<template #callout>
 			<N8nCallout
 				v-if="showAIStarterCollectionCallout"
@@ -2456,6 +2450,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:unpublished="onWorkflowUnpublished"
+					@workflow:published="onWorkflowPublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"

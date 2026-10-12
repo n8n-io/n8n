@@ -102,8 +102,8 @@ describe('AgentRemovedModesRule', () => {
 	});
 
 	describe('getMetadata()', () => {
-		it('should report a critical severity for nodes that stop working', () => {
-			expect(rule.getMetadata().severity).toBe('critical');
+		it('should report an executionsFail impact for nodes that stop working', () => {
+			expect(rule.getMetadata().impact).toBe('executionsFail');
 		});
 	});
 

@@ -1,4 +1,4 @@
-import { BaseError, type BaseErrorOptions } from '../base/base.error';
+import { BaseError, type BaseErrorOptions } from '@n8n/errors';
 import type { Functionality, IDataObject, JsonObject } from '../../interfaces';
 
 interface ExecutionBaseErrorOptions extends BaseErrorOptions {

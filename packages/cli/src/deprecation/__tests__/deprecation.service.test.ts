@@ -85,8 +85,23 @@ describe('DeprecationService', () => {
 		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
 		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
 		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'false', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'FALSE', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', '0', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'true', false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'invalid', false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
+	});
+
+	// `toTest` treats a blank value as unset, so set it here directly.
+	test('should not warn when N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is blank', () => {
+		process.env.N8N_AI_ALLOW_SENDING_PARAMETER_VALUES = '';
+		deprecationService.warn();
+		expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(
+			'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
+		);
 	});
 
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {

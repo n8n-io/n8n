@@ -12,6 +12,10 @@ import {
 	type SerializedCredential,
 } from '../../spec/serialized/credential.schema';
 import {
+	serializedDataTableSchema,
+	type SerializedDataTable,
+} from '../../spec/serialized/data-table.schema';
+import {
 	serializedProjectSchema,
 	type SerializedProject,
 } from '../../spec/serialized/project.schema';
@@ -53,20 +57,27 @@ export interface InventoryVariable {
 	variable: SerializedVariable;
 }
 
+export interface InventoryDataTable {
+	path: string;
+	dataTable: SerializedDataTable;
+}
+
 export interface PackageDirectoryInventory {
 	projects: InventoryProject[];
 	workflows: InventoryWorkflow[];
 	credentials: InventoryCredential[];
 	variables: InventoryVariable[];
+	dataTables: InventoryDataTable[];
 }
 
-type EntityKind = 'projects' | 'workflows' | 'credentials' | 'variables';
+type EntityKind = 'projects' | 'workflows' | 'credentials' | 'variables' | 'dataTables';
 
 const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
 	[PACKAGE_ENTITY_LAYOUT.projects.fileName]: 'projects',
 	[PACKAGE_ENTITY_LAYOUT.workflows.fileName]: 'workflows',
 	[PACKAGE_ENTITY_LAYOUT.credentials.fileName]: 'credentials',
 	[PACKAGE_ENTITY_LAYOUT.variables.fileName]: 'variables',
+	[PACKAGE_ENTITY_LAYOUT.dataTables.fileName]: 'dataTables',
 };
 
 const LABELS: Record<EntityKind, string> = {
@@ -74,6 +85,7 @@ const LABELS: Record<EntityKind, string> = {
 	workflows: 'workflow',
 	credentials: 'credential',
 	variables: 'variable',
+	dataTables: 'data table',
 };
 
 interface EntityFile {
@@ -86,10 +98,10 @@ interface EntityFile {
 }
 
 /**
- * Reads the projects, workflows, credentials and variables of a package from
- * its entity files. The directory layout decides which project a file belongs
- * to; the file content supplies every id and name. `manifest.json` and other
- * files are ignored.
+ * Reads the projects, workflows, credentials, variables and data tables of a
+ * package from its entity files. The directory layout decides which project a
+ * file belongs to; the file content supplies every id and name.
+ * `manifest.json` and other files are ignored.
  */
 @Service()
 export class PackageDirectoryInventoryReader {
@@ -117,6 +129,7 @@ export class PackageDirectoryInventoryReader {
 			workflows: await this.readWorkflows(source, files, projectIdOf),
 			credentials: await this.readCredentials(source, files, projectIdOf),
 			variables: await this.readVariables(source, files, projectIdOf),
+			dataTables: await this.readDataTables(source, files, projectIdOf),
 		};
 	}
 
@@ -210,6 +223,26 @@ export class PackageDirectoryInventoryReader {
 		return variables;
 	}
 
+	private async readDataTables(
+		source: PackageFileSource,
+		files: EntityFile[],
+		projectIdOf: (file: EntityFile) => string | null,
+	): Promise<InventoryDataTable[]> {
+		const dataTables: InventoryDataTable[] = [];
+		const seenIds = new Set<string>();
+
+		for (const file of files.filter((f) => f.kind === 'dataTables')) {
+			if (!isCollectionLocation(file.segments, 'dataTables')) throw unsupportedLocation(file);
+			// Nothing reads the owner, but a project directory still needs its project file.
+			projectIdOf(file);
+			const dataTable = await this.readEntity(source, file, serializedDataTableSchema);
+			assertUnseen(seenIds, dataTable.id, 'data table id');
+			dataTables.push({ path: file.path, dataTable });
+		}
+
+		return dataTables;
+	}
+
 	private async readEntity<TSchema extends z.ZodTypeAny>(
 		source: PackageFileSource,
 		file: EntityFile,
@@ -256,16 +289,13 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 	return segments.length === 3 && segments[0] === PACKAGE_ENTITY_LAYOUT[kind].directory;
 }
 
-/** `workflows/<entry>/workflow.json`, optionally below one or more `folders/<entry>/` levels. */
+/** `workflows/<entry>/workflow.json`, at the root or under a `folders/<a>/<b>/…` chain of bare slugs. */
 function isWorkflowLocation(segments: string[]): boolean {
-	let start = 0;
-	while (
-		segments[start] === PACKAGE_ENTITY_LAYOUT.folders.directory &&
-		segments.length - start > 3
-	) {
-		start += 2;
-	}
-	return isCollectionLocation(segments.slice(start), 'workflows');
+	if (!isCollectionLocation(segments.slice(-3), 'workflows')) return false;
+	const container = segments.slice(0, -3);
+	if (container.length === 0) return true; // root workflow
+	// A folder chain needs a slug after `folders/`.
+	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
 }
 
 function unsupportedLocation(file: EntityFile): UserError {

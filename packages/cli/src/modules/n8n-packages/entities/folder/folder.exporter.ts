@@ -1,17 +1,17 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderFinderService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { FolderSerializer } from './folder.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
 import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
@@ -20,7 +20,7 @@ export interface FolderExportRequest {
 	folderIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
-	workflowVersionPolicy: WorkflowVersionPolicy;
+	versionPolicy: ExportVersionPolicy;
 	includeArchivedWorkflows: boolean;
 	/**
 	 * Directory the folder tree is written under. Empty for a top-level folder
@@ -42,7 +42,7 @@ export interface FolderExportResult {
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
 	workflowEntries: ManifestEntry[];
 	/** What the contained workflows need, gathered at the package top level (credentials today). */
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 }
 
 interface FolderWriteContext {
@@ -216,7 +216,7 @@ export class FolderExporter {
 			writer: request.writer,
 			workflowIds: selected,
 			includeTags: request.includeTags,
-			workflowVersionPolicy: request.workflowVersionPolicy,
+			versionPolicy: request.versionPolicy,
 			basePrefix,
 		});
 	}

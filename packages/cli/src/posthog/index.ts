@@ -6,6 +6,8 @@ import {
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
+	GROUPS_WITH_TRIGGERS_FLAG,
+	GROUPS_WITH_MANY_BOUNDARIES_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 } from '@n8n/api-types';
@@ -56,7 +58,8 @@ export class PostHogClient {
 
 	async init() {
 		const { enabled, posthogConfig } = this.globalConfig.diagnostics;
-		if (!enabled) {
+		// Eval instances must not draw a fresh flag rollout per instance; env overrides still apply.
+		if (!enabled || this.globalConfig.instanceAi.evalInstance) {
 			return;
 		}
 
@@ -85,6 +88,11 @@ export class PostHogClient {
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		// `Telemetry.track` composes `userId` as `<instanceId>#<user_id>` and falls back to the
+		// bare instance id when the properties carry no `user_id`. Capturing that would create one
+		// phantom person profile per instance (#32344), so the event is dropped here. It still
+		// reaches RudderStack, which is why a backend event that forgets `user_id` goes missing
+		// from PostHog alone. `Telemetry.warnAboutMissingUserId` reports that case.
 		if (!payload.userId || payload.userId === this.instanceSettings.instanceId) return;
 
 		const instanceId = payload?.properties?.instance_id;
@@ -105,19 +113,19 @@ export class PostHogClient {
 		properties,
 	}: {
 		instanceId: string;
-		distinctId?: string;
+		distinctId: string;
 		properties: Record<string, string | number> | undefined;
 	}): void {
-		if (!instanceId) return;
+		// PostHog refuses a `$groupidentify` that has no real person behind it
+		if (!instanceId || !distinctId) return;
 
 		this.postHog?.capture({
-			distinctId: distinctId ?? `${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+			distinctId,
 			event: '$groupidentify',
 			properties: {
 				$group_type: POSTHOG_GROUP_TYPE_INSTANCE,
 				$group_key: instanceId,
 				$group_set: properties,
-				...(!distinctId && { $process_person_profile: false }),
 			},
 			groups: {
 				[POSTHOG_GROUP_TYPE_INSTANCE]: instanceId,
@@ -206,7 +214,9 @@ export class PostHogClient {
 		distinctId: string;
 		options: AllFlagsOptions;
 	}): Promise<FeatureFlagData> {
-		if (!this.postHog) return { featureFlags: {}, featureFlagPayloads: {} };
+		if (!this.postHog) {
+			return { featureFlags: {}, featureFlagPayloads: {} };
+		}
 
 		const cached = this.flagsCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
@@ -214,6 +224,7 @@ export class PostHogClient {
 		}
 
 		const evaluatedFlags = await this.postHog.evaluateFlags(distinctId, options);
+
 		const data = this.resolveFeatureFlagData(evaluatedFlags);
 
 		if (Object.keys(data.featureFlags).length > 0) {
@@ -273,6 +284,14 @@ export class PostHogClient {
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
 			overrides[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] =
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT;
+		}
+
+		if (this.globalConfig.workflows.groupsWithTriggersEnabled) {
+			overrides[GROUPS_WITH_TRIGGERS_FLAG] = true;
+		}
+
+		if (this.globalConfig.workflows.groupsWithManyBoundariesEnabled) {
+			overrides[GROUPS_WITH_MANY_BOUNDARIES_FLAG] = true;
 		}
 
 		if (Object.keys(overrides).length === 0) {

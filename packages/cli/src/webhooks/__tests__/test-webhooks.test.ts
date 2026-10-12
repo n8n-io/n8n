@@ -23,7 +23,7 @@ import {
 	TEST_WEBHOOK_TIMEOUT,
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import type {
 	TestWebhookRegistrationsService,

@@ -118,6 +118,10 @@ export class LicenseState {
 		return this.isLicensed('feat:aiGatewayCloudUbb');
 	}
 
+	isAiAssistantCloudUbbEntitlementLicensed() {
+		return this.isLicensed('feat:aiAssistantCloudUbbEntitlement');
+	}
+
 	isAdvancedExecutionFiltersLicensed() {
 		return this.isLicensed('feat:advancedExecutionFilters');
 	}

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/mcp-browser",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,8 +16,8 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src",
     "format:check": "biome ci src",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -38,6 +38,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/jsdom": "catalog:",
@@ -45,6 +46,8 @@
     "@types/ws": "catalog:",
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "tsx": "catalog:",
     "vitest": "catalog:"

@@ -1,7 +1,0 @@
-name: columnId
-in: path
-description: The ID of the column
-required: true
-schema:
-  type: string
-  format: nanoid

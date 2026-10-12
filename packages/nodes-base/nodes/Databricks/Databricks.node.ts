@@ -21,6 +21,7 @@ import {
 	vectorSearchParameters,
 	jobOperations,
 	jobParameters,
+	lakebaseParameters,
 } from './resources';
 
 import { router } from './actions/router';
@@ -72,6 +73,12 @@ export class Databricks implements INodeType {
 							'AI-powered data assistant. <a href="https://docs.databricks.com/genie/index.html" target="_blank">Learn more</a>.',
 					},
 					{
+						name: 'Job',
+						value: 'job',
+						description:
+							'Run and inspect Databricks jobs. <a href="https://docs.databricks.com/jobs/index.html" target="_blank">Learn more</a>.',
+					},
+					{
 						name: 'Model Serving',
 						value: 'modelServing',
 						description:
@@ -106,6 +113,7 @@ export class Databricks implements INodeType {
 			...modelServingParameters,
 			...vectorSearchParameters,
 			...jobParameters,
+			...lakebaseParameters,
 		],
 	};
 

@@ -9,6 +9,7 @@ const mockGetGatewayWallet = vi.fn();
 const mockGetGatewayConfig = vi
 	.fn()
 	.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
+const mockSaveCurrentWorkflow = vi.fn();
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
@@ -16,7 +17,9 @@ vi.mock('@/features/ai/assistant/assistant.api', () => ({
 }));
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
-	useWorkflowSaving: vi.fn(() => ({ saveCurrentWorkflow: vi.fn() })),
+	useWorkflowSaving: vi.fn(() => ({
+		saveCurrentWorkflow: (...args: unknown[]) => mockSaveCurrentWorkflow(...args),
+	})),
 }));
 
 vi.mock('vue-router', () => ({
@@ -106,6 +109,16 @@ describe('useAiGateway', () => {
 			// Both instances read from the same store
 			expect(instance1.balance.value).toBe(3);
 			expect(instance2.balance.value).toBe(3);
+		});
+	});
+
+	describe('saveAfterToggle()', () => {
+		it('should wait for a foreground workflow save', async () => {
+			mockSaveCurrentWorkflow.mockResolvedValue(true);
+
+			await expect(useAiGateway().saveAfterToggle()).resolves.toBe(true);
+
+			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, false);
 		});
 	});
 

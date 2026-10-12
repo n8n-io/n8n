@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useResizeObserver } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { onMounted, ref, watch } from 'vue';
+import { inject, onMounted, ref, watch } from 'vue';
 
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
+import { ReviewDetailScrollContainerKey } from '../constants';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import { resolveActivityComponent } from './activityEntryRegistry';
 
@@ -13,14 +15,18 @@ const i18n = useI18n();
 const store = useReviewActivityStore();
 const { entries, loading, loadingMore, hasMore, error } = storeToRefs(store);
 
-const scrollContainer = ref<HTMLElement | null>(null);
+const scrollContainer = inject(ReviewDetailScrollContainerKey, ref(null));
+const feed = ref<HTMLElement | null>(null);
 const list = ref<HTMLElement | null>(null);
 const sentinel = ref<HTMLElement | null>(null);
+const composer = ref<HTMLElement | null>(null);
 // Held back until the initial scroll position is applied, so the sentinel cannot
 // intersect at scrollTop 0 and pull in the whole feed before the user sees it.
 const initialScrollApplied = ref(false);
 
 let prependAnchor: { element: Element; top: number } | null = null;
+
+const enteringIds = ref<ReadonlySet<string>>(new Set());
 
 function scrollToBottom() {
 	const container = scrollContainer.value;
@@ -79,6 +85,42 @@ watch(
 	{ flush: 'post' },
 );
 
+// Ids, not positions: a refetch can replace the first entries and still add new ones.
+watch(
+	entries,
+	(next, previous) => {
+		if (next.length === 0) {
+			enteringIds.value = new Set();
+			return;
+		}
+		const lastShown = previous?.at(-1);
+		if (!lastShown) return;
+
+		const newer = next.filter((entry) => Number(entry.id) > Number(lastShown.id));
+		// Only replaced on new entries, so a prepend does not cut a running fade.
+		if (newer.length > 0) enteringIds.value = new Set(newer.map((entry) => entry.id));
+	},
+	{ flush: 'post' },
+);
+
+// Keeps the feed at the bottom while the composer grows, unless the viewer scrolled up.
+// The first size counts too: a restored draft grows the input after the initial scroll.
+let composerHeight = 0;
+useResizeObserver(composer, ([entry]) => {
+	const height = entry?.borderBoxSize[0]?.blockSize ?? 0;
+	const growth = height - composerHeight;
+	composerHeight = height;
+
+	feed.value?.style.setProperty('--review-activity--composer-height', `${height}px`);
+
+	const container = scrollContainer.value;
+	if (!container || growth <= 0) return;
+
+	// Was at the bottom before this growth. 1px covers rounding.
+	const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop;
+	if (distanceToBottom <= growth + 1) scrollToBottom();
+});
+
 // `loadMore` is a no-op with no cursor, so a failed first page has to refetch. Shared by both
 // error rows: posting onto a failed feed moves the viewer from the first to the second, which
 // would otherwise hit that dead end and leave the earlier activity unreachable.
@@ -98,7 +140,11 @@ onMounted(() => {
 </script>
 
 <template>
-	<div ref="scrollContainer" :class="$style.feed" data-test-id="workflow-review-activity-feed">
+	<div
+		ref="feed"
+		:class="[$style.feed, { [$style.feedWithComposer]: $slots.composer }]"
+		data-test-id="workflow-review-activity-feed"
+	>
 		<div v-if="$slots.header" :class="$style.header">
 			<slot name="header" />
 		</div>
@@ -156,7 +202,7 @@ onMounted(() => {
 					v-for="entry in entries"
 					:key="entry.id"
 					role="listitem"
-					:class="$style.item"
+					:class="[$style.item, { [$style.itemEntering]: enteringIds.has(entry.id) }]"
 					data-test-id="workflow-review-activity-entry"
 				>
 					<component :is="resolveActivityComponent(entry)" :entry="entry" />
@@ -166,37 +212,18 @@ onMounted(() => {
 				</div>
 			</div>
 		</template>
+		<!-- Outside the loading and error states, so the composer stays mounted through them. -->
+		<div v-if="$slots.composer" ref="composer" :class="$style.composer">
+			<slot name="composer" />
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .feed {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	overflow: auto;
-	padding-block: var(--spacing--5xs) var(--spacing--sm);
-	/* Keeps the cards off the scrollbar that appears here when feed overflows */
-	padding-inline-end: var(--spacing--2xs);
-}
-
-/* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
-	load-older sentinel never leaves the screen and drains every page. */
-@container review-detail (max-width: 44rem) {
-	.feed {
-		max-height: 60vh;
-	}
-}
-
-/* Same inset the list gives its entries, so a card here starts on the avatar column. */
-.header {
-	padding-inline: var(--spacing--sm);
-	padding-bottom: var(--spacing--sm);
-}
-
-.list {
-	/* The rail below spans this gap, so both read it from here. */
+	/* Set here so the list, its rail and the composer share them. */
 	--review-activity--gap: var(--spacing--md);
 	/* Every entry leads with an `xxsmall` avatar (`N8nAvatar/avatarSizes.ts`), and a boxed
 		entry's negative margin and padding cancel out, so all avatars share this column. The
@@ -206,6 +233,18 @@ onMounted(() => {
 
 	display: flex;
 	flex-direction: column;
+	padding-block: var(--spacing--5xs) var(--spacing--sm);
+}
+
+/* Same inset the list gives its entries, so a card here starts on the avatar column. */
+.header {
+	padding-inline: var(--spacing--sm);
+	padding-bottom: var(--spacing--sm);
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
 	gap: var(--review-activity--gap);
 	/* Entries sit inset; a boxed entry cancels this to reach the panel edge. */
 	padding-inline: var(--spacing--sm);
@@ -213,6 +252,19 @@ onMounted(() => {
 
 .item {
 	position: relative;
+}
+
+/* Keeps focused entry links above the composer. Not scroll padding on the feed: that also
+	scrolls the feed for the caret while typing. */
+.list * {
+	scroll-margin-bottom: var(--review-activity--composer-height, 0);
+}
+
+.itemEntering {
+	--animation--fade-in-up--translate: var(--spacing--2xs);
+	--animation--fade-in-up--easing: var(--easing--ease-out-quint);
+
+	@include motion.fade-in-up;
 }
 
 /* Threads the entries into one timeline. Drawn in the gap above each entry rather than
@@ -227,6 +279,23 @@ onMounted(() => {
 	height: calc(var(--review-activity--gap) - 2 * var(--spacing--5xs));
 	left: calc(var(--review-activity--avatar-size) / 2);
 	border-left: var(--border);
+}
+
+/* The composer holds the bottom space, so it sticks flush to the edge. */
+.feedWithComposer {
+	padding-block-end: 0;
+}
+
+/* Sticks to the bottom when the entries overflow. The background hides entries under it. */
+.composer {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
+	flex-shrink: 0;
+	padding-block: var(--review-activity--gap) var(--spacing--sm);
+	/* Room for the input's focus ring, which the scroll container would clip. */
+	padding-inline: var(--focus--border-width);
+	background-color: var(--color--background--light-2);
 }
 
 .errorRow {

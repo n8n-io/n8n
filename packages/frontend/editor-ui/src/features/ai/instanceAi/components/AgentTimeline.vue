@@ -5,13 +5,16 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 	type ArtifactInfo,
+	type TimelineBlock,
 } from '../agentTimeline.utils';
+import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
@@ -31,6 +34,7 @@ const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -156,6 +160,44 @@ const renderBlocks = computed(() =>
 	),
 );
 
+/** The host page already shows its subject, so a card for it is redundant. */
+function visibleArtifacts(artifacts: ArtifactInfo[]): ArtifactInfo[] {
+	return artifacts.filter(
+		(artifact) => !isEmbedSubject(embedSubject?.value, artifact.type, artifact.resourceId),
+	);
+}
+
+/**
+ * Workflows built by this agent's own tool calls, keyed by the thinking block
+ * that built them. Only the embedded panel needs these cards: the full view
+ * opens the built workflow in its preview panel instead.
+ */
+const builtWorkflowsByBlock = computed(() => {
+	const byBlock = new Map<string, ArtifactInfo[]>();
+	if (!embedSubject || props.visibleEntries) return byBlock;
+
+	const seenIds = new Set<string>();
+	for (const block of renderBlocks.value) {
+		if (block.type !== 'thinking') continue;
+		const toolCalls = block.entries.flatMap((entry) =>
+			entry.type === 'tool-call' && toolCallsById.value[entry.toolCallId]
+				? [toolCallsById.value[entry.toolCallId]]
+				: [],
+		);
+		const artifacts = visibleArtifacts(extractBuiltWorkflowArtifacts(toolCalls)).filter(
+			(artifact) => !seenIds.has(artifact.resourceId),
+		);
+		for (const artifact of artifacts) seenIds.add(artifact.resourceId);
+		if (artifacts.length > 0) byBlock.set(block.key, artifacts);
+	}
+	return byBlock;
+});
+
+function blockArtifacts(block: TimelineBlock): ArtifactInfo[] {
+	if (block.type === 'child') return visibleArtifacts(extractArtifacts(block.child));
+	return builtWorkflowsByBlock.value.get(block.key) ?? [];
+}
+
 function getPlanReviewStatus(tc: InstanceAiToolCallState): PlanReviewStatus {
 	const requestId = tc.confirmation?.requestId;
 	const localStatus = requestId ? thread.resolvedConfirmationIds.get(requestId) : undefined;
@@ -255,13 +297,24 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 	<div v-if="renderBlocks.length > 0" :class="$style.timeline">
 		<template v-for="block in renderBlocks" :key="block.key">
 			<!-- Collapsible thinking trace: reasoning + narration + tool calls -->
-			<ThinkingBlock
-				v-if="block.type === 'thinking'"
-				:agent-node="props.agentNode"
-				:entries="block.entries"
-				:active="block.active"
-				:awaiting-input="block.active && thread.isAwaitingConfirmation"
-			/>
+			<template v-if="block.type === 'thinking'">
+				<ThinkingBlock
+					:agent-node="props.agentNode"
+					:entries="block.entries"
+					:active="block.active"
+					:awaiting-input="block.active && thread.isAwaitingConfirmation"
+				/>
+				<ArtifactCard
+					v-for="artifact in blockArtifacts(block)"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="resolveArtifactName(artifact)"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+					:archived="thread.producedArtifacts.get(artifact.resourceId)?.archived"
+					:metadata="formatArtifactMetadata(artifact)"
+				/>
+			</template>
 
 			<!-- User-facing text (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
@@ -321,7 +374,7 @@ function handlePlanDeny(tc: InstanceAiToolCallState) {
 				<!-- Artifact cards for completed subagents (skip when inside scoped view) -->
 				<template v-if="!props.visibleEntries">
 					<ArtifactCard
-						v-for="artifact in extractArtifacts(block.child)"
+						v-for="artifact in blockArtifacts(block)"
 						:key="artifact.resourceId"
 						:type="artifact.type"
 						:name="resolveArtifactName(artifact)"

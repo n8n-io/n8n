@@ -25,6 +25,10 @@ vi.mock('@n8n/instance-ai', () => {
 			...(prior ?? {}),
 			boundTargets: prior?.boundTargets,
 		})),
+		meterEvalUsage: vi.fn(async (fn: () => Promise<unknown>) => ({
+			result: await fn(),
+			usage: [],
+		})),
 	};
 });
 
@@ -40,7 +44,10 @@ import type {
 	AiPreferenceDto,
 	InstanceAiPreferenceCardEvent,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
@@ -55,12 +62,18 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
+import {
+	buildAgentTreeFromEvents,
+	meterEvalUsage,
+	seedAgentBuilderTargetMetadata,
+} from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
+	InstanceAiThreadTabsRequestDto,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
@@ -72,15 +85,12 @@ import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
@@ -93,8 +103,10 @@ import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import type { InstanceAiOnboardingService } from '../onboarding';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
 import type { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
+import type { InstanceAiThreadTabsService } from '../instance-ai-thread-tabs.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -114,6 +126,16 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 	);
 	return route.accessScope;
 }
+
+const MOCK_RESPONDER_USAGE: InstanceAiEvalLlmUsage = {
+	agent: 'eval-mock-responder',
+	model: 'anthropic/claude-sonnet-4-6',
+	calls: 2,
+	uncachedInputTokens: 1200,
+	cacheReadTokens: 0,
+	cacheWriteTokens: 0,
+	outputTokens: 300,
+};
 
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
@@ -141,20 +163,25 @@ describe('InstanceAiController', () => {
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
 
+	const evalExecutionService = mock<EvalExecutionService>();
+	const evalAgentExecutionService = mock<EvalAgentExecutionService>();
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
+	const onboarding = mock<InstanceAiOnboardingService>();
+	const threadTabsService = mock<InstanceAiThreadTabsService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
 		browserSessionService,
 		memoryService,
+		onboarding,
 		pendingAgentService,
 		settingsService,
 		modelCatalogService,
-		mock<EvalExecutionService>(),
-		mock<EvalAgentExecutionService>(),
+		evalExecutionService,
+		evalAgentExecutionService,
 		evalCredentialAllowlists,
 		evalThreadRestore,
 		eventBus,
@@ -170,6 +197,7 @@ describe('InstanceAiController', () => {
 		publisher,
 		preferenceCardService,
 		globalConfig,
+		threadTabsService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -1005,6 +1033,41 @@ describe('InstanceAiController', () => {
 		it('should require instanceAi:eval scope', () => {
 			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
 		});
+
+		it('should return the model usage of the run with its result', async () => {
+			const runResult = { executionId: 'exec-1', success: true } as InstanceAiEvalExecutionResult;
+			evalExecutionService.executeWithLlmMock.mockResolvedValue(runResult);
+			vi.mocked(meterEvalUsage).mockImplementationOnce(async (fn) => ({
+				result: await fn(),
+				usage: [MOCK_RESPONDER_USAGE],
+			}));
+
+			const result = await controller.executeWithLlmMock(req, res, 'wf-1', {});
+
+			expect(result).toEqual({ ...runResult, llmUsage: [MOCK_RESPONDER_USAGE] });
+			expect(evalExecutionService.executeWithLlmMock).toHaveBeenCalledWith('wf-1', req.user, {});
+		});
+	});
+
+	describe('executeAgentWithLlmMock', () => {
+		it('should return the model usage of the run with its result', async () => {
+			const runResult = { runId: 'run-1', success: true } as InstanceAiEvalAgentExecutionResult;
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(runResult);
+			vi.mocked(meterEvalUsage).mockImplementationOnce(async (fn) => ({
+				result: await fn(),
+				usage: [MOCK_RESPONDER_USAGE],
+			}));
+			const payload = { projectId: 'project-1' };
+
+			const result = await controller.executeAgentWithLlmMock(req, res, 'agent-1', payload);
+
+			expect(result).toEqual({ ...runResult, llmUsage: [MOCK_RESPONDER_USAGE] });
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				req.user,
+				payload,
+			);
+		});
 	});
 
 	describe('setThreadCredentialAllowlist', () => {
@@ -1118,6 +1181,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				expect.any(Map),
 				undefined,
 				expect.any(Map),
@@ -1161,6 +1225,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				idMap,
 				undefined,
 				expect.any(Map),
@@ -1180,6 +1245,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				expect.any(Map),
 				new Set(['cred-1', 'cred-2']),
 				expect.any(Map),
@@ -1290,6 +1356,7 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 					[placedWorkflow],
 					'project-1',
+					expect.objectContaining({ id: USER_ID }),
 					expect.any(Map),
 					undefined,
 					folderIdMap,
@@ -1391,6 +1458,20 @@ describe('InstanceAiController', () => {
 				evalThreadRestore.restoreAgents.mockResolvedValue(['agent-seed-1']);
 			});
 
+			it('should hand the pinned credential allowlist to the agent restore', async () => {
+				evalCredentialAllowlists.set(THREAD_ID, ['cred-openai']);
+
+				await controller.restoreEvalThread(req, res, agentPayload);
+
+				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
+					[seedAgent],
+					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
+					expect.any(Map),
+					new Set(['cred-openai']),
+				);
+			});
+
 			it('should recreate the agent and bind the thread to it', async () => {
 				const result = await controller.restoreEvalThread(req, res, agentPayload);
 
@@ -1399,7 +1480,9 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
 					[seedAgent],
 					'project-1',
+					expect.objectContaining({ id: expect.any(String) }),
 					expect.any(Map),
+					undefined,
 				);
 				// Refs and ordering are reconstructed from the seeded history, so the
 				// messages are handed in alongside the agents.
@@ -1606,6 +1689,9 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
 				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(preferenceCardService.edit).not.toHaveBeenCalled();
@@ -1619,6 +1705,9 @@ describe('InstanceAiController', () => {
 					runId: 'run-1',
 					toolCallId: 'tc-1',
 					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
 				}),
 			).rejects.toThrow(NotFoundError);
 			expect(preferenceCardService.edit).not.toHaveBeenCalled();
@@ -1626,7 +1715,14 @@ describe('InstanceAiController', () => {
 
 		it('edit checks thread access, then returns the preference with the published fact', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = { runId: 'run-1', toolCallId: 'tc-1', content: 'Keep replies brief.' };
+			const payload = {
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				content: 'Keep replies brief.',
+				scope: 'user' as const,
+				userId: USER_ID,
+				projectId: null,
+			};
 			const editedEvent: InstanceAiPreferenceCardEvent = {
 				...undoneEvent,
 				payload: { ...undoneEvent.payload, state: 'edited', content: 'Keep replies brief.' },
@@ -1691,6 +1787,55 @@ describe('InstanceAiController', () => {
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
 			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should check the model before a free-text answer consumes the onboarding card', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			await expect(controller.confirm(reqWithBody, res, 'onboarding-card')).rejects.toMatchObject({
+				message: expect.stringContaining('no model configured'),
+			});
+			expect(onboarding.answerCard).not.toHaveBeenCalled();
+		});
+
+		it('should start the first turn with the answers when the onboarding card holds free text', async () => {
+			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', firstMessage: 'answers' });
+			instanceAiService.startRun.mockReturnValue('run-2');
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-2' });
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				reqWithBody.user,
+				'thread-1',
+				'answers',
+			);
+			expect(instanceAiService.resolveConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('should skip the model check and return the follow-up run when the onboarding card holds no free text', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', runId: 'run-3' });
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-3' });
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2107,6 +2252,80 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				expect.objectContaining({ title: 'New Title' }),
 			);
+		});
+	});
+
+	describe('thread tabs', () => {
+		const tabsState: InstanceAiThreadTabsState = {
+			tabs: [{ type: 'workflow', id: 'wf-1', name: 'My Workflow', projectId: 'project-1' }],
+			closedTabs: [{ type: 'data-table', id: 'dt-1' }],
+			activeTab: { type: 'workflow', id: 'wf-1' },
+		};
+
+		// Later tests read the ownership mock without setting it, so leave it as found.
+		afterEach(() => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		});
+
+		it('should require instanceAi:message scope to read and save tabs', () => {
+			expect(scopeOf('getThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('saveThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should return the stored tabs of the user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			threadTabsService.getState.mockResolvedValue(tabsState);
+
+			const result = await controller.getThreadTabs(req, res, THREAD_ID);
+
+			expect(result).toEqual({ state: tabsState });
+			expect(threadTabsService.getState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
+		});
+
+		it('should save the tabs of the user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = new InstanceAiThreadTabsRequestDto(tabsState);
+
+			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ state: tabsState });
+			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, tabsState);
+		});
+
+		it('should save whether the preview is open', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = new InstanceAiThreadTabsRequestDto({ ...tabsState, previewOpen: false });
+
+			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ state: { ...tabsState, previewOpen: false } });
+			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, {
+				...tabsState,
+				previewOpen: false,
+			});
+		});
+
+		it('should reject tabs of a thread that belongs to another user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
+			await expect(
+				controller.saveThreadTabs(
+					req,
+					res,
+					THREAD_ID,
+					new InstanceAiThreadTabsRequestDto(tabsState),
+				),
+			).rejects.toThrow(ForbiddenError);
+			expect(threadTabsService.getState).not.toHaveBeenCalled();
+			expect(threadTabsService.saveState).not.toHaveBeenCalled();
+		});
+
+		it('should reject tabs of a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+			expect(threadTabsService.getState).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2641,6 +2860,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiGatewayService>(),
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
+		mock<InstanceAiOnboardingService>(),
 		mock<InstanceAiPendingAgentService>(),
 		settingsService,
 		mock<InstanceAiModelCatalogService>(),
@@ -2661,6 +2881,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<Publisher>(),
 		mock<InstanceAiPreferenceCardService>(),
 		globalConfig,
+		mock<InstanceAiThreadTabsService>(),
 	);
 
 	beforeEach(() => {

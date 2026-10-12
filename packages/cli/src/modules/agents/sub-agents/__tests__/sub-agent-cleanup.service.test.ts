@@ -6,11 +6,12 @@ import type { AgentRuntimeCacheService } from '../../agent-runtime-cache.service
 import type { Agent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentCleanupService } from '../sub-agent-cleanup.service';
+import { type AgentFixtureOverrides } from '../../__tests__/test-utils/stored-agent-config';
 
 const projectId = 'project-1';
 const childAgentId = 'child-1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: 'parent-1',
 		projectId,

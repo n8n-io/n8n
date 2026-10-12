@@ -39,6 +39,12 @@ export type DisplayGroup =
 			/** Interactive cards belonging to messages folded into this group. */
 			interactives: InteractivePayload[];
 			/**
+			 * Budget cards from every folded message, deduped by code. A stop
+			 * lands on the current message, which can be tool-only; without this
+			 * the card would fold away while Send stays blocked.
+			 */
+			budgetNotices: NonNullable<AgentsChatMessage['budgetNotices']>;
+			/**
 			 * Trailing assistant message in the turn that carries text content.
 			 * Folding it into the same group keeps a single bubble per turn
 			 * (thinking → tools → interactives → final text).
@@ -166,6 +172,18 @@ function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
 	return merged;
 }
 
+function appendBudgetNotices(
+	existing: NonNullable<AgentsChatMessage['budgetNotices']>,
+	next: AgentsChatMessage['budgetNotices'],
+): NonNullable<AgentsChatMessage['budgetNotices']> {
+	if (!next?.length) return existing;
+	const merged = [...existing];
+	for (const notice of next) {
+		if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+	}
+	return merged;
+}
+
 function appendInteractivePayloads(
 	existing: InteractivePayload[],
 	next: InteractivePayload[],
@@ -213,6 +231,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				last.executionId ??= message.executionId;
 				continue;
@@ -225,6 +244,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				awaitingInput: message.status === 'awaitingUser',
 				toolCalls: [...(message.toolCalls ?? [])],
 				interactives: getMessageInteractives(message),
+				budgetNotices: appendBudgetNotices([], message.budgetNotices),
 				...(message.executionId ? { executionId: message.executionId } : {}),
 			});
 			continue;
@@ -244,6 +264,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.budgetNotices = appendBudgetNotices(last.budgetNotices, message.budgetNotices);
 				last.awaitingInput = last.interactives.some((payload) => payload.resolvedAt === undefined);
 				continue;
 			}

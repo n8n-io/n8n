@@ -1,7 +1,7 @@
 import type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeRecommendation,
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeVersion,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
@@ -26,7 +26,8 @@ export interface BreakingChangeRuleMetadata {
 	title: string;
 	description: string;
 	category: BreakingChangeCategory;
-	severity: BreakingChangeRuleSeverity;
+	/** What happens if the user does not fix this breaking change. */
+	impact: BreakingChangeRuleImpact;
 	documentationUrl?: string;
 }
 
@@ -89,3 +90,14 @@ export type IBreakingChangeRule =
 	| IBreakingChangeInstanceRule
 	| IBreakingChangeWorkflowRule
 	| IBreakingChangeBatchWorkflowRule;
+
+/** The rule kinds that produce per-workflow findings. */
+export type WorkflowLevelRule = IBreakingChangeWorkflowRule | IBreakingChangeBatchWorkflowRule;
+
+export function isWorkflowLevelRule(rule: IBreakingChangeRule): rule is WorkflowLevelRule {
+	return 'detectWorkflow' in rule || 'collectWorkflowData' in rule;
+}
+
+export function isInstanceRule(rule: IBreakingChangeRule): rule is IBreakingChangeInstanceRule {
+	return 'detect' in rule;
+}

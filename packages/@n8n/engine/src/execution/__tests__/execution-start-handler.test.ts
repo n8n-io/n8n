@@ -27,7 +27,10 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		finishExecution: vi.fn().mockResolvedValue(true),
+		finishExecution: vi.fn().mockResolvedValue(null),
+		cancelExecution: vi.fn().mockResolvedValue(null),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};
 }
@@ -48,6 +51,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
+		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
@@ -64,10 +68,12 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
-		graph,
+		graph: { ...graph, seeded: [] },
 		workflow: {},
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
+		responseExpectation: { kind: 'none' },
+		finishedAt: null,
 		...overrides,
 	};
 }

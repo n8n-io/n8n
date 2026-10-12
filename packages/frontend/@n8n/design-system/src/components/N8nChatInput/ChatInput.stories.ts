@@ -558,7 +558,7 @@ const ExternalDropdownTemplate: StoryFn = (args) => ({
 							@select="handleSelect"
 						>
 							<template #trigger>
-								<N8nTooltip content="Open context menu" placement="top">
+								<N8nTooltip as-child content="Open context menu" placement="top">
 									<N8nIconButton
 										icon="at-sign"
 										title="Open context menu"

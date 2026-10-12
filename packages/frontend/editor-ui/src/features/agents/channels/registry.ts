@@ -1,4 +1,4 @@
-import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentIntegrationDisconnectWarning } from '@n8n/api-types';
 import { h, readonly, ref } from 'vue';
 
 import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
@@ -6,11 +6,14 @@ import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.v
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
+import AgentChannelN8nChatView from './n8nChat/AgentChannelN8nChatView.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKindSelector.vue';
 import AgentChannelSlackSetupView from './slack/AgentChannelSlackSetupView.vue';
 import { isSlackChannelRuntime, useSlackChannelRuntime } from './slack/useSlackChannelRuntime';
+import AgentChannelTeamsEditView from './teams/AgentChannelTeamsEditView.vue';
+import AgentChannelTeamsSetup from './teams/AgentChannelTeamsSetup.vue';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
 import type {
@@ -18,6 +21,8 @@ import type {
 	AgentChannelRuntime,
 	AgentChannelRuntimeContext,
 } from './types';
+import AgentChannelWhatsAppEditView from './whatsapp/AgentChannelWhatsAppEditView.vue';
+import AgentChannelWhatsAppSetup from './whatsapp/AgentChannelWhatsAppSetup.vue';
 
 function createDefaultRuntime(): AgentChannelRuntime {
 	const loading = ref(false);
@@ -105,6 +110,25 @@ const platforms = {
 		setupComponent: AgentChannelDiscordSetup,
 		editComponent: AgentChannelDiscordEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	whatsapp: {
+		type: 'whatsapp',
+		setupComponent: AgentChannelWhatsAppSetup,
+		editComponent: AgentChannelWhatsAppEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		getConnectedDescription: ({ text }) => text('agents.builder.addTrigger.connectedText.whatsapp'),
+	},
+	teams: {
+		type: 'teams',
+		setupComponent: AgentChannelTeamsSetup,
+		editComponent: AgentChannelTeamsEditView,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	[N8N_CHAT_INTEGRATION_TYPE]: {
+		type: N8N_CHAT_INTEGRATION_TYPE,
+		setupComponent: AgentChannelN8nChatView,
+		editComponent: AgentChannelN8nChatView,
+		getConnectAction: ({ text }) => ({ label: text('agents.channels.n8nChat.makeAvailable') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

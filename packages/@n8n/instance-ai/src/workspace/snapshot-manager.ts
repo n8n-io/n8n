@@ -708,7 +708,7 @@ export class SnapshotManager {
 		const matching: DaytonaSnapshot[] = [];
 		let page = 1;
 		for (let fetched = 0; fetched < MAX_SNAPSHOT_LIST_PAGES; fetched++) {
-			const result = await daytona.snapshot.list(page, SNAPSHOT_LIST_PAGE_SIZE);
+			const result = await daytona.snapshot.list({ page, limit: SNAPSHOT_LIST_PAGE_SIZE });
 			matching.push(...result.items.filter((item) => item.name.startsWith(SNAPSHOT_NAME_PREFIX)));
 			if (result.items.length === 0 || result.page >= result.totalPages) break;
 			page = result.page + 1;

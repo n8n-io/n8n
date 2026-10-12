@@ -3,6 +3,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { CodeExecutionMode } from 'n8n-workflow';
 import { toValue, type MaybeRefOrGetter } from 'vue';
 import { escape } from '../utils';
+import { matchBeforeCursor } from './utils';
 
 export function useItemIndexCompletions(mode: MaybeRefOrGetter<CodeExecutionMode>) {
 	const i18n = useI18n();
@@ -16,9 +17,8 @@ export function useItemIndexCompletions(mode: MaybeRefOrGetter<CodeExecutionMode
 	): CompletionResult | null => {
 		const pattern = new RegExp(`${escape(matcher)}\..*`);
 
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		const options: Completion[] = [];
 
@@ -72,9 +72,8 @@ export function useItemIndexCompletions(mode: MaybeRefOrGetter<CodeExecutionMode
 				? /\$\((?<quotedNodeName>['"][\S\s]+['"])\)\..*/ // $('nodeName').
 				: new RegExp(`${matcher}\..*`);
 
-		const preCursor = context.matchBefore(pattern);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, pattern);
+		if (!preCursor) return null;
 
 		const match = preCursor.text.match(pattern);
 

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
+import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
 	AgentJsonVectorStoreConfig,
@@ -13,8 +14,10 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
+import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
@@ -42,7 +45,7 @@ const props = defineProps<{
 	agentFilesUploading: boolean;
 	knowledgeBaseEnabled: boolean;
 	deletingAgentFileId?: string | null;
-	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
+	appliedSkills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
 	/** `agent:execute`, which a project viewer holds without holding update. */
@@ -53,10 +56,15 @@ const props = defineProps<{
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 	preventScroll?: boolean;
+	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	/** n8n Chat's saved description, forwarded to the channel modal. */
+	savedDescription?: string;
+	/** Persists n8n Chat's description, forwarded to the channel modal. */
+	saveDescription?: (description: string) => Promise<void>;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -67,15 +75,28 @@ const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	/** A budget settings modal saved — the view clears matching budget stops once the save persists. */
+	'update:budget-config': [updates: Partial<AgentJsonConfig>];
+	'draft:config': [];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'toggle-skill': [payload: { id: string; enabled: boolean }];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
 	'add-vector-store': [];
@@ -90,14 +111,47 @@ const emit = defineEmits<{
 	'agent-changed': [];
 	'generate-eval-cases': [];
 	'open-preview': [];
+	'publish-agent': [];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
+
+const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
+const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
+
+function onSetupTaskAction(task: SetupTask) {
+	if (task.id === 'publish-agent') {
+		emit('publish-agent');
+		return;
+	}
+
+	if (task.action.target.kind === 'tool') {
+		emit('add-tool', 'tools');
+		return;
+	}
+
+	if (task.action.target.kind === 'channel') {
+		agentTriggersSection.value?.openChannelModal();
+		return;
+	}
+
+	if (task.action.path === 'instructions') {
+		agentInfoPanel.value?.focusInstructions();
+		return;
+	}
+
+	if (task.action.path === 'model') {
+		agentInfoPanel.value?.focusModel();
+	}
+}
+
+defineExpose({ onSetupTaskAction });
 </script>
 
 <template>
 	<section
-		:class="$style.editorColumn"
+		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -124,10 +178,12 @@ const i18n = useI18n();
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
 					<AgentInfoPanel
+						ref="agentInfoPanel"
 						:config="localConfig"
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						@update:config="(changes, meta) => emit('update:config', changes, meta)"
+						@draft:config="emit('draft:config')"
 					/>
 
 					<AgentPanel
@@ -136,6 +192,7 @@ const i18n = useI18n();
 						data-testid="agent-skills-panel"
 					>
 						<AgentSkillsSection
+							supports-activation
 							:skills="appliedSkills"
 							:disabled="childrenDisabled"
 							:show-label="false"
@@ -143,6 +200,7 @@ const i18n = useI18n();
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
 							@remove-skill="emit('remove-skill', $event)"
+							@toggle-skill="emit('toggle-skill', $event)"
 						/>
 					</AgentPanel>
 
@@ -160,6 +218,7 @@ const i18n = useI18n();
 							/>
 						</template>
 						<AgentTriggersSection
+							ref="agentTriggersSection"
 							:key="`${projectId}:${agentId}`"
 							:connected-triggers="connectedTriggers"
 							:disabled="childrenDisabled"
@@ -171,7 +230,10 @@ const i18n = useI18n();
 							:simple-channel-setup="artifactMode"
 							:agent-unsaved="agentUnsaved"
 							:ensure-agent-persisted="ensureAgentPersisted"
+							:saved-description="savedDescription"
+							:save-description="saveDescription"
 							:task-refs="localConfig?.tasks ?? []"
+							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
@@ -187,6 +249,7 @@ const i18n = useI18n();
 						:description="i18n.baseText('agents.builder.capabilities.description')"
 					>
 						<AgentCapabilitiesSection
+							supports-activation
 							:config="localConfig"
 							:tools="localConfig?.tools ?? []"
 							:custom-tools="agent?.tools ?? {}"
@@ -291,6 +354,13 @@ const i18n = useI18n();
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
+						<AgentBudgetPanel
+							:config="localConfig"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							@update:config="emit('update:budget-config', $event)"
+						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
@@ -373,12 +443,18 @@ const i18n = useI18n();
 	width: 100%;
 }
 
+.embeddedAiBuilding {
+	--agent-panel-header-opacity: 0.5;
+	--agent-row-label-opacity: 0.5;
+}
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;
 	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
-	min-width: var(--agent-builder-editor-min-width, 35rem);
+	min-width: 0;
+	container: agent-editor / inline-size;
 }
 
 .panelArea {
@@ -393,6 +469,14 @@ const i18n = useI18n();
 	overflow: auto;
 	scrollbar-gutter: stable;
 	@include scrollbar-mixins.hoverable-scroll-bar;
+}
+
+// A container query does not resolve a custom property.
+// 40rem is two 16rem steps plus one 8rem step.
+@container agent-editor (max-width: 40rem) {
+	.panelArea {
+		--agent-builder-content-padding-inline: var(--spacing--sm);
+	}
 }
 
 .preventScroll {
@@ -463,5 +547,13 @@ const i18n = useI18n();
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
 	}
+}
+
+.setupTasks {
+	padding-inline: var(--agent-builder-content-padding-inline);
+	padding-block-end: var(--spacing--lg);
+	max-width: var(--agent-builder-content-max-width);
+	margin: 0 auto;
+	width: 100%;
 }
 </style>

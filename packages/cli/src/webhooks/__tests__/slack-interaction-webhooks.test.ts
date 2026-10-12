@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
@@ -5,7 +6,6 @@ import { buildHitlCallbackReference, isSlackInteractionRequest } from 'n8n-core'
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';

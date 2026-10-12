@@ -7,6 +7,7 @@ export const AgentModalTestStub = defineComponent({
 		open: { type: Boolean, default: true },
 		title: { type: String, default: '' },
 		editableTitle: { type: Boolean, default: false },
+		titleError: { type: String, default: '' },
 		showBack: { type: Boolean, default: false },
 		showFooter: { type: Boolean, default: undefined },
 		showCancel: { type: Boolean, default: true },
@@ -43,6 +44,7 @@ export const AgentModalTestStub = defineComponent({
 					@input="$emit('update:title', $event.target.value)"
 				/>
 				<h2 v-else>{{ title }}</h2>
+				<span v-if="titleError" data-testid="agent-modal-title-error">{{ titleError }}</span>
 				<slot name="headerActions" />
 				<button
 					data-testid="dialog-close-button"

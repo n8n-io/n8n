@@ -1,3 +1,4 @@
+import { parseNodesApiLevel } from '@n8n/utils/nodes-api-level';
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
@@ -34,9 +35,9 @@ export const N8nObjectValidationRule = createRule<[], MessageIds>({
 			wrongLocationApiVersion:
 				'"n8nNodesApiVersion" must be inside the "n8n" section, not at the root level of package.json.',
 			missingNodesApiVersion:
-				'The "n8n" object must declare "n8nNodesApiVersion" (a positive integer).',
+				'The "n8n" object must declare "n8nNodesApiVersion" (a positive integer, or a "<major>" or "<major>.<minor>" string).',
 			invalidNodesApiVersion:
-				'"n8n.n8nNodesApiVersion" must be a positive integer, got {{ value }}.',
+				'"n8n.n8nNodesApiVersion" must be a positive integer, or a "<major>" or "<major>.<minor>" string, got {{ value }}.',
 			missingN8nNodes: 'The "n8n" object must declare "nodes" as an array of "dist/" paths.',
 			n8nNodesNotArray: '"n8n.nodes" must be an array of "dist/" paths.',
 			emptyN8nNodes: '"n8n.nodes" must contain at least one path.',
@@ -108,7 +109,7 @@ function validateApiVersion(context: Context, n8nObject: TSESTree.ObjectExpressi
 	}
 
 	const valueNode = apiVersionProp.value;
-	if (valueNode.type !== AST_NODE_TYPES.Literal || !isPositiveInteger(valueNode.value)) {
+	if (valueNode.type !== AST_NODE_TYPES.Literal || parseNodesApiLevel(valueNode.value) === null) {
 		context.report({
 			node: apiVersionProp,
 			messageId: 'invalidNodesApiVersion',
@@ -193,8 +194,4 @@ function validatePathArray(
 			});
 		}
 	}
-}
-
-function isPositiveInteger(value: unknown): boolean {
-	return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }

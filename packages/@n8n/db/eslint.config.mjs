@@ -21,11 +21,15 @@ export default defineConfig(
 				'error',
 				{ acknowledged: acknowledgedProjectOwnedEntities },
 			],
-
-			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/no-restricted-types': 'warn',
-			'no-useless-escape': 'warn',
 		},
+	},
+	{
+		files: ['src/migrations/sqlite/1681134145996-AddUserActivatedProperty.ts'],
+		rules: { '@typescript-eslint/no-base-to-string': 'warn' },
+	},
+	{
+		files: ['src/migrations/sqlite/1646992772331-CreateUserManagement.ts'],
+		rules: { 'no-useless-escape': 'warn' },
 	},
 	{
 		files: ['**/*.test.ts', '**/__tests__/**/*.ts'],

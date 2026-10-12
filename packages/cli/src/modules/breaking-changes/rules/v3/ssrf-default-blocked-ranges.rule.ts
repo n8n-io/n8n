@@ -22,7 +22,7 @@ export class SsrfDefaultBlockedRangesRule implements IBreakingChangeInstanceRule
 			description:
 				'The built-in blocked IP ranges expand to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. Requests to hosts in these ranges start failing on instances with SSRF protection enabled.',
 			category: BreakingChangeCategory.environment,
-			severity: 'medium',
+			impact: 'executionsFail',
 			documentationUrl:
 				'https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/security',
 		};

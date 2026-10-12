@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * A response a worker cannot deliver back to the main instance because of its size.

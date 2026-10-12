@@ -288,11 +288,34 @@ export class ProjectRepository extends BaseRepository<Project> {
 		}
 	}
 
+	async deleteByIds(ids: string[]): Promise<void> {
+		if (ids.length === 0) return;
+
+		await this.delete({ id: In(ids) });
+	}
+
 	async getProjectCounts() {
 		return {
 			personal: await this.count({ where: { type: 'personal' } }),
 			team: await this.count({ where: { type: 'team' } }),
 		};
+	}
+
+	/**
+	 * Email of the user who created the project.
+	 * Returns null when the project or the creator is gone, or the creator has no email.
+	 */
+	async findCreatorContact(
+		projectId: string,
+	): Promise<{ email: string; firstName: string | null } | null> {
+		const row = await this.createQueryBuilder('project')
+			.innerJoin('project.creator', 'creator')
+			.select('creator.email', 'email')
+			.addSelect('creator.firstName', 'firstName')
+			.where('project.id = :projectId', { projectId })
+			.getRawOne<{ email: string | null; firstName: string | null }>();
+		if (!row?.email) return null;
+		return { email: row.email, firstName: row.firstName ?? null };
 	}
 }
 

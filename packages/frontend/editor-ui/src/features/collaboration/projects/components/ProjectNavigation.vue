@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -7,7 +8,6 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { N8nIcon, N8nMenuItem, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -26,6 +26,20 @@ import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/use
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import {
+	AGENT_N8N_CHAT_VIEW,
+	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
+} from '@/features/agents/constants';
+import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
+import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
+import { useRecentChats } from '@/features/agents/n8nChatPage/useRecentChats';
+import {
+	chatItemRoute,
+	chatItemTitle,
+	type RecentChatItem,
+} from '@/features/agents/n8nChatPage/mergeRecentChats';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -48,6 +62,9 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 const instanceAiStore = useInstanceAiStore();
+const agentThreadsStore = useAgentN8nChatThreadsStore();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const agentTelemetry = useAgentTelemetry();
 
 const {
 	favoriteGroups,
@@ -79,7 +96,7 @@ const instanceAiChatsCollapsed = ref(
 	localStorage.getItem(INSTANCE_AI_CHATS_COLLAPSED_KEY) === 'true',
 );
 
-// The recent chats read the store list; fetch it once the AI Assistant entry is shown.
+// Split so a flag turning on later only fetches agent threads, not the Instance AI list too.
 watch(
 	isInstanceAiNavVisible,
 	(visible) => {
@@ -87,6 +104,22 @@ watch(
 	},
 	{ immediate: true },
 );
+watch(
+	[isInstanceAiNavVisible, isAgentsN8nChatFlag],
+	([visible, flagOn]) => {
+		if (visible && flagOn) void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+	},
+	{ immediate: true },
+);
+
+// Another tab can start a chat; refresh the list when the user comes back to this one.
+const { onDocumentVisible } = useDocumentVisibility();
+onDocumentVisible(() => {
+	if (!isInstanceAiNavVisible.value) return;
+	void instanceAiStore.loadThreads();
+	if (isAgentsN8nChatFlag.value)
+		void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+});
 
 watch(favoritesCollapsed, (val) =>
 	localStorage.setItem(FAVORITES_COLLAPSED_KEY.value, String(val)),
@@ -142,34 +175,42 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const instanceAi = computed<IMenuItem>(() => ({
 	id: 'instance-ai',
-	icon: 'sparkles',
-	label: locale.baseText('projects.menu.instanceAi'),
+	icon: isAgentsN8nChatFlag.value ? 'message-square-plus' : 'sparkles',
+	label: isAgentsN8nChatFlag.value
+		? locale.baseText('instanceAi.thread.new')
+		: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
 	preview: true,
 }));
 
+function onNewChatClick(): void {
+	agentTelemetry.trackClickedSidebarItem({ item: 'new_chat' });
+}
+
 const isInstanceAiThreadView = computed(() => route.name === INSTANCE_AI_THREAD_VIEW);
-const recentInstanceAiThreads = computed(() => {
-	const recent = instanceAiStore.threads.slice(0, 5);
-	// Keep the open chat in the list when it is older than the five most recent
-	// ones, e.g. opened from the history page or by URL.
-	const openThreadId = isInstanceAiThreadView.value ? route.params.threadId : undefined;
-	if (typeof openThreadId !== 'string' || recent.some((t) => t.id === openThreadId)) return recent;
-	const openThread = instanceAiStore.threads.find((t) => t.id === openThreadId);
-	return openThread ? [...recent.slice(0, 4), openThread] : recent;
-});
+// Only an agent THREAD page forces "New chat" inactive, not the agent-only "new chat" URL.
+const isAgentN8nChatThreadView = computed(
+	() => route.name === AGENT_N8N_CHAT_VIEW && typeof route.params.agentThreadId === 'string',
+);
+
+const { recentChats } = useRecentChats();
 const sidebarActiveTabId = computed(() =>
 	isInstanceAiThreadView.value ? undefined : activeTabId.value,
 );
 
-const getInstanceAiThreadMenuItem = (thread: InstanceAiThreadSummary): IMenuItem => ({
-	id: `instance-ai-thread-${thread.id}`,
+const getChatMenuItem = (item: RecentChatItem): IMenuItem => ({
+	id:
+		item.kind === 'assistant'
+			? `instance-ai-thread-${item.thread.id}`
+			: `agent-n8n-chat-thread-${item.thread.id}`,
 	icon: 'message-circle',
-	label: thread.title,
-	route: {
-		to: { name: INSTANCE_AI_THREAD_VIEW, params: { threadId: thread.id } },
-	},
+	label: chatItemTitle(item, locale),
+	route: { to: chatItemRoute(item) },
 });
+
+function onChatItemClick(item: RecentChatItem): void {
+	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
+}
 
 const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
 
@@ -213,9 +254,14 @@ onBeforeUnmount(() => {
 				v-if="isInstanceAiNavVisible"
 				:item="instanceAi"
 				:compact="props.collapsed"
-				:active="activeTabId === 'instance-ai' && !isInstanceAiThreadView"
-				:class="{ [$style.instanceAiParentInactive]: isInstanceAiThreadView }"
+				:active="
+					activeTabId === 'instance-ai' && !isInstanceAiThreadView && !isAgentN8nChatThreadView
+				"
+				:class="{
+					[$style.instanceAiParentInactive]: isInstanceAiThreadView || isAgentN8nChatThreadView,
+				}"
 				data-test-id="project-instance-ai-menu-item"
+				@click="onNewChatClick"
 			/>
 			<N8nMenuItem
 				:item="home"
@@ -307,7 +353,7 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<div
-			v-if="isInstanceAiNavVisible && !props.collapsed && recentInstanceAiThreads.length > 0"
+			v-if="isInstanceAiNavVisible && !props.collapsed && recentChats.length > 0"
 			:class="$style.instanceAiSidebar"
 			data-test-id="instance-ai-sidebar-chats"
 		>
@@ -334,11 +380,16 @@ onBeforeUnmount(() => {
 			<template v-if="!instanceAiChatsCollapsed">
 				<div :class="$style.instanceAiChatItems">
 					<N8nMenuItem
-						v-for="thread in recentInstanceAiThreads"
-						:key="thread.id"
-						:item="getInstanceAiThreadMenuItem(thread)"
+						v-for="item in recentChats"
+						:key="item.thread.id"
+						:item="getChatMenuItem(item)"
 						scroll-label-on-overflow
-					/>
+						@click="onChatItemClick(item)"
+					>
+						<template v-if="isAgentsN8nChatFlag" #icon>
+							<RecentChatIcon :item="item" />
+						</template>
+					</N8nMenuItem>
 				</div>
 			</template>
 		</div>

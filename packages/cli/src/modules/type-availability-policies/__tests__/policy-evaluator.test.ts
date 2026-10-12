@@ -253,6 +253,118 @@ describe('evaluateType', () => {
 	});
 });
 
+describe('extends selector', () => {
+	const SHEETS: PolicedType = {
+		name: 'googleSheetsOAuth2Api',
+		baseName: 'googleSheetsOAuth2Api',
+		ancestors: ['googleOAuth2Api', 'oAuth2Api'],
+	};
+	const GENERIC: PolicedType = { name: 'oAuth2Api', baseName: 'oAuth2Api', ancestors: [] };
+	const denyOAuth2Family: PolicyRule = {
+		id: 'deny-oauth2-family',
+		action: 'deny',
+		selector: { kind: 'extends', value: 'oAuth2Api' },
+	};
+	const allowSheets: PolicyRule = {
+		id: 'allow-sheets',
+		action: 'allow',
+		selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+	};
+
+	it('matches a type built on the named base, through every step of the chain', () => {
+		const attachments = [attachment({ rules: [denyOAuth2Family] })];
+
+		expect(evaluateType(attachments, 'allow', SHEETS)).toEqual({
+			action: 'deny',
+			matchedRuleId: 'deny-oauth2-family',
+		});
+	});
+
+	it('matches the named base itself', () => {
+		const attachments = [attachment({ rules: [denyOAuth2Family] })];
+
+		expect(evaluateType(attachments, 'allow', GENERIC).action).toBe('deny');
+	});
+
+	it('does not match a type outside the family', () => {
+		const attachments = [attachment({ rules: [denyOAuth2Family] })];
+
+		expect(evaluateType(attachments, 'allow', type('slackApi'))).toEqual({
+			action: 'allow',
+			matchedRuleId: null,
+		});
+	});
+
+	it('leaves a name rule on the base exact, so derived types stay allowed', () => {
+		const attachments = [
+			attachment({
+				rules: [
+					{ id: 'deny-generic', action: 'deny', selector: { kind: 'name', value: 'oAuth2Api' } },
+				],
+			}),
+		];
+
+		expect(evaluateType(attachments, 'allow', SHEETS).action).toBe('allow');
+		expect(evaluateType(attachments, 'allow', GENERIC).action).toBe('deny');
+	});
+
+	it('lets rule order decide between a derived-type allow and a family deny', () => {
+		const allowFirst = [attachment({ rules: [allowSheets, denyOAuth2Family] })];
+		const denyFirst = [attachment({ rules: [denyOAuth2Family, allowSheets] })];
+
+		expect(evaluateType(allowFirst, 'allow', SHEETS)).toEqual({
+			action: 'allow',
+			matchedRuleId: 'allow-sheets',
+		});
+		expect(evaluateType(denyFirst, 'allow', SHEETS)).toEqual({
+			action: 'deny',
+			matchedRuleId: 'deny-oauth2-family',
+		});
+	});
+
+	it('keeps an instance family deny over a project allow of the derived type', () => {
+		const verdict = evaluateComposedType(
+			scopePolicy({ attachments: [attachment({ rules: [denyOAuth2Family] })] }),
+			scopePolicy({ attachments: [attachment({ rules: [allowSheets] })] }),
+			SHEETS,
+		);
+
+		expect(verdict).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: 'deny-oauth2-family',
+			optInAvailable: false,
+		});
+	});
+
+	it('satisfies an instance delegate on a derived type with a project family allow', () => {
+		const verdict = evaluateComposedType(
+			scopePolicy({ defaultAction: 'delegate' }),
+			scopePolicy({
+				attachments: [
+					attachment({
+						rules: [
+							{
+								id: 'allow-family',
+								action: 'allow',
+								selector: { kind: 'extends', value: 'oAuth2Api' },
+							},
+						],
+					}),
+				],
+			}),
+			SHEETS,
+		);
+
+		expect(verdict).toEqual({
+			action: 'allow',
+			scope: 'project',
+			matchedRuleId: 'allow-family',
+			optInAvailable: false,
+		});
+	});
+});
+
 describe('evaluateComposedType', () => {
 	const TYPE = 'n8n-nodes-base.slack';
 	const allowRule = (id: string) =>

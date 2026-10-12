@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
@@ -11,7 +12,6 @@ import type {
 import type { INode } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { PostHogClient } from '@/posthog';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
@@ -412,6 +412,37 @@ describe('ActivityEventRelay', () => {
 			expect(activityEventRepository.record).toHaveBeenCalledWith(
 				expect.objectContaining({ data: { versionName: 'v'.repeat(64) } }),
 			);
+		});
+
+		it.each([
+			{ label: 'null', name: null },
+			{ label: 'empty', name: '' },
+			{ label: 'long', name: 'v'.repeat(2_000) },
+		])('formats $label version names the same when publishing and updating', async ({ name }) => {
+			relayWith({ flagOverride: true });
+
+			eventService.emit('workflow-activated', {
+				user,
+				workflowId: 'workflow1',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow1',
+					name: 'Lead enrichment',
+					activeVersion: mock<WorkflowHistory>({ name }),
+				}),
+				publicApi: false,
+			});
+			eventService.emit('workflow-version-updated', {
+				user,
+				workflowId: 'workflow1',
+				workflowName: 'Lead enrichment',
+				versionId: 'version1',
+				versionName: name,
+			});
+			await flushPromises();
+
+			expect(activityEventRepository.record).toHaveBeenCalledTimes(2);
+			const [[published], [updated]] = activityEventRepository.record.mock.calls;
+			expect(updated.data).toEqual({ versionId: 'version1', ...published.data });
 		});
 
 		it('records no version name when unpublishing, which clears the relation first', async () => {

@@ -129,9 +129,9 @@ creation because it is instance-specific and too large for the Daytona image
 request.
 
 When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` is enabled for local development,
-Instance AI packs and installs the local `@n8n/utils`, `n8n-workflow`, and
-`@n8n/workflow-sdk` packages. Build those packages before starting a new
-thread.
+Instance AI packs and installs the local `@n8n/utils`, `@n8n/errors`,
+`n8n-workflow`, and `@n8n/workflow-sdk` packages. Build those packages before
+starting a new thread.
 
 ## Workflow Build Path
 

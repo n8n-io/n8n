@@ -1,3 +1,5 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
@@ -67,7 +69,7 @@ export const applyPackageCountsSchema = z.object({
 		}),
 	}),
 	credentials: z.object({ matched: count(), stubbed: count() }),
-	dataTables: z.object({ matched: count(), created: count() }),
+	dataTables: z.object({ matched: count(), created: count(), updated: count() }),
 	variables: z.object({
 		matched: count(),
 		created: count(),
@@ -98,9 +100,48 @@ export class ApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const confirmDestructiveChangesSchema = z
+	.boolean()
+	.optional()
+	.openapi({
+		description:
+			'Also applies destructive data table changes, which a `destructive-change` conflict reports: ' +
+			'removed, renamed, or retyped columns. The values in those columns are removed. ' +
+			'Rows and other columns are kept. The confirmation covers every such change when Continue runs, ' +
+			'including changes that are not in the reviewed result.',
+	});
+
 /** Continue must name the source that the paused Apply reported. */
 export class ContinueApplyPackageDto extends Z.class(
-	{ expectedSource: expectedSourceSchema },
+	{
+		expectedSource: expectedSourceSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+	},
+	{ strict: true },
+) {}
+
+/** The selection is a set, so a repeated workflow id is a malformed request. */
+const selectedWorkflowIdsSchema = z
+	.array(n8nIdSchema)
+	.min(1)
+	.refine((ids) => new Set(ids).size === ids.length, {
+		message: 'workflowIds contains duplicates',
+	});
+
+export class ApplySelectionDto extends Z.class(
+	{
+		workflowIds: selectedWorkflowIdsSchema,
+		expectedSource: expectedSourceSchema.optional(),
+	},
+	{ strict: true },
+) {}
+
+export class ContinueApplySelectionDto extends Z.class(
+	{
+		workflowIds: selectedWorkflowIdsSchema,
+		expectedSource: expectedSourceSchema,
+		confirmDestructiveChanges: confirmDestructiveChangesSchema,
+	},
 	{ strict: true },
 ) {}
 

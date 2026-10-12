@@ -10,6 +10,9 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
+import { DataTableImporter } from '@/modules/n8n-packages/entities/data-table/data-table-importer';
+import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
+import type { DataTableUpdate } from '@/modules/n8n-packages/entities/data-table/data-table.types';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import {
@@ -36,6 +39,12 @@ interface VariableReference {
 	workflows: InventoryWorkflow[];
 }
 
+interface DataTableReference {
+	id: string;
+	projectId: string;
+	workflows: InventoryWorkflow[];
+}
+
 type ProjectLookup = (id: string) => PromotionBindingProject;
 
 /** Inspects package bindings without changing files, target state, or caller permissions. */
@@ -45,6 +54,8 @@ export class PromotionBindingPreflightService {
 		private readonly packageImportConfig: PackageImportConfig,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly variableExtractor: VariableRequirementsExtractor,
+		private readonly dataTableExtractor: DataTableRequirementsExtractor,
+		private readonly dataTableImporter: DataTableImporter,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly variablesRepository: VariablesRepository,
@@ -54,12 +65,42 @@ export class PromotionBindingPreflightService {
 	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
 	async checkDirectory({
 		sourceDir,
-	}: { sourceDir: string }): Promise<PromotionBindingPreflightResult> {
+		selection,
+	}: {
+		sourceDir: string;
+		selection?: { selectedProjectId: string; selectedWorkflowIds: string[] };
+	}): Promise<PromotionBindingPreflightResult> {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
+		return await this.checkInventory({ inventory, selection });
+	}
+
+	async checkInventory({
+		inventory: packageInventory,
+		selection,
+	}: {
+		inventory: PackageDirectoryInventory;
+		selection?: { selectedProjectId: string; selectedWorkflowIds: string[] };
+	}): Promise<PromotionBindingPreflightResult> {
+		const inventory = selection
+			? {
+					...packageInventory,
+					projects: packageInventory.projects.filter(
+						({ id }) => id === selection.selectedProjectId,
+					),
+					workflows: packageInventory.workflows.filter(
+						({ id, projectId }) =>
+							projectId === selection.selectedProjectId &&
+							selection.selectedWorkflowIds.includes(id),
+					),
+				}
+			: packageInventory;
 		const credentials = collectCredentialReferences(inventory);
 		const variables = collectVariableReferences(inventory, this.variableExtractor);
-		const projects = new Map(inventory.projects.map(({ id, name }) => [id, { id, name }]));
+		const dataTables = collectDataTableReferences(inventory, this.dataTableExtractor);
+		// Bindings can point at owner projects outside the selection, so resolve
+		// names from the full package while the checks below stay selection-scoped.
+		const projects = new Map(packageInventory.projects.map(({ id, name }) => [id, { id, name }]));
 		const projectOf: ProjectLookup = (id) => {
 			const project = projects.get(id);
 			// The reader requires a project file for every project directory.
@@ -67,17 +108,24 @@ export class PromotionBindingPreflightService {
 			return project;
 		};
 
-		const [targetProjects, targetCredentials, targetVariables] = await Promise.all([
-			this.projectRepository.findTypesByIds([...projects.keys()]),
-			this.credentialsRepository.findPromotionBindingAccess(
-				credentials.flatMap(({ sourceId }) => sourceId ?? []),
-				unique(credentials.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId))),
-			),
-			this.variablesRepository.findKeysInProjectsOrGlobal(
-				unique(variables.map(({ name }) => name)),
-				unique(variables.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId))),
-			),
-		]);
+		const [targetProjects, targetCredentials, targetVariables, destructiveChanges] =
+			await Promise.all([
+				this.projectRepository.findTypesByIds([...projects.keys()]),
+				this.credentialsRepository.findPromotionBindingAccess(
+					credentials.flatMap(({ sourceId }) => sourceId ?? []),
+					unique(
+						credentials.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId)),
+					),
+				),
+				this.variablesRepository.findKeysInProjectsOrGlobal(
+					unique(variables.map(({ name }) => name)),
+					unique(variables.flatMap(({ workflows }) => workflows.map(({ projectId }) => projectId))),
+				),
+				this.dataTableImporter.findDestructiveChanges(
+					dataTables,
+					inventory.dataTables.map(({ dataTable }) => dataTable),
+				),
+			]);
 		const targetProjectIds = new Set(targetProjects.map(({ id }) => id));
 		const result: PromotionBindingPreflightResult = {
 			missingProjects: inventory.projects
@@ -101,6 +149,7 @@ export class PromotionBindingPreflightService {
 		this.checkProjects(inventory, personalProjectIds, projectOf, result);
 		this.checkCredentials(credentials, targetCredentials, personalProjectIds, projectOf, result);
 		this.checkVariables(variables, targetVariables, personalProjectIds, projectOf, result);
+		this.checkDataTables(destructiveChanges, projectOf, result);
 		return result;
 	}
 
@@ -251,6 +300,23 @@ export class PromotionBindingPreflightService {
 			}
 		}
 	}
+
+	private checkDataTables(
+		destructiveChanges: Array<DataTableUpdate & { reference: DataTableReference }>,
+		projectOf: ProjectLookup,
+		result: PromotionBindingPreflightResult,
+	): void {
+		for (const { table, operations, reference } of destructiveChanges) {
+			result.conflicts.push({
+				kind: 'data-table',
+				code: 'destructive-change',
+				id: table.id,
+				name: table.name,
+				consumers: consumersOf(reference.workflows, projectOf),
+				changes: operations,
+			});
+		}
+	}
 }
 
 /** Inspect references before target lookups. File paths define ownership. */
@@ -315,6 +381,23 @@ function collectVariableReferences(
 	return [...groups.values()].sort(
 		(a, b) => compare(a.file?.projectId ?? '', b.file?.projectId ?? '') || compare(a.name, b.name),
 	);
+}
+
+function collectDataTableReferences(
+	inventory: PackageDirectoryInventory,
+	extractor: DataTableRequirementsExtractor,
+): DataTableReference[] {
+	const groups = new Map<string, DataTableReference>();
+	for (const workflow of inventory.workflows) {
+		const requirements = extractor.extract({ id: workflow.id, nodes: workflow.content.nodes });
+		for (const { dataTableId: id } of requirements) {
+			const key = JSON.stringify([workflow.projectId, id]);
+			const group = groups.get(key) ?? { id, projectId: workflow.projectId, workflows: [] };
+			group.workflows.push(workflow);
+			groups.set(key, group);
+		}
+	}
+	return [...groups.values()].sort((a, b) => compare(a.id, b.id));
 }
 
 function consumersOf(

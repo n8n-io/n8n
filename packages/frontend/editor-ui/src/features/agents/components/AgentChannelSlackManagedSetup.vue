@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SlackManagedSetupState } from '@n8n/api-types';
+import { isSlackManagerCredentialReady, type SlackManagedSetupState } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nIconButton,
@@ -66,7 +66,7 @@ const credentialOptions = computed<CredentialOption[]>(() =>
 	})),
 );
 const managerConnected = computed(
-	() => selectedCredential.value?.connected === true && !selectedCredential.value.reconnectRequired,
+	() => !!selectedCredential.value && isSlackManagerCredentialReady(selectedCredential.value),
 );
 const workspaces = computed(() => selectedCredential.value?.workspaces ?? []);
 const hasManagerCredentials = computed(() => props.setup.managerCredentials.length > 0);

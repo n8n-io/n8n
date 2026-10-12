@@ -334,7 +334,7 @@ export class HelpScout implements INodeType {
 							};
 						}
 					}
-					//https://developer.helpscout.com/mailbox-api/endpoints/customer_properties/list
+					//https://developer.helpscout.com/mailbox-api/endpoints/properties/list/
 					if (operation === 'properties') {
 						responseData = await helpscoutApiRequestAllItems.call(
 							this,
@@ -408,7 +408,7 @@ export class HelpScout implements INodeType {
 					}
 				}
 				if (resource === 'mailbox') {
-					//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/get
+					//https://developer.helpscout.com/mailbox-api/endpoints/inboxes/get/
 					if (operation === 'get') {
 						const mailboxId = this.getNodeParameter('mailboxId', i) as string;
 						responseData = await helpscoutApiRequest.call(
@@ -419,7 +419,7 @@ export class HelpScout implements INodeType {
 							qs,
 						);
 					}
-					//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/list
+					//https://developer.helpscout.com/mailbox-api/endpoints/inboxes/list/
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {

@@ -1,4 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -19,10 +20,8 @@ import type {
 } from './interfaces';
 import { NodeMailer } from './node-mailer';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { InternalServerError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
@@ -56,7 +55,8 @@ type TemplateName =
 	| 'api-key-revoked'
 	| 'mcp-client-revoked'
 	| 'email-change-requested'
-	| 'email-change-completed';
+	| 'email-change-completed'
+	| 'agent-budget-alert';
 
 @Service()
 export class UserManagementMailer {
@@ -180,6 +180,29 @@ export class UserManagementMailer {
 				revokedBy: formatRevokedBy(revoker),
 				revokedAt: formatRevokedAt(new Date()),
 				mcpSettingsUrl: `${baseUrl}/settings/mcp`,
+			}),
+		});
+	}
+
+	async agentBudgetAlert(data: {
+		email: string;
+		firstName?: string | null;
+		agentName: string;
+		agentUrl: string;
+		alertThresholdPercent: number;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('agent-budget-alert');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your agent reached its monthly budget alert',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				agentName: data.agentName,
+				agentUrl: data.agentUrl,
+				percent: data.alertThresholdPercent,
 			}),
 		});
 	}

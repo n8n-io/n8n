@@ -9,21 +9,15 @@ import type {
 } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	createJobProvisioner,
-	DEFAULT_MATERIALIZER_OPTIONS,
-	materialize,
-	withOwnerKeys,
-} from '@n8n/scheduler';
+import { createJobProvisioner, withOwnerKeys } from '@n8n/scheduler';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	DesiredJob,
 	ExistingJob,
 	JobProvisioner,
-	MaterializerOptions,
 	ProvisionSummary,
 	RunInDeprovisionTransaction,
 	RunInProvisionTransaction,
-	RunInTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -134,13 +128,6 @@ type DeprovisionScope =
 export class DurableJobProvisioner {
 	private readonly provisioner: JobProvisioner<ProvisionScope, DeprovisionScope>;
 
-	/**
-	 * Options for the provision-time seed materialization. Mirrors what the running
-	 * materializer uses, so an eagerly-seeded job records the same occurrences it
-	 * would on its first poll (see {@link seedInitialOccurrences}).
-	 */
-	private readonly materializerOptions: MaterializerOptions;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly dataSource: DataSource,
@@ -158,12 +145,25 @@ export class DurableJobProvisioner {
 			deprovisionTransaction: (scope) => this.deprovisionTransaction(scope),
 			owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 			tracer: createSchedulerTracer(tracing),
+			materializer: {
+				windowSeconds: globalConfig.scheduler.materializationWindowSeconds,
+				defaultTimezone: globalConfig.generic.timezone,
+			},
+			seedHooks: {
+				// A just-registered job was already validated, so a seed-time plan failure is
+				// unexpected; log it (the pass defers the job, as a poll would) instead of
+				// letting it pass silently, matching the run side's reporting.
+				onPlanError: (job, error) =>
+					this.logger.error('Failed to plan a scheduled job while seeding its first run', {
+						jobId: job.id,
+						error: ensureError(error).message,
+					}),
+				onSkippedDuplicates: (context) =>
+					this.logger.debug('Seeding skipped occurrences already recorded for a scheduled job', {
+						...context,
+					}),
+			},
 		});
-		this.materializerOptions = {
-			...DEFAULT_MATERIALIZER_OPTIONS,
-			windowSeconds: globalConfig.scheduler.materializationWindowSeconds,
-			defaultTimezone: globalConfig.generic.timezone,
-		};
 	}
 
 	/**
@@ -271,75 +271,29 @@ export class DurableJobProvisioner {
 						jobs: revived,
 					});
 				}
-				// Jobs freshly inserted or redefined this pass; their first window is
-				// seeded before the transaction commits (see `seedInitialOccurrences`).
-				const seededJobIds = new Set<number>();
+				const existingRows = await this.jobs.findManyByOwner(manager, owner);
 				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
 				const outdatedPayloadJobIds: number[] = [];
-				const result = await work({
-					findExisting: async () => {
-						const rows = await this.jobs.findManyByOwner(manager, owner);
-						for (const row of rows) {
-							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
-							if (graceChanged) {
-								outdatedGraceJobIds.push(row.id);
-							}
-							if (
-								graceChanged ||
-								row.misfirePolicy !== misfirePolicy ||
-								row.maxAttempts !== maxAttempts ||
-								row.concurrencyLimit !== concurrencyLimit
-							) {
-								outdatedRunOptionJobIds.push(row.id);
-							}
-							if (!isDeepStrictEqual(row.payload, payload)) {
-								outdatedPayloadJobIds.push(row.id);
-							}
-						}
-						return rows.map(
-							(row): ExistingJob => ({
-								id: row.id,
-								name: row.name,
-								schedule: rowSchedule(row),
-								hasClock: row.nextRunAt !== null,
-							}),
-						);
-					},
-					insert: async (desired) => {
-						const rows = desired.map(
-							(job): NewScheduledJob => ({
-								name: job.name,
-								...owner,
-								taskType,
-								payload,
-								...scheduleColumns(job.schedule),
-								nextRunAt: job.firstRunAt,
-								maxAttempts,
-								misfirePolicy,
-								misfireGraceSeconds,
-								concurrencyLimit,
-							}),
-						);
-						const ids = await this.jobs.insertMany(manager, rows);
-						for (const id of ids) seededJobIds.add(id);
-						return ids;
-					},
-					redefine: async (jobId, schedule, nextRunAt) => {
-						await this.jobs.updateDefinition(manager, jobId, {
-							...scheduleColumns(schedule),
-							nextRunAt,
-							maxAttempts,
-							misfirePolicy,
-							misfireGraceSeconds,
-							concurrencyLimit,
-						});
-						seededJobIds.add(jobId);
-					},
-					withdrawPendingTasks: async (jobIds) =>
-						await this.tasks.deletePendingByJobIds(manager, jobIds),
-					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
-				});
+				for (const row of existingRows) {
+					const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
+					if (graceChanged) {
+						outdatedGraceJobIds.push(row.id);
+					}
+					if (
+						graceChanged ||
+						row.misfirePolicy !== misfirePolicy ||
+						row.maxAttempts !== maxAttempts ||
+						row.concurrencyLimit !== concurrencyLimit
+					) {
+						outdatedRunOptionJobIds.push(row.id);
+					}
+					if (!isDeepStrictEqual(row.payload, payload)) {
+						outdatedPayloadJobIds.push(row.id);
+					}
+				}
+				// Before the provision, whose seed reads these rows back and must see the
+				// current run options and payload.
 				// Only `redefine` touches a job's run options, so an unchanged schedule
 				// needs this to pick up a change to them on its own.
 				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
@@ -356,10 +310,67 @@ export class DurableJobProvisioner {
 					outdatedGraceJobIds,
 					misfireGraceSeconds,
 				);
-				// After all of provisioning's own writes (including withdrawing a
-				// redefined job's stale tasks) so the seeded occurrences are the last word.
-				await this.seedInitialOccurrences(manager, seededJobIds);
-				return result;
+				return await work({
+					findExisting: async () =>
+						existingRows.map(
+							(row): ExistingJob => ({
+								id: row.id,
+								name: row.name,
+								schedule: rowSchedule(row),
+								hasClock: row.nextRunAt !== null,
+							}),
+						),
+					insert: async (desired) => {
+						const rows = desired.map(
+							(job): NewScheduledJob => ({
+								name: job.name,
+								...owner,
+								taskType,
+								payload,
+								...scheduleColumns(job.schedule),
+								nextRunAt: job.firstRunAt,
+								maxAttempts,
+								misfirePolicy,
+								misfireGraceSeconds,
+								concurrencyLimit,
+							}),
+						);
+						return await this.jobs.insertMany(manager, rows);
+					},
+					redefine: async (jobId, schedule, nextRunAt) => {
+						await this.jobs.updateDefinition(manager, jobId, {
+							...scheduleColumns(schedule),
+							nextRunAt,
+							maxAttempts,
+							misfirePolicy,
+							misfireGraceSeconds,
+							concurrencyLimit,
+						});
+					},
+					withdrawPendingTasks: async (jobIds) =>
+						await this.tasks.deletePendingByJobIds(manager, jobIds),
+					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
+					// DB time, not this instance's clock, so the seed sizes its window the way a
+					// poll would and every instance agrees on it (see `DueJobs.now`).
+					readJobs: async (jobIds) => {
+						const now = await this.tasks.readDbTime(manager);
+						const jobs = await this.jobs.findManyByIds(manager, jobIds);
+						return withOwnerKeys({ now, jobs });
+					},
+					recordOccurrences: async (occurrences) =>
+						await this.tasks.insertIgnoringDuplicates(manager, occurrences),
+					retireSuperseded: async (superseded) =>
+						await this.tasks.updateToMissed(manager, superseded),
+					advanceJobs: async (planned) =>
+						await this.jobs.advanceMany(
+							manager,
+							planned.map(({ job, plan }) => ({
+								id: job.id,
+								nextRunAt: plan.nextRunAt,
+								lastFiredAt: plan.lastFiredAt,
+							})),
+						),
+				});
 			});
 	}
 
@@ -402,71 +413,6 @@ export class DurableJobProvisioner {
 		}
 
 		return effective;
-	}
-
-	/**
-	 * Record the first window of occurrences for jobs whose clock was just seeded,
-	 * and advance their `nextRunAt`. Without this, a fresh job's first fire is only
-	 * recorded once a materializer poll tick runs; when the first interval is
-	 * shorter than the gap to that tick, the fire is recorded after it is already
-	 * due and dispatched late. Seeding here queues it ahead of time, leaving the
-	 * executor its usual slack to fire on schedule.
-	 *
-	 * Reuses the run-side {@link materialize} pass so activation and every later
-	 * poll share one code path: only the claim differs, returning these specific
-	 * jobs (regardless of due-ness) instead of the poll's due-jobs query. Runs on
-	 * the provision transaction's manager, so the seed commits atomically with the
-	 * job rows; a job with no live clock plans nothing.
-	 */
-	private async seedInitialOccurrences(manager: EntityManager, jobIds: Set<number>): Promise<void> {
-		if (jobIds.size === 0) return;
-
-		// DB time, not this instance's clock, so the seed sizes its window the way a
-		// poll would and every instance agrees on it (see `DueJobs.now`).
-		const now = await this.tasks.readDbTime(manager);
-
-		const seedTransaction: RunInTransaction = async (work) =>
-			await work({
-				// The just-written rows, read back so planning uses the persisted clock
-				// and (for a redefined job) its new definition. Enabled with a live clock
-				// only, mirroring the poll's claim predicate.
-				claimDueJobs: async () => {
-					const claimed = (await this.jobs.findManyByIds(manager, [...jobIds])).filter(
-						(job) => job.enabled && job.nextRunAt !== null,
-					);
-					// Grouping never triggers here: every seeded job starts from a freshly
-					// computed `nextRunAt`, so none of them has missed anything yet.
-					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
-				},
-				recordOccurrences: async (occurrences) =>
-					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
-				retireSuperseded: async (superseded) =>
-					await this.tasks.updateToMissed(manager, superseded),
-				advanceJobs: async (planned) =>
-					await this.jobs.advanceMany(
-						manager,
-						planned.map(({ job, plan }) => ({
-							id: job.id,
-							nextRunAt: plan.nextRunAt,
-							lastFiredAt: plan.lastFiredAt,
-						})),
-					),
-			});
-
-		await materialize(seedTransaction, this.materializerOptions, {
-			// A just-registered job was already validated, so a seed-time plan failure is
-			// unexpected; log it (the pass defers the job, as a poll would) instead of
-			// letting it pass silently, matching the run side's reporting.
-			onPlanError: (job, error) =>
-				this.logger.error('Failed to plan a scheduled job while seeding its first run', {
-					jobId: job.id,
-					error: error instanceof Error ? error.message : String(error),
-				}),
-			onSkippedDuplicates: (context) =>
-				this.logger.debug('Seeding skipped occurrences already recorded for a scheduled job', {
-					...context,
-				}),
-		});
 	}
 
 	private deprovisionTransaction(scope: DeprovisionScope): RunInDeprovisionTransaction {

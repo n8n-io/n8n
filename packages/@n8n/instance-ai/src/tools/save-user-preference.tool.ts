@@ -28,12 +28,31 @@ const inputSchema = z.object({
 const outputSchema = z.object({
 	ok: z.boolean(),
 	preference: z
-		.object({ id: z.string(), content: z.string(), scope: z.literal('user') })
+		.object({
+			id: z.string(),
+			content: z.string(),
+			scope: z.enum(['user', 'project', 'instance']),
+			projectId: z.string().nullable().optional(),
+			userId: z.string().nullable().optional(),
+		})
 		.optional(),
 	reason: z
 		.enum(['too_long', 'scope_full', 'duplicate', 'not_permitted', 'blocked_by_admin', 'failed'])
-		.optional(),
+		.optional()
+		.describe(
+			'Why the write was refused. On `too_long`, shorten the text to fit `limit` and call once more. On every other reason, tell the user and do not call again.',
+		),
 	message: z.string().optional(),
+	limit: z
+		.number()
+		.int()
+		.optional()
+		.describe('The cap the write broke: characters for `too_long`, rows for `scope_full`.'),
+	actual: z
+		.number()
+		.int()
+		.optional()
+		.describe('The value measured against `limit`: the text length, or the rows already saved.'),
 });
 
 export function createSaveUserPreferenceTool(context: InstanceAiContext) {
@@ -52,7 +71,7 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 			const textLength = input.content.length;
 
 			if (context.permissions?.createPreference === 'blocked') {
-				service.recordRejection('blocked_by_admin', textLength);
+				service.recordRejection('blocked_by_admin', textLength, input.scope);
 				return {
 					ok: false,
 					reason: 'blocked_by_admin',
@@ -66,16 +85,20 @@ export function createSaveUserPreferenceTool(context: InstanceAiContext) {
 			// structured reason it can relay, not a schema error.
 			const parsed = aiPreferenceContentSchema.safeParse(input.content);
 			if (!parsed.success) {
-				const tooLong = input.content.trim().length > AI_PREFERENCE_CONTENT_MAX_LENGTH;
-				const reason = tooLong ? 'too_long' : 'failed';
-				service.recordRejection(reason, textLength);
-				return {
-					ok: false,
-					reason,
-					message: tooLong
-						? `A preference is at most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters.`
-						: 'A preference must not be empty.',
-				};
+				const trimmedLength = input.content.trim().length;
+				if (trimmedLength > AI_PREFERENCE_CONTENT_MAX_LENGTH) {
+					service.recordRejection('too_long', textLength, input.scope);
+					// Numbers, so the model can shorten by the right amount.
+					return {
+						ok: false,
+						reason: 'too_long',
+						message: `A preference is at most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters. This one is ${trimmedLength}.`,
+						limit: AI_PREFERENCE_CONTENT_MAX_LENGTH,
+						actual: trimmedLength,
+					};
+				}
+				service.recordRejection('failed', textLength, input.scope);
+				return { ok: false, reason: 'failed', message: 'A preference must not be empty.' };
 			}
 
 			return await service.create({ content: parsed.data, scope: input.scope });

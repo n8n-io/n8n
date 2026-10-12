@@ -3,6 +3,7 @@ import {
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -12,12 +13,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import type { PostHogClient } from '@/posthog';
-import type { EventService } from '@/events/event.service';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
@@ -69,6 +68,7 @@ describe('OAuthServerService', () => {
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
+			surface: 'instance-mcp',
 			id: 'instance-mcp',
 			getResourceUrl: () => TEST_RESOURCE_URL,
 			getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
@@ -168,10 +168,13 @@ describe('OAuthServerService', () => {
 				'https://n8n.example.com/webhook/f0a1b2c3-d4e5-4678-9abc-def012345678/chat';
 			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
 			let firstPartyService: OAuthServerService;
+			const firstPartyRow = (url: string) =>
+				({ id: url, name: url, redirectUris: [url], isFirstParty: true }) as OAuthClient;
 
 			beforeAll(() => {
 				const registry = new ProtectedResourceRegistry(mock<Logger>());
 				registry.register({
+					surface: 'trigger',
 					id: 'form-abc',
 					isFirstParty: true,
 					displayName: 'My Form',
@@ -184,6 +187,7 @@ describe('OAuthServerService', () => {
 				// A chat trigger's resource: served under the generic webhook base URL rather
 				// than a dedicated endpoint, so it covers the client-id guard's prefix check.
 				registry.register({
+					surface: 'trigger',
 					id: 'chat-abc',
 					isFirstParty: true,
 					displayName: 'My Chat',
@@ -195,6 +199,7 @@ describe('OAuthServerService', () => {
 				});
 				// A resource that exists but is not first-party (mirror of an MCP resource).
 				registry.register({
+					surface: 'trigger',
 					id: 'mcp-x',
 					getResourceUrl: () => NON_FIRST_PARTY_URL,
 					getAudiences: () => [NON_FIRST_PARTY_URL],
@@ -273,6 +278,96 @@ describe('OAuthServerService', () => {
 					client_name: 'My Chat',
 					redirect_uris: [CHAT_FIRST_PARTY_URL],
 				});
+			});
+
+			// The persisted row is only an FK placeholder; the live resource decides. Covers
+			// a webhook switched to bearer-only after its virtual client was already created.
+			it('returns undefined for a persisted first-party row whose resource is no longer first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(firstPartyRow(NON_FIRST_PARTY_URL));
+
+				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('returns a persisted first-party row while its resource is still first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(firstPartyRow(FIRST_PARTY_URL));
+
+				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(result).toMatchObject({
+					client_id: FIRST_PARTY_URL,
+					redirect_uris: [FIRST_PARTY_URL],
+				});
+			});
+
+			const buildServiceWithQueryIgnoringResolver = () => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				// A static resource would not reproduce the bug. Needs Resolver
+				registry.registerResolver({
+					id: 'form-path-only',
+					scopes: [],
+					resolveByUrl: async (url) =>
+						new URL(url).pathname.replace(/\/$/, '') === '/form/abc'
+							? {
+									surface: 'trigger',
+									id: 'form-abc',
+									isFirstParty: true,
+									getResourceUrl: () => FIRST_PARTY_URL,
+									getAudiences: () => [FIRST_PARTY_URL],
+									scopes: [],
+									authorize: async () => true,
+								}
+							: undefined,
+					resolveByPath: async () => undefined,
+				});
+
+				return new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+					mock<EventService>(),
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
+				);
+			};
+
+			it.each([
+				['a query string', `${FIRST_PARTY_URL}?x=1`],
+				['a trailing slash', `${FIRST_PARTY_URL}/`],
+				['an oversized query string', `${FIRST_PARTY_URL}?z=${'a'.repeat(2048)}`],
+			])(
+				'returns undefined and does not upsert when the client_id is the resource URL with %s',
+				async (_, clientId) => {
+					oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+					const result =
+						await buildServiceWithQueryIgnoringResolver().clientsStore.getClient(clientId);
+
+					expect(result).toBeUndefined();
+					expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+				},
+			);
+
+			it('upserts the virtual client when the client_id is the canonical resource URL', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result =
+					await buildServiceWithQueryIgnoringResolver().clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(result).toMatchObject({ client_id: FIRST_PARTY_URL });
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({ id: FIRST_PARTY_URL, redirectUris: [FIRST_PARTY_URL] }),
+					['id'],
+				);
 			});
 
 			it('returns undefined and does not upsert when the resolved resource is not first-party', async () => {
@@ -1124,6 +1219,7 @@ describe('OAuthServerService', () => {
 			const formResourceUrl = 'https://n8n.example.com/form/abc';
 			const registry = new ProtectedResourceRegistry(mock<Logger>());
 			registry.register({
+				surface: 'instance-mcp',
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
 				getAudiences: () => [TEST_RESOURCE_URL],
@@ -1132,6 +1228,7 @@ describe('OAuthServerService', () => {
 				authorize: async () => true,
 			});
 			registry.register({
+				surface: 'trigger',
 				id: 'form-abc',
 				getResourceUrl: () => formResourceUrl,
 				getAudiences: () => [formResourceUrl],
@@ -1259,6 +1356,7 @@ describe('OAuthServerService', () => {
 			beforeEach(() => {
 				const registry = new ProtectedResourceRegistry(mock<Logger>());
 				registry.register({
+					surface: 'instance-mcp',
 					id: 'instance-mcp',
 					getResourceUrl: () => TEST_RESOURCE_URL,
 					getAudiences: () => [TEST_RESOURCE_URL],
@@ -1267,6 +1365,7 @@ describe('OAuthServerService', () => {
 					authorize: async () => true,
 				});
 				registry.register({
+					surface: 'instance-mcp',
 					id: 'other-resource',
 					getResourceUrl: () => otherResourceUrl,
 					getAudiences: () => [otherResourceUrl],
@@ -1799,6 +1898,7 @@ describe('OAuthServerService', () => {
 		it('should accept any registered resource and reject unregistered ones', async () => {
 			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiRegistry.register({
+				surface: 'instance-mcp',
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
 				getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
@@ -1808,6 +1908,7 @@ describe('OAuthServerService', () => {
 			});
 			const secondResourceUrl = 'https://n8n.example.com/webhook/wf-1/mcp';
 			multiRegistry.register({
+				surface: 'trigger',
 				id: 'workflow-trigger',
 				getResourceUrl: () => secondResourceUrl,
 				getAudiences: () => [secondResourceUrl],

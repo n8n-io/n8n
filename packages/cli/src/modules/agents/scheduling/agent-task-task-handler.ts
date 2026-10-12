@@ -56,10 +56,8 @@ export class AgentTaskTaskHandler implements TaskHandler {
 			this.selfHeal(agentId);
 			return report.notDispatched();
 		}
-		if (outcome === 'skipped-active') {
-			// The previous run still holds the lock. The handler skips this tick,
-			// the same as the in-memory scheduler. The occurrence completes, and
-			// the next tick is a fresh one.
+		if (outcome === 'skipped-active' || outcome === 'skipped-disabled') {
+			// Complete this tick without retrying. The next tick is a fresh one.
 			return report.notDispatched();
 		}
 

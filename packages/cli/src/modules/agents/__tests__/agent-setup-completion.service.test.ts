@@ -10,6 +10,7 @@ import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { type AgentFixtureOverrides, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -23,7 +24,7 @@ const baseConfig: AgentJsonConfig = {
 	credential: 'cred-1',
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: agentId,
 		projectId,
@@ -73,7 +74,13 @@ describe('AgentSetupCompletionService', () => {
 				integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
 			});
 
-			const emit = await service.recordIfSetupComplete(agent, projectId, credentialProvider, user);
+			const emit = await service.recordIfSetupComplete(
+				agent,
+				storedSkillRefs(agent),
+				projectId,
+				credentialProvider,
+				user,
+			);
 			// Nothing is claimed or reported until the caller's own write succeeded.
 			expect(agentRepository.claimSetupCompleted).not.toHaveBeenCalled();
 			expect(telemetry.track).not.toHaveBeenCalled();
@@ -109,7 +116,13 @@ describe('AgentSetupCompletionService', () => {
 				} as unknown as AgentJsonConfig,
 			});
 
-			const emit = await service.recordIfSetupComplete(agent, projectId, credentialProvider, user);
+			const emit = await service.recordIfSetupComplete(
+				agent,
+				storedSkillRefs(agent),
+				projectId,
+				credentialProvider,
+				user,
+			);
 			await emit?.();
 
 			expect(agent.setupCompletedAt).toBeNull();
@@ -121,7 +134,13 @@ describe('AgentSetupCompletionService', () => {
 			const agent = makeAgent();
 
 			expect(
-				await service.recordIfSetupComplete(agent, projectId, credentialProvider, user),
+				await service.recordIfSetupComplete(
+					agent,
+					storedSkillRefs(agent),
+					projectId,
+					credentialProvider,
+					user,
+				),
 			).toBeNull();
 			expect(agent.setupCompletedAt).toBeNull();
 			// Validation is the expensive half, so an empty agent must not pay for it.
@@ -148,7 +167,13 @@ describe('AgentSetupCompletionService', () => {
 			});
 
 			expect(
-				await service.recordIfSetupComplete(agent, projectId, credentialProvider, user),
+				await service.recordIfSetupComplete(
+					agent,
+					storedSkillRefs(agent),
+					projectId,
+					credentialProvider,
+					user,
+				),
 			).toBeNull();
 			expect(agent.setupCompletedAt).toBeNull();
 		});
@@ -165,7 +190,13 @@ describe('AgentSetupCompletionService', () => {
 			});
 
 			expect(
-				await service.recordIfSetupComplete(agent, projectId, credentialProvider, user),
+				await service.recordIfSetupComplete(
+					agent,
+					storedSkillRefs(agent),
+					projectId,
+					credentialProvider,
+					user,
+				),
 			).toBeNull();
 			expect(agent.setupCompletedAt).toBe(completedAt);
 			expect(agentValidationService.validateLoadedAgentConfiguration).not.toHaveBeenCalled();
@@ -182,7 +213,13 @@ describe('AgentSetupCompletionService', () => {
 			});
 
 			expect(
-				await service.recordIfSetupComplete(agent, projectId, credentialProvider, user),
+				await service.recordIfSetupComplete(
+					agent,
+					storedSkillRefs(agent),
+					projectId,
+					credentialProvider,
+					user,
+				),
 			).toBeNull();
 			expect(agent.setupCompletedAt).toBeNull();
 		});

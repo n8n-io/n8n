@@ -70,10 +70,10 @@ function onSetupFirstStep(): void {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 }
 
 .messageContainer {
-	margin-top: var(--spacing--4xl);
 	color: var(--color--text);
 
 	div {

@@ -1,6 +1,7 @@
 import type { ObservationalMemoryConfig } from '../../types';
 import type { ExecutionOptions, RunOptions } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
+import type { ObservationLogObserverInput } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
@@ -9,6 +10,8 @@ import { AgentMessageList, OBSERVATION_CONTINUATION_REMINDER } from '../model/me
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
+import { guardToolResultForModel } from '../tools/tool-result-guard';
+import { protectUntrustedToolResult } from '../tools/untrusted-tool-output';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -424,44 +427,62 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(next.llmVisibleMessages()).toHaveLength(0);
 	});
 
-	it('budgets full tool payloads as the model sees them, not the truncated observer rendering', async () => {
-		const store = new InMemoryMemory();
-		const observe = vi.fn(
-			async () => await Promise.resolve('* CRITICAL (14:30) Large fetch summarized.'),
-		);
-		const { orchestrator } = buildOrchestrator(store, {
-			observerThresholdTokens: 5_000,
-			observe,
-			observationLogTailLimit: 20,
-		});
-		const list = new AgentMessageList();
-		list.addInput([userMsg('fetch the report')]);
-		// One large tool result dominates the window. The budget must count the
-		// full payload the model receives.
-		list.addResponse([
-			{
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolCallId: 'tc1',
-						toolName: 'fetch_report',
-						input: { url: 'https://example.com/report' },
-						state: 'resolved',
-						output: { data: 'x'.repeat(20_000) },
-					},
-				],
-			},
-		]);
+	it.each([false, true])(
+		'retains a full document after compaction (untrusted: %s)',
+		async (untrusted) => {
+			const store = new InMemoryMemory();
+			const fact = 'The agreed launch color is violet.';
+			const document =
+				'Background document text. '.repeat(400).slice(0, 7_500 - fact.length) + fact;
+			const output = { content: document };
+			const guarded = await guardToolResultForModel(
+				untrusted ? protectUntrustedToolResult(output, { name: 'fetch_report' }) : output,
+			);
+			const observe = vi.fn(
+				async ({ transcript }: ObservationLogObserverInput) =>
+					await Promise.resolve(
+						transcript.includes(fact)
+							? `* IMPORTANT ${fact}`
+							: '* IMPORTANT The document was incomplete.',
+					),
+			);
+			const { orchestrator } = buildOrchestrator(store, {
+				observerThresholdTokens: 5_000,
+				observe,
+				observationLogTailLimit: 20,
+			});
+			const list = new AgentMessageList();
+			list.addInput([userMsg('fetch the report')]);
+			list.addResponse([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'fetch_report',
+							input: { url: 'https://example.com/report' },
+							state: 'resolved',
+							output: guarded.historyOutput,
+						},
+					],
+				},
+			]);
 
-		await orchestrator.maybeObserveMidRun(list, runOptions());
+			await orchestrator.maybeObserveMidRun(list, runOptions());
 
-		expect(observe).toHaveBeenCalledTimes(1);
-		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(1);
-		expect(list.forLlm('base').messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
-	});
+			expect(observe).toHaveBeenCalledWith(
+				expect.objectContaining({ transcript: expect.stringContaining(document) }),
+			);
+			expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toMatchObject([
+				{ text: fact },
+			]);
+			expect(list.observationLogMemory).toContain(fact);
+			expect(list.forLlm('base').messages).toEqual([
+				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+			]);
+		},
+	);
 
 	it.each(['not a bullet line', 'NO_OBSERVATIONS'])(
 		'stops after a non-advancing response and permits another attempt on resume: %s',

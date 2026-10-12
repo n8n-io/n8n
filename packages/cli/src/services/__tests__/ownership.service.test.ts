@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowProjectService, type EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	Project,
@@ -18,13 +19,12 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { mockCredential, mockProject } from '@test/mock-objects';
 
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -36,6 +36,7 @@ describe('OwnershipService', () => {
 	const logger = mockInstance(Logger);
 	const eventService = mock<EventService>();
 	const settingsRepository = mock<SettingsRepository>();
+	const workflowProjectService = new WorkflowProjectService(cacheService, sharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
 		cacheService,
@@ -44,7 +45,7 @@ describe('OwnershipService', () => {
 		passwordUtility,
 		projectRelationRepository,
 		projectRepository,
-		sharedWorkflowRepository,
+		workflowProjectService,
 		userRepository,
 		settingsRepository,
 	);
@@ -334,7 +335,7 @@ describe('OwnershipService', () => {
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			userRepository.exists.mockResolvedValueOnce(true);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);
@@ -348,7 +349,7 @@ describe('OwnershipService', () => {
 		});
 
 		it('should throw a BadRequestError if the shell user is not found', async () => {
-			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(null);
 
 			const execution = ownershipService.setupOwner(mock());
@@ -375,7 +376,7 @@ describe('OwnershipService', () => {
 			//	not quite perfect as we hash the password.
 			const expected = { ...user, ...payload, id: 'newUserId' };
 
-			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(user);
 			userRepository.save.mockResolvedValueOnce(expected);
 
@@ -402,7 +403,7 @@ describe('OwnershipService', () => {
 				lastName: 'Doe',
 			};
 
-			userRepository.exists.mockResolvedValueOnce(false);
+			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(user);
 			userRepository.save.mockResolvedValueOnce(user);
 
@@ -426,7 +427,7 @@ describe('OwnershipService', () => {
 				{ overwriteExisting: true },
 			);
 
-			expect(userRepository.exists).not.toHaveBeenCalled();
+			expect(userRepository.hasClaimedInstanceOwner).not.toHaveBeenCalled();
 		});
 
 		it('should use pre-hashed password when preHashed is true', async () => {

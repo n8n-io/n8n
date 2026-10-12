@@ -149,7 +149,11 @@ const pageType = computed(() => {
 const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
 	const moduleTabs = uiStore.moduleTabs[pageType.value];
-	const activeModules = Object.keys(moduleTabs).filter(settingsStore.isModuleActive);
+	const activeModules = Object.keys(moduleTabs).filter(
+		(module) =>
+			settingsStore.isModuleActive(module) &&
+			(module !== 'agents' || settingsStore.isAgentsEnabled),
+	);
 	return activeModules.flatMap((module) => moduleTabs[module]);
 });
 
@@ -212,7 +216,7 @@ const createAgentButton = computed(() => ({
 }));
 
 const selectedMainButtonType = computed(() => {
-	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -296,10 +300,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (
-		settingsStore.isModuleActive('agents') &&
-		selectedMainButtonType.value !== ACTION_TYPES.AGENT
-	) {
+	if (settingsStore.isAgentsEnabled && selectedMainButtonType.value !== ACTION_TYPES.AGENT) {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),

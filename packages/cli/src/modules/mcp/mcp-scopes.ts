@@ -1,7 +1,12 @@
 import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
-import { MCP_GET_USER_PREFERENCES_TOOL_NAME } from './mcp.constants';
+import {
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+	MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
+	MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
+} from './mcp.constants';
 
 /**
  * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
@@ -107,6 +112,14 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
 	// folders too, none of which need the builder.
 	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
+	// The read tool does not ride along: a client that may write is expected to read first, and
+	// the consent screen shows that as two scopes. Undo is here rather than on a delete scope
+	// because it only removes what this surface wrote.
+	'aiPreference:write': [
+		MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+		MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
+		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
+	],
 };
 
 /**

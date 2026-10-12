@@ -1,9 +1,9 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -271,6 +271,22 @@ describe('node type policies public API instance scope', () => {
 			.put('/node-type-policies/instance')
 			.send({ rules: [DELEGATE_RULE], defaultAction: 'allow', version: 0 });
 		expect(delegating.statusCode).toBe(200);
+	});
+});
+
+describe('node type policies public API extends rules', () => {
+	test('PUT rejects an extends rule with 400 and writes nothing', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+
+		const response = await agent.put('/node-type-policies/instance').send({
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } }],
+			defaultAction: 'allow',
+			version: 0,
+		});
+
+		expect(response.statusCode).toBe(400);
+		const current = await agent.get('/node-type-policies/instance');
+		expect(current.body.version).toBe(0);
 	});
 });
 

@@ -5,7 +5,7 @@ import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permiss
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
@@ -281,6 +281,27 @@ describe('UserManagementMailer', () => {
 					`You have been added to the <b>${project.name}</b> project as ${sharee.role.replace('project:', '')}`,
 				);
 			});
+		});
+
+		it('should send an agent budget alert email', async () => {
+			const result = await userManagementMailer.agentBudgetAlert({
+				email,
+				firstName: 'Ada',
+				agentName: 'Support Agent',
+				agentUrl: 'https://n8n.url/projects/project-1/agents/agent-1',
+				alertThresholdPercent: 80,
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				body: expect.stringContaining('href="https://n8n.url/projects/project-1/agents/agent-1"'),
+				emailRecipients: email,
+				subject: 'Your agent reached its monthly budget alert',
+			});
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body;
+			expect(callBody).toContain('Support Agent');
+			expect(callBody).toContain('80%');
+			expect(callBody).toContain('Hi Ada,');
 		});
 	});
 });

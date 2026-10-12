@@ -70,6 +70,7 @@ const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		isNodeTypeUnavailable: () => false,
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},

@@ -172,6 +172,13 @@ async function goBack() {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.preferences.title'));
 	await load();
+	// Once for the visit, not once for each page: paging is not a second visit. A failed load
+	// reports nothing, so a zero here is an empty list and never a broken one.
+	if (loadFailed.value) return;
+	telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES, {
+		count: contextStore.count,
+		scope_types: [...new Set(contextStore.preferences.map((row) => preferenceScope(row)))],
+	});
 });
 </script>
 

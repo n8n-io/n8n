@@ -10,7 +10,7 @@ import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {
@@ -351,6 +351,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const tool = createN8nDelegateSubAgentTool({
+			runBackgroundSubAgent: async () => ({ status: 'started', jobId: 'background-job-1' }),
 			parentAgentId,
 			runner,
 			sourcesById: { 'agent-2': source },

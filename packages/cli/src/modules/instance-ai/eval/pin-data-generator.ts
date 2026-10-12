@@ -11,6 +11,7 @@
  * LLM call (`createEvalAgent`) and the `__schema__` lookup wiring.
  */
 
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type {
 	WorkflowJSON,
@@ -109,7 +110,8 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
 		});
 
-		const responseText = extractText(result);
+		// The model sometimes explains its answer after the JSON block.
+		const responseText = extractJsonCandidate(extractText(result));
 		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
 
 		const missing = expectedNodeNames.filter((name) => !(name in pinData));

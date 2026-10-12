@@ -1,7 +1,18 @@
 import { mock } from 'vitest-mock-extended';
 
 import { backoff } from '../../executor/backoff';
-import { reap, type ExpiredLeaseRow, type ReaperTaskStore } from '../reap';
+import {
+	reap,
+	type ExpiredLeaseRow,
+	type ReaperTaskStore,
+	type RetireMissedResult,
+	type RetiredTask,
+} from '../reap';
+
+const retired = (
+	count: number,
+	heldByConcurrencyLimit: RetiredTask[] = [],
+): RetireMissedResult => ({ retired: count, heldByConcurrencyLimit });
 
 const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
 	id: '1',
@@ -28,7 +39,7 @@ const setup = () => {
 	store.reclaimExpired.mockResolvedValue(1);
 	store.deadLetterExpired.mockResolvedValue(1);
 	store.completeExpired.mockResolvedValue(1);
-	store.retireMissedPending.mockResolvedValue(0);
+	store.retireMissedPending.mockResolvedValue(retired(0));
 	const run = async () =>
 		await reap(store, { batchSize: 100 }, { onRowError, onDeadLetter, onCompletedAfterDispatch });
 	return { store, onRowError, onDeadLetter, onCompletedAfterDispatch, run };
@@ -49,7 +60,7 @@ describe('reap', () => {
 	it('retires the pending occurrences past their deadline, bounded by the batch size', async () => {
 		const { store, run } = setup();
 		store.findExpiredLeases.mockResolvedValue([]);
-		store.retireMissedPending.mockResolvedValue(4);
+		store.retireMissedPending.mockResolvedValue(retired(4));
 
 		const result = await run();
 
@@ -62,7 +73,7 @@ describe('reap', () => {
 		store.findExpiredLeases.mockResolvedValue([
 			expiredTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 1 }),
 		]);
-		store.retireMissedPending.mockResolvedValue(2);
+		store.retireMissedPending.mockResolvedValue(retired(2));
 
 		const result = await run();
 
@@ -322,6 +333,45 @@ describe('reap', () => {
 		expect(store.reclaimExpired).not.toHaveBeenCalled();
 		expect(store.deadLetterExpired).not.toHaveBeenCalled();
 		expect(store.retireMissedPending).not.toHaveBeenCalled();
+	});
+
+	it('reports the occurrences a concurrency limit held back until their deadline', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onHeldByConcurrencyLimit = vi.fn();
+		const held = [{ id: '7', jobId: 3, taskType: 'system:pruning' }];
+		store.retireMissedPending.mockResolvedValue(retired(2, held));
+		store.findExpiredLeases.mockResolvedValue([]);
+
+		const result = await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+
+		expect(result.missed).toBe(2);
+		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
+	});
+
+	it('does not report an empty held-back list', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onHeldByConcurrencyLimit = vi.fn();
+		store.retireMissedPending.mockResolvedValue(retired(2));
+		store.findExpiredLeases.mockResolvedValue([]);
+
+		await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+
+		expect(onHeldByConcurrencyLimit).not.toHaveBeenCalled();
+	});
+
+	it('still reports the sweep when the held-back reporter throws', async () => {
+		const store = mock<ReaperTaskStore>();
+		const onHeldByConcurrencyLimit = vi.fn(() => {
+			throw new Error('reporter down');
+		});
+		store.retireMissedPending.mockResolvedValue(
+			retired(1, [{ id: '7', jobId: 3, taskType: 'system:pruning' }]),
+		);
+		store.findExpiredLeases.mockResolvedValue([]);
+
+		const result = await reap(store, { batchSize: 100 }, { onHeldByConcurrencyLimit });
+
+		expect(result).toEqual({ reclaimed: 0, deadLettered: 0, missed: 1 });
 	});
 
 	it('recovers stranded rows even when retiring stale occurrences fails', async () => {

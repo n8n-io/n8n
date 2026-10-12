@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
 import type {
@@ -19,8 +20,6 @@ import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { strict } from 'node:assert';
-
-import { EventService } from '@/events/event.service';
 
 import { DurableScheduler } from '../durable-scheduler';
 import { emitSystemTaskMetric } from './emit-system-task-metric';

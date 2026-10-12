@@ -21,10 +21,10 @@ import type { IntegrationActionResult } from '../integration-tools';
 /**
  * The in-app chat channel ("n8n Chat").
  *
- * Implicit and credential-less: never persisted in an agent's `integrations`
- * array and never shown in the integrations catalog. A synthetic tool
- * descriptor is injected per-run when the execution comes through the in-app
- * chat endpoints (see agent-runtime-reconstruction.service.ts). `respond`
+ * Credential-less. The integration implementation is always registered.
+ * A draft channel entry enables production chat after publish. Preview stays
+ * available without an entry. A synthetic tool descriptor is injected per run
+ * when execution comes through the chat endpoints. `respond`
  * does not post anywhere — the card renders from the tool-call input in the
  * chat UI, and interactive cards suspend through the generic machinery.
  */

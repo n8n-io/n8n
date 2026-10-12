@@ -1,6 +1,5 @@
 import { InstanceAiConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceAiService } from './instance-ai.service';
@@ -14,16 +13,15 @@ import { InstanceAiService } from './instance-ai.service';
 export class InstanceAiCheckpointPruningTask implements SystemTask {
 	readonly name = 'instance-ai-checkpoint-pruning';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: this.instanceAiConfig.pruneInterval * Time.milliseconds.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
+		this.instanceAiConfig.pruneInterval,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		runOnTakeover: true,
 	};
 

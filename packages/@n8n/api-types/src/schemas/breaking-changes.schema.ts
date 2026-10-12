@@ -1,13 +1,52 @@
 import { z } from 'zod';
 
 // Enums
-export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'critical']);
-export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveritySchema>;
+
+/**
+ * What happens if the user does not fix a breaking change before the update.
+ *
+ * - `upgradeBlocked`: the instance does not start, or the update cannot proceed.
+ * - `executionsFail`: affected executions error.
+ * - `behaviorChanges`: executions keep running, but with a different result.
+ * - `capabilityRemoved`: no runtime impact, a removed capability is no longer available.
+ */
+export const breakingChangeRuleImpactSchema = z.enum([
+	'executionsFail',
+	'behaviorChanges',
+	'capabilityRemoved',
+	'upgradeBlocked',
+]);
+export type BreakingChangeRuleImpact = z.infer<typeof breakingChangeRuleImpactSchema>;
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
 export const breakingChangeVersionSchema = z.enum(['v2', 'v3']);
 export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
+
+/**
+ * Triage state of one migration finding (one workflow x one rule x one target version).
+ *
+ * - `open`: the scan found the issue and nobody acted on it yet.
+ * - `notified`: the owner received a notification about the finding.
+ * - `fixed`: the scan no longer detects the issue in the published version.
+ * - `fixed_unpublished`: the scan no longer detects the issue in the draft, but the fix is not published.
+ * - `wont_fix`: a user dismissed the finding.
+ */
+export const migrationFindingStatusSchema = z.enum([
+	'open',
+	'notified',
+	'fixed',
+	'fixed_unpublished',
+	'wont_fix',
+]);
+export type MigrationFindingStatus = z.infer<typeof migrationFindingStatusSchema>;
+
+/** The statuses a user can set on a finding. The scan sets the other statuses. */
+export const migrationFindingTriageStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'wont_fix',
+]);
+export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriageStatusSchema>;
 
 /**
  * The target n8n major version for the migration/breaking-changes report.
@@ -41,6 +80,23 @@ const workflowIssueSchema = instanceIssueSchema.extend({
 });
 export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
 
+/** `suggested` by the owner heuristic, or `assigned` by a person. */
+export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
+export type MigrationOwnerSource = z.infer<typeof migrationOwnerSourceSchema>;
+
+/** The user responsible for fixing a workflow's findings. The name and email columns of a user are nullable. */
+const workflowOwnerSchema = z.object({
+	id: z.string(),
+	firstName: z.string().nullable(),
+	lastName: z.string().nullable(),
+	email: z.string().nullable(),
+	source: migrationOwnerSourceSchema,
+});
+export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
+
+/** The owner of a workflow after a change to it. `null` when nobody owns it. */
+export type MigrationWorkflowOwnerResponse = { owner: BreakingChangeWorkflowOwner | null };
+
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -49,6 +105,10 @@ const affectedWorkflowSchema = z.object({
 	lastUpdatedAt: z.date(),
 	lastExecutedAt: z.date().optional(),
 	issues: z.array(workflowIssueSchema),
+	// Absent when no owner is known for the workflow.
+	owner: workflowOwnerSchema.optional(),
+	// The project that owns the workflow, so an owner picker can list its members.
+	homeProjectId: z.string().optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 
@@ -56,7 +116,7 @@ const ruleResultBaseSchema = z.object({
 	ruleId: z.string(),
 	ruleTitle: z.string(),
 	ruleDescription: z.string(),
-	ruleSeverity: breakingChangeRuleSeveritySchema,
+	ruleImpact: breakingChangeRuleImpactSchema,
 	ruleDocumentationUrl: z.string().optional(),
 	recommendations: z.array(recommendationSchema),
 	// True when an automated migration is registered for this rule, so the UI
@@ -73,6 +133,17 @@ const workflowRuleResultsSchema = ruleResultBaseSchema.extend({
 	affectedWorkflows: z.array(affectedWorkflowSchema),
 });
 export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResultsSchema>;
+
+// The rule detail lists each workflow with the status of its finding.
+const ruleDetailWorkflowSchema = affectedWorkflowSchema.extend({
+	status: migrationFindingTriageStatusSchema,
+});
+export type BreakingChangeRuleDetailWorkflow = z.infer<typeof ruleDetailWorkflowSchema>;
+
+const ruleDetailResultSchema = workflowRuleResultsSchema.extend({
+	affectedWorkflows: z.array(ruleDetailWorkflowSchema),
+});
+export type BreakingChangeRuleDetailResult = z.infer<typeof ruleDetailResultSchema>;
 
 const breakingChangeReportDataSchema = {
 	generatedAt: z.date(),
@@ -91,7 +162,10 @@ const breakingChangeLightReportDataSchema = {
 	instanceResults: z.array(instanceRuleResultsSchema),
 	workflowResults: z.array(
 		workflowRuleResultsSchema.omit({ affectedWorkflows: true }).extend({
+			// Workflows with an open finding for the rule.
 			nbAffectedWorkflows: z.number(),
+			// Workflows with a won't fix finding for the rule.
+			nbWontFixWorkflows: z.number(),
 		}),
 	),
 } as const;
@@ -108,6 +182,9 @@ export type BreakingChangeReportResult = z.infer<typeof breakingChangeReportResu
 const breakingChangeLightReportResultDataSchema = z.object({
 	report: breakingChangeLightReportSchema,
 	totalWorkflows: z.number(),
+	// Distinct workflows affected by at least one rule. Summing per-rule
+	// nbAffectedWorkflows counts a workflow once for each rule it breaks.
+	totalAffectedWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeLightReportResult = z.infer<

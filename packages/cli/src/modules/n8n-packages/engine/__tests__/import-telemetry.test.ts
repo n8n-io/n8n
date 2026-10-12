@@ -1,7 +1,7 @@
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';
@@ -33,7 +33,7 @@ const requirement = (id: string): PackageCredentialRequirement => ({
 	id,
 	name: id,
 	type: 'githubApi',
-	usedByWorkflows: ['ignored'],
+	usedBy: [{ kind: 'workflow', id: 'ignored' }],
 });
 
 const scope = (input: {
@@ -44,7 +44,7 @@ const scope = (input: {
 	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
-	dataTable?: { matched: number; created: number; requirements: number };
+	dataTable?: { matched: number; created: number; updated?: number; requirements: number };
 	variables?: {
 		matched: number;
 		missing: number;
@@ -95,22 +95,26 @@ const scope = (input: {
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
-		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
+		dataTablePlan: {
+			creations: new Array(dt.created),
+			updates: new Array(dt.updated ?? 0),
+			failures: [],
+			matchedCount: dt.matched,
+		},
 		variablePlan: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
 			],
-			missing: missingVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
-				(name) => ({ name, usedByWorkflows: [] }),
+				(name) => ({ name }),
 			),
-			conflicts: overwrittenVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			conflicts: overwrittenVariableNames.map((name) => ({ name })),
 			overwrites: overwrittenVariableNames.map((name) => ({
 				variableId: `id-of-${name}`,
 				name,
 				value: 'from-package',
-				usedByWorkflows: [],
 			})),
 		},
 		variableResult: {
@@ -153,7 +157,7 @@ const scope = (input: {
 			requirements: (tags.requirementIds ?? []).map((id) => ({
 				id,
 				name: `name-of-${id}`,
-				usedByWorkflows: ['ignored'],
+				usedBy: [{ kind: 'workflow', id: 'ignored' }],
 			})),
 			missingMode: 'create',
 			conflictPolicy: 'skip',
@@ -206,7 +210,7 @@ describe('emitPackageImportedEvent', () => {
 						stubbed: [],
 					},
 					requirements: [requirement('credA')],
-					dataTable: { matched: 1, created: 0, requirements: 1 },
+					dataTable: { matched: 1, created: 0, updated: 1, requirements: 2 },
 					variables: { matched: 1, missing: 0, requirements: 1 },
 					tags: { matched: ['T1'], created: ['T2'], requirementIds: ['T1', 'T2'] },
 				}),
@@ -256,7 +260,7 @@ describe('emitPackageImportedEvent', () => {
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
-			dataTables: { matched: 1, created: 2, requirements: 3 },
+			dataTables: { matched: 1, created: 2, updated: 1, requirements: 4 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, updated: 1, requirements: 4 },

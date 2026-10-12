@@ -7,7 +7,7 @@ import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availabili
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { clearPolicyCache } from './shared/policy-cache';
 

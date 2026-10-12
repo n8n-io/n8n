@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { WorkerPoolsService } from '@/scaling/worker-pools.service.ee';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 describe('PoolConfigService', () => {
 	const projectPoolSettingsRepository = mock<ProjectPoolSettingsRepository>();

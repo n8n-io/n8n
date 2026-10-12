@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.20.0",
+  "version": "0.22.0",
   "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
@@ -21,8 +21,8 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint src --quiet",
-    "lint:fix": "eslint src --fix",
+    "lint": "oxlint src --quiet",
+    "lint:fix": "oxlint src --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run"
@@ -84,9 +84,12 @@
     "@oclif/core": "^4.5.2"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   }
