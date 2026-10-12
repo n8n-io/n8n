@@ -88,16 +88,25 @@ export class EngineRequestNotSupportedError extends UserError {
 }
 
 /**
- * A wait that only a resume request or a child execution can end. Neither path
- * exists on engine v2 yet, so the step fails instead of completing as if the
- * wait had ended.
+ * A wait that engine v2 cannot end yet, so the step fails instead of waiting
+ * forever. Engine v2 has no sub-workflow steps and no step-bound resume
+ * requests yet.
  */
 export class UnsupportedWaitError extends UserError {
-	constructor(nodeName: string, waitsFor: 'a resume request' | 'a sub-execution') {
+	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
 		super(
-			waitsFor === 'a resume request'
-				? `Node "${nodeName}" waits with no time limit, and engine v2 cannot end that wait yet. Set a time limit on the node.`
-				: `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`,
+			waitsFor === 'a sub-execution'
+				? `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`
+				: `Node "${nodeName}" sends a message and waits for a response, and engine v2 cannot end that wait yet.`,
+		);
+	}
+}
+
+/** A wait with no deadline that refuses resume requests. Nothing can end it. */
+export class UnendingWaitError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" waits with no time limit and does not accept a resume request, so nothing can end the wait`,
 		);
 	}
 }
