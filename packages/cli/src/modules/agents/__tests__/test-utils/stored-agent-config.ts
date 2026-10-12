@@ -80,6 +80,7 @@ export function createAgentSkillRefsService(
 		),
 	);
 	service.pinDraftForPublish.mockResolvedValue(undefined);
+	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;
 }
 

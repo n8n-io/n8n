@@ -1,4 +1,3 @@
-import type { AgentSkill } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,29 +11,15 @@ import type { Agent } from '../entities/agent.entity';
 
 const pinId = '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f';
 
-function body(instructions: string): AgentSkill {
-	return { name: 'Skill', description: 'A skill', instructions };
-}
-
 describe('AgentRunnableStateService', () => {
-	it('lists the pinned skills that have a newer version', async () => {
+	it('returns the pinned skills that have a newer version', async () => {
 		const skillRefs = mock<AgentSkillRefsService>();
-		skillRefs.readDraft.mockResolvedValue({
-			skillRefs: [
-				{ type: 'skill', id: 'pinned_older', versionId: pinId },
-				{ type: 'skill', id: 'pinned_latest', versionId: pinId },
-				{ type: 'skill', id: 'unpinned' },
-			],
-			skills: {
-				pinned_older: body('Old text.'),
-				pinned_latest: body('Latest text.'),
-				unpinned: body('Latest text.'),
-			},
-		});
-		skillRefs.skillsForRefs.mockResolvedValue({
-			pinned_older: body('New text.'),
-			pinned_latest: body('Latest text.'),
-		});
+		const draft = {
+			skillRefs: [{ type: 'skill' as const, id: 'pinned_older', versionId: pinId }],
+			skills: { pinned_older: { name: 'Skill', description: 'A skill', instructions: 'Old.' } },
+		};
+		skillRefs.readDraft.mockResolvedValue(draft);
+		skillRefs.findOutdatedSkillIds.mockResolvedValue(['pinned_older']);
 		const publishService = mock<AgentPublishService>();
 		publishService.hasPublishHistory.mockResolvedValue(false);
 		const service = new AgentRunnableStateService(
@@ -50,13 +35,7 @@ describe('AgentRunnableStateService', () => {
 			issues: [],
 		});
 
-		expect(skillRefs.skillsForRefs).toHaveBeenCalledWith(
-			[
-				{ type: 'skill', id: 'pinned_older' },
-				{ type: 'skill', id: 'pinned_latest' },
-			],
-			{},
-		);
+		expect(skillRefs.findOutdatedSkillIds).toHaveBeenCalledWith(draft.skillRefs, draft.skills, {});
 		expect(result.outdatedSkillIds).toEqual(['pinned_older']);
 	});
 });

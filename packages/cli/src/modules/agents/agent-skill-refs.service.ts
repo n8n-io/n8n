@@ -8,6 +8,7 @@ import type { Agent } from './entities/agent.entity';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { SkillRepository } from './repositories/skill.repository';
 import { SkillService, toAgentSkill, type SkillRef } from './skills/skill.service';
+import { getAgentSkillHash } from './utils/agent-config-hash';
 
 /** Skill refs and the skill bodies they resolve to, keyed by skill id. */
 export interface AgentSkillsSnapshot {
@@ -83,6 +84,27 @@ export class AgentSkillRefsService {
 	): Promise<Record<string, AgentSkill>> {
 		if (!skillRefs?.length) return {};
 		return await this.skillService.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
+	}
+
+	async findOutdatedSkillIds(
+		skillRefs: AgentJsonSkillConfig[],
+		skills: Record<string, AgentSkill>,
+		ctx: OperationContext,
+	): Promise<string[]> {
+		const pinnedSkillIds = skillRefs.flatMap((ref) => (ref.versionId ? [ref.id] : []));
+		const latestSkills = await this.skillsForRefs(
+			pinnedSkillIds.map((id) => ({ type: 'skill', id })),
+			ctx,
+		);
+		return pinnedSkillIds.filter((id) => {
+			const latest = latestSkills[id];
+			const pinned = skills[id];
+			return (
+				latest !== undefined &&
+				pinned !== undefined &&
+				getAgentSkillHash(latest) !== getAgentSkillHash(pinned)
+			);
+		});
 	}
 
 	/**

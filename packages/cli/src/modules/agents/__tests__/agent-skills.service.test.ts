@@ -355,7 +355,7 @@ describe('AgentSkillsService', () => {
 					getAgentSkillHash(olderSkill),
 				),
 			).rejects.toThrow(
-				'This agent uses an older version of this skill. To edit the skill, remove it from the agent and add it again.',
+				'This agent uses an older version of this skill. Use the latest version first, then edit the skill. To use the latest version, remove versionId from the skill ref in the agent config.',
 			);
 			expect(skillRefs.unpinDraftRef).not.toHaveBeenCalled();
 			expect(skillService.save).not.toHaveBeenCalled();

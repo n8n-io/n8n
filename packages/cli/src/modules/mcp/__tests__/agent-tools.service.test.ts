@@ -2024,6 +2024,34 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent.config).not.toHaveProperty('integrations');
 		});
 
+		it('lists the pinned skills that have a newer version', async () => {
+			const pinnedRef = {
+				type: 'skill' as const,
+				id: 'brand_voice',
+				versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f',
+			};
+			const skill = { name: 'Brand voice', description: 'Voice', instructions: 'Old text.' };
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					schema: storedAgentConfig({ ...baseConfig, skills: [pinnedRef] }),
+					tools: {},
+				}),
+			);
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue({ brand_voice: skill });
+			agentTaskService.list.mockResolvedValue([] as never);
+			agentSkillRefs.findOutdatedSkillIds.mockResolvedValueOnce(['brand_voice']);
+
+			const result = await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({ outdatedSkillIds: ['brand_voice'] });
+			expect(agentSkillRefs.findOutdatedSkillIds).toHaveBeenCalledWith(
+				[pinnedRef],
+				{ brand_voice: skill },
+				{},
+			);
+		});
+
 		it('returns the stored skill refs, and config.replace of that config keeps them', async () => {
 			const skillRefs = [
 				{ type: 'skill' as const, id: 'zeta' },

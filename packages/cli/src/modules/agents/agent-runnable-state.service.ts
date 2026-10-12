@@ -55,15 +55,7 @@ export class AgentRunnableStateService {
 		const skillHashes = Object.fromEntries(
 			Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);
-		const pinnedSkillIds = skillRefs.flatMap((ref) => (ref.versionId ? [ref.id] : []));
-		const latestPinnedSkills = await this.agentSkillRefs.skillsForRefs(
-			pinnedSkillIds.map((id) => ({ type: 'skill', id })),
-			{},
-		);
-		const outdatedSkillIds = pinnedSkillIds.filter((id) => {
-			const latest = latestPinnedSkills[id];
-			return latest !== undefined && getAgentSkillHash(latest) !== skillHashes[id];
-		});
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(skillRefs, skills, {});
 		if (draftValidation) {
 			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);
 			return Object.assign(agent, {

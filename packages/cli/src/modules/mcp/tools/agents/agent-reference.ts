@@ -101,6 +101,9 @@ directly on that object — there is no \`value\` wrapper. For example:
   \`baseSkillHash\` from get_agent's \`skillHashes\` so a skill edited elsewhere in the meantime is
   not overwritten. Skills ignore \`allowedTools\`.
 - skill.delete: Set \`skillId\` to the skill to detach. The skill stays available to other Agents.
+- A skill ref with \`versionId\` pins that saved version of the skill. get_agent lists the pinned
+  skills that have a newer version in \`outdatedSkillIds\`. To use the latest version, remove
+  \`versionId\` from the ref with config.patch. Do not delete and add the skill again.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
   On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it

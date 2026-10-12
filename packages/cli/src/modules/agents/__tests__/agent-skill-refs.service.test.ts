@@ -213,6 +213,48 @@ describe('AgentSkillRefsService', () => {
 		);
 	});
 
+	describe('findOutdatedSkillIds', () => {
+		const body = (instructions: string) => ({
+			name: 'Skill',
+			description: 'A skill',
+			instructions,
+		});
+
+		it('lists the pinned skills whose latest text differs from the pinned text', async () => {
+			skillService.resolveForAgentDraft.mockResolvedValue({
+				pinned_older: body('New text.'),
+				pinned_latest: body('Latest text.'),
+			});
+
+			const outdated = await service.findOutdatedSkillIds(
+				[
+					{ type: 'skill', id: 'pinned_older', versionId: pinId },
+					{ type: 'skill', id: 'pinned_latest', versionId: pinId },
+					{ type: 'skill', id: 'unpinned' },
+				],
+				{
+					pinned_older: body('Old text.'),
+					pinned_latest: body('Latest text.'),
+					unpinned: body('Latest text.'),
+				},
+				ctx,
+			);
+
+			expect(outdated).toEqual(['pinned_older']);
+			expect(skillService.resolveForAgentDraft).toHaveBeenCalledWith(
+				[{ id: 'pinned_older' }, { id: 'pinned_latest' }],
+				ctx,
+			);
+		});
+
+		it('reads nothing when no ref is pinned', async () => {
+			await expect(
+				service.findOutdatedSkillIds([{ type: 'skill', id: 'unpinned' }], {}, ctx),
+			).resolves.toEqual([]);
+			expect(skillService.resolveForAgentDraft).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('createDraftRefs', () => {
 		const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
 
