@@ -45,18 +45,24 @@ export function orderColumnRenames<P extends ColumnPair>(
 	pairs: P[],
 ): { ordered: P[]; blocked: P[] } {
 	const keptPairs = pairs.filter(({ source, target }) => source.type === target.type);
-	const liveNames = new Map(keptPairs.map((pair) => [pair, pair.target.name.toLowerCase()]));
+	const liveNameCounts = new Map<string, number>();
+	const countName = (name: string, delta: number) =>
+		liveNameCounts.set(name.toLowerCase(), (liveNameCounts.get(name.toLowerCase()) ?? 0) + delta);
+	for (const { target } of keptPairs) countName(target.name, 1);
 	const ordered: P[] = [];
 	let pending = keptPairs.filter(({ source, target }) => source.name !== target.name);
 
 	while (pending.length > 0) {
-		const next = pending.find((pair) => {
-			const newName = pair.source.name.toLowerCase();
-			return [...liveNames].every(([other, name]) => other === pair || name !== newName);
+		const next = pending.find(({ source, target }) => {
+			const newName = source.name.toLowerCase();
+			// A case-only rename holds its own new name.
+			const ownCount = newName === target.name.toLowerCase() ? 1 : 0;
+			return (liveNameCounts.get(newName) ?? 0) === ownCount;
 		});
 		if (!next) break;
 		ordered.push(next);
-		liveNames.set(next, next.source.name.toLowerCase());
+		countName(next.target.name, -1);
+		countName(next.source.name, 1);
 		pending = pending.filter((pair) => pair !== next);
 	}
 
