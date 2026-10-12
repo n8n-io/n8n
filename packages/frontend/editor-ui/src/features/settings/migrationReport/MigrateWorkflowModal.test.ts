@@ -49,6 +49,7 @@ const recommendations = [
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 let eventBus: EventBus;
+let modalBeforeClose: (() => unknown) | undefined;
 
 const renderComponent = createComponentRenderer(MigrateWorkflowModal, {
 	pinia: createTestingPinia(),
@@ -57,6 +58,10 @@ const renderComponent = createComponentRenderer(MigrateWorkflowModal, {
 			// Render all slots directly so the modal body/footer are queryable
 			// without the open-state + teleport machinery of the real Modal.
 			Modal: {
+				props: ['beforeClose'],
+				setup(props: { beforeClose?: () => unknown }) {
+					modalBeforeClose = () => props.beforeClose?.();
+				},
 				template:
 					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 			},
@@ -254,6 +259,27 @@ describe('MigrateWorkflowModal', () => {
 				'href',
 				'/workflow/workflow-2/node-2',
 			);
+		});
+
+		it('shows the progress and blocks closing while it migrates', async () => {
+			let resolveFirst!: (result: typeof migrationResult) => void;
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule)
+				.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+				.mockResolvedValueOnce({ ...migrationResult, workflowId: 'workflow-2' });
+			render([workflow, secondWorkflow]);
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+
+			const confirmButton = screen.getByTestId('migrate-modal-confirm-button');
+			expect(confirmButton).toHaveTextContent('Migrating 0 of 2');
+			expect(confirmButton).toBeDisabled();
+			expect(confirmButton).not.toHaveAttribute('aria-busy');
+			expect(modalBeforeClose?.()).toBe(false);
+
+			resolveFirst(migrationResult);
+
+			expect(await screen.findByTestId('migrate-modal-done-button')).toBeInTheDocument();
+			expect(modalBeforeClose?.()).toBe(true);
 		});
 
 		it('publishes only the republishable workflows', async () => {

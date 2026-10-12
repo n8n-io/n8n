@@ -172,6 +172,7 @@ function close() {
 		:event-bus="data.eventBus"
 		:center="true"
 		:close-on-click-modal="false"
+		:before-close="() => !migrating"
 		width="540px"
 	>
 		<template #header>
@@ -312,8 +313,10 @@ function close() {
 						data-test-id="migrate-modal-cancel-button"
 						@click="close"
 					/>
+					<!-- A loading button hides its label, so a bulk run only disables it to keep the progress visible. -->
 					<N8nButton
-						:loading="migrating"
+						:loading="migrating && !isBulk"
+						:disabled="migrating"
 						:label="confirmLabel"
 						data-test-id="migrate-modal-confirm-button"
 						@click="handleMigrate"
