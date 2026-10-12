@@ -72,7 +72,12 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	isExecutionIdV2,
+	type ExecutionIdV2,
+} from '@/executions/execution-id';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
@@ -994,6 +999,8 @@ export async function executeWebhook(
 		storedAt?: ExecutionStorageLocation;
 		/** Called before WorkflowRunner.run for an existing execution. */
 		onResume?: () => void;
+		/** For an engine v2 execution: the wait that the resume ends on the data plane. */
+		engineResume?: EngineV2ResumeRequest;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1074,8 +1081,14 @@ export async function executeWebhook(
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
 			// Created before the node runs, so a file the node stores is written under
-			// the path of its run from the start, and no rename is needed later.
-			engineV2ExecutionId = createExecutionIdV2();
+			// the path of its run from the start, and no rename is needed later. A
+			// resume keeps the id of the execution that waits: a file the node stores
+			// then lands under that run, and a response subscription names a run that
+			// answers.
+			engineV2ExecutionId =
+				executionId !== undefined && isExecutionIdV2(executionId)
+					? executionId
+					: createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
@@ -1317,7 +1330,12 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						engineResume: options?.engineResume,
+					}
 				: undefined,
 			responsePromise,
 		);

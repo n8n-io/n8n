@@ -9,6 +9,10 @@ import type {
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	ExecutionStatus,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeTargetRequest,
+	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
@@ -25,6 +29,7 @@ import {
 	EngineRejectedWorkflowError,
 	type CancelExecutionOutcome,
 	type EngineDataPlaneProvider,
+	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
 
 /** Must match the engine's `ExecutionStatus`. */
@@ -156,6 +161,54 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 		const { finishedAt } = response.body as CancelExecutionResponse;
 		return { cancelled: true, finishedAt: new Date(finishedAt) };
+	}
+
+	async locateResumeTarget(
+		id: ExecutionIdV2,
+		request: ResumeTargetRequest,
+	): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		return await this.postResume<ResumeTargetResponse>(
+			`/api/workflow-executions/${encodeURIComponent(id)}/resume-target`,
+			request,
+		);
+	}
+
+	async resolveStep(
+		stepId: string,
+		request: ResolveStepRequest,
+	): Promise<ResumeOutcome<ResolveStepResponse>> {
+		return await this.postResume<ResolveStepResponse>(
+			`/api/step-executions/${encodeURIComponent(stepId)}/resolve`,
+			request,
+		);
+	}
+
+	/**
+	 * The resume token travels in the body, opaque: this client never reads it
+	 * and holds no secret that could verify it. Only the identity token in the
+	 * header is this plane's. A refusal comes back as an outcome, not an error,
+	 * because the route answers each status differently.
+	 */
+	private async postResume<T>(
+		url: string,
+		body: ResumeTargetRequest | ResolveStepRequest,
+	): Promise<ResumeOutcome<T>> {
+		const response = await this.http.request<T | EngineErrorResponse>({
+			url,
+			method: 'POST',
+			body,
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+
+		if (response.statusCode >= 300) {
+			const { error } = this.parseErrorResponse(response.body);
+			return { ok: false, status: response.statusCode, error: error ?? 'engine_error' };
+		}
+
+		return { ok: true, value: response.body as T };
 	}
 
 	/** The status a `not_cancellable` response names. */

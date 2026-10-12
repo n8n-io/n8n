@@ -67,6 +67,18 @@ export class EngineConfig {
 	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
 	authSecret: string = '';
 
+	/**
+	 * Secret the data plane derives resume tokens from. Only the data plane reads
+	 * it: the control plane forwards a resume token without reading it, and in
+	 * remote mode refuses to start with it set. Unset, the engine accepts no
+	 * resume request, and a node that needs a resume URL fails. How the secret
+	 * rotates is a later decision.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_RESUME_SECRET')
+	resumeSecret: string = '';
+
 	/** Port the control plane server listens on. Its own, so it can be firewalled off from the editor API. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_PORT')
 	controlPlanePort: number = 3001;

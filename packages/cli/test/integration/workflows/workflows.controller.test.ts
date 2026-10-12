@@ -5300,6 +5300,8 @@ describe('POST /workflows/:workflowId/run', () => {
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				cancelExecution: vi.fn(),
+				locateResumeTarget: vi.fn(),
+				resolveStep: vi.fn(),
 			});
 		});
 

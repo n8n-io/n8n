@@ -1,4 +1,5 @@
 import { UUID_V7_PATTERN } from '@n8n/constants';
+import { ConflictError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -799,6 +800,75 @@ describe('EngineV2Dispatcher', () => {
 				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith(outputs);
 				expect(proxy.startExecution).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('resume', () => {
+		const executionId = createExecutionIdV2();
+		const engineResume = { stepId: 'step-1', token: 'token' };
+		const existing: ResumableExecution = { executionId, expectedStatus: 'waiting', engineResume };
+
+		/**
+		 * What `prepareExecutionData` leaves on the stack after the node's `webhook()`
+		 * ran. A plain object, not `mock()`: the items are compared by value.
+		 */
+		const resumeData = (main: Array<INodeExecutionData[] | null>) =>
+			({
+				workflowData: workflow(),
+				userId: 'user-1',
+				executionData: createRunExecutionData({
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [
+							{
+								node: node('wait-id', 'Wait', 'n8n-nodes-base.wait'),
+								data: { main },
+								source: null,
+							},
+						],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: null,
+					},
+				}),
+			}) as unknown as IWorkflowExecutionDataProcess;
+
+		beforeEach(() => {
+			proxy.resolveStep.mockResolvedValue({ ok: true, value: { executionId, stepId: 'step-1' } });
+		});
+
+		it('ends the wait with the items the resume method produced, under the located step and token', async () => {
+			await expect(
+				dispatcher.resume(existing, resumeData([[{ json: { approved: true } }]])),
+			).resolves.toBe(executionId);
+
+			expect(proxy.resolveStep).toHaveBeenCalledWith('step-1', {
+				token: 'token',
+				outputs: [[{ json: { approved: true } }]],
+			});
+			expect(proxy.startExecution).not.toHaveBeenCalled();
+		});
+
+		it('checks the credential permissions before it reaches the data plane', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(new UserError('no access'));
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow('no access');
+
+			expect(proxy.resolveStep).not.toHaveBeenCalled();
+		});
+
+		it('answers a wait that is over with a conflict, as v1 does', async () => {
+			proxy.resolveStep.mockResolvedValue({ ok: false, status: 409, error: 'not_waiting' });
+
+			await expect(dispatcher.resume(existing, resumeData([[]]))).rejects.toThrow(ConflictError);
+		});
+
+		it('refuses a resume that names no wait on the data plane', async () => {
+			await expect(
+				dispatcher.resume({ executionId, expectedStatus: 'waiting' }, resumeData([[]])),
+			).rejects.toThrow();
+
+			expect(proxy.resolveStep).not.toHaveBeenCalled();
 		});
 	});
 });
