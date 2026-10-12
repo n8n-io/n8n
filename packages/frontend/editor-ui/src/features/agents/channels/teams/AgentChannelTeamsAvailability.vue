@@ -233,6 +233,7 @@ const summary = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
 }
 
 .fileAccessActions {

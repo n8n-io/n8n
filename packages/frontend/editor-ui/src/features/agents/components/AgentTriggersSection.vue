@@ -198,6 +198,7 @@ async function loadChannelDetails() {
 	if (!props.agentUnsaved) {
 		await fetchStatus(withN8nChat(integrations).map(({ type }) => type));
 	}
+	openTeamsAfterFileAccessConsent(integrations);
 
 	try {
 		const credentials = await credentialsStore.fetchUsableCredentials({
@@ -268,21 +269,22 @@ const router = useRouter();
 /**
  * Microsoft returns an administrator here after the Teams file access consent,
  * with `state` passed back unchanged. The Teams settings show the result. The
- * other query values are Microsoft's and only cleared, never shown.
+ * other query values are Microsoft's and only cleared, never shown. Runs after
+ * the status fetch: the agent's channels can load later than this page, and
+ * until then a connected Teams reads as not connected and opens the setup.
  */
-watch(
-	channelList,
-	(channels) => {
-		// Optional: the section also renders outside the router, as in tests.
-		if (route?.query.state !== FILE_ACCESS_CONSENT_STATE) return;
-		if (!channels.some(({ type }) => type === 'teams')) return;
-		const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
-			route.query;
-		void router.replace({ query });
-		openChannelEdit('teams', props.connectedTriggers.includes('teams'));
-	},
-	{ immediate: true },
-);
+function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) {
+	// Optional: the section also renders outside the router, as in tests.
+	if (route?.query.state !== FILE_ACCESS_CONSENT_STATE) return;
+	if (!integrations.some(({ type }) => type === 'teams')) return;
+	const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
+		route.query;
+	void router.replace({ query });
+	openChannelEdit(
+		'teams',
+		props.connectedTriggers.includes('teams') || integrationStatus.isConfigured('teams'),
+	);
+}
 
 defineExpose({ openChannelModal });
 

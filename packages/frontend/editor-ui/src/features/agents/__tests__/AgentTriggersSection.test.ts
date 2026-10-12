@@ -187,6 +187,18 @@ describe('AgentTriggersSection', () => {
 		expect(routerReplace).toHaveBeenCalledWith({ query: {} });
 	});
 
+	it('opens the Teams settings before the agent config lists the channel', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = { state: 'teams-file-access', admin_consent: 'True' };
+		configured.value = { teams: true };
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: [] });
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes('data-view')).toBe('teams_edit');
+	});
+
 	it('opens nothing on an ordinary visit', async () => {
 		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
 
