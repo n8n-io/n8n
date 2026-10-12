@@ -197,7 +197,6 @@ const CANDIDATES = [
 	"={{ $('Source').first().json.item.name }}",
 	"={{ $('Source').last().json.item.name }}",
 	"={{ $('Source').all().length }}",
-	"={{ $('Source').first()?.json.item.name }}",
 	'={{ $input.item.json.item.name }}',
 	'={{ $input.first().json.item.name }}',
 	'={{ $input.last().json.item.name }}',

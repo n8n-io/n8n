@@ -319,7 +319,9 @@ function parseChain(node: namedTypes.ChainExpression, parse: ParseChild): Simple
  * optional chain in it through its own polyfill, and that reprint drops the
  * parentheses around a `??` operand mixed with `&&` or `||`: the engines
  * then throw "invalid syntax" where this interpreter would evaluate. A
- * chunk with both an optional chain and an extension call is theirs.
+ * chunk with both an optional chain and an extension call is theirs. The
+ * rewrite matches by method name alone, so a node-ref call like
+ * `$input.first()` counts too.
  */
 export function usesPolyfilledChain(root: SimpleNode): boolean {
 	let chain = false;
@@ -331,7 +333,7 @@ export function usesPolyfilledChain(root: SimpleNode): boolean {
 				visit(node.expression);
 				return;
 			case 'call':
-				if (node.receiver.kind !== 'nodeRef' && EXTENSION_METHODS.has(node.method)) {
+				if (EXTENSION_METHODS.has(node.method)) {
 					extension = true;
 				}
 				visit(node.receiver);

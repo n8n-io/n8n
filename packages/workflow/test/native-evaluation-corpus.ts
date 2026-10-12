@@ -177,7 +177,6 @@ export const HANDLED_CORPUS: string[] = [
 	"={{ $('Source').all().length }}",
 	"={{ $('Source').all()[0].json.item.name }}",
 	"={{ $('Source').item.json.item.missing ?? 'fallback' }}",
-	"={{ $('Source').first()?.json.item.name }}",
 	"=Name: {{ $('Source').item.json.item.name }}",
 	'={{ $node["Source"].json["item"]["name"] }}',
 	"={{ $node['Source'].json.item.count }}",
@@ -459,6 +458,8 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.last?.() }}',
 	'={{ ($json.item.names[9] && $json.item.name) ?? $json.item.names[9]?.last() }}',
 	'={{ $json.item.names?.[9] ?? ($json.item.names.last() && 1) }}',
+	'={{ $json.item.names?.[9] ?? ($input.first() && 1) }}',
+	"={{ $('Source').first()?.json.item.name }}",
 	'={{ $json.item.my_object?.addresses ?? $json.item.name.toTitleCase() }}',
 	// A comment hides the call from the extendSyntax regex.
 	'={{ $json.item.names.first /* c */ () }}',
