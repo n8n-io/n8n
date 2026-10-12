@@ -44,6 +44,8 @@ describe('AgentChannelTeamsAvailability', () => {
 		});
 
 		expect(getByTestId('teams-file-access')).toHaveTextContent('Files.Read.All');
+		// The portal opens on Delegated permissions, which the agent cannot use.
+		expect(getByTestId('teams-file-access')).toHaveTextContent('Application permissions');
 		expect(getByTestId('teams-file-access-link').getAttribute('href')).toContain(
 			'/CallAnAPI/appId/app-1',
 		);
