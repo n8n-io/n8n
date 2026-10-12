@@ -204,7 +204,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Impact tag
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -288,7 +288,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
 				expect(screen.getByText('Capability removed')).toBeInTheDocument();
@@ -766,7 +766,7 @@ describe('MigrationRules', () => {
 			},
 			{
 				impact: 'executionsFail',
-				label: 'Executions fail',
+				label: 'Executions will fail',
 				tooltipText: 'will fail',
 			},
 			{
