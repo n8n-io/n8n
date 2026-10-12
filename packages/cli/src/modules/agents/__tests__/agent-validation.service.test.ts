@@ -14,6 +14,7 @@ import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integra
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -86,11 +87,13 @@ function makeService() {
 				agentTaskSnapshotRepository,
 				agentRepository,
 				mock<TransactionRunner>(),
+				createAgentSkillRefsService(agentRepository),
 			),
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
+			createAgentSkillRefsService(agentRepository),
 		),
 		agentRepository,
 		agentSkillsService,
@@ -304,6 +307,85 @@ describe('AgentValidationService — structured issues', () => {
 		expect(bedrockResult).toEqual({ status: 'valid', issues: [] });
 	});
 
+	it.each(['runtime', 'publish'] as const)(
+		'validates each Vertex model slot before %s',
+		async (scope) => {
+			const { service, agentRepository } = makeService();
+			const model = {
+				model: 'google-vertex/gemini-2.5-pro',
+				credential: 'vertex',
+			};
+			const config: AgentJsonConfig = {
+				...runnableConfig,
+				...model,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					observationalMemory: { observerModel: model, reflectorModel: model },
+					episodicMemory: {
+						enabled: true,
+						credential: 'embedding-credential',
+						reflectorModel: model,
+					},
+				},
+				subAgents: { modelsByDifficulty: { low: model, medium: model, high: model } },
+			};
+			const paths = [
+				'',
+				'memory.observationalMemory.observerModel.',
+				'memory.observationalMemory.reflectorModel.',
+				'memory.episodicMemory.reflectorModel.',
+				'subAgents.modelsByDifficulty.low.',
+				'subAgents.modelsByDifficulty.medium.',
+				'subAgents.modelsByDifficulty.high.',
+			];
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
+			const invalid = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'vertex', type: 'googleApi' }]),
+				scope,
+			);
+			for (const path of paths) {
+				expect(invalid.issues).toContainEqual(
+					expect.objectContaining({ code: 'incompatible_credential', path: `${path}credential` }),
+				);
+			}
+
+			await expect(
+				service.validateAgentConfiguration(
+					agentId,
+					projectId,
+					makeCredentialProvider([{ id: 'vertex', type: 'googleVertexAiApi' }]),
+					scope,
+				),
+			).resolves.toEqual({ status: 'valid', issues: [] });
+		},
+	);
+
+	it('does not require a Vertex credential for disabled memory workers', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: false,
+					storage: 'n8n',
+					observationalMemory: {
+						observerModel: { model: 'google-vertex/gemini-3-flash-preview', credential: '' },
+					},
+				},
+			}),
+		);
+		await expect(
+			service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			),
+		).resolves.toEqual({ status: 'valid', issues: [] });
+	});
+
 	it('flags a classic Azure OpenAI credential without a deployment name', async () => {
 		const { service, agentRepository } = makeService();
 		const azureConfig: AgentJsonConfig = {
@@ -398,56 +480,80 @@ describe('AgentValidationService — structured issues', () => {
 		]);
 	});
 
-	it('accepts the n8n Connect managed tag on the main model when the gateway serves the provider, else flags it', async () => {
-		const { service, agentRepository, aiGatewayService } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
-		);
+	it.each([
+		['openai/gpt-4o', 'openAiApi'],
+		['google-vertex/gemini-2.5-pro', 'googleVertexAiApi'],
+	])(
+		'validates the managed main credential against cached gateway support for %s',
+		async (model, credentialType) => {
+			const { service, agentRepository, aiGatewayService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ ...runnableConfig, model, credential: AI_GATEWAY_MANAGED_TAG }),
+			);
 
-		// Gateway serves the model's provider → the managed credential is valid.
-		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue('openAiApi');
-		const served = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([]),
-		);
-		expect(served.issues).not.toEqual(
-			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
-		);
+			aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(credentialType);
+			const served = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([]),
+			);
+			expect(served).toEqual({ status: 'valid', issues: [] });
 
-		// Cached config present but does not serve the provider → incompatible_credential.
-		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(null);
-		const unserved = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([]),
-		);
-		expect(unserved.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
-			]),
-		);
-	});
+			aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(null);
+			const unserved = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([]),
+			);
+			expect(unserved).toEqual({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'incompatible_credential',
+						path: 'credential',
+						capability: { kind: 'agent' },
+					},
+				],
+			});
+		},
+	);
 
-	it('does not flag the managed tag when gateway support cannot be determined (no cached config)', async () => {
-		const { service, agentRepository, aiGatewayService } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ ...runnableConfig, credential: AI_GATEWAY_MANAGED_TAG }),
-		);
-		// No cached config (e.g. cold start or a throttled/failed fetch) → support is
-		// unknown. The static validator must fail open rather than block a working agent.
-		aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(undefined);
+	it.each(['openai/gpt-4o', 'google-vertex/gemini-2.5-pro'])(
+		'validates Vertex child credentials when gateway support is unknown for %s',
+		async (model) => {
+			const { service, agentRepository, aiGatewayService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					...runnableConfig,
+					model,
+					credential: AI_GATEWAY_MANAGED_TAG,
+					subAgents: {
+						modelsByDifficulty: {
+							low: { model: 'google-vertex/gemini-2.5-pro', credential: 'missing-vertex' },
+						},
+					},
+				}),
+			);
+			aiGatewayService.getCredentialTypeForProviderCached.mockReturnValue(undefined);
 
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([]),
-		);
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				makeCredentialProvider([]),
+			);
 
-		expect(result.issues).not.toEqual(
-			expect.arrayContaining([expect.objectContaining({ path: 'credential' })]),
-		);
-	});
+			expect(result).toEqual({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'invalid_credential',
+						path: 'subAgents.modelsByDifficulty.low.credential',
+						capability: { kind: 'agent' },
+					},
+				],
+			});
+		},
+	);
 
 	it('flags a node tool missing a required credential slot but accepts one with the slot configured and accessible', async () => {
 		const { service, agentRepository, nodeTypes } = makeService();
@@ -1449,6 +1555,7 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 
 		const result = await service.validateAgentEntityConfiguration(
 			agent,
+			storedSkillRefs(agent),
 			projectId,
 			tasks,
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),

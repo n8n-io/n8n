@@ -160,6 +160,7 @@ function countSelectorKinds(rules: readonly PolicyRule[]) {
 	return {
 		name_selector_count: rules.filter((rule) => rule.selector.kind === 'name').length,
 		package_selector_count: rules.filter((rule) => rule.selector.kind === 'package').length,
+		extends_selector_count: rules.filter((rule) => rule.selector.kind === 'extends').length,
 	};
 }
 
@@ -586,7 +587,7 @@ export class TelemetryEventRelay extends EventRelay {
 			kind === CREDENTIAL_TYPES_KIND
 				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
 				: Object.keys(this.nodeTypes.getKnownTypes());
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		this.telemetry.track(
@@ -1818,6 +1819,7 @@ export class TelemetryEventRelay extends EventRelay {
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
@@ -1894,6 +1896,7 @@ export class TelemetryEventRelay extends EventRelay {
 			release_channel: this.globalConfig.generic.releaseChannel,
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_deployment_artifact: this.globalConfig.deployment.artifact || undefined,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
 

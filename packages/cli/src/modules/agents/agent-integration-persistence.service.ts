@@ -20,7 +20,9 @@ import {
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent } from './entities/agent.entity';
+import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -95,6 +97,7 @@ export class AgentIntegrationPersistenceService {
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -178,19 +181,21 @@ export class AgentIntegrationPersistenceService {
 
 	private recordIntegrationMutation(
 		agent: Agent,
+		skillRefs: AgentSkillRefs,
 		previousIntegrations: AgentIntegrationConfig[],
 		context: CredentialIntegrationMutationContext,
 	): void {
-		const previousSchema = agent.schema ?? null;
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
+		const wasUnconfigured = isUnconfiguredAgent(config, previousIntegrations);
 		this.modificationTelemetry.record({
 			agent,
+			config,
 			projectId: agent.projectId,
 			user: context.user,
 			by: context.modifiedBy,
 			changedParts: diffAgentConfigParts(
-				previousSchema,
-				agent.schema,
+				config,
+				config,
 				previousIntegrations,
 				agent.integrations ?? [],
 			),
@@ -222,8 +227,11 @@ export class AgentIntegrationPersistenceService {
 		}
 
 		const integrations = projectIntegrations(current, { add, remove });
+		// A channel write keeps the skill refs as they are.
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
 		const written = await this.persistIntegrations(
 			agent,
+			skillRefs,
 			integrations,
 			state,
 			context,
@@ -233,13 +241,14 @@ export class AgentIntegrationPersistenceService {
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await written.emitSetupCompleted?.();
-		this.recordIntegrationMutation(agent, current, context);
+		this.recordIntegrationMutation(agent, skillRefs, current, context);
 
 		return { agent, changed: true, published, ...(removed ? { removed } : {}) };
 	}
 
 	private async persistIntegrations(
 		agent: Agent,
+		skillRefs: AgentSkillRefs,
 		integrations: AgentIntegrationConfig[],
 		state: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		context: CredentialIntegrationMutationContext,
@@ -253,6 +262,7 @@ export class AgentIntegrationPersistenceService {
 		agent.integrations = integrations;
 		const emitSetupCompleted = await this.setupCompletionService.recordIfSetupComplete(
 			agent,
+			skillRefs,
 			agent.projectId,
 			credentialProvider,
 			context.user,

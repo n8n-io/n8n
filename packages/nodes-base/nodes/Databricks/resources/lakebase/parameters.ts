@@ -35,6 +35,9 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Branch',
 		name: 'lakebaseBranch',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: ['lakebaseProject.value'],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The branch of the project',
@@ -63,6 +66,9 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Database',
 		name: 'lakebaseDatabase',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: ['lakebaseProject.value', 'lakebaseBranch.value'],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The Postgres database on the branch',
@@ -91,6 +97,13 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Schema',
 		name: 'lakebaseSchema',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+			],
+		},
 		default: { mode: 'list', value: 'public', cachedResultName: 'public' },
 		required: true,
 		description:
@@ -119,6 +132,14 @@ export const lakebaseParameters: INodeProperties[] = [
 		displayName: 'Table',
 		name: 'lakebaseTable',
 		type: 'resourceLocator',
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'lakebaseProject.value',
+				'lakebaseBranch.value',
+				'lakebaseDatabase.value',
+				'lakebaseSchema.value',
+			],
+		},
 		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The table in the schema',

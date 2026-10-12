@@ -48,14 +48,17 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 });
 
 describe('AgentJsonConfigSchema — model', () => {
-	it('accepts AWS Bedrock model names containing a version colon', () => {
-		const result = AgentJsonConfigSchema.safeParse({
-			...minimalConfig,
-			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
-		});
+	it.each(['aws-bedrock/anthropic.claude-sonnet-4-5-v1:0', 'google-vertex/claude-fable-5@default'])(
+		'accepts the versioned model ID %s',
+		(model) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				model,
+			});
 
-		expect(result.success).toBe(true);
-	});
+			expect(result.success).toBe(true);
+		},
+	);
 });
 
 describe('AgentJsonConfigSchema — reasoning', () => {
