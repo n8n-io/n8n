@@ -11,7 +11,6 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError } from '@n8n/errors';
 import {
 	type ExternalIdentity,
 	IdentityService,
@@ -22,9 +21,11 @@ import {
 import { GLOBAL_OWNER_ROLE_SLUG, type Principal, type SecurityContext } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { ResolvedRoles } from '@/modules/provisioning.ee/role-resolver-types';
-import { RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import {
+	RoleMappingProxyService,
+	type ResolvedRoles,
+	type RoleMappingProvider,
+} from '@/services/role-mapping-proxy.service';
 
 import type { TrustedSourceIdentityEntity } from '../database/entities/trusted-source-identity.entity';
 import {
@@ -81,6 +82,7 @@ type MappedRoles = {
 	projectRoles: { projectId: string; role: string }[];
 	resolved: ResolvedRoles;
 	managed: { instanceRole: boolean; projectRoles: boolean };
+	provider: RoleMappingProvider;
 };
 
 /** Resolves the verified caller to an n8n user through the trusted-source binding table. */
@@ -93,35 +95,39 @@ export class TrustedSourceIdentityService extends IdentityService {
 		private readonly txRunner: TransactionRunner,
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
-		private readonly roleResolver: RoleResolverService,
-		private readonly provisioning: ProvisioningService,
+		private readonly roleMapping: RoleMappingProxyService,
 	) {
 		super();
 	}
 
+	// Runs inside the identity transaction: every read carries the context, because the pool may hold one connection.
 	private async mapRoles(
 		source: TrustedSource,
 		claims: Readonly<Record<string, unknown>>,
-	): Promise<Result<MappedRoles | undefined>> {
-		const { mode, instanceRoleRules, projectRoleRules, fallbackInstanceRole } =
+		ctx: OperationContext,
+	): Promise<Result<MappedRoles>> {
+		// No provider means the provisioning module did not load, for example because it is not licensed.
+		const provider = this.roleMapping.getProvider();
+		if (provider === null) return { ok: false, reason: 'no-role' };
+
+		const { instanceRoleRules, projectRoleRules, fallbackInstanceRole } =
 			source.config.identity.roleMapping;
 
-		if (mode === 'off') return { ok: true, value: undefined };
-
-		const resolved = await this.roleResolver.resolveRoles(
+		const resolved = await provider.resolveRoles(
 			{ instanceRoleRules, projectRoleRules, fallbackInstanceRole: fallbackInstanceRole ?? '' },
 			{
 				$claims: claims,
 				// `oauth2` labels the trusted-source protocol, so SSO rules copy over unchanged.
 				$provider: 'oauth2',
 			},
+			ctx,
 		);
 
 		const instanceRole = resolved.instanceRole.role;
 
 		if (
 			instanceRole === BLOCK_ACCESS_ASSIGNMENT ||
-			!(await this.isAssignableInstanceRole(instanceRole, {}))
+			!(await this.isAssignableInstanceRole(instanceRole, ctx))
 		) {
 			return { ok: false, reason: 'no-role' };
 		}
@@ -131,16 +137,13 @@ export class TrustedSourceIdentityService extends IdentityService {
 			role,
 		}));
 
-		if (projectRoles.length > 0) {
-			try {
-				await this.roleService.checkRolesExist(
-					projectRoles.map(({ role }) => role),
-					'project',
-				);
-			} catch (error) {
-				if (error instanceof BadRequestError) return { ok: false, reason: 'no-role' };
-				throw error;
-			}
+		if (
+			!(await this.identities.projectRolesExist(
+				projectRoles.map(({ role }) => role),
+				ctx,
+			))
+		) {
+			return { ok: false, reason: 'no-role' };
 		}
 
 		return {
@@ -153,6 +156,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 					instanceRole: instanceRoleRules.some((rule) => rule.enabled),
 					projectRoles: projectRoleRules.some((rule) => rule.enabled),
 				},
+				provider,
 			},
 		};
 	}
@@ -167,21 +171,30 @@ export class TrustedSourceIdentityService extends IdentityService {
 	private async acceptBinding(
 		source: TrustedSource,
 		binding: TrustedSourceIdentityEntity,
-		mappedRoles: MappedRoles | undefined,
+		claims: Readonly<Record<string, unknown>>,
 		ctx: OperationContext,
 	): Promise<Resolved> {
 		if (binding.status !== 'active') return { ok: false, reason: 'binding-inactive' };
 		if (binding.user.disabled) return { ok: false, reason: 'user-disabled' };
 
+		let mappedRoles: MappedRoles | undefined;
+		if (source.config.identity.roleMapping.mode === 'continuous') {
+			const mapped = await this.mapRoles(source, claims, ctx);
+			if (!mapped.ok) return mapped;
+			mappedRoles = mapped.value;
+		}
+
 		if (isStale(binding.lastSeenAt)) {
 			await this.identities.touchLastSeen(binding.sourceId, binding.subject, new Date(), ctx);
 		}
 
+		// Holds the roles to write, so the closure below sees a narrowed value.
 		const continuous =
-			source.config.identity.roleMapping.mode === 'continuous' &&
 			mappedRoles !== undefined &&
 			binding.provenance === 'jit' &&
-			binding.user.role.slug !== GLOBAL_OWNER_ROLE_SLUG;
+			binding.user.role.slug !== GLOBAL_OWNER_ROLE_SLUG
+				? mappedRoles
+				: undefined;
 
 		return {
 			ok: true,
@@ -190,15 +203,15 @@ export class TrustedSourceIdentityService extends IdentityService {
 				// Role writes run after the commit, because `changeUserRole` opens its own transaction.
 				...(continuous && {
 					onCommit: async () => {
-						await this.provisioning.applyResolvedRoles(
+						await continuous.provider.applyResolvedRoles(
 							binding.user,
-							mappedRoles.resolved,
-							mappedRoles.managed,
+							continuous.resolved,
+							continuous.managed,
 						);
 						// The request that changed the role must run with the new role, so re-read it.
 						if (
-							!mappedRoles.managed.instanceRole ||
-							binding.user.role.slug === mappedRoles.instanceRole
+							!continuous.managed.instanceRole ||
+							binding.user.role.slug === continuous.instanceRole
 						)
 							return;
 						const user = await this.users.findByIdWithRole(binding.user.id);
@@ -213,7 +226,6 @@ export class TrustedSourceIdentityService extends IdentityService {
 		source: TrustedSource,
 		external: ExternalIdentity,
 		user: User,
-		mappedRoles: MappedRoles | undefined,
 		ctx: OperationContext,
 	): Promise<Resolved> {
 		const row: InsertTrustedSourceIdentityRow = {
@@ -228,7 +240,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 		const binding = await this.identities.findBySubject(source.id, external.subject, ctx);
 		if (binding === null) throw new UnexpectedError('Binding missing after insert');
 
-		const accepted = await this.acceptBinding(source, binding, mappedRoles, ctx);
+		const accepted = await this.acceptBinding(source, binding, external.raw, ctx);
 
 		if (accepted.ok && binding.user.id === user.id) {
 			return {
@@ -255,7 +267,6 @@ export class TrustedSourceIdentityService extends IdentityService {
 	private async provision(
 		source: TrustedSource,
 		external: ExternalIdentity,
-		mappedRoles: MappedRoles | undefined,
 		ctx: OperationContext,
 	): Promise<Resolved> {
 		const { provision } = source.config.identity;
@@ -268,9 +279,11 @@ export class TrustedSourceIdentityService extends IdentityService {
 			return { ok: false, reason: 'provision-refused' };
 
 		// The config schema rejects jit provisioning without a role-mapping mode. This guards the type only.
-		if (mappedRoles === undefined) return { ok: false, reason: 'no-role' };
+		if (source.config.identity.roleMapping.mode === 'off') return { ok: false, reason: 'no-role' };
 
-		const role = mappedRoles.instanceRole;
+		const mapped = await this.mapRoles(source, external.raw, ctx);
+		if (!mapped.ok) return mapped;
+		const { instanceRole: role, projectRoles } = mapped.value;
 
 		const [firstName = '', ...rest] = (external.displayName ?? '').trim().split(/\s+/);
 
@@ -291,7 +304,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 				provenance: 'jit',
 				status: 'active',
 			},
-			mappedRoles.projectRoles,
+			projectRoles,
 		);
 
 		return {
@@ -321,7 +334,6 @@ export class TrustedSourceIdentityService extends IdentityService {
 	private async linkOrProvision(
 		source: TrustedSource,
 		external: ExternalIdentity,
-		mappedRoles: MappedRoles | undefined,
 		ctx: OperationContext,
 	): Promise<Resolved> {
 		const { linkByEmail } = source.config.identity;
@@ -339,24 +351,20 @@ export class TrustedSourceIdentityService extends IdentityService {
 				if (user.disabled) return { ok: false, reason: 'user-disabled' };
 				if (user.role.slug === GLOBAL_OWNER_ROLE_SLUG) return { ok: false, reason: 'link-refused' };
 
-				return await this.link(source, external, user, mappedRoles, ctx);
+				return await this.link(source, external, user, ctx);
 			}
 		}
-		return await this.provision(source, { ...external, email }, mappedRoles, ctx);
+		return await this.provision(source, { ...external, email }, ctx);
 	}
 
 	private async resolveBinding(
 		source: TrustedSource,
 		external: ExternalIdentity,
 	): Promise<Result<Principal>> {
-		// Runs before the transaction. The resolver and the role checks read without a context, and the pool may hold one connection.
-		const mapped = await this.mapRoles(source, external.raw);
-		if (!mapped.ok) return mapped;
-
 		const result = await this.txRunner.run({}, async (ctx) => {
 			const binding = await this.identities.findBySubject(source.id, external.subject, ctx);
-			if (binding !== null) return await this.acceptBinding(source, binding, mapped.value, ctx);
-			return await this.linkOrProvision(source, external, mapped.value, ctx);
+			if (binding !== null) return await this.acceptBinding(source, binding, external.raw, ctx);
+			return await this.linkOrProvision(source, external, ctx);
 		});
 		if (result.ok) {
 			const refreshed = await result.value.onCommit?.();

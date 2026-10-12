@@ -8,7 +8,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type DeepPartial } from '@n8n/typeorm';
+import { DataSource, type DeepPartial, In } from '@n8n/typeorm';
 
 import {
 	TrustedSourceIdentityEntity,
@@ -85,6 +85,16 @@ export class TrustedSourceIdentityRepository {
 
 	async globalRoleExists(slug: string, ctx: OperationContext = {}): Promise<boolean> {
 		return await this.store.managerFor(ctx).exists(Role, { where: { slug, roleType: 'global' } });
+	}
+
+	/** True when every slug names a project role. Reads inside the identity transaction. */
+	async projectRolesExist(slugs: string[], ctx: OperationContext = {}): Promise<boolean> {
+		const unique = [...new Set(slugs)];
+		if (unique.length === 0) return true;
+		const count = await this.store
+			.managerFor(ctx)
+			.count(Role, { where: { slug: In(unique), roleType: 'project' } });
+		return count === unique.length;
 	}
 
 	async touchLastSeen(
