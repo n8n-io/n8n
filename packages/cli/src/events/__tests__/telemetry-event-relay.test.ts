@@ -112,7 +112,6 @@ describe('TelemetryEventRelay', () => {
 			batchSize: 234,
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
-			trimOnStartUp: false,
 		},
 		host: 'localhost',
 		generic: {
