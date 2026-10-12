@@ -11,6 +11,7 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nIcon,
 	N8nIconButton,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
@@ -35,7 +36,7 @@ const props = withDefaults(
 		appId?: string | null;
 		fileAccessConsentUrl?: string | null;
 		/** Checked only where the channel is saved; unchecked shows the request. */
-		fileAccessStatus?: TeamsFileAccessCheck['status'] | null;
+		fileAccessStatus?: TeamsFileAccessCheck['status'] | 'checking' | null;
 	}>(),
 	{ startCollapsed: false, appId: null, fileAccessConsentUrl: null, fileAccessStatus: null },
 );
@@ -101,7 +102,7 @@ const rows = computed(() => [
  */
 const fileAccess = computed(() => {
 	if (!value.value.teamChannels && !value.value.groupChats) return null;
-	if (props.fileAccessStatus === 'approved') return null;
+	if (props.fileAccessStatus === 'approved' || props.fileAccessStatus === 'checking') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
 			text: 'agents.channels.teams.setup.availability.fileAccessConsent' as const,
@@ -123,9 +124,12 @@ const fileAccess = computed(() => {
 	};
 });
 
+const readsSharedConversations = computed(() => value.value.teamChannels || value.value.groupChats);
 const fileAccessApproved = computed(
-	() =>
-		(value.value.teamChannels || value.value.groupChats) && props.fileAccessStatus === 'approved',
+	() => readsSharedConversations.value && props.fileAccessStatus === 'approved',
+);
+const fileAccessChecking = computed(
+	() => readsSharedConversations.value && props.fileAccessStatus === 'checking',
 );
 
 const clipboard = useClipboard();
@@ -222,6 +226,17 @@ const summary = computed(() => {
 				</div>
 			</template>
 		</N8nCallout>
+		<N8nCallout
+			v-if="fileAccessChecking"
+			theme="secondary"
+			iconless
+			data-testid="teams-file-access-checking"
+		>
+			<span :class="$style.checking">
+				<N8nIcon icon="spinner" spin size="small" />
+				{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessChecking') }}
+			</span>
+		</N8nCallout>
 		<N8nCallout v-if="fileAccessApproved" theme="success" data-testid="teams-file-access-approved">
 			{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApproved') }}
 		</N8nCallout>
@@ -234,6 +249,12 @@ const summary = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	width: 100%;
+}
+
+.checking {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .fileAccessActions {

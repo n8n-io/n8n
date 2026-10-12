@@ -406,7 +406,7 @@ async function refreshForCredential() {
 
 watch(credentialId, refreshForCredential, { immediate: true });
 
-const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
+const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(null);
 const readsSharedConversations = computed(
 	() => availability.value.teamChannels || availability.value.groupChats,
 );
@@ -419,6 +419,7 @@ async function loadFileAccess() {
 	fileAccessStatus.value = null;
 	const id = credentialId.value;
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
+	fileAccessStatus.value = 'checking';
 	try {
 		const { status } = await checkTeamsFileAccess(
 			rootStore.restApiContext,
@@ -429,6 +430,7 @@ async function loadFileAccess() {
 		if (credentialId.value === id) fileAccessStatus.value = status;
 	} catch {
 		// Unchecked reads the same as not approved.
+		if (credentialId.value === id) fileAccessStatus.value = null;
 	}
 }
 

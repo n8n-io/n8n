@@ -159,6 +159,31 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(queryByTestId('teams-file-access-approved')).toBeNull();
 		});
 
+		it('shows neither request nor approval while checking', async () => {
+			vi.mocked(checkTeamsFileAccess).mockReturnValue(new Promise(() => {}));
+
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access-checking')).toBeVisible();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+		});
+
+		it('falls back to the request when the check fails', async () => {
+			vi.mocked(checkTeamsFileAccess).mockRejectedValue(new Error('offline'));
+
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+			expect(queryByTestId('teams-file-access-checking')).toBeNull();
+		});
+
 		it('checks nothing while the agent reads only direct messages', async () => {
 			renderView({ props: viewProps, pinia: createTestingPinia() });
 			await flushPromises();
