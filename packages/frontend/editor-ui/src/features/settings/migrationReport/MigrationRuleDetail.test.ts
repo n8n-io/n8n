@@ -183,7 +183,7 @@ describe('MigrationRuleDetail', () => {
 			await waitFor(() => {
 				// Title, impact tag, and affected count
 				expect(screen.getByText('Test Rule')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 				expect(screen.getByText('2 affected')).toBeInTheDocument();
 
 				// Description
@@ -1025,7 +1025,7 @@ describe('MigrationRuleDetail', () => {
 	describe('impact display', () => {
 		it.each([
 			{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
-			{ impact: 'executionsFail', label: 'Executions fail' },
+			{ impact: 'executionsFail', label: 'Executions will fail' },
 			{ impact: 'behaviorChanges', label: 'Behavior changes' },
 			{ impact: 'capabilityRemoved', label: 'Capability removed' },
 		] as const)('should display $impact impact correctly', async ({ impact, label }) => {

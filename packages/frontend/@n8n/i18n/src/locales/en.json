@@ -4617,7 +4617,7 @@
 	"settings.migrationReport.tabs.workflowIssues": "Workflow issues",
 	"settings.migrationReport.tabs.instanceIssues": "Instance issues",
 	"settings.migrationReport.impact.upgradeBlocked": "Upgrade blocked",
-	"settings.migrationReport.impact.executionsFail": "Executions fail",
+	"settings.migrationReport.impact.executionsFail": "Executions will fail",
 	"settings.migrationReport.impact.behaviorChanges": "Behavior changes",
 	"settings.migrationReport.impact.capabilityRemoved": "Capability removed",
 	"settings.migrationReport.workflowTooltip.upgradeBlocked": "The update cannot proceed until you fix the affected workflows.",
