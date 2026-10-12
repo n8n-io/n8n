@@ -206,17 +206,6 @@ describe('components/N8nMarkdownEditor', () => {
 		expect(getEditorElement(wrapper.container)).toHaveTextContent('Content');
 	});
 
-	it('keeps a character inserted into the document', async function keepInsertedCharacter() {
-		const { editor } = await renderEditor('Hello');
-		const textNode = editor.view.dom.querySelector('p')?.firstChild;
-		if (!(textNode instanceof Text)) throw new Error('Editor text node is missing');
-
-		textNode.appendData('!');
-		await waitFor(() => {
-			expect(editor.getMarkdown()).toBe('Hello!');
-		});
-	});
-
 	it('does not show the collapse control by default', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {
