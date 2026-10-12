@@ -5171,6 +5171,8 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
+				locateResumeTarget: vi.fn(),
+				resolveStep: vi.fn(),
 			});
 		});
 
@@ -5383,6 +5385,8 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
+				locateResumeTarget: vi.fn(),
+				resolveStep: vi.fn(),
 			});
 		});
 
