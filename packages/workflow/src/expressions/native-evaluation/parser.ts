@@ -5,6 +5,7 @@ import {
 	BINARY_OPS,
 	CALLABLE_METHODS,
 	DATA_ROOTS,
+	EXTENSION_METHODS,
 	ITERATOR_METHODS,
 	LEGACY_NODE_REF_MEMBERS,
 	MAX_DEPTH,
@@ -274,7 +275,7 @@ function parseCall(
 
 	const method = property.name;
 	const isIterator = isOneOf(ITERATOR_METHODS, method);
-	if (!isIterator && !CALLABLE_METHODS.has(method)) return null;
+	if (!isIterator && !CALLABLE_METHODS.has(method) && !EXTENSION_METHODS.has(method)) return null;
 
 	const receiver = parse(callee.object);
 	if (receiver === null) return null;

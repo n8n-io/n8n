@@ -245,6 +245,14 @@ const CANDIDATES = [
 	'={{ $json.item.names.flat(2) }}',
 	'={{ $json.item.names.toSorted() }}',
 	'={{ $json.item.names.toReversed() }}',
+	// expression extensions, a sample per receiver type
+	'={{ $json.item.names.first() }}',
+	'={{ $json.item.names.last() }}',
+	'={{ $json.item.name.isEmpty() }}',
+	'={{ $json.item.name.toJsonString() }}',
+	'={{ $json.item.my_object.hasField("addresses") }}',
+	'={{ $json.item.count.round(1) }}',
+	'={{ $json.item.active.toInt() }}',
 	// array literals
 	'={{ [1, "a", true, null] }}',
 	'={{ [] }}',
