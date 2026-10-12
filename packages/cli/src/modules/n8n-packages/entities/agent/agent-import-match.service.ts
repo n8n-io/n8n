@@ -1,7 +1,6 @@
 import { ProjectScopeService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -16,6 +15,8 @@ import type {
 	ResolvedAgentImportIdentity,
 } from './agent-import.types';
 import { WorkflowIdPolicy } from '../../n8n-packages.types';
+import { decideImportId } from '../import-id-policy';
+import { matchSourceIds } from '../match-source-ids';
 
 interface TaskMapping {
 	sourceAgentId: string;
@@ -105,8 +106,7 @@ export class AgentImportMatchService {
 				continue;
 			}
 			const existing = matches.matches.get(sourceAgentId) ?? null;
-			let targetAgentId = existing?.id ?? sourceAgentId;
-			if (!existing && idPolicy === WorkflowIdPolicy.New) targetAgentId = generateNanoId();
+			const targetAgentId = existing?.id ?? decideImportId(idPolicy, sourceAgentId);
 			result.identities.set(sourceAgentId, { sourceAgentId, targetAgentId, existing });
 		}
 		return result;
@@ -193,43 +193,6 @@ export class AgentImportMatchService {
 		}
 		return mappings;
 	}
-}
-
-/** A stored source identity excludes the local-ID fallback. Ambiguity excludes both. */
-function matchSourceIds<T extends { id: string }>(
-	sourceIds: string[],
-	candidates: T[],
-	getSourceId: (candidate: T) => string | null,
-) {
-	const requested = new Set(sourceIds);
-	const bySourceId = new Map<string, T[]>();
-	for (const candidate of candidates) {
-		const sourceId = getSourceId(candidate);
-		if (sourceId === null || !requested.has(sourceId)) continue;
-		const group = bySourceId.get(sourceId) ?? [];
-		group.push(candidate);
-		bySourceId.set(sourceId, group);
-	}
-	const matches = new Map<string, T>();
-	const ambiguous = new Map<string, T[]>();
-	for (const [sourceId, group] of bySourceId) {
-		if (group.length === 1) matches.set(sourceId, group[0]);
-		else
-			ambiguous.set(
-				sourceId,
-				group.toSorted((left, right) => left.id.localeCompare(right.id)),
-			);
-	}
-	for (const candidate of candidates) {
-		if (
-			getSourceId(candidate) !== null ||
-			!requested.has(candidate.id) ||
-			bySourceId.has(candidate.id)
-		)
-			continue;
-		matches.set(candidate.id, candidate);
-	}
-	return { matches, ambiguous };
 }
 
 function toTaskIdConflict(mapping: TaskMapping, conflictingAgentId: string) {
