@@ -350,6 +350,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),
 			skillRefs,
+			// No enforcement implementation is registered, so every evaluation comes back clear.
+			new AgentPolicyService(new PolicyEnforcementService()),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,

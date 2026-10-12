@@ -27,6 +27,7 @@ export const agentConfigValidationIssueCodeSchema = z.enum([
 	'incompatible_credential',
 	'missing_reference',
 	'incompatible_reference',
+	'restricted_node_type',
 ]);
 export type AgentConfigValidationIssueCode = z.infer<typeof agentConfigValidationIssueCodeSchema>;
 
@@ -51,7 +52,10 @@ export const agentConfigValidationIssueSchema = z.object({
 	/**
 	 * Stable, machine-readable sub-reason for `incompatible_reference` issues
 	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'`, `'not_published'`
-	 * for workflow tools). Absent when the code itself is specific enough.
+	 * for workflow tools), and for `restricted_node_type` the level that denied
+	 * the type (`'restricted_by_instance'`, `'restricted_by_project'`), absent
+	 * when the level is unknown. Values are qualified by their code because
+	 * frontends resolve this field before the code.
 	 * Frontends map this to a reason-specific i18n key; never display it raw.
 	 */
 	reason: z.string().optional(),

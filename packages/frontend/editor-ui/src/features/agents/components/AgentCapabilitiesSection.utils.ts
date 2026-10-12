@@ -1,3 +1,4 @@
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 
 import type { AgentJsonToolRef } from '../types';
@@ -24,6 +25,9 @@ type BaseToolRow = {
 	invalidReasons: string[];
 	warning: boolean;
 	warningReasons: string[];
+	restricted: boolean;
+	restrictedScope?: NodeTypeAvailabilityScope;
+	restrictedTypeLabel: string;
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -35,6 +39,9 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		openTarget: row.openTarget,
 		invalid: row.invalid,
 		invalidReasons: row.invalidReasons,
+		restricted: row.restricted,
+		restrictedScope: row.restrictedScope,
+		restrictedTypeLabel: row.restrictedTypeLabel,
 	};
 
 	return {
@@ -48,6 +55,9 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		invalidReasons: row.invalidReasons,
 		warning: row.warning,
 		warningReasons: row.warningReasons,
+		restricted: row.restricted,
+		restrictedScope: row.restrictedScope,
+		restrictedTypeLabel: row.restrictedTypeLabel,
 		isGrouped: false,
 		tool: item,
 	};
@@ -67,6 +77,10 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		invalidReasons: [...new Set(group.flatMap((row) => row.invalidReasons))],
 		warning: group.some((row) => row.warning),
 		warningReasons: [...new Set(group.flatMap((row) => row.warningReasons))],
+		// Members of a group share one node type, so one denied member locks the whole group.
+		restricted: group.some((row) => row.restricted),
+		restrictedScope: group.find((row) => row.restricted)?.restrictedScope,
+		restrictedTypeLabel: first.restrictedTypeLabel,
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
@@ -76,6 +90,9 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 			openTarget: row.openTarget,
 			invalid: row.invalid,
 			invalidReasons: row.invalidReasons,
+			restricted: row.restricted,
+			restrictedScope: row.restrictedScope,
+			restrictedTypeLabel: row.restrictedTypeLabel,
 		})),
 	};
 }

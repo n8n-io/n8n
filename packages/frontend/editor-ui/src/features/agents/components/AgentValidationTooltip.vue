@@ -28,6 +28,8 @@ const PREVIEW_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	incompatible_nodes: 'agents.builder.preview.issue.tool.workflow.incompatibleNodes' as BaseTextKey,
 	no_supported_trigger:
 		'agents.builder.preview.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
+	restricted_by_instance: 'agents.builder.preview.issue.restrictedByInstance' as BaseTextKey,
+	restricted_by_project: 'agents.builder.preview.issue.restrictedByProject' as BaseTextKey,
 };
 
 const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
@@ -36,6 +38,8 @@ const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	not_published: 'agents.publish.issue.tool.workflow.notPublished' as BaseTextKey,
 	azure_classic_endpoint:
 		'agents.publish.issue.agent.credential.azureClassicEndpoint' as BaseTextKey,
+	restricted_by_instance: 'agents.publish.issue.restrictedByInstance' as BaseTextKey,
+	restricted_by_project: 'agents.publish.issue.restrictedByProject' as BaseTextKey,
 };
 
 const CORE_PATH_KEYS: Record<string, BaseTextKey> = {
@@ -102,6 +106,10 @@ const PREVIEW_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.preview.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 	'vectorStore.invalid_value':
 		'agents.builder.preview.issue.vectorStore.invalidValue' as BaseTextKey,
+	'tool.node.restricted_node_type':
+		'agents.builder.preview.issue.restrictedNodeType' as BaseTextKey,
+	'mcpServer.restricted_node_type':
+		'agents.builder.preview.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const PUBLISH_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
@@ -129,6 +137,8 @@ const PUBLISH_SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
 	'mcpServer.incompatible_credential':
 		'agents.publish.issue.mcpServer.incompatibleCredential' as BaseTextKey,
 	'vectorStore.invalid_value': 'agents.publish.issue.vectorStore.invalidValue' as BaseTextKey,
+	'tool.node.restricted_node_type': 'agents.publish.issue.restrictedNodeType' as BaseTextKey,
+	'mcpServer.restricted_node_type': 'agents.publish.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const CAPABILITY_KEYS: Record<AgentCapabilityKind, BaseTextKey> = {

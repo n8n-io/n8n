@@ -135,6 +135,12 @@ function mountSection(
 					props: ['view', 'open'],
 					template: '<div v-if="open" data-testid="agent-channel-modal-stub" :data-view="view" />',
 				},
+				RestrictedNodePopover: {
+					name: 'RestrictedNodePopover',
+					props: ['nodeTypeName', 'scope', 'anchor', 'side', 'markerSize'],
+					template:
+						'<span data-testid="node-restricted-icon" :data-scope="scope" :data-node-type="nodeTypeName" />',
+				},
 			},
 		},
 	});
@@ -1502,5 +1508,149 @@ describe('AgentCapabilitiesSection', () => {
 			/** The project-agent list is not needed for hidden sub-agents. */
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentCapabilitiesSection — restricted node types', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	const slackTool = (name: string): AgentJsonToolRef => ({
+		type: 'node',
+		name,
+		node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+	});
+
+	const restrictedToolIssue = (index: number, reason: string) => ({
+		code: 'restricted_node_type' as const,
+		reason,
+		path: `tools.${index}.node.nodeType`,
+		capability: { kind: 'tool' as const, index, toolType: 'node' as const, id: 'Slack' },
+	});
+
+	it.each([
+		['restricted_by_instance', 'instance'],
+		['restricted_by_project', 'project'],
+	])('locks a tool chip and shows the %s scope', async (reason, scope) => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, reason)],
+		});
+		await flushPromises();
+
+		const lock = wrapper.find('[data-testid="node-restricted-icon"]');
+		expect(lock.exists()).toBe(true);
+		expect(lock.attributes('data-scope')).toBe(scope);
+		expect(lock.attributes('data-node-type')).toBe('Slack');
+	});
+
+	it('shows the lock alone, without the error icon of an invalid chip', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+	});
+
+	it('leaves an unrestricted tool chip unlocked', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(false);
+	});
+
+	it('locks the grouped chip when the tools of a restricted type are grouped', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection(
+			[slackTool('send_message'), slackTool('read_messages')],
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [
+					restrictedToolIssue(0, 'restricted_by_instance'),
+					restrictedToolIssue(1, 'restricted_by_instance'),
+				],
+			},
+		);
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
+		expect(wrapper.findAll('[data-testid="node-restricted-icon"]')).toHaveLength(1);
+	});
+
+	it('locks the restricted member rows of an open group menu', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection(
+			[slackTool('send_message'), slackTool('read_messages')],
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [
+					restrictedToolIssue(0, 'restricted_by_instance'),
+					restrictedToolIssue(1, 'restricted_by_instance'),
+				],
+			},
+			document.body,
+		);
+		await flushPromises();
+
+		await fireEvent.click(screen.getByRole('button', { name: /2 Slack/ }));
+		await flushPromises();
+
+		expect(
+			wrapper.findAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
+		).toHaveLength(0);
+	});
+
+	it('does not open the tool when the lock itself is clicked', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-testid="node-restricted-icon"]').trigger('click');
+
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+	});
+
+	it('locks an MCP server chip whose node type a policy denies', async () => {
+		getNodeType.mockReturnValue(
+			createNodeType('@n8n/n8n-nodes-langchain.mcpClientTool', 'MCP Client Tool'),
+		);
+		const config = configWithMcpServers([
+			{
+				name: 'Docs',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp',
+				authentication: 'none',
+			},
+		]);
+		const wrapper = mountSection([], {}, config, [], [], {
+			validationIssues: [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_project',
+					path: 'mcpServers.0',
+					capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+				},
+			],
+		});
+		await flushPromises();
+
+		const lock = wrapper.find('[data-testid="node-restricted-icon"]');
+		expect(lock.exists()).toBe(true);
+		expect(lock.attributes('data-scope')).toBe('project');
 	});
 });

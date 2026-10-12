@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -19,6 +21,12 @@ const props = withDefaults(
 		warning?: boolean;
 		/** Human-readable reasons behind `warning`; ignored while `invalid` is set. */
 		warningReasons?: string[];
+		/** Set when a policy denies the node type this chip runs as. It outranks `invalid` and `warning`. */
+		restricted?: boolean;
+		/** The level that denied the type, shown in the popover. Absent when the policy names none. */
+		restrictedScope?: NodeTypeAvailabilityScope;
+		/** The name the restriction popover shows. Falls back to the chip's own label. */
+		restrictedTypeLabel?: string;
 		clickable?: boolean;
 	}>(),
 	{
@@ -30,12 +38,20 @@ const props = withDefaults(
 		invalidReasons: () => [],
 		warning: false,
 		warningReasons: () => [],
+		restricted: false,
+		restrictedScope: undefined,
+		restrictedTypeLabel: '',
 		clickable: true,
 	},
 );
 
 const i18n = useI18n();
 const reasons = computed(() => (props.invalid ? props.invalidReasons : props.warningReasons));
+// A restricted chip carries the lock alone: the popover already states why it cannot run.
+const showAlertIcon = computed(
+	() => !props.deactivated && !props.restricted && (props.invalid || props.warning),
+);
+const chipRef = ref<HTMLElement | null>(null);
 
 defineSlots<{
 	icon?: () => unknown;
@@ -49,6 +65,7 @@ const emit = defineEmits<{
 
 <template>
 	<button
+		ref="chipRef"
 		type="button"
 		:class="[
 			$style.chip,
@@ -56,8 +73,10 @@ const emit = defineEmits<{
 			{
 				[$style.active]: props.active,
 				[$style.deactivated]: props.deactivated,
-				[$style.invalid]: props.invalid && !props.deactivated,
-				[$style.warning]: props.warning && !props.invalid && !props.deactivated,
+				[$style.restricted]: props.restricted,
+				[$style.invalid]: props.invalid && !props.deactivated && !props.restricted,
+				[$style.warning]:
+					props.warning && !props.invalid && !props.deactivated && !props.restricted,
 				[$style.nonClickable]: !props.clickable,
 			},
 		]"
@@ -80,11 +99,17 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
-		<N8nTooltip
-			v-if="!props.deactivated && (props.invalid || props.warning)"
-			:disabled="reasons.length === 0"
-			placement="top"
-		>
+		<!-- The lock explains the chip; it must not also open what the chip opens. -->
+		<span v-if="props.restricted" :class="$style.lock" @click.stop>
+			<RestrictedNodePopover
+				:node-type-name="props.restrictedTypeLabel"
+				:scope="props.restrictedScope"
+				:anchor="chipRef"
+				side="top"
+				marker-size="xsmall"
+			/>
+		</span>
+		<N8nTooltip v-if="showAlertIcon" :disabled="reasons.length === 0" placement="top">
 			<N8nIcon
 				icon="triangle-alert"
 				:size="14"
@@ -133,6 +158,20 @@ const emit = defineEmits<{
 
 .deactivated {
 	opacity: 0.5;
+}
+
+.lock {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+// Matches the dimming of a restricted row in the tool pickers.
+.restricted {
+	.icon,
+	.text {
+		opacity: 0.45;
+	}
 }
 
 .warning {
