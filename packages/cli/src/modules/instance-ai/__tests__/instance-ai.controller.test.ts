@@ -1122,6 +1122,14 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		beforeEach(() => {
+			globalConfig.instanceAi.evalInstance = true;
+		});
+
+		afterEach(() => {
+			globalConfig.instanceAi.evalInstance = false;
+		});
+
 		it('should set the test target for an owned thread', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 
@@ -1145,6 +1153,21 @@ describe('InstanceAiController', () => {
 					payload as InstanceAiEvalCredentialTestTargetRequest,
 				),
 			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should refuse the target on an instance that is not an eval instance', async () => {
+			globalConfig.instanceAi.evalInstance = false;
+			evalCredentialAllowlists.clearThread(THREAD_ID);
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			await expect(
+				controller.setThreadCredentialTestTarget(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialTestTargetRequest,
+				),
+			).rejects.toThrow(NotFoundError);
+			expect(evalCredentialAllowlists.getTestTarget(THREAD_ID, 'slackApi')).toBeUndefined();
 		});
 	});
 
