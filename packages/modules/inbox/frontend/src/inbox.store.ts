@@ -242,19 +242,26 @@ export const useInboxStore = defineStore('inbox', () => {
 	}
 
 	function reconcileItemChange(change: InboxItemChange) {
-		for (const list of Object.values(lists)) {
+		let previousState: InboxState | undefined;
+		for (const [key, list] of Object.entries(lists)) {
 			const item = list.items.find((row) => row.type === change.type && row.id === change.id);
 			if (!item) continue;
+			previousState ??= item.state;
 			if (change.state) item.state = change.state;
 			if (change.updatedAt) item.updatedAt = change.updatedAt;
 			if (item.type === 'workflow_review' && change.decision) item.decision = change.decision;
-			if (item.state !== activeTab.value) {
+			if (item.state !== (key === 'closed' ? 'closed' : 'open')) {
 				list.items = list.items.filter((row) => row !== item);
 			}
 		}
-		if (change.state === 'closed') {
+		if (change.state !== 'closed') return;
+		// A late result can arrive after a summary that already counts it.
+		// Count only a row that closes now. Without a row, ask the server.
+		if (previousState === 'open') {
 			if (openCount.value !== null) openCount.value = Math.max(0, openCount.value - 1);
 			if (closedCount.value !== null) closedCount.value++;
+		} else if (!previousState) {
+			void fetchSummary();
 		}
 	}
 

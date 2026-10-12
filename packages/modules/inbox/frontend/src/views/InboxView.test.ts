@@ -227,13 +227,14 @@ it.each([undefined, 'open'] as const)(
 	},
 );
 
-it('does not replace the URL when already on Closed', async () => {
+it('reloads Closed without replacing the URL when a review closes there', async () => {
 	await router.replace('/inbox/reviews/req-1?state=closed');
 	renderComponent();
 	const replace = vi.spyOn(router, 'replace');
 	reportChange({ type: 'workflow_review', id: 'req-1', state: 'closed' });
 	await waitAllPromises();
 	expect(replace).not.toHaveBeenCalled();
+	expect(store.fetchActiveTab).toHaveBeenCalledOnce();
 });
 
 it.each(['select-other-review'])(

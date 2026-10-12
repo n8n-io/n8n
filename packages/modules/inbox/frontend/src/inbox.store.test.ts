@@ -318,3 +318,30 @@ it('removes an approved review from Open and updates the counts', async () => {
 	expect(store.openCount).toBe(1);
 	expect(store.closedCount).toBe(2);
 });
+
+it('keeps the counts when a late approval arrives after a refresh already closed the review', async () => {
+	const store = useInboxStore();
+	store.openCount = 1;
+	store.closedCount = 2;
+	store.lists.closed.items = [{ ...reviewItem('review'), state: 'closed', decision: 'approved' }];
+	store.reconcileItemChange({ type: 'workflow_review', id: 'review', state: 'closed' });
+	expect(store.openCount).toBe(1);
+	expect(store.closedCount).toBe(2);
+	expect(api.fetchInboxSummary).not.toHaveBeenCalled();
+});
+
+it('loads the counts when an approved review is not in a loaded page', async () => {
+	vi.mocked(api.fetchInboxSummary).mockResolvedValueOnce({
+		counts: { open: 1, closed: 2 },
+		partial: false,
+		failedSources: [],
+		disabledSources: [],
+	});
+	const store = useInboxStore();
+	store.openCount = 1;
+	store.closedCount = 2;
+	store.reconcileItemChange({ type: 'workflow_review', id: 'review', state: 'closed' });
+	await vi.waitFor(() => expect(api.fetchInboxSummary).toHaveBeenCalledOnce());
+	expect(store.openCount).toBe(1);
+	expect(store.closedCount).toBe(2);
+});

@@ -112,7 +112,10 @@ function onItemChange(change: InboxItemChange) {
 	// A successful decision still updates shared state after this view unmounts.
 	store.reconcileItemChange(change);
 	if (!isOnInbox()) return;
-	if (!change.state) void store.fetchActiveTab();
+	// Closed can load before the decision commits, so it can miss the review.
+	if (!change.state || (change.state === 'closed' && activeTab.value === 'closed')) {
+		void store.fetchActiveTab();
+	}
 	const currentRoute = router.currentRoute.value;
 	const selected = selectionFromRoute(currentRoute);
 	if (
