@@ -1,0 +1,22 @@
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_30db3f5d25d04b::t_14a2902c8d4367 124-127
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_30db3f5d25d04b::t_33636188c40981 730,737-738,742,746-747
+  s_30db3f5d25d04b::t_d5ecf4ad421507 729,731-736,739-741,743-745
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d539f030c0efcfe6da2e050d88c5bac7d2f753fd",
+  "prompts": {},
+  "sessions": {
+    "s_30db3f5d25d04b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cbd856e-82a7-496d-b468-eb971b694a43",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
