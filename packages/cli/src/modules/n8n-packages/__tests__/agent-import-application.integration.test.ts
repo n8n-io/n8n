@@ -514,7 +514,7 @@ it.each(['create', 'update'] as const)(
 	},
 );
 
-it.each(['skill', 'task', 'credential', 'policy'] as const)(
+it.each(['skill', 'body', 'task', 'credential', 'policy'] as const)(
 	'runs the save-time %s check before any definition write',
 	async (failure) => {
 		const input = fixture();
@@ -526,6 +526,7 @@ it.each(['skill', 'task', 'credential', 'policy'] as const)(
 				...item.skills['shared-skill'],
 				name: item.skills['shared-skill'].name.toUpperCase(),
 			};
+		else if (failure === 'body') item.skills = {};
 		else if (failure === 'task')
 			item.tasks[Object.keys(item.tasks)[0]].cronExpression = 'invalid cron';
 		else if (failure === 'credential') {
@@ -535,7 +536,10 @@ it.each(['skill', 'task', 'credential', 'policy'] as const)(
 		const effects = vi.spyOn(Container.get(AgentSaveCompletionService), 'definitionSaved');
 		const apply = orchestrator.apply(plan);
 		if (failure === 'policy') await expect(apply).rejects.toBeInstanceOf(PolicyViolationError);
-		else await expect(apply).rejects.toThrow(/skill name|cron|missing or inaccessible/i);
+		else
+			await expect(apply).rejects.toThrow(
+				/skill name|without a body|cron|missing or inaccessible/i,
+			);
 		expect(await agents.findByProjectId(project.id)).toEqual([]);
 		expect(await tasks.count()).toBe(0);
 		expect(effects).not.toHaveBeenCalled();

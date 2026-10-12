@@ -2,6 +2,7 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { getStaticSubworkflowId, setStaticSubworkflowId } from 'n8n-workflow';
 
+import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-definition';
 import { extractAgentWorkflowRefs } from '@/modules/agents/utils/extract-agent-workflow-refs';
 import { visitAgentCredentialReferences } from '@/modules/agents/utils/visit-agent-credential-references';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -66,18 +67,7 @@ export class AgentImportBindings {
 				});
 			}
 		}
-		for (const plan of plans) await this.resolveScope(plan, agents, workflows);
-		await this.checkTaskOwners(plans);
-	}
-
-	private async resolveScope(
-		plan: ImportPlan,
-		agents: Map<string, PlannedTarget>,
-		workflows: Map<string, PlannedTarget>,
-	): Promise<void> {
-		const { agentPlan } = plan;
-		if (!agentPlan) return;
-		agentPlan.plannedDestinations = {
+		const plannedDestinations: PlannedAgentDestinations = {
 			agents: new Map(
 				[...agents.values()]
 					.filter((target) => target.creating)
@@ -89,6 +79,19 @@ export class AgentImportBindings {
 					.map((target) => [target.id, target.projectId]),
 			),
 		};
+		for (const plan of plans) await this.resolveScope(plan, agents, workflows, plannedDestinations);
+		await this.checkTaskOwners(plans);
+	}
+
+	private async resolveScope(
+		plan: ImportPlan,
+		agents: Map<string, PlannedTarget>,
+		workflows: Map<string, PlannedTarget>,
+		plannedDestinations: PlannedAgentDestinations,
+	): Promise<void> {
+		const { agentPlan } = plan;
+		if (!agentPlan) return;
+		agentPlan.plannedDestinations = plannedDestinations;
 		const items = agentPlan.items.filter(({ action }) => action !== 'skip');
 		if (items.length === 0) return;
 		const context = {
