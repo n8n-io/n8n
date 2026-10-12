@@ -38,6 +38,18 @@ export function resolveGoogleVertexSdk(model: string, sdk?: string): string | un
 	return undefined;
 }
 
+/** Vertex models need the thinking options of their underlying API. */
+export function getGoogleVertexQuirksProvider(model: string): string {
+	switch (resolveGoogleVertexSdk(model)) {
+		case '@ai-sdk/google-vertex':
+			return 'google';
+		case '@ai-sdk/google-vertex/anthropic':
+			return 'google-vertex-anthropic';
+		default:
+			return 'google-vertex';
+	}
+}
+
 /** Identify Claude models that use the shared Vertex provider ID. */
 export function isGoogleVertexAnthropicModel(modelId: string): boolean {
 	const { provider, model } = splitModelId(modelId);

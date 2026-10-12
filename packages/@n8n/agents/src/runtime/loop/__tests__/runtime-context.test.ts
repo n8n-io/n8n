@@ -40,10 +40,12 @@ describe('Vertex thinking options', () => {
 	it.each([
 		{
 			modelId: 'google-vertex/claude-sonnet-4-5',
+			thinking: { budgetTokens: 4096 },
 			expected: { anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } } },
 		},
 		{
 			modelId: 'google-vertex/claude-opus-5@default',
+			thinking: { budgetTokens: 4096 },
 			expected: {
 				anthropic: {
 					thinking: { type: 'adaptive', display: 'summarized' },
@@ -51,8 +53,22 @@ describe('Vertex thinking options', () => {
 				},
 			},
 		},
-		{ modelId: 'google-vertex/gemini-3-flash-preview', expected: undefined },
-	])('maps thinking for $modelId without changing its ID', ({ modelId, expected }) => {
+		{
+			modelId: 'google-vertex/gemini-2.5-flash',
+			thinking: { thinkingBudget: 2048 },
+			expected: { google: { thinkingConfig: { thinkingBudget: 2048 } } },
+		},
+		{
+			modelId: 'google-vertex/gemini-3-flash-preview',
+			thinking: { thinkingLevel: 'high' as const },
+			expected: { google: { thinkingConfig: { thinkingLevel: 'high' } } },
+		},
+		{
+			modelId: 'google-vertex/mistral-medium-3',
+			thinking: { thinkingBudget: 2048 },
+			expected: undefined,
+		},
+	])('maps thinking for $modelId without changing its ID', ({ modelId, thinking, expected }) => {
 		const builder = new RuntimeContextBuilder(
 			{
 				name: 'test',
@@ -64,7 +80,7 @@ describe('Vertex thinking options', () => {
 					privateKey: 'test-key',
 				},
 				instructions: '',
-				thinking: { budgetTokens: 4096 },
+				thinking,
 			},
 			undefined,
 		);
