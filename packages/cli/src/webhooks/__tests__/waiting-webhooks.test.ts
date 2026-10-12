@@ -2066,10 +2066,13 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		vi.clearAllMocks();
 	});
 
-	it('answers 401 without a token, before it asks the data plane', async () => {
+	it.each([
+		['without a token', {}],
+		['with an empty token', { [WAITING_TOKEN_QUERY_PARAM]: '' }],
+	])('answers 401 %s, before it asks the data plane', async (_, query) => {
 		const res = response();
 
-		await expect(waitingWebhooks.executeWebhook(request({}), res)).resolves.toEqual({
+		await expect(waitingWebhooks.executeWebhook(request(query), res)).resolves.toEqual({
 			noWebhookResponse: true,
 		});
 
