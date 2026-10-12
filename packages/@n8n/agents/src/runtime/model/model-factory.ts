@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
-import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -85,36 +85,6 @@ type OpenAiCompatibleCreds = {
 	baseURL?: string;
 	headers?: Record<string, string>;
 };
-
-/**
- * Parse a Vertex service-account JSON string into `googleAuthOptions`.
- * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
- * Returns undefined when unset so ADC can take over.
- */
-function parseGoogleVertexAuthOptions(
-	googleCredentials: string | undefined,
-): { credentials: Record<string, unknown> } | undefined {
-	if (!googleCredentials?.trim()) return undefined;
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(googleCredentials);
-	} catch {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
-		);
-	}
-	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
-		);
-	}
-	const credentials = { ...(parsed as Record<string, unknown>) };
-	// SA keys often arrive with literal `\n` escapes when pasted into env files.
-	if (typeof credentials.private_key === 'string') {
-		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-	}
-	return { credentials };
-}
 
 /**
  * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
@@ -348,23 +318,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	'google-vertex': {
-		build: (creds, model, fetch) => {
-			const { createGoogleVertex } =
-				require('@ai-sdk/google-vertex') as typeof import('@ai-sdk/google-vertex');
-			return createGoogleVertex({
-				// An empty key prevents GOOGLE_VERTEX_API_KEY from selecting Express mode.
-				apiKey: '',
-				project: creds.project,
-				location: creds.location,
-				googleAuthOptions: {
-					credentials: {
-						client_email: creds.clientEmail,
-						private_key: formatPemBlock(creds.privateKey),
-					},
-				},
-				fetch,
-			})(model);
-		},
+		build: createGoogleVertexModel,
 	},
 	xai: {
 		build: (creds, model, fetch) => {

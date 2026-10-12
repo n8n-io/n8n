@@ -37,6 +37,7 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	}),
 	google: apiKeyCreds,
 	'google-vertex': z.object({
+		sdk: z.string().optional(),
 		project: z.string().trim().min(1, 'Google Cloud project ID is required'),
 		location: z.string().trim().min(1, 'Google Cloud region is required'),
 		clientEmail: z.string().trim().min(1, 'Service account email is required'),

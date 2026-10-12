@@ -7,29 +7,58 @@ import {
 	type AiGatewayModelCredentialResolver,
 } from '../model-config';
 
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
 describe('resolveCredentialAwareModelConfig', () => {
 	it.each([
 		{
 			model: 'google-vertex/gemini-2.5-pro',
+			sdk: '@ai-sdk/google-vertex',
 			project: undefined,
 			projectId: 'custom-project',
 			expectedProject: 'custom-project',
 		},
 		{
-			model: 'google-vertex/gemini-flash-latest',
+			model: 'google-vertex/claude-opus-5@default',
+			sdk: '@ai-sdk/google-vertex/anthropic',
 			project: '__custom__',
 			projectId: 'custom-project',
 			expectedProject: 'custom-project',
 		},
 		{
-			model: 'google-vertex/gemini-3-flash-preview',
+			model: 'google-vertex/mistral-medium-3',
+			sdk: '@ai-sdk/mistral',
 			project: 'listed-project',
 			projectId: 'old-custom-project',
 			expectedProject: 'listed-project',
 		},
+		{
+			model: 'google-vertex/xai/grok-4.20-reasoning',
+			sdk: '@ai-sdk/openai-compatible',
+			project: 'listed-project',
+			projectId: undefined,
+			expectedProject: 'listed-project',
+		},
+		{
+			model: 'google-vertex/gemini-flash-latest',
+			sdk: undefined,
+			project: 'listed-project',
+			projectId: undefined,
+			expectedProject: 'listed-project',
+		},
 	])(
-		'uses the Vertex credential project $expectedProject and region for $model',
-		async ({ model, project, projectId, expectedProject }) => {
+		'uses the catalog SDK and Vertex credential for $model',
+		async ({ model, sdk, project, projectId, expectedProject }) => {
+			getCachedCatalog.mockResolvedValue(
+				sdk
+					? {
+							'google-vertex': {
+								models: { [model.slice('google-vertex/'.length)]: { sdk } },
+							},
+						}
+					: undefined,
+			);
 			const credentialProvider = mock<CredentialProvider>();
 			credentialProvider.list.mockResolvedValue([
 				{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' },
@@ -49,6 +78,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 				location: 'europe-west4',
 				clientEmail: 'agent@example.iam.gserviceaccount.com',
 				privateKey: 'private-key',
+				...(sdk !== undefined && { sdk }),
 			});
 		},
 	);

@@ -49,6 +49,8 @@ export interface ModelInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
 	name: string;
+	/** AI SDK package selected by the model or its parent provider. */
+	sdk?: string;
 	/** Release date in ISO date format when available from models.dev. */
 	releaseDate?: string;
 	/** Lifecycle status reported by the catalog, such as alpha or beta. */
@@ -94,6 +96,7 @@ export type ProviderCatalog = Record<string, ProviderInfo>;
 const modelsDevModelSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
+	provider: z.object({ npm: z.string().optional() }).optional(),
 	release_date: z.string().optional(),
 	reasoning: z.boolean().optional(),
 	temperature: z.boolean().optional(),
@@ -124,6 +127,7 @@ const modelsDevModelSchema = z.object({
 const modelsDevProviderSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
+	npm: z.string().optional(),
 	models: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -207,9 +211,11 @@ export async function fetchProviderCatalog(options?: {
 				deprecatedModelIds.add(model.id);
 				continue;
 			}
+			const sdk = model.provider?.npm ?? provider.npm;
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
+				...(sdk !== undefined && { sdk }),
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
 				...(model.status !== undefined && { status: model.status }),
 				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
@@ -278,7 +284,7 @@ export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
 			// Clear so subsequent calls retry
 			catalogFetchPromise = undefined;
 			console.warn(
-				'[agents] Failed to fetch model catalog from models.dev — cost data will be unavailable:',
+				'[agents] Failed to fetch model catalog from models.dev — model metadata will be unavailable:',
 				error instanceof Error ? error.message : error,
 			);
 			return undefined;
