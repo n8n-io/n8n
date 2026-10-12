@@ -40,8 +40,18 @@ describe('useTestAgentPreviewFlag', () => {
 		expect(isFeatureEnabled).toHaveBeenCalledWith(AGENT_EVALS_FLAG);
 	});
 
-	it.each([false, undefined])('keeps the QA override when the flag is %s', (flag) => {
-		posthogState.value = flag;
+	it.each([false, undefined, 'control', 'variant'])(
+		'does not enable the preview with the QA override when the main flag is %s',
+		(flag) => {
+			posthogState.value = flag;
+			settingsState.forceAgentWorthTesting = true;
+
+			expect(useTestAgentPreviewFlag().isFeatureEnabled.value).toBe(false);
+		},
+	);
+
+	it('keeps the preview available for an enabled eval cohort when eligibility is forced', () => {
+		posthogState.value = true;
 		settingsState.forceAgentWorthTesting = true;
 
 		expect(useTestAgentPreviewFlag().isFeatureEnabled.value).toBe(true);
