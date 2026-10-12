@@ -6,10 +6,11 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	mintResumeToken,
 	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
-import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
+import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
@@ -110,6 +111,7 @@ export class EngineV2Runtime {
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
 			responseSender,
+			resumeSecret: this.resumeSecret(),
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
@@ -122,12 +124,36 @@ export class EngineV2Runtime {
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+					resumeToken: this.resumeTokenMinter(),
 				}),
 			}),
 		});
 		engine.start();
 
 		this.engine = engine;
+	}
+
+	/**
+	 * The secret the engine signs and verifies resume tokens with. Read here, in
+	 * the data-plane composition root, and nowhere on the control plane: the
+	 * control plane forwards a resume token without reading it
+	 * (ADR-20260904-a-derived-token-authorizes-a-resume-request, decision 7).
+	 * Unset or empty, the engine accepts no resume request.
+	 */
+	private resumeSecret(): string | undefined {
+		return this.engineConfig.resumeSecret || undefined;
+	}
+
+	/**
+	 * Mints the token that `$execution.resumeUrl` and `$execution.resumeFormUrl`
+	 * carry. Without it, core puts a random token there that the engine cannot
+	 * verify, so the resume request fails at the engine instead of in the node.
+	 */
+	private resumeTokenMinter(): V1StepExecutorDeps['resumeToken'] {
+		const { resumeSecret } = this.engineConfig;
+		if (!resumeSecret) return undefined;
+
+		return ({ executionId }) => mintResumeToken(resumeSecret, executionId);
 	}
 
 	private buildAdditionalData(
