@@ -49,6 +49,10 @@ packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
   s_e99de54a53d3e4::t_95cc72e2e8b6d1 692,695,701,709,735,737-739
 packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
   s_e99de54a53d3e4::t_4b9af8f74032f0 1220,1223-1224,1258,1265
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-case-generation.service.test.ts
+  s_e99de54a53d3e4::t_510feb58f87ce7 21
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_e99de54a53d3e4::t_510feb58f87ce7 336
 ---
 {
   "schema_version": "authorship/3.0.0",
