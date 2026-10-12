@@ -26,6 +26,9 @@ export class ExecutionPruningHardDeleteTask implements SystemTask {
 	// at the pause and returns, so the occurrence completes with result `timed_out`.
 	readonly timeoutSeconds = this.intervalSeconds;
 
+	// The in-memory timer retries a failed run after one second, as the old timer did.
+	readonly retryDelaySeconds = 1;
+
 	constructor(
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly pruningService: ExecutionsPruningService,

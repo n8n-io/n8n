@@ -186,7 +186,7 @@ describe('ExecutionsPruningService', () => {
 			expect(selects).toEqual([[], [badRef.executionId]]);
 		});
 
-		it('should give up after a batch size of failed rows', async () => {
+		it('should keep draining past a batch size of failed rows', async () => {
 			const { service, executionRepository, executionPersistence } = makeService();
 			const batches = [
 				batchOf(BATCH_SIZE),
@@ -204,7 +204,16 @@ describe('ExecutionsPruningService', () => {
 			await vi.runAllTimersAsync();
 			await run;
 
-			expect(selects).toEqual([[], batches[0].filter(isBad).map((ref) => ref.executionId)]);
+			const badIds = batches
+				.flat()
+				.filter(isBad)
+				.map((ref) => ref.executionId);
+			expect(selects).toEqual([
+				[],
+				badIds.slice(0, 50),
+				badIds.slice(0, 100),
+				badIds.slice(0, 150),
+			]);
 		});
 
 		it('should stop the single deletes when the signal aborts', async () => {
