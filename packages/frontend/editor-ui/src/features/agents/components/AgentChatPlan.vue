@@ -171,7 +171,10 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 									bold
 									step="xs"
 									:color="item.status === 'done' ? undefined : 'text-light'"
-									:class="[$style.itemTitle, { [$style.inProgress]: item.status === 'in_progress' }]"
+									:class="[
+										$style.itemTitle,
+										{ [$style.inProgress]: item.status === 'in_progress' },
+									]"
 									:title="item.title"
 									>{{ item.title }}</N8nText
 								>
