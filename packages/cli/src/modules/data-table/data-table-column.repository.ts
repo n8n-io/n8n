@@ -1,7 +1,7 @@
 import { DataTableCreateColumnSchema } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, In } from '@n8n/typeorm';
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DATA_TABLE_SYSTEM_TESTING_COLUMN,
@@ -16,6 +16,7 @@ import { DataTableColumnNotFoundError } from './errors/data-table-column-not-fou
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
+import { orderColumnRenames, pairDataTableColumns } from './utils/pair-columns';
 
 @Service()
 export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
@@ -76,6 +77,12 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		return columns;
 	}
 
+	async findTableIdsByColumnIds(
+		columnIds: string[],
+	): Promise<Array<Pick<DataTableColumn, 'id' | 'dataTableId'>>> {
+		return await this.find({ select: ['id', 'dataTableId'], where: { id: In(columnIds) } });
+	}
+
 	async getColumnByIdOrFail(dataTableId: string, columnId: string) {
 		const column = await this.findOneBy({ id: columnId, dataTableId });
 		if (!column) {
@@ -98,7 +105,12 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		return index;
 	}
 
-	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
+	async addColumn(
+		dataTableId: string,
+		schema: DataTableCreateColumnSchema,
+		trx?: EntityManager,
+		explicitId?: string,
+	) {
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			this.validateNotSystemColumn(schema.name);
@@ -113,7 +125,10 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 			}
 
 			const column = em.create(DataTableColumn, {
-				...schema,
+				id: explicitId,
+				name: schema.name,
+				type: schema.type,
+				index: schema.index,
 				dataTableId,
 			});
 
@@ -140,11 +155,18 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		});
 	}
 
-	/** Drops changed columns before it adds new ones. SQLite column names are case-insensitive, so `foo` must go before `Foo` is added. */
+	/**
+	 * Pairs columns by id, then by name. Drops changed columns before it renames
+	 * or adds columns, so a rename or an added column can take a freed name.
+	 * SQLite column names are case-insensitive, so `foo` must go before `Foo` is added.
+	 */
 	async replaceSchema(
 		dataTableId: string,
 		projectId: string,
-		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
+		schema: {
+			name: string;
+			columns: Array<Pick<DataTableColumn, 'name' | 'type'> & { id?: string }>;
+		},
 		ctx: OperationContext = {},
 	) {
 		await this.runInTransaction(ctx, async (em) => {
@@ -152,15 +174,35 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 				throw new DataTableNotFoundError(dataTableId);
 			}
 
-			const wantedTypes = new Map(schema.columns.map(({ name, type }) => [name, type]));
-			const keptColumnNames = new Set<string>();
-			for (const column of await this.getColumns(dataTableId, em)) {
-				if (wantedTypes.get(column.name) === column.type) keptColumnNames.add(column.name);
-				else await this.deleteColumn(dataTableId, column, em);
+			const targetColumns = await this.getColumns(dataTableId, em);
+			const { pairs } = pairDataTableColumns(schema.columns, targetColumns);
+			const keptPairs = pairs.filter(({ source, target }) => source.type === target.type);
+			const renames = orderColumnRenames(pairs);
+			if (renames.blocked.length > 0) {
+				throw new UnexpectedError(
+					'Column name swaps and cycles must be rejected before this point',
+				);
 			}
 
-			for (const { name, type } of schema.columns) {
-				if (!keptColumnNames.has(name)) await this.addColumn(dataTableId, { name, type }, em);
+			const keptTargets = new Set(keptPairs.map(({ target }) => target));
+			for (const column of targetColumns) {
+				if (!keptTargets.has(column)) await this.deleteColumn(dataTableId, column, em);
+			}
+
+			for (const { source, target } of renames.ordered) {
+				await this.renameColumn(dataTableId, target, source.name, em);
+			}
+
+			const keptSources = new Set(keptPairs.map(({ source }) => source));
+			for (const column of schema.columns) {
+				if (keptSources.has(column)) continue;
+				await this.addColumn(dataTableId, { name: column.name, type: column.type }, em, column.id);
+			}
+
+			for (const { source, target } of keptPairs) {
+				if (source.id !== undefined && source.id !== target.id) {
+					await em.update(DataTableColumn, { id: target.id, dataTableId }, { id: source.id });
+				}
 			}
 
 			for (const [index, { name }] of schema.columns.entries()) {

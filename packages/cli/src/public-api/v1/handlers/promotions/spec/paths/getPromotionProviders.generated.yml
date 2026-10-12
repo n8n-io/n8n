@@ -2,7 +2,7 @@ operationId: getPromotionProviders
 tags:
   - Promotions
 summary: List promotion providers
-description: Returns a cursor-paginated list of providers, without their public keys.
+description: Returns a cursor-paginated list of providers, without their public configuration.
 x-required-scope: gitConnection:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -33,6 +33,7 @@ responses:
                     type: string
                     enum:
                       - git
+                      - gitlab
                   authType:
                     type: string
                     enum:

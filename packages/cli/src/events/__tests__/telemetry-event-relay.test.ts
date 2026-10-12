@@ -1285,6 +1285,286 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('policy enforcement events', () => {
+		it('should track a user-blocked node-type violation on a workflow save', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 12,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: 'rule-1',
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: 'project-1',
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION, {
+				user_id: 'user-1',
+				actor_type: 'user',
+				point: 'workflowSave',
+				outcome: 'violation',
+				duration_ms: 12,
+				check_ids: ['node-type-availability'],
+				violation_count: 1,
+				violations: [
+					{
+						check_id: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject_type: 'nodeType',
+						subject: 'n8n-nodes-base.executeCommand',
+						scope: 'instance',
+						matched_rule: true,
+					},
+				],
+				target_type: 'workflow',
+				workflow_id: 'workflow-1',
+				agent_id: undefined,
+				credential_id: undefined,
+				credential_type: undefined,
+				consumer_node_type: undefined,
+				project_id: 'project-1',
+			});
+		});
+
+		it('should never leak workflow, agent, user, or audit-only names', () => {
+			const event = {
+				actorType: 'user',
+				user: { id: 'user-1', email: 'alice@example.com' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 12,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: 'rule-1',
+					},
+				],
+				policyVersions: [{ scope: 'instance', version: 1 }],
+				correlationIds: ['corr-1'],
+				workflowId: 'workflow-1',
+				workflowName: 'My Secret Workflow',
+				agentName: 'My Agent',
+				projectId: 'project-1',
+			} as RelayEventMap['policy-decision-blocked'];
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).not.toHaveProperty('workflowName');
+			expect(properties).not.toHaveProperty('agentName');
+			expect(properties).not.toHaveProperty('email');
+			expect(properties).not.toHaveProperty('matchedRuleId');
+			expect(properties).not.toHaveProperty('policyVersions');
+			expect(properties).not.toHaveProperty('correlationIds');
+			expect(JSON.stringify(properties)).not.toContain('alice@example.com');
+			expect(JSON.stringify(properties)).not.toContain('My Secret Workflow');
+			expect(JSON.stringify(properties)).not.toContain('My Agent');
+		});
+
+		it('should report a system actor without a user id', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'system',
+				user: null,
+				systemReason: 'execution',
+				executionId: 'exec-1',
+				point: 'workflowStart',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [],
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).not.toHaveProperty('user_id');
+			expect(properties).not.toHaveProperty('execution_id');
+			expect(properties).toMatchObject({ actor_type: 'system', system_reason: 'execution' });
+		});
+
+		it('should null out the subject for a non-type-name subject type', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['domain-restriction'],
+				violations: [
+					{
+						checkId: 'domain-restriction',
+						kind: 'domain-not-allowed',
+						subject: 'internal.acme.com',
+						subjectType: 'domain',
+						scope: 'instance',
+						matchedRuleId: null,
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					violations: [expect.objectContaining({ subject_type: 'domain', subject: null })],
+				}),
+			);
+		});
+
+		it("should report matched_rule false when the scope's default action decided", () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: null,
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					violations: [expect.objectContaining({ matched_rule: false })],
+				}),
+			);
+		});
+
+		it('should target a credential on a credential decrypt block', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'credentialDecrypt',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['credential-type-availability'],
+				violations: [],
+				credentialId: 'credential-1',
+				credentialType: 'slackApi',
+				consumerNodeType: 'n8n-nodes-base.slack',
+				projectId: 'project-1',
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					target_type: 'credential',
+					credential_type: 'slackApi',
+					consumer_node_type: 'n8n-nodes-base.slack',
+				}),
+			);
+		});
+
+		it('should target an agent on an agent create block', () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [],
+				agentId: null,
+				agentName: 'My Agent',
+				projectId: 'project-1',
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({ target_type: 'agent', agent_id: null }),
+			);
+		});
+
+		it('should cap listed violations at 50 while keeping the true count', () => {
+			const violations = Array.from({ length: 60 }, (_, index) => ({
+				checkId: `check-${index}`,
+				kind: 'node-type-unavailable',
+				subject: `n8n-nodes-base.node${index}`,
+				subjectType: 'nodeType',
+				scope: 'instance',
+				matchedRuleId: null,
+			}));
+
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations,
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).toMatchObject({ violation_count: 60 });
+			expect((properties as { violations: unknown[] }).violations).toHaveLength(50);
+		});
+
+		it('should track a checkFailure outcome without leaking correlation ids', () => {
+			const event = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'checkFailure',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [],
+				correlationIds: ['corr-1', 'corr-2'],
+				workflowId: 'workflow-1',
+				projectId: null,
+			} as RelayEventMap['policy-decision-blocked'];
+
+			eventService.emit('policy-decision-blocked', event);
+
+			const [, properties] = vi.mocked(telemetry.track).mock.calls.at(-1)!;
+			expect(properties).toMatchObject({ outcome: 'checkFailure' });
+			expect(properties).not.toHaveProperty('correlation_ids');
+			expect(properties).not.toHaveProperty('correlationIds');
+		});
+	});
+
 	describe('external secrets events', () => {
 		it('should track on `external-secrets-provider-settings-saved` event', () => {
 			const event: RelayEventMap['external-secrets-provider-settings-saved'] = {
@@ -4670,6 +4950,30 @@ describe('TelemetryEventRelay', () => {
 					rules: [{ rule_id: 'removed-nodes-v3', impact: 'executionsFail', affected_workflows: 4 }],
 					synced_at: '2026-01-01T00:00:00.000Z',
 				},
+			);
+		});
+
+		it('omits synced_at when the report has no sync time', () => {
+			eventService.emit('migration-report-viewed', {
+				user: { id: 'user-1' },
+				targetVersion: 'v3',
+				refreshed: false,
+				report: {
+					report: {
+						targetVersion: 'v3',
+						currentVersion: '2.0.0',
+						instanceResults: [],
+						workflowResults: [],
+					},
+					totalWorkflows: 0,
+					totalAffectedWorkflows: 0,
+					shouldCache: false,
+				},
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT,
+				expect.objectContaining({ synced_at: undefined }),
 			);
 		});
 	});

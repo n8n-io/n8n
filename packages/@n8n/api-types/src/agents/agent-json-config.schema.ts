@@ -21,8 +21,8 @@ export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-	 * (?:[a-z0-9._:-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-	 * [a-z0-9._:-]+: Model name (e.g. "claude-sonnet-4-5")
+	 * (?:[a-z0-9._:@-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+	 * [a-z0-9._:@-]+: Model name (e.g. "claude-fable-5@default")
 	 */
 	AGENT_MODEL_STRING_REGEX,
 	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
@@ -586,6 +586,29 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+
+declare const storedSkillRefsBrand: unique symbol;
+
+/**
+ * Opaque type of the legacy `skills` key in a stored config. Only the skill
+ * refs seam reads or writes this key.
+ */
+export interface OpaqueStoredSkillRefs {
+	readonly [storedSkillRefsBrand]: true;
+}
+
+/**
+ * Agent config as the backend stores it on the agent draft and on each
+ * published version. Its `skills` key is opaque: read and write skill refs
+ * through `AgentSkillRefsService`. `AgentJsonConfig` (with `skills`) stays the
+ * document format of REST, MCP and the agent builder.
+ *
+ * Because the `skills` key is opaque, a stored config is not assignable to
+ * `AgentJsonConfig`. To get a document, compose one with the skill refs.
+ */
+export type StoredAgentConfig = Omit<AgentJsonConfig, 'skills'> & {
+	readonly skills?: OpaqueStoredSkillRefs;
+};
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 
 /** In-memory monthly spend for one agent. This process only. */

@@ -183,6 +183,14 @@ export const TrustedSourceConfigSchema = z
 				path: ['authentication', 'discovery'],
 			});
 		}
+		// Without a lookup, provisioning would create a second user for an email that exists.
+		if (identity.provision.human === 'jit' && identity.linkByEmail === 'off') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'jit provisioning requires email linking',
+				path: ['identity', 'linkByEmail'],
+			});
+		}
 		if (identity.provision.human === 'jit' && identity.roleMapping.mode === 'off') {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
