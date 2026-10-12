@@ -8785,6 +8785,7 @@
 	"agents.builder.tools.mcp.remove": "Remove MCP",
 	"agents.builder.tools.mcp.add": "Add MCP",
 	"agents.builder.tools.back": "Back to tools",
+	"agents.builder.skills.outdated.warning": "This agent uses an older version of this skill. To get the latest version, remove the skill and add it again.",
 	"agents.builder.skills.title": "Skills",
 	"agents.builder.skills.description": "How this agent handles specific tasks",
 	"agents.builder.skills.count": "{count} skill applied | {count} skills applied",

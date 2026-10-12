@@ -45,6 +45,7 @@ export class AgentRunnableStateService {
 			configHash: string | null;
 			skills: Record<string, AgentSkill>;
 			skillHashes: Record<string, string>;
+			outdatedSkillIds: string[];
 		}
 	> {
 		// The skill bodies the draft runs, from the skills hub, keyed by skill id.
@@ -54,6 +55,15 @@ export class AgentRunnableStateService {
 		const skillHashes = Object.fromEntries(
 			Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);
+		const pinnedSkillIds = skillRefs.flatMap((ref) => (ref.versionId ? [ref.id] : []));
+		const latestPinnedSkills = await this.agentSkillRefs.skillsForRefs(
+			pinnedSkillIds.map((id) => ({ type: 'skill', id })),
+			{},
+		);
+		const outdatedSkillIds = pinnedSkillIds.filter((id) => {
+			const latest = latestPinnedSkills[id];
+			return latest !== undefined && getAgentSkillHash(latest) !== skillHashes[id];
+		});
 		if (draftValidation) {
 			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);
 			return Object.assign(agent, {
@@ -62,6 +72,7 @@ export class AgentRunnableStateService {
 				configHash,
 				skills,
 				skillHashes,
+				outdatedSkillIds,
 			});
 		}
 
@@ -87,6 +98,7 @@ export class AgentRunnableStateService {
 			configHash,
 			skills,
 			skillHashes,
+			outdatedSkillIds,
 		});
 	}
 }

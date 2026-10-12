@@ -195,6 +195,7 @@ defineExpose({ onSetupTaskAction });
 							:disabled="childrenDisabled"
 							:show-label="false"
 							:validation-issues="configValidationIssues ?? []"
+							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
 							@remove-skill="emit('remove-skill', $event)"
