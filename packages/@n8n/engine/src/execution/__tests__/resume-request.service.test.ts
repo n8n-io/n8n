@@ -95,11 +95,15 @@ describe('ResumeRequestService.locate', () => {
 		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('ambiguous'));
 	});
 
-	it('holds a request for a live execution until its step suspends', async () => {
-		const { service, loadWaitingSteps } = setup({ waiting: [[], [accepting('s1')]] });
+	it('holds a request for a live execution until its step suspends, and logs the hold', async () => {
+		const { service, loadWaitingSteps, logger } = setup({ waiting: [[], [accepting('s1')]] });
 
 		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(2);
+		expect(logger.debug).toHaveBeenCalledWith(
+			'engine: held a resume request',
+			expect.objectContaining({ executionId, outcome: 'target', stepId: 's1' }),
+		);
 	});
 
 	it('answers null for an execution that ended before its wait was cancelled', async () => {

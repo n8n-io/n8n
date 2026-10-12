@@ -221,6 +221,15 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 		await resolve(stepIds['wait-a'], { token, outputs }).expect(409, { error: 'ambiguous' });
 	});
 
+	it('requires the identity token', async () => {
+		const { stepIds, token } = await seed({ 'wait-a': acceptsRequest });
+
+		await request(app)
+			.post(`/api/step-executions/${stepIds['wait-a']}/resolve`)
+			.send({ token, outputs })
+			.expect(401);
+	});
+
 	it('rejects a body without outputs with 400', async () => {
 		const { stepIds, token } = await seed({ 'wait-a': acceptsRequest });
 
