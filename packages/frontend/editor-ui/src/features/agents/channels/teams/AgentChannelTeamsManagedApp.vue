@@ -31,11 +31,16 @@ const props = defineProps<{
 	/** What the channel runs on, which is what the published app must match. */
 	settings?: AgentTeamsIntegrationSettings;
 	/**
-	 * Whether the form holds a manifest change that is not saved yet. This button
-	 * publishes what n8n has saved, so it waits for the save to catch up --
-	 * otherwise the catalogue gets the version the user is replacing.
+	 * Whether the form holds a manifest change that is not saved yet. Publishing
+	 * saves it first, so the catalogue never gets a version n8n does not hold.
 	 */
 	unsavedChanges?: boolean;
+	/**
+	 * Saves the channel without closing the modal. Publishing an unsaved change
+	 * goes through this, so the user reaches the catalogue in one step and stays
+	 * on the dialog that reports how it went.
+	 */
+	persistChannel?: () => Promise<boolean>;
 }>();
 
 type Busy = 'publish' | 'download';
@@ -90,7 +95,13 @@ async function run(name: Busy, action: () => Promise<void>) {
 }
 
 const publish = async () =>
-	await run('publish', async () => await props.runtime.publishApp(props.settings));
+	await run('publish', async () => {
+		// Saved first, and abandoned if that fails: a publish that lands on top of
+		// a failed save would leave the catalogue ahead of n8n, which is worse
+		// than leaving it behind.
+		if (props.unsavedChanges && !(await props.persistChannel?.())) return;
+		await props.runtime.publishApp(props.settings);
+	});
 
 /**
  * Uploading the package needs no catalogue entry, so it is the only route that
@@ -146,18 +157,18 @@ watch(
 			<template #action>
 				<!--
 					Offered once the app is published too: publishing again is how a
-					changed manifest reaches the catalogue, and the notice beside this
-					card says to do exactly that. Hidden only while a review is
-					pending, which is the one state that cannot take another -- and
-					shown while the catalogue is unread, because a read that never
-					answers must not take the action away with it.
+					changed manifest reaches the catalogue, and it saves an open change
+					on the way. Hidden only while a review is pending, which is the one
+					state that cannot take another -- and shown while the catalogue is
+					unread, because a read that never answers must not take the action
+					away with it.
 				-->
 				<N8nButton
 					v-if="catalogState?.status !== 'submitted'"
 					variant="outline"
 					size="medium"
 					:loading="busy === 'publish'"
-					:disabled="busy !== null || unsavedChanges"
+					:disabled="busy !== null"
 					data-testid="teams-settings-publish"
 					@click="publish"
 				>

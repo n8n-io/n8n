@@ -130,21 +130,67 @@ describe('AgentChannelTeamsManagedApp', () => {
 	});
 
 	/**
-	 * The card publishes the saved settings, so publishing now would put the
-	 * version the user is replacing in the catalogue. It waits for the save to
-	 * catch up -- the save itself publishes nothing.
+	 * The save in the footer closes the dialog, so waiting for it would take the
+	 * user away from the card. Publishing saves the open change itself, and the
+	 * button stays available to say so.
 	 */
-	it('waits for the save before it publishes an unsaved change', async () => {
+	it('saves an unsaved change before it publishes', async () => {
 		const runtime = buildRuntime({
 			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
 		});
+		const persistChannel = vi.fn().mockResolvedValue(true);
 
-		const { getByTestId } = render({ runtime, unsavedChanges: true });
+		const { getByTestId } = render({ runtime, unsavedChanges: true, persistChannel });
 
 		await waitFor(() =>
-			expect(getByTestId('teams-settings-download')).not.toHaveAttribute('disabled'),
+			expect(getByTestId('teams-settings-publish')).not.toHaveAttribute('disabled'),
 		);
-		expect(getByTestId('teams-settings-publish')).toHaveAttribute('disabled');
+		await fireEvent.click(getByTestId('teams-settings-publish'));
+
+		await waitFor(() => expect(runtime.publishApp).toHaveBeenCalled());
+		// Saved first: the catalogue must never hold a version n8n does not.
+		expect(persistChannel.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(runtime.publishApp).mock.invocationCallOrder[0],
+		);
+	});
+
+	/**
+	 * A publish that landed on top of a failed save would put the catalogue
+	 * ahead of n8n, which is worse than leaving it behind.
+	 */
+	it('publishes nothing when the save it depends on fails', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+		});
+		const persistChannel = vi.fn().mockResolvedValue(false);
+
+		const { getByTestId } = render({ runtime, unsavedChanges: true, persistChannel });
+
+		await waitFor(() =>
+			expect(getByTestId('teams-settings-publish')).not.toHaveAttribute('disabled'),
+		);
+		await fireEvent.click(getByTestId('teams-settings-publish'));
+
+		await waitFor(() => expect(persistChannel).toHaveBeenCalled());
+		expect(runtime.publishApp).not.toHaveBeenCalled();
+	});
+
+	// A clean form has nothing to save, so the publish goes straight out.
+	it('publishes a saved channel without saving again', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+		});
+		const persistChannel = vi.fn().mockResolvedValue(true);
+
+		const { getByTestId } = render({ runtime, unsavedChanges: false, persistChannel });
+
+		await waitFor(() =>
+			expect(getByTestId('teams-settings-publish')).not.toHaveAttribute('disabled'),
+		);
+		await fireEvent.click(getByTestId('teams-settings-publish'));
+
+		await waitFor(() => expect(runtime.publishApp).toHaveBeenCalled());
+		expect(persistChannel).not.toHaveBeenCalled();
 	});
 
 	/**

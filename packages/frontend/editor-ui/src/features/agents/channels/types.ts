@@ -75,6 +75,12 @@ export interface AgentChannelViewProps {
 	agentId: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 	ensureAgentPersisted?: () => Promise<void>;
+	/**
+	 * Saves the channel without closing the modal, and reports whether it
+	 * landed. For a view whose own buttons act on what n8n has saved: they wait
+	 * for this rather than for the footer, which closes the dialog under them.
+	 */
+	persistChannel?: () => Promise<boolean>;
 	forceNewCredential: boolean;
 	simpleSetup: boolean;
 	runtime: AgentChannelRuntime;

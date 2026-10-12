@@ -18,13 +18,8 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
-const { showMessage, showError } = vi.hoisted(() => ({
-	showMessage: vi.fn(),
-	showError: vi.fn(),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage, showError }),
+	useToast: () => ({ showMessage: vi.fn(), showError: vi.fn() }),
 }));
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
@@ -359,10 +354,6 @@ describe('AgentChannelTeamsEditView', () => {
 		await flushPromises();
 
 		expect(publishApp).not.toHaveBeenCalled();
-		// The modal closes on the save, so the drift is said here or nowhere.
-		expect(showMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ title: 'agents.channels.teams.settings.appOutOfDate' }),
-		);
 	});
 
 	/**

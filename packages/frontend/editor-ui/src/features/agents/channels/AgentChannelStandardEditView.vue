@@ -56,6 +56,7 @@ defineExpose({ currentSettings, validationError, saveLabel, beforeSave, afterSav
 			:project-id="projectId"
 			:agent-id="agentId"
 			:managed-runtime="runtime"
+			:persist-channel="persistChannel"
 		/>
 	</div>
 </template>

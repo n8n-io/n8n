@@ -47,6 +47,8 @@ const props = withDefaults(
 		savedSettings?: AgentTeamsIntegrationSettings;
 		personalisation?: AgentJsonConfig['personalisation'] | null;
 		ensureAgentPersisted?: () => Promise<void>;
+		/** Saves without closing the modal, so the card can act on saved settings. */
+		persistChannel?: () => Promise<boolean>;
 		/**
 		 * Present when the recommended setup is available here. The settings then
 		 * offer publishing to the organisation, in place of the package the
@@ -65,6 +67,7 @@ const props = withDefaults(
 		savedSettings: undefined,
 		personalisation: null,
 		ensureAgentPersisted: undefined,
+		persistChannel: undefined,
 	},
 );
 
@@ -489,12 +492,6 @@ const saveLabel = computed(() => {
 
 // Captured before the save, because the saved settings then catch up with the form.
 let pendingPackage: { settings: AgentTeamsIntegrationSettings; credentialId: string } | null = null;
-/**
- * Whether the save left the installed app a version behind. Nothing is sent for
- * it: publishing reaches the whole organisation, and uploading is a step in
- * Teams, so both are the user's to choose on the card. The save only says so.
- */
-let appLeftBehind = false;
 
 async function beforeSave() {
 	// A save that carries a manifest change picks its route from the provenance,
@@ -505,7 +502,6 @@ async function beforeSave() {
 		manifestChanged.value && !offerManagedApp.value
 			? { settings: currentSettings.value, credentialId: credentialId.value }
 			: null;
-	appLeftBehind = manifestChanged.value && offerManagedApp.value;
 }
 
 /**
@@ -514,18 +510,6 @@ async function beforeSave() {
  * here and can be repeated from the card.
  */
 async function afterSave() {
-	if (appLeftBehind) {
-		appLeftBehind = false;
-		// The modal closes on the save, so this is the last place left to say that
-		// Teams still carries the version before this one.
-		toast.showMessage({
-			type: 'info',
-			title: i18n.baseText('agents.channels.teams.settings.appOutOfDate'),
-			message: i18n.baseText('agents.channels.teams.settings.appOutOfDateHint'),
-		});
-		return;
-	}
-
 	const pending = pendingPackage;
 	pendingPackage = null;
 	// Attempted even without a bot ID here: the server builds the package from
@@ -853,8 +837,9 @@ defineExpose({
 				:credential-id="credentialId"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:settings="savedSettings"
+				:settings="currentSettings"
 				:unsaved-changes="manifestChanged"
+				:persist-channel="persistChannel"
 			/>
 			<template v-else>
 				<div :class="$style.field" data-testid="teams-identity-field">
