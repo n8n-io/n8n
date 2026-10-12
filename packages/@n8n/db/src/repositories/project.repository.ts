@@ -107,15 +107,25 @@ export class ProjectRepository extends BaseRepository<Project> {
 		return rows;
 	}
 
-	/** Id, name, type and description of every project that exists with one of these ids. */
-	async findProjectInfoByIds(
+	/**
+	 * Id, name, type and description of the team projects among these ids.
+	 * Personal projects are excluded, because a rule must never grant access to one.
+	 */
+	async findTeamProjectInfoByIds(
 		ids: string[],
 		ctx: OperationContext = {},
 	): Promise<Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>>> {
-		return await this.managerFor(ctx).find(Project, {
-			where: { id: In(ids) },
-			select: ['id', 'name', 'type', 'description'],
-		});
+		const manager = this.managerFor(ctx);
+		const rows: Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(
+				...(await manager.find(Project, {
+					where: { id: In(batch), type: 'team' },
+					select: ['id', 'name', 'type', 'description'],
+				})),
+			);
+		}
+		return rows;
 	}
 
 	async getAccessibleProjects(userId: string) {

@@ -51,7 +51,7 @@ export class RoleResolverService {
 			return new Map();
 		}
 
-		const projects = await this.projectRepository.findProjectInfoByIds(projectIds, ctx);
+		const projects = await this.projectRepository.findTeamProjectInfoByIds(projectIds, ctx);
 
 		const map = new Map<string, ProjectInfo>();
 		for (const project of projects) {
@@ -99,7 +99,7 @@ export class RoleResolverService {
 			const project = projects.get(rule.projectId);
 			if (!project) {
 				this.logger.warn(
-					`Skipping role mapping rule "${rule.id}": project "${rule.projectId}" not found`,
+					`Skipping role mapping rule "${rule.id}": project "${rule.projectId}" not found or not a team project`,
 				);
 				continue;
 			}

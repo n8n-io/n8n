@@ -485,6 +485,33 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expect(await bindings.count()).toBe(1);
 			expect((await readBinding(source, 'alice')).userId).toBe(first.id);
 		});
+		it('leaves no binding when continuous mapping rejects a fresh link', async () => {
+			const source = await seedSource({
+				linkByEmail: 'verified-only',
+				roleMapping: {
+					mode: 'continuous',
+					fallbackInstanceRole: 'global:member',
+					instanceRoleRules: [
+						{
+							id: 'r1',
+							expression: '{{ $claims.groups.includes("blocked") }}',
+							role: BLOCK_ACCESS_ASSIGNMENT,
+							enabled: true,
+						},
+					],
+					projectRoleRules: [],
+				},
+			});
+			await createUser({ email });
+
+			const result = await service.identify(
+				verified(source, { sub: 'alice', email, email_verified: true, groups: ['blocked'] }),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect(await bindings.count()).toBe(0);
+			expect(emit).not.toHaveBeenCalledWith('trusted-source-identity-linked', expect.anything());
+		});
 	});
 
 	describe('just-in-time provisioning', () => {
@@ -978,6 +1005,25 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expectOk(await service.identify(verified(source, claims('alice', admin.email, ['admins']))));
 
 			expect(await roleOf(admin.id)).toBe('global:member');
+		});
+
+		it('skips a project rule that names a personal project when provisioning', async () => {
+			const other = await createMember();
+			const personal = await Container.get(ProjectRepository).getPersonalProjectForUser(other.id);
+			if (!personal) throw new Error('personal project of the other member did not load');
+			const source = await jitSource(
+				mapping('on-provision', { projectRoleRules: [editorRule(personal.id)] }),
+			);
+
+			const context = expectOk(
+				await service.identify(verified(source, claims('bob', 'bob@example.com', ['team']))),
+			);
+
+			expect(await roleOf(context.subject.id)).toBe('global:member');
+			const relations = await relationsOf(context.subject.id);
+			expect(relations).toHaveLength(1);
+			expect(relations[0]).toMatchObject({ role: 'project:personalOwner' });
+			expect(relations[0].projectId).not.toBe(personal.id);
 		});
 	});
 });

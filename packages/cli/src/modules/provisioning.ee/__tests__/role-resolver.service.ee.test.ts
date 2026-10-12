@@ -64,7 +64,7 @@ function makeProject(overrides: Partial<ProjectInfo> = {}): ProjectInfo {
 describe('RoleResolverService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		projectRepository.findProjectInfoByIds.mockResolvedValue([]);
+		projectRepository.findTeamProjectInfoByIds.mockResolvedValue([]);
 	});
 
 	describe('resolveRoles - instance role rules', () => {
@@ -269,7 +269,7 @@ describe('RoleResolverService', () => {
 				makeProject({ id: 'proj-1', name: 'Engineering' }),
 				makeProject({ id: 'proj-2', name: 'Marketing' }),
 			];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -302,7 +302,7 @@ describe('RoleResolverService', () => {
 
 		it('should return empty map when no project rules match', async () => {
 			const projects = [makeProject({ id: 'proj-1' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -321,7 +321,7 @@ describe('RoleResolverService', () => {
 		});
 
 		it('should skip rules for non-existent projects with a warning', async () => {
-			projectRepository.findProjectInfoByIds.mockResolvedValue([]);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([]);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -338,13 +338,13 @@ describe('RoleResolverService', () => {
 
 			expect(result.projectRoles.size).toBe(0);
 			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipping role mapping rule "r1": project "proj-deleted" not found',
+				'Skipping role mapping rule "r1": project "proj-deleted" not found or not a team project',
 			);
 		});
 
 		it('should make $project available in project role expressions', async () => {
 			const projects = [makeProject({ id: 'proj-1', name: 'Engineering' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -364,7 +364,7 @@ describe('RoleResolverService', () => {
 
 		it('should allow expressions using both $claims and $project', async () => {
 			const projects = [makeProject({ id: 'proj-1', name: 'engineering' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -387,7 +387,7 @@ describe('RoleResolverService', () => {
 
 		it('should allow expressions using $project.type', async () => {
 			const projects = [makeProject({ id: 'proj-1', type: 'team' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -407,7 +407,7 @@ describe('RoleResolverService', () => {
 
 		it('should skip disabled project rules', async () => {
 			const projects = [makeProject({ id: 'proj-1' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -450,7 +450,7 @@ describe('RoleResolverService', () => {
 
 			await resolveRolesSimple(config, makeContext());
 
-			expect(projectRepository.findProjectInfoByIds).not.toHaveBeenCalled();
+			expect(projectRepository.findTeamProjectInfoByIds).not.toHaveBeenCalled();
 		});
 
 		it('should not query DB when all project rules are disabled', async () => {
@@ -468,11 +468,11 @@ describe('RoleResolverService', () => {
 
 			await resolveRolesSimple(config, makeContext());
 
-			expect(projectRepository.findProjectInfoByIds).not.toHaveBeenCalled();
+			expect(projectRepository.findTeamProjectInfoByIds).not.toHaveBeenCalled();
 		});
 
 		it('should fetch only projects referenced by enabled rules', async () => {
-			projectRepository.findProjectInfoByIds.mockResolvedValue([]);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([]);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -500,8 +500,8 @@ describe('RoleResolverService', () => {
 
 			await resolveRolesSimple(config, makeContext());
 
-			expect(projectRepository.findProjectInfoByIds).toHaveBeenCalledTimes(1);
-			expect(projectRepository.findProjectInfoByIds).toHaveBeenCalledWith(
+			expect(projectRepository.findTeamProjectInfoByIds).toHaveBeenCalledTimes(1);
+			expect(projectRepository.findTeamProjectInfoByIds).toHaveBeenCalledWith(
 				['proj-1', 'proj-3'],
 				expect.anything(),
 			);
@@ -522,11 +522,11 @@ describe('RoleResolverService', () => {
 
 			await service.resolveRoles(config, makeContext(), ctx);
 
-			expect(projectRepository.findProjectInfoByIds).toHaveBeenCalledWith(['proj-1'], ctx);
+			expect(projectRepository.findTeamProjectInfoByIds).toHaveBeenCalledWith(['proj-1'], ctx);
 		});
 
 		it('should deduplicate project IDs', async () => {
-			projectRepository.findProjectInfoByIds.mockResolvedValue([]);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([]);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -547,14 +547,14 @@ describe('RoleResolverService', () => {
 
 			await resolveRolesSimple(config, makeContext());
 
-			expect(projectRepository.findProjectInfoByIds).toHaveBeenCalledTimes(1);
+			expect(projectRepository.findTeamProjectInfoByIds).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	describe('resolveRoles - combined instance and project rules', () => {
 		it('should resolve both instance and project roles together', async () => {
 			const projects = [makeProject({ id: 'proj-1' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				instanceRoleRules: [
@@ -714,7 +714,7 @@ describe('RoleResolverService', () => {
 
 		it('should return matched rule metadata for project roles', async () => {
 			const projects = [makeProject({ id: 'proj-1' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
@@ -740,7 +740,7 @@ describe('RoleResolverService', () => {
 
 		it('should return empty project roles when no rule matches', async () => {
 			const projects = [makeProject({ id: 'proj-1' })];
-			projectRepository.findProjectInfoByIds.mockResolvedValue(projects as never);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue(projects as never);
 
 			const config = makeConfig({
 				projectRoleRules: [
