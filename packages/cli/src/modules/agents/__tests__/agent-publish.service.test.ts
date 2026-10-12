@@ -1407,6 +1407,25 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBe('v1');
 	});
 
+	it.each([undefined, versionId])(
+		'rejects a stale caller revision before an idempotent publish of %s',
+		async (targetVersionId) => {
+			const { service, agentRepository, agentValidationService, transactionRunner, eventService } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ revision: 1, activeVersionId: versionId }),
+			);
+
+			await expect(
+				service.publishAgent(agentId, projectId, user, byUser, targetVersionId, undefined, 0),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
+			expect(agentValidationService.validateAgentHistoryConfiguration).not.toHaveBeenCalled();
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		},
+	);
+
 	it('passes the loaded revision as the fence expectation on publish', async () => {
 		const { service, agentRepository, ctx } = makeService();
 		const agent = makeAgent({ revision: 7 });

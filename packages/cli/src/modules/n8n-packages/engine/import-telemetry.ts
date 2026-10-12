@@ -1,6 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 
 import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
+import type { AgentImportOutcome } from '../entities/agent/agent-import.types';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
@@ -29,6 +30,7 @@ export interface PackageImportScope {
 export interface ImportOutcome {
 	result: ImportResult;
 	scopes: PackageImportScope[];
+	agentOutcomes: AgentImportOutcome[];
 }
 
 export function emitPackageImportedEvent(
