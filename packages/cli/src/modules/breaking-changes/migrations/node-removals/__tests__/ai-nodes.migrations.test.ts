@@ -341,13 +341,17 @@ describe('vector store migrations', () => {
 			const metadata = { metadataValues: [{ name: 'a', value: 'b' }] };
 
 			const { node: migrated } = supabaseLoadToVectorStore.migrate(
-				node('vectorStoreSupabaseLoad', { tableName, options: { metadata } }),
+				node('vectorStoreSupabaseLoad', {
+					tableName,
+					queryName: 'match_docs',
+					options: { metadata },
+				}),
 			);
 
 			expect(migrated.parameters).toEqual({
 				mode: 'retrieve',
 				tableName,
-				options: { metadata },
+				options: { queryName: 'match_docs', metadata },
 			});
 		});
 	});
