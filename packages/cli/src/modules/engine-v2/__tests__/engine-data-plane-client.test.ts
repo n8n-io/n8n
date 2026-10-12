@@ -404,5 +404,13 @@ describe('EngineDataPlaneClient', () => {
 				error,
 			});
 		});
+
+		it.each([500, 503])('throws on a %s, which is a failure and not a refusal', async (status) => {
+			respondWith(status, { error: 'internal' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).rejects.toThrow(
+				`Engine responded with ${status}`,
+			);
+		});
 	});
 });
