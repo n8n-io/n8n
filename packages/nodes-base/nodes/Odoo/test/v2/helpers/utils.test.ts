@@ -1,4 +1,6 @@
-import { formatOdooDateFields } from '../../../v2/helpers/utils';
+import { DateTime } from 'luxon';
+
+import { formatOdooDateFields, hasDateCandidate } from '../../../v2/helpers/utils';
 import type { OdooFieldSchema } from '../../../v2/helpers/utils';
 
 describe('formatOdooDateFields', () => {
@@ -80,9 +82,66 @@ describe('formatOdooDateFields', () => {
 		expect(result.name).toBe('Sync call');
 	});
 
+	describe('DateTime and Date values', () => {
+		it('converts a Luxon DateTime with an offset to UTC Odoo datetime format', () => {
+			const start = DateTime.fromISO('2026-07-14T12:00:00.000+02:00', { setZone: true });
+			const result = formatOdooDateFields({ start }, schema);
+			expect(result.start).toBe('2026-07-14 10:00:00');
+		});
+
+		it('converts a Luxon DateTime to a date in its own zone without a day shift', () => {
+			const deadline = DateTime.fromISO('2026-07-14T00:30:00.000+05:30', { setZone: true });
+			const result = formatOdooDateFields({ date_deadline: deadline }, schema);
+			expect(result.date_deadline).toBe('2026-07-14');
+		});
+
+		it('converts a JS Date to UTC Odoo datetime format', () => {
+			const result = formatOdooDateFields({ start: new Date('2026-07-14T08:30:00.000Z') }, schema);
+			expect(result.start).toBe('2026-07-14 08:30:00');
+		});
+
+		it('leaves an invalid JS Date unchanged', () => {
+			const invalid = new Date('not a date');
+			const result = formatOdooDateFields({ start: invalid }, schema);
+			expect(result.start).toBe(invalid);
+		});
+
+		it('leaves an invalid DateTime unchanged', () => {
+			const invalid = DateTime.invalid('test');
+			const result = formatOdooDateFields({ start: invalid }, schema);
+			expect(result.start).toBe(invalid);
+		});
+
+		it('does not convert a DateTime in a non-date field', () => {
+			const value = DateTime.fromISO('2026-07-14T12:00:00.000Z');
+			const result = formatOdooDateFields({ name: value }, schema);
+			expect(result.name).toBe(value);
+		});
+	});
+
 	it('does not mutate the original fields object', () => {
 		const fields = { start: '2026-07-14T12:00:00.000+02:00' };
 		formatOdooDateFields(fields, schema);
 		expect(fields.start).toBe('2026-07-14T12:00:00.000+02:00');
+	});
+});
+
+describe('hasDateCandidate', () => {
+	it('returns true for a Luxon DateTime, a JS Date or an ISO 8601 string', () => {
+		expect(hasDateCandidate({ start: DateTime.fromISO('2026-07-14T12:00:00Z') })).toBe(true);
+		expect(hasDateCandidate({ start: new Date('2026-07-14T12:00:00Z') })).toBe(true);
+		expect(hasDateCandidate({ start: '2026-07-14T12:00:00' })).toBe(true);
+	});
+
+	it('returns false when no value needs date conversion', () => {
+		expect(
+			hasDateCandidate({
+				name: 'Acme Corp',
+				amount: 10,
+				date: '2026-07-14',
+				datetime: '2026-07-14 12:00:00',
+				invalid: new Date('not a date'),
+			}),
+		).toBe(false);
 	});
 });

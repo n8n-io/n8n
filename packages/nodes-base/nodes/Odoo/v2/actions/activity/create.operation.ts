@@ -6,7 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { formatOdooDateFields, getModelSchema, recordRLC } from '../../helpers/utils';
+import { createDateFieldFormatter } from '../../helpers/schema';
+import { recordRLC } from '../../helpers/utils';
 import { odooApiRequest } from '../../transport';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -83,7 +84,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	const schema = await getModelSchema(this, 'mail.activity');
+	const formatDateFields = createDateFieldFormatter(this);
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -129,10 +130,12 @@ export async function execute(
 			}
 
 			// Explicit RLC fields take precedence over anything set via the RMC
-			const fields: IDataObject = formatOdooDateFields(
-				{ ...additionalFlat, res_model_id, res_id, activity_type_id },
-				schema,
-			);
+			const fields = await formatDateFields('mail.activity', {
+				...additionalFlat,
+				res_model_id,
+				res_id,
+				activity_type_id,
+			});
 
 			const result = (await odooApiRequest.call(this, 'mail.activity', 'create', {
 				vals_list: [fields],

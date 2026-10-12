@@ -1,6 +1,5 @@
-import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-
-import { odooApiRequest } from '../transport';
+import { DateTime } from 'luxon';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 export function recordRLC(
 	displayName: string,
@@ -75,45 +74,62 @@ export function odooGetDBName(databaseName: string | undefined, url: string): st
 
 const LIST_OPERATORS = new Set(['in', 'notIn']);
 
-/**
- * Converts the filter fixedCollection value into an Odoo domain array.
- * e.g. [['email', '=', 'foo@bar.com'], ['name', 'like', 'foo']]
- *
- * For `in` / `not in` operators Odoo requires a list value, not a scalar.
- * Users enter comma-separated values which are split and coerced here.
- */
 export type OdooFieldSchema = Record<string, { type: string }>;
 
-/**
- * Fetches Odoo field type metadata for a model. Call once before the items
- * loop so every item reuses the same schema without extra API calls.
- */
-export async function getModelSchema(
-	ctx: IExecuteFunctions,
-	model: string,
-): Promise<OdooFieldSchema> {
-	return (await odooApiRequest.call(ctx, model, 'fields_get', {
-		attributes: ['type'],
-	})) as OdooFieldSchema;
-}
-
-// n8n's resource mapper emits ISO 8601 strings with timezone for dateTime fields,
-// e.g. "2026-07-14T12:00:00.000+02:00". Odoo expects "YYYY-MM-DD HH:MM:SS" (UTC)
-// for datetime and "YYYY-MM-DD" for date fields. Timezone is optional — auto-mapped
-// input may pass naive ISO datetimes without an offset.
+// Odoo expects "YYYY-MM-DD HH:MM:SS" (UTC) for datetime and "YYYY-MM-DD" for date
+// fields. Manually mapped dateTime fields arrive as Luxon DateTime objects, because
+// the resource mapper validates them before `execute` runs. Auto-mapped input
+// arrives as ISO 8601 strings, with or without a timezone offset.
+const ODOO_DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';
+const ODOO_DATE_FORMAT = 'yyyy-MM-dd';
 const ISO_8601_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
 const HAS_TZ_RE = /(Z|[+-]\d{2}:\d{2})$/;
 
+function toValidDateTime(value: unknown): DateTime | undefined {
+	if (DateTime.isDateTime(value)) return value.isValid ? value : undefined;
+	if (value instanceof Date) {
+		const dateTime = DateTime.fromJSDate(value, { zone: 'utc' });
+		return dateTime.isValid ? dateTime : undefined;
+	}
+	return undefined;
+}
+
 /**
- * Converts ISO 8601 datetime/date strings in `fields` to the formats Odoo
- * expects, using the model schema to identify which fields need conversion.
- * Values already in Odoo format (e.g. "2026-07-14 12:00:00") are left as-is.
+ * Returns true when at least one value in `fields` may need date conversion.
+ * Callers use it to skip the schema request for writes without date values.
+ */
+export function hasDateCandidate(fields: IDataObject): boolean {
+	return Object.values(fields).some(
+		(value) =>
+			toValidDateTime(value) !== undefined ||
+			(typeof value === 'string' && ISO_8601_RE.test(value)),
+	);
+}
+
+/**
+ * Converts datetime/date values in `fields` to the formats Odoo expects, using
+ * the model schema to identify which fields need conversion. Accepts Luxon
+ * DateTime objects, JS Dates and ISO 8601 strings. Values already in Odoo
+ * format (e.g. "2026-07-14 12:00:00") are left as-is.
  */
 export function formatOdooDateFields(fields: IDataObject, schema: OdooFieldSchema): IDataObject {
 	const result = { ...fields };
 	for (const [key, value] of Object.entries(result)) {
-		if (typeof value !== 'string' || !(key in schema) || !ISO_8601_RE.test(value)) continue;
+		if (!(key in schema)) continue;
 		const odooType = schema[key].type;
+		if (odooType !== 'datetime' && odooType !== 'date') continue;
+
+		const dateTime = toValidDateTime(value);
+		if (dateTime) {
+			// A date keeps the calendar day of its own zone, like the string path below
+			result[key] =
+				odooType === 'datetime'
+					? dateTime.toUTC().toFormat(ODOO_DATETIME_FORMAT)
+					: dateTime.toFormat(ODOO_DATE_FORMAT);
+			continue;
+		}
+
+		if (typeof value !== 'string' || !ISO_8601_RE.test(value)) continue;
 		if (odooType === 'datetime') {
 			if (HAS_TZ_RE.test(value)) {
 				// Offset / Z present — normalize to UTC for Odoo storage
@@ -137,6 +153,13 @@ export function formatOdooDateFields(fields: IDataObject, schema: OdooFieldSchem
 	return result;
 }
 
+/**
+ * Converts the filter fixedCollection value into an Odoo domain array.
+ * e.g. [['email', '=', 'foo@bar.com'], ['name', 'like', 'foo']]
+ *
+ * For `in` / `not in` operators Odoo requires a list value, not a scalar.
+ * Users enter comma-separated values which are split and coerced here.
+ */
 export function buildDomain(filters: IOdooFilters | undefined): unknown[][] {
 	if (!filters?.filter?.length) return [];
 	return filters.filter.map(({ fieldName, operator, value }) => {

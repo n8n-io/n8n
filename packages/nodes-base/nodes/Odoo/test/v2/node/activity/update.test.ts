@@ -49,7 +49,7 @@ describe('OdooV2 — activity:update', () => {
 		setupParams({
 			'fieldsToSend.value': { summary: 'Updated summary', date_deadline: '2025-07-01' },
 		});
-		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValue(true);
 
 		const result = await node.execute.call(exec);
 
@@ -60,10 +60,46 @@ describe('OdooV2 — activity:update', () => {
 		expect(result[0][0].json).toEqual({ id: 5, updated: true });
 	});
 
+	it('converts an ISO 8601 date value to Odoo date format before write', async () => {
+		setupParams({
+			'fieldsToSend.value': { date_deadline: '2026-07-14T00:30:00.000+05:30' },
+		});
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({ date_deadline: { type: 'date' } })
+			.mockResolvedValue(true);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(1, 'mail.activity', 'fields_get', {
+			attributes: ['type'],
+		});
+		expect(transport.odooApiRequest).toHaveBeenNthCalledWith(2, 'mail.activity', 'write', {
+			ids: [5],
+			vals: { date_deadline: '2026-07-14' },
+		});
+	});
+
+	it('returns an error item when the schema request fails and continueOnFail is true', async () => {
+		setupParams({
+			'fieldsToSend.value': { date_deadline: '2026-07-14T00:00:00.000Z' },
+		});
+		exec.continueOnFail.mockReturnValue(true);
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Schema request failed'));
+
+		const result = await node.execute.call(exec);
+
+		expect(result[0][0].json).toEqual({ error: 'Schema request failed' });
+		expect(transport.odooApiRequest).not.toHaveBeenCalledWith(
+			'mail.activity',
+			'write',
+			expect.anything(),
+		);
+	});
+
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'fieldsToSend.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([{ json: { summary: 'Auto Update', note: 'hello' } }]);
-		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(true);
+		(transport.odooApiRequest as Mock).mockResolvedValue(true);
 
 		await node.execute.call(exec);
 
@@ -76,9 +112,7 @@ describe('OdooV2 — activity:update', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockRejectedValue(new Error('Write failed'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Write failed'));
 
 		const result = await node.execute.call(exec);
 
@@ -88,9 +122,7 @@ describe('OdooV2 — activity:update', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockRejectedValue(new Error('Write failed'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Write failed'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Write failed');
 	});

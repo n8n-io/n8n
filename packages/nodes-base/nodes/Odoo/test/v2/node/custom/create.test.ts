@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -49,9 +50,7 @@ describe('OdooV2 — custom:create', () => {
 
 	it('creates a record using defineBelow mapping and returns its id', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockResolvedValue([MOCK_RECORD_ID]);
+		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_RECORD_ID]);
 
 		const result = await node.execute.call(exec);
 
@@ -61,14 +60,32 @@ describe('OdooV2 — custom:create', () => {
 		expect(result[0][0].json).toEqual({ id: MOCK_RECORD_ID });
 	});
 
+	it('converts manually mapped DateTime values to Odoo format before create', async () => {
+		// The resource mapper passes dateTime fields to execute() as Luxon DateTime objects
+		setupParams({
+			customResource: 'calendar.event',
+			'fieldsToSend.value': {
+				name: 'Test Event',
+				start: DateTime.fromISO('2026-07-14T12:00:00.000+02:00', { setZone: true }),
+			},
+		});
+		(transport.odooApiRequest as Mock)
+			.mockResolvedValueOnce({ name: { type: 'char' }, start: { type: 'datetime' } })
+			.mockResolvedValue([MOCK_RECORD_ID]);
+
+		await node.execute.call(exec);
+
+		expect(transport.odooApiRequest).toHaveBeenCalledWith('calendar.event', 'create', {
+			vals_list: [{ name: 'Test Event', start: '2026-07-14 10:00:00' }],
+		});
+	});
+
 	it('uses item json directly when mappingMode is autoMapInputData', async () => {
 		setupParams({ 'fieldsToSend.mappingMode': 'autoMapInputData' });
 		exec.getInputData.mockReturnValue([
 			{ json: { name: 'Auto Record', email: 'auto@example.com' } },
 		]);
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockResolvedValue([MOCK_RECORD_ID]);
+		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_RECORD_ID]);
 
 		await node.execute.call(exec);
 
@@ -79,7 +96,7 @@ describe('OdooV2 — custom:create', () => {
 
 	it('extracts scalar id when Odoo returns a plain number', async () => {
 		setupParams();
-		(transport.odooApiRequest as Mock).mockResolvedValueOnce({}).mockResolvedValue(MOCK_RECORD_ID);
+		(transport.odooApiRequest as Mock).mockResolvedValue(MOCK_RECORD_ID);
 
 		const result = await node.execute.call(exec);
 
@@ -88,9 +105,7 @@ describe('OdooV2 — custom:create', () => {
 
 	it('uses the model from the customResource RLC parameter', async () => {
 		setupParams({ customResource: 'sale.order' });
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockResolvedValue([MOCK_RECORD_ID]);
+		(transport.odooApiRequest as Mock).mockResolvedValue([MOCK_RECORD_ID]);
 
 		await node.execute.call(exec);
 
@@ -104,9 +119,7 @@ describe('OdooV2 — custom:create', () => {
 	it('returns error item and continues when continueOnFail is true', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(true);
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
 
 		const result = await node.execute.call(exec);
 
@@ -116,9 +129,7 @@ describe('OdooV2 — custom:create', () => {
 	it('rethrows the error when continueOnFail is false', async () => {
 		setupParams();
 		exec.continueOnFail.mockReturnValue(false);
-		(transport.odooApiRequest as Mock)
-			.mockResolvedValueOnce({})
-			.mockRejectedValue(new Error('Odoo error'));
+		(transport.odooApiRequest as Mock).mockRejectedValue(new Error('Odoo error'));
 
 		await expect(node.execute.call(exec)).rejects.toThrow('Odoo error');
 	});
