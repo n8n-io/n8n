@@ -1355,7 +1355,7 @@ describe('TelemetryEventRelay', () => {
 						matchedRuleId: 'rule-1',
 					},
 				],
-				policyVersions: [{ kind: 'node-types', scopeId: 'scope-1', version: 1 }],
+				policyVersions: [{ scope: 'instance', version: 1 }],
 				correlationIds: ['corr-1'],
 				workflowId: 'workflow-1',
 				workflowName: 'My Secret Workflow',
