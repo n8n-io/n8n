@@ -58,6 +58,7 @@ export interface AlertDialogProps {
 	size?: AlertDialogSize;
 	/**
 	 * Render above another open dialog
+	 * @default false
 	 */
 	stacked?: boolean;
 }
