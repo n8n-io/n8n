@@ -1,9 +1,9 @@
-import { NodeConnectionTypes, isNodeParameters } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IConnections, INode, INodeParameters } from 'n8n-workflow';
 
 import type { NodeMigration, WorkflowMigration } from '../node-migration';
-import { WorkflowMigrationNodeError } from '../node-migration';
-import { pickDefined, readString } from '../parameter-readers';
+import { replaceAffectedNodes } from '../node-migration';
+import { pickDefined, readOptions, readString } from '../parameter-readers';
 
 const DEFAULT_DATA_LOADER_TYPE = '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 const DEFAULT_DATA_LOADER_VERSION = 1.1;
@@ -11,18 +11,10 @@ const DEFAULT_DATA_LOADER_VERSION = 1.1;
 // Both old loaders move their settings into the `options` collection of the new node.
 // The loader reads each one with a fallback that differs from the old default, so the
 // old default has to be written out.
-function readOptions(node: INode): INodeParameters {
-	const { options = {} } = node.parameters;
-	if (!isNodeParameters(options)) {
-		throw new Error('The options of this node are not in a supported format.');
-	}
-	return options;
-}
-
 function binaryLoaderOptions(node: INode): INodeParameters {
 	const { parameters } = node;
 	const loader = readString(parameters, 'loader', 'jsonLoader', 'Loader Type');
-	const metadata = pickDefined(readOptions(node), ['metadata']);
+	const metadata = pickDefined(readOptions(parameters), ['metadata']);
 
 	switch (loader) {
 		case 'pdfLoader':
@@ -111,39 +103,28 @@ export const jsonInputLoaderToDefaultDataLoader: WorkflowMigration = {
 	ruleId: 'json-input-loader-removed-v3',
 	migrateWorkflow: ({ nodes, connections, affectedNodeIds }) => {
 		const withSplitter = nodesWithTextSplitter(connections);
-		const migratedNodeIds: string[] = [];
 
-		const migratedNodes = nodes.map((node) => {
-			if (!affectedNodeIds.has(node.id)) return node;
-
-			try {
-				if (!withSplitter.has(node.name)) {
-					throw new Error(
-						'This JSON Input Loader has no text splitter. Default Data Loader always splits the text, so the node cannot be migrated automatically.',
-					);
-				}
-
-				const options = pickDefined(readOptions(node), ['metadata']);
-				migratedNodeIds.push(node.id);
-				return {
-					...node,
-					type: DEFAULT_DATA_LOADER_TYPE,
-					typeVersion: DEFAULT_DATA_LOADER_VERSION,
-					parameters: {
-						dataType: 'json',
-						jsonMode: 'allInputData',
-						textSplittingMode: 'custom',
-						options: { ...pickDefined(node.parameters, ['pointers']), ...options },
-					},
-				} satisfies INode;
-			} catch (error) {
-				throw new WorkflowMigrationNodeError(
-					error instanceof Error ? error.message : 'Migration failed.',
-					{ nodeId: node.id, nodeName: node.name },
+		const migrated = replaceAffectedNodes(nodes, affectedNodeIds, (node) => {
+			if (!withSplitter.has(node.name)) {
+				throw new Error(
+					'This JSON Input Loader has no text splitter. Default Data Loader always splits the text, so the node cannot be migrated automatically.',
 				);
 			}
+
+			const options = pickDefined(readOptions(node.parameters), ['metadata']);
+			return {
+				...node,
+				type: DEFAULT_DATA_LOADER_TYPE,
+				typeVersion: DEFAULT_DATA_LOADER_VERSION,
+				parameters: {
+					dataType: 'json',
+					jsonMode: 'allInputData',
+					textSplittingMode: 'custom',
+					options: { ...pickDefined(node.parameters, ['pointers']), ...options },
+				},
+			} satisfies INode;
 		});
 
-		return { nodes: migratedNodes, connections, migratedNodeIds };
+		return { ...migrated, connections };
 	},
 };

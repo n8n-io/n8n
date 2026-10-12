@@ -4,6 +4,7 @@ import {
 	jsonInputLoaderToDefaultDataLoader,
 } from './document-loaders.migration';
 import { htmlExtractToHtml } from './html-extract-to-html.migration';
+import { icalToConvertToFile } from './ical-to-convert-to-file.migration';
 import { itemListsToTransformNodes } from './item-lists.migration';
 import { readPdfToExtractFromFile } from './read-pdf-to-extract-from-file.migration';
 import { cronToScheduleTrigger } from './schedule-trigger.migration';
@@ -15,9 +16,8 @@ import {
 	supabaseInsertToVectorStore,
 	supabaseLoadToVectorStore,
 } from './vector-stores.migration';
-import { writeBinaryFileToReadWriteFile } from './write-binary-file-to-read-write-file.migration';
-import { icalToConvertToFile } from './ical-to-convert-to-file.migration';
 import { workflowTriggerToN8nTrigger } from './workflow-trigger-to-n8n-trigger.migration';
+import { writeBinaryFileToReadWriteFile } from './write-binary-file-to-read-write-file.migration';
 import type { Migration } from '../node-migration';
 
 export const nodeRemovalMigrations: Migration[] = [
@@ -25,6 +25,7 @@ export const nodeRemovalMigrations: Migration[] = [
 	binaryInputLoaderToDefaultDataLoader,
 	cronToScheduleTrigger,
 	htmlExtractToHtml,
+	icalToConvertToFile,
 	inMemoryInsertToVectorStore,
 	inMemoryLoadToVectorStore,
 	itemListsToTransformNodes,
@@ -34,7 +35,6 @@ export const nodeRemovalMigrations: Migration[] = [
 	readPdfToExtractFromFile,
 	supabaseInsertToVectorStore,
 	supabaseLoadToVectorStore,
-	writeBinaryFileToReadWriteFile,
-	icalToConvertToFile,
 	workflowTriggerToN8nTrigger,
+	writeBinaryFileToReadWriteFile,
 ];

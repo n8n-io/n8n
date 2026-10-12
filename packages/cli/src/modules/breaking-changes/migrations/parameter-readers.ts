@@ -61,6 +61,15 @@ export function readString(
 	return value;
 }
 
+/** Reads the `options` collection of a node. A missing collection is empty. */
+export function readOptions(parameters: INodeParameters): INodeParameters {
+	if (parameters.options === undefined) return {};
+
+	const options = asParameters(parameters.options);
+	if (!options) throw new Error('The options of this node are not in a supported format.');
+	return options;
+}
+
 /** Copies the listed parameters that the old node has set. */
 export function pickDefined(parameters: INodeParameters, keys: string[]): INodeParameters {
 	const picked: INodeParameters = {};

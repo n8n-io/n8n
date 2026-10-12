@@ -73,6 +73,19 @@ function cronItemToRule(item: INodeParameters): INodeParameters {
 	}
 }
 
+// `*/n` restarts every hour or day, so it only gives an even gap when `n` divides the period.
+// Schedule Trigger does not use `*/n` in that case, so the run times change.
+const hasUnevenStep = (rule: INodeParameters) =>
+	(rule.field === 'minutes' &&
+		typeof rule.minutesInterval === 'number' &&
+		60 % rule.minutesInterval !== 0) ||
+	(rule.field === 'hours' &&
+		typeof rule.hoursInterval === 'number' &&
+		24 % rule.hoursInterval !== 0);
+
+const UNEVEN_STEP_NOTE =
+	'Cron ran an "Every X" schedule at fixed clock times, which did not repeat at an even gap. Schedule Trigger now repeats at an even gap from the first run, so the run times changed. Check the schedule.';
+
 /**
  * Cron to Schedule Trigger.
  *
@@ -94,7 +107,8 @@ function cronItemToRule(item: INodeParameters): INodeParameters {
  *
  * Accepted changes:
  * - `everyX` keeps an even gap. Cron used a cron step of `n`, which is uneven when `n`
- *   does not divide 60 (minutes) or 24 (hours).
+ *   does not divide 60 (minutes) or 24 (hours). The run times then change, so the
+ *   migration reports a note. The note also turns off the one-click republish.
  * - Cron picks a random second at each activation and Schedule Trigger picks a stable
  *   one. The second is not a setting.
  * - The output has extra date fields.
@@ -123,6 +137,9 @@ export const cronToScheduleTrigger: NodeMigration = {
 			);
 		}
 
-		return { node: scheduleTrigger(...migratedRules) };
+		return {
+			node: scheduleTrigger(...migratedRules),
+			notes: migratedRules.some(hasUnevenStep) ? [UNEVEN_STEP_NOTE] : undefined,
+		};
 	},
 };

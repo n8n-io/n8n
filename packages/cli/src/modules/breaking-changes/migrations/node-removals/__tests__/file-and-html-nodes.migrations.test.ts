@@ -57,6 +57,26 @@ describe('htmlExtractToHtml migration', () => {
 
 		expect(() => htmlExtractToHtml.migrate(node)).toThrow('not in a supported format');
 	});
+
+	it('refuses an expression for Trim Values, because the old and new node read falsy values differently', () => {
+		const node = createNode('Extract', 'n8n-nodes-base.htmlExtract', {
+			extractionValues,
+			options: { trimValues: '={{ $json.trim }}' },
+		});
+
+		expect(() => htmlExtractToHtml.migrate(node)).toThrow('"Trim Values" is an expression');
+	});
+
+	it.each([[true], [false]])('keeps a plain Trim Values value of %s', (trimValues) => {
+		const node = createNode('Extract', 'n8n-nodes-base.htmlExtract', {
+			extractionValues,
+			options: { trimValues },
+		});
+
+		const { node: migrated } = htmlExtractToHtml.migrate(node);
+
+		expect(migrated.parameters.options).toEqual({ trimValues, cleanUpText: false });
+	});
 });
 
 describe('readPdfToExtractFromFile migration', () => {

@@ -1,5 +1,5 @@
 import type { NodeMigration } from '../node-migration';
-import { asParameters, pickDefined } from '../parameter-readers';
+import { asParameters, isExpression, pickDefined } from '../parameter-readers';
 
 /**
  * HTML Extract to HTML (Extract HTML Content).
@@ -16,6 +16,8 @@ import { asParameters, pickDefined } from '../parameter-readers';
  *
  * Refuses when:
  * - `options` is not an object.
+ * - `options.trimValues` is an expression: a falsy result that is not `false` (for example
+ *   `undefined` or `0`) trims in the old node and does not trim in the new node.
  *
  * Accepted changes:
  * - With the text return value, a selector that matches nothing gives a missing key
@@ -28,6 +30,11 @@ export const htmlExtractToHtml: NodeMigration = {
 			node.parameters.options === undefined ? {} : asParameters(node.parameters.options);
 		if (!options) {
 			throw new Error('The options of this node are not in a supported format.');
+		}
+		if (isExpression(options.trimValues)) {
+			throw new Error(
+				'"Trim Values" is an expression, so the node cannot be migrated automatically.',
+			);
 		}
 
 		return {

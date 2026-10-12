@@ -65,16 +65,6 @@ describe('cronToScheduleTrigger migration', () => {
 			{ field: 'hours', hoursInterval: 6 },
 		],
 		[
-			'everyX minutes that does not divide 60, accepting an even gap instead of cron */n',
-			{ mode: 'everyX', unit: 'minutes', value: 7 },
-			{ field: 'minutes', minutesInterval: 7 },
-		],
-		[
-			'everyX hours that does not divide 24, accepting an even gap instead of cron */n',
-			{ mode: 'everyX', unit: 'hours', value: 5 },
-			{ field: 'hours', hoursInterval: 5 },
-		],
-		[
 			'custom, with the expression trimmed',
 			{ mode: 'custom', cronExpression: ' 0 0 9 * * 1-5 ' },
 			{ field: 'cronExpression', expression: '0 0 9 * * 1-5' },
@@ -86,6 +76,44 @@ describe('cronToScheduleTrigger migration', () => {
 		expect(result.unmapped).toBeUndefined();
 		expect(result.notes).toBeUndefined();
 	});
+
+	it.each([
+		['minutes', 7, { field: 'minutes', minutesInterval: 7 }],
+		['minutes', 50, { field: 'minutes', minutesInterval: 50 }],
+		['hours', 5, { field: 'hours', hoursInterval: 5 }],
+		['hours', 18, { field: 'hours', hoursInterval: 18 }],
+	])(
+		'maps everyX %s with value %i to an even gap and reports a note, because cron */n did not divide the period',
+		(unit, value, expected) => {
+			const result = cronToScheduleTrigger.migrate(cron({ mode: 'everyX', unit, value }));
+
+			expect(intervals(result)).toEqual({ interval: [expected] });
+			expect(result.notes).toHaveLength(1);
+		},
+	);
+
+	it('reports one note for a Cron node with several uneven everyX trigger times', () => {
+		const { notes } = cronToScheduleTrigger.migrate(
+			cron(
+				{ mode: 'everyX', unit: 'minutes', value: 7 },
+				{ mode: 'everyX', unit: 'hours', value: 5 },
+			),
+		);
+
+		expect(notes).toHaveLength(1);
+	});
+
+	it.each([
+		['minutes', 30],
+		['hours', 12],
+	])(
+		'reports no note for everyX %s with value %i, because cron */n divides the period',
+		(unit, value) => {
+			const { notes } = cronToScheduleTrigger.migrate(cron({ mode: 'everyX', unit, value }));
+
+			expect(notes).toBeUndefined();
+		},
+	);
 
 	it('uses the Cron defaults for values that the saved workflow omits', () => {
 		const { node } = cronToScheduleTrigger.migrate(cron({}));

@@ -1,9 +1,9 @@
-import { NodeConnectionTypes, isNodeParameters } from 'n8n-workflow';
-import type { IConnections, INode, INodeParameters } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 
 import type { NodeMigration, WorkflowMigration } from '../node-migration';
-import { WorkflowMigrationNodeError } from '../node-migration';
-import { pickDefined } from '../parameter-readers';
+import { replaceAffectedNodes } from '../node-migration';
+import { pickDefined, readOptions } from '../parameter-readers';
 
 /**
  * The old Insert and Load nodes became one node per vector store with a `mode`.
@@ -26,14 +26,6 @@ import { pickDefined } from '../parameter-readers';
 const VERSION = 1.1;
 
 const isOff = (value: unknown) => value === undefined || value === false;
-
-function readOptions(node: INode): INodeParameters {
-	const { options = {} } = node.parameters;
-	if (!isNodeParameters(options)) {
-		throw new Error('The options of this node are not in a supported format.');
-	}
-	return options;
-}
 
 const refuseClear = (label: string) =>
 	new Error(
@@ -77,33 +69,21 @@ function insertMigration(ruleId: string, migrate: NodeMigration['migrate']): Wor
 	return {
 		ruleId,
 		migrateWorkflow: ({ nodes, connections, affectedNodeIds }) => {
-			const migratedNodeIds: string[] = [];
-
-			const migratedNodes = nodes.map((node) => {
-				if (!affectedNodeIds.has(node.id)) return node;
-
-				try {
-					const unsupported = documentSourceTypes(node.name, nodes, connections).find(
-						(type) => !DOCUMENT_LOADER_TYPES.has(type),
-					);
-					if (unsupported !== undefined) {
-						throw new Error(
-							'The documents come from a node that the migration does not support, so they could be saved more than once. Replace this node by hand.',
-						);
-					}
-
-					const { node: replacement } = migrate(node);
-					migratedNodeIds.push(node.id);
-					return { ...node, ...replacement } satisfies INode;
-				} catch (error) {
-					throw new WorkflowMigrationNodeError(
-						error instanceof Error ? error.message : 'Migration failed.',
-						{ nodeId: node.id, nodeName: node.name },
+			const migrated = replaceAffectedNodes(nodes, affectedNodeIds, (node) => {
+				const unsupported = documentSourceTypes(node.name, nodes, connections).find(
+					(type) => !DOCUMENT_LOADER_TYPES.has(type),
+				);
+				if (unsupported !== undefined) {
+					throw new Error(
+						'The documents come from a node that the migration does not support, so they could be saved more than once. Replace this node by hand.',
 					);
 				}
+
+				const { node: replacement } = migrate(node);
+				return { ...node, ...replacement } satisfies INode;
 			});
 
-			return { nodes: migratedNodes, connections, migratedNodeIds };
+			return { ...migrated, connections };
 		},
 	};
 }
@@ -240,7 +220,7 @@ export const pineconeLoadToVectorStore: NodeMigration = {
 					...pickDefined(node.parameters, ['pineconeIndex']),
 					options: {
 						...(hasNamespace ? { pineconeNamespace } : {}),
-						...pickDefined(readOptions(node), ['metadata']),
+						...pickDefined(readOptions(node.parameters), ['metadata']),
 					},
 				},
 			},
@@ -307,7 +287,7 @@ export const supabaseLoadToVectorStore: NodeMigration = {
 				...pickDefined(node.parameters, ['tableName']),
 				options: {
 					...pickDefined(node.parameters, ['queryName']),
-					...pickDefined(readOptions(node), ['metadata']),
+					...pickDefined(readOptions(node.parameters), ['metadata']),
 				},
 			},
 		},
