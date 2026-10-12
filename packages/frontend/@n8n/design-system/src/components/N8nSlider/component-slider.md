@@ -110,7 +110,7 @@ Keyboard input uses a step of `1` when `step <= 0`. Arrow and Page keys change t
 
 ## Accessibility
 
-Supply a non-empty `label`, a `label` slot, `ariaLabel`, or `ariaLabelledby`. The component rejects configurations without a naming source on mount and update. Slot content must supply meaningful label text. An external label reference must point to an existing element with label text.
+Supply a non-empty `label`, a `label` slot, `ariaLabel`, or `ariaLabelledby`. The consumer must supply an accessible name. The component does not validate this at runtime. Slot content must supply meaningful label text. An external label reference must point to an existing element with label text.
 
 - The track is the single keyboard focus target and has `role="slider"`.
 - `aria-labelledby` refers to the label outside the slider role.
