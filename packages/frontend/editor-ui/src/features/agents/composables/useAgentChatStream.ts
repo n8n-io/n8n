@@ -640,6 +640,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return msg;
 	}
 
+	/** Owner-aware notice identity: same code and same budget owner. */
+	function sameBudgetNotice(
+		a: { code: string; agentId?: string },
+		b: { code: string; agentId?: string },
+	): boolean {
+		return a.code === b.code && a.agentId === b.agentId;
+	}
+
 	function attachBudgetNotice(
 		session: StreamSession,
 		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
@@ -649,7 +657,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const notices = msg.budgetNotices ?? [];
 		// Distinct budget owners keep separate cards for the same code.
 		const matchesNotice = (notice: { code: string; agentId?: string }) =>
-			notice.code === code && notice.agentId === agentId;
+			sameBudgetNotice(notice, { code, agentId });
 		if (notices.some(matchesNotice)) return;
 		msg.budgetNotices = [
 			...notices,
@@ -690,7 +698,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		) => {
 			const merged = pending.get(key) ?? [];
 			for (const notice of notices) {
-				if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+				if (!merged.some((item) => sameBudgetNotice(item, notice))) merged.push(notice);
 			}
 			pending.set(key, merged);
 			if (!sources.has(key)) sources.set(key, source);

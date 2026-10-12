@@ -741,6 +741,23 @@ describe('SubAgentRunner', () => {
 		expect(onBudgetNotice).toHaveBeenCalledTimes(1);
 	});
 
+	it('installs the notice ferry even when the child has no budget bucket', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		const onBudgetNotice = vi.fn();
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			onBudgetNotice,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		expect(options?.guardrails?.hooks).toEqual([]);
+		expect(options?.guardrails?.onNotice).toBeDefined();
+	});
+
 	it('applies the self-delegation model while preserving the parent draft', async () => {
 		const parentConfig: RunnableAgentJsonConfig = {
 			...runnableConfig,

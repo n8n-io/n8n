@@ -248,13 +248,38 @@ function toGuardrailNoticeSink(input: BudgetAttachInput): GuardrailsOptions['onN
 	};
 }
 
-/** Appends the budget hook when a bucket is on. Leaves the options unchanged otherwise. */
+/**
+ * Appends hooks and the notice sink to the run's guardrail options, preserving
+ * the existing agent and thread scope. An input sink wins over a stored one.
+ */
+function attachGuardrails<T extends RunOptions & ExecutionOptions>(
+	options: T,
+	hooks: GuardrailsOptions['hooks'],
+	onNotice: GuardrailsOptions['onNotice'],
+): T {
+	const existing = options.guardrails;
+	const notice = onNotice ?? existing?.onNotice;
+	return {
+		...options,
+		guardrails: {
+			hooks: [...(existing?.hooks ?? []), ...hooks],
+			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
+			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
+			...(notice !== undefined ? { onNotice: notice } : {}),
+		},
+	};
+}
+
+/**
+ * Appends the budget hook when a bucket is on.
+ */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
 	input: BudgetAttachInput,
 ): T {
 	const limits = resolveBudgetLimits(input);
-	if (!limits) return options;
+	const sink = toGuardrailNoticeSink(input);
+	if (!limits) return sink ? attachGuardrails(options, [], sink) : options;
 
 	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
 	const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
@@ -263,19 +288,5 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 		...limits,
 		...(onNotice ? { onNotice } : {}),
 	});
-	const sink = toGuardrailNoticeSink(input);
-	const existing = options.guardrails;
-	return {
-		...options,
-		guardrails: {
-			hooks: [...(existing?.hooks ?? []), hook],
-			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
-			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
-			...(sink !== undefined
-				? { onNotice: sink }
-				: existing?.onNotice !== undefined
-					? { onNotice: existing.onNotice }
-					: {}),
-		},
-	};
+	return attachGuardrails(options, [hook], sink);
 }
