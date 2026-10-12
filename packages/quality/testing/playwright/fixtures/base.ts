@@ -8,7 +8,7 @@ import { a11yFixtures, type A11yTestFixtures } from './a11y';
 import { shouldSkipContainerRequirement } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { containerFixtures, type ContainerWorkerFixtures } from './containers';
-import { engineParityDisposition, workflowSettingsFor } from './engine-parity';
+import { engineParityDisposition, watchCanvasRuns, workflowSettingsFor } from './engine-parity';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
@@ -149,7 +149,8 @@ export const test = base.extend<
 
 	n8n: async ({ context, n8nStackConfig }, use, testInfo) => {
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
-		await setupDefaultInterceptors(context);
+		await setupDefaultInterceptors(context, apiOptions);
+		const canvasRuns = await watchCanvasRuns(context, apiOptions.workflowSettings);
 		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
@@ -173,6 +174,7 @@ export const test = base.extend<
 			await n8nInstance.start.withProjectFeatures();
 		}
 		await use(n8nInstance);
+		canvasRuns.assertRoutedToEngine();
 	},
 
 	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {

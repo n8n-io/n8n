@@ -278,13 +278,15 @@ spec proves parity without changes.
 on inside a worker. The engine database is emptied once, when the worker takes
 its container.
 
-A workflow built in the UI does not get the setting, and a workflow without it
-runs on the legacy engine. A tagged spec must therefore create its workflow
-through `api.workflows` and run it through `api.workflows.runManually`, which
-fails the test when the run did not reach engine v2. A spec that starts the
-run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
-after the run, which checks the same thing. A tag the parity buckets do not
-know also fails the test, and names the three valid tags.
+The editor has no engine setting to send, so the `n8n` fixture merges the same
+settings into the workflows the editor creates and updates. A workflow built on
+the canvas runs on engine v2 too. The fixture also watches every run the
+browser starts and fails the test after it when a run stayed on the legacy
+engine; `api.workflows.runManually` fails the same way on the way in. A spec
+that starts its run through a webhook calls
+`api.workflows.assertLatestExecutionRoutedToEngine` after the run, which checks
+the same thing. A tag the parity buckets do not know also fails the test, and
+names the three valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track

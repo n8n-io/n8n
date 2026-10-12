@@ -18,6 +18,7 @@ interface ExecutionListResponse extends ExecutionSummary {
 }
 
 import type { ApiHelpers } from './api-helper';
+import { isEngineV2ExecutionId, legacyEngineRunMessage } from '../fixtures/engine-parity';
 import { TestError } from '../Types';
 import { resolveFromRoot } from '../utils/path-helper';
 
@@ -30,8 +31,6 @@ type WorkflowImportResult = {
 };
 
 /** Engine v2 mints uuidv7 execution ids; the legacy engine mints numbers. */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
@@ -199,26 +198,18 @@ export class WorkflowApiHelper {
 
 	/**
 	 * Fails a run that the stack meant for engine v2 but the control plane kept.
-	 * A v1 id is numeric and a v2 id is a uuid, which the engine validates on the
-	 * wire (`packages/cli/src/executions/execution-id.ts`), so the shape says
-	 * which plane ran it. Without this a workflow that missed `engineType` runs
-	 * on v1 and the spec still passes, which is parity evidence that proves
-	 * nothing.
+	 * Without this a workflow that missed `engineType` runs on v1 and the spec
+	 * still passes, which is parity evidence that proves nothing.
 	 *
 	 * Only {@link runManually} checks on the way in. A spec that starts a run
-	 * elsewhere, such as from the canvas or through a webhook, calls
+	 * elsewhere, such as through a webhook, calls
 	 * {@link assertLatestExecutionRoutedToEngine} after the run.
 	 */
 	private assertRoutedToEngine(executionId: string): void {
 		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
-		if (UUID.test(executionId)) return;
+		if (isEngineV2ExecutionId(executionId)) return;
 
-		throw new TestError(
-			`Expected an engine v2 execution id, got "${executionId}", so the run stayed on the ` +
-				'legacy engine. Either the workflow missed `settings.engineType`, which ' +
-				'`api.workflows` applies from the stack, or this main does not run the `engine-v2` ' +
-				'module.',
-		);
+		throw new TestError(legacyEngineRunMessage(executionId));
 	}
 
 	/**
