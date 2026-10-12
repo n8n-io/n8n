@@ -16,6 +16,7 @@ packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
   s_46c959dbdd3c68::t_d38ec5b4ef26e0 1621-1623
   s_46c959dbdd3c68::t_196ad6c3d340d0 1627
   s_f01eeec9288a57::t_24b08c20d7936c 1620
+  s_65c6c9d4791a8f::t_78c632422c2f4c 1624-1626
 packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
   s_1da67a04cb1977::t_dfe232fcaf7435 349
   s_741ed38f0d02d1::t_a4ca43cb1aa9a1 123-126,220,255-256,288-291
@@ -62,6 +63,14 @@ packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
       "agent_id": {
         "tool": "pi",
         "id": "01a116bd-f99d-7234-a9ac-40d00bcad499",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_65c6c9d4791a8f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12f62-b8c0-779e-a9a6-1c928f003e4d",
         "model": "gpt-6.1-sol"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
