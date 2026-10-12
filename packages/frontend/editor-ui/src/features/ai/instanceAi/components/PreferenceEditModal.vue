@@ -280,7 +280,6 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 					v-model="draft"
 					name="content"
 					type="textarea"
-					focus-initially
 					required
 					:label="i18n.baseText('instanceAi.preferenceCard.modal.textLabel')"
 					:autosize="{ minRows: 3, maxRows: 8 }"
@@ -339,7 +338,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 		<N8nDialogFooter>
 			<N8nButton
 				:class="$style.remove"
-				variant="ghost"
+				variant="destructive"
 				:disabled="busy"
 				data-test-id="instance-ai-preference-modal-remove"
 				@click="remove"
@@ -380,12 +379,8 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 	line-height: 1;
 }
 
-/* Removal is the one destructive action here, so it sits apart from Cancel and Save. */
+/* Removal sits apart from Cancel and Save. */
 .remove {
-	--button--color: var(--color--text--danger);
-	--button--color--hover: var(--color--text--danger);
-	--button--color--active: var(--color--text--danger);
-
 	margin-right: auto;
 }
 </style>
