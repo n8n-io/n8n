@@ -4,6 +4,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
 import { PostHogClient } from '@/posthog';
@@ -47,8 +48,8 @@ describe('SkillsController', () => {
 	// The test server replaces PostHogClient with a mock.
 	const setFlag = (value: boolean) =>
 		vi
-			.mocked(Container.get(PostHogClient).getFeatureFlags)
-			.mockResolvedValue({ [SKILLS_FLAG]: value });
+			.mocked(Container.get(PostHogClient).getFeatureFlagForInstance)
+			.mockImplementation(async (flag) => (flag === SKILLS_FLAG ? value : undefined));
 
 	beforeEach(() => setFlag(true));
 
@@ -57,8 +58,14 @@ describe('SkillsController', () => {
 		await Container.get(SkillRepository).delete({});
 	});
 
-	async function attachToNewAgent(skillId: string, name: string, projectId: string) {
+	async function attachToNewAgent(
+		skillId: string,
+		name: string,
+		projectId: string,
+		options: { published?: boolean; pinnedVersionId?: string } = {},
+	) {
 		const agents = Container.get(AgentRepository);
+		const versionId = randomUUID();
 		const agent = await agents.save(
 			agents.create({
 				id: randomUUID(),
@@ -67,12 +74,23 @@ describe('SkillsController', () => {
 				integrations: [],
 				tools: {},
 				skills: {},
-				versionId: randomUUID(),
+				versionId,
 			}),
 		);
-		await Container.get(SkillRepository).replaceDependencies(agent.id, [{ skillId }]);
-		return agent;
+		if (options.published) {
+			// Published and in sync: the draft is the published version.
+			const histories = Container.get(AgentHistoryRepository);
+			await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
+			await agents.update({ id: agent.id }, { activeVersionId: versionId });
+		}
+		await Container.get(SkillRepository).replaceDependencies(agent.id, [
+			{ skillId, versionId: options.pinnedVersionId },
+		]);
+		return { ...agent, versionId };
 	}
+
+	const draftVersionOf = async (agentId: string) =>
+		(await Container.get(AgentRepository).findOneByOrFail({ id: agentId })).versionId;
 
 	async function create(agent: SuperAgentTest, payload: object, status = 200) {
 		const response = await agent.post('/skills').send(payload).expect(status);
@@ -154,6 +172,29 @@ describe('SkillsController', () => {
 		it('needs a project id', async () => {
 			await create(editor, { scope: 'project', skill: body }, 400);
 		});
+
+		// The owner's global projectSkill:create passes the scope check for any project id.
+		it('answers 404 for a project that does not exist', async () => {
+			await create(owner, { scope: 'project', projectId: 'project-gone', skill: body }, 404);
+			await create(member, { scope: 'project', projectId: 'project-gone', skill: body }, 403);
+		});
+
+		it('shows editors, viewers and owners what they may do, in the detail and the list', async () => {
+			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
+
+			for (const [agent, may] of [
+				[editor, true],
+				[viewer, false],
+				[owner, true],
+			] as const) {
+				const detail = await agent.get(`/skills/${id}`).expect(200);
+				const list = await agent.get('/skills').query({ projectId: project.id }).expect(200);
+
+				const expected = { id, canEdit: may, canDelete: may };
+				expect(detail.body.data).toMatchObject(expected);
+				expect(list.body.data.data).toEqual([expect.objectContaining(expected)]);
+			}
+		});
 	});
 
 	describe('list', () => {
@@ -219,6 +260,60 @@ describe('SkillsController', () => {
 
 		it('refuses blank instructions', async () => {
 			await create(member, { scope: 'user', skill: { ...body, instructions: '   ' } }, 400);
+		});
+
+		it('marks a following agent that was in sync as changed, and leaves a pinned agent alone', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			const v1 = (await Container.get(SkillRepository).findLatestSaved([id])).get(id)?.version.id;
+			const following = await attachToNewAgent(id, 'Follower', project.id, { published: true });
+			const pinned = await attachToNewAgent(id, 'Pinned', project.id, {
+				published: true,
+				pinnedVersionId: v1,
+			});
+
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Ship weekly.', baseSkillHash: skillHash })
+				.expect(200);
+
+			expect(saved.body.data).toMatchObject({ version: 2, created: true });
+			expect(await draftVersionOf(following.id)).not.toBe(following.versionId);
+			expect(await draftVersionOf(pinned.id)).toBe(pinned.versionId);
+		});
+	});
+
+	// The edit lock is a row lock on Postgres only. SQLite runs one write at a time.
+	describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('parallel saves on Postgres', () => {
+		it('answers 409 to the second of two saves from the same base', async () => {
+			const { id, skillHash } = await create(member, { scope: 'user', skill: body });
+
+			const responses = await Promise.all(
+				['First.', 'Second.'].map(
+					async (instructions) =>
+						await member.patch(`/skills/${id}`).send({ instructions, baseSkillHash: skillHash }),
+				),
+			);
+			const read = await member.get(`/skills/${id}`).expect(200);
+
+			expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+			expect(read.body.data.latestVersion).toBe(2);
+		});
+
+		it('numbers two saves without a base one after the other', async () => {
+			const { id } = await create(member, { scope: 'user', skill: body });
+
+			const responses = await Promise.all(
+				['First.', 'Second.'].map(
+					async (instructions) => await member.patch(`/skills/${id}`).send({ instructions }),
+				),
+			);
+
+			expect(responses.map((response) => response.status)).toEqual([200, 200]);
+			expect(responses.map((response) => response.body.data.version).sort()).toEqual([2, 3]);
 		});
 	});
 

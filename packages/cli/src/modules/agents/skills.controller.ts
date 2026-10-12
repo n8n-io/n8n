@@ -20,19 +20,19 @@ export class SkillsController {
 
 	@Get('/')
 	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillsQueryDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.skillsApi.list(req.user, query);
 	}
 
 	@Get('/:skillId')
 	async get(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.skillsApi.get(req.user, skillId);
 	}
 
 	@Post('/')
 	async create(req: AuthenticatedRequest, _res: Response, @Body payload: CreateSkillDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.skillsApi.create(req.user, payload);
 	}
 
@@ -44,13 +44,13 @@ export class SkillsController {
 		@Param('skillId') skillId: string,
 		@Body payload: UpdateAgentSkillDto,
 	) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.skillsApi.update(req.user, skillId, payload);
 	}
 
 	@Delete('/:skillId')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		await this.skillsApi.delete(req.user, skillId);
 		return { ok: true };
 	}

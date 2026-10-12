@@ -1,19 +1,14 @@
 import {
 	BaseRepository,
+	LIKE_ESCAPE_CLAUSE,
 	Project,
 	TransactionRunner,
 	chunkIds,
+	escapeLike,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	DataSource,
-	In,
-	IsNull,
-	Not,
-	type EntityManager,
-	type FindOptionsWhere,
-} from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
 import type { SkillUsage } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -52,6 +47,15 @@ export type SkillVisibility = {
 	projectIds: string[] | 'all';
 };
 
+/** Narrows the visible skills of `findVisiblePage` and cuts one page. */
+export type SkillListFilter = {
+	scope?: 'user' | 'project' | 'instance';
+	projectId?: string;
+	search?: string;
+	skip: number;
+	take?: number;
+};
+
 export type { SkillUsage } from '@n8n/api-types';
 
 /** Latest version of a skill without its content. */
@@ -64,13 +68,63 @@ export class SkillRepository extends BaseRepository<Skill> {
 		super(Skill, dataSource.manager, transactionRunner);
 	}
 
-	/** Every skill the user may see, newest change first. */
-	async findVisible(visibility: SkillVisibility, ctx: OperationContext = {}): Promise<Skill[]> {
-		const where: Array<FindOptionsWhere<Skill>> = [{ userId: IsNull(), projectId: IsNull() }];
-		where.push(visibility.allUsers ? { userId: Not(IsNull()) } : { userId: visibility.userId });
-		if (visibility.projectIds === 'all') where.push({ projectId: Not(IsNull()) });
-		else if (visibility.projectIds.length > 0) where.push({ projectId: In(visibility.projectIds) });
-		return await this.managerFor(ctx).find(Skill, { where, order: { updatedAt: 'DESC' } });
+	/**
+	 * One page of the skills the user may see, newest change first, and the count of all
+	 * matches. The filters, the search and the page cut run in the query, so the read grows
+	 * with the page, not with the skills on the instance. The search matches the name or
+	 * the description of the latest version. Without `take` every match is returned.
+	 */
+	async findVisiblePage(
+		visibility: SkillVisibility,
+		filter: SkillListFilter,
+		ctx: OperationContext = {},
+	): Promise<{ skills: Skill[]; count: number }> {
+		const branches: string[] = [];
+		if (!filter.scope || filter.scope === 'instance') {
+			branches.push('skill.userId IS NULL AND skill.projectId IS NULL');
+		}
+		if (!filter.scope || filter.scope === 'user') {
+			branches.push(visibility.allUsers ? 'skill.userId IS NOT NULL' : 'skill.userId = :userId');
+		}
+		if (!filter.scope || filter.scope === 'project') {
+			if (visibility.projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
+			else if (visibility.projectIds.length > 0) {
+				branches.push('skill.projectId IN (:...projectIds)');
+			}
+		}
+		if (branches.length === 0) return { skills: [], count: 0 };
+
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(Skill, 'skill')
+			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
+			.setParameters({ userId: visibility.userId, projectIds: visibility.projectIds });
+		if (filter.projectId)
+			query.andWhere('skill.projectId = :projectId', { projectId: filter.projectId });
+		if (filter.search) {
+			query
+				.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id')
+				.andWhere((qb) => {
+					const highest = qb
+						.subQuery()
+						.select('MAX(later.version)')
+						.from(SkillVersion, 'later')
+						.where('later.skillId = skill.id')
+						.getQuery();
+					return `latest.version = ${highest}`;
+				})
+				.andWhere(
+					new Brackets((qb) =>
+						qb
+							.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
+							.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
+					),
+					{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
+				);
+		}
+		query.orderBy('skill.updatedAt', 'DESC').addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		const [skills, count] = await query.getManyAndCount();
+		return { skills, count };
 	}
 
 	async findByIds(ids: string[], ctx: OperationContext = {}): Promise<Skill[]> {

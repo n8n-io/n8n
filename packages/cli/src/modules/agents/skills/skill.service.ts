@@ -444,14 +444,21 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- delete
 
-	/** Deletes a skill that no agent draft and no published agent version uses. */
-	async deleteSkill(skillId: string, ctx: OperationContext = {}): Promise<void> {
+	/**
+	 * Deletes a skill that no agent draft and no published agent version uses. The conflict
+	 * names the agents in `agentProjectIds` and only counts the others.
+	 */
+	async deleteSkill(
+		skillId: string,
+		agentProjectIds: string[] | 'all' = 'all',
+		ctx: OperationContext = {},
+	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const usage = await this.skillRepository.findUsage(skillId, 'all', txCtx);
-			if (usage.drafts.length > 0 || usage.pins.length > 0) {
+			const usage = await this.skillRepository.findUsage(skillId, agentProjectIds, txCtx);
+			if (usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0) {
 				const name = (await this.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
 				const users = [
 					...usage.drafts.map((draft) => `${draft.agentName} (draft)`),
@@ -460,6 +467,11 @@ export class SkillService {
 							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
 					),
 				];
+				if (usage.hiddenAgents > 0) {
+					users.push(
+						`${usage.hiddenAgents} ${usage.hiddenAgents === 1 ? 'agent' : 'agents'} in other projects`,
+					);
+				}
 				throw new ConflictError(
 					`Skill "${name}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`,
 				);

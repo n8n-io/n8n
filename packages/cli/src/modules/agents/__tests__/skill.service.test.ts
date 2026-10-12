@@ -784,6 +784,41 @@ describe('SkillService', () => {
 			expect(skills.deleteSkill).not.toHaveBeenCalled();
 		});
 
+		it('names only the agents of the given projects and counts the others', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
+			skills.findLatestSaved.mockResolvedValue(
+				new Map([['skill_a', versionRow(skillRow('skill_a'), 2)]]),
+			);
+			skills.findUsage.mockResolvedValue({
+				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: PROJECT }],
+				pins: [],
+				hiddenAgents: 2,
+			});
+
+			await expectError(
+				service.deleteSkill('skill_a', [PROJECT]),
+				ConflictError,
+				'Skill "Brand voice" is used by Support bot (draft), 2 agents in other projects and cannot be deleted.',
+			);
+			expect(skills.findUsage).toHaveBeenCalledWith('skill_a', [PROJECT], TX_CTX);
+			expect(skills.deleteSkill).not.toHaveBeenCalled();
+		});
+
+		it('refuses when only agents the caller cannot read use the skill', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
+			skills.findLatestSaved.mockResolvedValue(
+				new Map([['skill_a', versionRow(skillRow('skill_a'), 2)]]),
+			);
+			skills.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 1 });
+
+			await expectError(
+				service.deleteSkill('skill_a', []),
+				ConflictError,
+				'Skill "Brand voice" is used by 1 agent in other projects and cannot be deleted.',
+			);
+			expect(skills.deleteSkill).not.toHaveBeenCalled();
+		});
+
 		it('throws NotFoundError for a missing skill', async () => {
 			await expect(service.deleteSkill('skill_gone')).rejects.toThrow(NotFoundError);
 		});

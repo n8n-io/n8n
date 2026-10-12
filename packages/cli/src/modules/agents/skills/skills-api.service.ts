@@ -42,34 +42,21 @@ export class SkillsApiService {
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
-		let skills = await this.skillRepository.findVisible({
-			userId: user.id,
-			allUsers: hasGlobalScope(user, 'skill:list'),
-			projectIds: projectIds ?? 'all',
-		});
-		if (query.scope) skills = skills.filter((skill) => scopeOf(skill) === query.scope);
-		if (query.projectId) skills = skills.filter((skill) => skill.projectId === query.projectId);
-
-		// Names live on the version rows, so the search runs before the page is cut: the
-		// count and the page then both describe the matching skills.
-		const search = query.search?.toLowerCase();
-		if (search) {
-			const summaries = await this.skillRepository.findLatestSummaries(
-				skills.map((skill) => skill.id),
-			);
-			skills = skills.filter((skill) => {
-				const summary = summaries.get(skill.id);
-				return (
-					summary !== undefined &&
-					(summary.name.toLowerCase().includes(search) ||
-						summary.description.toLowerCase().includes(search))
-				);
-			});
-		}
-
-		const page =
-			query.take === undefined ? skills : skills.slice(query.skip, query.skip + query.take);
-		return { count: skills.length, data: await this.toListItems(user, page) };
+		const { skills, count } = await this.skillRepository.findVisiblePage(
+			{
+				userId: user.id,
+				allUsers: hasGlobalScope(user, 'skill:list'),
+				projectIds: projectIds ?? 'all',
+			},
+			{
+				scope: query.scope,
+				projectId: query.projectId,
+				search: query.search,
+				skip: query.skip,
+				take: query.take,
+			},
+		);
+		return { count, data: await this.toListItems(user, skills) };
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
@@ -103,7 +90,9 @@ export class SkillsApiService {
 
 	async delete(user: User, skillId: string): Promise<void> {
 		await this.requireAccess(user, skillId, 'delete');
-		await this.skillService.deleteSkill(skillId);
+		// The conflict message names only the agents the user may read, as the detail does.
+		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		await this.skillService.deleteSkill(skillId, agentProjectIds ?? 'all');
 	}
 
 	private async toDetail(user: User, skill: Skill): Promise<SkillDetail> {
@@ -157,6 +146,10 @@ export class SkillsApiService {
 				if (!projectId) throw new UserError('A project skill needs a project id.');
 				if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
 					throw new ForbiddenError('You are not allowed to create skills for this project.');
+				}
+				// A global scope passes without looking at the project, so check that it exists.
+				if (!(await this.skillRepository.findProjectNames([projectId])).has(projectId)) {
+					throw new NotFoundError('Project not found');
 				}
 				// A personal project keeps its own skills, as a team project does.
 				return { userId: null, projectId };
