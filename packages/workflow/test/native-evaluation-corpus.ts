@@ -253,7 +253,6 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.count.isEven() }}',
 	'={{ $json.item.active.toInt() }}',
 	'={{ $json.item.when.isEmpty() }}',
-	'={{ $json.item.when.format() }}',
 	'={{ $json.item.names?.last() }}',
 	'={{ $json.item.missing?.last() ?? "none" }}',
 	'={{ $json.item.names.map(n => n.toTitleCase()) }}',
@@ -265,10 +264,10 @@ export const HANDLED_CORPUS: string[] = [
 // evaluation bails and the engine result must come back unchanged.
 export const RUNTIME_BAILOUT_CORPUS: string[] = [
 	// A root is a proxy: the engine hands it to extend() its own way.
-	'={{ $json.toJsonString() }}',
-	'={{ $json.isEmpty() }}',
-	// The whole item is above the content cap.
-	"={{ $('Source').item.json.item.toJsonString() }}",
+	'={{ $vars.toJsonString() }}',
+	'={{ $vars.isEmpty() }}',
+	// The receiver is above the content cap.
+	'={{ $json.item.huge.toJsonString() }}',
 	// Allowlisted method on a receiver of another type.
 	'={{ $json.item.count.toUpperCase() }}',
 	'={{ $json.item.name.toFixed(1) }}',
@@ -452,6 +451,10 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.name.toSentenceCase() }}',
 	'={{ $json.item.mixed.min() }}',
 	'={{ $json.item.mixed.max() }}',
+	'={{ $json.item.count.format() }}',
+	'={{ $json.item.when.format() }}',
+	'={{ $json.item.name.extractUrlPath() }}',
+	'={{ $json.item.name.urlEncode() }}',
 	'={{ $json.item.name.padStart(8) }}',
 	// sort()/fill() mutate the receiver in place; only immutable variants are
 	// allowlisted. A callback makes any call non-simple.

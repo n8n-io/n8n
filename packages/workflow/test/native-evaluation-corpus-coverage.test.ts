@@ -53,11 +53,23 @@ function memberFeature(o: AstRecord): string {
 	return `member:${kind}${o.optional === true ? '?' : ''}`;
 }
 
+// A call on a node reference (`$('Name').first()`, `$input.first()`) is the
+// proxy's own method; the same name on data (`$json.list.first()`) is an
+// extension. The receiver kind keeps the two apart.
+function isNodeRef(object: AstRecord | undefined): boolean {
+	if (object?.type === 'Identifier') return object.name === '$input';
+	const callee = object?.callee as AstRecord | undefined;
+	return object?.type === 'CallExpression' && callee?.type === 'Identifier' && callee.name === '$';
+}
+
 function callFeature(o: AstRecord): string {
-	const callee = o.callee as { property?: { type?: string; name?: unknown } } | undefined;
+	const callee = o.callee as
+		| { object?: AstRecord; property?: { type?: string; name?: unknown } }
+		| undefined;
 	const method = callee?.property?.type === 'Identifier' ? String(callee.property.name) : '?';
 	const arity = Array.isArray(o.arguments) ? o.arguments.length : 0;
-	return `call:${method}:${arity}${o.optional === true ? '?' : ''}`;
+	const receiver = isNodeRef(callee?.object) ? ':ref' : '';
+	return `call:${method}:${arity}${receiver}${o.optional === true ? '?' : ''}`;
 }
 
 function walk(node: unknown, feats: Set<string>): void {
