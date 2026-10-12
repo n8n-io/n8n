@@ -26,8 +26,10 @@ An input that lets the user select one numeric value within given limits.
 | `minValue` | `number` | `0` | Lower limit for user input. |
 | `step` | `number` | `1` | Step interval. Pointer steps start at `minValue`. See the input rules below. |
 | `minDistance` | `number` | `0` | Accepted but not used. There is no range mode. |
-| `label` | `string` | Required | Supplies the visible label and accessible name. |
-| `hideLabel` | `boolean` | `false` | Selects the `hiddenLabel` CSS class instead of `label`. This class has no rule in the current component styles. |
+| `label` | `string` | `undefined` | Supplies the visible label and default accessible name. Supply a label, a label slot, or an ARIA name. |
+| `ariaLabel` | `string` | `undefined` | Names the slider without a visible label. |
+| `ariaLabelledby` | `string` | `undefined` | References an external label. Takes priority over other accessible names. |
+| `hideLabel` | `boolean` | `false` | Visually hides the label but keeps its accessible name. |
 | `showStepMarkers` | `boolean` | `false` | Adds nine markers at 10% intervals when `maxValue > minValue`. Markers appear on hover, not keyboard focus. They do not follow `step`. |
 | `disabled` | `boolean` | `false` | Blocks user input and removes the control from the tab order. |
 | `formatValue` | `(value: number) => string` | `undefined` | Formats the visible value and accessible value text. Uses the numeric value when omitted. |
@@ -54,7 +56,7 @@ A pointer release emits `valueCommit` even if the value did not change. Pointer 
 
 ### Slots
 
-The component has no slots.
+The optional `label` slot replaces the visible label text. The component gives its wrapper an ID for `aria-labelledby`. The `label` prop supplies fallback text.
 
 ## Behavior
 
@@ -69,7 +71,7 @@ The component has no slots.
 
 ### Pointer input
 
-- A primary-button press anywhere in the component starts the interaction and focuses the control.
+- A primary-button press on the track starts the interaction and focuses the control.
 - The control captures the pointer. Other pointers do not change the active interaction.
 - The pointer position maps to a value across the full control width.
 - A positive `step` rounds the value to the nearest step from `minValue`.
@@ -99,6 +101,7 @@ Keyboard input uses a step of `1` when `step <= 0`. Arrow and Page keys change t
 
 - The component uses design tokens for colors and sizes.
 - `mini` uses text size `2xs`. `xlarge` uses `sm`. Other sizes use `xs`.
+- The label and value appear in a row above the track.
 - The visible value uses tabular numerals.
 - Hover shows the position indicator and any enabled markers.
 - Dragging changes the position indicator color.
@@ -115,7 +118,9 @@ Keyboard input uses a step of `1` when `step <= 0`. Arrow and Page keys change t
 - `aria-disabled` follows `disabled`. Disabled controls have `tabindex="-1"`; enabled controls have `tabindex="0"`.
 - The fill, markers, and visible value are hidden from assistive technology.
 - `hideValue` does not remove `aria-valuetext`.
-- The `hideLabel` prop does not remove the label or its accessible name. Visual hiding needs a `hiddenLabel` style rule that is not present in `Slider.vue`.
+- The `hideLabel` prop visually hides the label without removing its accessible name.
+- ARIA naming props apply to the slider control, not the outer wrapper.
+- Accessible name priority is `ariaLabelledby`, then `ariaLabel`, then the internal label.
 - The control uses `touch-action: none` for pointer input.
 - Consumers must translate labels and formatted value text.
 

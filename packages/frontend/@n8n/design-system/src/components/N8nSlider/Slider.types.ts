@@ -17,8 +17,12 @@ export interface SliderProps {
 	step?: number;
 	/** The minimum difference between range values. Default 0. */
 	minDistance?: number;
-	/** The visible label and accessible name. */
-	label: string;
+	/** The visible label and default accessible name. Supply this, a label slot, or an ARIA name. */
+	label?: string;
+	/** Names the slider when there is no visible label. */
+	ariaLabel?: string;
+	/** References an external label. Takes priority over other accessible names. */
+	ariaLabelledby?: string;
 	/** Hides the visible label. Default false. */
 	hideLabel?: boolean;
 	/** Enables step markers. Default false. */

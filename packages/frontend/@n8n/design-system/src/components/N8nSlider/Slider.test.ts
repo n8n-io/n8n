@@ -40,6 +40,54 @@ describe('components/N8nSlider', () => {
 		);
 	});
 
+	it('uses custom label content as the accessible name', () => {
+		const wrapper = render(Slider, {
+			props: { label: 'Fallback' },
+			slots: { label: '<span>Custom volume</span>' },
+		});
+
+		expect(wrapper.getByRole('slider', { name: 'Custom volume' })).toBeInTheDocument();
+		expect(wrapper.queryByText('Fallback')).not.toBeInTheDocument();
+	});
+
+	it('applies aria-label to the slider control', () => {
+		const wrapper = render(Slider, { props: { ariaLabel: 'Volume', hideValue: true } });
+		const control = wrapper.getByRole('slider', { name: 'Volume' });
+
+		expect(control).toHaveAttribute('aria-label', 'Volume');
+		expect(control).not.toHaveAttribute('aria-labelledby');
+		expect(wrapper.container.firstElementChild).not.toHaveAttribute('aria-label');
+	});
+
+	it('uses an external label before other accessible names', () => {
+		const wrapper = render(Slider, {
+			props: { label: 'Internal', ariaLabel: 'Other', ariaLabelledby: 'external-label' },
+		});
+		const externalLabel = document.createElement('span');
+		externalLabel.id = 'external-label';
+		externalLabel.textContent = 'External volume';
+		wrapper.container.prepend(externalLabel);
+
+		expect(wrapper.getByRole('slider', { name: 'External volume' })).toHaveAttribute(
+			'aria-labelledby',
+			'external-label',
+		);
+	});
+
+	it('keeps the label and value outside the track', async () => {
+		const wrapper = render(Slider, { props: { label: 'Volume', defaultValue: [50] } });
+		const control = wrapper.getByRole('slider');
+		const label = wrapper.getByText('Volume');
+		const visibleValue = wrapper.getByText('50');
+
+		expect(control.parentElement).not.toContainElement(label);
+		expect(control.parentElement).not.toContainElement(visibleValue);
+		await fireEvent.pointerDown(label, { pointerId: 1, button: 0, clientX: 50 });
+
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+		expect(wrapper.emitted('valueCommit')).toBeUndefined();
+	});
+
 	it.each([
 		['ArrowUp', 22],
 		['ArrowRight', 22],
