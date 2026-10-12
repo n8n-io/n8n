@@ -111,9 +111,6 @@ export class ScheduleTriggerJobRegistrar {
 	/** How a fixed second/minute interval is represented (see `SchedulerConfig`). */
 	private readonly triggerNodeMode: 'legacy' | 'new';
 
-	/** Whether a node's "Skip Durable Scheduler" toggle is honored (see `SchedulerConfig`). */
-	private readonly allowSkipDurableScheduler: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -125,7 +122,6 @@ export class ScheduleTriggerJobRegistrar {
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.defaultTimezone = globalConfig.generic.timezone;
 		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
-		this.allowSkipDurableScheduler = globalConfig.scheduler.allowSkipDurableScheduler;
 		this.logger = this.logger.scoped('scheduler');
 
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
@@ -145,8 +141,7 @@ export class ScheduleTriggerJobRegistrar {
 	interceptsNode(node: INode): boolean {
 		if (
 			!this.intercepting ||
-			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE) ||
-			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
+			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE)
 		) {
 			return false;
 		}
