@@ -267,31 +267,43 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
 		<template v-if="props.readOnly">
 			<template v-if="isSkillFileSelected">
-				<div :class="$style.field">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.skills.description.label') }}
-					</N8nText>
-					<N8nText data-testid="agent-skill-description-text">{{
-						props.skill.description
-					}}</N8nText>
-				</div>
-				<div :class="$style.field">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.skills.instructions.label') }}
-					</N8nText>
+				<N8nInputLabel
+					:class="$style.readOnlyField"
+					:label="i18n.baseText('agents.builder.skills.description.label')"
+					size="small"
+				>
+					<N8nText
+						tag="p"
+						color="text-base"
+						:class="$style.readOnlyText"
+						data-testid="agent-skill-description-text"
+						>{{ props.skill.description }}</N8nText
+					>
+				</N8nInputLabel>
+				<N8nInputLabel
+					:class="$style.readOnlyField"
+					:label="i18n.baseText('agents.builder.skills.instructions.label')"
+					size="small"
+				>
 					<N8nMarkdown
+						:class="$style.readOnlyMarkdown"
 						:content="props.skill.instructions"
 						data-testid="agent-skill-instructions-text"
 					/>
-				</div>
+				</N8nInputLabel>
 			</template>
-			<div v-else-if="selectedReference" :class="$style.field">
-				<N8nText size="small" bold>{{ selectedReference.path }}</N8nText>
+			<N8nInputLabel
+				v-else-if="selectedReference"
+				:class="$style.readOnlyField"
+				:label="selectedReference.path"
+				size="small"
+			>
 				<N8nMarkdown
+					:class="$style.readOnlyMarkdown"
 					:content="selectedReference.content"
 					data-testid="agent-skill-reference-text"
 				/>
-			</div>
+			</N8nInputLabel>
 		</template>
 
 		<template v-else-if="isSkillFileSelected">
@@ -409,6 +421,46 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	min-width: 0;
 	width: 100%;
 	box-sizing: border-box;
+}
+
+.readOnlyField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.readOnlyText {
+	margin: 0;
+	line-height: var(--line-height--xl);
+	white-space: pre-wrap;
+}
+
+.panel .readOnlyMarkdown {
+	:global(p),
+	:global(li) {
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--xl);
+	}
+
+	:global(h1),
+	:global(h2) {
+		margin: var(--spacing--sm) 0 var(--spacing--2xs);
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--lg);
+	}
+
+	:global(h3),
+	:global(h4),
+	:global(h5),
+	:global(h6) {
+		margin: var(--spacing--xs) 0 var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	:global(:is(h1, h2, h3, h4, h5, h6):first-child) {
+		margin-top: 0;
+	}
 }
 
 .field {
