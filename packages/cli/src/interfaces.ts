@@ -144,6 +144,19 @@ export interface ResumableExecution {
 	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
 	/** Store recorded on the row. A resume keeps writing there, whatever the configured mode. */
 	storedAt?: ExecutionStorageLocation;
+	/** Set for an engine v2 execution: the wait that the resume ends on the data plane. */
+	engineResume?: EngineV2ResumeRequest;
+}
+
+/**
+ * What the control plane forwards to the data plane to end a wait: the step the
+ * data plane named when it verified the token, and the token itself. The token
+ * stays opaque to this plane
+ * (ADR-20260904-a-derived-token-authorizes-a-resume-request, decision 7).
+ */
+export interface EngineV2ResumeRequest {
+	stepId: string;
+	token: string;
 }
 
 export interface IExecutingWorkflowData {
