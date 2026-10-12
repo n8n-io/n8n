@@ -537,8 +537,8 @@ watch(
 			>
 				<div :class="$style.content">
 					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
-						:tool-calls="getGroupToolCalls(group.id).steps"
+						v-if="getGroupToolCalls(group.id)?.steps?.length"
+						:tool-calls="getGroupToolCalls(group.id)?.steps"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
@@ -661,8 +661,8 @@ watch(
 			>
 				<div :class="$style.content">
 					<AgentChatToolSteps
-						v-if="getGroupToolCalls(group.id).steps.length"
-						:tool-calls="getGroupToolCalls(group.id).steps"
+						v-if="getGroupToolCalls(group.id)?.steps?.length"
+						:tool-calls="getGroupToolCalls(group.id)?.steps"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
