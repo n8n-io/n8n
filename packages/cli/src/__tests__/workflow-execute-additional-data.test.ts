@@ -1817,6 +1817,102 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
+		describe('eval runs', () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			it('runs the draft of a stored agent with the eval hook', async () => {
+				const prepareForEval = vi.fn();
+
+				await executeAgent(
+					{ agentId: AGENT_ID },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					'evaluation',
+					undefined,
+					undefined,
+					undefined,
+					prepareForEval,
+				);
+
+				expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
+					AGENT_ID,
+					MESSAGE,
+					EXEC_ID,
+					PROJECT_THREAD_ID,
+					'project-1',
+					'user-1',
+					true,
+					undefined,
+					undefined,
+					executionSandboxScope,
+					{ streamObserver: undefined, prepareForEval },
+				);
+			});
+
+			it('runs an inline agent as a test run with the eval hook', async () => {
+				const prepareForEval = vi.fn();
+				const inlineAgent = {
+					config: { name: 'Inline', model: 'openai/gpt-5', credential: 'c1', instructions: '' },
+				};
+
+				await executeAgent(
+					{ inlineAgent },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					'evaluation',
+					undefined,
+					undefined,
+					undefined,
+					prepareForEval,
+				);
+
+				expect(agentWorkflowExecutionService.executeInlineForWorkflow).toHaveBeenCalledWith(
+					inlineAgent,
+					MESSAGE,
+					EXEC_ID,
+					PROJECT_THREAD_ID,
+					'project-1',
+					'user-1',
+					'test',
+					undefined,
+					undefined,
+					{ streamObserver: undefined, prepareForEval },
+				);
+			});
+
+			it('keeps the published version for evaluation runs without the eval hook', async () => {
+				await executeAgent(
+					{ agentId: AGENT_ID },
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					additionalData,
+					'evaluation',
+				);
+
+				expect(agentWorkflowExecutionService.executeForWorkflow).toHaveBeenCalledWith(
+					AGENT_ID,
+					MESSAGE,
+					EXEC_ID,
+					PROJECT_THREAD_ID,
+					'project-1',
+					'user-1',
+					false,
+					undefined,
+					undefined,
+					executionSandboxScope,
+				);
+			});
+		});
+
 		it('uses projectId from additionalData when present', async () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>({
 				userId: 'user-1',
@@ -2067,7 +2163,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[9]).toEqual(
 				executionSandboxScope,
 			);
-			const streamObserver = agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10];
+			const streamObserver =
+				agentWorkflowExecutionService.executeForWorkflow.mock.calls[0]?.[10]?.streamObserver;
 			expect(streamObserver).toEqual(expect.any(Function));
 
 			await streamObserver?.({ type: 'response-delta', delta: 'hello' });

@@ -63,8 +63,6 @@ const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
-const SettingsLogStreamingView = async () =>
-	await import('@/features/integrations/logStreaming.ee/views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -1054,22 +1052,6 @@ export const routes: RouteRecordRaw[] = [
 								feature: 'encryption-keys',
 							};
 						},
-					},
-				},
-			},
-			{
-				path: 'log-streaming',
-				name: VIEWS.LOG_STREAMING_SETTINGS,
-				component: SettingsLogStreamingView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'logStreaming:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
 					},
 				},
 			},

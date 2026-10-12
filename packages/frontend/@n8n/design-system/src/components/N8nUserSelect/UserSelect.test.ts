@@ -416,4 +416,66 @@ describe('UserSelect', () => {
 			expect(optionIds).not.toContain('user-select-option-id-u1');
 		});
 	});
+
+	it('should show the name and the email of the selected user', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		await waitFor(() =>
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)'),
+		);
+	});
+
+	it('should show only the name of the selected user when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('Alice Smith'));
+	});
+
+	it('should show the email of a selected user without a name when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u5', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('eve@example.com'));
+	});
+
+	it('should show the avatar of the selected user when showAvatar is set', async () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', showAvatar: true },
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
+	});
+
+	it('should take the avatar initials from the full name when the user has no first or last name', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				users: [{ id: 'u9', email: 'nina@example.com', fullName: 'Nina Park' }],
+				modelValue: 'u9',
+				showAvatar: true,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('NP'));
+	});
+
+	it('should not show an avatar by default', () => {
+		const { queryByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+	});
+
+	it('should mark the select as borderless when borderless is set', () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, borderless: true },
+		});
+
+		expect(getByTestId('user-select-trigger')).toHaveClass('borderless');
+	});
 });

@@ -1,4 +1,5 @@
 import {
+	AgentJsonConfigSchema,
 	applyPackageResultSchema,
 	type ApplyPackageResultDto,
 	type ContinueApplyPackageDto,
@@ -11,6 +12,7 @@ import {
 	mockInstance,
 	mockLogger,
 	testDb,
+	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
@@ -42,6 +44,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { BadRequestError } from '@n8n/errors';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -60,8 +63,8 @@ import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/direc
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { ProjectService } from '@/services/project.service.ee';
@@ -88,6 +91,7 @@ type TestRemote = {
 	git: SimpleGit;
 };
 
+beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
 	endpointGroups: ['publicApi'],
 	modules: ['n8n-packages', 'promotions', 'data-table'],
@@ -130,6 +134,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	await Container.get(AgentRepository).delete({});
 	// Delete children before parents to satisfy the foreign keys.
 	await linkRepository.delete({});
 	await configRepository.delete({});
@@ -390,7 +395,11 @@ async function inspectBranch(
 
 async function readBranchEntities(
 	inspectionDir: string,
-	fileName: 'workflow.json' | 'folder.json' | 'project.json',
+	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[
+		| 'workflows'
+		| 'folders'
+		| 'projects'
+		| 'agents']['fileName'],
 ): Promise<Array<{ id: string; name: string; target: string }>> {
 	const exportRoot = path.join(inspectionDir, 'n8n-export');
 	const found: Array<{ id: string; name: string; target: string }> = [];
@@ -595,6 +604,17 @@ describe('Promote and Apply', () => {
 		await service.clone(connection.id, 'promote');
 
 		const project = await createTeamProject('Orders', owner);
+		await Container.get(AgentRepository).save({
+			id: 'local-agent',
+			name: 'Local Agent',
+			projectId: project.id,
+			schema: AgentJsonConfigSchema.parse({
+				name: 'Local Agent',
+				model: '',
+				instructions: '',
+				subAgents: { agents: [{ agentId: 'external-agent' }] },
+			}),
+		});
 		const workflow = await createWorkflow(
 			{ name: 'Process order', nodes: [], connections: {} },
 			project,
@@ -638,6 +658,10 @@ describe('Promote and Apply', () => {
 		).resolves.toBeDefined();
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
 		expect(result.counts.workflows).toBe(1);
+		expect(manifest.agents).toBeUndefined();
+		await expect(
+			readBranchEntities(inspectionDir, PACKAGE_ENTITY_LAYOUT.agents.fileName),
+		).resolves.toEqual([]);
 	});
 
 	it('creates one timestamped branch for each promotion', async () => {
@@ -779,8 +803,8 @@ describe('Promote and Apply', () => {
 				projectIds: [sourceProject.id],
 				includeVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				dependencyPolicy: ExportDependencyPolicy.Fail,
+				versionPolicy: ExportVersionPolicy.Latest,
 			},
 			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
 		);
@@ -843,8 +867,8 @@ describe('Promote and Apply', () => {
 				projectIds: [sourceProject.id],
 				includeVariableValues: true,
 				includeTags: true,
-				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+				dependencyPolicy: ExportDependencyPolicy.Fail,
+				versionPolicy: ExportVersionPolicy.Latest,
 			},
 			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
 		);
@@ -1862,6 +1886,12 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Full promote',
 		});
 
+		await Container.get(AgentRepository).save({
+			id: 'uT9LdQx7rK2MvB4f',
+			name: 'Local Agent',
+			projectId: project.id,
+			schema: null,
+		});
 		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w4.id],
@@ -1879,6 +1909,9 @@ describe('Promote a project selection — branch effects', () => {
 			expect(workflowIds).toContain(w.id);
 		}
 		expect(result.counts.workflows).toBe(1);
+		await expect(readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.agents.fileName)).resolves.toEqual(
+			[],
+		);
 	});
 
 	it('pushes a branched selection to a new branch and leaves the base untouched', async () => {
