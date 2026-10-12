@@ -15,6 +15,7 @@ import type { BreakingChangeMigrationService } from '../breaking-changes.migrati
 import { BreakingChangesController } from '../breaking-changes.controller';
 import type { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import type { IBreakingChangeRule } from '../types';
+import type { MigrationOwnerAssignmentService } from '../owners/migration-owner-assignment.service';
 import type { MigrationFindingQueryService } from '../query/migration-finding-query.service';
 import type { MigrationFindingSyncService } from '../sync/migration-finding-sync.service';
 import type { MigrationFindingTriageService } from '../triage/migration-finding-triage.service';
@@ -66,6 +67,7 @@ describe('BreakingChangesController', () => {
 	let triageService: MockProxy<MigrationFindingTriageService>;
 	let workflowSharingService: MockProxy<WorkflowSharingService>;
 	let eventService: MockProxy<EventService>;
+	let ownerAssignmentService: MockProxy<MigrationOwnerAssignmentService>;
 	let controller: BreakingChangesController;
 
 	beforeEach(() => {
@@ -78,6 +80,7 @@ describe('BreakingChangesController', () => {
 		workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue(['wf-1', 'wf-2']);
 		req.user = admin;
 		eventService = mock<EventService>();
+		ownerAssignmentService = mock<MigrationOwnerAssignmentService>();
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
@@ -86,7 +89,36 @@ describe('BreakingChangesController', () => {
 			triageService,
 			workflowSharingService,
 			eventService,
+			ownerAssignmentService,
 		);
+	});
+
+	describe('workflow owner', () => {
+		const owner = {
+			id: 'alice',
+			firstName: 'Alice',
+			lastName: 'A',
+			email: 'alice@example.com',
+			source: 'assigned' as const,
+		};
+
+		it('PUT assigns the user from the body as the acting user and returns the owner', async () => {
+			ownerAssignmentService.assign.mockResolvedValue(owner);
+
+			const result = await controller.assignOwner(req, res, 'wf-1', { userId: 'alice' });
+
+			expect(ownerAssignmentService.assign).toHaveBeenCalledWith('wf-1', 'alice', req.user);
+			expect(result).toEqual({ owner });
+		});
+
+		it('DELETE unassigns and returns what the heuristic suggests instead', async () => {
+			ownerAssignmentService.unassign.mockResolvedValue(null);
+
+			const result = await controller.unassignOwner(req, res, 'wf-1');
+
+			expect(ownerAssignmentService.unassign).toHaveBeenCalledWith('wf-1');
+			expect(result).toEqual({ owner: null });
+		});
 	});
 
 	describe('GET /report', () => {
@@ -298,6 +330,36 @@ describe('BreakingChangesController', () => {
 			).rejects.toBeInstanceOf(NotFoundError);
 			expect(syncService.syncIfStale).not.toHaveBeenCalled();
 			expect(queryService.getRuleFindings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('PATCH /report/:ruleId/workflows', () => {
+		it('passes the rule, workflows and status to the triage service and returns nothing', async () => {
+			triageService.setStatuses.mockResolvedValue(undefined);
+
+			const result = await controller.updateFindingStatuses(req, res, 'removed-nodes-v3', {
+				workflowIds: ['wf-1', 'wf-2'],
+				status: 'wont_fix',
+			});
+
+			expect(result).toBeUndefined();
+			expect(triageService.setStatuses).toHaveBeenCalledWith(
+				'removed-nodes-v3',
+				['wf-1', 'wf-2'],
+				'wont_fix',
+			);
+			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+		});
+
+		it('requires the global breakingChanges:migrate scope', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				BreakingChangesController as Controller,
+			);
+
+			expect(metadata.routes.get('updateFindingStatuses')?.accessScope).toEqual({
+				scope: 'breakingChanges:migrate',
+				globalOnly: true,
+			});
 		});
 	});
 

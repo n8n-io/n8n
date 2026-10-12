@@ -17,8 +17,8 @@ import type {
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
-	MissingWorkflowDependencyPolicy,
-	WorkflowVersionPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -232,6 +232,7 @@ describe('PromotionsService', () => {
 					return {
 						manifest: emptyManifest,
 						counts: {
+							agents: 0,
 							workflows: 0,
 							folders: 0,
 							credentials: 0,
@@ -266,12 +267,13 @@ describe('PromotionsService', () => {
 				{
 					user: actor,
 					projectIds: ['project-a', 'project-b'],
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
 					includeArchivedWorkflows: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -289,6 +291,7 @@ describe('PromotionsService', () => {
 				connectionId: 'conn1',
 				configId: CONFIG_ID,
 				counts: {
+					agents: 0,
 					workflows: 0,
 					folders: 0,
 					credentials: 0,
@@ -552,6 +555,7 @@ describe('PromotionsService', () => {
 					return {
 						manifest,
 						counts: {
+							agents: 0,
 							workflows: manifest.workflows?.length ?? 0,
 							folders: manifest.folders?.length ?? 0,
 							credentials: manifest.credentials?.length ?? 0,
@@ -620,8 +624,8 @@ describe('PromotionsService', () => {
 					projectWorkflowIds: ['w1', 'w2'],
 					includeArchivedWorkflows: true,
 					canExportVariableValues: true,
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				}),
 				expect.any(Object),
 			);

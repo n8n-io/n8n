@@ -9,17 +9,8 @@ import {
 	TrustedSourceStore,
 	type AuthorizationServerMetadata,
 	type Jwk,
-	type Result,
-	type Verified,
 } from '@n8n/inbound-auth';
-import type { SecurityContext } from '@n8n/permissions';
 import { OperationalError } from 'n8n-workflow';
-
-class UnregisteredIdentityService extends IdentityService {
-	async identify(_verified: Verified): Promise<Result<SecurityContext>> {
-		return { ok: false, reason: 'source-unusable' };
-	}
-}
 
 // Discovery of the local source must fail, not succeed with made-up documents.
 class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
@@ -41,9 +32,6 @@ class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 export class InboundAuthCoreModule implements ModuleInterface {
 	async init() {
 		// A binding that already exists wins: the defaults only fill the gap.
-		if (!Container.has(IdentityService)) {
-			Container.set(IdentityService, new UnregisteredIdentityService());
-		}
 		if (!Container.has(LocalAuthorizationServer)) {
 			Container.set(LocalAuthorizationServer, new UnregisteredLocalAuthorizationServer());
 		}
@@ -60,6 +48,13 @@ export class InboundAuthCoreModule implements ModuleInterface {
 
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');
 		Container.set(AuthenticationService, Container.get(OAuth2AuthenticationService));
+
+		const { TrustedSourceIdentityService } = await import(
+			'./identity/trusted-source-identity.service.js'
+		);
+		if (!Container.has(IdentityService)) {
+			Container.set(IdentityService, Container.get(TrustedSourceIdentityService));
+		}
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.

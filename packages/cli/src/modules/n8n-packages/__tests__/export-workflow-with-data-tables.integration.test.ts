@@ -213,7 +213,7 @@ describe('workflow package export — with data tables', () => {
 			const { stream } = await service.exportPackage({
 				user: owner,
 				workflowIds: [parent.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
+				dependencyPolicy: 'include-in-package',
 			});
 			const { manifest, entries } = await readExport(stream);
 

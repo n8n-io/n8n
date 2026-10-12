@@ -5,6 +5,11 @@ import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import {
+	createGoogleVertexModel,
+	isGoogleVertexAnthropicModel,
+	parseGoogleVertexAuthOptions,
+} from './google-vertex';
+import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
 	withChatCompletionsFallback,
@@ -84,36 +89,6 @@ type OpenAiCompatibleCreds = {
 	baseURL?: string;
 	headers?: Record<string, string>;
 };
-
-/**
- * Parse a Vertex service-account JSON string into `googleAuthOptions`.
- * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
- * Returns undefined when unset so ADC can take over.
- */
-function parseGoogleVertexAuthOptions(
-	googleCredentials: string | undefined,
-): { credentials: Record<string, unknown> } | undefined {
-	if (!googleCredentials?.trim()) return undefined;
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(googleCredentials);
-	} catch {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
-		);
-	}
-	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
-		);
-	}
-	const credentials = { ...(parsed as Record<string, unknown>) };
-	// SA keys often arrive with literal `\n` escapes when pasted into env files.
-	if (typeof credentials.private_key === 'string') {
-		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-	}
-	return { credentials };
-}
 
 /**
  * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
@@ -221,7 +196,9 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
-	switch (getModelIdString(model).split('/')[0]) {
+	const modelId = getModelIdString(model);
+	if (isGoogleVertexAnthropicModel(modelId)) return true;
+	switch (modelId.split('/')[0]) {
 		case 'anthropic':
 		case 'google-vertex-anthropic':
 		case 'openrouter':
@@ -345,6 +322,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				: creds.baseURL;
 			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
+	},
+	'google-vertex': {
+		build: createGoogleVertexModel,
 	},
 	xai: {
 		build: (creds, model, fetch) => {
