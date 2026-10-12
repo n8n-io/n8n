@@ -1,0 +1,21 @@
+packages/cli/src/services/pruning/__tests__/execution-pruning-hard-delete.task.test.ts
+  s_efaf9bfb3b3880::t_dcb80e1915aa04 22
+packages/cli/src/services/pruning/execution-pruning-hard-delete.task.ts
+  s_efaf9bfb3b3880::t_b46695001f2713 16-19,25-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37c57a64972f3373279a6758bf5a3efef4c830db",
+  "prompts": {},
+  "sessions": {
+    "s_efaf9bfb3b3880": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2662479-8c2c-4fda-861a-88e195714051",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
