@@ -62,11 +62,12 @@ export function useIntersectionObserver(options: UseIntersectionObserverOptions)
 		observer.value = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting) {
-					options.onIntersect();
-
+					// Disconnect first. The callback can call observe() and create a new observer.
 					if (options.once !== false) {
 						disconnect();
 					}
+
+					options.onIntersect();
 				}
 			},
 			{
