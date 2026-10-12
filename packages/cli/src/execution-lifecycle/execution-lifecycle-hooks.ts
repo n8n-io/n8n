@@ -53,8 +53,13 @@ class ModulesHooksRegistry {
 	/**
 	 * `source` is not carried on `ExecutionLifecycleHooks`, so it is passed in
 	 * here to let module handlers tell agent-initiated runs from user ones.
+	 * `executedInThisProcess` is false for the hooks of a process that only enqueued the run.
 	 */
-	addHooks(hooks: ExecutionLifecycleHooks, source?: IWorkflowExecutionDataProcess['source']) {
+	addHooks(
+		hooks: ExecutionLifecycleHooks,
+		source?: IWorkflowExecutionDataProcess['source'],
+		{ executedInThisProcess = true }: { executedInThisProcess?: boolean } = {},
+	) {
 		const handlers = Container.get(LifecycleMetadata).getHandlers();
 
 		for (const { handlerClass, methodName, eventName } of handlers) {
@@ -72,6 +77,7 @@ class ModulesHooksRegistry {
 							executionId: this.executionId,
 							retryOf: this.retryOf,
 							source,
+							executedInThisProcess,
 						};
 
 						return await instance[methodName].call(instance, context);
@@ -977,7 +983,7 @@ export function getLifecycleHooksForScalingMain(
 	hooks.handlers.nodeExecuteBefore = [];
 	hooks.handlers.nodeExecuteAfter = [];
 
-	Container.get(ModulesHooksRegistry).addHooks(hooks, source);
+	Container.get(ModulesHooksRegistry).addHooks(hooks, source, { executedInThisProcess: false });
 
 	return hooks;
 }

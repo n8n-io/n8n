@@ -11,7 +11,10 @@ import {
 	PutProjectPolicyDto,
 	ReplaceAttachmentsDto,
 	UpdatePolicyDocumentDto,
+	isNodeTypePolicyRule,
 	nodeTypePolicyIdParamSchema,
+	type NodeTypePolicyRule,
+	type PolicyRule,
 	nodeTypePolicyScopeIdParamSchema,
 	projectIdParamSchema,
 } from '@n8n/api-types';
@@ -39,6 +42,7 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
@@ -50,11 +54,19 @@ import {
 
 const tags = ['NodeTypePolicy'];
 
+/** Every write rejects an `extends` rule for this kind, so meeting one here is a bug. */
+function toNodeTypeRules(rules: readonly PolicyRule[]): NodeTypePolicyRule[] {
+	if (!rules.every(isNodeTypePolicyRule)) {
+		throw new UnexpectedError('A node type policy holds an extends rule');
+	}
+	return [...rules];
+}
+
 function toPublicDocument(policy: TypeAvailabilityPolicy): PolicyDocumentPublicDto {
 	return {
 		id: policy.id,
 		kind: policy.kind,
-		rules: [...policy.rules],
+		rules: toNodeTypeRules(policy.rules),
 		version: policy.version,
 		updatedBy: policy.updatedBy,
 		createdAt: policy.createdAt.toISOString(),
@@ -98,7 +110,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: effective.scopeId,
-			rules: [...effective.rules],
+			rules: toNodeTypeRules(effective.rules),
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
@@ -131,7 +143,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: result.scopeId,
-			rules: result.rules,
+			rules: toNodeTypeRules(result.rules),
 			defaultAction: result.defaultAction,
 			version: result.version,
 			warnings: [...result.warnings],
@@ -158,7 +170,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: effective.scopeId,
-			rules: [...effective.rules],
+			rules: toNodeTypeRules(effective.rules),
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
@@ -192,7 +204,7 @@ export class NodeTypePoliciesPublicController {
 
 		return {
 			scopeId: result.scopeId,
-			rules: result.rules,
+			rules: toNodeTypeRules(result.rules),
 			defaultAction: result.defaultAction,
 			version: result.version,
 			warnings: [...result.warnings],
@@ -353,7 +365,7 @@ export class NodeTypePoliciesPublicController {
 		return {
 			attachments: result.attachments.map((attachment) => ({
 				policyId: attachment.policyId,
-				rules: [...attachment.rules],
+				rules: toNodeTypeRules(attachment.rules),
 				priority: attachment.priority,
 				isFloor: attachment.isFloor,
 			})),

@@ -16,8 +16,11 @@ const props = withDefaults(
 		// renders as an inset box with squared-off bottom corners floating above the input.
 		variant?: 'attached' | 'standalone';
 		amountsHidden?: boolean;
+		/** Replaces the meter text. Used for the non-dismissible out-of-credits state. */
+		message?: string;
+		dismissible?: boolean;
 	}>(),
-	{ variant: 'standalone' },
+	{ variant: 'standalone', dismissible: true },
 );
 
 const emit = defineEmits<{
@@ -30,6 +33,7 @@ const cloudPlanStore = useCloudPlanStore();
 const { isActive: isCloudUbbActive } = useCloudUbbActive();
 
 const bannerText = computed(() => {
+	if (props.message) return props.message;
 	if (props.amountsHidden) {
 		return i18n.baseText('aiAssistant.builder.creditBanner.limitReachedText');
 	}
@@ -88,11 +92,12 @@ const tooltipContent = computed(() => {
 		<div :class="$style.content">
 			<!-- The numeric variants are a meter reading, so clipping them costs nothing. This one is
 			the only signal the capped cohort gets on landing, so it wraps rather than truncates. -->
-			<span :class="[$style.text, { [$style.wrapping]: props.amountsHidden }]">{{
-				bannerText
-			}}</span>
+			<span
+				:class="[$style.text, { [$style.wrapping]: props.amountsHidden || Boolean(props.message) }]"
+				>{{ bannerText }}</span
+			>
 			<N8nTooltip
-				v-if="!props.amountsHidden"
+				v-if="!props.amountsHidden && !props.message"
 				:content="tooltipContent"
 				placement="top"
 				:show-after="300"
@@ -114,6 +119,7 @@ const tooltipContent = computed(() => {
 			{{ ctaLabel }}
 		</N8nButton>
 		<N8nIcon
+			v-if="props.dismissible"
 			icon="x"
 			size="small"
 			:class="$style.closeIcon"
