@@ -26,6 +26,7 @@ import {
 	waitForAllActivity,
 	runMultiTurnConversation,
 	recordUserTurn,
+	buildAutoApprovePayload,
 	type ConfirmationStrategy,
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
@@ -93,6 +94,7 @@ import {
 	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
+import { getEventPayload } from '../utils/confirmation-payload';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -1211,6 +1213,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingHandoffContext,
 				observerThresholdTokens,
 			);
+			// An empty answer reads to the agent as "no preference", which steers it
+			// off the path a real user would pick, so questions still get the proxy.
+			const questionProxy = new UserProxyLlm({
+				conversation: [{ role: 'user', text: recordedOpeningMessage }],
+				logger,
+			});
 			try {
 				await waitForAllActivity({
 					client,
@@ -1224,6 +1232,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
 					logger,
 					proxyResponses,
+					confirmationStrategy: async (event) => {
+						if (getEventPayload(event).inputType !== 'questions') {
+							return buildAutoApprovePayload(event);
+						}
+						questionProxy.ingestEvents(events);
+						return await questionProxy.respondToConfirmation(event);
+					},
 				});
 			} catch (error: unknown) {
 				if (!(error instanceof RunTimeoutError)) throw error;
