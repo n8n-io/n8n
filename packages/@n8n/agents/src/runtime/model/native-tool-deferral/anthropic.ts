@@ -8,13 +8,9 @@ import {
 	findProviderTool,
 	getEffectiveBaseUrl,
 	supportsEndpoint,
+	type NativeToolCatalog,
 	type NativeToolDeferral,
 } from '../native-tool-deferral';
-
-const SEARCH_TOOL_IDS = [
-	'anthropic.tool_search_bm25_20251119',
-	'anthropic.tool_search_regex_20251119',
-];
 
 function supportsModel(model: string): boolean {
 	// A snapshot date must not become the minor version, as in claude-sonnet-4-20250514.
@@ -35,16 +31,18 @@ function supports(model: string, config: ModelConfig): boolean {
 	return supportsEndpoint(effectiveUrl, 'https://api.anthropic.com', ['/v1', '']);
 }
 
-async function prepareTools(tools: ToolSet, config: NativeToolDeferralConfig): Promise<ToolSet> {
-	const configuredSearch = findProviderTool(tools, SEARCH_TOOL_IDS);
-	const { tools: nativeTools, hasDeferredTools } = deferLocalTools(tools, 'anthropic', config);
-	if (!hasDeferredTools) return nativeTools;
-
+async function prepareTools(
+	tools: ToolSet,
+	config: NativeToolDeferralConfig,
+): Promise<NativeToolCatalog> {
 	const { anthropic } = await import('@ai-sdk/anthropic');
-	const searchTool =
-		configuredSearch?.[1].id === 'anthropic.tool_search_regex_20251119'
-			? anthropic.tools.toolSearchRegex_20251119()
-			: anthropic.tools.toolSearchBm25_20251119();
+	const bm25Search = anthropic.tools.toolSearchBm25_20251119();
+	const regexSearch = anthropic.tools.toolSearchRegex_20251119();
+	const configuredSearch = findProviderTool(tools, [bm25Search.id, regexSearch.id]);
+	const { tools: nativeTools, hasDeferredTools } = deferLocalTools(tools, 'anthropic', config);
+	if (!hasDeferredTools) return { tools: nativeTools, searchToolName: configuredSearch?.[0] };
+
+	const searchTool = configuredSearch?.[1].id === regexSearch.id ? regexSearch : bm25Search;
 	return addNativeSearchTool(nativeTools, 'anthropic', searchTool, configuredSearch);
 }
 
@@ -64,13 +62,12 @@ function filterToolReferences(part: ToolResultPart, tools: ToolSet): ToolResultP
 	return { ...part, output: { ...part.output, value } };
 }
 
-function prepareMessages(messages: ModelMessage[], tools: ToolSet): ModelMessage[] {
-	const searchToolNames = new Set(
-		Object.entries(tools)
-			.filter(([, tool]) => tool.type === 'provider' && SEARCH_TOOL_IDS.includes(tool.id))
-			.map(([name]) => name),
-	);
-	if (searchToolNames.size === 0) return messages;
+function prepareMessages(
+	messages: ModelMessage[],
+	tools: ToolSet,
+	searchToolName?: string,
+): ModelMessage[] {
+	if (!searchToolName) return messages;
 
 	// Anthropic rejects saved references when a tool leaves the authorized catalog.
 	return messages.map((message) => {
@@ -78,7 +75,7 @@ function prepareMessages(messages: ModelMessage[], tools: ToolSet): ModelMessage
 		return {
 			...message,
 			content: message.content.map((part) =>
-				part.type === 'tool-result' && searchToolNames.has(part.toolName)
+				part.type === 'tool-result' && part.toolName === searchToolName
 					? filterToolReferences(part, tools)
 					: part,
 			),

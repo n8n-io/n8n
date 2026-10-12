@@ -9,6 +9,7 @@ import {
 	findProviderTool,
 	getEffectiveBaseUrl,
 	supportsEndpoint,
+	type NativeToolCatalog,
 	type NativeToolDeferral,
 } from '../native-tool-deferral';
 
@@ -32,20 +33,19 @@ function supports(model: string, config: ModelConfig): boolean {
 	return supportsEndpoint(effectiveUrl, 'https://api.openai.com', ['/v1']);
 }
 
-async function prepareTools(tools: ToolSet, config: NativeToolDeferralConfig): Promise<ToolSet> {
-	const configuredSearch = findProviderTool(tools, ['openai.tool_search']);
-	if (configuredSearch?.[1].args.execution === 'client') return eagerTools(tools);
+async function prepareTools(
+	tools: ToolSet,
+	config: NativeToolDeferralConfig,
+): Promise<NativeToolCatalog> {
+	const { openai } = await import('@ai-sdk/openai');
+	const searchTool = openai.tools.toolSearch({ execution: 'server' });
+	const configuredSearch = findProviderTool(tools, [searchTool.id]);
+	if (configuredSearch?.[1].args.execution === 'client') return { tools: eagerTools(tools) };
 
 	const { tools: nativeTools, hasDeferredTools } = deferLocalTools(tools, 'openai', config);
-	if (!hasDeferredTools) return nativeTools;
+	if (!hasDeferredTools) return { tools: nativeTools, searchToolName: configuredSearch?.[0] };
 
-	const { openai } = await import('@ai-sdk/openai');
-	return addNativeSearchTool(
-		nativeTools,
-		'openai',
-		openai.tools.toolSearch({ execution: 'server' }),
-		configuredSearch,
-	);
+	return addNativeSearchTool(nativeTools, 'openai', searchTool, configuredSearch);
 }
 
 export const openAiToolDeferral: NativeToolDeferral = {

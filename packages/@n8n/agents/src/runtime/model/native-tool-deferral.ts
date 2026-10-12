@@ -7,10 +7,19 @@ import { hasAnthropicCacheControl, mergeProviderOptions } from './prompt-cache';
 
 type NativeToolDeferralProvider = 'openai' | 'anthropic';
 
+export interface NativeToolCatalog {
+	tools: ToolSet;
+	searchToolName?: string;
+}
+
 export interface NativeToolDeferral {
 	supports: (model: string, config: ModelConfig) => boolean;
-	prepareTools: (tools: ToolSet, config: NativeToolDeferralConfig) => Promise<ToolSet>;
-	prepareMessages?: (messages: ModelMessage[], tools: ToolSet) => ModelMessage[];
+	prepareTools: (tools: ToolSet, config: NativeToolDeferralConfig) => Promise<NativeToolCatalog>;
+	prepareMessages?: (
+		messages: ModelMessage[],
+		tools: ToolSet,
+		searchToolName?: string,
+	) => ModelMessage[];
 }
 
 export function getEffectiveBaseUrl(config: ModelConfig, fallbackUrl: string): unknown {
@@ -44,8 +53,8 @@ export async function applyNativeToolDeferral(
 	tools: ToolSet,
 	implementation: NativeToolDeferral | undefined,
 	config: NativeToolDeferralConfig,
-): Promise<ToolSet> {
-	if (!implementation) return eagerTools(tools);
+): Promise<NativeToolCatalog> {
+	if (!implementation) return { tools: eagerTools(tools) };
 	return await implementation.prepareTools(tools, config);
 }
 
@@ -137,11 +146,11 @@ export function addNativeSearchTool(
 	provider: NativeToolDeferralProvider,
 	nativeTool: NativeSearchTool,
 	configuredSearch?: [string, ProviderTool],
-): ToolSet {
+): NativeToolCatalog {
 	const searchTool = adaptSearchTool(nativeTool, configuredSearch?.[1]);
 	if (configuredSearch) {
 		tools[configuredSearch[0]] = searchTool;
-		return tools;
+		return { tools, searchToolName: configuredSearch[0] };
 	}
 
 	const baseName = `${provider}.tool_search`;
@@ -149,5 +158,5 @@ export function addNativeSearchTool(
 	let suffix = 2;
 	while (name in tools) name = `${baseName}_${suffix++}`;
 	tools[name] = searchTool;
-	return tools;
+	return { tools, searchToolName: name };
 }

@@ -145,13 +145,13 @@ export class RuntimeContextBuilder {
 		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
 		const aiTools = toAiSdkTools(allUserTools);
 		const catalog = { ...aiTools, ...aiProviderTools };
-		const allTools = this.config.nativeToolDeferral
+		const { tools: allTools, searchToolName } = this.config.nativeToolDeferral
 			? await applyNativeToolDeferral(
 					catalog,
 					this.nativeToolDeferral,
 					this.config.nativeToolDeferral,
 				)
-			: catalog;
+			: { tools: catalog, searchToolName: undefined };
 		const aiToolCount = Object.keys(allTools).length;
 		const toolMap = buildToolMap(allUserTools);
 		const { instructions: effectiveInstructions, volatileInstructions } =
@@ -160,6 +160,7 @@ export class RuntimeContextBuilder {
 		return {
 			toolMap,
 			aiTools: allTools,
+			searchToolName,
 			hasTools: aiToolCount > 0,
 			effectiveInstructions,
 			volatileInstructions,
@@ -203,7 +204,8 @@ export class RuntimeContextBuilder {
 				: undefined,
 		);
 		const preparedMessages =
-			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools) ?? messages;
+			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools, tools.searchToolName) ??
+			messages;
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
 			system,

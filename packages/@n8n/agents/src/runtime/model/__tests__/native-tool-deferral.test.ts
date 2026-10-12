@@ -172,9 +172,24 @@ describe('native tool catalog', () => {
 		expect(after.aiTools).not.toHaveProperty('load_tool');
 	});
 
-	it.each(['history', 'checkpoint'] as const)(
-		'prunes unavailable search references loaded from %s',
-		async (source) => {
+	it.each<['history' | 'checkpoint', string, Partial<AgentRuntimeConfig>]>([
+		['history', 'anthropic.tool_search', {}],
+		[
+			'checkpoint',
+			'anthropic.tool_search_2',
+			{ deferredTools: [makeTool('anthropic.tool_search')] },
+		],
+		[
+			'history',
+			'anthropic.tool_search_regex_20251119',
+			{
+				providerTools: [{ name: 'anthropic.tool_search_regex_20251119', args: {} }],
+				nativeToolDeferral: { eagerToolNames: ['workspace_read_file', 'workflow_lookup'] },
+			},
+		],
+	])(
+		'prunes unavailable search references from %s with %s',
+		async (source, searchToolName, config) => {
 			const previous = new AgentMessageList();
 			previous.addInput([
 				{ role: 'user', content: [{ type: 'text', text: 'Find lookup tools.' }] },
@@ -190,7 +205,7 @@ describe('native tool catalog', () => {
 							{
 								type: 'tool-call',
 								toolCallId: `search_${index}`,
-								toolName: 'anthropic.tool_search',
+								toolName: searchToolName,
 								input: { query: 'lookup' },
 								providerExecuted: true,
 								state: 'resolved',
@@ -212,6 +227,7 @@ describe('native tool catalog', () => {
 			const before = structuredClone(list.serialize());
 			const { context, aiProviderTools } = makeContext({
 				tools: [makeTool('workspace_read_file'), makeTool('workflow_lookup')],
+				...config,
 			});
 			const tools = await context.buildToolLoopContext(aiProviderTools);
 			const prompt = context.buildModelPrompt({
@@ -255,7 +271,7 @@ describe('native tool catalog', () => {
 				.build(),
 			makeTool('lookup'),
 		]);
-		const native = await applyNativeToolDeferral(tools, anthropicToolDeferral, policy);
+		const { tools: native } = await applyNativeToolDeferral(tools, anthropicToolDeferral, policy);
 		expect(native.cached.providerOptions?.anthropic).toEqual({
 			...tools.cached.providerOptions?.anthropic,
 			deferLoading: false,
@@ -268,8 +284,8 @@ describe('native tool catalog', () => {
 	it.each(['openai', 'anthropic'] as const)(
 		'adds no %s search for an empty or eager catalog',
 		async (provider) => {
-			expect(await applyNativeToolDeferral({}, providers[provider], policy)).toEqual({});
-			const eager = await applyNativeToolDeferral(
+			expect(await applyNativeToolDeferral({}, providers[provider], policy)).toEqual({ tools: {} });
+			const { tools: eager } = await applyNativeToolDeferral(
 				toAiSdkTools([makeTool('workspace_read_file')]),
 				providers[provider],
 				policy,
@@ -287,7 +303,7 @@ describe('native tool catalog', () => {
 			...toAiSdkTools([makeTool('lookup')]),
 			...toAiSdkProviderTools([{ name: id, args: {} }]),
 		};
-		const native = await applyNativeToolDeferral(tools, providers[provider], policy);
+		const { tools: native } = await applyNativeToolDeferral(tools, providers[provider], policy);
 		expect(Object.keys(native)).toEqual(Object.keys(tools));
 		expect(native[id]).toMatchObject({ type: 'provider', id, args: {} });
 		expect(native[id].outputSchema).toBeDefined();
@@ -295,7 +311,7 @@ describe('native tool catalog', () => {
 
 	it('keeps user tools when the generated search name is occupied', async () => {
 		const tools = toAiSdkTools([makeTool('openai.tool_search')]);
-		const native = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
+		const { tools: native } = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
 		expect(native['openai.tool_search'].type).not.toBe('provider');
 		expect(native['openai.tool_search_2']).toMatchObject({
 			type: 'provider',
@@ -315,7 +331,7 @@ describe('native tool catalog', () => {
 			]),
 			...toAiSdkProviderTools([{ name: 'openai.tool_search', args: { execution: 'client' } }]),
 		};
-		const native = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
+		const { tools: native } = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
 		expect(native.lookup.providerOptions?.openai?.deferLoading).toBe(false);
 		expect(native['openai.tool_search']).toEqual(tools['openai.tool_search']);
 		expect(Object.keys(native)).toEqual(Object.keys(tools));

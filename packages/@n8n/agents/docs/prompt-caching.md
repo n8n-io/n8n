@@ -99,9 +99,10 @@ search results to the conversation. Anthropic expands tool references in the
 conversation. The runtime does not move discovered tools into the eager prefix.
 Call and result provider options are stored separately. This preserves the
 separate OpenAI search-result item ID through memory and approval checkpoints.
-When the catalog changes, the runtime removes unavailable Anthropic tool
-references from the outgoing prompt. Stored messages keep the original search
-results.
+The catalog carries the registered search tool name into prompt preparation.
+When the catalog changes, the runtime uses that name to remove unavailable
+Anthropic tool references from search results in the outgoing prompt. Stored
+messages keep the original search results.
 
 Native deferral does not reduce the number of definitions sent over HTTP.
 OpenAI also exposes each deferred function name and description before search.
