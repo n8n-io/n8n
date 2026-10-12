@@ -131,11 +131,11 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 		stubs: {
 			ParameterInputList: {
 				template:
-					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
+					'<div data-test-id="parameter-input-list" :data-read-only="isReadOnly">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
-				template: '<div data-test-id="node-credentials" />',
+				template: '<div data-test-id="node-credentials" :data-read-only="readonly" />',
 				props: ['node', 'readonly', 'showAll', 'hideIssues'],
 			},
 		},
@@ -283,6 +283,28 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getByTestId('node-credentials')).toBeTruthy();
+	});
+
+	it('locks parameters and credentials when read-only', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { initialNode: createMockNode(), readOnly: true },
+		});
+
+		for (const list of getAllByTestId('parameter-input-list')) {
+			expect(list).toHaveAttribute('data-read-only', 'true');
+		}
+		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'true');
+	});
+
+	it('leaves parameters and credentials editable by default', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		for (const list of getAllByTestId('parameter-input-list')) {
+			expect(list).toHaveAttribute('data-read-only', 'false');
+		}
+		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'false');
 	});
 
 	it('should show no-parameters notice when all params are notice type', () => {
@@ -792,6 +814,81 @@ describe('NodeToolSettingsContent', () => {
 				// `get` is not valid for the `deal` resource, so it resets to `close`.
 				expect(latest?.parameters.operation).toBe('close');
 			});
+		});
+	});
+
+	describe('same-named parameters of different value shapes', () => {
+		const show = (operation: string) => ({ show: { operation: [operation] } });
+		const SAME_NAME_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+					],
+					default: 'get',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'resourceLocator',
+					default: { mode: 'id', value: '' },
+					modes: [{ displayName: 'ID', name: 'id', type: 'string' }],
+					displayOptions: show('get'),
+				},
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+			],
+		};
+
+		const renderWithOperationSwitch = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: defineComponent({
+						emits: ['value-changed'],
+						template: `
+							<div data-test-id="parameter-input-list">
+								<button
+									data-test-id="to-create"
+									@click="$emit('value-changed', { name: 'operation', value: 'create' })"
+								/>
+							</div>
+						`,
+					}),
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		it('does not carry a resource locator into a same-named string parameter', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(SAME_NAME_NODE_TYPE);
+			const picked = { __rl: true, mode: 'id', value: 'C0123' };
+
+			const { emitted, getAllByTestId } = renderWithOperationSwitch({
+				props: {
+					initialNode: createMockNode({
+						name: 'My Tool',
+						parameters: { operation: 'get', channelId: picked },
+					}),
+				},
+			});
+			const latestParameters = () => (emitted('update:node') as INode[][]).at(-1)?.[0].parameters;
+
+			getAllByTestId('to-create')[0].click();
+			await waitFor(() => expect(latestParameters()?.channelId).toBe(''));
 		});
 	});
 

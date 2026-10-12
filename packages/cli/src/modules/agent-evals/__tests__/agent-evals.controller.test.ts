@@ -11,6 +11,8 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
+
 import type { AgentEvalRatingService } from '../agent-eval-rating.service';
 import type { AgentEvalService } from '../agent-eval.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
@@ -19,6 +21,9 @@ import { AgentEvalsController } from '../agent-evals.controller';
 vi.mock('../agent-eval.service', () => ({ AgentEvalService: class AgentEvalService {} }));
 vi.mock('../agent-eval-rating.service', () => ({
 	AgentEvalRatingService: class AgentEvalRatingService {},
+}));
+vi.mock('@/collaboration/collaboration.service', () => ({
+	CollaborationService: class CollaborationService {},
 }));
 vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEvalsFlagGate {} }));
 
@@ -35,13 +40,15 @@ describe('AgentEvalsController', () => {
 	let service: MockProxy<AgentEvalService>;
 	let ratingService: MockProxy<AgentEvalRatingService>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
+	let collaborationService: MockProxy<CollaborationService>;
 	let controller: AgentEvalsController;
 
 	function makeReq<P extends Record<string, unknown>>(
 		params: P,
 		body: unknown = {},
+		headers: Record<string, string> = {},
 	): AuthenticatedRequest<P> {
-		return { user, params, body } as unknown as AuthenticatedRequest<P>;
+		return { user, params, body, headers } as unknown as AuthenticatedRequest<P>;
 	}
 
 	const agentReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID });
@@ -54,7 +61,8 @@ describe('AgentEvalsController', () => {
 		ratingService = mock<AgentEvalRatingService>();
 		flagGate = mock<AgentEvalsFlagGate>();
 		flagGate.assertEnabled.mockResolvedValue(undefined);
-		controller = new AgentEvalsController(service, ratingService, flagGate);
+		collaborationService = mock<CollaborationService>();
+		controller = new AgentEvalsController(service, ratingService, flagGate, collaborationService);
 	});
 
 	/**
@@ -93,12 +101,20 @@ describe('AgentEvalsController', () => {
 			listRatingsForResult: 'agent:read',
 			listLatestRatingsForRun: 'agent:read',
 			createDataset: 'agent:update',
+			createDraftDataset: 'agent:update',
 			updateDataset: 'agent:update',
 			deleteDataset: 'agent:update',
+			deleteDraftDataset: 'agent:update',
+			deleteResult: 'agent:update',
+			acceptResult: 'agent:update',
 			generateDraftCases: 'agent:update',
+			previewRun: 'agent:update',
 			rateResult: 'agent:update',
 			cancelRun: 'agent:update',
 			startRun: 'agent:execute',
+			rerunResult: 'agent:execute',
+			applySuggestions: 'agent:update',
+			applyPreviewSuggestion: 'agent:update',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -147,6 +163,7 @@ describe('AgentEvalsController', () => {
 				async () => await controller.updateDataset(datasetReq(), undefined, { name: 'x' }),
 			],
 			['deleteDataset', async () => await controller.deleteDataset(datasetReq())],
+			['deleteDraftDataset', async () => await controller.deleteDraftDataset(datasetReq())],
 			[
 				'generateDraftCases',
 				async () => await controller.generateDraftCases(agentReq(), undefined, {}),
@@ -156,6 +173,20 @@ describe('AgentEvalsController', () => {
 			['getRun', async () => await controller.getRun(runReq(), undefined, RUN_PAGE)],
 			['getRunSummary', async () => await controller.getRunSummary(runReq())],
 			['cancelRun', async () => await controller.cancelRun(runReq())],
+			[
+				'applySuggestions',
+				async () =>
+					await controller.applySuggestions(agentReq(), undefined, { resultIds: ['res-1'] }),
+			],
+			[
+				'applyPreviewSuggestion',
+				async () =>
+					await controller.applyPreviewSuggestion(agentReq(), undefined, {
+						input: 'hello',
+						whatToCheck: 'Rule',
+						suggestion: 'Fix it.',
+					}),
+			],
 			[
 				'rateResult',
 				async () => await controller.rateResult(resultReq(), undefined, { vote: 'up' }),
@@ -237,10 +268,37 @@ describe('AgentEvalsController', () => {
 			expect(service.startRun).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'ds-1', {});
 		});
 
+		it('creates a draft dataset for the path agent', async () => {
+			await controller.createDraftDataset(agentReq(), undefined, { datasetName: 'My checks' });
+
+			expect(service.createDraftDataset).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				'My checks',
+			);
+		});
+
+		it('previews a run for the path agent', async () => {
+			await controller.previewRun(agentReq(), undefined, { suggestion: 'be nicer' });
+
+			expect(service.previewRun).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, {
+				suggestion: 'be nicer',
+			});
+		});
+
 		it('reports a delete as a success envelope', async () => {
 			await expect(controller.deleteDataset(datasetReq())).resolves.toEqual({ success: true });
 
 			expect(service.deleteDataset).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'ds-1');
+		});
+
+		it('discards a draft dataset scoped to the path agent and reports a success envelope', async () => {
+			await expect(controller.deleteDraftDataset(datasetReq())).resolves.toEqual({
+				success: true,
+			});
+
+			expect(service.deleteDraftDataset).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'ds-1');
 		});
 
 		it('reads a run summary scoped to the path agent', async () => {
@@ -269,6 +327,123 @@ describe('AgentEvalsController', () => {
 				'res-1',
 				payload,
 			);
+		});
+
+		it('reruns a result scoped to the path agent, forwarding the edited rule', async () => {
+			const payload = { whatToCheck: 'Mentions the refund window.' };
+
+			await controller.rerunResult(resultReq(), undefined, payload);
+
+			expect(service.rerunResult).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				'res-1',
+				payload,
+			);
+		});
+
+		it('applies suggestions after the write-lock check, forwarding the push ref', async () => {
+			const req = makeReq(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				{},
+				{ 'push-ref': 'push-1' },
+			);
+			const callOrder: string[] = [];
+			collaborationService.validateAgentWriteLock.mockImplementation(async () => {
+				callOrder.push('lock');
+			});
+			service.applySuggestions.mockImplementation(async () => {
+				callOrder.push('apply');
+				return { configHash: 'hash-1', results: [] };
+			});
+
+			await controller.applySuggestions(req, undefined, { resultIds: ['res-1', 'res-2'] });
+
+			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+				'user-1',
+				'push-1',
+				PROJECT_ID,
+				AGENT_ID,
+				'update',
+			);
+			expect(service.applySuggestions).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				['res-1', 'res-2'],
+				'push-1',
+			);
+			expect(callOrder).toEqual(['lock', 'apply']);
+		});
+
+		it('applies a preview suggestion after the write-lock check, forwarding the push ref', async () => {
+			const req = makeReq(
+				{ projectId: PROJECT_ID, agentId: AGENT_ID },
+				{},
+				{ 'push-ref': 'push-1' },
+			);
+			const body = { input: 'hello', whatToCheck: 'Rule', suggestion: 'Fix it.' };
+			const callOrder: string[] = [];
+			collaborationService.validateAgentWriteLock.mockImplementation(async () => {
+				callOrder.push('lock');
+			});
+			service.applyPreviewSuggestion.mockImplementation(async () => {
+				callOrder.push('apply');
+				return { configHash: 'hash-1', preview: { status: 'failed' } };
+			});
+
+			await controller.applyPreviewSuggestion(req, undefined, body);
+
+			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+				'user-1',
+				'push-1',
+				PROJECT_ID,
+				AGENT_ID,
+				'update',
+			);
+			expect(service.applyPreviewSuggestion).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				body,
+				'push-1',
+			);
+			expect(callOrder).toEqual(['lock', 'apply']);
+		});
+
+		it('does not apply a preview suggestion when the write lock rejects', async () => {
+			collaborationService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
+
+			await expect(
+				controller.applyPreviewSuggestion(agentReq(), undefined, {
+					input: 'hello',
+					whatToCheck: 'Rule',
+					suggestion: 'Fix it.',
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(service.applyPreviewSuggestion).not.toHaveBeenCalled();
+		});
+
+		it('does not apply suggestions when the write lock rejects', async () => {
+			collaborationService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
+
+			await expect(
+				controller.applySuggestions(agentReq(), undefined, { resultIds: ['res-1'] }),
+			).rejects.toThrow(BadRequestError);
+			expect(service.applySuggestions).not.toHaveBeenCalled();
+		});
+
+		it('accepts a result scoped to the path agent', async () => {
+			await controller.acceptResult(resultReq());
+
+			expect(service.acceptResult).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'res-1');
+		});
+
+		it('deletes a result scoped to the path agent and reports a success envelope', async () => {
+			await expect(controller.deleteResult(resultReq())).resolves.toEqual({ success: true });
+
+			expect(service.deleteResult).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'res-1');
 		});
 
 		it('reads a result rating history scoped to the path agent', async () => {

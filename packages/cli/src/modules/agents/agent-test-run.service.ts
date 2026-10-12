@@ -65,9 +65,11 @@ export interface ExecutePreparedDraftRunInput
 }
 
 export interface ResumePreparedDraftRunInput
-	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion'>,
+	extends Omit<ResumeForChatConfig, 'integrationType' | 'usePublishedVersion' | 'chatSurface'>,
 		DraftRunConsumptionOptions {
 	user: User;
+	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
+	chatSurface?: 'preview';
 	initialResponse?: string;
 }
 
@@ -77,10 +79,16 @@ type ExecuteDraftRunInput = PrepareDraftRunInput &
 interface ResumeDraftRunInput
 	extends Omit<
 		ResumeForChatConfig,
-		'expectedMemory' | 'integrationType' | 'usePublishedVersion' | 'onExecutionRecorded'
+		| 'expectedMemory'
+		| 'integrationType'
+		| 'usePublishedVersion'
+		| 'onExecutionRecorded'
+		| 'chatSurface'
 	> {
 	sessionId: string;
 	user: User;
+	/** A draft resume runs in the preview chat or on no chat surface, never in n8n Chat. */
+	chatSurface?: 'preview';
 	response: string;
 }
 
@@ -283,7 +291,7 @@ export class AgentTestRunService {
 				input.projectId,
 				input.agentId,
 				input.user.id,
-				{ previewChat: input.previewChat, sessionMode: 'existing' },
+				{ previewChat: input.chatSurface === 'preview', sessionMode: 'existing' },
 			))
 		) {
 			return { status: 'session_not_found' };

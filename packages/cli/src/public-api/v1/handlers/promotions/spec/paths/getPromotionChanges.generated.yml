@@ -58,6 +58,18 @@ responses:
             commitSha:
               type: string
               nullable: true
+            source:
+              type: object
+              properties:
+                configId:
+                  type: string
+                  minLength: 1
+                  maxLength: 36
+                branchName:
+                  type: string
+              required:
+                - configId
+                - branchName
             changes:
               type: array
               items:
@@ -106,6 +118,7 @@ responses:
                   - dependencyCount
           required:
             - commitSha
+            - source
             - changes
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml

@@ -1,7 +1,7 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
-	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
+	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage', 'export'] as const,
 	aiAssistant: ['manage'] as const,
 	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
@@ -104,6 +104,7 @@ export const RESOURCES = {
 } as const;
 
 export const API_KEY_RESOURCES = {
+	agent: ['export'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,

@@ -524,6 +524,10 @@ export function writeEvalResults(
 						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
 					}
 				: {}),
+			// Tokens of the eval's own model calls (judges, simulated user, mocks) per
+			// iteration, by agent and model. Null when the iteration was not measured,
+			// e.g. one recovered from the row journal after a crash.
+			harnessUsagePerRun: tc.runs.map((run) => run.harnessUsage ?? null),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,

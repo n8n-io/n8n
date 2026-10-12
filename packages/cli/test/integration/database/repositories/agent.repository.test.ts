@@ -81,6 +81,69 @@ describe('AgentRepository', () => {
 		await agentRepo.delete({});
 	});
 
+	describe('package export reads', () => {
+		it.each([
+			{ access: 'global', includeActiveVersion: false },
+			{ access: 'project', includeActiveVersion: true },
+		])(
+			'reads large Agent selections with $access access',
+			async ({ access, includeActiveVersion }) => {
+				const first = await createAgent();
+				const last = await createAgent();
+				const otherProject = await createTeamProject();
+				const other = await createAgent({ projectId: otherProject.id });
+				const versionId = uuid();
+				await createHistory(last.id, versionId);
+				await agentRepo.update(last.id, { activeVersionId: versionId });
+				const ids = [
+					first.id,
+					...Array.from({ length: 32_768 }, (_, index) => `missing-agent-${index}`),
+					last.id,
+					other.id,
+					first.id,
+				];
+				const projects = access === 'global' ? null : [projectId];
+				const expectedIds =
+					access === 'global' ? [first.id, last.id, other.id] : [first.id, last.id];
+
+				const agents = await agentRepo.findForExport(ids, projects, { includeActiveVersion });
+
+				expect(agents.map(({ id }) => id)).toEqual(expectedIds.sort());
+				const exportedLast = agents.find(({ id }) => id === last.id);
+				expect(exportedLast?.activeVersionId).toBe(versionId);
+				expect(exportedLast?.activeVersion?.versionId).toBe(
+					includeActiveVersion ? versionId : undefined,
+				);
+				expect(await agentRepo.findExistingIds(ids)).toEqual(
+					new Set([first.id, last.id, other.id]),
+				);
+			},
+		);
+
+		it('reads large project selections and preserves project filters', async () => {
+			const first = await createAgent();
+			const otherProject = await createTeamProject();
+			const last = await createAgent({ projectId: otherProject.id });
+			const hiddenProject = await createTeamProject();
+			const hidden = await createAgent({ projectId: hiddenProject.id });
+			const projectIds = [
+				projectId,
+				...Array.from({ length: 32_768 }, (_, index) => `missing-project-${index}`),
+				otherProject.id,
+				projectId,
+			];
+
+			const agents = await agentRepo.findForExport([first.id, last.id, hidden.id], projectIds, {
+				includeActiveVersion: false,
+			});
+
+			expect(agents.map(({ id }) => id)).toEqual([first.id, last.id].sort());
+			expect(await agentRepo.findIdsInProjectsForExport(projectIds)).toEqual(
+				[first.id, last.id].sort(),
+			);
+		});
+	});
+
 	describe('draft definition writes', () => {
 		const taskBody = {
 			name: 'Daily task',
@@ -724,6 +787,37 @@ describe('AgentRepository', () => {
 			await createPublishedAgent();
 
 			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
+		});
+	});
+
+	describe('findByProjectIdsPaginated - ids filter', () => {
+		it('returns only the requested agents', async () => {
+			const first = await createAgent();
+			const second = await createAgent();
+			await createAgent();
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [first.id, second.id] },
+			});
+
+			expect(count).toBe(2);
+			expect(data.map((agent) => agent.id).sort()).toEqual([first.id, second.id].sort());
+		});
+
+		it('excludes a requested agent in another project', async () => {
+			const otherProject = await createTeamProject();
+			const outside = await createAgent({ projectId: otherProject.id });
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [outside.id] },
+			});
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
 		});
 	});
 

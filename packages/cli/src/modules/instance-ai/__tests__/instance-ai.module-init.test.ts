@@ -12,10 +12,13 @@ import { InstanceAiSetupTelemetryService } from '../instance-ai-setup-telemetry.
 import { InstanceAiModule } from '../instance-ai.module';
 import { InstanceAiService } from '../instance-ai.service';
 
-const { loadSuggestionEventRelay, createSuggestionEventRelay } = vi.hoisted(() => ({
-	loadSuggestionEventRelay: vi.fn(),
-	createSuggestionEventRelay: vi.fn(),
-}));
+const { loadSuggestionEventRelay, createSuggestionEventRelay, loadResultController } = vi.hoisted(
+	() => ({
+		loadSuggestionEventRelay: vi.fn(),
+		createSuggestionEventRelay: vi.fn(),
+		loadResultController: vi.fn(),
+	}),
+);
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
 	InstanceCredentialBroker: vi.fn(),
@@ -40,6 +43,10 @@ vi.mock('../event-bus/interrupted-run-sweeper', () => ({
 vi.mock('../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
+vi.mock('../self-healing/self-healing-results.controller', () => {
+	loadResultController();
+	return {};
+});
 vi.mock('../workflow-suggestions/workflow-suggestion-event-relay.service', () => {
 	loadSuggestionEventRelay();
 	@Service()
@@ -67,12 +74,14 @@ describe('InstanceAiModule.init', () => {
 
 		expect(loadSuggestionEventRelay).not.toHaveBeenCalled();
 		expect(createSuggestionEventRelay).not.toHaveBeenCalled();
+		expect(loadResultController).not.toHaveBeenCalled();
 
 		config.workflowSuggestionsEnabled = true;
 		await new InstanceAiModule().init();
 
 		expect(loadSuggestionEventRelay).toHaveBeenCalledOnce();
 		expect(createSuggestionEventRelay).toHaveBeenCalledOnce();
+		expect(loadResultController).toHaveBeenCalledOnce();
 	});
 
 	afterEach(() => {

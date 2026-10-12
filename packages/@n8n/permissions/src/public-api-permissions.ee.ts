@@ -7,6 +7,7 @@ import {
 } from './types.ee';
 
 export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
+	'agent:export',
 	'user:read',
 	'user:list',
 	'user:create',
@@ -114,6 +115,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
 
 export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
+	'agent:export',
 	'tag:create',
 	'tag:read',
 	'tag:update',
@@ -182,6 +184,7 @@ export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
  * This is a temporary solution until we have a better way to handle personal projects and API key scopes!
  */
 export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
+	'agent:export',
 	'workflowTags:update',
 	'workflowTags:list',
 	'executionTags:update',

@@ -20,6 +20,7 @@ import type {
 	AgentIntegrationStatusResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
+	AgentN8nChatAgentDetails,
 	AgentN8nChatThreadSummary,
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
@@ -97,6 +98,7 @@ export type ListAgentsOptions = {
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
+		ids?: string[];
 		availableInMCP?: boolean;
 	};
 };
@@ -127,8 +129,8 @@ export const listAgentsPageGlobal = async (
 export const getN8nChatAgent = async (
 	context: IRestApiContext,
 	agentId: string,
-): Promise<AgentChatListItem> => {
-	return await makeRestApiRequest<AgentChatListItem>(
+): Promise<AgentN8nChatAgentDetails> => {
+	return await makeRestApiRequest<AgentN8nChatAgentDetails>(
 		context,
 		'GET',
 		`/agents/v2/n8n-chat/agents/${encodeURIComponent(agentId)}`,
@@ -170,6 +172,8 @@ export type ListN8nChatThreadsOptions = {
 	cursor?: string;
 	/** Filters threads to one agent. */
 	agentId?: string;
+	/** Case-insensitive title search. */
+	search?: string;
 };
 
 /** Narrows the raw response body — `request` returns `unknown`, and this avoids an `as` cast. */
@@ -196,7 +200,12 @@ export const listN8nChatThreads = async (
 		baseURL: context.baseUrl,
 		endpoint: '/agents/v2/n8n-chat/threads',
 		headers: { 'push-ref': context.pushRef },
-		data: { limit: options.limit, cursor: options.cursor, agentId: options.agentId },
+		data: {
+			limit: options.limit,
+			cursor: options.cursor,
+			agentId: options.agentId,
+			search: options.search,
+		},
 	});
 	if (!isN8nChatThreadsResponse(response)) {
 		throw new UnexpectedError('Unexpected n8n Chat threads response shape');
@@ -213,6 +222,20 @@ export const getN8nChatThread = async (
 		context,
 		'GET',
 		`/agents/v2/n8n-chat/threads/${encodeURIComponent(threadId)}`,
+	);
+};
+
+/** Deletes one of the user's own n8n Chat threads. */
+export const deleteN8nChatThread = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`${agentChatPath(projectId, agentId, 'n8n-chat')}/${encodeURIComponent(threadId)}`,
 	);
 };
 
@@ -787,11 +810,12 @@ export const reorderAgentQueuedMessage = async (
 	threadId: string,
 	queueId: string,
 	payload: AgentChatQueueReorderDto,
+	channel: AgentChatChannel = 'chat',
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
 		payload,
 	);
 };
@@ -818,11 +842,12 @@ export const steerAgentQueuedMessage = async (
 	threadId: string,
 	queueId: string,
 	payload: AgentChatQueueSteerDto,
+	channel: AgentChatChannel = 'chat',
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`${agentChatPath(projectId, agentId)}/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
 		payload,
 	);
 };

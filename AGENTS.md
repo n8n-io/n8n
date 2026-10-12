@@ -35,6 +35,10 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- Write an ADR only when asked. When a change makes a decision that an
+  engineer could challenge in 12 months, say so in one line and let the
+  human decide. Read [docs/adr/README.md](docs/adr/README.md) before you
+  write one. CI enforces its conventions
 - **Developing v3 features:** land normal feature work on `master` behind an
   opt-in flag; introduce breaking changes only on the `3.x` branch. See
   [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
@@ -65,10 +69,15 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
 
 ## Essential Commands
 
-For full-repo lint and typecheck, use `pnpm agent:lint` and
-`pnpm agent:typecheck`. They save full logs and return compact results.
+For routine pre-commit checks, follow [Verify changes](#verify-changes).
 For focused tests, use `pnpm agent:test` or `pnpm agent:playwright`.
-Run each command with `--help` for its package, script, and file options.
+Pass test files and worker limits after `--`. Run each command with `--help`
+for its options.
+
+`pnpm agent:lint` and `pnpm agent:typecheck` run full-repo checks by default.
+With `--filter <package>`, they still check the whole package. These wrappers
+save logs and reduce console output. They do not reduce CPU or memory use.
+Do not use them as routine pre-commit checks.
 
 ### Fresh checkout / agent setup
 
@@ -310,9 +319,20 @@ extends one of those layers):
 
 ### Verify changes
 
-- Run focused tests from the owning package: `pnpm test <test-file>`.
-- Run that package's `pnpm lint` and `pnpm typecheck` before committing code.
-  Build first when shared types or cross-package dependencies change.
+- Before committing, run formatting and lint checks on changed files. Use
+  the package's configured tools through `pnpm exec` with explicit file paths.
+  Do not append file paths to `pnpm lint`; package scripts can still check
+  the whole package.
+- Run tests that cover the changed behavior from the owning package:
+  `pnpm test <test-file> --maxWorkers=1`. Or use the root wrapper:
+  `pnpm agent:test --filter <package> -- <test-file> --maxWorkers=1`.
+  For Playwright, use `pnpm agent:playwright -- <spec-file> --workers=1`.
+- For routine commits, run checks one at a time. Use one test worker by
+  default. Do not run full frontend typechecks locally. Use CI for
+  comprehensive lint, typechecks, and test suites.
+- For documentation-only changes, review the diff and run `git diff --check`.
+  Skip code tests when no behavior changed.
+- Report which checks ran and which checks were left to CI.
 - Use Vitest for unit tests. Use
   [Playwright](packages/quality/testing/playwright/AGENTS.md) when a test needs its
   browser, fixtures, or managed containers.

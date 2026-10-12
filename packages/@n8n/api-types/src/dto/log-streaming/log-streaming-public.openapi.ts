@@ -128,3 +128,10 @@ export const logStreamingSentryFieldDocs = {
 		example: 'https://examplePublicKey@o0.ingest.sentry.io/0',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const logStreamingTestResultFieldDocs = {
+	success: {
+		description: 'Whether the test message was delivered to the destination successfully.',
+		example: true,
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;

@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
@@ -15,6 +16,7 @@ import { DataTableImporter } from '../entities/data-table/data-table-importer';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
+	DataTableResolutionFailure,
 } from '../entities/data-table/data-table.types';
 import type {
 	FolderImportContext,
@@ -27,7 +29,11 @@ import type { FolderRemovalPlan } from '../entities/folder/folder-removal.types'
 import { FolderRemover } from '../entities/folder/folder-remover';
 import { TagImporter } from '../entities/tag/tag-importer';
 import { contestedReconcileTargetFailures, droppedTagIds } from '../entities/tag/tag.types';
-import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types';
+import type {
+	TagImportPlan,
+	TagImportRequest,
+	TagResolutionFailure,
+} from '../entities/tag/tag.types';
 import { VariableImporter } from '../entities/variable/variable-importer';
 import { divergentOverwrites } from '../entities/variable/variable.types';
 import type {
@@ -65,8 +71,13 @@ import type {
 	RemovedWorkflowSummary,
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
-import type { PackageWorkflowRequirement } from '../spec/requirements.schema';
+import { mergeRequirementConsumers } from '../spec/requirement-consumers';
+import type {
+	PackageRequirementConsumer,
+	PackageWorkflowRequirement,
+} from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
+import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
 
@@ -137,6 +148,7 @@ export class ImportOrchestrator {
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly contentImportPolicyGate: ContentImportPolicyGate,
+		private readonly credentialSavePolicyGate: CredentialSavePolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -176,25 +188,54 @@ export class ImportOrchestrator {
 			}
 		}
 
+		const issues = await this.collectPackageBlockingIssues(plans);
+		if (issues.length > 0) throw toImportBlockedError(issues);
+	}
+
+	private async collectPackageBlockingIssues(plans: ImportPlan[]): Promise<BlockingIssue[]> {
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
 		issues.push(
-			...contestedReconcileTargetFailures(
-				plans.map((plan) => ({
-					tagPlan: plan.tagPlan,
-					workflows: plan.workflowPlan.items.filter((item) => item.action !== 'skip'),
-				})),
-			).map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
+			...contestedReconcileTargetFailures(plans.map((plan) => plan.tagPlan)).map((failure) =>
+				toTagBlockingIssue(failure, plans),
+			),
 		);
 
-		for (const conflict of divergentOverwrites(overwrites)) {
-			issues.push({ type: 'variable-conflict', ...conflict });
+		const divergent = new Set(
+			divergentOverwrites(plans.flatMap((plan) => plan.variablePlan.overwrites)),
+		);
+		for (const { input, variablePlan } of plans) {
+			issues.push(
+				...variablePlan.overwrites
+					.filter((overwrite) => divergent.has(overwrite))
+					.map(
+						({ variableId, value, ...conflict }): BlockingIssue => ({
+							type: 'variable-conflict',
+							...conflict,
+							usedBy: variableConsumers(input.variableRequest, conflict.name),
+						}),
+					),
+			);
 		}
 
-		const quotaFailure = await this.variableImporter.quotaFailure(creations);
-		if (quotaFailure) issues.push({ type: 'variable-limit-exceeded', ...quotaFailure });
+		const quotaFailure = await this.variableImporter.quotaFailure(
+			plans.flatMap((plan) => plan.variablePlan.creations),
+		);
+		if (quotaFailure) {
+			const consumers = plans.flatMap(({ input, variablePlan }) => {
+				const createdNames = new Set(variablePlan.creations.map(({ name }) => name));
+				return (input.variableRequest.requirements ?? [])
+					.filter(({ name }) => createdNames.has(name))
+					.flatMap(({ usedBy }) => usedBy);
+			});
+			issues.push({
+				type: 'variable-limit-exceeded',
+				...quotaFailure,
+				usedBy: mergeRequirementConsumers(consumers),
+			});
+		}
 
-		if (issues.length > 0) throw toImportBlockedError(issues);
+		return issues;
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
@@ -257,11 +298,18 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const actor: PolicyActor = { kind: 'user', user: context.user };
 		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
 			workflowPlan.items,
 			context.projectId,
 			contentImportTransport(input.importSource),
-			{ kind: 'user', user: context.user },
+			actor,
+		);
+		const refusedStubs = await this.credentialSavePolicyGate.refusedStubs(
+			credentialRequest,
+			credentialPlan,
+			context.projectId,
+			actor,
 		);
 
 		const blockingIssues = this.collectBlockingIssues({
@@ -269,6 +317,7 @@ export class ImportOrchestrator {
 			credentialPlan,
 			credentialRequest,
 			folderPlan,
+			dataTableRequest,
 			dataTablePlan,
 			variableRequest,
 			variablePlan,
@@ -279,7 +328,7 @@ export class ImportOrchestrator {
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
 
-		blockingIssues.push(...refusedByPolicy);
+		blockingIssues.push(...refusedByPolicy, ...refusedStubs);
 
 		return {
 			input,
@@ -389,6 +438,7 @@ export class ImportOrchestrator {
 		credentialPlan,
 		credentialRequest,
 		folderPlan,
+		dataTableRequest,
 		dataTablePlan,
 		variableRequest,
 		variablePlan,
@@ -402,6 +452,7 @@ export class ImportOrchestrator {
 		credentialPlan: CredentialResolution;
 		credentialRequest: CredentialBindingRequest;
 		folderPlan: FolderImportPlan;
+		dataTableRequest: DataTableImportRequest;
 		dataTablePlan: DataTableImportPlan;
 		variableRequest: VariableImportRequest;
 		variablePlan: VariableImportPlan;
@@ -439,25 +490,35 @@ export class ImportOrchestrator {
 			...folderRemovalPlan.failures.map(
 				(failure): BlockingIssue => ({ type: 'folder-removal-forbidden', ...failure }),
 			),
-			...dataTablePlan.failures.map(
-				(failure): BlockingIssue => ({ type: 'data-table-unresolved', ...failure }),
+			...dataTablePlan.failures.map((failure) =>
+				toDataTableBlockingIssue(failure, dataTableRequest, dataTablePlan),
 			),
-			...tagPlan.failures.map((failure): BlockingIssue => ({ type: 'tag-unresolved', ...failure })),
+			...tagPlan.failures.map((failure) =>
+				toTagBlockingIssue(failure, [{ tagPlan, workflowPlan }]),
+			),
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
-				.map(toCredentialBlockingIssue),
-			...this.variableImporter
-				.blockingFailures(variableRequest, variablePlan)
-				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
-			...this.variableImporter
-				.blockingConflicts(variableRequest, variablePlan)
-				.map((conflict): BlockingIssue => ({ type: 'variable-conflict', ...conflict })),
+				.map((failure) => toCredentialBlockingIssue(failure, credentialRequest)),
+			...this.variableImporter.blockingFailures(variableRequest, variablePlan).map(
+				(failure): BlockingIssue => ({
+					type: 'variable-unresolved',
+					...failure,
+					usedBy: variableConsumers(variableRequest, failure.name),
+				}),
+			),
+			...this.variableImporter.blockingConflicts(variableRequest, variablePlan).map(
+				(conflict): BlockingIssue => ({
+					type: 'variable-conflict',
+					...conflict,
+					usedBy: variableConsumers(variableRequest, conflict.name),
+				}),
+			),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
-				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
+				(requirement): BlockingIssue => ({
 					type: 'missing-node-type',
-					nodeType: type,
-					typeVersion,
-					usedByWorkflows,
+					nodeType: requirement.type,
+					typeVersion: requirement.typeVersion,
+					usedBy: requirement.usedBy,
 				}),
 			),
 		];
@@ -472,8 +533,11 @@ function withBlockedFromPublish(
 	return { ...outcome, blockedFromPublish };
 }
 
-function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {
-	const { kind, sourceId, targetId, expectedType, actualType, usedByWorkflows } = failure;
+function toCredentialBlockingIssue(
+	failure: CredentialResolutionFailure,
+	request: CredentialBindingRequest,
+): BlockingIssue {
+	const { kind, sourceId, targetId, expectedType, actualType } = failure;
 	return {
 		type: 'credential-unresolved',
 		kind,
@@ -481,6 +545,68 @@ function toCredentialBlockingIssue(failure: CredentialResolutionFailure): Blocki
 		...(targetId ? { targetId } : {}),
 		...(expectedType ? { expectedType } : {}),
 		...(actualType ? { actualType } : {}),
-		usedByWorkflows,
+		usedBy: mergeRequirementConsumers(
+			request.requirements?.find(({ id }) => id === sourceId)?.usedBy ?? [],
+		),
 	};
+}
+
+function toDataTableBlockingIssue(
+	failure: DataTableResolutionFailure,
+	request: DataTableImportRequest,
+	plan: DataTableImportPlan,
+): BlockingIssue {
+	let requirements = request.requirements ?? [];
+	if (failure.sourceId) {
+		requirements = requirements.filter(({ id }) => id === failure.sourceId);
+	} else if (failure.kind === 'permission-denied') {
+		const writtenIds = new Set(
+			failure.missingScope === 'dataTable:create'
+				? plan.creations.map(({ id }) => id)
+				: plan.updates.map(({ table }) => table.id),
+		);
+		requirements = requirements.filter(({ id }) => writtenIds.has(id));
+	}
+
+	return {
+		type: 'data-table-unresolved',
+		...failure,
+		usedBy: mergeRequirementConsumers(requirements.flatMap(({ usedBy }) => usedBy)),
+	};
+}
+
+function toTagBlockingIssue(
+	failure: TagResolutionFailure,
+	plans: Array<Pick<ImportPlan, 'tagPlan' | 'workflowPlan'>>,
+): BlockingIssue {
+	const consumers = plans.flatMap(({ tagPlan, workflowPlan }) => {
+		let tagIds: string[];
+		if (failure.sourceId) {
+			tagIds = [failure.sourceId];
+		} else if (failure.missingScope === 'tag:create') {
+			tagIds = tagPlan.creations.map(({ id }) => id);
+		} else {
+			tagIds = [...tagPlan.renames, ...tagPlan.reconciles].map(({ id }) => id);
+		}
+
+		return workflowPlan.items
+			.filter((item) => item.action !== 'skip' && item.tagIds?.some((id) => tagIds.includes(id)))
+			.map(
+				({ sourceWorkflowId }): PackageRequirementConsumer => ({
+					kind: 'workflow',
+					id: sourceWorkflowId,
+				}),
+			);
+	});
+
+	return { type: 'tag-unresolved', ...failure, usedBy: mergeRequirementConsumers(consumers) };
+}
+
+function variableConsumers(
+	request: VariableImportRequest,
+	name: string,
+): PackageRequirementConsumer[] {
+	return mergeRequirementConsumers(
+		request.requirements?.find((requirement) => requirement.name === name)?.usedBy ?? [],
+	);
 }
