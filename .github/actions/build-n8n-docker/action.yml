@@ -1,14 +1,15 @@
 # Builds the n8n and runners CI test images (n8nio/n8n:local +
-# n8nio/runners:local) and caches the tarball under a SHA-derived key so
-# downstream jobs in the same workflow run can restore it via
-# load-n8n-docker.
+# n8nio/runners:local) for downstream jobs in the same workflow run.
 #
-# Cache-aware: if the tarball for this SHA is already cached (e.g. a parent
-# workflow ran prepare-docker earlier), the build step is skipped and this
-# action becomes a no-op.
+# Namespace runners push both images to the workspace registry. Other runners
+# cache a tarball under a SHA-derived key, and load-n8n-docker restores it.
+#
+# Cache-aware: if the images for this SHA already exist (e.g. a parent workflow
+# ran prepare-docker earlier), the build step is skipped and this action
+# becomes a no-op.
 
 name: 'Build n8n CI Docker image'
-description: 'Builds n8nio/n8n + n8nio/runners test images and publishes them as a SHA-keyed cache tarball for downstream shards.'
+description: 'Builds n8nio/n8n + n8nio/runners test images and publishes them for downstream shards: to the Namespace registry on Namespace runners, or as a SHA-keyed cache tarball elsewhere.'
 
 inputs:
   build-variant:
@@ -19,8 +20,34 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # Namespace sets NSC_CONTAINER_REGISTRY on its runners. The tag must track
+    # load-n8n-docker.
+    - name: Resolve image destination
+      id: dest
+      shell: bash
+      env:
+        BUILD_VARIANT: ${{ inputs.build-variant }}
+        IMAGE_SHA: ${{ github.sha }}
+      run: |
+        if [ -z "${NSC_CONTAINER_REGISTRY:-}" ]; then
+          echo "registry=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        tag="ci-${BUILD_VARIANT}-${IMAGE_SHA}"
+        {
+          echo "registry=true"
+          echo "base=${NSC_CONTAINER_REGISTRY}/n8n-ci/n8n"
+          echo "runners-base=${NSC_CONTAINER_REGISTRY}/n8n-ci/runners"
+          echo "tag=${tag}"
+        } >> "$GITHUB_OUTPUT"
+        if docker buildx imagetools inspect "${NSC_CONTAINER_REGISTRY}/n8n-ci/n8n:${tag}" > /dev/null 2>&1 &&
+          docker buildx imagetools inspect "${NSC_CONTAINER_REGISTRY}/n8n-ci/runners:${tag}" > /dev/null 2>&1; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Check cache for existing image
       id: cache-check
+      if: steps.dest.outputs.registry != 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         key: n8n-docker-image-v2-${{ inputs.build-variant }}-${{ github.sha }}
@@ -28,7 +55,8 @@ runs:
         lookup-only: true
 
     - name: Build Docker image
-      if: steps.cache-check.outputs.cache-hit != 'true'
+      id: build
+      if: steps.cache-check.outputs.cache-hit != 'true' && steps.dest.outputs.exists != 'true'
       uses: ./.github/actions/setup-nodejs
       with:
         build-command: ${{ inputs.build-variant == 'coverage' && 'pnpm build:docker:coverage' || 'pnpm build:docker' }}
@@ -36,15 +64,25 @@ runs:
         docker-cache-key: n8n-io/n8n
       env:
         INCLUDE_TEST_CONTROLLER: 'true'
-        DOCKER_BUILD_TARBALL_DIR: /tmp/n8n-images
+        # A registry name makes dockerize push. An empty tarball dir disables the archive.
+        IMAGE_BASE_NAME: ${{ steps.dest.outputs.base }}
+        RUNNERS_IMAGE_BASE_NAME: ${{ steps.dest.outputs.runners-base }}
+        IMAGE_TAG: ${{ steps.dest.outputs.tag }}
+        DOCKER_BUILD_TARBALL_DIR: ${{ steps.dest.outputs.registry != 'true' && '/tmp/n8n-images' || '' }}
         DOCKER_BUILD_PC: ${{ inputs.build-variant == 'pc' }}
 
     - name: Assert pointer compression
-      if: steps.cache-check.outputs.cache-hit != 'true' && inputs.build-variant == 'pc'
+      if: steps.build.outcome == 'success' && inputs.build-variant == 'pc'
       shell: bash
+      env:
+        REGISTRY_IMAGE: ${{ steps.dest.outputs.registry == 'true' && format('{0}:{1}', steps.dest.outputs.base, steps.dest.outputs.tag) || '' }}
       run: |
-        docker load -i /tmp/n8n-images/n8n-pc.tar
-        docker run --rm --entrypoint node n8nio/n8n:local -e "
+        image="$REGISTRY_IMAGE"
+        if [ -z "$image" ]; then
+          docker load -i /tmp/n8n-images/n8n-pc.tar
+          image=n8nio/n8n:local
+        fi
+        docker run --rm --entrypoint node "$image" -e "
           if (!process.config.variables.v8_enable_pointer_compression) {
             throw new Error('pc variant image is not pointer-compressed');
           }
@@ -63,12 +101,12 @@ runs:
           n8nio/n8n:local /tmp/edit-image-check.mjs
 
     - name: Report tarball sizes
-      if: steps.cache-check.outputs.cache-hit != 'true'
+      if: steps.build.outcome == 'success' && steps.dest.outputs.registry != 'true'
       shell: bash
       run: ls -lh /tmp/n8n-images
 
     - name: Publish image tarball to cache
-      if: steps.cache-check.outputs.cache-hit != 'true'
+      if: steps.build.outcome == 'success' && steps.dest.outputs.registry != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         key: n8n-docker-image-v2-${{ inputs.build-variant }}-${{ github.sha }}

@@ -641,17 +641,19 @@ jobs:
   # being green, not just the image consumers: a re-run of a red workflow should
   # restore the image rather than rebuild it.
   #
-  # Namespace stores tarballs in GitHub's cache. Blacksmith uses its own cache backend.
+  # Namespace runners push the images to the workspace registry instead. Its
+  # repository expiry policy removes them, so this job does not run there.
   cleanup-docker-image:
     name: Cleanup Docker image
     needs: [prepare-docker, e2e-performance, required-checks]
     if: |
       always() &&
       (inputs.runner_provider || vars.RUNNER_PROVIDER) != 'github' &&
+      inputs.runner_provider != 'namespace' &&
       needs.prepare-docker.result == 'success' &&
       needs.required-checks.result == 'success' &&
       (needs.e2e-performance.result == 'success' || needs.e2e-performance.result == 'skipped')
-    runs-on: ${{ inputs.runner_provider == 'namespace' && 'nscloud-ubuntu-22.04-amd64-1x2' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       actions: write
       contents: read
@@ -662,18 +664,9 @@ jobs:
       # Key must track build-n8n-docker/load-n8n-docker; a mismatch makes the
       # delete a silent no-op rather than a failure.
       - name: Delete the image tarball from the cache
-        if: inputs.runner_provider != 'namespace'
         uses: useblacksmith/cache-delete@941f534fcf46c8d0a89feeceeb0f5377d82dd5e7 # v2
         with:
           key: n8n-docker-image-v2-standard-${{ github.sha }}
-
-      - name: Delete the Namespace image tarball from GitHub cache
-        if: inputs.runner_provider == 'namespace'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          CACHE_KEY: n8n-docker-image-v2-standard-${{ github.sha }}
-        run: gh cache delete "$CACHE_KEY"
 
   # Posts a QA metrics comparison comment on the PR.
   # Runs after all checks so any job can emit metrics before this reports.
