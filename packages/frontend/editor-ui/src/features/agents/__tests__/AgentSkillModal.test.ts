@@ -92,6 +92,8 @@ function renderModal({
 	| 'canCreateInstanceSkills'
 	| 'onAttach'
 	| 'onRemove'
+	| 'outdated'
+	| 'onUseLatestVersion'
 > = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -664,6 +666,34 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-skill-remove'));
 			expect(onRemove).toHaveBeenCalledWith('sql');
+		});
+
+		it('shows a skill on an older version as read-only with a switch to the latest version', async () => {
+			getHubSkill.mockResolvedValue(
+				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
+			);
+			const onUseLatestVersion = vi.fn();
+			const { findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				skillId: 'tone',
+				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
+				outdated: true,
+				onUseLatestVersion,
+				onRemove: vi.fn(),
+			});
+
+			expect(await findByTestId('agent-skill-footer-hint')).toHaveTextContent(
+				'agents.builder.skills.hint.outdated',
+			);
+			expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Use for replies');
+			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+			expect(getByTestId('agent-skill-remove')).toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('agent-skill-use-latest'));
+
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			expect(onUseLatestVersion).toHaveBeenCalledWith('tone');
 		});
 
 		it('keeps a skill that the user can edit editable', async () => {

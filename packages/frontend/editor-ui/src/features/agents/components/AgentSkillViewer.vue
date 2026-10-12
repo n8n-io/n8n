@@ -271,6 +271,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:class="$style.readOnlyField"
 					:label="i18n.baseText('agents.builder.skills.description.label')"
 					size="medium"
+					color="text-light"
 				>
 					<N8nText
 						tag="p"
@@ -284,6 +285,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:class="$style.readOnlyField"
 					:label="i18n.baseText('agents.builder.skills.instructions.label')"
 					size="medium"
+					color="text-light"
 				>
 					<N8nMarkdown
 						:class="$style.readOnlyMarkdown"
@@ -297,6 +299,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				:class="$style.readOnlyField"
 				:label="selectedReference.path"
 				size="medium"
+				color="text-light"
 			>
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"

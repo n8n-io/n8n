@@ -46,6 +46,8 @@ export type AgentSkillModalData = {
 	projectLabel?: string;
 	canCreateInstanceSkills?: boolean;
 	onConfirm: (payload: { id?: string; skill: AgentSkill; scope: AgentSkillCreateScope }) => void;
+	outdated?: boolean;
+	onUseLatestVersion?: (id: string) => void;
 	onAttach?: (skill: SkillListItem) => void;
 	onRemove?: (id: string) => void;
 };
@@ -132,8 +134,9 @@ const footerLeftContent = computed<'remove' | 'scope' | undefined>(() => {
 	if (isEditing.value && props.data.onRemove) return 'remove';
 	return showScopeSelect.value ? 'scope' : undefined;
 });
-const footerPrimaryAction = computed<'add' | 'save' | undefined>(() => {
+const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
+	if (isOutdated.value) return props.data.onUseLatestVersion ? 'useLatest' : undefined;
 	return isReadOnly.value ? undefined : 'save';
 });
 const modalTitle = computed(() => {
@@ -146,10 +149,16 @@ const modalTitle = computed(() => {
 
 const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
-const isReadOnly = computed(() => skillAccessLoading.value || skillAccess.value?.canEdit === false);
-const cannotEdit = computed(() => skillAccess.value?.canEdit === false);
+const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
+const isReadOnly = computed(
+	() => skillAccessLoading.value || skillAccess.value?.canEdit === false || isOutdated.value,
+);
+const cannotEdit = computed(() => skillAccess.value?.canEdit === false || isOutdated.value);
 const footerHint = computed(() => {
 	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
+	if (step.value === 'edit' && isOutdated.value) {
+		return i18n.baseText('agents.builder.skills.hint.outdated');
+	}
 	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
 	if (!shownSkill.canEdit) {
 		return shownSkill.scope === 'instance'
@@ -391,6 +400,13 @@ function onSave() {
 	closeModal();
 }
 
+function onUseLatestVersion() {
+	if (!props.data.skillId) return;
+	const skillId = props.data.skillId;
+	closeModal();
+	props.data.onUseLatestVersion?.(skillId);
+}
+
 function onRemove() {
 	const skillId = step.value === 'preview' ? previewSkill.value?.id : props.data.skillId;
 	if (!skillId) return;
@@ -561,6 +577,14 @@ function onRemove() {
 				@click="previewSkill && attachLibrarySkill(previewSkill.id)"
 			>
 				{{ i18n.baseText('agents.builder.skills.picker.add') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="footerPrimaryAction === 'useLatest'"
+				variant="solid"
+				data-testid="agent-skill-use-latest"
+				@click="onUseLatestVersion"
+			>
+				{{ i18n.baseText('agents.builder.skills.useLatest') }}
 			</N8nButton>
 			<N8nButton v-else variant="solid" data-testid="agent-skill-create-save" @click="onSave">
 				{{ i18n.baseText('agents.builder.skills.save') }}

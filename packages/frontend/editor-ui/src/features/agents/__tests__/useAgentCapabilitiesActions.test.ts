@@ -164,8 +164,11 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 type SkillModalData = {
 	skillId?: string;
+	skill?: AgentSkill;
 	existingSkillNames?: string[];
 	hubSkillsEnabled?: boolean;
+	outdated?: boolean;
+	onUseLatestVersion?: (skillId: string) => void;
 	attachedSkillIds?: string[];
 	canCreateInstanceSkills?: boolean;
 	onConfirm: (payload: {
@@ -775,6 +778,58 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
 		expect(createHubSkill).not.toHaveBeenCalled();
+	});
+
+	it('marks a skill on an older version when the edit modal opens', () => {
+		const { actions, uiStore, agent } = setupHub();
+		agent.value = { ...agent.value, outdatedSkillIds: ['tone'] } as unknown as AgentResource;
+
+		actions.onOpenSkillFromList('tone');
+
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(modalData.outdated).toBe(true);
+	});
+
+	it('unpins the skill and saves before it opens the latest version in the editor', async () => {
+		const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
+		vi.mocked(getHubSkill).mockResolvedValue({
+			...makeDetail('tone', latest),
+			skillHash: 'hash-latest',
+		});
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+			outdatedSkillIds: ['tone'],
+		} as unknown as AgentResource);
+		const events: string[] = [];
+		const beforeAgentMutation = vi.fn(async () => {
+			events.push('flush');
+		});
+		const { actions, uiStore, localConfig, scheduleConfigUpdate } = setup({
+			agent,
+			agentId: ref('agent-1'),
+			beforeAgentMutation,
+		});
+		scheduleConfigUpdate.mockImplementation(() => events.push('config'));
+		localConfig.value = makeConfig({
+			skills: [{ type: 'skill', id: 'tone', versionId: 'v1' }],
+		});
+		actions.onOpenSkillFromList('tone');
+		const outdatedData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+			.data as unknown as SkillModalData;
+
+		outdatedData.onUseLatestVersion?.('tone');
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [{ type: 'skill', id: 'tone' }] });
+		expect(events).toEqual(['config', 'flush']);
+		expect(agent.value?.skills.tone).toEqual(latest);
+		expect(agent.value?.skillHashes?.tone).toBe('hash-latest');
+		expect(agent.value?.outdatedSkillIds).toEqual([]);
+		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(editData.skill).toEqual(latest);
+		expect(editData.outdated).toBe(false);
 	});
 
 	it('passes the flag to the edit modal so it can check the edit permission', () => {

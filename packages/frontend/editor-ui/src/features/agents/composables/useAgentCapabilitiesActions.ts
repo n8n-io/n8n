@@ -344,6 +344,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skillId: id,
 				existingSkillNames: appliedSkillNames(id),
 				hubSkillsEnabled: hubSkillsEnabled.value,
+				outdated: !localSkills && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				onUseLatestVersion: (skillId: string) => {
+					if (agentId.value !== targetAgentId) return;
+					void useLatestSkillVersion(skillId);
+				},
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
@@ -585,6 +590,37 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				{ type: 'skill', id: hubSkill.id },
 			],
 		});
+	}
+
+	async function useLatestSkillVersion(skillId: string) {
+		const targetAgentId = agentId.value;
+		let hubSkill: SkillDetail;
+		try {
+			hubSkill = await getHubSkill(rootStore.restApiContext, skillId);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.useLatest.error'));
+			return;
+		}
+		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
+		if (!localConfig.value) return;
+		agent.value = {
+			...agent.value,
+			skills: { ...(agent.value.skills ?? {}), [skillId]: hubSkill.skill },
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: hubSkill.skillHash },
+			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+		};
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).map((ref) =>
+				ref.id === skillId ? { type: 'skill', id: skillId } : ref,
+			),
+		});
+		try {
+			await beforeAgentMutation?.();
+		} catch {
+			return;
+		}
+		if (agentId.value !== targetAgentId) return;
+		onOpenSkillFromList(skillId);
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {

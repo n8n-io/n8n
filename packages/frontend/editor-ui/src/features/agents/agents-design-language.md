@@ -235,10 +235,15 @@ Back returns to the picker. A user who can create instance skills selects the
 scope with `Save to` at the bottom left of the editor.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
-without the required mark, the description as text, and the instructions and
-references as rendered markdown. Put a muted hint before Cancel that tells the
+in muted text without the required mark, the description as text, and the
+instructions and references as rendered markdown. Put a muted hint before Cancel that tells the
 user how to edit the skill, or whom to ask. A skill that the user can use but
 not edit opens this way. Hide Save and keep `Remove skill`.
+
+A skill that the draft pins to an older version also opens read-only, with
+the hint that the agent uses an older version. Its primary action is
+`Use latest version`. The action removes the pin, saves the draft, and opens
+the latest version in the editor.
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
