@@ -177,7 +177,7 @@ export class DeprecationService {
 		},
 		{
 			envVar: 'N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER',
-			message: `The "Skip Durable Scheduler" option of the Schedule Trigger node no longer exists, and every Schedule Trigger runs on the durable scheduler. To run all schedules on the in-memory scheduler, set N8N_SCHEDULER_ENABLED=false. ${SAFE_TO_REMOVE}`,
+			message: `The "Skip Durable Scheduler" option of the Schedule Trigger node no longer exists. Schedule Triggers use the durable scheduler only when the workflow publication service is enabled; otherwise they remain on the in-memory scheduler. To run all schedules on the in-memory scheduler when the workflow publication service is enabled, set N8N_SCHEDULER_ENABLED=false. ${SAFE_TO_REMOVE}`,
 		},
 		{
 			envVar: 'EXECUTIONS_PROCESS',
