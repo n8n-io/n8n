@@ -1080,6 +1080,7 @@ export const Form: Story = {
 								name="name"
 								placeholder="Ada Lovelace"
 								size="small"
+								required
 							/>
 						</N8nInputLabel>
 
