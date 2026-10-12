@@ -218,6 +218,7 @@ packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
   s_e4711c58d1e6aa::t_6c3f3773126956 294-297,422
 packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
   s_e4711c58d1e6aa::t_19d1b5494e61a9 336,338-339
+  s_e99de54a53d3e4::t_25c6a0a55fc78f 337
 packages/cli/src/modules/agents/json-config/from-json-config.ts
   s_e4711c58d1e6aa::t_eb44ec6253374b 637,653
 packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
@@ -260,6 +261,14 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a1158d-df08-7c82-b2ce-f486eedc3174",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
