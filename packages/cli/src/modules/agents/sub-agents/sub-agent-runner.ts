@@ -350,7 +350,11 @@ export class SubAgentRunner {
 			context.abortSignal?.throwIfAborted();
 			const forwardBudgetNotice = context.onBudgetNotice
 				? (notice: AgentBudgetNotice) =>
-						context.onBudgetNotice?.({ agentId: runtimeSource.source.sourceId, ...notice })
+						context.onBudgetNotice?.(
+							notice.code === 'budget.session'
+								? { code: notice.code }
+								: { ...notice, agentId: runtimeSource.source.sourceId },
+						)
 				: undefined;
 			const executionOptions = withBudgetGuardrail(
 				{
