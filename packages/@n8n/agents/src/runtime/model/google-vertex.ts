@@ -39,8 +39,8 @@ export function resolveGoogleVertexSdk(model: string, sdk?: string): string | un
 }
 
 /** Vertex models need the thinking options of their underlying API. */
-export function getGoogleVertexQuirksProvider(model: string): string {
-	switch (resolveGoogleVertexSdk(model)) {
+export function getGoogleVertexQuirksProvider(model: string, sdk?: string): string {
+	switch (resolveGoogleVertexSdk(model, sdk)) {
 		case '@ai-sdk/google-vertex':
 			return 'google';
 		case '@ai-sdk/google-vertex/anthropic':

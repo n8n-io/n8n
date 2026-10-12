@@ -376,8 +376,13 @@ export class RuntimeContextBuilder {
 		if (!this.config.thinking) return undefined;
 
 		const { provider, model } = splitModelId(this.modelId);
+		const modelConfig = this.config.model;
+		const sdk =
+			typeof modelConfig === 'object' && 'sdk' in modelConfig && typeof modelConfig.sdk === 'string'
+				? modelConfig.sdk
+				: undefined;
 		const quirksProvider =
-			provider === 'google-vertex' ? getGoogleVertexQuirksProvider(model) : provider;
+			provider === 'google-vertex' ? getGoogleVertexQuirksProvider(model, sdk) : provider;
 		const quirks = getProviderQuirks(quirksProvider);
 		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}

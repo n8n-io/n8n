@@ -64,16 +64,23 @@ describe('Vertex thinking options', () => {
 			expected: { google: { thinkingConfig: { thinkingLevel: 'high' } } },
 		},
 		{
+			modelId: 'google-vertex/endpoints/123456789',
+			sdk: '@ai-sdk/google-vertex',
+			thinking: { thinkingBudget: 2048 },
+			expected: { google: { thinkingConfig: { thinkingBudget: 2048 } } },
+		},
+		{
 			modelId: 'google-vertex/mistral-medium-3',
 			thinking: { thinkingBudget: 2048 },
 			expected: undefined,
 		},
-	])('maps thinking for $modelId without changing its ID', ({ modelId, thinking, expected }) => {
+	])('maps thinking options for $modelId', ({ modelId, sdk, thinking, expected }) => {
 		const builder = new RuntimeContextBuilder(
 			{
 				name: 'test',
 				model: {
 					id: modelId,
+					sdk,
 					project: 'test-project',
 					location: 'global',
 					clientEmail: 'test@example.com',
