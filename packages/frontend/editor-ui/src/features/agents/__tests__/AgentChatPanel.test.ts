@@ -219,7 +219,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 		default: defineComponent({
 			name: 'ChatInputBase',
 			template:
-				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="above" /><slot name="attachments" /><textarea ref="input" /><slot name="footer-start" /></form>',
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="above" /><slot name="attachments" /><textarea ref="input" :value="modelValue" /><slot name="footer-start" /><slot name="right-actions" /></form>',
 			props: [
 				'modelValue',
 				'placeholder',
@@ -241,6 +241,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 						input.value?.focus(options);
 					},
 					openFilePicker: openFilePickerMock,
+					getInputElement: () => input.value,
 				});
 				return { input };
 			},
@@ -255,7 +256,9 @@ vi.mock('../components/AgentChatEmptyState.vue', () => ({
 vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
-		template: '<div data-testid="message-list-stub" />',
+		// Renders the message-actions slot once, as the real list does for a finished reply.
+		template:
+			'<div data-testid="message-list-stub"><slot name="message-actions" :message="{ id: \'reply-1\' }" execution-id="exec-1" /></div>',
 		props: [
 			'messages',
 			'messagingState',
@@ -377,7 +380,7 @@ describe('AgentChatPanel', () => {
 			showAttachButton: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
-		slots?: Record<string, string>,
+		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
 	) {
 		const router = createRouter({
 			history: createMemoryHistory(),
@@ -3397,6 +3400,262 @@ describe('AgentChatPanel', () => {
 				isStreamingMock.value = false;
 				isLoadingHistoryMock.value = false;
 			});
+		});
+	});
+
+	describe('composer and message extensions', () => {
+		type ComposerVm = {
+			setDraft: (text: string) => void;
+			isDirty: () => boolean;
+			getInputElement: () => HTMLTextAreaElement | undefined;
+			insertText: (text: string) => Promise<void>;
+			addComposerAttachment: (
+				chip: { id: string; label: string; icon?: string },
+				clientContextPatch?: Record<string, unknown>,
+			) => void;
+			removeComposerAttachment: (id: string) => void;
+			sendMessageFromOutside: (message: string, files?: File[]) => void;
+		};
+		const composerVm = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper.vm as unknown as ComposerVm;
+		const composer = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper.findComponent({ name: 'ChatInputBase' });
+		const acceptOnSend = () =>
+			sendMessageMock.mockImplementationOnce(
+				async (_text: string, _files: File[] | undefined, onAccepted: (id?: string) => void) => {
+					onAccepted('queue-1');
+					return 'sent';
+				},
+			);
+
+		it('renders no composer chips or extension content by default', () => {
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="chat-input"]').html()).not.toContain('host-');
+		});
+
+		it('renders the composer-actions slot in the composer', () => {
+			const wrapper = mountPanel({}, undefined, {
+				'composer-actions': '<button data-testid="host-mention-button" />',
+			});
+
+			expect(
+				wrapper.find('[data-testid="chat-input"] [data-testid="host-mention-button"]').exists(),
+			).toBe(true);
+		});
+
+		it('passes the reply and its execution id to the message-actions slot', () => {
+			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+			const slot = vi.fn((props: Record<string, unknown>) =>
+				h('button', { 'data-testid': 'host-thumbs', 'data-execution-id': props.executionId }),
+			);
+			const wrapper = mountPanel({}, undefined, { 'message-actions': slot });
+
+			expect(slot).toHaveBeenCalledWith(
+				expect.objectContaining({ message: { id: 'reply-1' }, executionId: 'exec-1' }),
+			);
+			expect(wrapper.find('[data-testid="host-thumbs"]').attributes('data-execution-id')).toBe(
+				'exec-1',
+			);
+		});
+
+		it('exposes the composer input element', () => {
+			const wrapper = mountPanel();
+
+			expect(composerVm(wrapper).getInputElement()).toBeInstanceOf(HTMLTextAreaElement);
+		});
+
+		it('inserts text at the caret and moves the caret after it', async () => {
+			const wrapper = mountPanel({}, document.body);
+			composerVm(wrapper).setDraft('Build a flow');
+			await nextTick();
+			const element = composerVm(wrapper).getInputElement();
+			element?.setSelectionRange(6, 6);
+
+			await composerVm(wrapper).insertText('@Slack ');
+
+			expect(composer(wrapper).props('modelValue')).toBe('Build @Slack a flow');
+			expect(element?.selectionStart).toBe(13);
+			expect(sendMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('replaces the selected text when it inserts text', async () => {
+			const wrapper = mountPanel({}, document.body);
+			composerVm(wrapper).setDraft('Use @wf now');
+			await nextTick();
+			composerVm(wrapper).getInputElement()?.setSelectionRange(4, 7);
+
+			await composerVm(wrapper).insertText('@Invoices');
+
+			expect(composer(wrapper).props('modelValue')).toBe('Use @Invoices now');
+		});
+
+		it('renders a staged chip and removes it from its remove button', async () => {
+			const wrapper = mountPanel();
+
+			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			await nextTick();
+
+			const chip = wrapper.find(
+				'[data-testid="chat-input"] [data-test-id="agent-chat-composer-chip"]',
+			);
+			expect(chip.text()).toContain('Invoices');
+
+			await wrapper.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+		});
+
+		it('passes the chips to a host composer-attachments slot instead of the default chips', async () => {
+			const slot = vi.fn((props: Record<string, unknown>) =>
+				h('span', { 'data-testid': 'host-chips' }, JSON.stringify(props.chips)),
+			);
+			const wrapper = mountPanel({}, undefined, { 'composer-attachments': slot });
+
+			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="host-chips"]').text()).toContain('Invoices');
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(slot).toHaveBeenLastCalledWith(
+				expect.objectContaining({ removeChip: expect.any(Function) }),
+			);
+		});
+
+		it('sends the merged clientContext patches with the next message and then clears the chips', async () => {
+			acceptOnSend();
+			const wrapper = mountPanel();
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment(
+				{ id: 'wf-1', label: 'Invoices' },
+				{ attachments: [{ type: 'workflow', id: 'wf-1' }] },
+			);
+			vm.addComposerAttachment(
+				{ id: 'cred-1', label: 'Slack' },
+				{ attachments: [{ type: 'credential', id: 'cred-1' }] },
+			);
+
+			vm.sendMessageFromOutside('use these');
+			await flushPromises();
+			await flushPromises();
+
+			const clientContext = {
+				attachments: [
+					{ type: 'workflow', id: 'wf-1' },
+					{ type: 'credential', id: 'cred-1' },
+				],
+			};
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'use these',
+				undefined,
+				expect.any(Function),
+				clientContext,
+			);
+			expect(wrapper.emitted('message-accepted')).toEqual([
+				[{ text: 'use these', files: [], clientContext }],
+			]);
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+
+			sendMessageMock.mockResolvedValueOnce('sent');
+			vm.sendMessageFromOutside('next message');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenLastCalledWith(
+				'next message',
+				undefined,
+				expect.any(Function),
+				undefined,
+			);
+		});
+
+		it('merges the clientContext prop first and then the chip patches', async () => {
+			acceptOnSend();
+			const wrapper = mountPanel({
+				clientContext: () => ({
+					timeZone: 'Europe/Helsinki',
+					mode: 'prop',
+					attachments: [{ type: 'workflow', id: 'open-wf' }],
+				}),
+			});
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment(
+				{ id: 'wf-1', label: 'Invoices' },
+				{ attachments: [{ type: 'workflow', id: 'wf-1' }], mode: 'chip' },
+			);
+			vm.addComposerAttachment(
+				{ id: 'cred-1', label: 'Slack' },
+				{ attachments: [{ type: 'credential', id: 'cred-1' }] },
+			);
+
+			vm.sendMessageFromOutside('use these');
+			await flushPromises();
+			await flushPromises();
+
+			const clientContext = {
+				timeZone: 'Europe/Helsinki',
+				mode: 'chip',
+				attachments: [
+					{ type: 'workflow', id: 'open-wf' },
+					{ type: 'workflow', id: 'wf-1' },
+					{ type: 'credential', id: 'cred-1' },
+				],
+			};
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'use these',
+				undefined,
+				expect.any(Function),
+				clientContext,
+			);
+			expect(wrapper.emitted('message-accepted')).toEqual([
+				[{ text: 'use these', files: [], clientContext }],
+			]);
+		});
+
+		it('replaces a chip with the same id and drops a removed chip from the next send', async () => {
+			acceptOnSend();
+			const wrapper = mountPanel();
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Old' }, { workflowId: 'old' });
+			vm.addComposerAttachment({ id: 'wf-1', label: 'New' }, { workflowId: 'new' });
+			vm.addComposerAttachment({ id: 'wf-2', label: 'Gone' }, { extra: true });
+			vm.removeComposerAttachment('wf-2');
+			await nextTick();
+
+			expect(wrapper.findAll('[data-test-id="agent-chat-composer-chip"]')).toHaveLength(1);
+
+			vm.sendMessageFromOutside('go');
+			await flushPromises();
+			await flushPromises();
+
+			expect(sendMessageMock).toHaveBeenCalledWith('go', undefined, expect.any(Function), {
+				workflowId: 'new',
+			});
+		});
+
+		it('keeps the chips when the server does not accept the message', async () => {
+			sendMessageMock.mockResolvedValueOnce('busy');
+			const wrapper = mountPanel();
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { workflowId: 'wf-1' });
+
+			vm.sendMessageFromOutside('try');
+			await flushPromises();
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(true);
+		});
+
+		it('reports chips alone as dirty but does not enable send for them', async () => {
+			const wrapper = mountPanel();
+
+			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { a: 1 });
+			await nextTick();
+
+			expect(composer(wrapper).props('canSubmit')).toBe(false);
+			expect(composerVm(wrapper).isDirty()).toBe(true);
+
+			composerVm(wrapper).removeComposerAttachment('wf-1');
+			expect(composerVm(wrapper).isDirty()).toBe(false);
 		});
 	});
 });
