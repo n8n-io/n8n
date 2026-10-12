@@ -16,11 +16,19 @@ export function adminConsentRedirectUri(
 	return url.href;
 }
 
+import type { TeamsFileAccessConsentState } from '@n8n/api-types';
+
+const CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
+
 /**
  * One screen on which an administrator approves every permission the app
  * declares. It works only for an app that registered `redirectUri`.
  */
 export function adminConsentUrl(tenantId: string, clientId: string, redirectUri: string): string {
-	const query = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri });
+	const query = new URLSearchParams({
+		client_id: clientId,
+		redirect_uri: redirectUri,
+		state: CONSENT_STATE,
+	});
 	return `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/adminconsent?${query.toString()}`;
 }

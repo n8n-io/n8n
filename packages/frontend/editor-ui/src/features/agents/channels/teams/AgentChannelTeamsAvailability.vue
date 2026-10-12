@@ -16,6 +16,7 @@ import {
 	N8nSettingsRowGroup,
 	N8nSwitch2,
 } from '@n8n/design-system';
+import type { TeamsFileAccessCheck } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	ENTRA_APP_REGISTRATIONS_URL,
@@ -34,8 +35,10 @@ const props = withDefaults(
 		appId?: string | null;
 		/** One-step approval, only for an app the recommended setup made. */
 		fileAccessConsentUrl?: string | null;
+		/** Checked only where the channel is saved; unchecked shows the request. */
+		fileAccessStatus?: TeamsFileAccessCheck['status'] | null;
 	}>(),
-	{ startCollapsed: false, appId: null, fileAccessConsentUrl: null },
+	{ startCollapsed: false, appId: null, fileAccessConsentUrl: null, fileAccessStatus: null },
 );
 
 const i18n = useI18n();
@@ -99,6 +102,7 @@ const rows = computed(() => [
  */
 const fileAccess = computed(() => {
 	if (!value.value.teamChannels && !value.value.groupChats) return null;
+	if (props.fileAccessStatus === 'approved') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
 			text: 'agents.channels.teams.setup.availability.fileAccessConsent' as const,
@@ -119,6 +123,11 @@ const fileAccess = computed(() => {
 				}),
 	};
 });
+
+const fileAccessApproved = computed(
+	() =>
+		(value.value.teamChannels || value.value.groupChats) && props.fileAccessStatus === 'approved',
+);
 
 const clipboard = useClipboard();
 const toast = useToast();
@@ -213,6 +222,9 @@ const summary = computed(() => {
 					/>
 				</div>
 			</template>
+		</N8nCallout>
+		<N8nCallout v-if="fileAccessApproved" theme="success" data-testid="teams-file-access-approved">
+			{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessApproved') }}
 		</N8nCallout>
 	</div>
 </template>

@@ -43,11 +43,24 @@ const modelCredential = mock<ICredentialsResponse>({
 	type: 'openAiApi',
 });
 
+const { catalogItems, routeQuery, routerReplace } = vi.hoisted(function createRouteState() {
+	return {
+		catalogItems: { value: [] as Array<{ type: string; label: string; icon: string }> },
+		routeQuery: { value: {} as Record<string, string> },
+		routerReplace: vi.fn(),
+	};
+});
+
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
-		catalog: { value: [] },
-		ensureLoaded: vi.fn().mockResolvedValue([]),
+		catalog: catalogItems,
+		ensureLoaded: vi.fn(async () => catalogItems.value),
 	}),
+}));
+
+vi.mock('vue-router', () => ({
+	useRoute: () => ({ query: routeQuery.value }),
+	useRouter: () => ({ replace: routerReplace }),
 }));
 
 const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy } = vi.hoisted(
@@ -158,6 +171,29 @@ describe('AgentTriggersSection', () => {
 			return { status: 'disconnected' };
 		});
 		n8nChatFlag.value = false;
+		catalogItems.value = [];
+		routeQuery.value = {};
+	});
+
+	it('opens the Teams settings when Microsoft returns from the file access consent', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = { state: 'teams-file-access', admin_consent: 'True', tenant: 't-1' };
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+		expect(modal.attributes('data-view')).toBe('teams_edit');
+		expect(routerReplace).toHaveBeenCalledWith({ query: {} });
+	});
+
+	it('opens nothing on an ordinary visit', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
 	});
 
 	it.each(['credential-1', ''])(

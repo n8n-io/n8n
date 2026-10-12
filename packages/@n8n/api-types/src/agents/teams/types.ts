@@ -101,6 +101,22 @@ export type TeamsCredentialCheck =
 	  };
 
 /**
+ * Whether the app may read files attached in channels and group chats. Read
+ * from a fresh token, so it shows an approval at once, while a running agent
+ * keeps its older token for up to an hour. `unknown` when Microsoft gave no
+ * token to read it from.
+ */
+export interface TeamsFileAccessCheck {
+	status: 'approved' | 'notApproved' | 'unknown';
+}
+
+/**
+ * Sent through Microsoft's admin consent screen and handed back unchanged, so
+ * the agent page knows to open the Teams settings.
+ */
+export type TeamsFileAccessConsentState = 'teams-file-access';
+
+/**
  * One Microsoft sign-in the user can provision with. Several may exist in a
  * project, so the setup offers a picker rather than always signing in again.
  */

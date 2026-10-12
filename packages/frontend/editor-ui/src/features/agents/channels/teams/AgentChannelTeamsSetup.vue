@@ -8,6 +8,7 @@ import type {
 	ChatIntegrationDescriptor,
 	TeamsAgentSetupState,
 	TeamsCredentialCheck,
+	TeamsFileAccessCheck,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -25,7 +26,12 @@ import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
-import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import {
+	checkTeamsCredential,
+	checkTeamsFileAccess,
+	fetchTeamsAppPackage,
+	getTeamsSetupState,
+} from './api';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -399,6 +405,34 @@ async function refreshForCredential() {
 }
 
 watch(credentialId, refreshForCredential, { immediate: true });
+
+const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
+const readsSharedConversations = computed(
+	() => availability.value.teamChannels || availability.value.groupChats,
+);
+
+/**
+ * Only in the settings: that is where people return after sending the approval
+ * link to an administrator. A failed check leaves the request on show.
+ */
+async function loadFileAccess() {
+	fileAccessStatus.value = null;
+	const id = credentialId.value;
+	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
+	try {
+		const { status } = await checkTeamsFileAccess(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			id,
+		);
+		if (credentialId.value === id) fileAccessStatus.value = status;
+	} catch {
+		// Unchecked reads the same as not approved.
+	}
+}
+
+watch([credentialId, readsSharedConversations], loadFileAccess, { immediate: true });
 
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 listenForCredentialChanges({
@@ -812,6 +846,7 @@ defineExpose({
 					start-collapsed
 					:app-id="setupState?.botId"
 					:file-access-consent-url="setupState?.fileAccessConsentUrl"
+					:file-access-status="fileAccessStatus"
 					@update:model-value="editAvailability"
 				/>
 				<N8nText

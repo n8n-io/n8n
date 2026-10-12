@@ -207,4 +207,53 @@ describe('TeamsCredentialCheckService', () => {
 			'a-secret',
 		);
 	});
+
+	describe('checkFileAccess', () => {
+		/** A token whose payload lists the given app permissions. */
+		const tokenWithRoles = (roles: string[]) =>
+			['header', Buffer.from(JSON.stringify({ roles })).toString('base64url'), 'signature'].join(
+				'.',
+			);
+
+		it('reports approved when the Graph token carries Files.Read.All', async () => {
+			withCredential(workingCredential);
+			request.mockResolvedValue({
+				statusCode: 200,
+				body: { access_token: tokenWithRoles(['Files.Read.All']) },
+			});
+
+			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
+				status: 'approved',
+			});
+			const [options] = request.mock.calls[0] as [{ body: string }];
+			expect(options.body).toContain('scope=https%3A%2F%2Fgraph.microsoft.com%2F.default');
+		});
+
+		it('reports not approved when the token lacks it', async () => {
+			withCredential(workingCredential);
+			request.mockResolvedValue({ statusCode: 200, body: { access_token: tokenWithRoles([]) } });
+
+			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
+				status: 'notApproved',
+			});
+		});
+
+		it('reports unknown when Microsoft issues no token', async () => {
+			withCredential(workingCredential);
+			request.mockResolvedValue({ statusCode: 401, body: {} });
+
+			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
+				status: 'unknown',
+			});
+		});
+
+		it('reports unknown when Microsoft cannot be reached', async () => {
+			withCredential(workingCredential);
+			request.mockRejectedValue(new Error('ECONNRESET'));
+
+			expect(await service.checkFileAccess(user, PROJECT_ID, CREDENTIAL_ID)).toEqual({
+				status: 'unknown',
+			});
+		});
+	});
 });

@@ -140,6 +140,8 @@ describe('TeamsEntraProvisioningService', () => {
 		expect(consent.pathname).toBe(`/${TENANT_ID}/adminconsent`);
 		expect(consent.searchParams.get('client_id')).toBe(APP_ID);
 		expect(consent.searchParams.get('redirect_uri')).toBe(redirectUri);
+		// Handed back unchanged, so the agent page opens the Teams settings.
+		expect(consent.searchParams.get('state')).toBe('teams-file-access');
 	});
 
 	it('registers no return address on plain HTTP, which Entra refuses outside localhost', async () => {

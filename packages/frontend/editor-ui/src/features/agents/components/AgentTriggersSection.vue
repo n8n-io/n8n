@@ -4,11 +4,13 @@ import type {
 	AgentConfigValidationIssue,
 	AgentJsonConfig,
 	AgentJsonTaskConfig,
+	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	agentChannelPlatforms,
@@ -258,6 +260,29 @@ function handleChannelConnected(channelType: string) {
 	emit('trigger-added', { triggerType: channelType, triggers: channels });
 	void loadChannelDetails();
 }
+
+const FILE_ACCESS_CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
+const route = useRoute();
+const router = useRouter();
+
+/**
+ * Microsoft returns an administrator here after the Teams file access consent,
+ * with `state` passed back unchanged. The Teams settings show the result. The
+ * other query values are Microsoft's and only cleared, never shown.
+ */
+watch(
+	channelList,
+	(channels) => {
+		// Optional: the section also renders outside the router, as in tests.
+		if (route?.query.state !== FILE_ACCESS_CONSENT_STATE) return;
+		if (!channels.some(({ type }) => type === 'teams')) return;
+		const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
+			route.query;
+		void router.replace({ query });
+		openChannelEdit('teams', props.connectedTriggers.includes('teams'));
+	},
+	{ immediate: true },
+);
 
 defineExpose({ openChannelModal });
 

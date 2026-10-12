@@ -7,7 +7,7 @@ import { defineComponent, ref } from 'vue';
 
 import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
-import { fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -26,6 +26,7 @@ vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
+	checkTeamsFileAccess: vi.fn(),
 	getTeamsSetupState: vi.fn(),
 	fetchTeamsAppPackage: vi.fn(),
 }));
@@ -131,6 +132,39 @@ describe('AgentChannelTeamsEditView', () => {
 			defaultDescription: 'Chat with Support Bot, an agent powered by n8n.',
 		});
 		vi.mocked(fetchTeamsAppPackage).mockResolvedValue(new Blob(['zip']));
+		vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'notApproved' });
+	});
+
+	describe('file access', () => {
+		it('confirms the approval instead of asking for it again', async () => {
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+		});
+
+		it('keeps asking while the approval is missing', async () => {
+			const { findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+		});
+
+		it('checks nothing while the agent reads only direct messages', async () => {
+			renderView({ props: viewProps, pinia: createTestingPinia() });
+			await flushPromises();
+
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+		});
 	});
 
 	it('passes the save label and the save hooks through to the modal', async () => {
