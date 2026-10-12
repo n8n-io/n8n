@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
+import { TaskTimeoutError } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { SpanStatus, type Span, type Tracing } from 'n8n-core';
 
@@ -29,15 +30,16 @@ async function startRun(
 
 /** How one observed run ended. A rejected run carries its error. */
 export type SystemTaskRunOutcome =
-	| { result: 'success' | 'aborted' | 'lease_lost'; rejected: false }
-	| { result: 'failure' | 'aborted' | 'lease_lost'; rejected: true; error: unknown };
+	| { result: 'success' | 'aborted' | 'lease_lost' | 'timed_out'; rejected: false }
+	| { result: 'failure' | 'aborted' | 'lease_lost' | 'timed_out'; rejected: true; error: unknown };
 
 /**
  * Run one occurrence of `task` with `signal`, emit its start and its settlement,
  * paired by construction, and record one `system_task.run` span around it. The
  * run also stops when `leaseSignal` aborts. Never rejects: a run that settles
- * after `leaseSignal` aborted ends as `lease_lost`, after `signal` aborted as
- * `aborted`, otherwise a resolution ends as `success` and a rejection as `failure`.
+ * after `leaseSignal` aborted ends as `timed_out` for a {@link TaskTimeoutError}
+ * and as `lease_lost` otherwise, after `signal` aborted as `aborted`, otherwise a
+ * resolution ends as `success` and a rejection as `failure`.
  */
 export async function observeSystemTaskRun(
 	eventService: EventService,
@@ -49,9 +51,9 @@ export async function observeSystemTaskRun(
 ): Promise<SystemTaskRunOutcome> {
 	const { name } = task;
 	const runSignal = leaseSignal ? AbortSignal.any([signal, leaseSignal]) : signal;
-	const abortResult = (): 'lease_lost' | 'aborted' | undefined => {
+	const abortResult = (): 'timed_out' | 'lease_lost' | 'aborted' | undefined => {
 		if (leaseSignal?.aborted) {
-			return 'lease_lost';
+			return leaseSignal.reason instanceof TaskTimeoutError ? 'timed_out' : 'lease_lost';
 		}
 		return signal.aborted ? 'aborted' : undefined;
 	};
@@ -90,7 +92,7 @@ export async function observeSystemTaskRun(
 			durationMs: performance.now() - startedAt,
 		});
 		span.setAttribute(SYSTEM_TASK_ATTRIBUTES.result, outcome.result);
-		// A shutdown or a lost lease is an expected stop, so only a real failure errors the span.
+		// A shutdown, a lost lease or a timeout is an expected stop, so only a real failure errors the span.
 		if (outcome.result === 'failure') {
 			span.setStatus({ code: SpanStatus.error, message: ensureError(outcome.error).message });
 		} else {
