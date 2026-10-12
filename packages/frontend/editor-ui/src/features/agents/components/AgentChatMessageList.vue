@@ -6,7 +6,11 @@ import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteracti
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
-import { isAssistantGroup, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
+import {
+	DISPLAY_GROUP_KIND,
+	isAssistantGroup,
+	type DisplayGroup,
+} from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
@@ -73,8 +77,9 @@ const canSendToAssistant = computed(() =>
 );
 
 function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
-	if (group.kind === 'backgroundJobSignal') return;
-	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return;
+	const executionId =
+		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
 	if (!executionId || failures.length === 0) return;
 	emit('sendToAssistant', { executionId, failures });
 }
@@ -185,8 +190,11 @@ const toolCallsByGroupId = computed(() => {
 	const extensions = interactionExtensions?.value ?? [];
 	const byGroupId = new Map<string, GroupToolCalls>();
 	for (const group of displayGroups.value) {
-		if (group.kind === 'backgroundJobSignal') continue;
-		const toolCalls = group.kind === 'toolRun' ? group.toolCalls : (group.message.toolCalls ?? []);
+		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) continue;
+		const toolCalls =
+			group.kind === DISPLAY_GROUP_KIND.TOOL_RUN
+				? group.toolCalls
+				: (group.message.toolCalls ?? []);
 		const split: GroupToolCalls = { steps: [], hostResults: [] };
 		for (const toolCall of toolCalls) {
 			const renderer =
@@ -225,7 +233,7 @@ const dividerLabels = computed(() => {
 	const labels = new Map<string, string>();
 	let previousUserCreatedAt: number | undefined;
 	for (const group of displayGroups.value) {
-		if (group.kind !== 'message' || group.message.role !== 'user') continue;
+		if (group.kind !== DISPLAY_GROUP_KIND.MESSAGE || group.message.role !== 'user') continue;
 		const createdAt = group.message.createdAt;
 		if (createdAt === undefined) continue;
 		// A new local day always earns a divider, even inside the window: without
@@ -262,7 +270,7 @@ const changeRequestGroupId = computed(() =>
 	canSendToAssistant.value && !changeNoteDismissed.value
 		? displayGroups.value.findLast(
 				(group) =>
-					group.kind === 'message' &&
+					group.kind === DISPLAY_GROUP_KIND.MESSAGE &&
 					group.message.role === 'user' &&
 					looksLikeAgentChangeRequest(group.message.content),
 			)?.id
@@ -281,8 +289,8 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
-	if (group.kind === 'backgroundJobSignal') return '';
-	if (group.kind === 'toolRun') {
+	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return '';
+	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
 		return group.finalMessage?.content ?? '';
 	}
 
@@ -349,8 +357,8 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
-	if (group.kind === 'backgroundJobSignal') return false;
-	if (group.kind === 'toolRun') {
+	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return false;
+	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
 		return (
 			group.finalMessage !== undefined &&
 			group.finalMessage.status !== CHAT_MESSAGE_STATUS.STREAMING &&
@@ -387,7 +395,10 @@ function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
 		const group = displayGroups.value[i];
 		if (!isAssistantGroup(group)) break;
 
-		const toolCalls = group.kind === 'toolRun' ? group.toolCalls : (group.message.toolCalls ?? []);
+		const toolCalls =
+			group.kind === DISPLAY_GROUP_KIND.TOOL_RUN
+				? group.toolCalls
+				: (group.message.toolCalls ?? []);
 		for (let j = toolCalls.length - 1; j >= 0; j--) {
 			const toolCall = toolCalls[j];
 			if (toolCall.tool !== 'recall_memory') continue;
@@ -514,10 +525,16 @@ watch(
 			>
 				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
 			</div>
-			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
+			<div
+				v-if="group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL"
+				:class="[$style.message, $style.assistant]"
+			>
 				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
 			</div>
-			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div
+				v-else-if="group.kind === DISPLAY_GROUP_KIND.TOOL_RUN"
+				:class="[$style.message, $style.assistant]"
+			>
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
