@@ -89,7 +89,7 @@ export class WorkflowImporter {
 				continue;
 			}
 			const { action, blocked } = decideImportConflictAction(
-				options.workflowConflictPolicy,
+				options.conflictPolicy,
 				existing !== null,
 			);
 

@@ -24,6 +24,7 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertPackageImportApiKeyScopes,
 	assertTagWritesAllowed,
+	packageImportScopes,
 } from './import-gates';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
@@ -75,7 +76,7 @@ export class WorkflowPackageImporter {
 			request.projectId,
 			request.folderId,
 			folders.length > 0,
-			!manifest.workflows?.length && manifest.agents?.length ? 'agent:read' : 'workflow:import',
+			packageImportScopes(manifest),
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
@@ -204,6 +205,7 @@ export class WorkflowPackageImporter {
 
 		const result = buildImportResult({
 			package: toPackageSummary(manifest),
+			agentOutcomes,
 			workflows: toImportedWorkflowSummaries(
 				content.workflowOutcomes,
 				context.projectId,
@@ -246,11 +248,11 @@ export class WorkflowPackageImporter {
 		projectId: string | undefined,
 		folderId: string | undefined,
 		needsFolderCreate: boolean,
-		importScope: 'workflow:import' | 'agent:read',
+		importScopes: Scope[],
 	): Promise<ImportContext> {
 		const scopes: Scope[] = needsFolderCreate
-			? [importScope, 'folder:create', 'folder:update']
-			: [importScope];
+			? [...importScopes, 'folder:create', 'folder:update']
+			: importScopes;
 		const project = await this.resolveImportProject(user, projectId, scopes);
 		await this.assertFolderExistsInProject(folderId, project.id);
 
@@ -267,7 +269,7 @@ export class WorkflowPackageImporter {
 			if (!personalProject) {
 				throw new NotFoundError('Personal project not found');
 			}
-			return personalProject;
+			projectId = personalProject.id;
 		}
 
 		const project = await this.projectService.getProjectWithScope(user, projectId, scopes);

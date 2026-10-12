@@ -97,7 +97,7 @@ describe('package import command', () => {
 		expect(importPackage.mock.calls[0][1]).toStrictEqual({
 			projectId: 'p-1',
 			folderId: 'f-1',
-			workflowConflictPolicy: 'fail',
+			conflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
 			missingNodeTypeMode: 'import-anyway',
@@ -167,7 +167,7 @@ describe('package import command', () => {
 
 			expect(importPackage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ workflowConflictPolicy: 'new-version' }),
+				expect.objectContaining({ conflictPolicy: 'new-version' }),
 			);
 		});
 
@@ -179,7 +179,7 @@ describe('package import command', () => {
 
 			expect(importPackage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ workflowConflictPolicy: 'fail' }),
+				expect.objectContaining({ conflictPolicy: 'fail' }),
 			);
 		});
 

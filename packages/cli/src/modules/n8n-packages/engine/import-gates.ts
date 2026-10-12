@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { Scope } from '@n8n/permissions';
 
 import { ForbiddenError } from '@n8n/errors';
 
@@ -11,6 +12,14 @@ import type { DataTableImportPlan } from '../entities/data-table/data-table.type
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
 import type { CredentialMissingMode } from '../n8n-packages.types';
+import type { PackageManifest } from '../spec/manifest.schema';
+
+export function packageImportScopes(manifest: PackageManifest): Scope[] {
+	const scopes: Scope[] = [];
+	if (manifest.workflows?.length || !manifest.agents?.length) scopes.push('workflow:import');
+	if (manifest.agents?.length) scopes.push('agent:import');
+	return scopes;
+}
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,

@@ -8,6 +8,22 @@ describe('ImportResultDto', () => {
 				sourceId: 'source-1',
 				exportedAt: '2024-01-01T00:00:00.000Z',
 			},
+			agents: [
+				{
+					sourceAgentId: 'wf-1',
+					localId: 'agent-local',
+					name: 'Support',
+					projectId: 'proj-1',
+					activeVersionId: null,
+					status: 'created',
+					publishing: { state: 'failed', error: 'Not ready' },
+					schema: { instructions: 'Private instructions' },
+					skills: {},
+					tools: {},
+					tasks: {},
+				},
+			],
+			counts: { agents: { created: 1, updated: 0, skipped: 0 } },
 			workflows: [
 				{
 					sourceWorkflowId: 'wf-1',
@@ -51,6 +67,7 @@ describe('ImportResultDto', () => {
 				{ sourceProjectId: 'proj-1', localId: 'proj-1', name: 'My project', status: 'created' },
 			],
 			bindings: {
+				agents: { 'wf-1': 'agent-local' },
 				workflows: { 'wf-1': 'wf-1' },
 				credentials: { 'cred-1': 'cred-1' },
 			},
@@ -61,6 +78,17 @@ describe('ImportResultDto', () => {
 		});
 
 		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.agents[0]).toEqual({
+				sourceAgentId: 'wf-1',
+				localId: 'agent-local',
+				name: 'Support',
+				projectId: 'proj-1',
+				activeVersionId: null,
+				status: 'created',
+				publishing: { state: 'failed', error: 'Not ready' },
+			});
+		}
 	});
 
 	it('accepts a workflow with a blocked/failed publishing outcome and the optional fields it carries', () => {
@@ -70,6 +98,8 @@ describe('ImportResultDto', () => {
 				sourceId: 'source-1',
 				exportedAt: '2024-01-01T00:00:00.000Z',
 			},
+			agents: [],
+			counts: { agents: { created: 0, updated: 0, skipped: 0 } },
 			workflows: [
 				{
 					sourceWorkflowId: 'wf-1',
@@ -90,7 +120,7 @@ describe('ImportResultDto', () => {
 			removedFolders: [],
 			folders: [],
 			projects: [],
-			bindings: { workflows: {}, credentials: {} },
+			bindings: { agents: {}, workflows: {}, credentials: {} },
 			credentials: { matched: [], stubbed: [], seeded: [], incomplete: [] },
 			dataTables: { matched: 0, created: 0, updated: 0 },
 			variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },

@@ -74,7 +74,7 @@ export default class PackageImportSelection extends BaseCommand {
 						selectedProjectId: flags.selectedProjectId,
 						selectedWorkflowIds: flags.selectedWorkflowIds ?? [],
 						deletedWorkflowIds: flags.deletedWorkflowIds,
-						workflowConflictPolicy: flags.workflowConflictPolicy,
+						conflictPolicy: flags.workflowConflictPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
 						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 					},

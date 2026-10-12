@@ -18,9 +18,11 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'credentialMatchingMode',
 	'credentialMissingMode',
 	'bindings',
-	'workflowConflictPolicy',
+	'conflictPolicy',
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
+	'agentIdPolicy',
+	'agentPublishingPolicy',
 	'missingNodeTypeMode',
 	'projectConflictPolicy',
 	'folderConflictPolicy',
@@ -115,9 +117,9 @@ export class ImportPackageRequestDto extends Z.class(
 		bindings: bindingsSchema.openapi(importPackageRequestFieldDocs.bindings),
 		// Required (unlike every other mode/policy field here), matching the legacy handler, which
 		// required it even though this schema alone would otherwise default it to `new-version`.
-		workflowConflictPolicy: z
+		conflictPolicy: z
 			.enum(['new-version', 'fail', 'skip'])
-			.openapi(importPackageRequestFieldDocs.workflowConflictPolicy),
+			.openapi(importPackageRequestFieldDocs.conflictPolicy),
 		workflowPublishingPolicy: optionalEnum(
 			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
 			'preserve-published-state',
@@ -125,6 +127,13 @@ export class ImportPackageRequestDto extends Z.class(
 		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
 			importPackageRequestFieldDocs.workflowIdPolicy,
 		),
+		agentIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
+			importPackageRequestFieldDocs.agentIdPolicy,
+		),
+		agentPublishingPolicy: optionalEnum(
+			['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
+			'preserve-published-state',
+		).openapi(importPackageRequestFieldDocs.agentPublishingPolicy),
 		missingNodeTypeMode: optionalEnum(['fail', 'import-anyway'], 'fail').openapi(
 			importPackageRequestFieldDocs.missingNodeTypeMode,
 		),
@@ -173,7 +182,7 @@ export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
 	'selectedProjectId',
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
-	'workflowConflictPolicy',
+	'conflictPolicy',
 	'workflowIdPolicy',
 	'overwriteDeletionPolicy',
 ] as const;
@@ -237,8 +246,8 @@ export class ImportPackageSelectionRequestDto extends Z.class(
 		deletedWorkflowIds: optionalJsonStringIdArray(DELETED_WORKFLOW_IDS_ERROR_MESSAGE).openapi(
 			importPackageSelectionRequestFieldDocs.deletedWorkflowIds,
 		),
-		workflowConflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
-			importPackageSelectionRequestFieldDocs.workflowConflictPolicy,
+		conflictPolicy: optionalEnum(['new-version', 'fail', 'skip'], 'new-version').openapi(
+			importPackageSelectionRequestFieldDocs.conflictPolicy,
 		),
 		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi(
 			importPackageSelectionRequestFieldDocs.workflowIdPolicy,
