@@ -64,6 +64,7 @@ export { createDispatchReporter, backoff } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
+	TaskRun,
 	DispatchReporter,
 	DispatchDecision,
 	BackoffOptions,
@@ -112,6 +113,7 @@ export {
 	InvalidOwnerMemberIdError,
 	InvalidRunOptionError,
 	LeaseLostError,
+	TaskTimeoutError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 
