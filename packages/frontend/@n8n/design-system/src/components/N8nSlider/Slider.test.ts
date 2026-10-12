@@ -1,5 +1,4 @@
 import { fireEvent, render } from '@testing-library/vue';
-import { mount } from '@vue/test-utils';
 import { defineComponent, ref } from 'vue';
 
 import type { SliderProps } from './Slider.types';
@@ -54,11 +53,15 @@ describe('components/N8nSlider', () => {
 	});
 
 	it.each<SliderProps>([{}, { label: ' ' }, { ariaLabel: ' ' }, { ariaLabelledby: ' ' }])(
-		'rejects a missing accessible-name source: %j',
-		(props) => {
-			expect(() => mount(Slider, { props })).toThrow(
-				'N8nSlider requires a label, a label slot, ariaLabel, or ariaLabelledby.',
-			);
+		'updates the accessible name after mounting without a naming source: %j',
+		async (props) => {
+			const wrapper = render(Slider, { props });
+			const control = wrapper.getByRole('slider');
+
+			expect(control).not.toHaveAccessibleName();
+			await wrapper.rerender({ label: 'Volume', ariaLabel: undefined, ariaLabelledby: undefined });
+
+			expect(wrapper.getByRole('slider', { name: 'Volume' })).toBe(control);
 		},
 	);
 
