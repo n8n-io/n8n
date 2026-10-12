@@ -1,9 +1,9 @@
 {
 	"tag": "n8n-ci-tools",
-	"description": "n8n CI tooling trial: 2 vCPU, 8 GB RAM",
+	"description": "n8n CI tooling trial: 4 vCPU, 8 GB RAM",
 	"os": "ubuntu-22.04",
 	"instance_shape": {
-		"virtual_cpu": 2,
+		"virtual_cpu": 4,
 		"memory_megabytes": 8192,
 		"machine_arch": "amd64",
 		"os": "linux"

@@ -1,9 +1,9 @@
 {
 	"tag": "n8n-ci-tests",
-	"description": "n8n CI checks trial: 4 vCPU, 16 GB RAM",
+	"description": "n8n CI checks trial: 8 vCPU, 16 GB RAM",
 	"os": "ubuntu-22.04",
 	"instance_shape": {
-		"virtual_cpu": 4,
+		"virtual_cpu": 8,
 		"memory_megabytes": 16384,
 		"machine_arch": "amd64",
 		"os": "linux"
