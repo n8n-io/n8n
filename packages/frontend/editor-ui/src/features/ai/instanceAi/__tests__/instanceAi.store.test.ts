@@ -386,6 +386,39 @@ describe('useInstanceAiStore - credits', () => {
 		});
 	});
 
+	describe('isOutOfCredits', () => {
+		it('is false when the balance is still loading', () => {
+			const store = useInstanceAiStore();
+			expect(store.isOutOfCredits).toBe(false);
+		});
+
+		it('is false while credits remain, including a low balance', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = 100;
+			store.creditsClaimed = 95;
+
+			expect(store.creditsRemaining).toBe(5);
+			expect(store.isOutOfCredits).toBe(false);
+		});
+
+		it('is true when no credits remain', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = 800;
+			store.creditsClaimed = 800;
+
+			expect(store.isOutOfCredits).toBe(true);
+		});
+
+		it('is true when the pool is locked', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = UNLIMITED_CREDITS;
+			store.creditsClaimed = 0;
+			store.quotaLocked = true;
+
+			expect(store.isOutOfCredits).toBe(true);
+		});
+	});
+
 	describe('isLowCredits', () => {
 		it('returns false when credits are undefined', () => {
 			const store = useInstanceAiStore();

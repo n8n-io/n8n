@@ -7,6 +7,10 @@ import type {
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	Project,
+	SharedWorkflowRepository,
+	User,
+	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowStatistics,
@@ -22,11 +26,13 @@ import type { MigrationRegistry } from '../../breaking-changes.migration-registr
 import type { RuleRegistry } from '../../breaking-changes.rule-registry.service';
 import type { BreakingChangeService } from '../../breaking-changes.service';
 import type { MigrationFindingSync } from '../../database/entities/migration-finding-sync.entity';
+import type { MigrationWorkflowOwner } from '../../database/entities/migration-workflow-owner.entity';
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type {
 	MigrationFindingRepository,
 	TriageableMigrationFinding,
 } from '../../database/repositories/migration-finding.repository';
+import type { MigrationWorkflowOwnerRepository } from '../../database/repositories/migration-workflow-owner.repository';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeBatchWorkflowRule,
@@ -133,6 +139,9 @@ describe('MigrationFindingQueryService', () => {
 	let workflowStatisticsRepository: MockProxy<WorkflowStatisticsRepository>;
 	let findingRepository: MockProxy<MigrationFindingRepository>;
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
+	let ownerRepository: MockProxy<MigrationWorkflowOwnerRepository>;
+	let userRepository: MockProxy<UserRepository>;
+	let sharedWorkflowRepository: MockProxy<SharedWorkflowRepository>;
 	let errorReporter: MockProxy<ErrorReporter>;
 	let service: MigrationFindingQueryService;
 
@@ -144,6 +153,9 @@ describe('MigrationFindingQueryService', () => {
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		findingRepository = mock<MigrationFindingRepository>();
 		syncRepository = mock<MigrationFindingSyncRepository>();
+		ownerRepository = mock<MigrationWorkflowOwnerRepository>();
+		userRepository = mock<UserRepository>();
+		sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 		errorReporter = mock<ErrorReporter>();
 
 		ruleRegistry.getRules.mockReturnValue(allRules);
@@ -158,6 +170,9 @@ describe('MigrationFindingQueryService', () => {
 		findingRepository.countDistinctOpenWorkflows.mockResolvedValue(0);
 		findingRepository.listTriageableForRule.mockResolvedValue([]);
 		syncRepository.getForVersion.mockResolvedValue(null);
+		ownerRepository.findByWorkflowIds.mockResolvedValue([]);
+		userRepository.findManyByIds.mockResolvedValue([]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 
 		service = new MigrationFindingQueryService(
 			ruleRegistry,
@@ -167,6 +182,9 @@ describe('MigrationFindingQueryService', () => {
 			workflowStatisticsRepository,
 			findingRepository,
 			syncRepository,
+			ownerRepository,
+			userRepository,
+			sharedWorkflowRepository,
 			mockLogger(),
 			errorReporter,
 		);
@@ -398,6 +416,85 @@ describe('MigrationFindingQueryService', () => {
 				},
 			]);
 			expect(breakingChangeService.detect).not.toHaveBeenCalled();
+		});
+
+		it('adds the owner of each workflow that has one, with the user details and the source', async () => {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
+					id: 'wf-1',
+					name: 'First',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+				triageableFinding(2, 'rule-a', {
+					id: 'wf-2',
+					name: 'Second',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			ownerRepository.findByWorkflowIds.mockResolvedValue([
+				{ workflowId: 'wf-1', userId: 'user-1', source: 'suggested' } as MigrationWorkflowOwner,
+			]);
+			userRepository.findManyByIds.mockResolvedValue([
+				{ id: 'user-1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' } as User,
+			]);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+
+			expect(ownerRepository.findByWorkflowIds).toHaveBeenCalledWith(
+				['wf-1', 'wf-2'],
+				expect.anything(),
+			);
+			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['user-1']);
+			expect(result.affectedWorkflows[0].owner).toEqual({
+				id: 'user-1',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				email: 'ada@example.com',
+				source: 'suggested',
+			});
+			expect(result.affectedWorkflows[1].owner).toBeUndefined();
+		});
+
+		it('adds the id of the project that owns each workflow', async () => {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
+					id: 'wf-1',
+					name: 'First',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['wf-1', { id: 'project-1' } as Project]]),
+			);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
+				'wf-1',
+			]);
+			expect(result.affectedWorkflows[0].homeProjectId).toBe('project-1');
+		});
+
+		it('lists a workflow without an owner when its owner row has no user any more', async () => {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(1, 'rule-a', {
+					id: 'wf-1',
+					name: 'First',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			ownerRepository.findByWorkflowIds.mockResolvedValue([
+				{ workflowId: 'wf-1', userId: null, source: 'assigned' } as MigrationWorkflowOwner,
+			]);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+
+			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
+			expect(result.affectedWorkflows[0].owner).toBeUndefined();
 		});
 
 		it('lists only the findings of the workflows in scope', async () => {
