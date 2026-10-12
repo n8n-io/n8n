@@ -1,0 +1,36 @@
+import { aiTransformToCode } from './ai-transform-to-code.migration';
+import {
+	binaryInputLoaderToDefaultDataLoader,
+	jsonInputLoaderToDefaultDataLoader,
+} from './document-loaders.migration';
+import { htmlExtractToHtml } from './html-extract-to-html.migration';
+import { itemListsToTransformNodes } from './item-lists.migration';
+import { readPdfToExtractFromFile } from './read-pdf-to-extract-from-file.migration';
+import { cronToScheduleTrigger } from './schedule-trigger.migration';
+import {
+	inMemoryInsertToVectorStore,
+	inMemoryLoadToVectorStore,
+	pineconeInsertToVectorStore,
+	pineconeLoadToVectorStore,
+	supabaseInsertToVectorStore,
+	supabaseLoadToVectorStore,
+} from './vector-stores.migration';
+import { writeBinaryFileToReadWriteFile } from './write-binary-file-to-read-write-file.migration';
+import type { Migration } from '../node-migration';
+
+export const nodeRemovalMigrations: Migration[] = [
+	aiTransformToCode,
+	binaryInputLoaderToDefaultDataLoader,
+	cronToScheduleTrigger,
+	htmlExtractToHtml,
+	inMemoryInsertToVectorStore,
+	inMemoryLoadToVectorStore,
+	itemListsToTransformNodes,
+	jsonInputLoaderToDefaultDataLoader,
+	pineconeInsertToVectorStore,
+	pineconeLoadToVectorStore,
+	readPdfToExtractFromFile,
+	supabaseInsertToVectorStore,
+	supabaseLoadToVectorStore,
+	writeBinaryFileToReadWriteFile,
+];
