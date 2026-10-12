@@ -253,8 +253,6 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.count.isEven() }}',
 	'={{ $json.item.active.toInt() }}',
 	'={{ $json.item.when.isEmpty() }}',
-	'={{ $json.item.names?.last() }}',
-	'={{ $json.item.missing?.last() ?? "none" }}',
 	'={{ $json.item.names.map(n => n.toTitleCase()) }}',
 	'={{ $input.first().json.item.names.first() }}',
 	"={{ $('Source').item.json.item.my_object.toJsonString() }}",
@@ -453,6 +451,15 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.mixed.max() }}',
 	'={{ $json.item.name.isUrl() }}',
 	'={{ $json.item.names.merge() }}',
+	// An extension call anywhere in a chunk with an optional chain goes
+	// through the engines' own chain polyfill.
+	'={{ $json.item.names?.last() }}',
+	'={{ $json.item.missing?.last() ?? "none" }}',
+	'={{ $json.item?.names.last() }}',
+	'={{ $json.item.names.last?.() }}',
+	'={{ ($json.item.names[9] && $json.item.name) ?? $json.item.names[9]?.last() }}',
+	'={{ $json.item.names?.[9] ?? ($json.item.names.last() && 1) }}',
+	'={{ $json.item.my_object?.addresses ?? $json.item.name.toTitleCase() }}',
 	// A comment hides the call from the extendSyntax regex.
 	'={{ $json.item.names.first /* c */ () }}',
 	'={{ $json.item.names.first // c\n () }}',

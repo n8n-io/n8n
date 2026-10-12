@@ -314,6 +314,57 @@ function parseChain(node: namedTypes.ChainExpression, parse: ParseChild): Simple
 	return { kind: 'chain', expression };
 }
 
+/**
+ * Once a chunk holds an extension call, extendTransform rewrites every
+ * optional chain in it through its own polyfill, and that reprint drops the
+ * parentheses around a `??` operand mixed with `&&` or `||`: the engines
+ * then throw "invalid syntax" where this interpreter would evaluate. A
+ * chunk with both an optional chain and an extension call is theirs.
+ */
+export function usesPolyfilledChain(root: SimpleNode): boolean {
+	let chain = false;
+	let extension = false;
+	const visit = (node: SimpleNode): void => {
+		switch (node.kind) {
+			case 'chain':
+				chain = true;
+				visit(node.expression);
+				return;
+			case 'call':
+				if (node.receiver.kind !== 'nodeRef' && EXTENSION_METHODS.has(node.method)) {
+					extension = true;
+				}
+				visit(node.receiver);
+				node.args.forEach(visit);
+				return;
+			case 'iterate':
+				visit(node.receiver);
+				visit(node.body);
+				return;
+			case 'member':
+				visit(node.object);
+				return;
+			case 'unary':
+				visit(node.argument);
+				return;
+			case 'binary':
+			case 'logical':
+				visit(node.left);
+				visit(node.right);
+				return;
+			case 'conditional':
+				visit(node.test);
+				visit(node.consequent);
+				visit(node.alternate);
+				return;
+			default:
+				return;
+		}
+	};
+	visit(root);
+	return chain && extension;
+}
+
 function parseBranches(
 	node: namedTypes.ConditionalExpression,
 	parse: ParseChild,
