@@ -121,8 +121,8 @@ describe('POST /api/workflow-executions/:id/resume-target (integration)', () => 
 		]);
 	});
 
-	it('answers null for an execution that ended', async () => {
-		const { executionId, token } = await seed({ 'wait-a': deadlineOnly });
+	it('answers null for an execution that ended, even with a wait not cancelled yet', async () => {
+		const { executionId, token } = await seed({ 'wait-a': acceptsRequest });
 		await createStores(dataSource).executionStore.finishExecution(executionId, 'completed');
 
 		const response = await resumeTarget(executionId, { token }).expect(200);
