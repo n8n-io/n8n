@@ -57,5 +57,4 @@ test while the module renders any design-system component.
 
 SCSS goes in a scoped `<style lang="scss">` block, with tokens from
 design-system — `stylelint.config.mjs` holds this package to the same rules the
-shell uses. Route components must load lazily — see the note in
-`src/inbox.module.ts`.
+shell uses. Route components must load lazily.

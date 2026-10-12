@@ -20,8 +20,11 @@ export type InboxItem = InboxWorkflowReviewItem;
 export type InboxCounts = { open: number; closed: number };
 
 export type InboxSourceStatus = {
+	/** True when at least one source failed. Disabled sources do not make the response partial. */
 	partial: boolean;
+	/** Sources that failed to load. A retry can recover them. */
 	failedSources: InboxSourceType[];
+	/** Sources that are unavailable because their feature is disabled or unlicensed. */
 	disabledSources: InboxSourceType[];
 };
 
