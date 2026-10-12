@@ -84,6 +84,7 @@ import { PromotionWorkingDirectoryService } from '../promotion-working-directory
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 type TestRemote = {
 	bareDir: string;
@@ -608,12 +609,14 @@ describe('Promote and Apply', () => {
 			id: 'local-agent',
 			name: 'Local Agent',
 			projectId: project.id,
-			schema: AgentJsonConfigSchema.parse({
-				name: 'Local Agent',
-				model: '',
-				instructions: '',
-				subAgents: { agents: [{ agentId: 'external-agent' }] },
-			}),
+			schema: storedAgentConfig(
+				AgentJsonConfigSchema.parse({
+					name: 'Local Agent',
+					model: '',
+					instructions: '',
+					subAgents: { agents: [{ agentId: 'external-agent' }] },
+				}),
+			),
 		});
 		const workflow = await createWorkflow(
 			{ name: 'Process order', nodes: [], connections: {} },
