@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { toExecutionSnapshot } from './workflow-executions.handlers';
 import { jsonValueSchema } from '../../common';
 import {
+	ExecutionNotFoundError,
 	ResumeRejectedError,
 	type ExecutionQueryService,
 	type ResumeRejection,
@@ -70,6 +71,10 @@ export function createResumeTargetHandler(
 			};
 			res.status(200).json(response);
 		} catch (error) {
+			if (error instanceof ExecutionNotFoundError) {
+				fail(res, 404, { error: 'not_found' });
+				return;
+			}
 			if (!sendRejection(res, error)) throw error;
 		}
 	};
