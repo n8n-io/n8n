@@ -7,10 +7,11 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
-	Expression,
-	ExpressionError,
+	CHAT_NODE_TYPE,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
+	Expression,
+	ExpressionError,
 } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -577,6 +578,25 @@ describe('V1StepExecutor', () => {
 			const execute = vi.spyOn(echo, 'execute');
 
 			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" sends a message and waits for a response, and engine v2 cannot end that wait yet.',
+			);
+			expect(execute).not.toHaveBeenCalled();
+		});
+
+		// The Chat node waits for a chat reply in every version and operation.
+		it('fails a Chat node step before the node sends its message', async () => {
+			const graph = graphWith(CHAT_NODE_TYPE);
+			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
+			const execute = vi.spyOn(echo, 'execute');
+			const executor = new V1StepExecutor({
+				nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => echo },
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			});
+
+			const execution = executor.execute(stepRequest(graph, 'n', input));
 
 			await expect(execution).rejects.toThrow(
 				'Node "Subject" sends a message and waits for a response, and engine v2 cannot end that wait yet.',
