@@ -28,15 +28,15 @@ import type {
 } from './integration-tools';
 
 /**
- * Channel identity, without the decrypted credential. Enough for checks that
- * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
- */
-/**
  * The platform refused an attachment download for a reason the user can fix.
  * The message reaches the agent, so it can tell the user what to do.
  */
 export class InboundAttachmentAccessError extends UserError {}
 
+/**
+ * Channel identity, without the decrypted credential. Enough for checks that
+ * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
+ */
 export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
@@ -541,9 +541,8 @@ export abstract class AgentChatIntegration {
 	prepareInboundText?(text: string, context: PlatformAgentContext): string;
 
 	/**
-	 * Optional files that the webhook leaves out and the platform API has. Teams
-	 * uses this for channel and group chat messages. They join the message's own
-	 * attachments.
+	 * Files the webhook leaves out but the platform API has. They join the
+	 * message's own attachments.
 	 */
 	fetchInboundAttachments?(params: {
 		thread: Thread<unknown, unknown>;

@@ -140,8 +140,50 @@ describe('TeamsEntraProvisioningService', () => {
 		expect(consent.pathname).toBe(`/${TENANT_ID}/adminconsent`);
 		expect(consent.searchParams.get('client_id')).toBe(APP_ID);
 		expect(consent.searchParams.get('redirect_uri')).toBe(redirectUri);
-		// Handed back unchanged, so the agent page opens the Teams settings.
 		expect(consent.searchParams.get('state')).toBe('teams-file-access');
+	});
+
+	it("keeps the app's other permissions and return addresses", async () => {
+		const otherPermission = { id: 'other-role', type: 'Scope' };
+		routeGraph({
+			[`GET /applications/${OBJECT_ID}`]: ok({
+				appId: APP_ID,
+				requiredResourceAccess: [
+					{ resourceAppId: 'another-api', resourceAccess: [otherPermission] },
+					{
+						resourceAppId: '00000003-0000-0000-c000-000000000000',
+						resourceAccess: [otherPermission],
+					},
+				],
+				web: { redirectUris: ['https://admin.example.com/callback'] },
+			}),
+		});
+
+		await service.provision(options);
+
+		expect(graph.request).toHaveBeenCalledWith(
+			'graph-token',
+			'PATCH',
+			`/applications/${OBJECT_ID}`,
+			{
+				requiredResourceAccess: [
+					{ resourceAppId: 'another-api', resourceAccess: [otherPermission] },
+					{
+						resourceAppId: '00000003-0000-0000-c000-000000000000',
+						resourceAccess: [
+							otherPermission,
+							{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' },
+						],
+					},
+				],
+				web: {
+					redirectUris: [
+						'https://admin.example.com/callback',
+						'https://n8n.example.com/projects/project-1/agents/agent-1',
+					],
+				},
+			},
+		);
 	});
 
 	it('registers no return address on plain HTTP, which Entra refuses outside localhost', async () => {

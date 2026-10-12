@@ -2,12 +2,13 @@ import { InboundAttachmentAccessError } from '../../../agent-chat-integration';
 import {
 	fetchTeamsMessageFiles,
 	graphHttpOf,
-	graphMessagePath,
+	graphMessagePaths,
 	type GraphHttp,
 } from '../teams-message-files';
 
 const TEAM = '1235c9a1-ef3a-4a0e-8529-0b40578bdabc';
 const CHANNEL = '19:abc@thread.tacv2';
+const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 function channelActivity(id: string, rootId: string) {
 	return {
@@ -17,104 +18,189 @@ function channelActivity(id: string, rootId: string) {
 	};
 }
 
-const ROOT_PATH = `/teams/${TEAM}/channels/${encodeURIComponent(CHANNEL)}/messages/100`;
+const groupChatActivity = {
+	id: '300',
+	conversation: { conversationType: 'groupChat', id: '19:chat@thread.v2' },
+};
 
-function graphReturning(message: unknown) {
-	const get = vi.fn<GraphHttp['get']>(async (url) =>
-		url.startsWith('https://graph.microsoft.com/v1.0/teams/') ||
-		url.startsWith('https://graph.microsoft.com/v1.0/chats/')
-			? { data: message }
-			: { data: Buffer.from('file bytes') },
-	);
+const CHANNEL_PATH = `/teams/${TEAM}/channels/${encodeURIComponent(CHANNEL)}`;
+const ROOT_PATH = `${CHANNEL_PATH}/messages/100`;
+
+const CONTENT_URL = 'https://contoso.sharepoint.com/sites/team/Shared Documents/plan.pdf';
+const SHARE_ID = `u!${Buffer.from(CONTENT_URL).toString('base64url')}`;
+const FILE_BYTES = Buffer.from('file bytes');
+
+const forbidden = () => Object.assign(new Error('403'), { response: { status: 403 } });
+
+/** Answers Graph by URL prefix, so a test states only what differs. */
+function graphRouting(routes: Record<string, unknown>) {
+	const get = vi.fn<GraphHttp['get']>(async (url) => {
+		const key = Object.keys(routes).find((prefix) => url.startsWith(`${GRAPH}${prefix}`));
+		if (key === undefined) throw new Error(`unrouted ${url}`);
+		const value = routes[key];
+		if (value instanceof Error) throw value;
+		return { data: value };
+	});
 	return { http: { get }, get };
 }
 
-describe('graphMessagePath', () => {
-	it('addresses a channel post that starts a thread', () => {
-		expect(graphMessagePath(channelActivity('100', '100'))).toBe(ROOT_PATH);
+/** A message sharing one file, which lives in drive `drive-1`. */
+function sharedFileRoutes(overrides: Record<string, unknown> = {}) {
+	return {
+		[ROOT_PATH]: {
+			from: { user: { id: 'sender-1' } },
+			attachments: [{ contentType: 'reference', contentUrl: CONTENT_URL, name: 'plan.pdf' }],
+		},
+		[`/shares/${SHARE_ID}/driveItem`]: { id: 'item-1', parentReference: { driveId: 'drive-1' } },
+		[`${CHANNEL_PATH}/filesFolder`]: { parentReference: { driveId: 'drive-1' } },
+		'/drives/drive-1/items/item-1/content': FILE_BYTES,
+		...overrides,
+	};
+}
+
+describe('graphMessagePaths', () => {
+	it('addresses a channel post that starts a thread, and the channel files', () => {
+		expect(graphMessagePaths(channelActivity('100', '100'))).toEqual({
+			message: ROOT_PATH,
+			filesFolder: `${CHANNEL_PATH}/filesFolder`,
+		});
 	});
 
 	it('addresses a reply under its thread root', () => {
-		expect(graphMessagePath(channelActivity('200', '100'))).toBe(`${ROOT_PATH}/replies/200`);
+		expect(graphMessagePaths(channelActivity('200', '100'))?.message).toBe(
+			`${ROOT_PATH}/replies/200`,
+		);
 	});
 
-	it('addresses a group chat message', () => {
-		expect(
-			graphMessagePath({
-				id: '300',
-				conversation: { conversationType: 'groupChat', id: '19:chat@thread.v2' },
-			}),
-		).toBe(`/chats/${encodeURIComponent('19:chat@thread.v2')}/messages/300`);
+	it('addresses a group chat message, which has no files folder', () => {
+		expect(graphMessagePaths(groupChatActivity)).toEqual({
+			message: `/chats/${encodeURIComponent('19:chat@thread.v2')}/messages/300`,
+		});
 	});
 
 	it('skips a direct message, which carries its files itself', () => {
 		expect(
-			graphMessagePath({ id: '1', conversation: { conversationType: 'personal', id: 'a:1' } }),
+			graphMessagePaths({ id: '1', conversation: { conversationType: 'personal', id: 'a:1' } }),
 		).toBeUndefined();
 	});
 });
 
 describe('fetchTeamsMessageFiles', () => {
-	it('downloads a shared file through its Graph share id', async () => {
-		const contentUrl = 'https://contoso.sharepoint.com/sites/team/Shared Documents/plan.pdf';
-		const { http, get } = graphReturning({
-			attachments: [{ contentType: 'reference', contentUrl, name: 'plan.pdf' }],
-		});
+	it('downloads a file from the channel files', async () => {
+		const { http, get } = graphRouting(sharedFileRoutes());
 
 		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
 
-		expect(file).toMatchObject({ type: 'file', name: 'plan.pdf', url: contentUrl });
-		expect(await file.fetchData?.()).toEqual(Buffer.from('file bytes'));
-		const shareId = `u!${Buffer.from(contentUrl).toString('base64url')}`;
+		expect(file).toMatchObject({ type: 'file', name: 'plan.pdf', url: CONTENT_URL });
+		expect(await file.fetchData?.()).toEqual(FILE_BYTES);
 		expect(get).toHaveBeenLastCalledWith(
-			`https://graph.microsoft.com/v1.0/shares/${shareId}/driveItem/content`,
+			`${GRAPH}/drives/drive-1/items/item-1/content`,
 			expect.objectContaining({ responseType: 'arraybuffer' }),
 		);
 	});
 
+	it("downloads a file from the sender's own drive", async () => {
+		const { http } = graphRouting(
+			sharedFileRoutes({
+				[`${CHANNEL_PATH}/filesFolder`]: { parentReference: { driveId: 'team-drive' } },
+				'/drives/drive-1?': { owner: { user: { id: 'sender-1' } } },
+			}),
+		);
+
+		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+
+		expect(await file.fetchData?.()).toEqual(FILE_BYTES);
+	});
+
+	it('refuses a file that is neither in the conversation nor owned by the sender', async () => {
+		const { http, get } = graphRouting(
+			sharedFileRoutes({
+				[`${CHANNEL_PATH}/filesFolder`]: { parentReference: { driveId: 'team-drive' } },
+				'/drives/drive-1?': { owner: { user: { id: 'someone-else' } } },
+			}),
+		);
+
+		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+
+		await expect(file.fetchData?.()).rejects.toBeInstanceOf(InboundAttachmentAccessError);
+		expect(get).not.toHaveBeenCalledWith(expect.stringContaining('/content'), expect.anything());
+	});
+
+	it("checks the sender's drive in a group chat", async () => {
+		const chatPath = `/chats/${encodeURIComponent('19:chat@thread.v2')}/messages/300`;
+		const { [ROOT_PATH]: message, ...rest } = sharedFileRoutes({
+			'/drives/drive-1?': { owner: { user: { id: 'sender-1' } } },
+		});
+		const { http } = graphRouting({ ...rest, [chatPath]: message });
+
+		const [file] = await fetchTeamsMessageFiles(http, groupChatActivity);
+
+		expect(await file.fetchData?.()).toEqual(FILE_BYTES);
+	});
+
+	it('asks for Files.Read.All when Graph refuses the file', async () => {
+		const { http } = graphRouting(
+			sharedFileRoutes({ [`/shares/${SHARE_ID}/driveItem`]: forbidden() }),
+		);
+
+		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+
+		await expect(file.fetchData?.()).rejects.toThrow('Files.Read.All');
+	});
+
 	it('downloads a pasted image from the message hosted content', async () => {
-		const src = `https://graph.microsoft.com/v1.0${ROOT_PATH}/hostedContents/abc/$value`;
-		const { http } = graphReturning({ body: { content: `<p>look</p><img alt="x" src="${src}">` } });
+		const src = `${GRAPH}${ROOT_PATH}/hostedContents/abc/$value`;
+		const { http } = graphRouting({
+			[`${ROOT_PATH}/hostedContents/`]: FILE_BYTES,
+			[ROOT_PATH]: { body: { content: `<p>look</p><img alt="x" src="${src}">` } },
+		});
 
-		const files = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+		const [image] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
 
-		expect(files).toEqual([expect.objectContaining({ type: 'image', url: src })]);
+		expect(image).toMatchObject({ type: 'image', url: src });
+		expect(await image.fetchData?.()).toEqual(FILE_BYTES);
+	});
+
+	it('points a refused image to the app package, not to Files.Read.All', async () => {
+		const src = `${GRAPH}${ROOT_PATH}/hostedContents/abc/$value`;
+		const { http } = graphRouting({
+			[`${ROOT_PATH}/hostedContents/`]: forbidden(),
+			[ROOT_PATH]: { body: { content: `<img src="${src}">` } },
+		});
+
+		const [image] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+
+		await expect(image.fetchData?.()).rejects.toThrow('latest package');
 	});
 
 	it('ignores an image outside Graph, so the token is never sent elsewhere', async () => {
-		const { http } = graphReturning({
-			body: { content: '<img src="https://example.com/hostedContents/x/$value">' },
+		const { http } = graphRouting({
+			[ROOT_PATH]: { body: { content: '<img src="https://example.com/hostedContents/x/$value">' } },
 		});
 
 		expect(await fetchTeamsMessageFiles(http, channelActivity('100', '100'))).toEqual([]);
 	});
 
 	it('ignores attachments that are not files, such as cards', async () => {
-		const { http } = graphReturning({
-			attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: '{}' }],
+		const { http } = graphRouting({
+			[ROOT_PATH]: {
+				attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: '{}' }],
+			},
 		});
 
 		expect(await fetchTeamsMessageFiles(http, channelActivity('100', '100'))).toEqual([]);
 	});
 
-	it('explains a refused download, so the agent can tell the user to ask an administrator', async () => {
-		const { http, get } = graphReturning({
-			attachments: [
-				{
-					contentType: 'reference',
-					contentUrl: 'https://contoso.sharepoint.com/a.pdf',
-					name: 'a.pdf',
-				},
-			],
-		});
-		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
-		get.mockRejectedValueOnce(Object.assign(new Error('403'), { response: { status: 403 } }));
+	it('points a refused message lookup to the app package', async () => {
+		const { http } = graphRouting({ [ROOT_PATH]: forbidden() });
 
-		await expect(file.fetchData?.()).rejects.toBeInstanceOf(InboundAttachmentAccessError);
+		await expect(fetchTeamsMessageFiles(http, channelActivity('100', '100'))).rejects.toThrow(
+			'latest package',
+		);
 	});
 
 	it('makes no Graph call for a direct message', async () => {
-		const { http, get } = graphReturning({});
+		const { http, get } = graphRouting({});
 
 		await fetchTeamsMessageFiles(http, { id: '1', conversation: { conversationType: 'personal' } });
 

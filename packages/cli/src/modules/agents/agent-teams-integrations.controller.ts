@@ -296,7 +296,6 @@ export class AgentTeamsIntegrationsController {
 		return await this.credentialCheckService.check(req.user, req.params.projectId, credentialId);
 	}
 
-	/** Whether an administrator has approved file access for the channel's app. */
 	@Get('/:agentId/integrations/teams/file-access/:credentialId')
 	@ProjectScope('agent:update')
 	async checkFileAccess(

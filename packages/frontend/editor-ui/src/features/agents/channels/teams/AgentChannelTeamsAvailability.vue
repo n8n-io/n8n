@@ -33,7 +33,6 @@ const props = withDefaults(
 		startCollapsed?: boolean;
 		/** Client ID of the app the channel runs on, once a credential is picked. */
 		appId?: string | null;
-		/** One-step approval, only for an app the recommended setup made. */
 		fileAccessConsentUrl?: string | null;
 		/** Checked only where the channel is saved; unchecked shows the request. */
 		fileAccessStatus?: TeamsFileAccessCheck['status'] | null;

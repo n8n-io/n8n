@@ -168,7 +168,6 @@ export interface TeamsProvisionedAppSummary {
 	appName: string;
 	organizationName: string | null;
 	entraAppUrl: string;
-	/** Where an administrator approves the app's file access, if n8n could set it up. */
 	fileAccessConsentUrl: string | null;
 	/**
 	 * When the client secret stops working. n8n created it, so the user cannot

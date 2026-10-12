@@ -32,11 +32,20 @@ function usableSecret(
 	if (Number.isNaN(expiry) || expiry - Date.now() < SECRET_RENEW_BEFORE_MS) return undefined;
 	return { value, expiresAt };
 }
-/** Lets the bot download files attached in channels and group chats. */
-const GRAPH_FILES_READ_ALL = {
-	resourceAppId: '00000003-0000-0000-c000-000000000000',
-	resourceAccess: [{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' }],
-};
+const GRAPH_APP_ID = '00000003-0000-0000-c000-000000000000';
+const FILES_READ_ALL_ROLE = { id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' };
+
+function withFileAccess(requiredResourceAccess: unknown): unknown[] {
+	const entries: unknown[] = Array.isArray(requiredResourceAccess) ? requiredResourceAccess : [];
+	const graph = entries.find((entry) => isRecord(entry) && entry.resourceAppId === GRAPH_APP_ID);
+	const roles: unknown[] =
+		isRecord(graph) && Array.isArray(graph.resourceAccess) ? graph.resourceAccess : [];
+	if (roles.some((role) => isRecord(role) && role.id === FILES_READ_ALL_ROLE.id)) return entries;
+	return [
+		...entries.filter((entry) => entry !== graph),
+		{ resourceAppId: GRAPH_APP_ID, resourceAccess: [...roles, FILES_READ_ALL_ROLE] },
+	];
+}
 
 const ENTRA_APP_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId';
@@ -297,20 +306,27 @@ export class TeamsEntraProvisioningService {
 	}
 
 	/**
-	 * Declares the file permission, and where Microsoft returns the administrator
-	 * who approves it. Only declared: this sign-in cannot grant app permissions,
-	 * so the setup links an administrator to the consent screen. Runs for an
-	 * existing app too, which may predate either. A failure leaves the setup
-	 * working; the link then falls back to the app in Entra.
+	 * This sign-in cannot grant app permissions, only declare them, so the setup
+	 * links an administrator to the consent screen. Merges into what the app has:
+	 * an administrator may have added permissions or addresses of their own. A
+	 * failure leaves the setup working; the link then falls back to the app in Entra.
 	 */
 	private async declareFileAccess(
 		token: string,
 		objectId: string,
 		redirectUri: string | undefined,
 	): Promise<boolean> {
+		const current = await this.graph.request(token, 'GET', `/applications/${objectId}`);
+		if (!current.ok) return false;
+		const app = isRecord(current.body) ? current.body : {};
+		const web = isRecord(app.web) ? app.web : {};
+		const redirectUris: unknown[] = Array.isArray(web.redirectUris) ? web.redirectUris : [];
+
 		const response = await this.graph.request(token, 'PATCH', `/applications/${objectId}`, {
-			requiredResourceAccess: [GRAPH_FILES_READ_ALL],
-			...(redirectUri ? { web: { redirectUris: [redirectUri] } } : {}),
+			requiredResourceAccess: withFileAccess(app.requiredResourceAccess),
+			...(redirectUri && !redirectUris.includes(redirectUri)
+				? { web: { redirectUris: [...redirectUris, redirectUri] } }
+				: {}),
 		});
 		return response.ok;
 	}

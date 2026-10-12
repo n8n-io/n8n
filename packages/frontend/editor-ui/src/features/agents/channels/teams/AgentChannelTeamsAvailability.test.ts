@@ -16,7 +16,6 @@ const renderComponent = createComponentRenderer(AgentChannelTeamsAvailability, {
 	pinia: createTestingPinia(),
 });
 
-/** Clicks the action and returns the URL it opened. */
 async function openedUrl({ getByTestId }: Pick<RenderResult, 'getByTestId'>) {
 	const open = vi.spyOn(window, 'open').mockReturnValue(null);
 	await fireEvent.click(getByTestId('teams-file-access-link'));

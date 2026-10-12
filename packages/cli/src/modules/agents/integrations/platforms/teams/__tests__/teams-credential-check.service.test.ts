@@ -209,7 +209,6 @@ describe('TeamsCredentialCheckService', () => {
 	});
 
 	describe('checkFileAccess', () => {
-		/** A token whose payload lists the given app permissions. */
 		const tokenWithRoles = (roles: string[]) =>
 			['header', Buffer.from(JSON.stringify({ roles })).toString('base64url'), 'signature'].join(
 				'.',
