@@ -14,16 +14,7 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import {
-	computed,
-	getCurrentScope,
-	onScopeDispose,
-	ref,
-	toRaw,
-	toValue,
-	watch,
-	type MaybeRefOrGetter,
-} from 'vue';
+import { computed, getCurrentScope, ref, toRaw, toValue, watch, type MaybeRefOrGetter } from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -54,31 +45,34 @@ export function useNodeCredentialOptions(
 	// credential is deleted while the panel is open, drop it locally so the
 	// dropdown / existence checks do not keep serving the deleted id.
 	//
-	// Only subscribe inside an active effect scope, and only when a host
-	// override list was passed. Callers like getAutoSelectedCredential invoke
-	// this composable outside setup; $onAction would otherwise leak a store
-	// subscription per call (onScopeDispose is a no-op without a scope).
+	// Only subscribe inside an active effect scope. Callers like
+	// getAutoSelectedCredential invoke this composable outside setup; $onAction
+	// would otherwise leak a store subscription per call.
 	const removedOverrideIds = ref(new Set<string>());
+	// NodeCredentials always passes a getter for `credentials`; only attach the
+	// store listener while that getter actually yields a host-supplied list.
 	if (getCurrentScope() && overrideCredentials !== undefined) {
 		watch(
 			() => toValue(overrideCredentials),
-			() => {
+			(override, _prev, onCleanup) => {
 				removedOverrideIds.value = new Set();
+				if (!override) return;
+				const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
+					if (name !== 'deleteCredential') return;
+					after((deleted) => {
+						// deleteCredential returns the API flag; after() still runs on failure.
+						if (deleted !== true) return;
+						const id = args[0]?.id;
+						if (typeof id !== 'string') return;
+						const next = new Set(removedOverrideIds.value);
+						next.add(id);
+						removedOverrideIds.value = next;
+					});
+				});
+				onCleanup(stopDeleteListener);
 			},
+			{ immediate: true },
 		);
-		const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
-			if (name !== 'deleteCredential') return;
-			after((deleted) => {
-				// deleteCredential returns the API flag; after() still runs on failure.
-				if (deleted !== true) return;
-				const id = args[0]?.id;
-				if (typeof id !== 'string') return;
-				const next = new Set(removedOverrideIds.value);
-				next.add(id);
-				removedOverrideIds.value = next;
-			});
-		});
-		onScopeDispose(stopDeleteListener);
 	}
 
 	const credentialTypesNodeDescriptions = computed(() =>

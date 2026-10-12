@@ -592,6 +592,24 @@ describe('useNodeCredentialOptions', () => {
 		scope.stop();
 	});
 
+	it('does not subscribe when an override getter currently yields no list', () => {
+		const onActionSpy = vi.spyOn(credentialsStore, '$onAction');
+		const scope = effectScope();
+
+		scope.run(() =>
+			useNodeCredentialOptions(
+				computed(() => slackNode),
+				computed(() => slackNodeType),
+				'slackApi',
+				false,
+				() => undefined,
+			),
+		);
+
+		expect(onActionSpy).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
 	it('disables mixed credential behavior when override is set', () => {
 		const slackApiDescription = slackNodeType.credentials[0];
 		const { showMixedCredentials } = setupOptions('slackApi');

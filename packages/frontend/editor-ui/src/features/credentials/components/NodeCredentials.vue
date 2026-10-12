@@ -351,6 +351,12 @@ const leftBehind = ref<Record<string, UsedCredential>>({});
  * Resolve a picked credential from the rows the dropdown is showing before
  * consulting the store. A host-supplied `credentials` list can hold ids the
  * flat map has not (yet) loaded — the store lookup alone would be `undefined`.
+ *
+ * When the host supplies that list it is authoritative: do not fall back to the
+ * usable slice for ids missing from the displayed rows (e.g. a ghost id the
+ * delete listener would otherwise re-select). Without a host list, the usable
+ * slice is consulted so private Connect still resolves after the flat map is
+ * cleared.
  */
 function findDisplayedCredential(
 	credentialType: string,
@@ -359,11 +365,15 @@ function findDisplayedCredential(
 	const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
 		({ type }) => type.name === credentialType,
 	);
-	return (
-		typeEntry?.options.find((option) => option.id === credentialId) ??
-		credentialsStore.getUsableCredentialById(credentialId) ??
-		credentialsStore.getCredentialById(credentialId)
-	);
+	const fromOptions = typeEntry?.options.find((option) => option.id === credentialId);
+	if (fromOptions) return fromOptions;
+	// Host-supplied lists are authoritative for dropdown picks — skip the usable
+	// slice so a delete listener cannot re-select a ghost id that is not shown.
+	if (!props.credentials) {
+		const usable = credentialsStore.getUsableCredentialById(credentialId);
+		if (usable) return usable;
+	}
+	return credentialsStore.getCredentialById(credentialId);
 }
 
 function isCredentialResolvable(credentialType: string): boolean {
