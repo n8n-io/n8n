@@ -21,6 +21,7 @@ import {
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
@@ -32,6 +33,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { composeJsonConfig } from './json-config/agent-config-composition';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import {
 	type AgentTaskRunLockHandle,
 	AgentTaskRunLockRepository,
@@ -80,6 +82,7 @@ export class AgentTaskService {
 		private readonly saveCompletion: AgentSaveCompletionService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -116,8 +119,13 @@ export class AgentTaskService {
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
 	): Promise<{ tasks: AgentTaskDto[]; configHash: string | null }> {
-		const { tasks, agent } = await this.createTasksBatch(agentId, projectId, dtos, context);
-		return { tasks, configHash: getAgentConfigHash(composeJsonConfig(agent)) };
+		const { tasks, agent, skillRefs } = await this.createTasksBatch(
+			agentId,
+			projectId,
+			dtos,
+			context,
+		);
+		return { tasks, configHash: getAgentConfigHash(composeJsonConfig(agent, skillRefs)) };
 	}
 
 	/**
@@ -132,7 +140,7 @@ export class AgentTaskService {
 		projectId: string,
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
-	): Promise<{ tasks: AgentTaskDto[]; agent: Agent }> {
+	): Promise<{ tasks: AgentTaskDto[]; agent: Agent; skillRefs: AgentSkillRefs }> {
 		if (dtos.length === 0) {
 			throw new BadRequestError('At least one task is required');
 		}
@@ -145,7 +153,8 @@ export class AgentTaskService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 
-		const previous = captureAgentMutation(agent);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const previous = captureAgentMutation(agent, skillRefs);
 
 		const tasks = dtos.map((dto) => {
 			const taskId = generateAgentResourceId(
@@ -170,7 +179,7 @@ export class AgentTaskService {
 			await this.taskRepository.saveDefinitions(tasks, ctx);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
 			context.pushRef,
 		);
 
@@ -178,7 +187,7 @@ export class AgentTaskService {
 			agentId,
 			taskIds: tasks.map((task) => task.id),
 		});
-		return { tasks: tasks.map((task) => this.toDto(task)), agent };
+		return { tasks: tasks.map((task) => this.toDto(task)), agent, skillRefs };
 	}
 
 	/**
@@ -215,7 +224,8 @@ export class AgentTaskService {
 		// Skip the draft version change and writes when no field changed.
 		if (!changed) return { task: this.toDto(task), changed: false };
 
-		const previous = captureAgentMutation(agent);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const previous = captureAgentMutation(agent, skillRefs);
 
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			markAgentDraftDirty(agent);
@@ -224,7 +234,7 @@ export class AgentTaskService {
 			return savedTask;
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
 			context.pushRef,
 		);
 
@@ -241,7 +251,8 @@ export class AgentTaskService {
 		await this.getOrThrow(agentId, taskId);
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const previous = captureAgentMutation(agent);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const previous = captureAgentMutation(agent, skillRefs);
 
 		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
@@ -253,7 +264,7 @@ export class AgentTaskService {
 			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
 			context.pushRef,
 		);
 

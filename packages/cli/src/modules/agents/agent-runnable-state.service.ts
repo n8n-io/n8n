@@ -8,6 +8,7 @@ import {
 	AgentPublishService,
 	type ValidAgentConfigValidationResponse,
 } from './agent-publish.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
@@ -19,6 +20,7 @@ export class AgentRunnableStateService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentPublishService: AgentPublishService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -44,7 +46,9 @@ export class AgentRunnableStateService {
 		}
 	> {
 		// Base hashes for the optimistic-concurrency checks on config and skill writes.
-		const configHash = getAgentConfigHash(composeJsonConfig(agent));
+		const configHash = getAgentConfigHash(
+			composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {})),
+		);
 		const skillHashes = Object.fromEntries(
 			Object.entries(agent.skills ?? {}).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);

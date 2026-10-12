@@ -14,6 +14,7 @@ import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integra
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -86,11 +87,13 @@ function makeService() {
 				agentTaskSnapshotRepository,
 				agentRepository,
 				mock<TransactionRunner>(),
+				createAgentSkillRefsService(agentRepository),
 			),
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
 			aiGatewayService,
+			createAgentSkillRefsService(agentRepository),
 		),
 		agentRepository,
 		agentSkillsService,
@@ -1449,6 +1452,7 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 
 		const result = await service.validateAgentEntityConfiguration(
 			agent,
+			storedSkillRefs(agent),
 			projectId,
 			tasks,
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),

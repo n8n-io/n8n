@@ -51,6 +51,7 @@ import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const ctx = {
 	resumeData: undefined,
@@ -144,6 +145,7 @@ function makeService() {
 		telemetry,
 		agentContextAdapter,
 		collaborationService,
+		createAgentSkillRefsService(),
 	);
 
 	return {
