@@ -839,12 +839,13 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
-	describe('open link', () => {
-		it('should link each row to its workflow in a new tab', async () => {
+	describe('workflow name link', () => {
+		it('should link each workflow name to its workflow in a new tab', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
-			const [link] = await screen.findAllByTestId('migration-workflow-open-link');
+			const [link] = await screen.findAllByTestId('migration-workflow-name-link');
 
+			expect(link).toHaveTextContent('Test Workflow 1');
 			expect(link).toHaveAttribute('href', '/workflow/workflow-1');
 			expect(link).toHaveAttribute('target', '_blank');
 			expect(resolveRoute).toHaveBeenCalledWith(

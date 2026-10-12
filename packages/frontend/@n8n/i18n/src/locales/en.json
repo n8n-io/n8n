@@ -4650,7 +4650,6 @@
 	"settings.migrationReport.detail.table.runs": "{count} run | {count} runs",
 	"settings.migrationReport.detail.table.lastRun": "last run {time}",
 	"settings.migrationReport.detail.table.neverRun": "never run",
-	"settings.migrationReport.detail.table.open": "Open",
 	"settings.migrationReport.detail.table.state": "State",
 	"settings.migrationReport.detail.state.open": "Open",
 	"settings.migrationReport.detail.state.open.description": "Still needs a fix before upgrading",

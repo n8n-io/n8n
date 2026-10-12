@@ -237,14 +237,18 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			key: 'status',
 			width: 140,
 		},
-		{
+	];
+
+	// The actions column only holds the Migrate button.
+	if (showMigrate.value) {
+		headers.push({
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: showMigrate.value ? 160 : 80,
+			width: 160,
 			disableSort: true,
-		},
-	];
+		});
+	}
 
 	return headers;
 });
@@ -694,9 +698,16 @@ const sortedWorkflows = computed(() => {
 		>
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.cellStack">
-					<N8nText color="text-dark" :class="$style.truncate" :title="item.name">
+					<N8nLink
+						theme="text"
+						:to="workflowUrl(item)"
+						new-window
+						:title="item.name"
+						:class="[$style.truncate, $style.workflowName]"
+						data-test-id="migration-workflow-name-link"
+					>
 						{{ item.name }}
-					</N8nText>
+					</N8nLink>
 					<N8nText size="small" color="text-light">
 						{{
 							item.active
@@ -788,27 +799,16 @@ const sortedWorkflows = computed(() => {
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions">
-					<template v-if="showMigrate">
-						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
-							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
-						</N8nText>
-						<N8nButton
-							v-else
-							size="small"
-							:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
-							data-test-id="migrate-workflow-button"
-							@click="openMigrateModal(item)"
-						/>
-					</template>
-					<N8nLink
-						theme="text"
-						:to="workflowUrl(item)"
-						new-window
-						:class="$style.NoLineBreak"
-						data-test-id="migration-workflow-open-link"
-					>
-						{{ i18n.baseText('settings.migrationReport.detail.table.open') }} ↗
-					</N8nLink>
+					<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
+						{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
+					</N8nText>
+					<N8nButton
+						v-else
+						size="small"
+						:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
+						data-test-id="migrate-workflow-button"
+						@click="openMigrateModal(item)"
+					/>
 				</div>
 			</template>
 		</N8nDataTableServer>
@@ -859,6 +859,11 @@ const sortedWorkflows = computed(() => {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+}
+
+/* The ellipsis takes the anchor color, so match it to the link text. */
+.workflowName {
+	color: var(--color--text);
 }
 
 .nodeNames {
