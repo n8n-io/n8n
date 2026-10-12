@@ -312,11 +312,10 @@ describe('AgentSkillsService', () => {
 			});
 		});
 
-		it('clears the pin of this agent and replaces the latest version with the edit', async () => {
+		it('clears the pin of this agent when the pin is the latest version', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a', versionId: pinId }] },
 			});
-			skillService.save.mockResolvedValue(saveResult({ created: false }));
 
 			await service.updateSkill(
 				agentId,
@@ -333,12 +332,31 @@ describe('AgentSkillsService', () => {
 			]);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
-				expect.not.objectContaining({ baseSkillHash: expect.anything() }),
+				expect.objectContaining({ baseSkillHash: getAgentSkillHash(skill) }),
 				'user-1',
 				{},
 			);
-			// The content matched the latest version, so only the lost pin changed this draft.
-			expect(agentRepository.markDraftChangedIfInSync).toHaveBeenCalledWith([agentId], {});
+		});
+
+		it('refuses to edit a pin to an older version', async () => {
+			givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a', versionId: pinId }] },
+			});
+			const olderSkill = { ...skill, instructions: 'Older instructions.' };
+			skillRefs.skillsForRefs.mockResolvedValueOnce({ skill_a: olderSkill });
+
+			await expect(
+				service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{ instructions: 'New instructions.' },
+					context,
+					getAgentSkillHash(olderSkill),
+				),
+			).rejects.toThrow('This agent uses an older version of this skill.');
+			expect(skillRefs.unpinDraftRef).not.toHaveBeenCalled();
+			expect(skillService.save).not.toHaveBeenCalled();
 		});
 
 		it('rejects a stale base hash without saving', async () => {

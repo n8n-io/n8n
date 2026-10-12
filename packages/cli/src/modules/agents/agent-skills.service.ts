@@ -179,11 +179,9 @@ export class AgentSkillsService {
 	/**
 	 * Save the next version of a skill of this agent. The user needs the edit
 	 * permission of the skill itself. Every agent that follows the skill runs
-	 * the new version and shows unpublished changes. A pinned ref of this agent
-	 * loses its pin, so this agent runs the new version too.
-	 *
-	 * `baseSkillHash` is the hash of the version this agent shows: the pinned
-	 * version, or the latest version.
+	 * the new version and shows unpublished changes. A ref of this agent that
+	 * pins the latest version loses its pin, so this agent runs the new version
+	 * too. A ref that pins an older version cannot be edited.
 	 */
 	async updateSkill(
 		agentId: string,
@@ -230,38 +228,41 @@ export class AgentSkillsService {
 			};
 		}
 
+		const pinned = ref.versionId !== undefined;
+		if (pinned) {
+			const latest = (
+				await this.agentSkillRefs.skillsForRefs([{ type: 'skill', id: skillId }], {})
+			)[skillId];
+			if (!latest || getAgentSkillHash(latest) !== getAgentSkillHash(existing)) {
+				throw new UserError(
+					'This agent uses an older version of this skill. A newer version exists, so you cannot edit the older version.',
+				);
+			}
+		}
 		await this.skillService.assertCanEdit(context.user, [skillId]);
 		const snapshot = captureAgentMutation(entity, skillRefs);
-		const pinned = ref.versionId !== undefined;
 
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			if (pinned) await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
-			const result = await this.skillService.save(
+			return await this.skillService.save(
 				skillId,
 				{
 					name: updated.name,
 					description: updated.description,
 					instructions: updated.instructions,
 					references: updated.references ?? [],
-					// A pinned ref shows an older version: this save replaces the latest on purpose.
-					...(pinned ? {} : { baseSkillHash: getAgentSkillHash(existing) }),
+					baseSkillHash: getAgentSkillHash(existing),
 				},
 				context.user.id,
 				ctx,
 			);
-			// The pin is gone, so this draft now runs the latest version.
-			if (pinned && !result.created) {
-				await this.agentRepository.markDraftChangedIfInSync([entity.id], ctx);
-			}
-			return result;
 		});
 
 		await this.skillService.refreshFollowingAgents(
 			saved.followingAgentIds.filter((id) => id !== entity.id),
 			context.pushRef,
 		);
-		const fresh =
-			(await this.agentRepository.findByIdAndProjectId(entity.id, projectId)) ?? entity;
+		const fresh = (await this.agentRepository.findByIdAndProjectId(entity.id, projectId)) ?? entity;
 		await this.saveCompletion.bodySaved(
 			buildAgentMutationEvent(
 				fresh,

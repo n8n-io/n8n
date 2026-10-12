@@ -223,7 +223,7 @@ describe('Agent skills in the skills hub', () => {
 				{ instructions: 'Edited by the editor.' },
 				{ user: editor, modifiedBy: 'user' },
 			),
-		).rejects.toThrow('You can use but not edit');
+		).rejects.toThrow('This agent uses an older version of this skill.');
 	});
 
 	it('creates, updates and detaches a skill from the agent builder', async () => {
