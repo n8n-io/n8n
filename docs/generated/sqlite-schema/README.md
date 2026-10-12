@@ -140,6 +140,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [type_availability_policy](type_availability_policy.md) | 7 |  | table |
 | [type_availability_policy_attachment](type_availability_policy_attachment.md) | 6 |  | table |
 | [type_availability_policy_scope](type_availability_policy_scope.md) | 8 |  | table |
+| [usage_by_period](usage_by_period.md) | 12 |  | table |
+| [usage_event](usage_event.md) | 14 |  | table |
+| [usage_ledger](usage_ledger.md) | 14 |  | table |
 | [user](user.md) | 15 |  | table |
 | [user_api_keys](user_api_keys.md) | 9 |  | table |
 | [user_favorites](user_favorites.md) | 4 |  | table |
@@ -1714,6 +1717,52 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ updatedBy
   INTEGER version
+}
+"usage_by_period" {
+  BIGINT count
+  BOOLEAN hasParent PK
+  BOOLEAN isTest PK
+  VARCHAR_16_ kind PK
+  VARCHAR_32_ origin PK
+  DATETIME_3_ periodStart PK
+  VARCHAR_8_ periodUnit PK
+  VARCHAR_16_ phase PK
+  VARCHAR_36_ projectId PK
+  VARCHAR_16_ status PK
+  VARCHAR_36_ subjectId PK
+  VARCHAR_32_ trigger PK
+}
+"usage_event" {
+  VARCHAR_36_ executionId
+  INTEGER id
+  BOOLEAN isTest
+  VARCHAR_16_ kind
+  DATETIME_3_ occurredAt
+  VARCHAR_32_ origin
+  VARCHAR_128_ parentId
+  VARCHAR_16_ phase
+  VARCHAR_36_ projectId
+  DATETIME_3_ startedAt
+  VARCHAR_16_ status
+  VARCHAR_36_ subjectId
+  VARCHAR_128_ subjectName
+  VARCHAR_32_ trigger
+}
+"usage_ledger" {
+  VARCHAR_36_ executionId PK
+  DATETIME_3_ foldedAt
+  BOOLEAN isTest
+  VARCHAR_16_ kind PK
+  DATETIME_3_ occurredAt
+  VARCHAR_32_ origin
+  VARCHAR_128_ parentId
+  VARCHAR_16_ phase PK
+  VARCHAR_36_ projectId
+  DATETIME_3_ startedAt
+  VARCHAR_16_ status
+  VARCHAR_36_ subjectId
+  VARCHAR_128_ subjectName
+  VARCHAR_32_ trigger
 }
 "user" {
   datetime_3_ createdAt

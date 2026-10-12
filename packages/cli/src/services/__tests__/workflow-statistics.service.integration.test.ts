@@ -7,9 +7,15 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { DatabaseConfig, GlobalConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { IWorkflowDb, Project, WorkflowEntity, WorkflowRepository, User } from '@n8n/db';
-import { SettingsRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	DbLockService,
+	SettingsRepository,
+	StatisticsNames,
+	UsageRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
@@ -33,6 +39,8 @@ import { INSTANCE_ACTIVATED_SETTINGS_KEY } from '@/services/instance-activation.
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { UsageFoldService } from '@/usage/usage-fold.service';
+import { UsageRecorder } from '@/usage/usage-recorder.service';
 import { createUser } from '@test-integration/db/users';
 
 describe('WorkflowStatisticsService', () => {
@@ -58,26 +66,18 @@ describe('WorkflowStatisticsService', () => {
 			workflow = await createWorkflow({}, user);
 		});
 
-		/**
-		 * On Postgres, `workflowExecutionCompleted` appends to the delta table and the rollup folds it
-		 * out of band. These tests assert the materialized counter + milestone, so we drive the fold
-		 * here (the rollup's work, minus the leader/lock/timer) to mimic the synchronous behavior the
-		 * SQLite path still has. On SQLite this is a no-op (the upsert path already materialized).
-		 */
+		/** Fold the queued usage facts, firing milestones through the service under test. */
 		const flushStats = async (service: WorkflowStatisticsService) => {
-			if (!isPostgres) return;
-			const { firstOccurrences } = await workflowStatisticsRepository.rollupIncrements(
-				dataSource.manager,
-				10_000,
+			const fold = new UsageFoldService(
+				mock(),
+				mock(),
+				Container.get(DbLockService),
+				Container.get(UsageRepository),
+				workflowStatisticsRepository,
+				service,
+				Container.get(GlobalConfig),
 			);
-			for (const occ of firstOccurrences) {
-				await service.emitFirstOccurrenceEvent(
-					occ.name,
-					occ.workflowId,
-					occ.workflowName,
-					occ.firstEventMs,
-				);
-			}
+			await fold.foldAll();
 		};
 
 		const completeAndFlush = async (
@@ -96,7 +96,13 @@ describe('WorkflowStatisticsService', () => {
 
 		beforeEach(async () => {
 			vi.restoreAllMocks();
-			await testDb.truncate(['WorkflowStatistics', 'WorkflowStatisticsDelta']);
+			await testDb.truncate([
+				'WorkflowStatistics',
+				'WorkflowStatisticsDelta',
+				'UsageEvent',
+				'UsageLedgerEntry',
+				'UsageByPeriod',
+			]);
 			// Clear the instance-level milestone settings; without this the first test to reach a
 			// milestone leaves the row behind and every later test silently skips emitting it.
 			const settingsRepository = Container.get(SettingsRepository);
@@ -457,14 +463,13 @@ describe('WorkflowStatisticsService', () => {
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			const settingsRepository = Container.get(SettingsRepository);
 			const statisticsService = new WorkflowStatisticsService(
-				mock(),
 				workflowStatisticsRepository,
 				Container.get(OwnershipService),
 				userService,
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(UsageRecorder),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -500,14 +505,13 @@ describe('WorkflowStatisticsService', () => {
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			const settingsRepository = Container.get(SettingsRepository);
 			const statisticsService = new WorkflowStatisticsService(
-				mock(),
 				workflowStatisticsRepository,
 				Container.get(OwnershipService),
 				userService,
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(UsageRecorder),
 			);
 
 			// First failure - this will set the instance.firstProductionFailure setting
@@ -541,14 +545,13 @@ describe('WorkflowStatisticsService', () => {
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(true);
 			const settingsRepository = Container.get(SettingsRepository);
 			const statisticsService = new WorkflowStatisticsService(
-				mock(),
 				workflowStatisticsRepository,
 				Container.get(OwnershipService),
 				userService,
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryWithErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(UsageRecorder),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -696,14 +699,13 @@ describe('WorkflowStatisticsService', () => {
 			const ownershipService = Container.get(OwnershipService);
 			const settingsRepository = Container.get(SettingsRepository);
 			const statisticsService = new WorkflowStatisticsService(
-				mock(),
 				workflowStatisticsRepository,
 				ownershipService,
 				userService,
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(DatabaseConfig),
+				Container.get(UsageRecorder),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -732,14 +734,13 @@ describe('WorkflowStatisticsService', () => {
 					}
 				).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 				return new WorkflowStatisticsService(
-					mock(),
 					workflowStatisticsRepository,
 					Container.get(OwnershipService),
 					userService,
 					Container.get(EventService),
 					Container.get(SettingsRepository),
 					workflowRepositoryNoErrorWorkflows,
-					Container.get(DatabaseConfig),
+					Container.get(UsageRecorder),
 				);
 			};
 
@@ -1048,7 +1049,6 @@ describe('WorkflowStatisticsService', () => {
 			ownershipService = mockInstance(OwnershipService);
 			userService = mockInstance(UserService);
 			const globalConfig = Container.get(GlobalConfig);
-			const databaseConfig = Container.get(DatabaseConfig);
 
 			entityManager = mock<EntityManager>();
 			const dataSource = mock<DataSource>({
@@ -1068,14 +1068,13 @@ describe('WorkflowStatisticsService', () => {
 				workflowRepository as unknown as { hasAnyWorkflowsWithErrorWorkflow: Mock }
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			workflowStatisticsService = new WorkflowStatisticsService(
-				mock(),
 				workflowStatisticsRepository,
 				ownershipService,
 				userService,
 				eventService,
 				settingsRepository,
 				workflowRepository,
-				databaseConfig,
+				mock<UsageRecorder>(),
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';

@@ -8,7 +8,6 @@
  */
 
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -22,9 +21,11 @@ import {
 } from '@n8n/backend-module-insights/testing';
 import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { UsageQueryService } from '@/usage/usage-query.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import * as utils from '../shared/utils';
+import { foldPendingIncrements } from '../shared/workflow-statistics';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
 import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
 
@@ -59,6 +60,9 @@ describe('Insights vs Workflow Statistics Integration', () => {
 			'InsightsMetadata',
 			'WorkflowEntity',
 			'WorkflowStatistics',
+			'UsageEvent',
+			'UsageLedgerEntry',
+			'UsageByPeriod',
 			'ExecutionEntity',
 			'Project',
 		]);
@@ -135,15 +139,9 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		expectedCount: number,
 		timeout = 10000,
 	): Promise<void> {
-		const isPostgres = Container.get(GlobalConfig).database.type === 'postgresdb';
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
-			if (isPostgres) {
-				await workflowStatisticsRepository.rollupIncrements(
-					workflowStatisticsRepository.manager,
-					10_000,
-				);
-			}
+			await foldPendingIncrements();
 			const stats = await workflowStatisticsRepository.findOne({
 				where: {
 					workflowId,
@@ -309,5 +307,13 @@ describe('Insights vs Workflow Statistics Integration', () => {
 
 		expect(rootProductionCount).toBe(executionCount);
 		expect(billableCount).toBe(rootProductionCount);
+
+		const usageRootCount = await Container.get(UsageQueryService).total(
+			project.id,
+			'root_production',
+			new Date(0),
+			new Date('2100-01-01T00:00:00.000Z'),
+		);
+		expect(usageRootCount).toBe(rootProductionCount);
 	}, 60000);
 });

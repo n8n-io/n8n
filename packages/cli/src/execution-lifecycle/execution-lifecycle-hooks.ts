@@ -698,6 +698,8 @@ function hookFunctionsSave(
 			}
 		} finally {
 			workflowStatisticsService.emit('workflowExecutionCompleted', {
+				executionId: this.executionId,
+				parentExecutionId: parent?.executionId,
 				workflowData: this.workflowData,
 				fullRunData,
 				source,
@@ -807,6 +809,7 @@ function hookFunctionsSaveWorker(
 			// Counted only when the write above lands, so completions stay in sync with the database.
 			if (wasUpdated) {
 				workflowStatisticsService.emit('workflowExecutionCompleted', {
+					executionId: this.executionId,
 					workflowData: this.workflowData,
 					fullRunData,
 					source,

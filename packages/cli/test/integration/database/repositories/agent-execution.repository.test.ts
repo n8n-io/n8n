@@ -12,7 +12,13 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
+import {
+	SettingsRepository,
+	UsageEvent,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -26,6 +32,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { UsageRecorder } from '@/usage/usage-recorder.service';
 import type { Telemetry } from '@/telemetry';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
@@ -208,6 +215,7 @@ describe('AgentExecutionRepository', () => {
 			txRunner,
 			queueRepository,
 			messageRepository,
+			Container.get(UsageRecorder),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -1599,6 +1607,11 @@ describe('AgentExecutionRepository', () => {
 			}),
 		).rejects.toMatchObject({ phase: 'finalize', executionId });
 		expect(await repository.findOneByOrFail({ id: executionId })).toEqual(recovered);
+		// The failed attempt rolled back its usage row too; only the sweeper's outcome counts.
+		const usage = await repository.manager
+			.getRepository(UsageEvent)
+			.findBy({ kind: 'agent', executionId });
+		expect(usage).toEqual([expect.objectContaining({ status: 'interrupted', projectId })]);
 	});
 
 	describe('durable message queue', () => {

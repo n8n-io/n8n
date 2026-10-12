@@ -57,6 +57,12 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		tasks.push(WorkflowPublicationOutboxCleanupTask);
 	}
 
+	const { UsageFoldTask } = await import('@/usage/usage-fold.task.js');
+	const { UsageLedgerPruningTask } = await import('@/usage/usage-ledger-pruning.task.js');
+	const { UsageCompactionTask } = await import('@/usage/usage-compaction.task.js');
+	tasks.push(UsageFoldTask, UsageLedgerPruningTask, UsageCompactionTask);
+
+	// Drains increments queued before the usage tables existed.
 	if (globalConfig.database.type === 'postgresdb') {
 		const { WorkflowStatisticsRollupTask } = await import(
 			'@/services/workflow-statistics-rollup.task.js'

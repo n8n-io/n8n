@@ -5,6 +5,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
 
+import type { UsageRecorder } from '@/usage/usage-recorder.service';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -148,6 +149,7 @@ describe('AgentExecutionService', () => {
 			txRunner,
 			queueRepository,
 			messageRepository,
+			mock<UsageRecorder>(),
 		);
 	});
 
@@ -783,6 +785,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				mock<UsageRecorder>(),
 			);
 
 			const record = makeMessageRecord({
@@ -880,6 +883,7 @@ describe('AgentExecutionService', () => {
 					txRunner,
 					queueRepository,
 					messageRepository,
+					mock<UsageRecorder>(),
 				);
 
 				const record = makeMessageRecord({
@@ -1492,6 +1496,7 @@ describe('AgentExecutionService', () => {
 				txRunner,
 				queueRepository,
 				messageRepository,
+				mock<UsageRecorder>(),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

@@ -18,6 +18,7 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { ConflictError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
+import { UsageRecorder } from '@/usage/usage-recorder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
@@ -196,6 +197,7 @@ export class AgentExecutionService {
 		private readonly txRunner: TransactionRunner,
 		private readonly queueRepository: AgentMessageQueueRepository,
 		private readonly messageRepository: AgentMessageRepository,
+		private readonly usageRecorder: UsageRecorder,
 	) {}
 
 	async startExecutionRecording(
@@ -459,9 +461,9 @@ export class AgentExecutionService {
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
 		const finalized = await this.txRunner.run({}, async (ctx) => {
-			if (!(await this.agentExecutionThreadRepository.lockById(execution.threadId, ctx)))
-				return false;
-			return await this.agentExecutionRepository.updateIfRunning(
+			const thread = await this.agentExecutionThreadRepository.lockById(execution.threadId, ctx);
+			if (!thread) return false;
+			const updated = await this.agentExecutionRepository.updateIfRunning(
 				execution.id,
 				{
 					status: 'interrupted',
@@ -480,6 +482,25 @@ export class AgentExecutionService {
 				staleBefore,
 				ctx,
 			);
+			if (updated) {
+				await this.usageRecorder.recordAgentMessage(
+					{
+						executionId: execution.id,
+						agentId: thread.agentId,
+						agentName: thread.agentName,
+						projectId: thread.projectId,
+						source: null,
+						// Draft runs cannot be told apart on this path yet.
+						isTest: false,
+						parentThreadId: thread.parentThreadId,
+						status: 'interrupted',
+						startedAt: execution.startedAt ?? null,
+						endedAt: stoppedAt,
+					},
+					ctx,
+				);
+			}
+			return updated;
 		});
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
@@ -1062,15 +1083,33 @@ export class AgentExecutionService {
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 			try {
 				const finalized = await this.txRunner.run({}, async (ctx) => {
-					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
-						return false;
-					return await this.agentExecutionRepository.updateIfRunning(
+					const thread = await this.agentExecutionThreadRepository.lockById(params.threadId, ctx);
+					if (!thread) return false;
+					const updated = await this.agentExecutionRepository.updateIfRunning(
 						executionId,
 						terminalValues,
 						undefined,
 						ctx,
 						record.totalCost ?? undefined,
 					);
+					if (updated) {
+						await this.usageRecorder.recordAgentMessage(
+							{
+								executionId,
+								agentId: params.agentId,
+								agentName: params.agentName,
+								projectId: params.projectId,
+								source: params.source ?? null,
+								isTest: params.telemetry?.runType === 'test',
+								parentThreadId: thread.parentThreadId,
+								status,
+								startedAt: new Date(stoppedAt.getTime() - record.duration),
+								endedAt: stoppedAt,
+							},
+							ctx,
+						);
+					}
+					return updated;
 				});
 				if (!finalized) {
 					throw new OperationalError('Agent execution is no longer running', {

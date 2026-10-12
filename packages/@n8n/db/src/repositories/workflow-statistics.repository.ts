@@ -2,6 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, type EntityManager, In, QueryFailedError, Repository } from '@n8n/typeorm';
+import chunk from 'lodash/chunk';
 import { UnexpectedError } from 'n8n-workflow';
 
 import {
@@ -25,6 +26,17 @@ type StatisticsUpsertResult = StatisticsInsertResult | 'update';
 export type FirstOccurrenceRow = {
 	name: StatisticsNames;
 	workflowId: string;
+	workflowName: string | null;
+	firstEventMs: number;
+};
+
+/** Counts to add to one `workflow_statistics` row, folded from usage events. */
+export type StatisticsIncrement = {
+	workflowId: string;
+	name: StatisticsNames;
+	count: number;
+	rootCount: number;
+	latestEvent: Date;
 	workflowName: string | null;
 	firstEventMs: number;
 };
@@ -219,6 +231,79 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			}));
 
 		return { increments: rows[0].delta_rows, firstOccurrences };
+	}
+
+	/**
+	 * Add folded usage counts to the counters, on either database. Returns the production
+	 * counters this call created, for the one-time milestone events. Keys must be unique.
+	 */
+	async addFoldedCounts(
+		tx: EntityManager,
+		increments: StatisticsIncrement[],
+	): Promise<FirstOccurrenceRow[]> {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const table = tx.connection.driver.escape(this.metadata.tableName);
+		const key = (workflowId: string, name: string) => `${workflowId}:${name}`;
+
+		const existing = new Set<string>();
+		for (const ids of chunkIds([...new Set(increments.map((row) => row.workflowId))])) {
+			const rows = await tx.find(WorkflowStatistics, {
+				select: { workflowId: true, name: true },
+				where: { workflowId: In(ids) },
+			});
+			for (const row of rows) existing.add(key(row.workflowId, row.name));
+		}
+
+		// Postgres reports an unqualified column as ambiguous; SQLite resolves it to the target row.
+		const current = (column: string) => (isPostgres ? `${table}."${column}"` : `"${column}"`);
+		const latest = isPostgres ? 'GREATEST' : 'MAX';
+		const columns = ['workflowId', 'name', 'count', 'rootCount', 'latestEvent', 'workflowName'];
+
+		for (const rows of chunk(increments, 500)) {
+			const params: unknown[] = [];
+			const values = rows.map((row) => {
+				const rowParams = [
+					row.workflowId,
+					row.name,
+					row.count,
+					row.rootCount,
+					isPostgres
+						? row.latestEvent
+						: row.latestEvent.toISOString().replace('T', ' ').replace('Z', ''),
+					row.workflowName,
+				];
+				const placeholders = rowParams.map((value) => {
+					params.push(value);
+					return isPostgres ? `$${params.length}` : '?';
+				});
+				return `(${placeholders.join(', ')})`;
+			});
+
+			await tx.query(
+				`INSERT INTO ${table} (${columns.map((column) => `"${column}"`).join(', ')})
+				VALUES ${values.join(', ')}
+				ON CONFLICT ("workflowId", "name") DO UPDATE SET
+					"count" = ${current('count')} + excluded."count",
+					"rootCount" = ${current('rootCount')} + excluded."rootCount",
+					"latestEvent" = ${latest}(${current('latestEvent')}, excluded."latestEvent"),
+					"workflowName" = COALESCE(excluded."workflowName", ${current('workflowName')})`,
+				params,
+			);
+		}
+
+		return increments
+			.filter(
+				(row) =>
+					!existing.has(key(row.workflowId, row.name)) &&
+					(row.name === StatisticsNames.productionSuccess ||
+						row.name === StatisticsNames.productionError),
+			)
+			.map((row) => ({
+				name: row.name,
+				workflowId: row.workflowId,
+				workflowName: row.workflowName,
+				firstEventMs: row.firstEventMs,
+			}));
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {

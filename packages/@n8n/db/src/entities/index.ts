@@ -107,6 +107,7 @@ import {
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestStateList,
 } from './workflow-review-request.ee';
+import { UsageByPeriod, UsageEvent, UsageLedgerEntry } from './usage';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -174,6 +175,9 @@ export {
 	WorkflowDependency,
 	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	WorkflowEntity,
+	UsageByPeriod,
+	UsageEvent,
+	UsageLedgerEntry,
 	WorkflowStatistics,
 	WorkflowTagMapping,
 	FolderTagMapping,
@@ -213,6 +217,8 @@ export {
 	SecretsProviderConnection,
 };
 
+export type { UsageFact, UsageKind, UsagePeriodUnit, UsagePhase } from './usage';
+
 export const entities = {
 	ActivityEvent,
 	AgentEvalDataset,
@@ -247,6 +253,9 @@ export const entities = {
 	User,
 	WorkflowDependency,
 	WorkflowEntity,
+	UsageByPeriod,
+	UsageEvent,
+	UsageLedgerEntry,
 	WorkflowStatistics,
 	WorkflowTagMapping,
 	FolderTagMapping,

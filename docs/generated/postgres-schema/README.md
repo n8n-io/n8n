@@ -140,6 +140,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
 | [public.type_availability_policy_scope](public.type_availability_policy_scope.md) | 8 |  | BASE TABLE |
+| [public.usage_by_period](public.usage_by_period.md) | 12 |  | BASE TABLE |
+| [public.usage_event](public.usage_event.md) | 14 |  | BASE TABLE |
+| [public.usage_ledger](public.usage_ledger.md) | 14 |  | BASE TABLE |
 | [public.user](public.user.md) | 15 |  | BASE TABLE |
 | [public.user_api_keys](public.user_api_keys.md) | 9 |  | BASE TABLE |
 | [public.user_favorites](public.user_favorites.md) | 4 |  | BASE TABLE |
@@ -1726,6 +1729,52 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ updatedBy
   integer version
+}
+"public.usage_by_period" {
+  bigint count
+  boolean hasParent
+  boolean isTest
+  varchar_16_ kind
+  varchar_32_ origin
+  timestamp_3__with_time_zone periodStart
+  varchar_8_ periodUnit
+  varchar_16_ phase
+  varchar_36_ projectId
+  varchar_16_ status
+  varchar_36_ subjectId
+  varchar_32_ trigger
+}
+"public.usage_event" {
+  varchar_36_ executionId
+  bigint id
+  boolean isTest
+  varchar_16_ kind
+  timestamp_3__with_time_zone occurredAt
+  varchar_32_ origin
+  varchar_128_ parentId
+  varchar_16_ phase
+  varchar_36_ projectId
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  varchar_36_ subjectId
+  varchar_128_ subjectName
+  varchar_32_ trigger
+}
+"public.usage_ledger" {
+  varchar_36_ executionId
+  timestamp_3__with_time_zone foldedAt
+  boolean isTest
+  varchar_16_ kind
+  timestamp_3__with_time_zone occurredAt
+  varchar_32_ origin
+  varchar_128_ parentId
+  varchar_16_ phase
+  varchar_36_ projectId
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  varchar_36_ subjectId
+  varchar_128_ subjectName
+  varchar_32_ trigger
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt
