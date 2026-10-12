@@ -50,7 +50,7 @@ const importedWorkflowSummarySchema = z.object({
 	localId: z.string().openapi({
 		description:
 			'Workflow id on the target instance: newly assigned for `created` (fresh under ' +
-			"`workflowIdPolicy=new`, the package id under `source`), the existing workflow's id for " +
+			"`idPolicy=new`, the package id under `source`), the existing workflow's id for " +
 			'`updated`/`skipped`.',
 	}),
 	name: z.string(),
@@ -81,7 +81,7 @@ const importedAgentSummarySchema = z.object({
 	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),
 	localId: z.string().openapi({
 		description:
-			'Agent ID on the target instance. New Agents use a fresh ID under `agentIdPolicy=new`. ' +
+			'Agent ID on the target instance. New Agents use a fresh ID under `idPolicy=new`. ' +
 			'Under `source`, they use the package ID. Updated and skipped Agents keep their destination ID.',
 	}),
 	name: z.string(),

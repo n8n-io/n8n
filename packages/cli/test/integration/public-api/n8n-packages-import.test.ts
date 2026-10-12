@@ -223,7 +223,7 @@ describe('POST /n8n-packages/import', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
 			.field('conflictPolicy', 'fail')
-			.field('workflowIdPolicy', 'new')
+			.field('idPolicy', 'new')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -321,10 +321,8 @@ describe('POST /n8n-packages/import', () => {
 			.field('credentialMissingMode', 'must-preexist')
 			.field('bindings', '{}')
 			.field('conflictPolicy', 'fail')
-			.field('workflowIdPolicy', 'new')
-			.field('workflowPublishingPolicy', 'preserve-published-state')
-			.field('agentIdPolicy', 'source')
-			.field('agentPublishingPolicy', 'unpublish-all')
+			.field('idPolicy', 'new')
+			.field('publishingPolicy', 'preserve-published-state')
 			.field('projectConflictPolicy', 'merge')
 			.field('folderConflictPolicy', 'merge')
 			.field('overwriteDeletionPolicy', 'archive')
@@ -504,7 +502,7 @@ describe('POST /n8n-packages/import', () => {
 			.post('/n8n-packages/import')
 			.field('conflictPolicy', 'fail')
 			.field('missingNodeTypeMode', 'import-anyway')
-			.field('workflowPublishingPolicy', 'match-source')
+			.field('publishingPolicy', 'match-source')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

@@ -147,7 +147,7 @@ async function upload(packageBuffer: Buffer, fields: Record<string, string> = {}
 		.post('/n8n-packages/import')
 		.field({
 			conflictPolicy: 'new-version',
-			agentIdPolicy: 'new',
+			idPolicy: 'new',
 			projectId: destination.id,
 			...fields,
 		})
@@ -217,7 +217,7 @@ it.each(['loose', 'project'] as const)(
 			await Container.get(ProjectRepository).delete(sourceProject.id);
 		}
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
-		const response = await upload(archive, { bindings, workflowIdPolicy: 'new' });
+		const response = await upload(archive, { bindings, idPolicy: 'new' });
 		expect(response.statusCode).toBe(200);
 		const result = ImportResultDto.parse(response.body);
 		expect(result.agents).toHaveLength(2);
@@ -268,6 +268,7 @@ it.each(['loose', 'project'] as const)(
 				options: expect.objectContaining({
 					conflictPolicy: 'new-version',
 					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
 					agentIdPolicy: 'new',
 				}),
 			}),
@@ -275,41 +276,43 @@ it.each(['loose', 'project'] as const)(
 	},
 );
 
-it('shares conflict policy across mixed content and keeps ID and publication policies independent', async () => {
+it('shares conflict, ID, and publication policies across mixed content', async () => {
 	const workflow = await addWorkflowDependency();
 	const archive = await download();
 	await Container.get(WorkflowRepository).delete(workflow.id);
 	const created = await upload(archive, {
-		workflowIdPolicy: 'source',
-		workflowPublishingPolicy: 'publish-all',
-		agentPublishingPolicy: 'unpublish-all',
+		idPolicy: 'new',
+		publishingPolicy: 'publish-all',
 	});
 	expect(created.statusCode).toBe(200);
 	const initial = ImportResultDto.parse(created.body);
-	expect(initial.bindings.workflows[workflow.id]).toBe(workflow.id);
+	expect(initial.bindings.workflows[workflow.id]).not.toBe(workflow.id);
 	expect(initial.bindings.agents[workflow.id]).not.toBe(workflow.id);
+	expect(initial.bindings.agents[workflow.id]).not.toBe(initial.bindings.workflows[workflow.id]);
 	expect(initial.workflows[0].publishing.state).toBe('published');
 	expect(initial.agents.map(({ publishing }) => publishing.state)).toEqual([
-		'unchanged',
-		'unchanged',
+		'published',
+		'published',
 	]);
 	const updated = await upload(archive, {
-		workflowIdPolicy: 'new',
-		agentIdPolicy: 'source',
-		agentPublishingPolicy: 'publish-all',
+		idPolicy: 'source',
+		publishingPolicy: 'unpublish-all',
 	});
 	expect(updated.statusCode).toBe(200);
 	expect(updated.body.bindings).toEqual(initial.bindings);
 	expect(updated.body.counts.agents).toEqual({ created: 0, updated: 2, skipped: 0 });
-	expect(updated.body.workflows[0].status).toBe('updated');
+	expect(updated.body.workflows[0]).toMatchObject({
+		status: 'updated',
+		publishing: { state: 'unpublished' },
+	});
 	expect(updated.body.agents).toMatchObject([
-		{ status: 'updated', publishing: { state: 'published' } },
-		{ status: 'updated', publishing: { state: 'published' } },
+		{ status: 'updated', publishing: { state: 'unpublished' } },
+		{ status: 'updated', publishing: { state: 'unpublished' } },
 	]);
 	const before = await records();
 	const skipped = await upload(archive, {
 		conflictPolicy: 'skip',
-		agentPublishingPolicy: 'unpublish-all',
+		publishingPolicy: 'publish-all',
 	});
 	expect(skipped.statusCode).toBe(200);
 	expect(skipped.body.bindings).toEqual(initial.bindings);
@@ -342,7 +345,7 @@ it('imports with Agent-only grants and skips with no write grants', async () => 
 	const before = await records();
 	const skipped = await upload(
 		archive,
-		{ conflictPolicy: 'skip', agentPublishingPolicy: 'publish-all' },
+		{ conflictPolicy: 'skip', publishingPolicy: 'publish-all' },
 		reader,
 	);
 	expect(skipped.statusCode).toBe(200);
@@ -355,9 +358,7 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 	async (action) => {
 		const archive = await download();
 		if (action === 'update' || action === 'unpublish') {
-			expect((await upload(archive, { agentPublishingPolicy: 'publish-all' })).statusCode).toBe(
-				200,
-			);
+			expect((await upload(archive, { publishingPolicy: 'publish-all' })).statusCode).toBe(200);
 		}
 		const scopes: ApiKeyScope[] = [
 			'agent:import',
@@ -370,9 +371,9 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 		const caller = await createOwnerWithApiKey({
 			scopes: scopes.filter((scope) => scope !== `agent:${action}`),
 		});
-		const agentPublishingPolicy = action === 'unpublish' ? 'unpublish-all' : 'publish-all';
+		const publishingPolicy = action === 'unpublish' ? 'unpublish-all' : 'publish-all';
 		const before = await records();
-		const response = await upload(archive, { agentPublishingPolicy }, caller);
+		const response = await upload(archive, { publishingPolicy }, caller);
 		expect(response.statusCode).toBe(403);
 		expect(await records()).toEqual(before);
 	},
@@ -432,7 +433,7 @@ it('returns saved definitions and continues when one publication fails', async (
 	sourceAgents[0].schema!.model = '';
 	sourceAgents[0].schema!.credential = '';
 	await agents.save(sourceAgents[0]);
-	const response = await upload(await download(), { agentPublishingPolicy: 'publish-all' });
+	const response = await upload(await download(), { publishingPolicy: 'publish-all' });
 	expect(response.statusCode).toBe(200);
 	const result = ImportResultDto.parse(response.body);
 	expect(result.agents[0]).toMatchObject({

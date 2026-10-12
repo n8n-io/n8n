@@ -2112,6 +2112,9 @@ importers:
         specifier: ^4.5.2
         version: 4.5.2
     devDependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../oxlint-config
