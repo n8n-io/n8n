@@ -112,7 +112,8 @@ function scrollParent(node: HTMLElement): HTMLElement | null {
 }
 
 // The new row grows in after the click. Once that motion ends, bring the add
-// button back if the list now runs past the dialog body.
+// button back if the list now runs past the dialog body. Reduced-motion users
+// get an instant jump; the row transitions already drop their motion too.
 function keepAddButtonInView() {
 	const row = addUrlRow.value;
 	if (!row) return;
@@ -121,7 +122,10 @@ function keepAddButtonInView() {
 	const rowRect = row.getBoundingClientRect();
 	const scrollerRect = scroller.getBoundingClientRect();
 	if (rowRect.bottom <= scrollerRect.bottom) return;
-	scroller.scrollTo({ top: scroller.scrollHeight - scroller.clientHeight, behavior: 'smooth' });
+	const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+		? 'auto'
+		: 'smooth';
+	scroller.scrollTo({ top: scroller.scrollHeight - scroller.clientHeight, behavior });
 }
 
 const removeUrl = (id: number) => {
