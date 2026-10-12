@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'CreateSkillsHubTables1791465484308';
+const migrationName = 'CreateSkillsHubTables1791818723687';
 
 type Row = Record<string, string | number | Date | null>;
 

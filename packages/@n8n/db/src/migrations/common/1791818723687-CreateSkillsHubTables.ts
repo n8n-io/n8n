@@ -14,7 +14,7 @@ const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
  * the content creates the next one, agents read the latest, and agent publishes pin the
  * one they ran.
  */
-export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
+export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createSkillTable(context);
 		await this.createSkillVersionTable(context);
