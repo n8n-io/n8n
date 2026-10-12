@@ -77,7 +77,11 @@ function statusOf(error: unknown): unknown {
 	return isRecord(error) && isRecord(error.response) ? error.response.status : undefined;
 }
 
-/** Graph addresses a sharing URL as `u!` plus its unpadded base64url form. */
+/**
+ * Graph addresses a sharing URL as `u!` plus its unpadded base64url form. The
+ * docs list Files.ReadWrite.All for `/shares`, but Files.Read.All works. If that
+ * ever stops, read through the channel's `filesFolder` drive instead.
+ */
 function shareIdOf(url: string): string {
 	return `u!${Buffer.from(url, 'utf8').toString('base64url')}`;
 }
@@ -106,7 +110,7 @@ export async function fetchTeamsMessageFiles(
 		} catch (error) {
 			if (statusOf(error) !== 403) throw error;
 			throw new InboundAttachmentAccessError(
-				'a Microsoft administrator has not allowed file access for this app yet. Ask them to grant admin consent for its Files.Read.All permission in Microsoft Entra',
+				'a Microsoft administrator has not allowed file access for this app yet. Ask them to grant admin consent for its Files.Read.All application permission in Microsoft Entra. After approval, it can take up to an hour to apply',
 			);
 		}
 	};
