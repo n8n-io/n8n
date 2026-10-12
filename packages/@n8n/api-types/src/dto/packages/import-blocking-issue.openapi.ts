@@ -299,3 +299,15 @@ export const policyViolationIssueOpenApi: ZodOpenAPIMetadata = {
 		'workflow would get, so dropping one leaves the workflows that call it pointing at a row ' +
 		'nothing ever wrote.',
 };
+
+export const credentialPolicyViolationFieldDocs = {
+	sourceId: { description: 'Credential id as it appears in the package.' },
+	usedBy: { description: 'Package consumers that use this credential.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialPolicyViolationIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A credential the import would write that the credential-save policy refused, for ' +
+		'example a stub of a credential type this instance does not allow. The import stops ' +
+		'before any writes.',
+};
