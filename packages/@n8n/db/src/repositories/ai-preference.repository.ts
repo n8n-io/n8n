@@ -102,7 +102,7 @@ function whereTarget(target: AiPreferenceTarget): FindOptionsWhere<AiPreference>
 
 const ORDER = { createdAt: 'ASC', id: 'ASC' } as const;
 
-const RELATIONS = { project: true, user: true } as const;
+const RELATIONS = { project: true, user: true, createdBy: true } as const;
 
 function visibleTo(
 	query: ApplicableAiPreferencesQuery,

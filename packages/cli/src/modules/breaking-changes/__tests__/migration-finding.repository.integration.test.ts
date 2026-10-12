@@ -666,6 +666,101 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('setTriageStatusForWorkflows', () => {
+		const RULE_ID = 'removed-nodes-v3';
+
+		test('sets the status on the findings of the given workflows and moves statusChangedAt', async () => {
+			const [first, second] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await insertWithStatusChangedAt(first.id, PAST);
+			await insertWithStatusChangedAt(second.id, PAST);
+
+			await findingRepository.setTriageStatusForWorkflows(
+				'v3',
+				RULE_ID,
+				[first.id, second.id],
+				'wont_fix',
+				ctx,
+			);
+
+			const rows = await findingRepository.listForWorkflows('v3', [first.id, second.id], ctx);
+			expect(rows.map((row) => row.status)).toEqual(['wont_fix', 'wont_fix']);
+			for (const row of rows) {
+				expect(row.statusChangedAt.getTime()).toBeGreaterThan(PAST.getTime());
+			}
+		});
+
+		test('keeps statusChangedAt on a finding that already has the status', async () => {
+			const workflow = await createWorkflow();
+			const id = await insertWithStatusChangedAt(workflow.id, PAST);
+			await findingRepository.update({ id }, { status: 'wont_fix', statusChangedAt: PAST });
+
+			await findingRepository.setTriageStatusForWorkflows(
+				'v3',
+				RULE_ID,
+				[workflow.id],
+				'wont_fix',
+				ctx,
+			);
+
+			const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(after.status).toBe('wont_fix');
+			expect(after.statusChangedAt.getTime()).toBe(PAST.getTime());
+		});
+
+		test('keeps a fixed finding fixed and still updates the others', async () => {
+			const [fixed, open] = await Promise.all([createWorkflow(), createWorkflow()]);
+			const fixedId = await insertWithStatusChangedAt(fixed.id, PAST);
+			await insertWithStatusChangedAt(open.id, PAST);
+			await findingRepository.markFixedForIds([fixedId], ctx);
+
+			await findingRepository.setTriageStatusForWorkflows(
+				'v3',
+				RULE_ID,
+				[fixed.id, open.id],
+				'wont_fix',
+				ctx,
+			);
+
+			const rows = await findingRepository.find();
+			expect(rows.find((row) => row.workflowId === fixed.id)?.status).toBe('fixed');
+			expect(rows.find((row) => row.workflowId === open.id)?.status).toBe('wont_fix');
+		});
+
+		test('changes only the findings of the given version, rule and workflows', async () => {
+			const [target, other] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await findingRepository.insertMany(
+				[
+					finding(target.id, RULE_ID),
+					finding(target.id, RULE_ID, 'v2'),
+					finding(target.id, 'rule-b'),
+					finding(other.id, RULE_ID),
+				],
+				ctx,
+			);
+
+			await findingRepository.setTriageStatusForWorkflows(
+				'v3',
+				RULE_ID,
+				[target.id],
+				'wont_fix',
+				ctx,
+			);
+
+			const rows = await findingRepository.find();
+			const statusOf = (workflowId: string, ruleId: string, targetVersion: string) =>
+				rows.find(
+					(row) =>
+						row.workflowId === workflowId &&
+						row.ruleId === ruleId &&
+						row.targetVersion === targetVersion,
+				)?.status;
+			expect(statusOf(target.id, RULE_ID, 'v3')).toBe('wont_fix');
+			expect(statusOf(target.id, RULE_ID, 'v2')).toBe('open');
+			expect(statusOf(target.id, 'rule-b', 'v3')).toBe('open');
+			expect(statusOf(other.id, RULE_ID, 'v3')).toBe('open');
+		});
+	});
+
 	describe('cascade delete', () => {
 		test('deletes the findings of a deleted workflow and keeps the others', async () => {
 			const [deleted, kept] = await Promise.all([createWorkflow(), createWorkflow()]);
