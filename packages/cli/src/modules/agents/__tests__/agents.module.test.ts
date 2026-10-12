@@ -11,6 +11,7 @@ import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 
+import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
 import { AgentsSettingsService } from '../agents-settings.service';
@@ -113,10 +114,11 @@ describe('AgentsModule', () => {
 	});
 
 	describe('systemTasks()', () => {
-		it('registers the pruning and the sweep tasks', async () => {
+		it('registers the pruning, sweep and media retention tasks', async () => {
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,
+				AgentChannelMediaRetentionTask,
 			]);
 		});
 	});

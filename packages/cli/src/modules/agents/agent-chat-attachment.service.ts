@@ -22,6 +22,8 @@ import { threadBelongsTo } from './utils/agent-thread-access';
 // (see `packages/@n8n/db/src/entities/binary-data-file.ts`) is a compile error.
 const ATTACHMENT_SOURCE_TYPE: SourceType = 'agent_chat_attachment';
 
+const RETENTION_BATCH_SIZE = 500;
+
 export interface StoreInboundAttachmentParams {
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
@@ -158,6 +160,27 @@ export class AgentChatAttachmentService {
 	/** Called before the agent row is removed, so bytes don't outlive the cascading rows. */
 	async deleteByAgent(agentId: string): Promise<void> {
 		await this.deleteAttachments(await this.repository.findBy({ agentId }), { agentId });
+	}
+
+	/**
+	 * Deletes the files an agent received from one channel before `before`, in
+	 * batches, so a large backlog does not load into memory at once.
+	 */
+	async deleteFromSourceCreatedBefore(
+		scope: { agentId: string; source: string },
+		before: Date,
+	): Promise<number> {
+		let deleted = 0;
+		for (;;) {
+			const batch = await this.repository.findFromSourceCreatedBefore(
+				scope,
+				before,
+				RETENTION_BATCH_SIZE,
+			);
+			await this.deleteAttachments(batch, { agentId: scope.agentId, source: scope.source });
+			deleted += batch.length;
+			if (batch.length < RETENTION_BATCH_SIZE) return deleted;
+		}
 	}
 
 	async deleteStoredData(

@@ -210,7 +210,14 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentInterruptedExecutionSweepTask } = await import(
 			'./agent-interrupted-execution-sweep.task.js'
 		);
-		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
+		const { AgentChannelMediaRetentionTask } = await import(
+			'./agent-channel-media-retention.task.js'
+		);
+		return [
+			AgentCheckpointPruningTask,
+			AgentInterruptedExecutionSweepTask,
+			AgentChannelMediaRetentionTask,
+		];
 	}
 
 	async settings() {
