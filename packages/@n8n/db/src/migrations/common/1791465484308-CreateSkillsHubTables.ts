@@ -146,7 +146,6 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 				),
 			)
 			.withCreatedAt.withIndexOn(['skillId'])
-			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' })
 			.withForeignKey('skillId', { tableName: SKILL_TABLE, columnName: 'id', onDelete: 'CASCADE' })
 			// NO ACTION keeps a pinned version from being deleted on its own. A skill delete
@@ -168,7 +167,6 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 				column('skillVersionId').uuid.notNull,
 			)
 			.withCreatedAt.withIndexOn(['skillId'])
-			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentVersionId', {
 				tableName: 'agent_history',
 				columnName: 'versionId',

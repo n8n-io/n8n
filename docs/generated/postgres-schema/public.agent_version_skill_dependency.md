@@ -27,7 +27,6 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_c494292243a7e510acd0331c3d | CREATE INDEX "IDX_c494292243a7e510acd0331c3d" ON public.agent_version_skill_dependency USING btree ("skillId") |
-| IDX_df63badfd7d3f2aa622ece471c | CREATE INDEX "IDX_df63badfd7d3f2aa622ece471c" ON public.agent_version_skill_dependency USING btree ("skillVersionId") |
 | PK_df0a2577371b94f3c7008d81822 | CREATE UNIQUE INDEX "PK_df0a2577371b94f3c7008d81822" ON public.agent_version_skill_dependency USING btree ("agentVersionId", "skillId") |
 
 ## Relations
