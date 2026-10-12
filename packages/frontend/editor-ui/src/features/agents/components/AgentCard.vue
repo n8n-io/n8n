@@ -166,6 +166,7 @@ async function onAction(action: string) {
 			}),
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
+			destructive: true,
 		});
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
