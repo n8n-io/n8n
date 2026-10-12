@@ -273,6 +273,26 @@ describe('N8nPackagesPublicController', () => {
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
+		it('does not emit n8n-package-export-failed when the client disconnects after the stream is returned', async () => {
+			const prematureClose = Object.assign(new Error('Premature close'), {
+				code: 'ERR_STREAM_PREMATURE_CLOSE',
+			});
+			const stream = new Readable({ read() {} });
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
+
+			await controller.exportPackage(
+				makeRequest(['workflow:export']),
+				mock<Response>(),
+				ExportPackageRequestDto.parse({ workflowIds: ['wf-1'] }),
+			);
+			// The response reads the stream after the controller returns, so the disconnect happens here.
+			stream.on('error', () => undefined);
+			stream.destroy(prematureClose);
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(mockEventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('forwards a non-default dependency policy', async () => {
 			mockExportStream();
 
