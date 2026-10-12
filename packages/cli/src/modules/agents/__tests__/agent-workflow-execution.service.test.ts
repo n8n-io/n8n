@@ -1545,7 +1545,10 @@ describe('AgentWorkflowExecutionService', () => {
 				{ prepareForEval },
 			);
 
-			expect(prepareForEval).toHaveBeenCalledWith(schema, { hasChatIntegrations: true });
+			expect(prepareForEval).toHaveBeenCalledWith(
+				{ ...schema, skills: [] },
+				{ hasChatIntegrations: true },
+			);
 			const [entity, , , , , passedInstrumentation] =
 				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
 			expect(entity.agent.schema).toEqual(evalConfig);
