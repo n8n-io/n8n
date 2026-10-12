@@ -8,7 +8,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThan, Not, Raw } from '@n8n/typeorm';
+import { DataSource, LessThan, Raw } from '@n8n/typeorm';
 
 import { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import { InstanceAiThread } from '../entities/instance-ai-thread.entity';
@@ -30,14 +30,6 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 		return await this.managerFor(ctx).findOneBy(InstanceAiThread, {
 			selfHealingResultId: resultId,
 			resourceId: userId,
-		});
-	}
-
-	async findOwnedSelfHealingChat(threadId: string, userId: string) {
-		return await this.findOneBy({
-			id: threadId,
-			resourceId: userId,
-			selfHealingResultId: Not(IsNull()),
 		});
 	}
 
@@ -64,15 +56,6 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 			}),
 		);
 		return thread;
-	}
-
-	async hasUserTurnAfterOpening(threadId: string) {
-		const messages = await this.managerFor({}).find(InstanceAiMessage, {
-			where: { threadId, role: 'user' },
-			select: { id: true },
-			take: 2,
-		});
-		return messages.length > 1;
 	}
 
 	/** Apply decisions to the locked row so sibling mains cannot claim the same state. */

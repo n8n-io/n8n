@@ -60,12 +60,16 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 		error.value = null;
 		try {
 			const result = await fetchSelfHealingResult(rootStore.restApiContext, target);
-			if (request === detailRequest) detail.value = result;
+			if (request === detailRequest) {
+				detail.value = result;
+				return result;
+			}
 		} catch (cause) {
 			if (request === detailRequest) setError(target, cause);
 		} finally {
 			if (request === detailRequest) loading.value = false;
 		}
+		return undefined;
 	}
 
 	async function refreshWorkflow() {

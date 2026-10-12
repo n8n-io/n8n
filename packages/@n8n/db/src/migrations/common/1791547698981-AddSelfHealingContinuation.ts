@@ -12,12 +12,6 @@ export class AddSelfHealingContinuation1791547698981 implements ReversibleMigrat
 			[
 				s.column('continuedAt').timestampTimezone().comment('First continuation of the result'),
 				s.column('continuedById').uuid.comment('Reviewer who first continued the result'),
-				s
-					.column('continuationDestination')
-					.varchar(16)
-					.withEnumCheck(['editor', 'chat'])
-					.comment('Destination of the first continuation'),
-				s.column('continuationThreadId').uuid.comment('Private chat for the first continuation'),
 			],
 			{ recreatesOnSqlite: true },
 		);
@@ -39,13 +33,6 @@ export class AddSelfHealingContinuation1791547698981 implements ReversibleMigrat
 			'SET NULL',
 		);
 		await s.addForeignKey(
-			'self_healing_result',
-			'continuationThreadId',
-			['instance_ai_threads', 'id'],
-			'FK_self_healing_result_continuation_thread',
-			'SET NULL',
-		);
-		await s.addForeignKey(
 			'instance_ai_threads',
 			'selfHealingResultId',
 			['self_healing_result', 'id'],
@@ -53,7 +40,6 @@ export class AddSelfHealingContinuation1791547698981 implements ReversibleMigrat
 			'SET NULL',
 		);
 		await s.createIndex('self_healing_result', ['continuedById']);
-		await s.createIndex('self_healing_result', ['continuationThreadId']);
 		await s.createIndex(
 			'instance_ai_threads',
 			['selfHealingResultId', 'resourceId'],
@@ -77,29 +63,17 @@ export class AddSelfHealingContinuation1791547698981 implements ReversibleMigrat
 		);
 		await s.dropForeignKey(
 			'self_healing_result',
-			'continuationThreadId',
-			['instance_ai_threads', 'id'],
-			'FK_self_healing_result_continuation_thread',
-		);
-		await s.dropForeignKey(
-			'self_healing_result',
 			'continuedById',
 			['user', 'id'],
 			'FK_self_healing_result_continued_by',
 		);
 		await s.dropIndex('instance_ai_threads', ['selfHealingResultId', 'resourceId']);
-		await s.dropIndex('self_healing_result', ['continuationThreadId']);
 		await s.dropIndex('self_healing_result', ['continuedById']);
-		await s.dropEnumCheck('self_healing_result', 'continuationDestination', {
-			recreatesOnSqlite: true,
-		});
 		await s.dropColumns('instance_ai_threads', ['selfHealingResultId'], {
 			recreatesOnSqlite: true,
 		});
-		await s.dropColumns(
-			'self_healing_result',
-			['continuedAt', 'continuedById', 'continuationDestination', 'continuationThreadId'],
-			{ recreatesOnSqlite: true },
-		);
+		await s.dropColumns('self_healing_result', ['continuedAt', 'continuedById'], {
+			recreatesOnSqlite: true,
+		});
 	}
 }

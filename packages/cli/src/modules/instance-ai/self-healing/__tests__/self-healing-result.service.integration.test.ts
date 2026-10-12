@@ -87,8 +87,6 @@ beforeEach(() => {
 	validation.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	validation.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 	vi.spyOn(Container.get(SelfHealingChatService), 'assertAvailable').mockResolvedValue(undefined);
-	assistant.hasActiveRun.mockReturnValue(false);
-	assistant.startRun.mockReturnValue('controlled-run');
 });
 
 afterEach(async () => {
@@ -514,30 +512,22 @@ it.each([
 	['needs_you', false, 'continued'],
 	['could_not_fix', false, 'continued'],
 ] as const)(
-	'continues %s in the editor with proposal=%s as %s',
+	'applies and closes %s with proposal=%s as %s',
 	async (outcome, withSuggestion, reviewState) => {
 		const { user, original, result, url, graph } = await fixture(outcome, withSuggestion);
 		const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
-		const locks = vi.spyOn(Container.get(CollaborationService), 'validateWriteLock');
 		const agent = testServer.authAgentFor(user);
-		const response = await agent
-			.post(`${url}/continue`)
-			.set('push-ref', 'review-editor')
-			.send({ destination: 'editor' })
-			.expect(200);
+		const response = await agent.post(`${url}/apply`).set('push-ref', 'review-editor').expect(200);
 		expect(response.body.data).toMatchObject({
 			reviewState,
-			continuedAt: expect.any(String),
-			continuedById: user.id,
-			continuationDestination: 'editor',
-			continuationThreadId: null,
+			continuedAt: withSuggestion ? null : expect.any(String),
+			continuedById: withSuggestion ? null : user.id,
 			chatThreadId: null,
 		});
 		const saved = await workflows.findOneByOrFail({ id: original.id });
 		if (withSuggestion) {
 			expect(saved.nodes).toEqual(graph.nodes);
 			expect(saved.activeVersionId).toBe(original.activeVersionId);
-			expect(locks).toHaveBeenCalledWith(user.id, 'review-editor', original.id, 'update');
 			expect(response.body.data.suggestion).toMatchObject({
 				closedReason: 'applied',
 				appliedVersion: { action: 'apply' },
@@ -546,10 +536,7 @@ it.each([
 			expect(saved).toEqual(original);
 		}
 		const receipt = await results.findOneByOrFail({ id: result.id });
-		const repeated = await agent
-			.post(`${url}/continue`)
-			.send({ destination: 'editor' })
-			.expect(200);
+		const repeated = await agent.post(`${url}/apply`).expect(200);
 		expect(repeated.body.data).toEqual(response.body.data);
 		expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
@@ -558,14 +545,14 @@ it.each([
 	},
 );
 
-it('keeps the shared continuation receipt when another editor continues', async () => {
+it('keeps the first closure when another editor applies or dismisses the report', async () => {
 	const { user, original, result, project } = await fixture('could_not_fix');
 	const editor = await createUser();
 	await shareWorkflowWithUsers(original, [editor]);
-	await service.continueResult(user, project.id, original.id, result.id, 'editor');
+	await service.act(user, project.id, original.id, result.id, 'apply');
 	const receipt = await results.findOneByOrFail({ id: result.id });
 
-	await service.continueResult(editor, project.id, original.id, result.id, 'editor');
+	await service.act(editor, project.id, original.id, result.id, 'apply');
 	await service.dismiss(editor, project.id, original.id, result.id);
 
 	expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
@@ -575,41 +562,20 @@ it('keeps the shared continuation receipt when another editor continues', async 
 	});
 });
 
-it('records one continuation when two editor requests race', async () => {
-	const { user, original, result, project } = await fixture('could_not_fix');
-	const responses = await Promise.all([
-		service.continueResult(user, project.id, original.id, result.id, 'editor'),
-		service.continueResult(user, project.id, original.id, result.id, 'editor'),
-	]);
+it.each([false, true])(
+	'closes a report with proposal=%s once when Apply requests race',
+	async (withSuggestion) => {
+		const { user, original, result, project, graph } = await fixture('needs_you', withSuggestion);
+		const responses = await Promise.all([
+			service.act(user, project.id, original.id, result.id, 'apply'),
+			service.act(user, project.id, original.id, result.id, 'apply'),
+		]);
 
-	expect(responses[0]).toEqual(responses[1]);
-	expect(responses[0].reviewState).toBe('continued');
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-});
-
-it('does not continue a proposal that becomes outdated before Apply', async () => {
-	const { user, original, result, url } = await fixture('needs_you', true);
-	await workflows.update(original.id, { settings: { executionTimeout: 60 } });
-
-	await testServer
-		.authAgentFor(user)
-		.post(`${url}/continue`)
-		.send({ destination: 'editor' })
-		.expect(409);
-
-	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ continuedAt: null });
-	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({
-		closedReason: 'outdated',
-		appliedVersionId: null,
-	});
-});
-
-it.each([{}, { destination: 'other' }, { destination: 'editor', threadId: 'untrusted' }])(
-	'rejects an invalid continuation request %j',
-	async (body) => {
-		const { user, result, url } = await fixture('could_not_fix');
-		await testServer.authAgentFor(user).post(`${url}/continue`).send(body).expect(400);
-		expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ continuedAt: null });
+		expect(responses[0]).toEqual(responses[1]);
+		expect(responses[0].reviewState).toBe(withSuggestion ? 'applied' : 'continued');
+		const saved = await workflows.findOneByOrFail({ id: original.id });
+		expect(saved.nodes).toEqual(withSuggestion ? graph.nodes : original.nodes);
+		expect(saved.activeVersionId).toBe(original.activeVersionId);
 	},
 );
 
@@ -619,9 +585,9 @@ it('checks chat availability before applying a partial proposal', async () => {
 		new Error('Assistant unavailable.'),
 	);
 
-	await expect(
-		service.continueResult(user, project.id, original.id, result.id, 'chat'),
-	).rejects.toThrow('Assistant unavailable.');
+	await expect(service.prepareChat(user, project.id, original.id, result.id)).rejects.toThrow(
+		'Assistant unavailable.',
+	);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({
@@ -629,27 +595,50 @@ it('checks chat availability before applying a partial proposal', async () => {
 	});
 });
 
-it('creates private chats for each editor and preserves the first shared receipt', async () => {
+it('uses the same Apply path before creating a private chat', async () => {
+	const { user, original, graph, url } = await fixture('needs_you', true);
+	const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
+	const locks = vi.spyOn(Container.get(CollaborationService), 'validateWriteLock');
+	const response = await testServer
+		.authAgentFor(user)
+		.post(`${url}/chat`)
+		.set('push-ref', 'review-chat')
+		.expect(200);
+
+	expect(response.body.data).toMatchObject({
+		reviewState: 'applied',
+		chatThreadId: expect.any(String),
+	});
+	expect(locks).toHaveBeenCalledWith(user.id, 'review-chat', original.id, 'update');
+	const saved = await workflows.findOneByOrFail({ id: original.id });
+	expect(saved.nodes).toEqual(graph.nodes);
+	expect(saved.activeVersionId).toBe(original.activeVersionId);
+	expect(publish).not.toHaveBeenCalled();
+	expect(assistant.startRun).not.toHaveBeenCalled();
+});
+
+it('returns only the current editor’s private chat and reuses it on retry', async () => {
 	const { user, project, original, result } = await fixture('could_not_fix');
 	const editor = await createUser();
 	await shareWorkflowWithUsers(original, [editor]);
 	const threads = Container.get(InstanceAiThreadRepository);
-	const first = await service.continueResult(user, project.id, original.id, result.id, 'chat');
+	const first = await service.prepareChat(user, project.id, original.id, result.id);
 	const receipt = await results.findOneByOrFail({ id: result.id });
-	const other = await service.continueResult(editor, project.id, original.id, result.id, 'chat');
-	const repeated = await service.continueResult(editor, project.id, original.id, result.id, 'chat');
+	expect(
+		(await service.getDetail(editor, project.id, original.id, result.id)).chatThreadId,
+	).toBeNull();
+	const other = await service.prepareChat(editor, project.id, original.id, result.id);
+	const repeated = await service.prepareChat(editor, project.id, original.id, result.id);
 
-	expect(first).toMatchObject({
-		reviewState: 'continued',
-		continuedById: user.id,
-		continuationDestination: 'chat',
-		continuationThreadId: first.chatThreadId,
-	});
 	expect(first.chatThreadId).toEqual(expect.any(String));
-	expect(other.chatThreadId).toEqual(expect.any(String));
 	expect(other.chatThreadId).not.toBe(first.chatThreadId);
-	expect(other.continuationThreadId).toBeNull();
 	expect(repeated.chatThreadId).toBe(other.chatThreadId);
+	expect((await service.getDetail(editor, project.id, original.id, result.id)).chatThreadId).toBe(
+		other.chatThreadId,
+	);
+	expect((await service.getDetail(user, project.id, original.id, result.id)).chatThreadId).toBe(
+		first.chatThreadId,
+	);
 	expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
 	expect(await threads.countBy({ selfHealingResultId: result.id })).toBe(2);
 	expect(await threads.findOneByOrFail({ id: first.chatThreadId! })).toMatchObject({
@@ -658,114 +647,108 @@ it('creates private chats for each editor and preserves the first shared receipt
 	expect(await threads.findOneByOrFail({ id: other.chatThreadId! })).toMatchObject({
 		resourceId: editor.id,
 	});
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
-it('creates a chat after an editor continuation without replacing its receipt', async () => {
+it('creates one private chat when requests race', async () => {
+	const { user, project, original, result } = await fixture('could_not_fix');
+	const responses = await Promise.all([
+		service.prepareChat(user, project.id, original.id, result.id),
+		service.prepareChat(user, project.id, original.id, result.id),
+	]);
+
+	expect(responses[0].chatThreadId).toEqual(expect.any(String));
+	expect(responses[1].chatThreadId).toBe(responses[0].chatThreadId);
+	expect(
+		await Container.get(InstanceAiThreadRepository).countBy({ selfHealingResultId: result.id }),
+	).toBe(1);
+});
+
+it('creates a chat after Apply without replacing the closure', async () => {
 	const { user, project, original, result } = await fixture('needs_you');
-	await service.continueResult(user, project.id, original.id, result.id, 'editor');
+	await service.act(user, project.id, original.id, result.id, 'apply');
 	const receipt = await results.findOneByOrFail({ id: result.id });
 
-	const response = await service.continueResult(user, project.id, original.id, result.id, 'chat');
+	const response = await service.prepareChat(user, project.id, original.id, result.id);
 
-	expect(response).toMatchObject({
-		reviewState: 'continued',
-		continuationDestination: 'editor',
-		continuationThreadId: null,
-		chatThreadId: expect.any(String),
-	});
+	expect(response).toMatchObject({ reviewState: 'continued', chatThreadId: expect.any(String) });
 	expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
 });
 
-it('keeps Apply committed when chat preparation fails and does not apply again on retry', async () => {
+it('keeps Apply committed when chat creation fails and does not apply again on retry', async () => {
 	const { user, project, original, result, graph } = await fixture('needs_you', true);
 	const apply = vi.spyOn(actions, 'apply');
 	vi.spyOn(Container.get(SelfHealingChatService), 'prepare').mockRejectedValueOnce(
 		new Error('Chat storage unavailable.'),
 	);
 
-	await expect(
-		service.continueResult(user, project.id, original.id, result.id, 'chat'),
-	).rejects.toThrow('Chat storage unavailable.');
+	await expect(service.prepareChat(user, project.id, original.id, result.id)).rejects.toThrow(
+		'Chat storage unavailable.',
+	);
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	expect(saved.nodes).toEqual(graph.nodes);
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
 	expect(await service.getDetail(user, project.id, original.id, result.id)).toMatchObject({
 		reviewState: 'applied',
-		continuedAt: null,
+		chatThreadId: null,
 		suggestion: { appliedVersion: { action: 'apply' } },
 	});
 
-	const response = await service.continueResult(user, project.id, original.id, result.id, 'chat');
-
+	const response = await service.prepareChat(user, project.id, original.id, result.id);
 	expect(response).toMatchObject({ reviewState: 'applied', chatThreadId: expect.any(String) });
 	expect(apply).toHaveBeenCalledOnce();
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
 });
 
-it('rolls back chat creation when continuation storage fails', async () => {
+it('does not create a chat when closing the report fails', async () => {
 	const { user, project, original, result } = await fixture('needs_you');
-	vi.spyOn(results, 'recordContinuation').mockRejectedValueOnce(new Error('Receipt unavailable.'));
+	vi.spyOn(results, 'recordContinuation').mockRejectedValueOnce(new Error('Closure unavailable.'));
 
-	await expect(
-		service.continueResult(user, project.id, original.id, result.id, 'chat'),
-	).rejects.toThrow('Receipt unavailable.');
-
+	await expect(service.prepareChat(user, project.id, original.id, result.id)).rejects.toThrow(
+		'Closure unavailable.',
+	);
 	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ continuedAt: null });
 	expect(
 		await Container.get(InstanceAiThreadRepository).countBy({ selfHealingResultId: result.id }),
 	).toBe(0);
 });
 
-it('returns the saved chat when initial startup fails after commit and reuses it on retry', async () => {
+it.each(['dismissed', 'discarded', 'outdated'] as const)(
+	'opens a private chat without replacing an existing %s closure',
+	async (state) => {
+		const { user, project, original, result } = await fixture(
+			state === 'dismissed' ? 'needs_you' : 'fix_ready',
+			true,
+		);
+		if (state === 'outdated') {
+			await workflows.update(original.id, { settings: { executionTimeout: 60 } });
+			await actions.apply(user, project.id, original.id, result.suggestionId!);
+		} else {
+			await service.dismiss(user, project.id, original.id, result.id);
+		}
+		const receipt = await results.findOneByOrFail({ id: result.id });
+		const saved = await workflows.findOneByOrFail({ id: original.id });
+
+		const response = await service.prepareChat(user, project.id, original.id, result.id);
+
+		expect(response).toMatchObject({
+			reviewState: state,
+			continuedAt: null,
+			chatThreadId: expect.any(String),
+		});
+		expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
+	},
+);
+
+it('keeps the report closed when its private chat is deleted', async () => {
 	const { user, project, original, result } = await fixture('could_not_fix');
-	vi.spyOn(Container.get(SelfHealingChatService), 'start').mockRejectedValueOnce(
-		new Error('Run unavailable.'),
-	);
-
-	const first = await service.continueResult(user, project.id, original.id, result.id, 'chat');
-	expect(first).toMatchObject({
-		chatThreadId: expect.any(String),
-		chatStartError: 'Run unavailable.',
-	});
-	const receipt = await results.findOneByOrFail({ id: result.id });
-	expect(receipt.continuedAt).not.toBeNull();
-
-	const response = await service.continueResult(user, project.id, original.id, result.id, 'chat');
-
-	expect(response.chatThreadId).toBe(receipt.continuationThreadId);
-	expect(response).not.toHaveProperty('chatStartError');
-	expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
-	expect(
-		await Container.get(InstanceAiThreadRepository).countBy({ selfHealingResultId: result.id }),
-	).toBe(1);
-});
-
-it('can open a private chat for a dismissed result without replacing its closure', async () => {
-	const { user, project, original, result } = await fixture('needs_you', true);
-	await service.dismiss(user, project.id, original.id, result.id);
-	const receipt = await results.findOneByOrFail({ id: result.id });
-
-	const response = await service.continueResult(user, project.id, original.id, result.id, 'chat');
-
-	expect(response).toMatchObject({
-		reviewState: 'dismissed',
-		continuedAt: null,
-		chatThreadId: expect.any(String),
-	});
-	expect(await results.findOneByOrFail({ id: result.id })).toEqual(receipt);
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-});
-
-it('keeps the result closed when its continuation chat is deleted', async () => {
-	const { user, project, original, result } = await fixture('could_not_fix');
-	const response = await service.continueResult(user, project.id, original.id, result.id, 'chat');
+	const response = await service.prepareChat(user, project.id, original.id, result.id);
 	await Container.get(InstanceAiThreadRepository).delete(response.chatThreadId!);
 
 	expect(await service.getDetail(user, project.id, original.id, result.id)).toMatchObject({
 		reviewState: 'continued',
 		continuedAt: response.continuedAt,
-		continuationThreadId: null,
+		chatThreadId: null,
 	});
 });
 
@@ -803,11 +786,10 @@ it('dismisses Fix ready by discarding its suggestion without saving the graph', 
 });
 
 it('does not report Apply when reconciliation finds an outdated proposal', async () => {
-	const { user, original, url } = await fixture('fix_ready', true);
+	const { user, original, url, getDetail } = await fixture('fix_ready', true);
 	await workflows.update(original.id, { settings: { executionTimeout: 60 } });
-	const response = await testServer.authAgentFor(user).post(`${url}/apply`);
-	expect(response.status).toBe(200);
-	expect(response.body.data).toMatchObject({
+	await testServer.authAgentFor(user).post(`${url}/apply`).expect(409);
+	expect(await getDetail()).toMatchObject({
 		reviewState: 'outdated',
 		suggestion: { appliedVersion: null },
 	});
@@ -854,7 +836,7 @@ it('allows shared editors to review without membership in the owning project', a
 	await expect(service.getDetail(editor, project.id, original.id, result.id)).rejects.toThrow();
 });
 
-it.each(['apply', 'dismiss'] as const)(
+it.each(['apply', 'chat', 'dismiss'] as const)(
 	'keeps detail and %s available without publish scope',
 	async (action) => {
 		testServer.license.enable('feat:advancedPermissions');

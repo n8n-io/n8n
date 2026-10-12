@@ -4,10 +4,10 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
-import { useInstanceAiReady } from './useInstanceAiAvailability';
+import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 
 export function useSelfHealingChatHandoff(): SelfHealingChatHandoff {
-	const available = useInstanceAiReady();
+	const available = useInstanceAiAvailable();
 	const router = useRouter();
 	const { showError } = useToast();
 	const i18n = useI18n();

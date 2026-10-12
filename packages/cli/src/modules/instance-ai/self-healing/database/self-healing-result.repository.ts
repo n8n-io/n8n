@@ -156,8 +156,6 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				dismissedById: null,
 				continuedAt: null,
 				continuedById: null,
-				continuationDestination: null,
-				continuationThreadId: null,
 			}),
 		);
 	}
@@ -178,21 +176,13 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		return await this.getResult(id, scope, ctx);
 	}
 
-	async recordContinuation(
-		id: string,
-		userId: string,
-		destination: 'editor' | 'chat',
-		threadId: string | null,
-		ctx: OperationContext,
-	) {
+	async recordContinuation(id: string, userId: string, ctx: OperationContext) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
 			{ id, dismissedAt: IsNull(), continuedAt: IsNull() },
 			{
 				continuedAt: new Date(),
 				continuedById: userId,
-				continuationDestination: destination,
-				continuationThreadId: threadId,
 			},
 		);
 		return result.affected === 1;

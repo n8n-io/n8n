@@ -12,7 +12,7 @@ describe('SelfHealingResultsController route access', () => {
 			'/:resultId',
 			'/:resultId/apply',
 			'/:resultId/approve-and-publish',
-			'/:resultId/continue',
+			'/:resultId/chat',
 			'/:resultId/dismiss',
 		]);
 	});

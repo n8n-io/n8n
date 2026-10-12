@@ -7,8 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import { createUser } from '@test-integration/db/users';
 
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
-import type { InstanceAiService } from '../../instance-ai.service';
-import { AUTO_FOLLOW_UP_MESSAGE } from '../../internal-messages';
 import { parseStoredMessages } from '../../message-parser';
 import { SelfHealingResultRepository } from '../../self-healing/database/self-healing-result.repository';
 import { SelfHealingChatService } from '../../self-healing/self-healing-chat.service';
@@ -16,7 +14,6 @@ import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { InstanceAiMessageRepository } from '../instance-ai-message.repository';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
 
-vi.mock('../../instance-ai.service', () => ({ InstanceAiService: vi.fn() }));
 vi.mock('../../instance-ai-settings.service', () => ({ InstanceAiSettingsService: vi.fn() }));
 
 describe('Self-healing private chat persistence', () => {
@@ -26,7 +23,6 @@ describe('Self-healing private chat persistence', () => {
 	let txRunner: TransactionRunner;
 	let memory: TypeORMAgentMemory;
 	let service: SelfHealingChatService;
-	const assistant = mock<InstanceAiService>();
 
 	beforeAll(async () => {
 		await testModules.loadModules(['instance-ai']);
@@ -76,13 +72,12 @@ describe('Self-healing private chat persistence', () => {
 
 	it('saves a report and workflow attachment that the normal chat history can read', async () => {
 		const { user, project, workflow, result } = await fixture();
-		const { threadId, created } = await txRunner.run(
+		const threadId = await txRunner.run(
 			{},
 			async (ctx) =>
 				await service.prepare(user, result, ctx, { status: 'available', id: result.executionId }),
 		);
 
-		expect(created).toBe(true);
 		expect(await threads.findOneByOrFail({ id: threadId })).toMatchObject({
 			resourceId: user.id,
 			projectId: project.id,
@@ -92,28 +87,26 @@ describe('Self-healing private chat persistence', () => {
 		expect(parseStoredMessages(await memory.getMessages(threadId))).toEqual([
 			expect.objectContaining({
 				role: 'user',
-				content: `Help me continue with this saved Assistant report. Read the current saved workflow before making more changes. The suggested changes may already be applied.\n\n${result.report}`,
+				content: `Saved investigation report\n\n${result.report}`,
 				attachments: [{ type: 'workflow', id: workflow.id, executionId: result.executionId }],
 			}),
 		]);
-		expect(assistant.startRun).not.toHaveBeenCalled();
 	});
 
 	it('reuses each reviewer’s private chat without copying an unavailable execution reference', async () => {
 		const { user, workflow, result, prepare } = await fixture();
 		const first = await prepare();
-		expect(await prepare()).toEqual({ threadId: first.threadId, created: false });
+		expect(await prepare()).toBe(first);
 		const other = await createUser();
+		expect(await service.findThreadId(result.id, other.id)).toBeNull();
 		const second = await prepare(other);
-		expect(second.threadId).not.toBe(first.threadId);
-		expect(await service.canReadThread(user.id, first.threadId)).toBe(true);
-		expect(await service.canReadThread(other.id, first.threadId)).toBe(false);
-		expect(await service.canReadThread(other.id, second.threadId)).toBe(true);
-		expect(await messages.countBy({ threadId: first.threadId })).toBe(1);
-		expect(parseStoredMessages(await memory.getMessages(first.threadId))[0]?.attachments).toEqual([
+		expect(second).not.toBe(first);
+		expect(await service.findThreadId(result.id, user.id)).toBe(first);
+		expect(await service.findThreadId(result.id, other.id)).toBe(second);
+		expect(await messages.countBy({ threadId: first })).toBe(1);
+		expect(parseStoredMessages(await memory.getMessages(first))[0]?.attachments).toEqual([
 			{ type: 'workflow', id: workflow.id },
 		]);
-		expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ continuedAt: null });
 	});
 
 	it('rolls back the thread and its report with the enclosing continuation transaction', async () => {
@@ -121,7 +114,7 @@ describe('Self-healing private chat persistence', () => {
 		let preparedId: string | undefined;
 		await expect(
 			txRunner.run({}, async (ctx) => {
-				preparedId = (await service.prepare(user, result, ctx)).threadId;
+				preparedId = await service.prepare(user, result, ctx);
 				throw new Error('The workflow could not be saved.');
 			}),
 		).rejects.toThrow('The workflow could not be saved.');
@@ -140,8 +133,9 @@ describe('Self-healing private chat persistence', () => {
 				metadata: { sourceContext: { resultId: result.id } },
 			}),
 		);
-		expect(await service.canReadThread(user.id, normal.id)).toBe(false);
-		const { threadId } = await prepare();
+		expect(await service.findThreadId(result.id, user.id)).toBeNull();
+		const threadId = await prepare();
+		expect(threadId).not.toBe(normal.id);
 		await expect(
 			threads.insert({
 				id: randomUUID(),
@@ -157,32 +151,11 @@ describe('Self-healing private chat persistence', () => {
 
 	it('keeps the private conversation after the result is deleted', async () => {
 		const { result, prepare } = await fixture();
-		const { threadId } = await prepare();
+		const threadId = await prepare();
 		await results.delete(result.id);
 		expect(await threads.findOneByOrFail({ id: threadId })).toMatchObject({
 			selfHealingResultId: null,
 		});
-		expect(parseStoredMessages(await memory.getMessages(threadId))).toHaveLength(1);
-	});
-
-	it('detects a durable started turn while the normal parser hides its internal prompt', async () => {
-		const { user, prepare } = await fixture();
-		const { threadId } = await prepare();
-		expect(await threads.hasUserTurnAfterOpening(threadId)).toBe(false);
-		await memory.saveMessages({
-			threadId,
-			resourceId: user.id,
-			messages: [
-				{
-					id: randomUUID(),
-					createdAt: new Date(),
-					type: 'llm',
-					role: 'user',
-					content: [{ type: 'text', text: AUTO_FOLLOW_UP_MESSAGE }],
-				},
-			],
-		});
-		expect(await threads.hasUserTurnAfterOpening(threadId)).toBe(true);
 		expect(parseStoredMessages(await memory.getMessages(threadId))).toHaveLength(1);
 	});
 });

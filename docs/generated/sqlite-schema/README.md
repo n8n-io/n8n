@@ -129,7 +129,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
-| [self_healing_result](self_healing_result.md) | 19 |  | table |
+| [self_healing_result](self_healing_result.md) | 17 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
@@ -354,7 +354,6 @@ erDiagram
 "role_scope" |o--|| "scope" : "FOREIGN KEY (scopeSlug) REFERENCES scope (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_scope" |o--|| "role" : "FOREIGN KEY (roleSlug) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--o| "instance_ai_threads" : "FOREIGN KEY (continuationThreadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "self_healing_result" }o--o| "user" : "FOREIGN KEY (continuedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "self_healing_result" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1637,8 +1636,6 @@ erDiagram
 "self_healing_result" {
   varchar backgroundUserId FK
   datetime_3_ completedAt
-  varchar_16_ continuationDestination
-  varchar continuationThreadId FK
   datetime_3_ continuedAt
   varchar continuedById FK
   datetime_3_ createdAt

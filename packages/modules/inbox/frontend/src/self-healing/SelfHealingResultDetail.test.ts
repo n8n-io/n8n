@@ -1,4 +1,4 @@
-import type { SelfHealingResultContinuationResponse } from '@n8n/api-types';
+import type { SelfHealingResultDetail as ResultDetail } from '@n8n/api-types';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -47,14 +47,11 @@ const renderComponent = createComponentRenderer(SelfHealingResultDetail, {
 	},
 });
 
-function continuation(
-	overrides: Partial<SelfHealingResultContinuationResponse> = {},
-): SelfHealingResultContinuationResponse {
+function appliedResult(overrides: Partial<ResultDetail> = {}): ResultDetail {
 	return {
 		...result({ reviewState: 'applied' }),
 		continuedAt: '2026-10-09T10:00:00.000Z',
 		continuedById: 'reviewer-1',
-		continuationDestination: 'editor',
 		chatThreadId: null,
 		...overrides,
 	};
@@ -84,14 +81,15 @@ it.each([
 	{ outcome: 'could_not_fix', destination: 'editor' },
 	{ outcome: 'could_not_fix', destination: 'chat' },
 ] as const)(
-	'continues $outcome in $destination with one request before navigation',
+	'applies and closes $outcome before opening $destination with one request',
 	async ({ outcome, destination }) => {
-		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ outcome }));
-		vi.mocked(api.continueSelfHealingResult).mockResolvedValue(
-			continuation({
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
+			result({ outcome, ...(outcome === 'could_not_fix' ? { suggestion: null } : {}) }),
+		);
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
+			appliedResult({
 				outcome,
 				reviewState: outcome === 'could_not_fix' ? 'continued' : 'applied',
-				continuationDestination: destination,
 				chatThreadId: destination === 'chat' ? 'private-thread' : null,
 			}),
 		);
@@ -104,12 +102,11 @@ it.each([
 		view.getByTestId(destination).click();
 		await waitAllPromises();
 
-		expect(api.continueSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledExactlyOnceWith(
 			useRootStore().restApiContext,
 			resultSelection,
-			destination,
+			destination === 'editor' ? 'apply' : 'chat',
 		);
-		expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
 		expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
 		expect(onItemChange).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({
@@ -135,8 +132,8 @@ it.each(['editor', 'chat'] as const)(
 	'preserves a closed result when opening %s again',
 	async (destination) => {
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ reviewState: 'dismissed' }));
-		vi.mocked(api.continueSelfHealingResult).mockResolvedValue(
-			continuation({
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
+			appliedResult({
 				reviewState: 'dismissed',
 				chatThreadId: destination === 'chat' ? 'private-thread' : null,
 			}),
@@ -146,143 +143,94 @@ it.each(['editor', 'chat'] as const)(
 		view.getByTestId(destination).click();
 		await waitAllPromises();
 
-		expect(api.continueSelfHealingResult).toHaveBeenCalledOnce();
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 		expect(onItemChange).not.toHaveBeenCalled();
 		expect(useSelfHealingResultStore().detail?.reviewState).toBe('dismissed');
 		expect(destination === 'chat' ? startChat : push).toHaveBeenCalledOnce();
 	},
 );
 
-it('opens the caller chat from the response without replacing the first continuation receipt', async () => {
-	const saved = continuation({
-		reviewState: 'continued',
-		continuationDestination: 'editor',
-		continuationThreadId: null,
-	});
-	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(saved);
-	vi.mocked(api.continueSelfHealingResult).mockResolvedValue({
-		...saved,
-		chatThreadId: 'caller-thread',
-	});
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId('chat').click();
-	await waitAllPromises();
-
-	expect(startChat).toHaveBeenCalledExactlyOnceWith({ threadId: 'caller-thread' });
-	expect(useSelfHealingResultStore().detail?.continuationDestination).toBe('editor');
-	expect(onItemChange).not.toHaveBeenCalled();
-});
-
-it('opens the caller chat and warns when its initial run fails after the continuation commits', async () => {
-	const saved = continuation({
-		reviewState: 'continued',
-		continuationDestination: 'chat',
-		continuedById: 'another-reviewer',
-		continuationThreadId: null,
-	});
-	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(saved);
-	vi.mocked(api.continueSelfHealingResult).mockResolvedValue({
-		...saved,
-		chatThreadId: 'caller-thread',
-		chatStartError: 'Assistant capacity is unavailable',
-	});
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId('chat').click();
-	await waitAllPromises();
-
-	expect(startChat).toHaveBeenCalledExactlyOnceWith({ threadId: 'caller-thread' });
-	expect(showMessage).toHaveBeenCalledExactlyOnceWith({
-		type: 'warning',
-		duration: 0,
-		title: "Chat opened, but the Assistant couldn't start. Send a message to try again.",
-		message: 'Assistant capacity is unavailable',
-	});
-	expect(onItemChange).not.toHaveBeenCalled();
-	expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
-	expect(api.continueSelfHealingResult).toHaveBeenCalledOnce();
-});
-
 it.each(['editor', 'chat'] as const)(
-	'recovers a saved %s receipt after a lost response',
+	'refreshes saved %s state after a lost response without navigating',
 	async (destination) => {
-		vi.mocked(api.continueSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
 		const view = renderComponent();
 		await waitAllPromises();
 		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(
-			continuation({
-				continuationDestination: destination,
-				continuationThreadId: destination === 'chat' ? 'saved-thread' : null,
+			appliedResult({
+				chatThreadId: destination === 'chat' ? 'saved-thread' : null,
 			}),
 		);
 		view.getByTestId(destination).click();
 		await waitAllPromises();
 
-		expect(api.continueSelfHealingResult).toHaveBeenCalledOnce();
+		expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 		expect(onItemChange).toHaveBeenCalledOnce();
-		expect(destination === 'chat' ? startChat : push).toHaveBeenCalledOnce();
-		expect(showError).not.toHaveBeenCalled();
+		expect(destination === 'chat' ? startChat : push).not.toHaveBeenCalled();
+		expect(showError).toHaveBeenCalledOnce();
 	},
 );
 
-it('allows an idempotent chat retry when the first receipt does not expose the caller thread', async () => {
-	vi.mocked(api.continueSelfHealingResult).mockRejectedValueOnce(new Error('Disconnected'));
+it('reuses the saved caller chat when the user retries after a lost response', async () => {
+	vi.mocked(api.reviewSelfHealingResult).mockRejectedValueOnce(new Error('Disconnected'));
 	const view = renderComponent();
 	await waitAllPromises();
-	const saved = continuation({ continuationDestination: 'editor', continuationThreadId: null });
+	const saved = appliedResult({ chatThreadId: 'existing-caller-thread' });
 	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(saved);
 	view.getByTestId('chat').click();
 	await waitAllPromises();
 	expect(startChat).not.toHaveBeenCalled();
 	expect(onItemChange).toHaveBeenCalledOnce();
-	vi.mocked(api.continueSelfHealingResult).mockResolvedValue({
-		...saved,
-		chatThreadId: 'existing-caller-thread',
-	});
+	vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(saved);
 	view.getByTestId('chat').click();
 	await waitAllPromises();
 
 	expect(startChat).toHaveBeenCalledExactlyOnceWith({ threadId: 'existing-caller-thread' });
 	expect(onItemChange).toHaveBeenCalledOnce();
-	expect(api.continueSelfHealingResult).toHaveBeenCalledTimes(2);
+	expect(api.reviewSelfHealingResult).toHaveBeenCalledTimes(2);
 });
 
-it('recovers an uncertain continuation with a later read before another write', async () => {
-	vi.mocked(api.continueSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
+it('reconciles a later refresh without navigating or repeating the action', async () => {
+	vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
 	const view = renderComponent();
 	await waitAllPromises();
 	vi.mocked(api.fetchSelfHealingResult).mockRejectedValueOnce(new Error('Offline'));
 	view.getByTestId('editor').click();
 	await waitAllPromises();
 	expect(view.queryByTestId('result-content')).not.toBeInTheDocument();
-	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(continuation());
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(appliedResult());
 	view.getByRole('button', { name: 'Retry' }).click();
 	await waitAllPromises();
 
 	expect(onItemChange).toHaveBeenCalledOnce();
-	expect(push).toHaveBeenCalledOnce();
-	expect(api.continueSelfHealingResult).toHaveBeenCalledOnce();
-});
-
-it('keeps a failed continuation open when the recovery read confirms no change', async () => {
-	vi.mocked(api.continueSelfHealingResult).mockRejectedValue(new Error('Save failed'));
-	const view = renderComponent();
-	await waitAllPromises();
-	view.getByTestId('editor').click();
-	await waitAllPromises();
-
-	expect(view.getByTestId('result-content')).toHaveAttribute('data-state', 'open');
-	expect(showError).toHaveBeenCalledOnce();
 	expect(push).not.toHaveBeenCalled();
-	expect(onItemChange).not.toHaveBeenCalled();
+	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 });
+
+it.each(['open', 'outdated'] as const)(
+	'does not navigate when Apply fails and the refresh returns %s',
+	async (reviewState) => {
+		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(
+			new ResponseError('Cannot apply changes', { httpStatusCode: 409 }),
+		);
+		const view = renderComponent();
+		await waitAllPromises();
+		vi.mocked(api.fetchSelfHealingResult).mockResolvedValue(result({ reviewState }));
+		view.getByTestId('editor').click();
+		await waitAllPromises();
+
+		expect(view.getByTestId('result-content')).toHaveAttribute('data-state', reviewState);
+		expect(showError).toHaveBeenCalledOnce();
+		expect(push).not.toHaveBeenCalled();
+		expect(onItemChange).toHaveBeenCalledTimes(reviewState === 'open' ? 0 : 1);
+	},
+);
 
 it.each(['editor', 'chat'] as const)(
 	'retains closure when %s navigation fails and retries the same destination',
 	async (destination) => {
-		vi.mocked(api.continueSelfHealingResult).mockResolvedValue(
-			continuation({ chatThreadId: 'saved-thread' }),
+		vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
+			appliedResult({ chatThreadId: 'saved-thread' }),
 		);
 		const navigate = destination === 'chat' ? startChat : push;
 		navigate.mockRejectedValueOnce(new Error('Navigation failed'));
@@ -305,8 +253,8 @@ it.each(['editor', 'chat'] as const)(
 );
 
 it('retains closure when the shell handles a chat navigation failure', async () => {
-	vi.mocked(api.continueSelfHealingResult).mockResolvedValue(
-		continuation({ chatThreadId: 'saved-thread' }),
+	vi.mocked(api.reviewSelfHealingResult).mockResolvedValue(
+		appliedResult({ chatThreadId: 'saved-thread' }),
 	);
 	startChat.mockResolvedValue(false);
 	const view = renderComponent();
@@ -317,30 +265,30 @@ it('retains closure when the shell handles a chat navigation failure', async () 
 	expect(useSelfHealingResultStore().detail?.reviewState).toBe('applied');
 	expect(onItemChange).toHaveBeenCalledOnce();
 	expect(api.fetchSelfHealingResult).toHaveBeenCalledOnce();
-	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
+	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 });
 
 it('reconciles the result after leaving the detail without navigating away from the new page', async () => {
-	const action = createDeferredPromise<SelfHealingResultContinuationResponse>();
-	vi.mocked(api.continueSelfHealingResult).mockReturnValue(action.promise);
+	const action = createDeferredPromise<ResultDetail>();
+	vi.mocked(api.reviewSelfHealingResult).mockReturnValue(action.promise);
 	const view = renderComponent();
 	await waitAllPromises();
 	view.getByTestId('editor').click();
 	view.getByTestId('chat').click();
 	selectedId = null;
 	view.unmount();
-	action.resolve(continuation());
+	action.resolve(appliedResult());
 	await waitAllPromises();
 
 	expect(onItemChange).toHaveBeenCalledOnce();
-	expect(api.continueSelfHealingResult).toHaveBeenCalledOnce();
+	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 	expect(push).not.toHaveBeenCalled();
 	expect(startChat).not.toHaveBeenCalled();
 });
 
 it('clears the report without navigating when edit access is lost', async () => {
 	const forbidden = new ResponseError('Forbidden', { httpStatusCode: 403 });
-	vi.mocked(api.continueSelfHealingResult).mockRejectedValue(forbidden);
+	vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(forbidden);
 	const view = renderComponent();
 	await waitAllPromises();
 	vi.mocked(api.fetchSelfHealingResult).mockRejectedValue(forbidden);
@@ -358,7 +306,7 @@ it('does not request chat when the shell is unavailable', async () => {
 	await waitAllPromises();
 	view.getByTestId('chat').click();
 	await waitAllPromises();
-	expect(api.continueSelfHealingResult).not.toHaveBeenCalled();
+	expect(api.reviewSelfHealingResult).not.toHaveBeenCalled();
 });
 
 it('retains applied state and opens the editor when publication returns an error', async () => {
@@ -386,7 +334,7 @@ it('retains applied state and opens the editor when publication returns an error
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 });
 
-it('recovers an applied approval after a lost response without another publication', async () => {
+it('refreshes an applied approval after a lost response without navigating or publishing again', async () => {
 	vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
 	const view = renderComponent();
 	await waitAllPromises();
@@ -395,8 +343,10 @@ it('recovers an applied approval after a lost response without another publicati
 	await waitAllPromises();
 
 	expect(onItemChange).toHaveBeenCalledOnce();
-	expect(push).toHaveBeenCalledOnce();
-	expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+	expect(push).not.toHaveBeenCalled();
+	expect(showError).toHaveBeenCalledOnce();
+	view.getByTestId('approve-and-publish').click();
+	await waitAllPromises();
 	expect(api.reviewSelfHealingResult).toHaveBeenCalledOnce();
 });
 
@@ -434,7 +384,7 @@ it.each([
 );
 
 it.each(['discarded', 'dismissed'] as const)(
-	'recovers a %s result after a lost dismissal response',
+	'refreshes a %s result after a lost dismissal response',
 	async (reviewState) => {
 		vi.mocked(api.reviewSelfHealingResult).mockRejectedValue(new Error('Disconnected'));
 		const view = renderComponent();
@@ -444,7 +394,7 @@ it.each(['discarded', 'dismissed'] as const)(
 		await waitAllPromises();
 
 		expect(onItemChange).toHaveBeenCalledOnce();
-		expect(showError).not.toHaveBeenCalled();
+		expect(showError).toHaveBeenCalledOnce();
 		expect(startChat).not.toHaveBeenCalled();
 		expect(push).not.toHaveBeenCalled();
 	},

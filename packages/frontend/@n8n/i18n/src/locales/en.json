@@ -49,11 +49,8 @@
 	"inbox.selfHealing.action.dismiss": "Dismiss",
 	"inbox.selfHealing.action.error": "Couldn't update result",
 	"inbox.selfHealing.action.openEditorError": "Couldn't open the workflow. Try opening it again.",
-	"inbox.selfHealing.action.uncertain": "Couldn't confirm this action. Retry to check the result, or open the workflow.",
-	"inbox.selfHealing.action.uncertainResolved": "The fix was saved. Check its publication status in the workflow.",
 	"inbox.selfHealing.action.publishError": "The fix was saved, but publication could not be confirmed. Check the workflow's publication status.",
 	"inbox.selfHealing.action.chatError": "Couldn't open chat",
-	"inbox.selfHealing.action.chatStartError": "Chat opened, but the Assistant couldn't start. Send a message to try again.",
 	"inbox.selfHealing.action.chatUnavailable": "Chat is unavailable. You can still review the report.",
 	"inbox.selfHealing.action.publishUnavailable": "Publish permission is required",
 	"inbox.selfHealing.changes.original": "Original",
@@ -84,8 +81,7 @@
 	"inbox.selfHealing.activity.discarded": "Discarded the suggested changes",
 	"inbox.selfHealing.activity.outdated": "Marked the suggestion as outdated",
 	"inbox.selfHealing.activity.dismissed": "Dismissed the result",
-	"inbox.selfHealing.activity.continuedInEditor": "Continued in the editor",
-	"inbox.selfHealing.activity.continuedInChat": "Continued in chat",
+	"inbox.selfHealing.activity.continued": "Continued working on the workflow",
 	"_reusableBaseText": {
 		"cancel": "Cancel",
 		"codeNodeEditor": {

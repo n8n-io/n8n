@@ -10,12 +10,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 
 type Activity = Omit<WorkflowSuggestionActivity, 'action'> & {
-	action:
-		| WorkflowSuggestionActivity['action']
-		| 'completed'
-		| 'dismissed'
-		| 'continuedInEditor'
-		| 'continuedInChat';
+	action: WorkflowSuggestionActivity['action'] | 'completed' | 'dismissed' | 'continued';
 };
 
 const entries = computed<Activity[]>(() => {
@@ -40,10 +35,10 @@ const entries = computed<Activity[]>(() => {
 			createdAt: result.dismissedAt,
 		});
 	}
-	if (result.continuedAt && result.continuationDestination) {
+	if (result.continuedAt) {
 		activity.push({
 			id: `${result.resultId}:continued`,
-			action: result.continuationDestination === 'chat' ? 'continuedInChat' : 'continuedInEditor',
+			action: 'continued',
 			author: 'human',
 			actorId: result.continuedById,
 			createdAt: result.continuedAt,

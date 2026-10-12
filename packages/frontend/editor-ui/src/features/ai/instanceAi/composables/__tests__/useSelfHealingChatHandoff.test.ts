@@ -6,10 +6,10 @@ import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import { useSelfHealingChatHandoff } from '../useSelfHealingChatHandoff';
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), useRouter: vi.fn(), showError: vi.fn() }));
-const ready = ref(true);
+const available = ref(true);
 
 vi.mock('../useInstanceAiAvailability', () => ({
-	useInstanceAiReady: () => computed(() => ready.value),
+	useInstanceAiAvailable: () => computed(() => available.value),
 }));
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
@@ -35,7 +35,7 @@ function createHandoff() {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	ready.value = true;
+	available.value = true;
 	mocks.useRouter.mockImplementation(() => {
 		expect(getCurrentInstance()).not.toBeNull();
 		return { push: mocks.push };
@@ -67,10 +67,10 @@ it('reopens the same thread on a later request', async () => {
 	});
 });
 
-it('tracks Assistant readiness and does not navigate when it becomes unavailable', async () => {
+it('tracks Assistant availability and does not navigate when it becomes unavailable', async () => {
 	const handoff = createHandoff();
 	expect(handoff.available.value).toBe(true);
-	ready.value = false;
+	available.value = false;
 
 	await expect(handoff.start({ threadId: 'private-thread' })).resolves.toBe(false);
 

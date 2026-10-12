@@ -5,8 +5,6 @@ import {
 	type SelfHealingResultContent,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
-	type SelfHealingResultContinuationResponse,
-	type SelfHealingContinuationDestination,
 	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
@@ -21,7 +19,6 @@ import {
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { z } from 'zod';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
@@ -205,11 +202,6 @@ export class SelfHealingResultService {
 		execution: SelfHealingExecutionReference,
 		viewerId: string,
 	): Promise<SelfHealingResultDetail> {
-		const continuationThreadId =
-			result.continuationThreadId &&
-			(await this.chat.canReadThread(viewerId, result.continuationThreadId))
-				? result.continuationThreadId
-				: null;
 		return {
 			resultId: result.id,
 			workflowId: result.workflowId,
@@ -226,8 +218,7 @@ export class SelfHealingResultService {
 			dismissedById: result.dismissedById,
 			continuedAt: result.continuedAt?.toISOString() ?? null,
 			continuedById: result.continuedById,
-			continuationDestination: result.continuationDestination,
-			continuationThreadId,
+			chatThreadId: await this.chat.findThreadId(result.id, viewerId),
 			reviewState: getSelfHealingReviewState(result, suggestion),
 			suggestion,
 			execution,
@@ -248,51 +239,19 @@ export class SelfHealingResultService {
 			workflowId,
 			resultId,
 		);
-		if (
-			!result.suggestionId ||
-			(action === 'approve-and-publish' && result.outcome !== 'fix_ready')
-		) {
-			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
-		}
-		const { publishError, ...suggestion } =
-			action === 'approve-and-publish'
-				? await this.actions.approveAndPublish(
-						reviewer,
-						projectId,
-						workflowId,
-						result.suggestionId,
-						clientId,
-					)
-				: await this.actions.apply(reviewer, projectId, workflowId, result.suggestionId, clientId);
-		const execution = await this.executionReferences.getReference(
-			reviewer,
-			workflowId,
-			result.executionId,
-		);
-		return {
-			...(await this.toDetail(result, suggestion, execution, reviewer.id)),
-			...(publishError !== undefined ? { publishError } : {}),
-		};
-	}
-
-	async continueResult(
-		user: User,
-		projectId: string,
-		workflowId: string,
-		resultId: string,
-		destination: SelfHealingContinuationDestination,
-		clientId?: string,
-	): Promise<SelfHealingResultContinuationResponse> {
-		const { result, reviewer } = await this.getResultForEditor(
-			user,
-			projectId,
-			workflowId,
-			resultId,
-		);
-		await this.requireCurrentProject(workflowId, projectId);
-		if (destination === 'chat') await this.chat.assertAvailable(reviewer);
-
-		if (result.suggestionId && !result.dismissedAt) {
+		let publishError: string | undefined;
+		if (action === 'approve-and-publish') {
+			if (!result.suggestionId || result.outcome !== 'fix_ready') {
+				throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
+			}
+			({ publishError } = await this.actions.approveAndPublish(
+				reviewer,
+				projectId,
+				workflowId,
+				result.suggestionId,
+				clientId,
+			));
+		} else if (result.suggestionId && !result.dismissedAt) {
 			const proposal = await this.proposalRecords.getSuggestion(result.suggestionId, {
 				workflowId,
 				projectId,
@@ -323,58 +282,37 @@ export class SelfHealingResultService {
 					);
 				}
 			}
+		} else if (!result.suggestionId) {
+			await this.requireCurrentProject(workflowId, projectId);
+			await this.results.recordContinuation(resultId, reviewer.id, {});
 		}
+		return {
+			...(await this.getDetail(reviewer, projectId, workflowId, resultId)),
+			...(publishError !== undefined ? { publishError } : {}),
+		};
+	}
 
-		const execution =
-			destination === 'chat'
-				? await this.executionReferences.getReference(reviewer, workflowId, result.executionId)
-				: undefined;
-		const chatThreadId = await this.txRunner.run({}, async (ctx) => {
-			const current = await this.results.lockForContinuation(
+	async prepareChat(
+		user: User,
+		projectId: string,
+		workflowId: string,
+		resultId: string,
+		clientId?: string,
+	): Promise<SelfHealingResultDetail> {
+		const reviewer = await this.suggestions.requireEditor(user.id, workflowId);
+		await this.chat.assertAvailable(reviewer);
+		const detail = await this.act(reviewer, projectId, workflowId, resultId, 'apply', clientId);
+		await this.txRunner.run({}, async (ctx) => {
+			const result = await this.results.lockForContinuation(
 				resultId,
 				{ projectId, workflowId },
 				ctx,
 			);
 			const actor = await this.suggestions.requireEditor(reviewer.id, workflowId, ctx);
 			await this.requireCurrentProject(workflowId, projectId, ctx);
-			const proposal = current.suggestionId
-				? await this.proposalRecords.getSuggestion(
-						current.suggestionId,
-						{ projectId, workflowId },
-						ctx,
-					)
-				: null;
-			const thread =
-				destination === 'chat' ? await this.chat.prepare(actor, current, ctx, execution) : null;
-			if (
-				!current.dismissedAt &&
-				!current.continuedAt &&
-				(!proposal || proposal.closedReason === 'applied')
-			) {
-				await this.results.recordContinuation(
-					resultId,
-					actor.id,
-					destination,
-					thread?.threadId ?? null,
-					ctx,
-				);
-			}
-			return thread?.threadId ?? null;
+			await this.chat.prepare(actor, result, ctx, detail.execution);
 		});
-		let chatStartError: string | undefined;
-		if (chatThreadId) {
-			try {
-				await this.chat.start(reviewer, chatThreadId);
-			} catch (error) {
-				// The private chat and continuation are committed. Keep their destination available.
-				chatStartError = ensureError(error).message;
-			}
-		}
-		return {
-			...(await this.getDetail(reviewer, projectId, workflowId, resultId)),
-			chatThreadId,
-			...(chatStartError !== undefined ? { chatStartError } : {}),
-		};
+		return await this.getDetail(reviewer, projectId, workflowId, resultId);
 	}
 
 	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {

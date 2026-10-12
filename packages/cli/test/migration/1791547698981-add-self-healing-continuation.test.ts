@@ -125,13 +125,8 @@ describe('Self-healing continuation migration', () => {
 			);
 			await context.runQuery(
 				`UPDATE ${table('self_healing_result')} SET ${column('continuedAt')} = CURRENT_TIMESTAMP,
-			 ${column('continuedById')} = :reviewerId, ${column('continuationDestination')} = 'chat',
-			 ${column('continuationThreadId')} = :threadId WHERE ${column('id')} = :resultId`,
-				{ reviewerId, threadId, resultId },
-			);
-			await context.runQuery(
-				`DELETE FROM ${table('instance_ai_threads')} WHERE ${column('id')} = :threadId`,
-				{ threadId },
+			 ${column('continuedById')} = :reviewerId WHERE ${column('id')} = :resultId`,
+				{ reviewerId, resultId },
 			);
 			await context.runQuery(`DELETE FROM ${table('user')} WHERE ${column('id')} = :reviewerId`, {
 				reviewerId,
@@ -140,16 +135,25 @@ describe('Self-healing continuation migration', () => {
 				Array<{
 					continuedAt: unknown;
 					continuedById: string | null;
-					continuationThreadId: string | null;
 				}>
 			>(
-				`SELECT ${column('continuedAt')}, ${column('continuedById')}, ${column('continuationThreadId')}
+				`SELECT ${column('continuedAt')}, ${column('continuedById')}
 			 FROM ${table('self_healing_result')} WHERE ${column('id')} = :resultId`,
 				{ resultId },
 			);
 			expect(result.continuedAt).not.toBeNull();
 			expect(result.continuedById).toBeNull();
-			expect(result.continuationThreadId).toBeNull();
+			await context.runQuery(
+				`DELETE FROM ${table('self_healing_result')} WHERE ${column('id')} = :resultId`,
+				{
+					resultId,
+				},
+			);
+			const [thread] = await context.runQuery<Array<{ selfHealingResultId: string | null }>>(
+				`SELECT ${column('selfHealingResultId')} FROM ${table('instance_ai_threads')} WHERE ${column('id')} = :threadId`,
+				{ threadId },
+			);
+			expect(thread.selfHealingResultId).toBeNull();
 		});
 	});
 });

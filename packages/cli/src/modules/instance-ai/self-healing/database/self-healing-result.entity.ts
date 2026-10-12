@@ -10,7 +10,6 @@ import {
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
 import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
-import { InstanceAiThread } from '../../entities/instance-ai-thread.entity';
 
 @Entity('self_healing_result')
 @Index(['suggestionId'], { unique: true, where: '"suggestionId" IS NOT NULL' })
@@ -86,15 +85,4 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'continuedById' })
 	continuedBy: Relation<User> | null;
-
-	@Column({ type: 'varchar', length: 16, nullable: true })
-	continuationDestination: 'editor' | 'chat' | null;
-
-	@Index()
-	@Column({ type: 'uuid', nullable: true })
-	continuationThreadId: string | null;
-
-	@ManyToOne(() => InstanceAiThread, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'continuationThreadId' })
-	continuationThread: Relation<InstanceAiThread> | null;
 }

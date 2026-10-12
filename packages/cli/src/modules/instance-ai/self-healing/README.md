@@ -46,7 +46,7 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `POST /:resultId/approve-and-publish`
 - `POST /:resultId/apply`
 - `POST /:resultId/dismiss`
-- `POST /:resultId/continue` with `{ "destination": "editor" | "chat" }`
+- `POST /:resultId/chat`
 
 Current workflow editors can review results. Approval also requires publish access.
 Each action resolves its suggestion from the result and returns the updated review.
@@ -66,38 +66,32 @@ returns an error. `publishError` describes that request only. The response inclu
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
 and recovery. Repeating a review action does not save or publish again.
 
-Both editor and chat use the continuation endpoint. It checks current editor access and applies
-any pending suggestion through the existing action service. This includes partial changes for
-`needs_you`. Apply retains its own transaction and version receipt. If a later continuation step
-fails, the saved draft and Applied state remain. A retry does not apply the changes again.
-
-A second transaction records `continuedAt`, `continuedById`, and `continuationDestination`.
-For chat, it also creates the private thread and saves the report as its opening message.
-The workflow attachment includes the execution ID only when the reviewer can read it.
-The result lock serializes retries. The first continuation receipt stays unchanged.
-An open result without changes becomes Continued. An applied result remains Applied.
-The frontend updates the Inbox from this receipt before it navigates.
-A navigation failure does not reopen the result. Dismissal remains a separate action.
+The editor uses Apply. The chat endpoint calls the same Apply action before it creates or opens
+a private chat. Apply saves pending ready or partial changes through the existing suggestion
+service. It keeps the existing transaction and version receipt. For a report without a suggestion,
+Apply records `continuedAt` and `continuedById` once. Both actions close the result without
+publishing. Applied results retain their Applied state. Already dismissed, discarded, or outdated
+results retain their existing closure. Navigation errors do not reopen the result.
 
 Each reviewer has one private chat per result in their personal project. The server-owned
-`instance_ai_threads.selfHealingResultId` field identifies that chat. A unique index prevents
-duplicate chats for the same reviewer. The response's `chatThreadId` identifies the caller's chat.
-The detail's `continuationThreadId` is the first receipt's chat and is visible only to its owner.
-Other editors get their own chat without replacing the first receipt.
-Normal chat ownership and tool permissions apply. The background conversation and grants stay separate.
-The normal Assistant run starts after commit. If it refuses to start, the response keeps the
-chat ID and includes `chatStartError`. The UI opens the chat and shows a warning.
-A later attempt can retry the same saved chat.
-Deleting a thread or reviewer clears its reference without reopening the result.
-Already closed results can still open the editor or a private chat without changing their closure.
+`instance_ai_threads.selfHealingResultId` field and reviewer ID identify that chat. The detail's
+`chatThreadId` always identifies the caller's chat, or is null if the caller has no chat.
+A transaction serializes chat creation and saves the report once. The workflow attachment includes
+the execution ID only when the reviewer can read it. Repeated requests reuse the saved chat.
+If chat creation fails after Apply, the draft and closure stay saved. An explicit retry can create
+the chat without applying the changes again.
+
+Opening a saved chat does not start an Assistant run or send a follow-up prompt. Normal chat owns
+later messages and run errors. Normal ownership and tool permissions apply. The background
+conversation and grants stay separate. Deleting a chat does not reopen the result.
 
 ## Availability
 
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to load review routes.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
 The rollout flag is separate from the future switch for new investigations. Saved review services
-do not check investigation enablement. Chat continuation checks normal Assistant availability
-before applying changes.
+do not check investigation enablement. Chat checks Assistant access and enablement before applying changes.
+Model setup belongs to normal chat.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
 It reads counts through `countForInbox()`. Both use current editor access and original-project ownership.

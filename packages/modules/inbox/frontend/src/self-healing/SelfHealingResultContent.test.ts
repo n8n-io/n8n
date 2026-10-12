@@ -315,27 +315,23 @@ describe('SelfHealingResultContent', () => {
 		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-private-id');
 	});
 
-	it.each(['editor', 'chat'] as const)(
-		'shows the saved %s continuation in activity',
-		(destination) => {
-			const { getByTestId } = renderContent({
-				detail: result({
-					suggestion: null,
-					outcome: 'could_not_fix',
-					reviewState: 'continued',
-					continuedAt: '2026-10-09T10:00:00.000Z',
-					continuedById: 'private-user-id',
-					continuationDestination: destination,
-				}),
-			});
+	it('shows the saved continuation in activity', () => {
+		const { getByTestId } = renderContent({
+			detail: result({
+				suggestion: null,
+				outcome: 'could_not_fix',
+				reviewState: 'continued',
+				continuedAt: '2026-10-09T10:00:00.000Z',
+				continuedById: 'private-user-id',
+			}),
+		});
 
-			expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed | Continued');
-			expect(getByTestId('self-healing-activity')).toHaveTextContent(
-				destination === 'editor' ? 'Continued in the editor' : 'Continued in chat',
-			);
-			expect(getByTestId('self-healing-activity')).not.toHaveTextContent('private-user-id');
-		},
-	);
+		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed | Continued');
+		expect(getByTestId('self-healing-activity')).toHaveTextContent(
+			'Continued working on the workflow',
+		);
+		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('private-user-id');
+	});
 
 	it('emits tab changes without selecting a new item', async () => {
 		const { getByRole, emitted } = renderContent();
