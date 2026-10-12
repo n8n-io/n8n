@@ -451,10 +451,16 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.name.toSentenceCase() }}',
 	'={{ $json.item.mixed.min() }}',
 	'={{ $json.item.mixed.max() }}',
+	'={{ $json.item.name.isUrl() }}',
+	'={{ $json.item.names.merge() }}',
+	// A comment hides the call from the extendSyntax regex.
+	'={{ $json.item.names.first /* c */ () }}',
+	'={{ $json.item.names.first // c\n () }}',
 	'={{ $json.item.count.format() }}',
 	'={{ $json.item.when.format() }}',
 	'={{ $json.item.name.extractUrlPath() }}',
 	'={{ $json.item.name.urlEncode() }}',
+	'={{ $json.item.name.base64Decode() }}',
 	'={{ $json.item.name.padStart(8) }}',
 	// sort()/fill() mutate the receiver in place; only immutable variants are
 	// allowlisted. A callback makes any call non-simple.

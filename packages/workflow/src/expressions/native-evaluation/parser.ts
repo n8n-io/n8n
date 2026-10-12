@@ -247,6 +247,8 @@ function parseCall(
 ): SimpleNode | null {
 	const callee = node.callee;
 	if (callee.type !== 'MemberExpression' || callee.computed === true) return null;
+	// The callee is read here, not re-parsed, so its comments are checked here.
+	if (callee.comments?.length) return null;
 
 	const property = callee.property;
 	if (property.type !== 'Identifier') return null;
@@ -362,6 +364,10 @@ export function parseSimple(
 	param: string | null = null,
 ): SimpleNode | null {
 	if (depth > MAX_DEPTH) return null;
+	// extendSyntax finds extension calls by regex over the source text, and a
+	// comment between the name and the parentheses hides one from it. The
+	// parser attaches comments to the nearest node; any comment declines.
+	if (node.comments?.length) return null;
 	const parse: ParseChild = (child, childParam = param) =>
 		parseSimple(child, depth + 1, childParam);
 

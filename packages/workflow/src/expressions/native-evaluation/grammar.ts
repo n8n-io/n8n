@@ -259,8 +259,9 @@ const EXCLUDED_EXTENSIONS = new Set([
 	'randomItem',
 	// A negative size loops forever; the engines kill it, this thread cannot.
 	'chunk',
-	// Quadratic: deep equality per pair, or regex backtracking per position,
-	// or the tail rebuilt per sentence. The engine's timeout owns those.
+	// Quadratic: deep equality per pair, regex backtracking per position, the
+	// tail rebuilt per sentence, or the accumulator copied per element. The
+	// engine's timeout owns those.
 	'unique',
 	'removeDuplicates',
 	'isEmail',
@@ -268,14 +269,17 @@ const EXCLUDED_EXTENSIONS = new Set([
 	'extractDomain',
 	'removeMarkdown',
 	'toSentenceCase',
+	'isUrl',
+	'merge',
 	// Spread into Math.min/max: the engines overflow at sizes under the cap.
 	'min',
 	'max',
-	// The in-isolate copy diverges: Intl.NumberFormat, URL and URLSearchParams
-	// are not available there.
+	// The in-isolate copy diverges: Intl.NumberFormat, URL, URLSearchParams
+	// and TextDecoder are not available there.
 	'format',
 	'extractUrlPath',
 	'urlEncode',
+	'base64Decode',
 ]);
 export const EXTENSION_METHODS: ReadonlySet<string> = new Set(
 	ExpressionExtensions.filter((extension) => extension.typeName !== 'Date')
