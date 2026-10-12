@@ -1265,6 +1265,7 @@ export class AgentExecutionService {
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
 				run_type: params.telemetry.runType,
+				source: params.source,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
 				configuration: params.telemetry.configuration,
 				...buildAgentTurnMetrics(record),

@@ -14,3 +14,28 @@ export const SCOPE_LABEL_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 export function isRestrictionScope(scope: string): scope is NodeTypeAvailabilityScope {
 	return Object.hasOwn(SCOPE_LABEL_KEY, scope);
 }
+
+export type RestrictedTypeKind = 'node' | 'credential';
+
+export const RESTRICTED_TYPE_COPY: Record<
+	RestrictedTypeKind,
+	{
+		title: BaseTextKey;
+		popoverDescription: BaseTextKey;
+		contactDescription: BaseTextKey;
+		mailSubject: BaseTextKey;
+	}
+> = {
+	node: {
+		title: 'typeAvailabilityPolicies.restrictedNode.title',
+		popoverDescription: 'typeAvailabilityPolicies.restrictedNode.popover.description',
+		contactDescription: 'typeAvailabilityPolicies.contactAdmin.description',
+		mailSubject: 'typeAvailabilityPolicies.contactAdmin.mailSubject',
+	},
+	credential: {
+		title: 'typeAvailabilityPolicies.restrictedCredentialType.title',
+		popoverDescription: 'typeAvailabilityPolicies.restrictedCredentialType.popover.description',
+		contactDescription: 'typeAvailabilityPolicies.contactAdmin.credentialType.description',
+		mailSubject: 'typeAvailabilityPolicies.contactAdmin.credentialType.mailSubject',
+	},
+};

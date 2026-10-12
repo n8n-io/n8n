@@ -2,6 +2,7 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { isRecord } from '@n8n/utils/is-record';
 // AI root node types (single source in @n8n/workflow-sdk mock-data) — lets
 // the typo guard accept a no-sub-node Agent.
 import { isAiRootNodeType } from '@n8n/workflow-sdk';
@@ -613,7 +614,7 @@ RULES:
    - CRITICAL: apart from a Manual Trigger, triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
    - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
-   - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
+   - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. For a PDF or text file whose words the scenario states, also add "text": "<those words as plain text>" to its entry — the harness writes them into the file. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
 5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
@@ -704,6 +705,14 @@ function isManualTriggerNode(workflow: IWorkflowBase, nodeName?: string): boolea
 	return node?.type === MANUAL_TRIGGER_NODE_TYPE && !node.disabled;
 }
 
+/** The model sometimes answers with an n8n item (`{ json, binary }`) instead of the item's json. */
+function unwrapItemShape(content: object): object {
+	if (!isRecord(content)) return content;
+	const { json, ...rest } = content;
+	if (!isRecord(json) || Object.keys(rest).some((key) => key !== 'binary')) return content;
+	return rest.binary === undefined ? json : { ...json, binary: rest.binary };
+}
+
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
@@ -759,12 +768,13 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			) {
 				reason = `invalid nodeHints structure (raw: ${text.slice(0, 200)})`;
 			} else {
-				const triggerContent =
+				const triggerContent = unwrapItemShape(
 					typeof parsed.triggerContent === 'object' &&
-					parsed.triggerContent !== null &&
-					!Array.isArray(parsed.triggerContent)
+						parsed.triggerContent !== null &&
+						!Array.isArray(parsed.triggerContent)
 						? parsed.triggerContent
-						: {};
+						: {},
+				);
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';

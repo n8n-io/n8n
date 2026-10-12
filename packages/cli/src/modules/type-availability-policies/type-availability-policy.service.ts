@@ -21,8 +21,13 @@ import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/t
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
-import { NODE_TYPES_KIND } from './constants';
-import { isPackageInstalled, packageResolverFor, policedTypeFor } from './package-resolver';
+import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
+import {
+	isCredentialTypeKnown,
+	isPackageInstalled,
+	packageResolverFor,
+	policedTypeFor,
+} from './package-resolver';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
 	PolicyAction,
@@ -267,6 +272,34 @@ function assertNoCredentialOnlyNodeRules(kind: string, rules: readonly PolicyRul
 	}
 }
 
+/**
+ * Only credential types declare `extends`, so the selector means nothing for another kind. An
+ * unknown base would match nothing, the same trap `assertPackagesInstalled` closes.
+ */
+function assertExtendsSelectorsValid(
+	kind: string,
+	rules: readonly PolicyRule[],
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+): void {
+	const values = rules.flatMap((rule) =>
+		rule.selector.kind === 'extends' ? [rule.selector.value] : [],
+	);
+	if (values.length === 0) return;
+
+	if (kind !== CREDENTIAL_TYPES_KIND) {
+		throw new UserError('An "extends" rule is only valid in a credential type policy');
+	}
+
+	const unknown = new Set(
+		values.filter((value) => !isCredentialTypeKnown(loadNodesAndCredentials, value)),
+	);
+	if (unknown.size > 0) {
+		throw new UserError(
+			`Extends rule names a credential type that is not installed: ${[...unknown].join(', ')}`,
+		);
+	}
+}
+
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
 function assertNoDuplicateAttachmentSlots(attachments: readonly AttachmentInput[]): void {
 	const seenPolicyIds = new Set<string>();
@@ -464,10 +497,11 @@ export class TypeAvailabilityPolicyService {
 	): Promise<PolicyDocumentWrite> {
 		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
 		assertNoCredentialOnlyNodeRules(kind, rules);
+		assertExtendsSelectorsValid(kind, rules, this.loadNodesAndCredentials);
 		const warnings = lintRulesForShadowing(
 			rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes),
+			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
 		);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
@@ -503,10 +537,11 @@ export class TypeAvailabilityPolicyService {
 	): Promise<PolicyDocumentWrite> {
 		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
 		assertNoCredentialOnlyNodeRules(kind, rules);
+		assertExtendsSelectorsValid(kind, rules, this.loadNodesAndCredentials);
 		const warnings = lintRulesForShadowing(
 			rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes),
+			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
 		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
@@ -758,11 +793,12 @@ export class TypeAvailabilityPolicyService {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
 		assertPackagesInstalled(input.rules, this.loadNodesAndCredentials);
 		assertNoCredentialOnlyNodeRules(kind, input.rules);
+		assertExtendsSelectorsValid(kind, input.rules, this.loadNodesAndCredentials);
 
 		const warnings = lintRulesForShadowing(
 			input.rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
-			policedTypeFor(kind, this.nodeTypes),
+			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
 		);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
@@ -829,6 +865,9 @@ export class TypeAvailabilityPolicyService {
 				}
 			}
 
+			const scopeCreated = scope === null;
+			const defaultActionChanged = scope !== null && scope.defaultAction !== input.defaultAction;
+
 			const scopeId = scope
 				? scope.id
 				: (
@@ -838,7 +877,7 @@ export class TypeAvailabilityPolicyService {
 						)
 					).id;
 
-			if (scope && scope.defaultAction !== input.defaultAction) {
+			if (defaultActionChanged) {
 				await this.scopeRepository.updateDefaultAction(
 					scopeId,
 					input.defaultAction,
@@ -885,11 +924,12 @@ export class TypeAvailabilityPolicyService {
 				);
 			}
 
-			// This composed write always bumps the scope's freshness signal once, on top of
-			// whatever `updateDefaultAction` bumped on its own — a document-only edit (no
-			// `defaultAction` change) still must move the version, since it changes what the
-			// scope effectively enforces.
-			await this.scopeRepository.bumpVersion(scopeId, ctx);
+			// One accepted write moves the version by exactly one. The insert and
+			// `updateDefaultAction` each move it already, so bump here only when neither ran —
+			// a document-only edit still changes what the scope enforces and must move it too.
+			if (!scopeCreated && !defaultActionChanged) {
+				await this.scopeRepository.bumpVersion(scopeId, ctx);
+			}
 
 			const scopeAfterRow = await this.scopeRepository.findScopeById(scopeId, ctx);
 			const scopeAfter = {
@@ -908,7 +948,7 @@ export class TypeAvailabilityPolicyService {
 			};
 		});
 
-		// This path always bumps the scope's version, so it always invalidates.
+		// This path always moves the scope's version, so it always invalidates.
 		await this.invalidateScopes([{ kind, projectId }]);
 
 		this.eventService.emit('node-type-policy-scope-updated', {
@@ -973,7 +1013,7 @@ export class TypeAvailabilityPolicyService {
 		return evaluateComposedType(
 			instance,
 			project,
-			policedTypeFor(kind, this.nodeTypes)(typeName),
+			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials)(typeName),
 			packageResolverFor(kind, this.loadNodesAndCredentials),
 		);
 	}
@@ -1050,7 +1090,7 @@ export class TypeAvailabilityPolicyService {
 
 	private verdictComposer(kind: string, typeNames: readonly string[]) {
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
-		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
 
 		return (instance: EffectivePolicy, project: EffectivePolicy): ComposedTypeVerdict[] =>
 			types.map((type) => ({
