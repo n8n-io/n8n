@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
 import { OperationalError, UserError, type Logger } from 'n8n-workflow';
@@ -27,6 +28,7 @@ import {
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
+import type { WhatsAppWebhookVerificationStore } from '../../whatsapp-webhook-verification.store';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
 // `new Function()` hack to dodge the CJS transform, which can't run under vitest;
@@ -1067,6 +1069,56 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		});
 	});
 
+	describe('onRemove', () => {
+		it('clears the recorded handshake for the agent', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			const warning = await integration.onRemove({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'cred-whatsapp',
+				user: mock<User>(),
+			});
+
+			expect(warning).toBeUndefined();
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+	});
+
+	describe('handshake answered by a connected channel', () => {
+		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
+		const handshake = (token: string) =>
+			new Request(
+				`https://n8n.example.com/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${token}&hub.challenge=12345`,
+			);
+
+		it('records the handshake when the token matches', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
+				webhookVerification,
+			});
+
+			const response = await ctx.adapter.handleWebhook(handshake(expectedToken));
+
+			expect(response.status).toBe(200);
+			expect(await response.text()).toBe('12345');
+			expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
+		});
+
+		it('does not record a rejected handshake', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const ctx = await createWhatsAppReplayContext(whatsAppReplayFixtures(), {
+				webhookVerification,
+			});
+
+			const response = await ctx.adapter.handleWebhook(handshake('wrong-token'));
+
+			expect(response.status).toBe(403);
+			expect(webhookVerification.markVerified).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('handleUnauthenticatedWebhook', () => {
 		// createWhatsAppIntegration() wires a fixed 'test-hmac-signature-secret', so
 		// the expected token for 'agent-1' is derivable the same way the real
@@ -1074,7 +1126,8 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		const expectedToken = deriveWhatsAppVerifyToken('test-hmac-signature-secret', 'agent-1');
 
 		it("answers Meta's handshake with the raw challenge when the token matches", () => {
-			const integration = createWhatsAppIntegration();
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -1089,10 +1142,12 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toEqual({ status: 200, body: '12345', raw: true });
+			expect(webhookVerification.markVerified).toHaveBeenCalledExactlyOnceWith('agent-1');
 		});
 
 		it('rejects the handshake when the verify token does not match', () => {
-			const integration = createWhatsAppIntegration();
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -1107,6 +1162,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 
 			expect(result).toEqual({ status: 403, body: 'Forbidden', raw: true });
+			expect(webhookVerification.markVerified).not.toHaveBeenCalled();
 		});
 
 		it('falls through for a non-GET request', () => {

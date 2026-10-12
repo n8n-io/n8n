@@ -17,6 +17,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
+	type AgentIntegrationRemovalContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 	type BridgeMessageContextParams,
@@ -37,6 +38,7 @@ import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../integ
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../integration-tool-factory';
 import { startTypingIndicator } from './typing-indicator';
+import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
@@ -188,6 +190,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
+		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
 	) {
 		super();
 	}
@@ -198,6 +201,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+	}
+
+	/**
+	 * A new setup of this agent can use a different Meta app. Without this, step
+	 * 4 would confirm the handshake that the removed channel's app completed.
+	 */
+	async onRemove(ctx: AgentIntegrationRemovalContext): Promise<undefined> {
+		await this.webhookVerification.clear(ctx.agentId);
+		return undefined;
 	}
 
 	/**
@@ -224,6 +236,9 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (token !== this.deriveVerifyToken(context.agentId)) {
 			return { status: 403, body: 'Forbidden', raw: true };
 		}
+		// Recorded so the setup can confirm the step. Not awaited, because Meta
+		// times out the handshake and the record is only for display.
+		void this.webhookVerification.markVerified(context.agentId);
 		return { status: 200, body: challenge, raw: true };
 	}
 
@@ -279,12 +294,23 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// a persistent limit would let every later reply start its own full
 		// retry cycle against an already-limited number instead of failing fast.
 		const connectionId = buildIntegrationConnectionId(ctx.integration);
+		const webhookVerification = this.webhookVerification;
+		const agentId = ctx.agentId;
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
 		// and the rate-limit backoff (see module doc). `stream` needs no override
 		// of its own — the base adapter's `stream` already delegates to
 		// `this.postMessage`.
 		class ConversationWindowGuardedAdapter extends AdapterClass {
+			// A connected channel answers Meta's handshake here, not in
+			// `handleUnauthenticatedWebhook`. Record it too, so a later setup of
+			// the same agent still confirms the step.
+			protected override handleVerificationChallenge(request: Request): Response {
+				const response = super.handleVerificationChallenge(request);
+				if (response.status === 200) void webhookVerification.markVerified(agentId);
+				return response;
+			}
+
 			override async postMessage(
 				threadId: string,
 				message: AdapterPostableMessage,
