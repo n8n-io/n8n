@@ -237,9 +237,9 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	AGENT_EXECUTION_COUNT: {
 		name: 'Agent execution count',
 		description:
-			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
+			'Six-hourly pulse of aggregate agent usage, bucketed by agent, run type and optional user. event_version 3 added first_message_at. event_version 2 added run_type; version 1 rows are a mix of test and production and must not be read as production. token_count is broader than "Agent session metrics".cost_sum: it also covers LLM calls belonging to no single turn (title generation, observational/episodic memory, embeddings).',
 		properties: z.object({
-			event_version: z.literal('2'),
+			event_version: z.literal('3'),
 			agent_id: z.string(),
 			user_id: z
 				.string()
@@ -247,6 +247,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe('Present only for runs with an n8n user — absent for chat integrations and cron'),
 			run_type: agentRunType,
 			...agentExecutionCounts,
+			first_message_at: z.iso
+				.datetime()
+				.optional()
+				.describe(
+					'ISO 8601 time of the first message in this buffer window. Absent when message_count is zero.',
+				),
 			counts_by_source: z
 				.record(agentRunSource, z.object(agentExecutionCounts))
 				.optional()
