@@ -33,6 +33,10 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
+	SkillDetail,
+	SkillListItem,
+	SkillListResponse,
+	SkillScope,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
@@ -726,6 +730,35 @@ export const updateAgentSkill = async (
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
 		{ ...updates, baseSkillHash },
 	);
+};
+
+export const listAttachableSkills = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<SkillListItem[]> => {
+	const [projectSkills, instanceSkills] = await Promise.all([
+		makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
+			scope: 'project',
+			projectId,
+		}),
+		makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', { scope: 'instance' }),
+	]);
+	const byName = (left: SkillListItem, right: SkillListItem) => left.name.localeCompare(right.name);
+	return [...projectSkills.data.sort(byName), ...instanceSkills.data.sort(byName)];
+};
+
+export const getHubSkill = async (
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillDetail> => {
+	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+export const createHubSkill = async (
+	context: IRestApiContext,
+	payload: { scope: SkillScope; projectId?: string; skill: AgentSkill },
+): Promise<SkillDetail> => {
+	return await makeRestApiRequest<SkillDetail>(context, 'POST', '/skills', payload);
 };
 
 export const getAgentBackgroundJobs = async (

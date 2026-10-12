@@ -184,7 +184,7 @@ text and `3xs` spacing. Keep warning and failure indicators distinct.
 ### Multi-step contract
 
 Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
-Workflows, and Vector stores.
+Workflows, Vector stores, and Skills.
 
 For tools, keep selection and configuration separate. The picker owns search,
 categories, rows, and connection entry points. After selection, route every
@@ -222,6 +222,17 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
+
+When the skills hub is on, `Add skill` starts with the skill picker. The picker
+shows only skills that the Agent can use: skills of its project and instance
+skills. Show the scope next to the skill name. Show `Added` for an attached
+skill. Disable a skill whose name is hard to tell apart from an attached skill,
+and give the reason in its tooltip. `Create skill` opens the upload screen, and
+Back returns to the picker. A user who can create instance skills selects the
+scope with `Save to` at the bottom left of the editor.
+
+Open a skill that the user can use but not edit in a read-only editor. Show an
+info callout with the scope. Hide Save and keep `Remove skill`.
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`

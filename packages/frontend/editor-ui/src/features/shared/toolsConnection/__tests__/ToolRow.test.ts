@@ -10,6 +10,7 @@ import {
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
 	type ServiceConnectionItem,
+	type SkillConnectionItem,
 	type WorkflowConnectionItem,
 } from '../types';
 
@@ -20,6 +21,7 @@ function render(
 		| McpServerConnectionItem
 		| NodeConnectionItem
 		| ServiceConnectionItem
+		| SkillConnectionItem
 		| WorkflowConnectionItem,
 ) {
 	return renderRow({ props: { item }, pinia: createTestingPinia() });
@@ -86,6 +88,20 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
+	it('shows the scope label of a skill next to its title', () => {
+		const { getByTestId, getByText } = render({
+			id: 'skill:tone',
+			kind: 'skill',
+			skillId: 'tone',
+			title: 'Support tone',
+			scopeLabel: 'Marketing',
+			status: 'none',
+		});
+
+		expect(getByText('Support tone')).toBeInTheDocument();
+		expect(getByTestId('tools-connection-row-scope')).toHaveTextContent('Marketing');
+	});
+
 	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {
 		const { getByTestId, emitted } = render(baseMcp);
 

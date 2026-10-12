@@ -75,6 +75,8 @@ const placeholderIcon = computed(() => {
 			return 'bot';
 		case 'data-store':
 			return 'database';
+		case 'skill':
+			return 'book-open';
 		case 'node':
 		default:
 			return 'toolbox';
@@ -187,6 +189,16 @@ function handleConnect() {
 				<span :class="$style.text">
 					<span :class="$style.titleRow">
 						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
+						<N8nText
+							v-if="item.kind === 'skill' && item.scopeLabel"
+							:class="$style.scopeLabel"
+							tag="span"
+							size="small"
+							color="text-light"
+							data-test-id="tools-connection-row-scope"
+						>
+							{{ item.scopeLabel }}
+						</N8nText>
 						<N8nTooltip
 							v-if="item.verified"
 							:content="i18n.baseText('communityNodeInfo.approved')"
@@ -448,6 +460,10 @@ function handleConnect() {
 
 .title {
 	font-weight: var(--font-weight--medium);
+}
+
+.scopeLabel {
+	flex-shrink: 0;
 }
 
 .verifiedIcon {

@@ -278,6 +278,7 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
 	agents: 'tools.connection.categories.agents',
+	skills: 'tools.connection.categories.skills',
 	data: 'tools.connection.categories.data',
 };
 

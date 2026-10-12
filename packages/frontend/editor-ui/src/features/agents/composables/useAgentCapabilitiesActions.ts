@@ -2,11 +2,20 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import {
+	SKILLS_FLAG,
+	skillNameKey,
+	type AgentConfigValidationIssue,
+	type SkillDetail,
+	type SkillListItem,
+} from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill } from './useAgentApi';
+import { createAgentSkill, createHubSkill, getHubSkill } from './useAgentApi';
+import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
@@ -127,7 +136,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const posthogStore = usePostHog();
+	const rbacStore = useRBACStore();
 	const { showError, showMessage } = useToast();
+	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
+
+	const hubSkillsEnabled = computed(
+		() => !localSkills && posthogStore.isFeatureEnabled(SKILLS_FLAG),
+	);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -327,6 +343,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				existingSkillNames: appliedSkillNames(id),
+				hubSkillsEnabled: hubSkillsEnabled.value,
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
@@ -369,10 +386,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	 * local-skill hosts. The modal validates against `existingSkillNames` before closing
 	 */
 	function hasDuplicateSkillName(name: string, excludeId?: string): boolean {
-		const normalized = name.trim().toLowerCase();
-		return appliedSkillNames(excludeId).some(
-			(existing) => existing.trim().toLowerCase() === normalized,
-		);
+		const key = skillNameKey(name);
+		return appliedSkillNames(excludeId).some((existing) => skillNameKey(existing) === key);
 	}
 
 	function showDuplicateSkillNameError(name: string) {
@@ -429,7 +444,24 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
-				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+				hubSkillsEnabled: hubSkillsEnabled.value,
+				attachedSkillIds: appliedSkills.value.map(({ id }) => id),
+				projectLabel: projectName.value ?? undefined,
+				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				onAttach: (librarySkill: SkillListItem) => {
+					void attachHubSkill(
+						isCurrentTarget,
+						async () => await getHubSkill(rootStore.restApiContext, librarySkill.id),
+					);
+				},
+				onConfirm: ({
+					skill,
+					scope,
+				}: {
+					id?: string;
+					skill: AgentSkill;
+					scope: 'project' | 'instance';
+				}) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
 						const sanitizedSkill = normalizeAgentSkillForSave(skill);
@@ -440,6 +472,18 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
+						return;
+					}
+
+					if (scope === 'instance') {
+						void attachHubSkill(
+							isCurrentTarget,
+							async () =>
+								await createHubSkill(rootStore.restApiContext, {
+									scope: 'instance',
+									skill: normalizeAgentSkillForSave(skill),
+								}),
+						);
 						return;
 					}
 
@@ -507,6 +551,35 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					})();
 				},
 			},
+		});
+	}
+
+	async function attachHubSkill(
+		isCurrentTarget: () => boolean,
+		loadSkill: () => Promise<SkillDetail>,
+	) {
+		let hubSkill: SkillDetail;
+		try {
+			hubSkill = await loadSkill();
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.attach.error'));
+			return;
+		}
+		if (!isCurrentTarget() || !agent.value || !localConfig.value) return;
+		if (hasDuplicateSkillName(hubSkill.skill.name)) {
+			showDuplicateSkillNameError(hubSkill.skill.name);
+			return;
+		}
+		agent.value = {
+			...agent.value,
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [hubSkill.id]: hubSkill.skillHash },
+			skills: { ...(agent.value.skills ?? {}), [hubSkill.id]: hubSkill.skill },
+		};
+		scheduleConfigUpdate({
+			skills: [
+				...(localConfig.value.skills ?? []).filter((ref) => ref.id !== hubSkill.id),
+				{ type: 'skill', id: hubSkill.id },
+			],
 		});
 	}
 

@@ -16,6 +16,7 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		bodyFlush?: boolean;
 		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
@@ -31,6 +32,7 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		bodyFlush: false,
 		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
@@ -71,6 +73,7 @@ watch(
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
 		:body-scrollable="!isPickerStep"
+		:body-flush="bodyFlush"
 		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"
