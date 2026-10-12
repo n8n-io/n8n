@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrateWorkflowModal.test.ts
+  s_8a9b0f8cb7744f::t_f2c21241c92101 52,61-64,264-282
+  s_8a9b0f8cb7744f::t_85d806c36d6607 283-284
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrateWorkflowModal.vue
+  s_8a9b0f8cb7744f::t_2ce134423c3b5a 175
+  s_8a9b0f8cb7744f::t_079d6a375128f0 316,318-319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3efd06de16b580371dd4d3943dd13dd51e4d100",
+  "prompts": {},
+  "sessions": {
+    "s_8a9b0f8cb7744f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b7bfd78-8f84-410d-b8c6-19d5cd20b2c0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
