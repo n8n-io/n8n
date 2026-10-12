@@ -888,7 +888,9 @@ export class InstanceAiAdapterService {
 		return {
 			execute: async (request) => {
 				this.assertInstanceNotReadOnly('executions');
-				const projectId = await resolveProjectId(['workflow:execute']);
+				// The caller supplies the node type and parameters, so a standalone run
+				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
+				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
 				const result = await executeNodeService.run(user, {
 					type: request.type,
 					version: request.version,
