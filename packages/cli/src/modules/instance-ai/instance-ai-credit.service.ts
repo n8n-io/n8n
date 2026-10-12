@@ -41,11 +41,22 @@ export class InstanceAiCreditService {
 	 */
 	private readonly claimedRunIds = new Set<string>();
 
+	/** Called once when a claim moves a user from under quota to exhausted. */
+	private readonly quotaExhaustedHandlers = new Set<(user: User) => void>();
+
 	/** Max retained run-segment ids in {@link claimedRunIds}; oldest evicted first. */
 	static readonly CLAIM_DEDUPE_CACHE_SIZE = 1000;
 
 	/** Max attempts for the idempotent token-usage claim before giving up. */
 	private static readonly CLAIM_MAX_ATTEMPTS = 3;
+
+	/**
+	 * Register a handler for the moment a claim crosses quota. A handler failure
+	 * must not fail the claim: the usage is already recorded.
+	 */
+	onQuotaExhausted(handler: (user: User) => void): void {
+		this.quotaExhaustedHandlers.add(handler);
+	}
 
 	/**
 	 * Set once the service has confirmed the pool is locked, to skip re-asserting on every read.
@@ -279,8 +290,9 @@ export class InstanceAiCreditService {
 			credits_quota: creditsQuota,
 		});
 
-		// Fire the exhaustion event once, at the moment usage crosses quota. The
-		// crossing message still finishes; the next proxy-token request is what 403s.
+		// Fire once, at the crossing. Live runs are stopped so they cannot take
+		// another model step on a cached proxy token. The claim itself still
+		// records this segment's usage.
 		if (delta > 0) {
 			const wasUnder = creditsClaimed - delta < creditsQuota;
 			const nowExhausted = creditsClaimed >= creditsQuota;
@@ -289,10 +301,28 @@ export class InstanceAiCreditService {
 					instance_id: this.instanceSettings.instanceId,
 					user_id: user.id,
 				});
+				this.notifyQuotaExhausted(user);
 			}
 		}
 
 		return delta;
+	}
+
+	/**
+	 * Tell listeners the user just crossed quota. A listener must not fail the
+	 * claim: the usage is already recorded.
+	 */
+	private notifyQuotaExhausted(user: User): void {
+		for (const handler of this.quotaExhaustedHandlers) {
+			try {
+				handler(user);
+			} catch (error) {
+				this.logger.warn('Assistant quota exhaustion handler failed', {
+					userId: user.id,
+					error: getErrorMessage(error),
+				});
+			}
+		}
 	}
 
 	/**

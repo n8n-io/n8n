@@ -2,6 +2,7 @@ import type { ZodClass } from '@n8n/api-types';
 import type {
 	ApiKeyScopeRequirement,
 	Arg,
+	BinaryResponse,
 	Controller,
 	DeprecationInfo,
 	ErrorResponse,
@@ -83,6 +84,8 @@ export interface ResolvedPublicApiRoute {
 	requestBodyHandler?: RequestBodyHandler;
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
+	/** Mutually exclusive with `responseDto`. */
+	binaryResponse?: BinaryResponse;
 	/** Success status declared via `@ApiResponse` - always present, see `resolveSuccessStatus`. */
 	successStatus: SuccessStatus;
 	apiKeyScope?: ApiKeyScopeRequirement;
@@ -296,6 +299,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				requestBodyHandler,
 				requestQueryDto,
 				responseDto: route.responseDto,
+				binaryResponse: route.binaryResponse,
 				successStatus: resolveSuccessStatus(controllerClass.name, handlerName, route.successStatus),
 				apiKeyScope: route.apiKeyScope,
 				summary: route.summary,

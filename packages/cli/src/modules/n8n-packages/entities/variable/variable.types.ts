@@ -4,6 +4,9 @@ import type { PackageWriter } from '../../io/package-writer';
 import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import type { RequirementSource } from '../requirement-source';
+
+export type VariableRequirement = RequirementSource & { variableName: string };
 
 export interface WorkflowVariableRequirement {
 	workflowId: string;
@@ -12,7 +15,7 @@ export interface WorkflowVariableRequirement {
 
 export interface VariableExportRequest {
 	user: User;
-	requirements: WorkflowVariableRequirement[];
+	requirements: VariableRequirement[];
 	writer: PackageWriter;
 	includeVariableValues: boolean;
 	projectTargetsById?: Map<string, string>;

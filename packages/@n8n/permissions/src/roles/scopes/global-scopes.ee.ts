@@ -3,6 +3,7 @@ import type { Scope } from '../../types.ee';
 export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'agent:create',
 	'agent:read',
+	'agent:export',
 	'agent:update',
 	'agent:delete',
 	'agent:list',
