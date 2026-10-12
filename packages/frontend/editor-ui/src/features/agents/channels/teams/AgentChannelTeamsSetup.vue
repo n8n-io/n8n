@@ -25,6 +25,7 @@ import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import { fileAccessJustApproved } from './fileAccessConsent';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import {
 	checkTeamsCredential,
@@ -413,6 +414,7 @@ const readsSharedConversations = computed(
 
 // Microsoft can take a minute or two to apply an approval just given.
 const FILE_ACCESS_RECHECK_MS = 10_000;
+const FILE_ACCESS_FIRST_CHECK_AFTER_APPROVAL_MS = 10_000;
 const FILE_ACCESS_RECHECKS = 18;
 let fileAccessRecheck: ReturnType<typeof setTimeout> | undefined;
 onBeforeUnmount(() => clearTimeout(fileAccessRecheck));
@@ -427,6 +429,14 @@ async function loadFileAccess() {
 	const id = credentialId.value;
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
 	fileAccessStatus.value = 'checking';
+	if (fileAccessJustApproved.value) {
+		fileAccessJustApproved.value = false;
+		fileAccessRecheck = setTimeout(
+			() => void checkFileAccess(id, FILE_ACCESS_RECHECKS),
+			FILE_ACCESS_FIRST_CHECK_AFTER_APPROVAL_MS,
+		);
+		return;
+	}
 	await checkFileAccess(id, FILE_ACCESS_RECHECKS);
 }
 

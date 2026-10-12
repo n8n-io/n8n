@@ -8,6 +8,7 @@ import { defineComponent, ref } from 'vue';
 import AgentChannelTeamsEditView from './AgentChannelTeamsEditView.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 import { checkTeamsFileAccess, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { fileAccessJustApproved } from './fileAccessConsent';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -186,6 +187,25 @@ describe('AgentChannelTeamsEditView', () => {
 
 			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
 			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(2);
+			vi.useRealTimers();
+		});
+
+		it('waits before the first check after Microsoft returns from an approval', async () => {
+			vi.useFakeTimers();
+			fileAccessJustApproved.value = true;
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+
+			const { findByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await vi.advanceTimersByTimeAsync(9_000);
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+			expect(await findByTestId('teams-file-access-checking')).toBeVisible();
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(fileAccessJustApproved.value).toBe(false);
 			vi.useRealTimers();
 		});
 

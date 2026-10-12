@@ -11,6 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 import AgentTriggersSection from '../components/AgentTriggersSection.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 enableAutoUnmount(afterEach);
 
@@ -185,6 +186,7 @@ describe('AgentTriggersSection', () => {
 		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
 		expect(modal.attributes('data-view')).toBe('teams_edit');
 		expect(routerReplace).toHaveBeenCalledWith({ query: {} });
+		expect(fileAccessJustApproved.value).toBe(true);
 	});
 
 	it('opens the Teams settings before the agent config lists the channel', async () => {

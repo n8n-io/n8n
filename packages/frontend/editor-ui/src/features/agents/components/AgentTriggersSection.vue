@@ -26,6 +26,7 @@ import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
+import { fileAccessJustApproved } from '../channels/teams/fileAccessConsent';
 
 const props = withDefaults(
 	defineProps<{
@@ -280,6 +281,7 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 	const { state, admin_consent, tenant, error, error_description, error_subcode, ...query } =
 		route.query;
 	void router.replace({ query });
+	fileAccessJustApproved.value = admin_consent === 'True';
 	openChannelEdit(
 		'teams',
 		props.connectedTriggers.includes('teams') || integrationStatus.isConfigured('teams'),
