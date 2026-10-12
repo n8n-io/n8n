@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Msg91/test/Msg91.workflow.test.ts
+  s_2e1fa95fc44f8f::t_871c4ee8487491 1-31
+packages/nodes-base/nodes/Mocean/test/Mocean.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b6c550038b5061 1-27
+packages/nodes-base/nodes/MonicaCrm/test/workflow/MonicaCrm.workflow.test.ts
+  s_2e1fa95fc44f8f::t_3b2b00e83969ee 1-117
+packages/nodes-base/nodes/Mocean/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_1e903e07c95843 1-98
+packages/nodes-base/nodes/N8n/test/WorkflowLocator.test.ts
+  s_2e1fa95fc44f8f::t_38c4015880f723 1-24
+packages/nodes-base/nodes/Msg91/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_cf846d41c42faa 1-59
+packages/nodes-base/nodes/MonicaCrm/test/workflow/requests.self-hosted.workflow.json
+  s_93035ae9b819fc::t_cffe7682364b57 1-58
+packages/nodes-base/nodes/MonicaCrm/test/workflow/requests.workflow.json
+  s_93035ae9b819fc::t_d44e77c38855c9 1-1197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb0ee26a56f66291f7464b547dd024d3cb97ce32",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_93035ae9b819fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac3698ad351421391",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+packages/nodes-base/nodes/Notion/v2/methods/loadOptions.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 22,64,100,126,147,151,196,200
+  s_2e1fa95fc44f8f::t_3660f5d9be9d58 3
+packages/nodes-base/nodes/Notion/v3/actions/database/Database.resource.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 62
+  s_2e1fa95fc44f8f::t_bcc27e38a5d618 7
+packages/nodes-base/nodes/Notion/test/NotionV1.node.test.ts
+  s_2e1fa95fc44f8f::t_e968b4b56354f5 1-40
+packages/nodes-base/nodes/Notion/v3/methods/loadOptions.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 112,134
+  s_2e1fa95fc44f8f::t_4d620ba54aef93 3
+packages/nodes-base/nodes/Notion/v3/transport/index.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 94
+  s_cb6acb34c830ca::t_cebd8e4f292e01 9-10,12,26,31,35,60
+packages/nodes-base/nodes/Notion/v3/actions/dataSource/DataSource.resource.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 97,132
+  s_2e1fa95fc44f8f::t_a60e73e6a09dae 7
+packages/nodes-base/nodes/Notion/v3/actions/block/Block.resource.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 46,167,193,222
+  s_2e1fa95fc44f8f::t_1876a199ee989c 7
+packages/nodes-base/nodes/Notion/v3/actions/user/User.resource.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 65
+  s_2e1fa95fc44f8f::t_18468a46e33a90 2,42
+packages/nodes-base/nodes/Notion/v1/NotionV1.node.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 53,93,125,147-152,170,174,215,219,274,297,305,330,352
+  s_2e1fa95fc44f8f::t_73ec17018e9b4e 12,357,393,454,463,502,522,535-540,543-548,577,603,642,651
+packages/nodes-base/nodes/Notion/shared/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 140
+  s_2e1fa95fc44f8f::t_a21713080e5a62 68
+  s_2e1fa95fc44f8f::t_75a87a1f5d67d5 67
+  s_cb6acb34c830ca::t_98ea1160e7fd0d 20-21,24-25,60,64,74,80-82,92,880-896,913
+packages/nodes-base/nodes/Notion/v3/actions/page/Page.resource.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 218,249,274,306,331
+  s_2e1fa95fc44f8f::t_7899962442ea81 7
+packages/nodes-base/nodes/Notion/v2/NotionV2.node.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 78,112,125,184,221,231,284,293,330,389,418,494,505,567,598,622-624
+  s_2e1fa95fc44f8f::t_0a3749a5910b4d 9,625-627,630-635,667,721,769,778
+packages/nodes-base/nodes/Notion/v3/actions/databasePage/DatabasePage.resource.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 556,580,640,685
+  s_2e1fa95fc44f8f::t_3def5f7619e837 7
+packages/nodes-base/nodes/Notion/NotionTrigger.node.ts
+  s_2e1fa95fc44f8f::t_ea2286b1f81f01 43,54
+  s_2e1fa95fc44f8f::t_da1773dc229fb3 8
+packages/nodes-base/nodes/Notion/shared/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_7fc02ec1ab70f6 7,21-27
+packages/nodes-base/nodes/Notion/test/NotionV3.node.test.ts
+  s_2e1fa95fc44f8f::t_339093f8241f30 10,268,319,378,431,460,509,531-538,556,597,624-637,639,670,710,752,799,837,875,944,1007,1014,1058,1111,1257,1299-1325,1340-1343,1361,1423
+packages/nodes-base/nodes/Notion/test/GenericFunctions.test.ts
+  s_b20a31aa0d6b74::t_9c8208651d537a 5,447,451,458,462,469,519,555,583
+packages/nodes-base/nodes/Notion/test/NotionTrigger.test.ts
+  s_cb6acb34c830ca::t_73bbf846183743 2,134,151
+packages/nodes-base/nodes/Notion/test/NotionV2.node.test.ts
+  s_b20a31aa0d6b74::t_2135715c5d4cac 10,90,115,141,178
+packages/nodes-base/nodes/Notion/test/v3/loadOptions.test.ts
+  s_b20a31aa0d6b74::t_21c447bea83ee7 2,115
+packages/nodes-base/nodes/Notion/test/v3/transport.test.ts
+  s_b20a31aa0d6b74::t_b84d3294089812 2,17
+packages/nodes-base/nodes/Notion/v3/methods/listSearch.ts
+  s_b20a31aa0d6b74::t_069deec7b6baae 7,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6c1d32dee4bddddba9d6f5553247c60dd89def4",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b20a31aa0d6b74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab92df0cbb5e3cfc1",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_cb6acb34c830ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a98b20c3d5e0f1735",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

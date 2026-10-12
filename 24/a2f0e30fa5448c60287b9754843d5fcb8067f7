@@ -1,0 +1,26 @@
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_8631ec10eb1199::t_a3255f069cc438 22,216,218,221
+  s_8631ec10eb1199::t_46e8eb4ff1786e 240,270-279
+  s_8631ec10eb1199::t_2ecfa13dbd4455 33
+  s_8631ec10eb1199::t_b9a481e38f5eb2 222
+packages/cli/src/public-api/v1/controllers/__tests__/n8n-packages.public.controller.test.ts
+  s_8631ec10eb1199::t_2d85ca72f22d57 251,254-255,257,265-270
+  s_8631ec10eb1199::t_a733db4efe4645 65,256
+  s_8631ec10eb1199::t_9df1cb5cf005c3 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24a2f0e30fa5448c60287b9754843d5fcb8067f7",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
