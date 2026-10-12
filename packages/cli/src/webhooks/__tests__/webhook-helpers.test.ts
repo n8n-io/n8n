@@ -2932,6 +2932,15 @@ describe('executeWebhook on engine v2', () => {
 			expect(workflowRunner.run.mock.calls[0][0].destinationNode).toEqual(destinationNode);
 		});
 
+		it('resumes under the id of the waiting execution', async () => {
+			await startWebhook({
+				startNode: webhookNode(WAIT_NODE_TYPE),
+				executionId: ENGINE_EXECUTION_ID,
+			});
+
+			expect(workflowRunner.run.mock.calls[0][0].engineV2ExecutionId).toBe(ENGINE_EXECUTION_ID);
+		});
+
 		it('dispatches the run without a response expectation, because nobody listens', async () => {
 			await startWebhook();
 
@@ -3368,20 +3377,16 @@ describe('executeWebhook on engine v2', () => {
 				message: 'Engine v2 cannot run the "Webhook" trigger yet.',
 			},
 			{
-				name: 'a wait node',
-				options: { startNode: webhookNode(WAIT_NODE_TYPE) },
-				message: 'Engine v2 cannot run the "Webhook" trigger yet.',
-			},
-			{
 				name: 'an identity webhook',
 				options: { startNode: webhookNode(WEBHOOK_NODE_TYPE, { authentication: 'n8nOAuth2' }) },
 				message:
 					'Engine v2 cannot run the "Webhook" trigger yet, because it takes credentials from the request.',
 			},
 			{
-				name: 'a resumed execution',
-				options: { executionId: 'exec-1' },
-				message: 'Engine v2 cannot resume a waiting execution yet.',
+				name: 'a resume answered by a Respond to Webhook node',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'responseNode' },
+				message:
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node yet. Set the waiting node to respond immediately or with the last node.',
 			},
 			{
 				name: 'a trigger that takes credentials from the request',

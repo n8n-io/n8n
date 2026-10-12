@@ -119,3 +119,30 @@ describe('EngineV2Webhooks.toRun', () => {
 		expect(run.data.resultData.error).toBeUndefined();
 	});
 });
+
+describe('EngineV2Webhooks.assertSupported on a resume', () => {
+	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+
+	const assertResume = (responseMode: WebhookResponseMode, available = true) => {
+		const proxy = mock<EngineDataPlaneProxyService>();
+		proxy.isAvailable.mockReturnValue(available);
+		new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy).assertSupported({
+			// The node that waits, not a trigger: the trigger checks do not apply.
+			workflowStartNode: mock<INode>({ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: {} }),
+			responseMode,
+			executionId: EXECUTION_ID,
+		});
+	};
+
+	it.each(['onReceived', 'lastNode'] as const)('lets the waiting node answer with %s', (mode) => {
+		expect(() => assertResume(mode)).not.toThrow();
+	});
+
+	it('refuses an answer from a Respond to Webhook node', () => {
+		expect(() => assertResume('responseNode')).toThrow('Respond to Webhook');
+	});
+
+	it('still needs the engine module', () => {
+		expect(() => assertResume('onReceived', false)).toThrow('N8N_ENABLED_MODULES');
+	});
+});
