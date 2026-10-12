@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/Formstack/test/FormstackTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_a92cb84d7647af 1-64
+packages/nodes-base/nodes/Freshdesk/test/workflow/Freshdesk.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a8ef71ea1d8e32 1-45
+packages/nodes-base/nodes/Figma/test/FigmaTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_c9084af16ccaf6 1-38
+packages/nodes-base/nodes/Flow/test/FlowTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_8a38e980e3161e 1-18,20-40
+  s_2e1fa95fc44f8f::t_9c917489dbe42a 19
+packages/nodes-base/nodes/Flow/test/workflow/Flow.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8883d70a9c07f8 1-46
+packages/nodes-base/nodes/FormIo/test/FormIoTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_cfbdbce74d8c37 1-32,36-65
+  s_2e1fa95fc44f8f::t_0a3c3498a57f02 33-35
+packages/nodes-base/nodes/Flow/test/workflow/requests.workflow.json
+  s_9ad2ddf902ab5e::t_893cca82c1ea09 1-204
+packages/nodes-base/nodes/Freshdesk/test/workflow/requests.workflow.json
+  s_9ad2ddf902ab5e::t_84ef949a74fd23 1-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e0d39f03e9ea6231865e8d10ba324d319498f05",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9ad2ddf902ab5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a847cf65c598fe6ab",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
