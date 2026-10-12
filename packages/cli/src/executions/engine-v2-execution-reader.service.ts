@@ -164,6 +164,16 @@ export class EngineV2ExecutionReader {
 		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
+		return await this.fromSnapshot(snapshot);
+	}
+
+	/**
+	 * The v1 shape of a snapshot the caller already holds, with its steps as run
+	 * data. `undefined` when the document the run started with lacks what the v1
+	 * paths read. Shared with the resume route, where the data plane's token check
+	 * stands in for `findOne`'s share check.
+	 */
+	async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
