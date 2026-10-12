@@ -202,10 +202,12 @@ export class RuntimeContextBuilder {
 					}
 				: undefined,
 		);
+		const preparedMessages =
+			this.nativeToolDeferral?.prepareMessages?.(messages, tools.aiTools) ?? messages;
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
 			system,
-			messages: activeSkills?.modelMessages(messages, list) ?? messages,
+			messages: activeSkills?.modelMessages(preparedMessages, list) ?? preparedMessages,
 			aiTools: tools.aiTools,
 			promptCaching: this.config.promptCaching,
 			modelId: this.modelId,

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Tool } from '../../../sdk/tool';
 import type { AgentRuntimeConfig } from '../../../types/runtime/agent-runtime';
 import type { ModelConfig } from '../../../types/sdk/agent';
+import type { AgentMessage } from '../../../types/sdk/message';
 import { RuntimeContextBuilder } from '../../loop/runtime-context';
 import { InMemoryMemory } from '../../memory/memory-store';
 import { AgentMessageList } from '../message-list';
@@ -170,6 +171,70 @@ describe('native tool catalog', () => {
 		expect(after.aiTools).not.toHaveProperty('search_tools');
 		expect(after.aiTools).not.toHaveProperty('load_tool');
 	});
+
+	it.each(['history', 'checkpoint'] as const)(
+		'prunes unavailable search references loaded from %s',
+		async (source) => {
+			const previous = new AgentMessageList();
+			previous.addInput([
+				{ role: 'user', content: [{ type: 'text', text: 'Find lookup tools.' }] },
+			]);
+			const removed = { type: 'tool_reference', toolName: 'mcp_lookup' };
+			const retained = { type: 'tool_reference', toolName: 'workflow_lookup' };
+			const providerOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+			previous.addResponse(
+				[[removed, retained], [removed]].map(
+					(output, index): AgentMessage => ({
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: `search_${index}`,
+								toolName: 'anthropic.tool_search',
+								input: { query: 'lookup' },
+								providerExecuted: true,
+								state: 'resolved',
+								output,
+								resultProviderOptions: providerOptions,
+							},
+						],
+					}),
+				),
+			);
+			const stored = structuredClone(previous.serialize());
+			let list: AgentMessageList;
+			if (source === 'checkpoint') {
+				list = AgentMessageList.deserialize(stored);
+			} else {
+				list = new AgentMessageList();
+				list.addHistory(stored.messages);
+			}
+			const before = structuredClone(list.serialize());
+			const { context, aiProviderTools } = makeContext({
+				tools: [makeTool('workspace_read_file'), makeTool('workflow_lookup')],
+			});
+			const tools = await context.buildToolLoopContext(aiProviderTools);
+			const prompt = context.buildModelPrompt({
+				list,
+				tools,
+				instructionProviderOptions: undefined,
+				hostVolatileInstructions: undefined,
+				activeSkills: undefined,
+			});
+			const results = prompt.messages.flatMap((message) =>
+				message.role === 'assistant' && Array.isArray(message.content)
+					? message.content.filter((part) => part.type === 'tool-result')
+					: [],
+			);
+			expect(results).toMatchObject([
+				{ toolCallId: 'search_0', output: { type: 'json', value: [retained] }, providerOptions },
+				{ toolCallId: 'search_1', output: { type: 'json', value: [] }, providerOptions },
+			]);
+			expect(list.serialize()).toEqual(before);
+			expect(tools.aiTools).not.toHaveProperty('mcp_lookup');
+			expect(tools.toolMap.has('mcp_lookup')).toBe(false);
+		},
+	);
 
 	it('keeps caller cache markers and explicit eager options', async () => {
 		const callerCache = {

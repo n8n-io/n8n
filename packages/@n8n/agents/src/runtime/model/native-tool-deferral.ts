@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { Tool, ToolSet } from 'ai';
+import type { ModelMessage, Tool, ToolSet } from 'ai';
 
 import type { ModelConfig, NativeToolDeferralConfig } from '../../types/sdk/agent';
 import { loadAi } from './lazy-ai';
@@ -10,6 +10,7 @@ type NativeToolDeferralProvider = 'openai' | 'anthropic';
 export interface NativeToolDeferral {
 	supports: (model: string, config: ModelConfig) => boolean;
 	prepareTools: (tools: ToolSet, config: NativeToolDeferralConfig) => Promise<ToolSet>;
+	prepareMessages?: (messages: ModelMessage[], tools: ToolSet) => ModelMessage[];
 }
 
 export function getEffectiveBaseUrl(config: ModelConfig, fallbackUrl: string): unknown {
