@@ -20,6 +20,7 @@ import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
 import N8nSwitch2 from '../N8nSwitch/Switch.vue';
 import N8nSelect2 from '../../v2/components/Select/Select.vue';
+import N8nText from '../N8nText/Text.vue';
 
 const meta = {
 	title: 'Core/Dialog',
@@ -293,6 +294,46 @@ export const WithoutHeader: Story = {
 		size: 'medium',
 		ariaLabel: 'Notice',
 	},
+} satisfies Story;
+
+/**
+ * No footer. The body keeps its bottom padding.
+ */
+export const WithoutFooter: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story: 'A dialog with no footer. The body keeps its bottom padding.',
+			},
+		},
+	},
+	render: () => ({
+		components: {
+			N8nDialog,
+			N8nDialogBody,
+			N8nDialogDescription,
+			N8nButton,
+		},
+		setup() {
+			const isOpen = ref(false);
+			return { isOpen };
+		},
+		template: `
+		<div>
+			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
+
+			<N8nDialog v-model:open="isOpen" header="Workflow details" size="medium">
+				<N8nDialogBody>
+					<N8nDialogDescription>
+						This dialog has no footer. The body keeps the space along its bottom edge.
+					</N8nDialogDescription>
+					${contentPlaceholder}
+				</N8nDialogBody>
+			</N8nDialog>
+		</div>
+		`,
+	}),
+	args: {},
 } satisfies Story;
 
 /**
@@ -804,63 +845,14 @@ export const AccessibilityFallbackTitleOnly: Story = {
 } satisfies Story;
 
 /**
- * You can use child components for a custom header instead of the header prop.
+ * A header row with a back button, a title, a subtitle, and actions.
  */
 export const CustomHeader: Story = {
-	render: () => ({
-		components: {
-			N8nDialog,
-			N8nDialogBody,
-			N8nDialogHeader,
-			N8nDialogTitle,
-			N8nDialogDescription,
-			N8nDialogFooter,
-			N8nDialogClose,
-			N8nButton,
-		},
-		setup() {
-			const isOpen = ref(false);
-			return { isOpen };
-		},
-		template: `
-		<div>
-			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
-
-			<N8nDialog v-model:open="isOpen">
-				<N8nDialogHeader>
-					<N8nDialogTitle>Custom Header Layout</N8nDialogTitle>
-				</N8nDialogHeader>
-
-				<N8nDialogBody>
-					<N8nDialogDescription>
-						Use child components when you need more control over the header layout,
-						such as adding icons, badges, or custom styling.
-					</N8nDialogDescription>
-					${contentPlaceholder}
-				</N8nDialogBody>
-
-				<N8nDialogFooter>
-					<N8nDialogClose as-child>
-						<N8nButton variant="outline" label="Cancel" />
-					</N8nDialogClose>
-					<N8nButton label="Save" />
-				</N8nDialogFooter>
-			</N8nDialog>
-		</div>
-		`,
-	}),
-	args: {},
-} satisfies Story;
-
-/**
- * The search stays in the header. The dialog has a max height. The body scrolls.
- */
-export const SearchHeader: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'Put the search in the header. Set a max height on the dialog. Zero the body padding so the scrollbar sits on the dialog edge. The list padding keeps the rows in line with the search.',
+					'Put a back button, a title, a subtitle, a save button, and a close button on one row. Hide the default close button when the header includes its own.',
 			},
 		},
 	},
@@ -870,73 +862,38 @@ export const SearchHeader: Story = {
 			N8nDialogBody,
 			N8nDialogHeader,
 			N8nDialogTitle,
+			N8nDialogClose,
 			N8nButton,
-			N8nIcon,
-			N8nInput,
+			N8nText,
 		},
 		setup() {
 			const isOpen = ref(false);
-			const query = ref('');
-			const projects = [
-				'Alpha',
-				'Beta',
-				'Northwind onboarding workspace',
-				'Delta',
-				'Echo',
-				'Foxtrot',
-				'Gamma',
-				'Hotel',
-				'India',
-				'Juliet',
-				'Kilo',
-				'Lima',
-				'Mike',
-				'November',
-				'Oscar',
-				'Papa',
-				'Quebec',
-				'Romeo',
-			];
-			const visibleProjects = computed(() => {
-				const term = query.value.trim().toLowerCase();
-				if (!term) return projects;
-				return projects.filter((project) => project.toLowerCase().includes(term));
-			});
-			return { isOpen, query, visibleProjects };
+			return { isOpen };
 		},
 		template: `
 		<div>
 			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
 
-			<N8nDialog v-model:open="isOpen" size="medium" style="max-height: 50vh;">
-				<N8nDialogHeader style="flex-direction: column; align-items: stretch; padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md)); gap: var(--spacing--sm);">
-					<N8nDialogTitle style="padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));">
-						Projects
-					</N8nDialogTitle>
-					<N8nInput v-model="query" placeholder="Search projects" clearable>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nInput>
-				</N8nDialogHeader>
-				<N8nDialogBody style="padding: 0;">
-					<div style="padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md)); padding-block-end: var(--n8n-dialog-region--padding, var(--spacing--md));">
-						<p
-							v-if="visibleProjects.length === 0"
-							style="margin: 0; padding: var(--spacing--sm) 0; text-align: center; color: var(--color--text--tint-1); font-size: var(--font-size--sm);"
-						>
-							No projects match your search.
-						</p>
-						<div
-							v-for="(project, index) in visibleProjects"
-							:key="project"
-							:style="index < visibleProjects.length - 1
-								? 'padding: var(--spacing--xs) 0; border-bottom: var(--border);'
-								: 'padding: var(--spacing--xs) 0;'"
-						>
-							{{ project }}
-						</div>
+			<N8nDialog
+				v-model:open="isOpen"
+				size="medium"
+				aria-label="Slack account"
+				:show-close-button="false"
+			>
+				<N8nDialogHeader style="flex-direction: row; align-items: center; gap: var(--spacing--xs);">
+					<N8nButton variant="ghost" icon="arrow-left" icon-only aria-label="Back" />
+					<div style="display: flex; flex: 1; flex-direction: column; gap: var(--spacing--5xs); min-width: 0;">
+						<N8nDialogTitle>Slack account</N8nDialogTitle>
+						<N8nText size="small" color="text-light">Slack OAuth2 API</N8nText>
 					</div>
+					<N8nButton label="Save" />
+					<N8nDialogClose as-child>
+						<N8nButton variant="ghost" icon="x" icon-only aria-label="Close" />
+					</N8nDialogClose>
+				</N8nDialogHeader>
+
+				<N8nDialogBody>
+					${contentPlaceholder}
 				</N8nDialogBody>
 			</N8nDialog>
 		</div>
@@ -999,13 +956,14 @@ export const CustomFooter: Story = {
 } satisfies Story;
 
 /**
- * One action sits on the left. Two actions sit on the right.
+ * The search stays in the header. The dialog keeps a fixed height. The body scrolls.
  */
-export const SplitFooter: Story = {
+export const SearchHeader: Story = {
 	parameters: {
 		docs: {
 			description: {
-				story: 'One action sits on the left. Two actions sit on the right.',
+				story:
+					'Put the search in the header. Set a fixed height on the dialog so it stays the same size while the list filters. Zero the body padding so the scrollbar sits on the dialog edge. The list padding keeps the rows in line with the search.',
 			},
 		},
 	},
@@ -1013,73 +971,75 @@ export const SplitFooter: Story = {
 		components: {
 			N8nDialog,
 			N8nDialogBody,
-			N8nDialogDescription,
-			N8nDialogFooter,
-			N8nDialogClose,
+			N8nDialogHeader,
+			N8nDialogTitle,
 			N8nButton,
+			N8nIcon,
+			N8nInput,
 		},
 		setup() {
 			const isOpen = ref(false);
-			return { isOpen };
+			const query = ref('');
+			const projects = [
+				'Alpha',
+				'Beta',
+				'Northwind onboarding workspace',
+				'Delta',
+				'Echo',
+				'Foxtrot',
+				'Gamma',
+				'Hotel',
+				'India',
+				'Juliet',
+				'Kilo',
+				'Lima',
+				'Mike',
+				'November',
+				'Oscar',
+				'Papa',
+				'Quebec',
+				'Romeo',
+			];
+			const visibleProjects = computed(() => {
+				const term = query.value.trim().toLowerCase();
+				if (!term) return projects;
+				return projects.filter((project) => project.toLowerCase().includes(term));
+			});
+			return { isOpen, query, visibleProjects };
 		},
 		template: `
 		<div>
 			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
 
-			<N8nDialog v-model:open="isOpen" header="Edit workflow" size="medium">
-				<N8nDialogBody>
-					<N8nDialogDescription>
-						Save your changes, or delete the workflow.
-					</N8nDialogDescription>
-					${contentPlaceholder}
-				</N8nDialogBody>
-
-				<N8nDialogFooter>
-					<N8nButton variant="destructive" label="Delete" style="margin-inline-end: auto;" />
-					<N8nDialogClose as-child>
-						<N8nButton variant="outline" label="Cancel" />
-					</N8nDialogClose>
-					<N8nButton label="Save" />
-				</N8nDialogFooter>
-			</N8nDialog>
-		</div>
-		`,
-	}),
-	args: {},
-} satisfies Story;
-
-/**
- * No footer. The body keeps its bottom padding.
- */
-export const WithoutFooter: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story: 'A dialog with no footer. The body keeps its bottom padding.',
-			},
-		},
-	},
-	render: () => ({
-		components: {
-			N8nDialog,
-			N8nDialogBody,
-			N8nDialogDescription,
-			N8nButton,
-		},
-		setup() {
-			const isOpen = ref(false);
-			return { isOpen };
-		},
-		template: `
-		<div>
-			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
-
-			<N8nDialog v-model:open="isOpen" header="Workflow details" size="medium">
-				<N8nDialogBody>
-					<N8nDialogDescription>
-						This dialog has no footer. The body keeps the space along its bottom edge.
-					</N8nDialogDescription>
-					${contentPlaceholder}
+			<N8nDialog v-model:open="isOpen" size="medium" style="height: 50vh;">
+				<N8nDialogHeader style="flex-direction: column; align-items: stretch; padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md)); gap: var(--spacing--sm);">
+					<N8nDialogTitle style="padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));">
+						Projects
+					</N8nDialogTitle>
+					<N8nInput v-model="query" placeholder="Search projects" clearable>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+				</N8nDialogHeader>
+				<N8nDialogBody style="padding: 0;">
+					<div style="padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md)); padding-block-end: var(--n8n-dialog-region--padding, var(--spacing--md));">
+						<p
+							v-if="visibleProjects.length === 0"
+							style="margin: 0; padding: var(--spacing--sm) 0; text-align: center; color: var(--color--text--tint-1); font-size: var(--font-size--sm);"
+						>
+							No projects match your search.
+						</p>
+						<div
+							v-for="(project, index) in visibleProjects"
+							:key="project"
+							:style="index < visibleProjects.length - 1
+								? 'padding: var(--spacing--xs) 0; border-bottom: var(--border);'
+								: 'padding: var(--spacing--xs) 0;'"
+						>
+							{{ project }}
+						</div>
+					</div>
 				</N8nDialogBody>
 			</N8nDialog>
 		</div>
@@ -1191,6 +1151,143 @@ export const Form: Story = {
 						<N8nButton variant="outline" label="Cancel" />
 					</N8nDialogClose>
 					<N8nButton type="submit" form="dialog-profile-form" label="Save" />
+				</N8nDialogFooter>
+			</N8nDialog>
+		</div>
+		`,
+	}),
+	args: {},
+} satisfies Story;
+
+const datasetItems = [
+	{ label: 'Support replies', value: 'support' },
+	{ label: 'Product questions', value: 'product' },
+	{ label: 'Onboarding chats', value: 'onboarding' },
+];
+
+/**
+ * A form split across steps. The header and the footer stay. The body shows the current step.
+ */
+export const MultistepForm: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'A form split across steps, such as creating a collection. The header shows the step. The body shows that step. Back and Next stay in the footer.',
+			},
+		},
+	},
+	render: () => ({
+		components: {
+			N8nDialog,
+			N8nDialogBody,
+			N8nDialogHeader,
+			N8nDialogTitle,
+			N8nDialogDescription,
+			N8nDialogFooter,
+			N8nDialogClose,
+			N8nButton,
+			N8nInput,
+			N8nInputLabel,
+			N8nSelect2,
+			N8nText,
+		},
+		setup() {
+			const isOpen = ref(false);
+			const step = ref(0);
+			const name = ref('');
+			const dataset = ref<string | undefined>();
+			const steps = [
+				{ title: 'Name the collection' },
+				{ title: 'Choose a dataset' },
+				{ title: 'Review the collection' },
+			];
+			const datasetLabel = computed(
+				() => datasetItems.find((item) => item.value === dataset.value)?.label ?? 'None',
+			);
+
+			function back() {
+				if (step.value > 0) step.value -= 1;
+			}
+
+			function next() {
+				if (step.value < steps.length - 1) {
+					step.value += 1;
+					return;
+				}
+				isOpen.value = false;
+			}
+
+			watch(isOpen, (open) => {
+				if (!open) step.value = 0;
+			});
+
+			return {
+				isOpen,
+				step,
+				name,
+				dataset,
+				steps,
+				datasetItems,
+				datasetLabel,
+				back,
+				next,
+			};
+		},
+		template: `
+		<div>
+			<N8nButton variant="solid" label="New collection" @click="isOpen = true" />
+
+			<N8nDialog v-model:open="isOpen" size="medium" aria-label="New collection">
+				<N8nDialogHeader>
+					<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs);">
+						<N8nText size="xsmall" color="text-light" bold tag="p" style="margin: 0;">
+							Step {{ step + 1 }} of {{ steps.length }}
+						</N8nText>
+						<N8nDialogTitle>{{ steps[step].title }}</N8nDialogTitle>
+					</div>
+				</N8nDialogHeader>
+
+				<N8nDialogBody>
+					<div v-if="step === 0" style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+						<N8nDialogDescription style="margin: 0;">
+							Give the collection a name. You can change it later.
+						</N8nDialogDescription>
+						<N8nInputLabel label="Name" required>
+							<N8nInput v-model="name" name="collection-name" placeholder="Support quality" size="small" />
+						</N8nInputLabel>
+					</div>
+
+					<div v-else-if="step === 1" style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+						<N8nDialogDescription style="margin: 0;">
+							Choose the dataset this collection compares.
+						</N8nDialogDescription>
+						<N8nInputLabel label="Dataset">
+							<N8nSelect2
+								v-model="dataset"
+								:items="datasetItems"
+								placeholder="Select a dataset"
+								clearable
+							/>
+						</N8nInputLabel>
+					</div>
+
+					<div v-else style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+						<N8nDialogDescription style="margin: 0;">
+							Check the details, then create the collection.
+						</N8nDialogDescription>
+						<p style="margin: 0; font-size: var(--font-size--sm); line-height: var(--line-height--sm);">
+							<strong>{{ name || 'Untitled collection' }}</strong> uses {{ datasetLabel }}.
+						</p>
+					</div>
+				</N8nDialogBody>
+
+				<N8nDialogFooter>
+					<N8nButton variant="outline" label="Back" :disabled="step === 0" @click="back" />
+					<N8nDialogClose as-child>
+						<N8nButton variant="outline" label="Cancel" />
+					</N8nDialogClose>
+					<N8nButton :label="step < steps.length - 1 ? 'Next' : 'Create'" @click="next" />
 				</N8nDialogFooter>
 			</N8nDialog>
 		</div>
