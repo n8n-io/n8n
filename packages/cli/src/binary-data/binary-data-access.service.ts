@@ -68,7 +68,7 @@ export class BinaryDataAccessService {
 
 			// The row names no workflow, so a temp placeholder has nothing to fall back on.
 			return isExecutionIdV2(source.sourceId)
-				? await this.resolveEngineExecution(source.sourceId)
+				? await this.resolveEngineV2Execution(source.sourceId)
 				: null;
 		}
 
@@ -92,7 +92,7 @@ export class BinaryDataAccessService {
 	 * plane is asked which workflow the execution belongs to. Its steps are not
 	 * needed. No data plane, or no such execution, means no access.
 	 */
-	private async resolveEngineExecution(executionId: ExecutionIdV2): Promise<AccessSource | null> {
+	private async resolveEngineV2Execution(executionId: ExecutionIdV2): Promise<AccessSource | null> {
 		const execution = await this.dataPlane.getExecution(executionId);
 		return execution ? { workflowId: execution.workflowId } : null;
 	}
