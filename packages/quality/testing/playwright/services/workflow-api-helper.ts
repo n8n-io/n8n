@@ -18,7 +18,11 @@ interface ExecutionListResponse extends ExecutionSummary {
 }
 
 import type { ApiHelpers } from './api-helper';
-import { isEngineV2ExecutionId, legacyEngineRunMessage } from '../fixtures/engine-parity';
+import {
+	isEngineV2ExecutionId,
+	legacyEngineRunMessage,
+	ROUTED_MODES,
+} from '../fixtures/engine-parity';
 import { TestError } from '../Types';
 import { resolveFromRoot } from '../utils/path-helper';
 
@@ -540,10 +544,10 @@ export class WorkflowApiHelper {
 		timeoutMs = 10000,
 		pollIntervalMs = 250,
 	): Promise<ExecutionListResponse> {
-		this.assertRoutedToEngine(executionId);
 		const deadline = Date.now() + timeoutMs;
 
-		let execution = await this.getExecution(executionId);
+		// The mode says whether the id has to be an engine v2 one, so read the row first.
+		let execution = this.routedExecution(await this.getExecution(executionId));
 		while (!isTerminalExecutionStatus(execution.status)) {
 			// Stryker disable next-line EqualityOperator: `>` differs only on the exact
 			// deadline millisecond, which costs fake timers to reach and proves nothing.
@@ -605,7 +609,7 @@ export class WorkflowApiHelper {
 					const isCorrectWorkflow = execution.workflowId === workflowId;
 					const isCorrectMode = execution.mode === mode;
 					if (isCompleted && isCorrectWorkflow && isCorrectMode) {
-						return this.routedExecution(execution, mode);
+						return this.routedExecution(execution);
 					}
 				}
 			}
@@ -619,7 +623,7 @@ export class WorkflowApiHelper {
 						execution.startedAt ?? execution.createdAt ?? Date.now(),
 					).getTime();
 					if (executionTime >= startTime - 5000) {
-						return this.routedExecution(execution, mode);
+						return this.routedExecution(execution);
 					}
 				}
 			}
@@ -631,14 +635,11 @@ export class WorkflowApiHelper {
 	}
 
 	/**
-	 * A sub-workflow runs in `integrated` mode, which engine v2 does not route,
-	 * so only a run the dispatcher routes has to carry an engine v2 id.
+	 * Only a run the dispatcher routes has to carry an engine v2 id. A
+	 * sub-workflow runs in `integrated` mode, which stays on the legacy engine.
 	 */
-	private routedExecution(
-		execution: ExecutionListResponse,
-		mode: 'manual' | 'webhook' | 'trigger' | 'integrated',
-	): ExecutionListResponse {
-		if (mode !== 'integrated') this.assertRoutedToEngine(execution.id);
+	private routedExecution(execution: ExecutionListResponse): ExecutionListResponse {
+		if (ROUTED_MODES.has(execution.mode)) this.assertRoutedToEngine(execution.id);
 		return execution;
 	}
 

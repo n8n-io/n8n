@@ -1,6 +1,6 @@
 import type { BrowserContext } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { TestError } from '../Types';
 
@@ -79,6 +79,16 @@ export function workflowSettingsFor(config: N8NConfig): Partial<IWorkflowSetting
 	return { engineType: 'v2' };
 }
 
+/**
+ * The modes the dispatcher sends to engine v2. Mirrors `ROUTED_MODES` in
+ * `packages/cli/src/services/engine-v2-dispatcher.service.ts`.
+ */
+export const ROUTED_MODES: ReadonlySet<WorkflowExecuteMode> = new Set<WorkflowExecuteMode>([
+	'manual',
+	'webhook',
+	'trigger',
+]);
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -110,11 +120,11 @@ export interface CanvasRunGuard {
 }
 
 /**
- * Watches the runs the browser starts (`POST /rest/workflows/:id/run`: the run
- * button, a node's run button, the chat) and records every one the control
- * plane kept on the legacy engine. The fixture asserts after the test, so a
- * canvas spec cannot pass on v1 and count as parity evidence. A run the
- * control plane refused has no execution id and is not a routing fault.
+ * Watches the runs a context's pages start (`POST /rest/workflows/:id/run`: the
+ * run button, a node's run button, the chat) and records every one the control
+ * plane kept on the legacy engine. The fixture asserts after the test, so a run
+ * from its page cannot pass on v1 unnoticed. A run the control plane refused
+ * has no execution id and is not a routing fault.
  */
 export async function watchCanvasRuns(
 	context: BrowserContext,

@@ -243,17 +243,29 @@ describe('WorkflowApiHelper.runRaw engine routing', () => {
 });
 
 describe('WorkflowApiHelper.waitForExecutionById engine routing', () => {
-	test('rejects a legacy execution id before it polls when the stack routes to engine v2', async () => {
-		const get = vi.fn();
-		const api = {
-			request: { get },
-			options: { workflowSettings: { engineType: 'v2' } },
-		} as unknown as ApiHelpers;
+	function apiReturning(execution: object, options: ApiHelpers['options']) {
+		const get = vi
+			.fn()
+			.mockResolvedValue({ ok: () => true, json: async () => ({ data: execution }) });
+		return { api: { request: { get }, options } as unknown as ApiHelpers };
+	}
+	const v2 = { workflowSettings: { engineType: 'v2' as const } };
+
+	test('rejects a legacy id on a routed execution when the stack routes to engine v2', async () => {
+		const { api } = apiReturning({ id: '1783', mode: 'webhook', status: 'success' }, v2);
 
 		await expect(new WorkflowApiHelper(api).waitForExecutionById('1783')).rejects.toThrow(
 			/1783[\s\S]*settings\.engineType/,
 		);
-		expect(get).not.toHaveBeenCalled();
+	});
+
+	// A sub-workflow runs in `integrated` mode, which engine v2 does not route.
+	test('accepts a legacy id on a sub-workflow execution', async () => {
+		const { api } = apiReturning({ id: '1783', mode: 'integrated', status: 'success' }, v2);
+
+		await expect(new WorkflowApiHelper(api).waitForExecutionById('1783')).resolves.toMatchObject({
+			id: '1783',
+		});
 	});
 });
 

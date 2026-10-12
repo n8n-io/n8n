@@ -280,10 +280,10 @@ its container.
 
 The editor has no engine setting to send, so the `n8n` fixture merges the same
 settings into the workflows the editor creates and updates. A workflow built on
-the canvas runs on engine v2 too. The fixture also watches every run the
-browser starts and fails the test after it when a run stayed on the legacy
-engine; `api.workflows.runManually` and `runRaw` fail the same way on the way
-in. A webhook or trigger run returns no execution id, so `waitForExecution` and
+the canvas runs on engine v2 too. The fixture also watches every run its page
+starts and fails the test after it when a run stayed on the legacy engine; a
+page from `n8n.start.withUser()` is not watched. `api.workflows.runManually`
+and `runRaw` fail the same way on the way in. A webhook or trigger run returns no execution id, so `waitForExecution` and
 `waitForExecutionById` check the execution they hand back. A spec that reads no
 execution calls `api.workflows.assertLatestExecutionRoutedToEngine` after the
 run. A tag the parity buckets do not know also fails the test, and names the
