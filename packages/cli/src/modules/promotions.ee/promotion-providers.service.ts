@@ -174,7 +174,6 @@ export class PromotionProvidersService {
 		if (credentials.authType !== 'token') throw unreadableCredentialsError();
 		await this.gitHosts.clientFor(type).validateAccess({
 			baseUrl: config.data.baseUrl,
-			username: credentials.username,
 			accessToken: credentials.password,
 		});
 	}
@@ -263,6 +262,11 @@ export class PromotionProvidersService {
 		}
 
 		const username = promotionProviderTypeCapabilities[type].tokenUsername ?? auth.username;
+		if (username === undefined) {
+			throw new BadRequestError(
+				'This provider requires a username for token authentication. Send username and password together.',
+			);
+		}
 		this.assertUsableCredentials(username, auth.password);
 		return {
 			config: hostConfig ?? { schemaVersion: 1 as const },

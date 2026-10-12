@@ -28,6 +28,11 @@ token for self-managed automation. A personal access token uses the same path.
 Grant `read_api` and `write_repository`. Protected branches can require the
 Maintainer role. API validation does not prove write permission on a repository.
 
+GitLab API authentication uses only the access token. Omit `auth.username` for a
+GitLab provider. The service ignores a supplied username and stores `n8n` for Git
+transport. Plain Git token authentication requires both `auth.username` and
+`auth.password` on create and credential replacement.
+
 GitLab API requests follow the instance network policy. If enabled restrictions
 block an internal host, configure `N8N_SSRF_ALLOWED_HOSTNAMES` or
 `N8N_SSRF_ALLOWED_IP_RANGES` to permit it.

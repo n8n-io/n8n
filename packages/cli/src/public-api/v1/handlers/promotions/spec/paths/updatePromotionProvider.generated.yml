@@ -2,7 +2,7 @@ operationId: updatePromotionProvider
 tags:
   - Promotions
 summary: Update a promotion provider
-description: Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. New credentials apply to every connection that uses this provider. The authentication method cannot change.
+description: Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every connection that uses this provider. The authentication method cannot change.
 x-required-scope: gitConnection:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -50,12 +50,12 @@ requestBody:
                   username:
                     type: string
                     minLength: 1
+                    description: Required for plain Git token authentication. For GitLab, the service ignores this field and uses n8n for Git transport.
                   password:
                     type: string
                     minLength: 1
                 required:
                   - authType
-                  - username
                   - password
                 additionalProperties: false
             type: object

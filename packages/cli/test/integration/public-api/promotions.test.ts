@@ -323,6 +323,32 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
+		it('creates GitLab credentials without a username and sends only token access to the host API', async () => {
+			const access = vi.spyOn(Container.get(GitLabHostClient), 'validateAccess');
+			const api = validAccess();
+			try {
+				const id = await createProvider(testServer.publicApiAgentFor(owner), {
+					...payload,
+					auth: { authType: 'token', password: payload.auth.password },
+				});
+				expect(access).toHaveBeenCalledWith({
+					baseUrl: payload.config.baseUrl,
+					accessToken: payload.auth.password,
+				});
+				const stored = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+				await expect(
+					Container.get(PromotionProvidersService).decryptCredentials(stored),
+				).resolves.toEqual({
+					authType: 'token',
+					username: 'n8n',
+					password: payload.auth.password,
+				});
+				api.done();
+			} finally {
+				access.mockRestore();
+			}
+		});
+
 		it.each([
 			{ ...payload, config: undefined },
 			{ ...payload, auth: { authType: 'ssh-key' } },
@@ -635,7 +661,7 @@ describe('Promotions in Public API', () => {
 
 		it.each([
 			{
-				auth: { authType: 'token', username: 'ignored', password: 'replacement-token' },
+				auth: { authType: 'token', password: 'replacement-token' },
 				config: undefined,
 			},
 			{
@@ -768,6 +794,30 @@ describe('Promotions in Public API', () => {
 		});
 		expect(stored.auth).toBeTruthy();
 		expect(stored.auth).not.toContain('PRIVATE KEY');
+	});
+
+	it('requires a username on plain Git token creation and credential replacement', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const id = await createProvider(agent);
+		const before = await Container.get(PromotionProviderRepository).findOneByOrFail({ id });
+		const auth = { authType: 'token', password: 'replacement-password' };
+		const created = await agent.post('/promotions/providers').send({
+			name: 'Must not save',
+			type: 'git',
+			auth,
+		});
+		const updated = await agent
+			.put(`/promotions/providers/${id}`)
+			.send({ name: 'Must not save', auth });
+		for (const response of [created, updated]) {
+			expect(response.status, JSON.stringify(response.body)).toBe(400);
+			expect(response.body.message).toContain('requires a username');
+			expect(JSON.stringify(response.body)).not.toContain(auth.password);
+		}
+		expect(await Container.get(PromotionProviderRepository).count()).toBe(1);
+		expect(await Container.get(PromotionProviderRepository).findOneByOrFail({ id })).toEqual(
+			before,
+		);
 	});
 
 	it('keeps the stored credentials when only half of them is sent', async () => {

@@ -142,11 +142,13 @@ export const promotionGitSshKeyAuthUpdateSchema = z
 	})
 	.strict();
 
-/** Username and password are required together, on create and on update. */
 export const promotionGitTokenAuthInputSchema = z
 	.object({
 		authType: z.literal('token'),
-		username: promotionUsernameSchema,
+		username: promotionUsernameSchema.optional().openapi({
+			description:
+				'Required for plain Git token authentication. For GitLab, the service ignores this field and uses n8n for Git transport.',
+		}),
 		password: promotionSecretSchema,
 	})
 	.strict();

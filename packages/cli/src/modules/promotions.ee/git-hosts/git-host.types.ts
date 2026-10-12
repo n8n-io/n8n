@@ -1,6 +1,5 @@
 export type GitHostAccess = Readonly<{
 	baseUrl: string;
-	username: string;
 	accessToken: string;
 }>;
 
