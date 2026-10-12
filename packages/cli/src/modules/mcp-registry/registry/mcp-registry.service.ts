@@ -16,7 +16,6 @@ import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
 import { McpRegistryCapabilities } from './mcp-registry-capabilities';
-import { firecrawlMockServer } from './mock-servers';
 import {
 	listMcpRegistryServers,
 	searchMcpRegistryServers,
@@ -186,12 +185,7 @@ export class McpRegistryService {
 			n8nConnectError = error;
 		}
 
-		// TODO: Delete this Firecrawl preview when the registry serves Firecrawl.
-		const updatedServers = [
-			...registryUpdates.filter(({ slug }) => slug !== firecrawlMockServer.slug),
-			...n8nConnectUpdates,
-			firecrawlMockServer,
-		];
+		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
 		if (updatedServers.length === 0) {
 			this.logger.debug('MCP registry is up to date');
 		} else {
