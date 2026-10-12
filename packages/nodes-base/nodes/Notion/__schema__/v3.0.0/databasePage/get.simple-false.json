@@ -13,6 +13,34 @@
 		"last_edited_time": {
 			"type": "string"
 		},
+		"created_by": {
+			"type": "object",
+			"properties": {
+				"object": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				}
+			}
+		},
+		"last_edited_by": {
+			"type": "object",
+			"properties": {
+				"object": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				}
+			}
+		},
+		"cover": {
+			"type": ["object", "null"]
+		},
+		"icon": {
+			"type": ["object", "null"]
+		},
 		"parent": {
 			"type": "object",
 			"properties": {
@@ -25,6 +53,9 @@
 			}
 		},
 		"archived": {
+			"type": "boolean"
+		},
+		"in_trash": {
 			"type": "boolean"
 		},
 		"properties": {
@@ -136,7 +167,8 @@
 									"time_zone": {
 										"type": ["string", "null"]
 									}
-								}
+								},
+								"required": ["start"]
 							},
 							{
 								"type": "null"
@@ -174,6 +206,9 @@
 					"email": {
 						"type": ["string", "null"]
 					},
+					"phone_number": {
+						"type": ["string", "null"]
+					},
 					"relation": {
 						"type": "array",
 						"items": {
@@ -184,12 +219,87 @@
 								}
 							}
 						}
+					},
+					"files": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string"
+								},
+								"type": {
+									"type": "string"
+								}
+							}
+						}
+					},
+					"formula": {
+						"type": "object",
+						"properties": {
+							"type": {
+								"type": "string"
+							}
+						}
+					},
+					"rollup": {
+						"type": "object",
+						"properties": {
+							"type": {
+								"type": "string"
+							},
+							"function": {
+								"type": "string"
+							}
+						}
+					},
+					"unique_id": {
+						"type": "object",
+						"properties": {
+							"prefix": {
+								"type": ["string", "null"]
+							},
+							"number": {
+								"type": "number"
+							}
+						}
+					},
+					"created_time": {
+						"type": "string"
+					},
+					"last_edited_time": {
+						"type": "string"
+					},
+					"created_by": {
+						"type": "object",
+						"properties": {
+							"object": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						}
+					},
+					"last_edited_by": {
+						"type": "object",
+						"properties": {
+							"object": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							}
+						}
 					}
 				}
 			}
 		},
 		"url": {
 			"type": "string"
+		},
+		"public_url": {
+			"type": ["string", "null"]
 		}
 	},
 	"version": 1

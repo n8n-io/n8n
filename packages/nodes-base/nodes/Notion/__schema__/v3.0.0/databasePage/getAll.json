@@ -28,7 +28,7 @@
 			{
 				"type": "array",
 				"items": {
-					"type": ["string", "object"]
+					"type": ["string", "number", "boolean", "object"]
 				}
 			},
 			{
@@ -43,7 +43,8 @@
 					"time_zone": {
 						"type": ["string", "null"]
 					}
-				}
+				},
+				"required": ["start"]
 			}
 		]
 	},
