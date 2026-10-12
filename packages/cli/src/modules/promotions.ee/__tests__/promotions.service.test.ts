@@ -244,9 +244,9 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('writes the package into n8n-export and leaves the repository root alone', async () => {
+		it('writes the package into n8n and leaves the repository root alone', async () => {
 			const { repositoryFolder } = workingDirectory.paths(CONFIG_ID);
-			const packageFolder = path.join(repositoryFolder, 'n8n-export');
+			const packageFolder = path.join(repositoryFolder, 'n8n');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/staging');
 			// A file the user keeps at the repository root must survive the export.
@@ -276,7 +276,7 @@ describe('PromotionsService', () => {
 				{ targetDir: stagingFolder },
 			);
 			expect(path.dirname(stagingFolder)).toBe(repositoryFolder);
-			expect(path.basename(stagingFolder)).toMatch(/^\.n8n-export-/);
+			expect(path.basename(stagingFolder)).toMatch(/^\.n8n-/);
 			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(
 				'{"projects":[]}',
 			);
@@ -306,7 +306,7 @@ describe('PromotionsService', () => {
 					author: { name: 'Ada Lovelace', email: 'ada@example.com' },
 					commitMessage: 'sync projects',
 					force: false,
-					stagePathspec: 'n8n-export',
+					stagePathspec: 'n8n',
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 				}),
 			);
@@ -317,7 +317,7 @@ describe('PromotionsService', () => {
 
 		it('keeps the previous package when the export fails', async () => {
 			const { repositoryFolder } = workingDirectory.paths(CONFIG_ID);
-			const packageFolder = path.join(repositoryFolder, 'n8n-export');
+			const packageFolder = path.join(repositoryFolder, 'n8n');
 			await mkdir(path.join(repositoryFolder, '.git'), { recursive: true });
 			await writeFile(path.join(repositoryFolder, '.git', 'HEAD'), 'ref: refs/heads/staging');
 			await writeFile(path.join(repositoryFolder, 'README.md'), '# my repo');
@@ -590,7 +590,7 @@ describe('PromotionsService', () => {
 			resolver.resolveForProject.mockResolvedValue(input);
 			await markCloned(input, 'staging');
 			repositoryFolder = workingDirectory.paths(CONFIG_ID).repositoryFolder;
-			packageFolder = path.join(repositoryFolder, 'n8n-export');
+			packageFolder = path.join(repositoryFolder, 'n8n');
 			projectRepository.findOneBy.mockResolvedValue({ id: 'p1', type: 'team' } as never);
 			gitService.commitAndPush.mockResolvedValue({ commitSha: 'selsha' });
 		});
@@ -1082,7 +1082,7 @@ describe('PromotionsService', () => {
 
 	describe('readBranchPackage', () => {
 		const commitSha = 'c'.repeat(40);
-		const workflowPath = 'n8n-export/projects/orders-p1/workflows/order-w1/workflow.json';
+		const workflowPath = 'n8n/projects/orders-p1/workflows/order-w1/workflow.json';
 
 		beforeEach(async () => {
 			const input = applyInput();
@@ -1095,9 +1095,9 @@ describe('PromotionsService', () => {
 				commitSha,
 				lsTreeOutput:
 					[
-						'100644 blob p1\tn8n-export/projects/orders-p1/project.json',
+						'100644 blob p1\tn8n/projects/orders-p1/project.json',
 						`100644 blob w1\t${workflowPath}`,
-						'100644 blob x1\tn8n-export/projects/other-p2/project.json',
+						'100644 blob x1\tn8n/projects/other-p2/project.json',
 					].join('\0') + '\0',
 			});
 			gitService.readFilesAtCommit.mockResolvedValue(new Map([[workflowPath, '{"id":"w1"}']]));
@@ -1112,11 +1112,11 @@ describe('PromotionsService', () => {
 					configId: CONFIG_ID,
 					credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
 					pathspecs: [
-						'n8n-export/projects/',
-						'n8n-export/credentials/',
-						'n8n-export/data-tables/',
-						'n8n-export/variables/',
-						'n8n-export/tags/',
+						'n8n/projects/',
+						'n8n/credentials/',
+						'n8n/data-tables/',
+						'n8n/variables/',
+						'n8n/tags/',
 					],
 				}),
 			);
@@ -1149,9 +1149,7 @@ describe('PromotionsService', () => {
 				commitSha: null,
 				files: [],
 			});
-			await expect(branch.readFiles(['n8n-export/manifest.json'])).rejects.toThrow(
-				'no exported package',
-			);
+			await expect(branch.readFiles(['n8n/manifest.json'])).rejects.toThrow('no exported package');
 			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 		});
 
@@ -1205,13 +1203,13 @@ describe('PromotionsService', () => {
 			const input = applyInput();
 			resolver.resolveForConnection.mockResolvedValue(input);
 			await markCloned(input, 'dev');
-			packageFolder = path.join(workingDirectory.paths(CONFIG_ID).repositoryFolder, 'n8n-export');
+			packageFolder = path.join(workingDirectory.paths(CONFIG_ID).repositoryFolder, 'n8n');
 			gitService.refreshCheckout.mockResolvedValue({ commitSha: 'remotesha' });
 			n8nPackagesService.importPackageFromDirectory.mockResolvedValue(importResult());
 			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2']);
 		});
 
-		it('imports n8n-export with the fixed policy and counts the result by status', async () => {
+		it('imports n8n with the fixed policy and counts the result by status', async () => {
 			await mkdir(packageFolder, { recursive: true });
 
 			const result = await service.apply('conn1', actor);
