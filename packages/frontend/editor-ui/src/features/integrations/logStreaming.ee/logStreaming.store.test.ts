@@ -4,7 +4,10 @@ import { saveDestinationToDb } from '@n8n/rest-api-client/api/eventbus.ee';
 
 import { useLogStreamingStore } from './logStreaming.store';
 
-vi.mock('@n8n/rest-api-client/api/eventbus.ee');
+vi.mock('@n8n/rest-api-client/api/eventbus.ee', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/rest-api-client/api/eventbus.ee')>()),
+	saveDestinationToDb: vi.fn(),
+}));
 
 describe('LogStreamingStore', () => {
 	let logStreamingStore: ReturnType<typeof useLogStreamingStore>;
@@ -128,8 +131,16 @@ describe('LogStreamingStore', () => {
 	});
 
 	describe('saveDestination', () => {
+		it('updates the destination after a successful save', async () => {
+			vi.mocked(saveDestinationToDb).mockResolvedValueOnce({});
+			const destination = { id: 'destinationId', label: 'Updated label' };
+			await expect(logStreamingStore.saveDestination(destination)).resolves.toBe(true);
+			expect(logStreamingStore.items.destinationId.destination).toEqual(destination);
+		});
+
 		it('should pass save errors to the caller', async () => {
 			const error = new Error('Invalid URL');
+			const savedDestination = { ...logStreamingStore.items.destinationId.destination };
 			vi.mocked(saveDestinationToDb).mockRejectedValueOnce(error);
 
 			await expect(
@@ -137,6 +148,7 @@ describe('LogStreamingStore', () => {
 					id: 'destinationId',
 				}),
 			).rejects.toBe(error);
+			expect(logStreamingStore.items.destinationId.destination).toEqual(savedDestination);
 		});
 	});
 });

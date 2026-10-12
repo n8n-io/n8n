@@ -57,57 +57,41 @@ export interface IAbstractEventMessage {
 // Event Destination Zod Schemas
 // ===============================
 
-const isValidUrlWithDomain = (value: string) => {
-	try {
-		const { hostname, protocol } = new URL(value);
-		return (
-			['http:', 'https:'].includes(protocol) &&
-			(hostname === 'localhost' || hostname.includes('.') || hostname.includes(':'))
-		);
-	} catch {
-		return false;
-	}
-};
-
-const destinationUrlSchema = z.string().refine(isValidUrlWithDomain, 'Invalid URL');
-
-const isValidIpv4 = (value: string) => {
-	const octets = value.split('.');
-	return (
-		octets.length === 4 &&
-		octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255)
-	);
-};
+const ipv4Schema = z.string().ip({ version: 'v4' });
+const ipv6Schema = z.string().ip({ version: 'v6' });
 
 const isValidHostname = (value: string) => {
-	if (value.length > 253) return false;
+	const hostname = value.replace(/\.$/, '');
+	if (hostname.length > 253 || !/[a-z]/i.test(hostname)) return false;
 
-	return value
+	return hostname
 		.split('.')
 		.every(
 			(label) =>
-				label.length > 0 &&
-				label.length <= 63 &&
-				/^[a-z\d](?:[a-z\d-]*[a-z\d])?$/i.test(label) &&
-				/[a-z]/i.test(label),
+				label.length > 0 && label.length <= 63 && /^[a-z\d](?:[a-z\d-]*[a-z\d])?$/i.test(label),
 		);
 };
 
-const isValidIpv6 = (value: string) => {
-	try {
-		return value.includes(':') && new URL(`http://[${value}]`).hostname.length > 0;
-	} catch {
-		return false;
-	}
-};
+const isValidHost = (value: string) =>
+	isValidHostname(value) ||
+	ipv4Schema.safeParse(value).success ||
+	ipv6Schema.safeParse(value).success;
 
-const syslogHostSchema = z
+const destinationUrlSchema = z
 	.string()
-	.min(1)
-	.refine(
-		(value) => isValidHostname(value) || isValidIpv4(value) || isValidIpv6(value),
-		'Invalid host',
-	);
+	.url()
+	.refine((value) => {
+		try {
+			const { hostname, protocol } = new URL(value);
+			return (
+				['http:', 'https:'].includes(protocol) && isValidHost(hostname.replace(/^\[|\]$/g, ''))
+			);
+		} catch {
+			return false;
+		}
+	}, 'Invalid URL');
+
+const syslogHostSchema = z.string().min(1).refine(isValidHost, 'Invalid host');
 
 // Circuit Breaker Options Schema
 export const circuitBreakerSchema = z

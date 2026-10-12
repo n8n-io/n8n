@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
@@ -95,6 +95,10 @@ const unchanged = ref(!isNew);
 const activeTab = ref('settings');
 const hasOnceBeenSaved = ref(!isNew);
 const isSaving = ref(false);
+let modalClosed = false;
+onBeforeUnmount(() => {
+	modalClosed = true;
+});
 const isDeleting = ref(false);
 const loading = ref(false);
 const typeSelectValue = ref('');
@@ -331,6 +335,7 @@ async function removeThis() {
 }
 
 function onModalClose() {
+	modalClosed = true;
 	if (!hasOnceBeenSaved.value) {
 		workflowDocumentStore.value.removeNode(node.value);
 		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
@@ -343,13 +348,13 @@ function onModalClose() {
 }
 
 async function saveDestination() {
-	if (unchanged.value || !destination.id || !isFormValid.value) {
+	if (modalClosed || isSaving.value || unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
 	isSaving.value = true;
 	try {
 		const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
-		if (!saveResult) return;
+		if (!saveResult || modalClosed) return;
 
 		hasOnceBeenSaved.value = true;
 		testMessageSent.value = false;
@@ -372,7 +377,9 @@ async function saveDestination() {
 			is_active: destination.enabled,
 		});
 	} catch (error) {
-		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+		if (!modalClosed) {
+			showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+		}
 	} finally {
 		isSaving.value = false;
 	}
@@ -450,6 +457,7 @@ const { width } = useElementSize(defNameRef);
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
+								:is-saving="isSaving"
 								:disabled="unchanged || !isFormValid"
 								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
