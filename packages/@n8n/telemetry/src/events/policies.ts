@@ -12,6 +12,11 @@ const blockedViolation = z.object({
 		.nullable()
 		.describe('The blocked type name. Null for a subject type that is not a type name'),
 	scope: z.string().nullable().describe("Which level objected, usually 'instance' or 'project'"),
+	matched_rule: z
+		.boolean()
+		.describe(
+			"Whether a specific rule decided. False when the scope's default action decided, or for a check that has no rules",
+		),
 });
 
 export const POLICIES_TELEMETRY = defineTelemetryEvents({

@@ -1325,6 +1325,7 @@ describe('TelemetryEventRelay', () => {
 						subject_type: 'nodeType',
 						subject: 'n8n-nodes-base.executeCommand',
 						scope: 'instance',
+						matched_rule: true,
 					},
 				],
 				target_type: 'workflow',
@@ -1427,6 +1428,38 @@ describe('TelemetryEventRelay', () => {
 				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
 				expect.objectContaining({
 					violations: [expect.objectContaining({ subject_type: 'domain', subject: null })],
+				}),
+			);
+		});
+
+		it("should report matched_rule false when the scope's default action decided", () => {
+			const event: RelayEventMap['policy-decision-blocked'] = {
+				actorType: 'user',
+				user: { id: 'user-1' },
+				point: 'workflowSave',
+				outcome: 'violation',
+				durationMs: 5,
+				checkIds: ['node-type-availability'],
+				violations: [
+					{
+						checkId: 'node-type-availability',
+						kind: 'node-type-unavailable',
+						subject: 'n8n-nodes-base.executeCommand',
+						subjectType: 'nodeType',
+						scope: 'instance',
+						matchedRuleId: null,
+					},
+				],
+				workflowId: 'workflow-1',
+				projectId: null,
+			};
+
+			eventService.emit('policy-decision-blocked', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION,
+				expect.objectContaining({
+					violations: [expect.objectContaining({ matched_rule: false })],
 				}),
 			);
 		});

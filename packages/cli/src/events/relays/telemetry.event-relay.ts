@@ -734,6 +734,7 @@ export class TelemetryEventRelay extends EventRelay {
 						? violation.subject
 						: null,
 				scope: violation.scope,
+				matched_rule: violation.matchedRuleId !== null,
 			})),
 			target_type: policedTargetType(event),
 			workflow_id: event.workflowId,
