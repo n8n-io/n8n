@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nIcon,
 	N8nOption,
@@ -38,6 +39,8 @@ const emit = defineEmits<{
 	reconnect: [];
 	retry: [];
 }>();
+
+const FORM_ID = 'mcp-tool-settings-form';
 
 const i18n = useI18n();
 const message = useMessage();
@@ -208,123 +211,125 @@ function handleRecovery() {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.body">
-			<McpDetailBody :item="item" />
+	<div :class="$style.layout">
+		<N8nDialogBody>
+			<form :id="FORM_ID" @submit.prevent="handleSave">
+				<McpDetailBody :item="item" />
 
-			<N8nCallout
-				v-if="isConnectionUnhealthy"
-				:class="$style.failureCallout"
-				theme="danger"
-				data-test-id="tools-connection-failure"
-			>
-				{{ i18n.baseText(failureMessageKey) }}
-				<template #actions>
-					<N8nButton
-						variant="ghost"
-						size="small"
-						data-test-id="tools-connection-recovery"
-						@click="handleRecovery"
-					>
-						{{ i18n.baseText(recoveryActionKey) }}
-					</N8nButton>
-				</template>
-			</N8nCallout>
-
-			<div :class="$style.permissions">
-				<N8nText :class="$style.fieldLabel" tag="h3" size="medium" bold>
-					{{ i18n.baseText('tools.connection.permissions.title') }}
-				</N8nText>
-
-				<div
-					:class="[
-						$style.permissionGroups,
-						{ [$style.permissionGroupsDisabled]: arePermissionsDisabled },
-					]"
-					:data-disabled="arePermissionsDisabled || undefined"
+				<N8nCallout
+					v-if="isConnectionUnhealthy"
+					:class="$style.failureCallout"
+					theme="danger"
+					data-test-id="tools-connection-failure"
 				>
-					<div v-for="group in groups" :key="group.category" :class="$style.permissionGroup">
-						<div :class="$style.groupHeader">
-							<div :class="$style.groupSummary">
-								<div :class="$style.groupTitle">
-									<N8nText :class="$style.groupTitleText">{{ group.title }}</N8nText>
-									<span
-										:class="$style.countBadge"
-										:data-test-id="`tools-connection-count-${group.category}`"
-									>
-										<N8nText size="xsmall" bold compact>
-											{{ arePermissionsDisabled ? '—' : group.tools.length }}
-										</N8nText>
-									</span>
-								</div>
-								<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
-							</div>
-							<PermissionDropdown
-								:class="$style.permissionSelect"
-								:model-value="categories[group.category]"
-								:custom="hasCategoryOverrides(group.category)"
-								:disabled="arePermissionsDisabled"
-								:data-test-id="`tools-connection-permission-${group.category}`"
-								@update:model-value="updateCategory(group.category, $event)"
-							/>
-							<N8nButton
-								variant="outline"
-								size="small"
-								icon-only
-								:disabled="arePermissionsDisabled"
-								:aria-label="group.title"
-								:aria-expanded="expandedCategory === group.category"
-								@click="
-									expandedCategory = expandedCategory === group.category ? null : group.category
-								"
-							>
-								<N8nIcon
-									:icon="expandedCategory === group.category ? 'chevron-up' : 'chevron-down'"
-									:size="16"
-								/>
-							</N8nButton>
-						</div>
+					{{ i18n.baseText(failureMessageKey) }}
+					<template #actions>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							data-test-id="tools-connection-recovery"
+							@click="handleRecovery"
+						>
+							{{ i18n.baseText(recoveryActionKey) }}
+						</N8nButton>
+					</template>
+				</N8nCallout>
 
-						<div v-if="expandedCategory === group.category" :class="$style.toolList">
-							<div v-for="tool in group.tools" :key="tool.id" :class="$style.toolRow">
-								<div :class="$style.toolSummary">
-									<N8nText size="small">{{ tool.name }}</N8nText>
-									<N8nText
-										v-if="tool.description"
-										:class="$style.toolDescription"
-										:title="tool.description"
-										size="small"
-										color="text-light"
-									>
-										{{ tool.description }}
-									</N8nText>
+				<div :class="$style.permissions">
+					<N8nText :class="$style.fieldLabel" tag="h3" size="medium" bold>
+						{{ i18n.baseText('tools.connection.permissions.title') }}
+					</N8nText>
+
+					<div
+						:class="[
+							$style.permissionGroups,
+							{ [$style.permissionGroupsDisabled]: arePermissionsDisabled },
+						]"
+						:data-disabled="arePermissionsDisabled || undefined"
+					>
+						<div v-for="group in groups" :key="group.category" :class="$style.permissionGroup">
+							<div :class="$style.groupHeader">
+								<div :class="$style.groupSummary">
+									<div :class="$style.groupTitle">
+										<N8nText :class="$style.groupTitleText">{{ group.title }}</N8nText>
+										<span
+											:class="$style.countBadge"
+											:data-test-id="`tools-connection-count-${group.category}`"
+										>
+											<N8nText size="xsmall" bold compact>
+												{{ arePermissionsDisabled ? '—' : group.tools.length }}
+											</N8nText>
+										</span>
+									</div>
+									<N8nText size="small" color="text-light">{{ group.description }}</N8nText>
 								</div>
-								<N8nSelect
+								<PermissionDropdown
 									:class="$style.permissionSelect"
-									:model-value="toolPermissions[tool.id] ?? categories[group.category]"
-									size="small"
+									:model-value="categories[group.category]"
+									:custom="hasCategoryOverrides(group.category)"
 									:disabled="arePermissionsDisabled"
-									@update:model-value="onToolChange(tool.id, group.category, $event)"
+									:data-test-id="`tools-connection-permission-${group.category}`"
+									@update:model-value="updateCategory(group.category, $event)"
+								/>
+								<N8nButton
+									variant="outline"
+									size="small"
+									icon-only
+									:disabled="arePermissionsDisabled"
+									:aria-label="group.title"
+									:aria-expanded="expandedCategory === group.category"
+									@click="
+										expandedCategory = expandedCategory === group.category ? null : group.category
+									"
 								>
-									<N8nOption
-										v-for="option in permissionOptions"
-										:key="option.value"
-										:value="option.value"
-										:label="option.label"
+									<N8nIcon
+										:icon="expandedCategory === group.category ? 'chevron-up' : 'chevron-down'"
+										:size="16"
 									/>
-								</N8nSelect>
+								</N8nButton>
+							</div>
+
+							<div v-if="expandedCategory === group.category" :class="$style.toolList">
+								<div v-for="tool in group.tools" :key="tool.id" :class="$style.toolRow">
+									<div :class="$style.toolSummary">
+										<N8nText size="small">{{ tool.name }}</N8nText>
+										<N8nText
+											v-if="tool.description"
+											:class="$style.toolDescription"
+											:title="tool.description"
+											size="small"
+											color="text-light"
+										>
+											{{ tool.description }}
+										</N8nText>
+									</div>
+									<N8nSelect
+										:class="$style.permissionSelect"
+										:model-value="toolPermissions[tool.id] ?? categories[group.category]"
+										size="small"
+										:disabled="arePermissionsDisabled"
+										@update:model-value="onToolChange(tool.id, group.category, $event)"
+									>
+										<N8nOption
+											v-for="option in permissionOptions"
+											:key="option.value"
+											:value="option.value"
+											:label="option.label"
+										/>
+									</N8nSelect>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-		</div>
-
-		<N8nDialogFooter :class="$style.footer">
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
 				:class="$style.removeButton"
-				variant="outline"
+				variant="destructive"
 				size="small"
+				type="button"
 				data-test-id="tools-connection-settings-remove"
 				@click="emit('disconnect')"
 			>
@@ -334,6 +339,7 @@ function handleRecovery() {
 			<N8nButton
 				variant="subtle"
 				size="small"
+				type="button"
 				:label="i18n.baseText('generic.cancel')"
 				data-test-id="tools-connection-settings-cancel"
 				@click="emit('cancel')"
@@ -341,31 +347,23 @@ function handleRecovery() {
 			<N8nButton
 				variant="solid"
 				size="small"
+				type="submit"
+				:form="FORM_ID"
 				:label="i18n.baseText('generic.save')"
 				:disabled="!hasChanges || arePermissionsDisabled"
 				data-test-id="tools-connection-settings-save"
-				@click="handleSave"
 			/>
 		</N8nDialogFooter>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
+.layout {
 	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-height: 0;
-	overflow: hidden;
-}
-
-.body {
 	flex: 1 1 auto;
-	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	overflow-y: auto;
-	scrollbar-gutter: stable;
+	height: 100%;
 }
 
 .failureCallout {
@@ -471,11 +469,6 @@ function handleRecovery() {
 .permissionSelect {
 	flex: 0 0 auto;
 	width: auto;
-}
-
-.footer {
-	flex-shrink: 0;
-	border-top: var(--border);
 }
 
 .removeButton {

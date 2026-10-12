@@ -349,31 +349,31 @@ function handleOpenChange(value: boolean) {
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
-		<component :is="bodyComponent">
+		<div v-if="detailItem && detailMode === 'settings'" :class="$style.body">
+			<ToolSettingsView
+				:key="detailItem.id"
+				:item="detailItem"
+				:hide-back-button="hideBackButton"
+				@back="closeDetail"
+				@close="handleOpenChange(false)"
+				@disconnect="emit('disconnect', $event)"
+				@save="(item, settings) => emit('save', item, settings)"
+				@select-credential="
+					(item, authType, credentialId) => emit('select-credential', item, authType, credentialId)
+				"
+				@credential-dropdown-open="emit('credential-dropdown-open', $event)"
+				@first-credential-connect="emit('first-credential-connect', $event)"
+				@new-credential-connect="emit('new-credential-connect', $event)"
+			>
+				<template v-if="$slots['settings-body']" #body="slotProps">
+					<slot name="settings-body" v-bind="slotProps" />
+				</template>
+			</ToolSettingsView>
+		</div>
+		<component v-else :is="bodyComponent">
 			<div :class="$style.body">
-				<ToolSettingsView
-					v-if="detailItem && detailMode === 'settings'"
-					:key="detailItem.id"
-					:item="detailItem"
-					:hide-back-button="hideBackButton"
-					@back="closeDetail"
-					@close="handleOpenChange(false)"
-					@disconnect="emit('disconnect', $event)"
-					@save="(item, settings) => emit('save', item, settings)"
-					@select-credential="
-						(item, authType, credentialId) =>
-							emit('select-credential', item, authType, credentialId)
-					"
-					@credential-dropdown-open="emit('credential-dropdown-open', $event)"
-					@first-credential-connect="emit('first-credential-connect', $event)"
-					@new-credential-connect="emit('new-credential-connect', $event)"
-				>
-					<template v-if="$slots['settings-body']" #body="slotProps">
-						<slot name="settings-body" v-bind="slotProps" />
-					</template>
-				</ToolSettingsView>
 				<ToolDetailView
-					v-else-if="detailItem"
+					v-if="detailItem"
 					:item="detailItem"
 					:hide-back-button="hideBackButton"
 					@back="closeDetail"
@@ -513,12 +513,23 @@ function handleOpenChange(value: boolean) {
 		margin-top: 0;
 		margin-bottom: var(--spacing--lg);
 	}
+
+	.listWrapper {
+		margin-inline: 0;
+		margin-bottom: calc(-1 * var(--spacing--lg));
+	}
+
+	.scroller {
+		padding-inline: 0;
+	}
 }
 
 .searchInput {
 	width: 100%;
 	flex-shrink: 0;
-	margin-block: var(--spacing--sm);
+	// The dialog header already leaves a gap under the title.
+	margin-block-start: 0;
+	margin-block-end: var(--spacing--sm);
 }
 
 // N8nTabs owns the tab styling, and the justified strip gives every tab an equal
@@ -581,12 +592,16 @@ function handleOpenChange(value: boolean) {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	margin-bottom: calc(-1 * var(--spacing--lg));
+	// Cancel the dialog body padding so the scrollbar sits on the dialog edge.
+	margin-inline: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
+	margin-bottom: calc(-1 * var(--n8n-dialog-region--padding, var(--spacing--md)));
 }
 
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+	// Put the same inset back on the rows so they line up with the search field.
+	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
 .persistentScrollbar {
