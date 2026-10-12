@@ -24,7 +24,6 @@ import N8nText from '../N8nText/Text.vue';
 
 const meta = {
 	title: 'Core/Dialog',
-	// Use N8nDialog as component; docgen may have issues with reka-ui imports but types must match
 	component: N8nDialog,
 	parameters: {
 		docs: {
@@ -89,9 +88,6 @@ export const Default: Story = {
 	},
 } satisfies Story;
 
-/**
- * A long title wraps onto more than one line. The close button stays on the first line.
- */
 export const MultilineTitle: Story = {
 	parameters: {
 		docs: {
@@ -225,10 +221,6 @@ export const WithoutCloseButton: Story = {
 	},
 } satisfies Story;
 
-/**
- * No title row. The body keeps top padding so the content is not flush with the dialog edge.
- * A centered icon is the usual content for this layout.
- */
 export const WithoutHeader: Story = {
 	parameters: {
 		docs: {
@@ -296,9 +288,6 @@ export const WithoutHeader: Story = {
 	},
 } satisfies Story;
 
-/**
- * No footer. The body keeps its bottom padding.
- */
 export const WithoutFooter: Story = {
 	parameters: {
 		docs: {
@@ -336,9 +325,6 @@ export const WithoutFooter: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * No header. The actions stack and each button fills the footer.
- */
 export const StackedButtons: Story = {
 	parameters: {
 		docs: {
@@ -464,9 +450,6 @@ export const ScrollableContent: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * Fades mark more content above and below the scroll area.
- */
 export const ScrollFades: Story = {
 	parameters: {
 		docs: {
@@ -553,9 +536,6 @@ export const ScrollFades: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * The actions sit at the end of the body, so the reader scrolls the terms to reach them.
- */
 export const NonStickyFooter: Story = {
 	parameters: {
 		docs: {
@@ -606,9 +586,6 @@ export const NonStickyFooter: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * The dialog stays fixed. Only the marked regions scroll.
- */
 export const Sidebar: Story = {
 	parameters: {
 		docs: {
@@ -700,9 +677,6 @@ export const Sidebar: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * A callout sits at the top of the body in place of a description.
- */
 export const WithCallout: Story = {
 	parameters: {
 		docs: {
@@ -844,9 +818,6 @@ export const AccessibilityFallbackTitleOnly: Story = {
 	},
 } satisfies Story;
 
-/**
- * A header row with a back button, a title, a subtitle, and actions.
- */
 export const CustomHeader: Story = {
 	parameters: {
 		docs: {
@@ -902,9 +873,6 @@ export const CustomHeader: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * Compose the footer when it needs more than actions, such as a status line beside the buttons.
- */
 export const CustomFooter: Story = {
 	parameters: {
 		docs: {
@@ -955,9 +923,6 @@ export const CustomFooter: Story = {
 	args: {},
 } satisfies Story;
 
-/**
- * The search stays in the header. The dialog keeps a fixed height. The body scrolls.
- */
 export const SearchHeader: Story = {
 	parameters: {
 		docs: {
@@ -1108,12 +1073,19 @@ export const Form: Story = {
 						style="display: flex; flex-direction: column; gap: var(--spacing--md);"
 						@submit="onSubmit"
 					>
-						<N8nInputLabel label="Name" required>
-							<N8nInput v-model="name" name="name" placeholder="Ada Lovelace" size="small" />
+						<N8nInputLabel label="Name" input-name="profile-name" required>
+							<N8nInput
+								id="profile-name"
+								v-model="name"
+								name="name"
+								placeholder="Ada Lovelace"
+								size="small"
+							/>
 						</N8nInputLabel>
 
-						<N8nInputLabel label="Email">
+						<N8nInputLabel label="Email" input-name="profile-email">
 							<N8nInput
+								id="profile-email"
 								v-model="email"
 								name="email"
 								type="email"
@@ -1122,8 +1094,9 @@ export const Form: Story = {
 							/>
 						</N8nInputLabel>
 
-						<N8nInputLabel label="Role">
+						<N8nInputLabel label="Role" input-name="profile-role">
 							<N8nSelect2
+								id="profile-role"
 								v-model="role"
 								:items="roleItems"
 								placeholder="Select a role"
@@ -1131,8 +1104,9 @@ export const Form: Story = {
 							/>
 						</N8nInputLabel>
 
-						<N8nInputLabel label="Notes">
+						<N8nInputLabel label="Notes" input-name="profile-notes">
 							<N8nInput
+								id="profile-notes"
 								v-model="notes"
 								name="notes"
 								type="textarea"
@@ -1165,9 +1139,6 @@ const datasetItems = [
 	{ label: 'Onboarding chats', value: 'onboarding' },
 ];
 
-/**
- * A form split across steps. The header and the footer stay. The body shows the current step.
- */
 export const MultistepForm: Story = {
 	parameters: {
 		docs: {
@@ -1253,8 +1224,14 @@ export const MultistepForm: Story = {
 						<N8nDialogDescription style="margin: 0;">
 							Give the collection a name. You can change it later.
 						</N8nDialogDescription>
-						<N8nInputLabel label="Name" required>
-							<N8nInput v-model="name" name="collection-name" placeholder="Support quality" size="small" />
+						<N8nInputLabel label="Name" input-name="collection-name" required>
+							<N8nInput
+								id="collection-name"
+								v-model="name"
+								name="collection-name"
+								placeholder="Support quality"
+								size="small"
+							/>
 						</N8nInputLabel>
 					</div>
 
@@ -1262,8 +1239,9 @@ export const MultistepForm: Story = {
 						<N8nDialogDescription style="margin: 0;">
 							Choose the dataset this collection compares.
 						</N8nDialogDescription>
-						<N8nInputLabel label="Dataset">
+						<N8nInputLabel label="Dataset" input-name="collection-dataset">
 							<N8nSelect2
+								id="collection-dataset"
 								v-model="dataset"
 								:items="datasetItems"
 								placeholder="Select a dataset"
@@ -1388,10 +1366,6 @@ export const NoCloseOnEscape: Story = {
 	},
 } satisfies Story;
 
-/**
- * A dialog opens an alert dialog on top of it.
- * Set stacked on the alert dialog so it renders above the first dialog.
- */
 export const StackedDialogs: Story = {
 	parameters: {
 		docs: {
