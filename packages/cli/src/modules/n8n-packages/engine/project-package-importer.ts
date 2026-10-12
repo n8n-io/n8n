@@ -19,7 +19,6 @@ import { ProjectImporter } from '../entities/project/project-importer';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import { collectPlannedWorkflowBindings } from '../entities/workflow/workflow-importer';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import type { PackageReader } from '../io/package-reader';
 import type {
 	RemovedFolderSummary,
@@ -76,7 +75,6 @@ export class ProjectPackageImporter {
 		private readonly packageParser: N8nPackageParser,
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
-		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly licenseState: LicenseState,
 	) {}
 
@@ -207,12 +205,9 @@ export class ProjectPackageImporter {
 			});
 		}
 
-		// Publishing spans projects: activation rejects a parent whose sub-workflow is not yet
-		// published, and that dependency can point into any project — so it is one package-wide,
-		// dependency-ordered sweep over everything just written.
-		const published = await this.workflowPublisher.applyToPackage({
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
-			persisted: applied.flatMap(({ content }) => content.workflowOutcomes),
+			content: applied.map(({ content }) => content),
 			policy: request.workflowPublishingPolicy,
 			subWorkflowRequirements: manifest.requirements?.workflows,
 		});
@@ -303,7 +298,7 @@ export class ProjectPackageImporter {
 			tags: unionTagSummaries(tagSummaries),
 		});
 
-		return { result, scopes };
+		return { result, scopes, agentOutcomes };
 	}
 
 	private async buildImportContextForProject(
