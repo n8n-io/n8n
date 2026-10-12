@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/SendGrid/test/SendGridRequests.test.ts
+  s_2e1fa95fc44f8f::t_c12bbea0ef605c 1-37
+packages/nodes-base/nodes/Segment/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_caccfa830586e3 1-23
+packages/nodes-base/nodes/Salesforce/__test__/node/Salesforce.node.test.ts
+  s_2e1fa95fc44f8f::t_bf0d68d149a009 173,176-265
+  s_2e1fa95fc44f8f::t_5d4ecdac76d4db 174-175
+packages/nodes-base/nodes/Salesmate/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_3ea6c3ee80b1a2 1-44
+packages/nodes-base/nodes/SecurityScorecard/test/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_d243dce8716043 1-50
+  s_2e1fa95fc44f8f::t_00871f2ea59de4 51-52
+packages/nodes-base/nodes/Salesforce/__test__/node/requests.workflow.json
+  s_2e1fa95fc44f8f::t_96bdeebcc379bd 1-859
+packages/nodes-base/nodes/Salesmate/__tests__/workflow/workflow.json
+  s_2e1fa95fc44f8f::t_703aa63686a8db 1-400
+packages/nodes-base/nodes/SecurityScorecard/test/workflow/workflow.json
+  s_2e1fa95fc44f8f::t_183e7df6dbb224 1-458
+packages/nodes-base/nodes/Segment/__tests__/workflow/workflow.json
+  s_2e1fa95fc44f8f::t_62342f53e4c9ec 1-121
+packages/nodes-base/nodes/SendGrid/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_fb076ee2cd61b4 1-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3dbb41808da2851d25a7fa145df109efb3cdd87",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

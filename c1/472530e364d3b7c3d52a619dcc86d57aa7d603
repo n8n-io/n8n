@@ -1,0 +1,20 @@
+packages/nodes-base/nodes/Notion/test/DownloadFiles.test.ts
+  s_2e1fa95fc44f8f::t_049f5988c73891 32-43
+  s_2e1fa95fc44f8f::t_8b304406715a1b 1-31,44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1472530e364d3b7c3d52a619dcc86d57aa7d603",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

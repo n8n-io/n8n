@@ -1,0 +1,21 @@
+packages/cli/test/migration/1791549491949-normalize-agent-custom-tool-ids.test.ts
+  s_7c67b2f5561b1e::t_9f097707219d55 12
+packages/@n8n/db/src/migrations/common/1791549491949-NormalizeAgentCustomToolIds.ts
+  s_7c67b2f5561b1e::t_9f097707219d55 178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e45e521e28f6eefffac39cc99cc262a9b7e5446f",
+  "prompts": {},
+  "sessions": {
+    "s_7c67b2f5561b1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11a84-1db0-74f0-8284-8cd79b3c5e60",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

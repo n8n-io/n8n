@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/SeaTable/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_5d0a5d35beed7f 1-168
+  s_2e1fa95fc44f8f::t_c4b6ebf69d1229 169-171
+  s_123f7d6f557500::t_cf449fb2421a46 172-177
+packages/nodes-base/nodes/SeaTable/__tests__/workflow/v1.workflow.json
+  s_123f7d6f557500::t_7f2327602f216e 1-198
+packages/nodes-base/nodes/SeaTable/__tests__/workflow/v2.workflow.json
+  s_123f7d6f557500::t_7cdb902560e70b 1-610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b39e833bdc663f61768c52986f1c3022874b80e",
+  "prompts": {},
+  "sessions": {
+    "s_123f7d6f557500": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a437bb20d1bb538da",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

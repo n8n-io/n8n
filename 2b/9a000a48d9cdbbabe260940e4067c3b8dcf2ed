@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Zammad/test/Zammad.node.test.ts
+  s_2e1fa95fc44f8f::t_ae61aa34e68615 205-225
+packages/nodes-base/nodes/Zammad/Zammad.node.ts
+  s_9c4567bee53d5c::t_26a91509c6b524 314-323,346-354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b9a000a48d9cdbbabe260940e4067c3b8dcf2ed",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9c4567bee53d5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad81244bfc0bbfb62",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

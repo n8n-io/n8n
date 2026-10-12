@@ -1,0 +1,23 @@
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_e99de54a53d3e4::t_f9f326d1c4d66f 2,24,378-381
+packages/@n8n/agents/src/runtime/model/google-vertex.ts
+  s_e99de54a53d3e4::t_f9f326d1c4d66f 41-52
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_e99de54a53d3e4::t_2899a90f496efd 43,48,56-71,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56cb6eafd3476edc3f5132dae6a0dbfc786616e0",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

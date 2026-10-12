@@ -1,0 +1,11 @@
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 47
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f06817241f264a78772d2b1abede5d111e1f7b8",
+  "prompts": {}
+}
