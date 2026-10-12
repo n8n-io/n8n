@@ -394,6 +394,24 @@ describe('TextClassifier Node', () => {
 				expect(Object.keys(classification)).toEqual(Object.keys(expected));
 			});
 
+			it('gives each branch its own score map', async () => {
+				withCategories(twoCategories);
+				mockExecuteFunction.getInputData.mockReturnValue([{ json: { id: 7 } }]);
+				(processItem as Mock).mockResolvedValue({
+					matched: ['Billing', 'Urgent'],
+					fallback: false,
+					scores: { Billing: 0.92, Urgent: 0.61 },
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+				const scoresOf = (branch: number) =>
+					(result[branch][0].json.classification as IDataObject).scores as IDataObject;
+
+				scoresOf(0).Billing = 'mutated';
+
+				expect(scoresOf(1)).toEqual({ Billing: 0.92, Urgent: 0.61 });
+			});
+
 			it('refuses a category named after the key the scores use', async () => {
 				withCategories([{ category: 'confidence', description: 'clashes' }]);
 				(processItem as Mock).mockResolvedValue({ matched: [], fallback: false });

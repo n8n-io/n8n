@@ -67,7 +67,9 @@ function routeItem(options: {
 			json.classification = {
 				category: label,
 				...(confidence !== undefined && { confidence }),
-				...(scores && Object.keys(scores).length > 0 && { scores }),
+				// A fresh object per branch, so a downstream node mutating one copy
+				// cannot reach the scores the other branches carry
+				...(scores && Object.keys(scores).length > 0 && { scores: { ...scores } }),
 			};
 		}
 
