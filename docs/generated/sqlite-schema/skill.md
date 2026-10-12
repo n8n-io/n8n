@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "projectId" varchar(36), "source" varchar(16) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_skill_single_target" CHECK ("userId" IS NULL OR "projectId" IS NULL), CONSTRAINT "CHK_skill_source" CHECK ("source" IN ('ui', 'upload', 'agent')), CONSTRAINT "FK_c08612011a88745a32784544b28" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE, CONSTRAINT "FK_402ed37bff0d3134f6e782455ed" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4de4501583cd1fcd6f5ea85f547" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "projectId" varchar(36), "source" varchar(16) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_skill_single_target" CHECK ("userId" IS NULL OR "projectId" IS NULL), CONSTRAINT "CHK_skill_source" CHECK ("source" IN ('ui', 'agent')), CONSTRAINT "FK_c08612011a88745a32784544b28" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE, CONSTRAINT "FK_402ed37bff0d3134f6e782455ed" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4de4501583cd1fcd6f5ea85f547" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -28,7 +28,7 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("userId" IS NULL OR "projectId" IS NULL) |
-| - | CHECK | CHECK ("source" IN ('ui', 'upload', 'agent')) |
+| - | CHECK | CHECK ("source" IN ('ui', 'agent')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |

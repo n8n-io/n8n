@@ -1,7 +1,8 @@
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-export type SkillSource = 'ui' | 'upload' | 'agent';
+/** How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the migration. */
+export type SkillSource = 'ui' | 'agent';
 
 /**
  * A skill in the skills hub, identified by its id only. One target: `userId` ("Just

@@ -48,8 +48,10 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 					.comment('Set for a project skill, team or personal. NULL otherwise'),
 				column('source')
 					.varchar(16)
-					.notNull.withEnumCheck(['ui', 'upload', 'agent'])
-					.comment('How the skill was created: "ui", "upload", or "agent"'),
+					.notNull.withEnumCheck(['ui', 'agent'])
+					.comment(
+						'How the skill was created: "ui" (the skills hub) or "agent" (the agent builder or the migration)',
+					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
 			.withTimestamps.withIndexOn(['userId'])
