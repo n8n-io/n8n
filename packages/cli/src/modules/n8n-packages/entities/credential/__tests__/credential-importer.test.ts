@@ -13,8 +13,8 @@ import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
 import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
-import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
-import type { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
+import { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
+import { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
 
 type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
@@ -86,8 +86,8 @@ describe('CredentialImporter', () => {
 		importer = new CredentialImporter(
 			new CredentialMatcherFactory(
 				Container.get(IdBasedCredentialMatcher),
-				mock<NameAndTypeCredentialMatcher>(),
-				mock<TypeOnlyCredentialMatcher>(),
+				new NameAndTypeCredentialMatcher(credentialTypes, credentialsService),
+				new TypeOnlyCredentialMatcher(credentialTypes, credentialsService),
 			),
 			credentialsService,
 			credentialsFinder,
@@ -222,6 +222,17 @@ describe('CredentialImporter', () => {
 	});
 
 	describe('create-stub', () => {
+		it('blocks an unresolved untyped Agent credential instead of planning a stub', async () => {
+			const request = bindingRequest(
+				[{ id: 'unknown', usedBy: [{ kind: 'agent', id: 'agent' }] }],
+				{ missingMode: 'create-stub' },
+			);
+			const plan = await importer.plan(context, request);
+			expect(plan.stubIds.size).toBe(0);
+			expect(importer.blockingFailures(request, plan)).toEqual([
+				expect.objectContaining({ sourceId: 'unknown', kind: 'not_found' }),
+			]);
+		});
 		it('apply creates one stub per missing source id and dedupes shared references', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
@@ -234,10 +245,7 @@ describe('CredentialImporter', () => {
 				],
 			});
 			const request = bindingRequest([missingCredential], { missingMode: 'create-stub' });
-			const resolution = {
-				successes: new Map<string, string>(),
-				failures: [notFoundFailure(missingCredential)],
-			};
+			const resolution = await importer.plan(context, request);
 
 			const result = await importer.apply(context, request, resolution);
 
@@ -269,6 +277,7 @@ describe('CredentialImporter', () => {
 
 			const result = await importer.apply(context, request, {
 				successes: new Map(),
+				stubIds: new Map(),
 				failures: [notFoundFailure(sourceCredential, { targetId: 'target-missing' })],
 			});
 
@@ -290,6 +299,7 @@ describe('CredentialImporter', () => {
 				bindingRequest([], { missingMode: 'create-stub' }),
 				{
 					successes: new Map(),
+					stubIds: new Map([['orphan-not-in-requirements', 'orphan-not-in-requirements']]),
 					failures: [
 						notFoundFailure(
 							packageCredential({
@@ -313,7 +323,7 @@ describe('CredentialImporter', () => {
 			expect(result.stubbed).toEqual(['orphan-not-in-requirements']);
 		});
 
-		it('apply mints a fresh id (no reused source id) under name-and-type matching', async () => {
+		it('apply uses the fresh ID reserved during name-and-type planning', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
 			const missingCredential = packageCredential({ id: 'missing-cred', name: 'Missing GitHub' });
@@ -322,14 +332,15 @@ describe('CredentialImporter', () => {
 				matchingMode: 'name-and-type',
 			});
 
-			await importer.apply(context, request, {
-				successes: new Map(),
-				failures: [notFoundFailure(missingCredential)],
-			});
+			const plan = await importer.plan(context, request);
+			const targetId = plan.stubIds.get('missing-cred');
+			expect(targetId).toBeDefined();
+			expect(targetId).not.toBe('missing-cred');
+			await importer.apply(context, request, plan);
 
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
-					id: undefined,
+					id: targetId,
 					name: 'Missing GitHub',
 					type: 'githubApi',
 					projectId: 'project-target',
@@ -345,6 +356,7 @@ describe('CredentialImporter', () => {
 			const firstRequest = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const firstResult = await importer.apply(context, firstRequest, {
 				successes: new Map(),
+				stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 				failures: [notFoundFailure(missingCredential)],
 			});
 
@@ -390,6 +402,7 @@ describe('CredentialImporter', () => {
 					bindingRequest([missingCredential], { missingMode: 'create-stub' }),
 					{
 						successes: new Map(),
+						stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 						failures: [notFoundFailure(missingCredential)],
 					},
 				),

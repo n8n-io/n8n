@@ -373,7 +373,7 @@ export class AgentConfigService {
 			taskIds: new Set(existingTaskIds),
 		});
 		const resolvedSubAgents = await this.reconcileSubAgentReferences(config, entity);
-		this.validateSubAgentRefs(resolvedSubAgents, entity);
+		this.validateSubAgentRefs(resolvedSubAgents, entity.id);
 		return existingTaskIds;
 	}
 
@@ -399,9 +399,9 @@ export class AgentConfigService {
 		return [];
 	}
 
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
+	validateSubAgentRefs(resolvedSubAgents: Array<{ agentId: string }>, ownerAgentId: string) {
 		for (const { agentId } of resolvedSubAgents) {
-			if (agentId === entity.id) {
+			if (agentId === ownerAgentId) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}
 		}
