@@ -1,3 +1,12 @@
+## [2.43.4](https://github.com/n8n-io/n8n/compare/n8n@2.43.3...n8n@2.43.4) (2026-10-12)
+
+
+### Bug Fixes
+
+* **core:** Handle each Chat Hub segment once in queue mode ([#40816](https://github.com/n8n-io/n8n/issues/40816)) ([dc77062](https://github.com/n8n-io/n8n/commit/dc770620e5e3830e7e41b5b840028f937dedad8d))
+* **core:** Resume tool calls for deferred tools that a skill loaded ([#40746](https://github.com/n8n-io/n8n/issues/40746)) ([ea448c6](https://github.com/n8n-io/n8n/commit/ea448c6f61fb7cae06cfbeccbd32713a70d112ca))
+
+
 ## [2.43.3](https://github.com/n8n-io/n8n/compare/n8n@2.43.2...n8n@2.43.3) (2026-10-09)
 
 
