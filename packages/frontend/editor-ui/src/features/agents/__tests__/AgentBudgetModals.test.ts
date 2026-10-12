@@ -1,7 +1,6 @@
 import { defineComponent } from 'vue';
 import { mount } from '@vue/test-utils';
-import { N8nInputNumber, N8nSwitch2 } from '@n8n/design-system';
-import { ElSlider } from 'element-plus';
+import { N8nInputNumber, N8nSlider, N8nSwitch2 } from '@n8n/design-system';
 import { describe, expect, it, vi } from 'vitest';
 
 import AgentBudgetMonthlyModal from '../components/AgentBudgetMonthlyModal.vue';
@@ -55,11 +54,20 @@ describe('AgentBudgetMonthlyModal', () => {
 
 	it('uses a slider that moves in steps of 10', () => {
 		const wrapper = mountModal();
-		const slider = wrapper.getComponent(ElSlider);
-		expect(slider.props('min')).toBe(10);
-		expect(slider.props('max')).toBe(100);
+		const slider = wrapper.getComponent(N8nSlider);
+		expect(slider.props('minValue')).toBe(10);
+		expect(slider.props('maxValue')).toBe(100);
 		expect(slider.props('step')).toBe(10);
-		expect(slider.props('showStops')).toBe(true);
+		expect(slider.props('showStepMarkers')).toBe(true);
+	});
+
+	it('saves the numeric percent from the shared slider', async () => {
+		const wrapper = mountModal();
+		wrapper.getComponent(N8nSlider).vm.$emit('update:modelValue', [60]);
+		await wrapper.get('[data-testid="agent-budget-monthly-save"]').trigger('click');
+
+		const saved = wrapper.emitted('save')?.[0]?.[0] as Partial<AgentJsonConfig>;
+		expect(saved.config?.guardrails?.budget?.alertThresholdPercent).toBe(60);
 	});
 
 	it('snaps a saved percent to the nearest step of 10', () => {
@@ -69,7 +77,7 @@ describe('AgentBudgetMonthlyModal', () => {
 			props: { open: true, config: saved },
 			global: { stubs: { AgentModal: AgentModalStub } },
 		});
-		expect(wrapper.getComponent(ElSlider).props('modelValue')).toBe(70);
+		expect(wrapper.getComponent(N8nSlider).props('modelValue')).toEqual([70]);
 	});
 
 	it('drops a monthly budget of 0 and its alert', async () => {
@@ -122,7 +130,7 @@ describe('AgentBudgetMonthlyModal', () => {
 
 		expect(wrapper.getComponent(N8nInputNumber).props('disabled')).toBe(true);
 		expect(wrapper.getComponent(N8nSwitch2).props('disabled')).toBe(true);
-		expect(wrapper.getComponent(ElSlider).props('disabled')).toBe(true);
+		expect(wrapper.getComponent(N8nSlider).props('disabled')).toBe(true);
 		expect(
 			wrapper.get('[data-testid="agent-budget-monthly-save"]').attributes('disabled'),
 		).toBeDefined();
