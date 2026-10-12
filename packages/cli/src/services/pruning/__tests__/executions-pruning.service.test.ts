@@ -27,15 +27,13 @@ describe('ExecutionsPruningService', () => {
 			storedAt: 'db' as const,
 		}));
 
-	/** Serves the batches in order and records a copy of each select's excluded ids. */
+	/** Serves the batches in order and records the cursor of each select. */
 	const selectsOf = (executionRepository: ExecutionRepository, batches: SoftDeletedRef[][]) => {
-		const selects: string[][] = [];
-		vi.mocked(executionRepository.findSoftDeletedExecutions).mockImplementation(
-			async (excludedIds = []) => {
-				selects.push([...excludedIds]);
-				return batches[selects.length - 1] ?? [];
-			},
-		);
+		const selects: Array<string | undefined> = [];
+		vi.mocked(executionRepository.findSoftDeletedExecutions).mockImplementation(async (before) => {
+			selects.push(before);
+			return batches[selects.length - 1] ?? [];
+		});
 		return selects;
 	};
 
@@ -169,21 +167,16 @@ describe('ExecutionsPruningService', () => {
 			]);
 		});
 
-		it('should leave the rows that failed out of the next select', async () => {
-			const { service, executionRepository, executionPersistence } = makeService();
-			const batch = batchOf(BATCH_SIZE);
-			const badRef = batch[42];
-			const selects = selectsOf(executionRepository, [batch, []]);
-			executionPersistence.hardDelete.mockImplementation(async (target) => {
-				const targets = Array.isArray(target) ? target : [target];
-				if (targets.includes(badRef)) throw new Error('object locked');
-			});
+		it('should select below the last id of the previous batch', async () => {
+			const { service, executionRepository } = makeService();
+			const batches = [batchOf(BATCH_SIZE), batchOf(BATCH_SIZE, BATCH_SIZE), batchOf(30)];
+			const selects = selectsOf(executionRepository, batches);
 
 			const run = service.hardDelete(new AbortController().signal);
 			await vi.runAllTimersAsync();
 			await run;
 
-			expect(selects).toEqual([[], [badRef.executionId]]);
+			expect(selects).toEqual([undefined, 'exec-99', 'exec-199']);
 		});
 
 		it('should keep draining past a batch size of failed rows', async () => {
@@ -204,16 +197,8 @@ describe('ExecutionsPruningService', () => {
 			await vi.runAllTimersAsync();
 			await run;
 
-			const badIds = batches
-				.flat()
-				.filter(isBad)
-				.map((ref) => ref.executionId);
-			expect(selects).toEqual([
-				[],
-				badIds.slice(0, 50),
-				badIds.slice(0, 100),
-				badIds.slice(0, 150),
-			]);
+			expect(selects).toEqual([undefined, 'exec-99', 'exec-199', 'exec-299']);
+			expect(singleCalls(executionPersistence)).toHaveLength(3 * BATCH_SIZE);
 		});
 
 		it('should stop the single deletes when the signal aborts', async () => {

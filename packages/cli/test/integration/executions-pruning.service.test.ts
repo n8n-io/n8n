@@ -500,23 +500,26 @@ describe('softDeleteOnPruningCycle()', () => {
 			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
 		});
 
-		test('leaves out the excluded executions', async () => {
+		test('returns the executions below the cursor, newest id first', async () => {
 			const twoHoursAgo = new Date(realNow - 2 * Time.hours.toMilliseconds);
-			const excluded = await createExecution(
-				{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
-				workflow,
-			);
-			const expired = await createExecution(
-				{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
-				workflow,
-			);
+			const expired = [];
+			for (let i = 0; i < 3; i++) {
+				expired.push(
+					await createExecution(
+						{ status: 'success', finished: true, stoppedAt: yesterday, deletedAt: twoHoursAgo },
+						workflow,
+					),
+				);
+			}
+			const [oldest, middle, newest] = expired.map(({ id }) => id);
 			moveInstanceClockAhead();
+			const repository = Container.get(ExecutionRepository);
 
-			const refs = await Container.get(ExecutionRepository).findSoftDeletedExecutions([
-				excluded.id,
-			]);
+			const first = await repository.findSoftDeletedExecutions();
+			const next = await repository.findSoftDeletedExecutions(newest);
 
-			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
+			expect(first.map(({ executionId }) => executionId)).toEqual([newest, middle, oldest]);
+			expect(next.map(({ executionId }) => executionId)).toEqual([middle, oldest]);
 		});
 	});
 });

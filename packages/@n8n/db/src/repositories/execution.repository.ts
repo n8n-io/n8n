@@ -733,7 +733,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.execute();
 	}
 
-	async findSoftDeletedExecutions(excludedIds: string[] = []) {
+	/** One batch of soft-deleted executions past the buffer, newest id first, below `before` when given. */
+	async findSoftDeletedExecutions(before?: string) {
 		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 		const bufferMs =
 			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
@@ -742,8 +743,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
 				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
-				...(excludedIds.length > 0 ? { id: Not(In(excludedIds)) } : {}),
+				...(before === undefined ? {} : { id: LessThan(before) }),
 			},
+			order: { id: 'DESC' },
 			take: this.hardDeletionBatchSize,
 
 			/**
