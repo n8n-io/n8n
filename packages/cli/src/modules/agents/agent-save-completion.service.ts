@@ -38,16 +38,22 @@ export class AgentSaveCompletionService {
 		operation: 'create' | 'update',
 	): Promise<void> {
 		const { AgentSetupCompletionService } = await import('./agent-setup-completion.service.js');
-		const emitSetupCompleted = await Container.get(
-			AgentSetupCompletionService,
-		).recordIfSetupComplete(
-			event.agent,
-			event.config?.skills,
-			event.projectId,
-			credentialProvider,
-			event.user,
-			tasks,
-		);
+		let emitSetupCompleted: (() => Promise<void>) | null = null;
+		try {
+			emitSetupCompleted = await Container.get(AgentSetupCompletionService).recordIfSetupComplete(
+				event.agent,
+				event.config?.skills,
+				event.projectId,
+				credentialProvider,
+				event.user,
+				tasks,
+			);
+		} catch (error) {
+			Container.get(Logger).warn('Failed to check Agent setup completion', {
+				agentId: event.agent.id,
+				error,
+			});
+		}
 		if (operation === 'create') {
 			this.configurationCreated(event);
 			await emitSetupCompleted?.();
