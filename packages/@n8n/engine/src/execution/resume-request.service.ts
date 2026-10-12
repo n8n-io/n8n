@@ -85,21 +85,18 @@ export class ResumeRequestService {
 		}
 
 		for (let attempt = 0; ; attempt++) {
-			const candidates = (await this.stepStore.loadWaitingSteps(executionId)).filter(
-				acceptsRequest,
-			);
-			if (candidates.length > 1) throw new ResumeRejectedError('ambiguous');
-
-			const [step] = candidates;
-			if (step) {
+			// Liveness comes from the execution and not from the step rows. Between a
+			// predecessor that settles and the row of its successor, no step is queued
+			// or running, but the execution can still reach its wait. An execution that
+			// ended can still hold a waiting row until its pending steps are cancelled,
+			// so the row alone does not make a target.
+			const status = await this.loadStatus(executionId);
+			const [step] = await this.loadOnlyWait(executionId);
+			if (step && isLive(status)) {
 				this.logHold(executionId, attempt, step.id);
 				return { stepId: step.id, nodeId: step.nodeId };
 			}
 
-			// Liveness comes from the execution and not from the step rows. Between a
-			// predecessor that settles and the row of its successor, no step is queued
-			// or running, but the execution can still reach its wait.
-			const status = await this.loadStatus(executionId);
 			if (!isLive(status) || attempt + 1 >= this.hold.attempts) {
 				this.logHold(executionId, attempt, null, status);
 				return null;
@@ -113,8 +110,9 @@ export class ResumeRequestService {
 	 * worker that claims it emits the outputs. No node code runs here.
 	 *
 	 * @throws {ResumeRejectedError} `not_found`, `invalid_token` when the token
-	 * names another execution, or `not_waiting` when the step does not wait for a
-	 * request (any more).
+	 * names another execution, `not_waiting` when the step does not wait for a
+	 * request (any more) or its execution ended, or `ambiguous` when the
+	 * execution holds two such waits.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
 		const step = await this.loadStep(stepId);
@@ -122,6 +120,11 @@ export class ResumeRequestService {
 			throw new ResumeRejectedError('invalid_token');
 		}
 		if (!acceptsRequest(step)) throw new ResumeRejectedError('not_waiting');
+		if (!isLive(await this.loadStatus(step.executionId))) {
+			throw new ResumeRejectedError('not_waiting');
+		}
+		// The same rule as `locate`: an execution-bound token cannot pick one of two waits.
+		await this.loadOnlyWait(step.executionId);
 
 		// A compare-and-set, so a doubled request or a sweep that fires at the same
 		// time ends the wait once.
@@ -136,6 +139,18 @@ export class ResumeRequestService {
 			stepId: step.id,
 		});
 		return step;
+	}
+
+	/**
+	 * The execution's wait that an execution-bound token can resume, as a list of
+	 * at most one.
+	 *
+	 * @throws {ResumeRejectedError} `ambiguous` when there are two.
+	 */
+	private async loadOnlyWait(executionId: string): Promise<StepRecord[]> {
+		const waits = (await this.stepStore.loadWaitingSteps(executionId)).filter(acceptsRequest);
+		if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
+		return waits;
 	}
 
 	/** Logs a request that was held, on either exit, so a refusal after a hold is traceable. */

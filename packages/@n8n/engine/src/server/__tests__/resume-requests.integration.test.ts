@@ -215,6 +215,12 @@ describe('POST /api/step-executions/:id/resolve (integration)', () => {
 		await resolve(generateId(), { token, outputs }).expect(404, { error: 'not_found' });
 	});
 
+	it('refuses a step of an execution with two waits that accept a request with 409', async () => {
+		const { stepIds, token } = await seed({ 'wait-a': acceptsRequest, 'wait-b': acceptsRequest });
+
+		await resolve(stepIds['wait-a'], { token, outputs }).expect(409, { error: 'ambiguous' });
+	});
+
 	it('rejects a body without outputs with 400', async () => {
 		const { stepIds, token } = await seed({ 'wait-a': acceptsRequest });
 
