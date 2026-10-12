@@ -1,6 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { SystemTaskClass } from '@n8n/decorators';
 
+import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { isTrimmingEnabled } from '@/services/pruning/workflow-history-compaction.utils';
 
@@ -24,6 +25,7 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
+		IdempotencyKeyCleanupTask,
 	];
 
 	if (isTrimmingEnabled(globalConfig.workflowHistory, globalConfig.workflowHistoryCompaction)) {

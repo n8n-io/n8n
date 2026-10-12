@@ -270,6 +270,23 @@ describe('createLlmMockHandler', () => {
 		expect(sniffed?.ext).toBe('pdf');
 	});
 
+	it('should write textBody into a binary PDF response', async () => {
+		llmSubmits({
+			type: 'binary',
+			contentType: 'application/pdf',
+			filename: 'invoice.pdf',
+			textBody: 'Invoice Number: INV-2026-0042',
+		});
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
+		expect(sniffed?.mime).toBe('application/pdf');
+		expect((result.body as Buffer).toString('latin1')).toContain(
+			'(Invoice Number: INV-2026-0042) Tj',
+		);
+	});
+
 	it('should populate content-disposition and content-length headers for binary responses', async () => {
 		llmSubmits({ type: 'binary', contentType: 'image/png', filename: 'logo.png' });
 		const handler = createLlmMockHandler();
