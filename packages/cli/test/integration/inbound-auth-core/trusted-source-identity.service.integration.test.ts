@@ -582,8 +582,21 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expect(await bindings.count()).toBe(0);
 		});
 
-		it('provisions an unverified email under verified-only when no user matches', async () => {
+		it('refuses to provision from an unverified email under verified-only', async () => {
 			const source = await seedSource({ ...jit, linkByEmail: 'verified-only' });
+			const userCount = await users.count();
+
+			const result = await service.identify(
+				verified(source, { sub: 'bob', email: 'bob@example.com', email_verified: false }),
+			);
+
+			expect(rejectReason(result)).toBe('provision-refused');
+			expect(await users.count()).toBe(userCount);
+			expect(await bindings.count()).toBe(0);
+		});
+
+		it('provisions from an unverified email when linkByEmail is any', async () => {
+			const source = await seedSource({ ...jit, linkByEmail: 'any' });
 
 			const context = expectOk(
 				await service.identify(

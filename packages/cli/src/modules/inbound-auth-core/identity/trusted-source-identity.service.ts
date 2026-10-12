@@ -215,11 +215,12 @@ export class TrustedSourceIdentityService extends IdentityService {
 
 		if (linkByEmail === 'off') return { ok: false, reason: 'link-refused' };
 
-		const email = external.email;
-		const mayLookUp =
+		// The link rule decides which email claims identify a person, for linking and for provisioning alike.
+		const mayUseEmail =
 			linkByEmail === 'any' || (linkByEmail === 'verified-only' && external.emailVerified === true);
+		const email = mayUseEmail ? external.email : undefined;
 
-		if (mayLookUp && email !== undefined) {
+		if (email !== undefined) {
 			const user = await this.identities.findUserByEmail(email, ctx);
 			if (user !== null) {
 				if (user.disabled) return { ok: false, reason: 'user-disabled' };
@@ -228,7 +229,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 				return await this.link(source, external, user, ctx);
 			}
 		}
-		return await this.provision(source, external, ctx);
+		return await this.provision(source, { ...external, email }, ctx);
 	}
 
 	private async resolveBinding(
