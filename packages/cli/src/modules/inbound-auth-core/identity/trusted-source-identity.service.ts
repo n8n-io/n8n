@@ -161,6 +161,18 @@ export class TrustedSourceIdentityService extends IdentityService {
 		};
 	}
 
+	// Returns no roles when the mode is not `continuous`, so callers need one branch for both modes.
+	private async mapIfContinuous(
+		source: TrustedSource,
+		claims: Readonly<Record<string, unknown>>,
+		ctx: OperationContext,
+	): Promise<Result<MappedRoles | undefined>> {
+		if (source.config.identity.roleMapping.mode !== 'continuous') {
+			return { ok: true, value: undefined };
+		}
+		return await this.mapRoles(source, claims, ctx);
+	}
+
 	private async resolveByUserId(id: string): Promise<Result<Principal>> {
 		const user = await this.users.findByIdWithRole(id);
 		if (user === null) return { ok: false, reason: 'unknown-subject' };
@@ -173,15 +185,17 @@ export class TrustedSourceIdentityService extends IdentityService {
 		binding: TrustedSourceIdentityEntity,
 		claims: Readonly<Record<string, unknown>>,
 		ctx: OperationContext,
+		mapped?: MappedRoles,
 	): Promise<Resolved> {
 		if (binding.status !== 'active') return { ok: false, reason: 'binding-inactive' };
 		if (binding.user.disabled) return { ok: false, reason: 'user-disabled' };
 
-		let mappedRoles: MappedRoles | undefined;
-		if (source.config.identity.roleMapping.mode === 'continuous') {
-			const mapped = await this.mapRoles(source, claims, ctx);
-			if (!mapped.ok) return mapped;
-			mappedRoles = mapped.value;
+		// A caller that already evaluated the rules passes the result, so the row is not evaluated twice.
+		let mappedRoles = mapped;
+		if (mappedRoles === undefined) {
+			const result = await this.mapIfContinuous(source, claims, ctx);
+			if (!result.ok) return result;
+			mappedRoles = result.value;
 		}
 
 		if (isStale(binding.lastSeenAt)) {
@@ -235,12 +249,17 @@ export class TrustedSourceIdentityService extends IdentityService {
 			provenance: 'claim-match',
 			status: 'active',
 		};
+
+		const mapped = await this.mapIfContinuous(source, external.raw, ctx);
+		if (!mapped.ok) return mapped;
+
+		// Every policy check runs before the write, because a `Reject` does not roll the transaction back.
 		await this.identities.insertIfAbsent(row, ctx);
 
 		const binding = await this.identities.findBySubject(source.id, external.subject, ctx);
 		if (binding === null) throw new UnexpectedError('Binding missing after insert');
 
-		const accepted = await this.acceptBinding(source, binding, external.raw, ctx);
+		const accepted = await this.acceptBinding(source, binding, external.raw, ctx, mapped.value);
 
 		if (accepted.ok && binding.user.id === user.id) {
 			return {
