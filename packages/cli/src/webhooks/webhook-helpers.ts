@@ -73,7 +73,11 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	isExecutionIdV2,
+	type ExecutionIdV2,
+} from '@/executions/execution-id';
 import type { EngineV2ResumeRequest } from '@/interfaces';
 import { parseBody } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
@@ -1110,8 +1114,14 @@ export async function executeWebhook(
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
 			// Created before the node runs, so a file the node stores is written under
-			// the path of its run from the start, and no rename is needed later.
-			engineV2ExecutionId = createExecutionIdV2();
+			// the path of its run from the start, and no rename is needed later. A
+			// resume keeps the id of the execution that waits: a file the node stores
+			// then lands under that run, and a response subscription names a run that
+			// answers.
+			engineV2ExecutionId =
+				executionId !== undefined && isExecutionIdV2(executionId)
+					? executionId
+					: createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
