@@ -189,3 +189,26 @@ export const linearMockServer: McpRegistryServer = {
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
 } satisfies McpRegistryServer;
+
+/**
+ * Firecrawl's official hosted MCP server, shaped like a live registry row: OAuth
+ * through dynamic client registration, no tools or tags.
+ */
+export const firecrawlMockServer = {
+	name: 'io.github.firecrawl/firecrawl-mcp-server',
+	slug: 'firecrawl',
+	title: 'Firecrawl',
+	description:
+		'Official Firecrawl MCP server. Scrape, crawl, map and search the web, and extract structured data from pages.',
+	tagline: 'Connect to the Firecrawl MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-10-12T10:00:00.000Z',
+	icons: [{ src: 'https://www.firecrawl.dev/favicon.ico' }],
+	authType: 'oauth2',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.firecrawl.dev/v2/mcp-oauth' }],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	tags: [],
+} satisfies McpRegistryServer;
