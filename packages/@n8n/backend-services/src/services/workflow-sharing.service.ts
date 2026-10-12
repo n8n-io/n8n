@@ -55,6 +55,7 @@ export class WorkflowSharingService {
 			user.id,
 			workflowRoles,
 			projectRoles,
+			projectId,
 		);
 	}
 

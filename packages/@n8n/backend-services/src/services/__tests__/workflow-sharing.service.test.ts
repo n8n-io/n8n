@@ -66,6 +66,7 @@ describe('WorkflowSharingService', () => {
 				member.id,
 				['workflow:owner'],
 				['project:viewer'],
+				undefined,
 			);
 			expect(result).toEqual(['workflow-1']);
 		});

@@ -45,11 +45,13 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		userId: string,
 		workflowRoleSlugs: string[],
 		projectRoleSlugs: string[],
+		projectId?: string,
 	): Promise<string[]> {
 		const rows = await this.find({
 			where: {
 				role: In(workflowRoleSlugs),
 				project: {
+					id: projectId ?? undefined,
 					projectRelations: {
 						userId,
 						role: { slug: In(projectRoleSlugs) },

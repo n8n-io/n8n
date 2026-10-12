@@ -87,6 +87,32 @@ describe('SharedWorkflowRepository', () => {
 			expect(result).toEqual(['workflow-1', 'workflow-2']);
 		});
 
+		it('limits workflow IDs accessible to a user to a project', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsAccessibleToUser(
+				'user-1',
+				['workflow:owner'],
+				['project:viewer'],
+				'project-1',
+			);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: In(['workflow:owner']),
+					project: {
+						id: 'project-1',
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: In(['project:viewer']) },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
 		it('finds workflow IDs shared with a user', async () => {
 			entityManager.find.mockResolvedValue(rows);
 
