@@ -235,7 +235,7 @@ export class AgentSkillsService {
 			)[skillId];
 			if (!latest || getAgentSkillHash(latest) !== getAgentSkillHash(existing)) {
 				throw new UserError(
-					'This agent uses an older version of this skill. A newer version exists, so you cannot edit the older version.',
+					'This agent uses an older version of this skill. To edit the skill, remove it from the agent and add it again. The agent then uses the latest version.',
 				);
 			}
 		}
