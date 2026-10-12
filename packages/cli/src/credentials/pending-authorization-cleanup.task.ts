@@ -22,7 +22,12 @@ export class PendingAuthorizationCleanupTask implements SystemTask {
 	/** A row is either past its deadline or not, so a repeated run deletes nothing new. */
 	effects: SystemTaskEffects = 'idempotent';
 
-	placement: SystemTaskPlacement = { scope: 'cluster', durable: false, runOnTakeover: true };
+	placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: true,
+		/** A new leader on the fallback timer sweeps at once instead of waiting an hour. */
+		runOnTakeover: true,
+	};
 
 	constructor(
 		private readonly logger: Logger,
