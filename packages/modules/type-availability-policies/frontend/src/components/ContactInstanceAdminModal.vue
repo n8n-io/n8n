@@ -76,7 +76,7 @@ function mailtoHref(email: string): string {
 		data-test-id="contact-instance-admin-modal"
 	>
 		<N8nDialogBody :class="$style.body">
-			<N8nDialogDescription :class="$style.intro">{{ description }}</N8nDialogDescription>
+			<N8nDialogDescription>{{ description }}</N8nDialogDescription>
 			<N8nLoading v-if="isLoading" :rows="2" variant="p" />
 			<ul v-else-if="owners.length" :class="$style.list" data-test-id="contact-instance-admin-list">
 				<li v-for="owner in owners" :key="owner.id" :class="$style.owner">
@@ -105,10 +105,6 @@ function mailtoHref(email: string): string {
 <style lang="scss" module>
 .body {
 	max-height: 400px;
-}
-
-.intro {
-	margin-block-end: var(--spacing--sm);
 }
 
 .list {
