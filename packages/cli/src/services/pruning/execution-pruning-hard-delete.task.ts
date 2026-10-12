@@ -13,13 +13,18 @@ import { ExecutionsPruningService } from './executions-pruning.service';
 export class ExecutionPruningHardDeleteTask implements SystemTask {
 	readonly name = 'execution-pruning-hard-delete';
 
-	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
-		this.executionsConfig.pruneDataIntervals.hardDelete * Time.minutes.toSeconds,
-	);
+	private readonly intervalSeconds =
+		this.executionsConfig.pruneDataIntervals.hardDelete * Time.minutes.toSeconds;
+
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(this.intervalSeconds);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
 	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
+
+	// A run that is behind ends before the next occurrence is due. The drain stops
+	// at the pause and returns, so the occurrence completes with result `timed_out`.
+	readonly timeoutSeconds = this.intervalSeconds;
 
 	constructor(
 		private readonly executionsConfig: ExecutionsConfig,

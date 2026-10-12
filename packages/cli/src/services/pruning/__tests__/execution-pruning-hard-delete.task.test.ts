@@ -19,6 +19,7 @@ describe('ExecutionPruningHardDeleteTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 900 });
 		expect(task.effects).toBe('idempotent');
 		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.timeoutSeconds).toBe(900);
 	});
 
 	it('should hard-delete with the run signal', async () => {
