@@ -221,6 +221,27 @@ describe('SkillsController', () => {
 				expect.objectContaining({ name: 'Team rules', projectName: 'Team' }),
 			]);
 		});
+
+		it('lists the skills an agent of a project may attach', async () => {
+			await create(editor, { scope: 'user', skill: { ...body, name: 'Mine' } });
+			await create(owner, { scope: 'instance', skill: { ...body, name: 'Shared rules' } });
+			await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'Team rules' },
+			});
+
+			const attachable = await editor
+				.get('/skills')
+				.query({ attachableTo: project.id })
+				.expect(200);
+
+			expect(attachable.body.data.data.map((s: { name: string }) => s.name).sort()).toEqual([
+				'Shared rules',
+				'Team rules',
+			]);
+			await editor.get('/skills').query({ attachableTo: project.id, scope: 'user' }).expect(400);
+		});
 	});
 
 	describe('save', () => {

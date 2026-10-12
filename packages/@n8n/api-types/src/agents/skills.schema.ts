@@ -98,6 +98,11 @@ export class ListSkillsQueryDto extends Z.class({
 	search: z.string().trim().max(200).optional(),
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
+	/**
+	 * The skills an agent of this project may attach: the project's skills and instance
+	 * skills, never "Just you" skills. Not combined with `scope` or `projectId`.
+	 */
+	attachableTo: z.string().max(36).optional(),
 }) {}
 
 export class CreateSkillDto extends Z.class({

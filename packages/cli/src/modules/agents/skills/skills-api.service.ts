@@ -41,6 +41,9 @@ export class SkillsApiService {
 	) {}
 
 	async list(user: User, query: ListSkillsQueryDto): Promise<SkillListResponse> {
+		if (query.attachableTo !== undefined && (query.scope || query.projectId)) {
+			throw new UserError('Filter by attachableTo alone, without scope or projectId.');
+		}
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		const { skills, count } = await this.skillRepository.findVisiblePage(
 			{
@@ -51,6 +54,7 @@ export class SkillsApiService {
 			{
 				scope: query.scope,
 				projectId: query.projectId,
+				attachableTo: query.attachableTo,
 				search: query.search,
 				skip: query.skip,
 				take: query.take,

@@ -124,6 +124,25 @@ describe('SkillsApiService', () => {
 			expect(result.count).toBe(3);
 		});
 
+		it('passes the project an agent attaches skills for', async () => {
+			await service.list(user, query({ attachableTo: 'project-1', search: 'voice' }));
+
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ attachableTo: 'project-1', search: 'voice' }),
+			);
+		});
+
+		it.each([{ scope: 'user' as const }, { projectId: 'project-1' }])(
+			'refuses attachableTo together with %o',
+			async (filter) => {
+				await expect(
+					service.list(user, query({ attachableTo: 'project-1', ...filter })),
+				).rejects.toThrow(UserError);
+				expect(repository.findVisiblePage).not.toHaveBeenCalled();
+			},
+		);
+
 		it('shapes only the page into list items, from summaries', async () => {
 			visible = [skill('skill_b')];
 			repository.findVisiblePage.mockResolvedValue({ skills: visible, count: 3 });

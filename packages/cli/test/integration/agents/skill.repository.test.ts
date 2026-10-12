@@ -247,6 +247,32 @@ describe('SkillRepository', () => {
 			expect(await page({ scope: 'user', projectId: project.id })).toEqual([]);
 		});
 
+		it('lists what an agent of one project may attach: its project skills and instance skills', async () => {
+			const instance = await createSkill();
+			await createSkill({ userId: user.id });
+			const team = await createSkill({ projectId: project.id });
+			await createSkill({ projectId: otherProject.id });
+
+			const attachable = async (visibility: { allUsers: boolean; projectIds: string[] | 'all' }) =>
+				ids(
+					await skills.findVisiblePage(
+						{ userId: user.id, ...visibility },
+						{ skip: 0, attachableTo: project.id },
+					),
+				).sort();
+
+			expect(await attachable({ allUsers: false, projectIds: [project.id] })).toEqual(
+				[instance, team].sort(),
+			);
+			expect(await attachable({ allUsers: true, projectIds: 'all' })).toEqual(
+				[instance, team].sort(),
+			);
+			// A user who may not list the project's skills gets only the instance skills.
+			expect(await attachable({ allUsers: false, projectIds: [otherProject.id] })).toEqual([
+				instance,
+			]);
+		});
+
 		it('searches the name and description of the latest version, before the page is cut', async () => {
 			const renamed = await createSkill({}, content({ name: 'Old name' }));
 			await skills.insertSavedVersion(renamed, 2, content({ name: 'Triage RULES' }), null);

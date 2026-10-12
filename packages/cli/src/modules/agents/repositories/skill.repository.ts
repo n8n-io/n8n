@@ -51,6 +51,8 @@ export type SkillVisibility = {
 export type SkillListFilter = {
 	scope?: 'user' | 'project' | 'instance';
 	projectId?: string;
+	/** Instance skills and the skills of this project: what its agents may attach. */
+	attachableTo?: string;
 	search?: string;
 	skip: number;
 	take?: number;
@@ -83,13 +85,20 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (!filter.scope || filter.scope === 'instance') {
 			branches.push('skill.userId IS NULL AND skill.projectId IS NULL');
 		}
-		if (!filter.scope || filter.scope === 'user') {
-			branches.push(visibility.allUsers ? 'skill.userId IS NOT NULL' : 'skill.userId = :userId');
-		}
-		if (!filter.scope || filter.scope === 'project') {
-			if (visibility.projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
-			else if (visibility.projectIds.length > 0) {
-				branches.push('skill.projectId IN (:...projectIds)');
+		if (filter.attachableTo !== undefined) {
+			const { projectIds } = visibility;
+			if (projectIds === 'all' || projectIds.includes(filter.attachableTo)) {
+				branches.push('skill.projectId = :attachableTo');
+			}
+		} else {
+			if (!filter.scope || filter.scope === 'user') {
+				branches.push(visibility.allUsers ? 'skill.userId IS NOT NULL' : 'skill.userId = :userId');
+			}
+			if (!filter.scope || filter.scope === 'project') {
+				if (visibility.projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
+				else if (visibility.projectIds.length > 0) {
+					branches.push('skill.projectId IN (:...projectIds)');
+				}
 			}
 		}
 		if (branches.length === 0) return { skills: [], count: 0 };
@@ -97,7 +106,11 @@ export class SkillRepository extends BaseRepository<Skill> {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(Skill, 'skill')
 			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
-			.setParameters({ userId: visibility.userId, projectIds: visibility.projectIds });
+			.setParameters({
+				userId: visibility.userId,
+				projectIds: visibility.projectIds,
+				...(filter.attachableTo !== undefined && { attachableTo: filter.attachableTo }),
+			});
 		if (filter.projectId)
 			query.andWhere('skill.projectId = :projectId', { projectId: filter.projectId });
 		if (filter.search) {
