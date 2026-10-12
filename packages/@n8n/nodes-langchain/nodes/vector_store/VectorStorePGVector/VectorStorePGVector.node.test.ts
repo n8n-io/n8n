@@ -4,19 +4,61 @@ import type pg from 'pg';
 
 import { escapeQualifiedSqlIdentifier, escapeSqlIdentifier } from '@utils/sqlIdentifier';
 
-// Keep the module import light: the node body calls createVectorStoreNode and
-// configurePostgres at load time, neither of which is needed to exercise the
-// ExtendedPGVectorStore identifier handling.
-vi.mock('@n8n/ai-utilities', () => ({
-	metadataFilterField: {},
-	createVectorStoreNode: () => class {},
-}));
+const mockState: {
+	lastInstance?: any;
+} = {};
+
+vi.mock('@langchain/community/vectorstores/pgvector', () => {
+	class PGVectorStore {
+		tableName: string;
+		schemaName: string | null = null;
+		collectionTableName?: string;
+		filter?: Record<string, unknown>;
+		pool?: pg.Pool;
+		client = { release: vi.fn() };
+		_initializeClient = vi.fn();
+		ensureTableInDatabase = vi.fn();
+		ensureCollectionTableInDatabase = vi.fn();
+		similaritySearchVectorWithScore = vi.fn();
+		addDocuments = vi.fn().mockResolvedValue(undefined);
+
+		constructor(_embeddings: unknown, args: Record<string, unknown> = {}) {
+			this.tableName = (args.tableName as string) ?? '';
+			this.schemaName = (args.schemaName as string) ?? null;
+			this.collectionTableName = args.collectionTableName as string | undefined;
+			this.filter = args.filter as Record<string, unknown> | undefined;
+			this.pool = args.pool as pg.Pool | undefined;
+			mockState.lastInstance = this;
+		}
+	}
+	return { PGVectorStore };
+});
 
 vi.mock('n8n-nodes-base/dist/nodes/Postgres/transport/index', () => ({
 	configurePostgres: vi.fn(),
 }));
 
-import { ExtendedPGVectorStore } from './VectorStorePGVector.node';
+vi.mock('@n8n/ai-utilities', () => ({
+	metadataFilterField: {},
+	createVectorStoreNode: (config: {
+		getVectorStoreClient: (...args: unknown[]) => unknown;
+		populateVectorStore: (...args: unknown[]) => unknown;
+	}) =>
+		class BaseNode {
+			async getVectorStoreClient(...args: unknown[]) {
+				return config.getVectorStoreClient.apply(config, args);
+			}
+			async populateVectorStore(...args: unknown[]) {
+				return config.populateVectorStore.apply(config, args);
+			}
+		},
+}));
+
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
+import type { MockedFunction } from 'vitest';
+import { ExtendedPGVectorStore, VectorStorePGVector } from './VectorStorePGVector.node';
+
+const MockConfigurePostgres = configurePostgres as MockedFunction<typeof configurePostgres>;
 
 const embeddings = {} as unknown as Embeddings;
 const node = { name: 'Postgres PGVector Store' } as unknown as INode;
@@ -117,6 +159,142 @@ describe('ExtendedPGVectorStore', () => {
 			await expect(store.similaritySearchVectorWithScore([0.1, 0.2], 4)).rejects.toThrow(
 				'Invalid metadata filter key',
 			);
+		});
+	});
+});
+
+const EXTENSION_SQL = 'CREATE EXTENSION IF NOT EXISTS vector';
+
+describe('VectorStorePGVector.node', () => {
+	const mockLogger = {
+		info: vi.fn(),
+		debug: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		verbose: vi.fn(),
+	};
+
+	const baseCredentials = {
+		host: 'localhost',
+		port: 5432,
+		database: 'test',
+		user: 'test',
+		password: 'test',
+	};
+
+	const mockClient = {
+		query: vi.fn().mockResolvedValue({ rows: [] }),
+		release: vi.fn(),
+	};
+	const mockPool = {
+		query: vi.fn().mockResolvedValue({ rows: [] }),
+		connect: vi.fn().mockResolvedValue(mockClient),
+	};
+
+	const defaultParams: Record<string, unknown> = {
+		tableName: 'n8n_vectors',
+		'options.collection.values': {},
+		'options.columnNames.values': {
+			idColumnName: 'id',
+			vectorColumnName: 'embedding',
+			contentColumnName: 'text',
+			metadataColumnName: 'metadata',
+		},
+		'options.distanceStrategy': 'cosine',
+		createExtension: false,
+	};
+
+	function makeContext(params: Record<string, unknown> = {}) {
+		return {
+			getCredentials: vi.fn().mockResolvedValue(baseCredentials),
+			getNodeParameter: vi.fn((name: string) => params[name]),
+			getNode: () => ({ name: 'VectorStorePGVector' }),
+			logger: mockLogger,
+		} as never;
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockClient.query.mockClear();
+		mockClient.release.mockClear();
+		mockPool.connect.mockClear();
+		MockConfigurePostgres.mockResolvedValue({ db: { $pool: mockPool } } as never);
+	});
+
+	describe('getVectorStoreClient', () => {
+		it('does not run CREATE EXTENSION when Create Extension is off', async () => {
+			const context = makeContext({ ...defaultParams, createExtension: false });
+			const nodeInstance = new VectorStorePGVector();
+			const vs = await (nodeInstance as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			expect(mockPool.connect).not.toHaveBeenCalled();
+			expect(mockClient.query).not.toHaveBeenCalled();
+			expect(vs._initializeClient).toHaveBeenCalled();
+			expect(vs.ensureTableInDatabase).toHaveBeenCalled();
+		});
+
+		it('runs CREATE EXTENSION before table creation when Create Extension is on', async () => {
+			const context = makeContext({ ...defaultParams, createExtension: true });
+			const nodeInstance = new VectorStorePGVector();
+			const vs = await (nodeInstance as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			expect(mockPool.connect).toHaveBeenCalledTimes(1);
+			const queries = mockClient.query.mock.calls.map((c: unknown[]) => c[0]);
+			expect(queries).toContain(EXTENSION_SQL);
+			expect(
+				queries.some((q: unknown) => typeof q === 'string' && q.includes('pg_advisory_xact_lock')),
+			).toBe(true);
+			expect(mockClient.release).toHaveBeenCalled();
+			// table creation runs after the extension is created
+			expect(vs.ensureTableInDatabase).toHaveBeenCalled();
+			const extensionCallOrder = mockClient.query.mock.invocationCallOrder[0];
+			const tableInitCallOrder = (vs.ensureTableInDatabase as any).mock.invocationCallOrder[0];
+			expect(extensionCallOrder).toBeLessThan(tableInitCallOrder);
+		});
+	});
+
+	describe('populateVectorStore', () => {
+		it('does not run CREATE EXTENSION when Create Extension is off', async () => {
+			const context = makeContext({ ...defaultParams, createExtension: false });
+			const nodeInstance = new VectorStorePGVector();
+			await (nodeInstance as any).populateVectorStore(
+				context,
+				{},
+				[{ pageContent: 'x', metadata: {} }],
+				0,
+			);
+
+			expect(mockPool.connect).not.toHaveBeenCalled();
+			expect(mockClient.query).not.toHaveBeenCalled();
+			expect(mockState.lastInstance.addDocuments).toHaveBeenCalled();
+		});
+
+		it('runs CREATE EXTENSION before table creation and document insert when Create Extension is on', async () => {
+			const context = makeContext({ ...defaultParams, createExtension: true });
+			const nodeInstance = new VectorStorePGVector();
+			await (nodeInstance as any).populateVectorStore(
+				context,
+				{},
+				[{ pageContent: 'x', metadata: {} }],
+				0,
+			);
+
+			expect(mockPool.connect).toHaveBeenCalledTimes(1);
+			const queries = mockClient.query.mock.calls.map((c: unknown[]) => c[0]);
+			expect(queries).toContain(EXTENSION_SQL);
+			expect(
+				queries.some((q: unknown) => typeof q === 'string' && q.includes('pg_advisory_xact_lock')),
+			).toBe(true);
+			expect(mockClient.release).toHaveBeenCalled();
+			expect(mockState.lastInstance.ensureTableInDatabase).toHaveBeenCalled();
+			expect(mockState.lastInstance.addDocuments).toHaveBeenCalled();
+			const extensionCallOrder = mockClient.query.mock.invocationCallOrder[0];
+			const tableInitCallOrder = (mockState.lastInstance.ensureTableInDatabase as any)
+				.mock.invocationCallOrder[0];
+			const addDocsCallOrder = (mockState.lastInstance.addDocuments as any).mock
+				.invocationCallOrder[0];
+			expect(extensionCallOrder).toBeLessThan(tableInitCallOrder);
+			expect(extensionCallOrder).toBeLessThan(addDocsCallOrder);
 		});
 	});
 });
