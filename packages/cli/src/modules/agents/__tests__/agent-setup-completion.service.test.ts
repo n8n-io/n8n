@@ -66,7 +66,7 @@ describe('AgentSetupCompletionService', () => {
 		it('uses the saved task bodies when the live draft has changed', async () => {
 			const { service, agentValidationService } = makeService();
 			const agent = makeAgent({
-				schema: { ...baseConfig, tasks: [{ type: 'task', id: 'task-1' }] },
+				schema: { ...baseConfig, tasks: [{ type: 'task', id: 'task-1', enabled: true }] },
 			});
 			const tasks = new Map([
 				['task-1', { name: 'Summary', objective: 'Summarize notes', cronExpression: '0 9 * * *' }],

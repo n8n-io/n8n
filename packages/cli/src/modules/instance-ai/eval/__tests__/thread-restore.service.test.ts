@@ -609,6 +609,12 @@ describe('EvalThreadRestoreService', () => {
 		const agentsService = mockInstance(AgentsService);
 		const moduleRegistry = mockInstance(ModuleRegistry);
 
+		const createdAgentConfig = () => {
+			const options = agentsService.create.mock.calls[0]?.[2];
+			if (!options || !('schema' in options)) throw new Error('Expected an Agent config');
+			return options.schema;
+		};
+
 		const seedAgent = (over: { id?: string; name?: string } = {}) => ({
 			id: over.id ?? 'agent-original',
 			config: {
@@ -669,9 +675,9 @@ describe('EvalThreadRestoreService', () => {
 				new Map([['dt-authored-01', 'dt-new-99']]),
 			);
 
-			const [, , options] = agentsService.create.mock.calls[0];
-			expect(JSON.stringify(options?.schema)).toContain('dt-new-99');
-			expect(JSON.stringify(options?.schema)).not.toContain('dt-authored-01');
+			const schema = createdAgentConfig();
+			expect(JSON.stringify(schema)).toContain('dt-new-99');
+			expect(JSON.stringify(schema)).not.toContain('dt-authored-01');
 		});
 
 		it('rewrites the longer id first when one table id prefixes another', async () => {
@@ -703,8 +709,7 @@ describe('EvalThreadRestoreService', () => {
 				]),
 			);
 
-			const [, , options] = agentsService.create.mock.calls[0];
-			const serialized = JSON.stringify(options?.schema);
+			const serialized = JSON.stringify(createdAgentConfig());
 			expect(serialized).toContain('SHORT-NEW');
 			expect(serialized).toContain('LONG-NEW');
 			expect(serialized).not.toContain('SHORT-NEW8');
@@ -715,8 +720,7 @@ describe('EvalThreadRestoreService', () => {
 
 			await service.restoreAgents([agent], 'project-1', evalUser);
 
-			const [, , options] = agentsService.create.mock.calls[0];
-			expect(options?.schema).toEqual(agent.config);
+			expect(createdAgentConfig()).toEqual(agent.config);
 		});
 
 		it('blanks credential ids, which address the instance the seed came from', async () => {
@@ -744,14 +748,14 @@ describe('EvalThreadRestoreService', () => {
 
 			await service.restoreAgents([{ ...agent, config }], 'project-1', evalUser);
 
-			const [, , options] = agentsService.create.mock.calls[0];
-			expect(options?.schema).toMatchObject({
+			const schema = createdAgentConfig();
+			expect(schema).toMatchObject({
 				credential: '',
 				vectorStores: [{ credential: '', embedding: { credential: '' } }],
 				integrations: [{ type: 'slack', credentialId: '' }],
 			});
 			// Everything else survives the blanking untouched.
-			expect(options?.schema).toMatchObject({
+			expect(schema).toMatchObject({
 				name: 'Support Triage',
 				instructions: 'Triage inbound tickets.',
 				vectorStores: [{ indexName: 'docs', name: 'docs' }],
@@ -795,8 +799,7 @@ describe('EvalThreadRestoreService', () => {
 					new Set(['cred-openai', 'cred-gemini']),
 				);
 
-				const [, , options] = agentsService.create.mock.calls[0];
-				expect(options?.schema).toMatchObject({
+				expect(createdAgentConfig()).toMatchObject({
 					credential: 'cred-openai',
 					subAgents: {
 						modelsByDifficulty: {
@@ -818,8 +821,7 @@ describe('EvalThreadRestoreService', () => {
 					new Set(['other']),
 				);
 
-				const [, , options] = agentsService.create.mock.calls[0];
-				expect(options?.schema).toMatchObject({ credential: '' });
+				expect(createdAgentConfig()).toMatchObject({ credential: '' });
 			});
 
 			it('keeps the blank under an empty allowlist, the pin of a case that declares none', async () => {
@@ -827,8 +829,7 @@ describe('EvalThreadRestoreService', () => {
 
 				await service.restoreAgents([openAiAgent()], 'project-1', evalUser, new Map(), new Set());
 
-				const [, , options] = agentsService.create.mock.calls[0];
-				expect(options?.schema).toMatchObject({ credential: '' });
+				expect(createdAgentConfig()).toMatchObject({ credential: '' });
 			});
 
 			it('keeps the blank when two credentials match, rather than picking one', async () => {
@@ -839,8 +840,7 @@ describe('EvalThreadRestoreService', () => {
 
 				await service.restoreAgents([openAiAgent()], 'project-1', evalUser);
 
-				const [, , options] = agentsService.create.mock.calls[0];
-				expect(options?.schema).toMatchObject({ credential: '' });
+				expect(createdAgentConfig()).toMatchObject({ credential: '' });
 			});
 
 			it('leaves a draft agent with no model unbound', async () => {
@@ -853,8 +853,7 @@ describe('EvalThreadRestoreService', () => {
 					evalUser,
 				);
 
-				const [, , options] = agentsService.create.mock.calls[0];
-				expect(options?.schema).not.toHaveProperty('credential');
+				expect(createdAgentConfig()).not.toHaveProperty('credential');
 				expect(credentialsRepo.findByTypesInProject).not.toHaveBeenCalled();
 			});
 		});
