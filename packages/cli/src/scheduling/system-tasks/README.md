@@ -4,8 +4,9 @@ A system task is background work that n8n runs on a schedule, such as a cleanup,
 a refresh or a report. No workflow owns it.
 
 Use a system task instead of `setInterval`, a cron library or
-`@OnLeaderTakeover`. The runner then handles leadership, shutdown, retries,
-metrics and tracing for you.
+`@OnLeaderTakeover`. The runner then handles leadership, shutdown, metrics and
+tracing for you. The scheduler also runs a failed occurrence again while
+attempts remain.
 
 ## Write one
 
