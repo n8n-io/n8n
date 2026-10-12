@@ -177,7 +177,7 @@ it.each([{ loading: true }, { loadingMore: true }, { hasMore: false }])(
 		expect(emitted('loadMore')).toBeUndefined();
 	},
 );
-it('rearms the Closed sentinel after a failed page and removes it on Open', async () => {
+it('waits for Retry after a failed Closed page and removes the sentinel on Open', async () => {
 	const closed = section('closed', { hasMore: true, items: [{ ...review(), state: 'closed' }] });
 	const { rerender, emitted } = renderComponent({
 		props: { activeTab: 'closed', sections: [closed] },
@@ -192,6 +192,10 @@ it('rearms the Closed sentinel after a failed page and removes it on Open', asyn
 	await rerender({
 		sections: [{ ...closed, error: new Error('Page failed') }],
 	});
+	expect(target).toHaveProperty('value', null);
+	intersect();
+	expect(emitted('loadMore')).toHaveLength(1);
+	await rerender({ sections: [closed] });
 	expect(target).not.toHaveProperty('value', null);
 	intersect();
 	expect(emitted('loadMore')).toHaveLength(2);

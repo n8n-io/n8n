@@ -48,7 +48,14 @@ const listRef = useTemplateRef<HTMLElement>('list');
 const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel');
 const canAutoLoad = computed(() => {
 	const closed = props.sections.find((section) => section.key === 'closed');
-	return props.activeTab === 'closed' && closed?.hasMore && !loading.value && !closed.loadingMore;
+	// A failed page waits for Retry. A visible sentinel would otherwise retry in a loop.
+	return (
+		props.activeTab === 'closed' &&
+		closed?.hasMore &&
+		!loading.value &&
+		!closed.loadingMore &&
+		!closed.error
+	);
 });
 useIntersectionObserver(
 	loadMoreSentinel,
