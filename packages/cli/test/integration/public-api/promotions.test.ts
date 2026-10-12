@@ -838,7 +838,7 @@ describe('Promotions in Public API', () => {
 		const payload = {
 			name: 'GitLab discovery',
 			type: 'gitlab',
-			auth: { authType: 'token', username: 'n8n', password: 'discovery-token' },
+			auth: { authType: 'token', password: 'discovery-token' },
 			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
 		};
 		const project = {

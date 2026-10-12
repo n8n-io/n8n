@@ -106,7 +106,6 @@ export class PromotionProvidersService {
 			client: this.gitHosts.clientFor(provider.type),
 			access: {
 				baseUrl: config.data.baseUrl,
-				username: credentials.username,
 				accessToken: credentials.password,
 			},
 		};

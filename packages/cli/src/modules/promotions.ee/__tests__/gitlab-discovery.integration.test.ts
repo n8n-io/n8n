@@ -35,7 +35,7 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		const created = await agent.post('/promotions/providers').send({
 			name: 'GitLab discovery verification',
 			type: 'gitlab',
-			auth: { authType: 'token', username: 'n8n', password: fixture.accessToken },
+			auth: { authType: 'token', password: fixture.accessToken },
 			config: { schemaVersion: 1, baseUrl },
 		});
 		expect(created.status, JSON.stringify(created.body)).toBe(201);
