@@ -1063,6 +1063,7 @@ export class AgentRuntime {
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
+			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
 			activeSkills: this.activeSkills,
 		});
@@ -1074,7 +1075,7 @@ export class AgentRuntime {
 			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
-			providerOptions: staticContext.providerOptions,
+			providerOptions: prompt.providerOptions,
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),

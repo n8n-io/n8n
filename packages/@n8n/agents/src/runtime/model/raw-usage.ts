@@ -1,7 +1,6 @@
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import { getProviderPrefix, isGoogleVertexAnthropicModel } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { isGoogleVertexAnthropicModel } from './google-vertex';
 import { type ProviderId } from './provider-credentials';
 import type { TokenUsage } from '../../types';
 

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import type { GoogleVertexProviderSettings } from '@ai-sdk/google-vertex';
-import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { isRecord } from '@n8n/utils/is-record';
 import type { LanguageModel } from 'ai';
@@ -36,15 +35,6 @@ export function resolveGoogleVertexSdk(model: string, sdk?: string): string | un
 		return '@ai-sdk/openai-compatible';
 	}
 	return undefined;
-}
-
-/** Identify Claude models that use the shared Vertex provider ID. */
-export function isGoogleVertexAnthropicModel(modelId: string): boolean {
-	const { provider, model } = splitModelId(modelId);
-	return (
-		provider === 'google-vertex' &&
-		resolveGoogleVertexSdk(model) === '@ai-sdk/google-vertex/anthropic'
-	);
 }
 
 /** Select the Vertex API for the model. */
