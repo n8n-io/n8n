@@ -507,20 +507,26 @@ describe('N8nDialog', () => {
 		describe('showCloseButton', () => {
 			it('should show close button by default', async () => {
 				const user = userEvent.setup();
-				const { getByTestId, getByLabelText } = renderDialog();
+				const { getByTestId, getByLabelText, getByRole } = renderDialog();
 
 				await user.click(getByTestId('dialog-trigger'));
 
 				expect(getByLabelText('Close dialog')).toBeInTheDocument();
+				const header = getByRole('dialog').querySelector('[data-slot="dialog-header"]');
+				expect(header).toHaveClass('headerWithClose');
 			});
 
 			it('should hide close button when showCloseButton is false', async () => {
 				const user = userEvent.setup();
-				const { getByTestId, queryByLabelText } = renderDialog({ showCloseButton: false });
+				const { getByTestId, queryByLabelText, getByRole } = renderDialog({
+					showCloseButton: false,
+				});
 
 				await user.click(getByTestId('dialog-trigger'));
 
 				expect(queryByLabelText('Close dialog')).not.toBeInTheDocument();
+				const header = getByRole('dialog').querySelector('[data-slot="dialog-header"]');
+				expect(header).not.toHaveClass('headerWithClose');
 			});
 		});
 
