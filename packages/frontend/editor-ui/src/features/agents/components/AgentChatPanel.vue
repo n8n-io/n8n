@@ -1626,6 +1626,7 @@ onBeforeUnmount(() => {
 				<ChatInputBase
 					ref="chatInput"
 					v-model="inputText"
+					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
 					:is-streaming="false"
 					:show-stop-button="showStop"
