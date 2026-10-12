@@ -39,6 +39,7 @@ import type {
 } from './agent-runtime-instrumentation';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
@@ -50,10 +51,10 @@ import {
 } from './agent-telemetry';
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
-import type { Agent } from './entities/agent.entity';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
 import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
+import { fromAgentDocument, toAgentDocument } from './json-config/agent-document';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
@@ -61,7 +62,7 @@ import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource, type AgentRunSource } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
@@ -185,6 +186,7 @@ export class AgentWorkflowExecutionService {
 		private readonly aiConfig: AiConfig,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -245,7 +247,7 @@ export class AgentWorkflowExecutionService {
 	 * are not affected.
 	 */
 	async compileIsolated(
-		agentEntity: Agent,
+		runSource: AgentRunSource,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
@@ -253,7 +255,7 @@ export class AgentWorkflowExecutionService {
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		instrumentation?: AgentRuntimeInstrumentation,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; budget?: BudgetGuardrailConfig; error?: string }> {
-		if (!agentEntity.schema) {
+		if (!runSource.agent.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
 
@@ -266,7 +268,7 @@ export class AgentWorkflowExecutionService {
 			// runtime also isn't cached (see the docstring above), so there's no
 			// cache-key concern here either — just no per-user tool filtering.
 			const reconstructed = await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-				agentEntity,
+				runSource,
 				credentialProvider,
 				runType,
 				undefined,
@@ -695,9 +697,14 @@ export class AgentWorkflowExecutionService {
 		} = params;
 		// Keep the original intent if deletion happens during preparation.
 		const sessionMode = await this.turnExecutionService.getSessionMode(threadId);
-		const { agentData, credentialProvider } = await this.loadWorkflowAgent(params);
-		const instrumentation = await this.applyEvalSetup(agentData, prepareForEval);
-		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
+		const loaded = await this.loadWorkflowAgent(params);
+		const { credentialProvider } = loaded;
+		const { runSource, instrumentation } = await this.applyEvalSetup(
+			loaded.runSource,
+			prepareForEval,
+		);
+		const agentData = runSource.agent;
+		const telemetryConfiguration = buildAgentConfigurationTelemetry(runSource);
 		const runType: AgentRunTelemetryType = useDraftVersion ? 'test' : 'production';
 
 		const recordingParams: StartExecutionParams = {
@@ -715,7 +722,7 @@ export class AgentWorkflowExecutionService {
 
 		const extraTools = this.buildWorkflowExtraTools(workflowContext);
 		const compiled = await this.compileIsolated(
-			agentData,
+			runSource,
 			credentialProvider,
 			runType,
 			outputSchema,
@@ -747,23 +754,30 @@ export class AgentWorkflowExecutionService {
 			agentId,
 		);
 
-		let agentData: Agent = agentEntity;
-
-		if (!useDraftVersion) {
-			agentData = getPublishedAgentSnapshot(agentEntity);
-		}
-		return { agentData, credentialProvider };
+		const runSource = await resolveAgentRunSource(
+			agentEntity,
+			!useDraftVersion,
+			this.agentSkillRefs,
+			{},
+		);
+		return { runSource, credentialProvider };
 	}
 
 	/** Chat integrations post through chat SDKs, which an eval cannot fake, so eval runs drop them. */
-	private async applyEvalSetup(agent: Agent, prepareForEval?: PrepareWorkflowAgentForEval) {
-		if (!prepareForEval || !agent.schema) return undefined;
-		const { config, instrumentation } = await prepareForEval(agent.schema, {
-			hasChatIntegrations: (agent.integrations ?? []).length > 0,
-		});
-		agent.schema = config;
+	private async applyEvalSetup(
+		runSource: AgentRunSource,
+		prepareForEval?: PrepareWorkflowAgentForEval,
+	): Promise<{ runSource: AgentRunSource; instrumentation?: AgentRuntimeInstrumentation }> {
+		const { agent } = runSource;
+		if (!prepareForEval || !agent.schema) return { runSource };
+		const { config, instrumentation } = await prepareForEval(
+			toAgentDocument(agent.schema, runSource.skillRefs),
+			{ hasChatIntegrations: (agent.integrations ?? []).length > 0 },
+		);
+		const prepared = fromAgentDocument(config);
+		agent.schema = prepared.config;
 		agent.integrations = [];
-		return instrumentation;
+		return { runSource: { agent, skillRefs: prepared.skillRefs }, instrumentation };
 	}
 
 	private async streamCompiledWorkflowAgent(
