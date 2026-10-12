@@ -15,6 +15,7 @@ const whatsApp = (settings?: Record<string, unknown>) =>
 describe('AgentChannelMediaRetentionTask', () => {
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
 	let attachmentService: ReturnType<typeof mock<AgentChatAttachmentService>>;
+	let logger: ReturnType<typeof mock<Logger>>;
 	let task: AgentChannelMediaRetentionTask;
 
 	beforeEach(() => {
@@ -22,7 +23,8 @@ describe('AgentChannelMediaRetentionTask', () => {
 		agentRepository = mock<AgentRepository>();
 		attachmentService = mock<AgentChatAttachmentService>();
 		attachmentService.deleteFromSourceCreatedBefore.mockResolvedValue(0);
-		task = new AgentChannelMediaRetentionTask(agentRepository, attachmentService, mock<Logger>());
+		logger = mock<Logger>();
+		task = new AgentChannelMediaRetentionTask(agentRepository, attachmentService, logger);
 	});
 
 	afterEach(() => {
@@ -107,5 +109,32 @@ describe('AgentChannelMediaRetentionTask', () => {
 		await task.run();
 
 		expect(attachmentService.deleteFromSourceCreatedBefore).not.toHaveBeenCalled();
+	});
+
+	it('skips an agent whose integrations are null', async () => {
+		agentRepository.findWithIntegrationType.mockResolvedValue([
+			{ id: 'agent-1', integrations: null } as never,
+		]);
+
+		await task.run();
+
+		expect(attachmentService.deleteFromSourceCreatedBefore).not.toHaveBeenCalled();
+	});
+
+	it('logs the count only when it deletes media', async () => {
+		agentRepository.findWithIntegrationType.mockResolvedValue([
+			{ id: 'agent-1', integrations: [whatsApp()] },
+			{ id: 'agent-2', integrations: [whatsApp()] },
+		]);
+		attachmentService.deleteFromSourceCreatedBefore
+			.mockResolvedValueOnce(4)
+			.mockResolvedValueOnce(0);
+
+		await task.run();
+
+		expect(logger.debug).toHaveBeenCalledExactlyOnceWith(expect.any(String), {
+			agentId: 'agent-1',
+			deleted: 4,
+		});
 	});
 });

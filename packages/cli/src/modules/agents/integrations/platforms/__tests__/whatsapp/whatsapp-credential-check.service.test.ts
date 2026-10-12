@@ -205,6 +205,12 @@ describe('WhatsAppCredentialCheckService', () => {
 		expect(await check()).toEqual({ status: 'failed', reason: 'mismatch' });
 	});
 
+	it('reports a mismatch when the business account response lists no phone numbers', async () => {
+		replies.phoneNumbers = async () => ok({});
+
+		expect(await check()).toEqual({ status: 'failed', reason: 'mismatch' });
+	});
+
 	it('reports a mismatch when Meta refuses the business account request', async () => {
 		replies.phoneNumbers = async () => ({ statusCode: 403, body: { error: { code: 200 } } });
 
