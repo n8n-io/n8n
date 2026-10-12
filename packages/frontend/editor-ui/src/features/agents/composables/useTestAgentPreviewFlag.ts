@@ -1,20 +1,16 @@
 import { computed } from 'vue';
 
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { TEST_AGENT_PREVIEW_FLAG } from '../constants';
 
 export function useTestAgentPreviewFlag() {
-	const posthogStore = usePostHog();
+	const isAgentEvalsEnabled = useAgentEvalsFlag();
 	const settingsStore = useSettingsStore();
 
-	// `N8N_FORCE_AGENT_WORTH_TESTING` also enables the preview, so a local/QA
-	// environment gets the full preview flow from one flag instead of also
-	// needing a PostHog override.
+	// The preview shares the main eval rollout. Keep the existing QA override;
+	// it does not bypass the main eval access gate.
 	const isFeatureEnabled = computed(
-		() =>
-			settingsStore.settings.evaluation?.forceAgentWorthTesting ||
-			posthogStore.isFeatureEnabled(TEST_AGENT_PREVIEW_FLAG),
+		() => settingsStore.settings.evaluation?.forceAgentWorthTesting || isAgentEvalsEnabled.value,
 	);
 
 	return { isFeatureEnabled };

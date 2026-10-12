@@ -295,7 +295,7 @@ describe('AgentEvalsSection', () => {
 		expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'd1');
 	});
 
-	describe("the experiment's empty-state preview", () => {
+	describe('the eval rollout empty-state preview', () => {
 		beforeEach(() => {
 			isFeatureEnabled.value = true;
 		});
