@@ -205,6 +205,7 @@ function onMenuSelect(id: string) {
 					</N8nDropdownMenu>
 					<N8nDropdownMenu
 						v-if="!props.artifactMode && menuItems.length > 0"
+						:key="String(props.editingLocked)"
 						:items="menuItems"
 						placement="bottom-start"
 						:extra-popper-class="$style.headerActionsMenu"

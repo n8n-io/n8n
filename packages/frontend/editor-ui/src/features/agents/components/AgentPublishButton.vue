@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
+import { useAgentEditing } from '../composables/useAgentEditing';
 import type { AgentResource } from '../types';
 import { hasBlockingIssues } from '../utils/validationIssues';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const { isEditingLocked } = useAgentEditing();
 const { publish, unpublish, revertToPublished, publishing } = useAgentPublish();
 
 type AgentPublishState = 'not-published' | 'published-no-changes' | 'published-with-changes';
@@ -206,6 +208,7 @@ async function onDropdownSelect(action: string) {
 			</N8nButton>
 		</AgentValidationTooltip>
 		<N8nActionDropdown
+			:key="String(isEditingLocked)"
 			:items="dropdownActions"
 			placement="bottom-end"
 			data-testid="agent-publish-dropdown"

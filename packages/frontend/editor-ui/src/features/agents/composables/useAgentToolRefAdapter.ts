@@ -152,6 +152,12 @@ export function getExistingToolNames(
 		.map((t) => (t as Extract<AgentJsonToolRef, { type: 'workflow' | 'node' }>).name!);
 }
 
+export function isSameAgentTool(tool: AgentJsonToolRef, target: AgentJsonToolRef): boolean {
+	if (target.type === 'custom') return tool.type === 'custom' && tool.id === target.id;
+	if (target.type === 'node') return tool.type === 'node' && tool.name === target.name;
+	return tool.type === 'workflow' && tool.workflow === target.workflow && tool.name === target.name;
+}
+
 export function getExistingMcpServerNames(
 	mcpServers: AgentJsonMcpServerConfig[],
 	exclude?: AgentJsonMcpServerConfig,

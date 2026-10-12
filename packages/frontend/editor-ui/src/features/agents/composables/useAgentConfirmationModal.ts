@@ -1,3 +1,4 @@
+import { useAgentEditing, type AgentEditingContext } from './useAgentEditing';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_CONFIRMATION_MODAL_KEY } from '../constants';
@@ -10,8 +11,9 @@ type AgentConfirmationModalOptions = Omit<
 	'onConfirm' | 'onCancel' | 'onClose'
 >;
 
-export function useAgentConfirmationModal() {
+export function useAgentConfirmationModal(context?: AgentEditingContext) {
 	const uiStore = useUIStore();
+	const { editing } = useAgentEditing(context);
 
 	async function openAgentConfirmationModal(
 		options: AgentConfirmationModalOptions,
@@ -21,6 +23,7 @@ export function useAgentConfirmationModal() {
 				name: AGENT_CONFIRMATION_MODAL_KEY,
 				data: {
 					...options,
+					editing,
 					onConfirm: () => {
 						resolve(MODAL_CONFIRM);
 					},

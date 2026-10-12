@@ -15,6 +15,8 @@ import { useI18n } from '@n8n/i18n';
 import { FocusScope } from 'reka-ui';
 import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
 import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
+import { useAgentEditing } from '../../composables/useAgentEditing';
+import AgentEditingOverlay from '../AgentEditingOverlay.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -62,6 +64,7 @@ const emit = defineEmits<{
 
 const slots = useSlots();
 const i18n = useI18n();
+const { editing, isEditingLocked } = useAgentEditing();
 const body = useTemplateRef<HTMLElement>('body');
 const parameterDialogs = ref(new Set<string>());
 provide(ParameterInputModalContextKey, { openDialogs: parameterDialogs, appendTo: 'body' });
@@ -69,7 +72,13 @@ const trapFocus = computed(() => props.trapFocus && parameterDialogs.value.size 
 const hasFooter = computed(
 	() =>
 		props.showFooter ??
-		Boolean(slots.footer || slots.footerLeft || slots.footerBeforeCancel || slots.footerActions),
+		Boolean(
+			slots.footer ||
+				slots.footerLeft ||
+				slots.footerBeforeCancel ||
+				slots.footerCancel ||
+				slots.footerActions,
+		),
 );
 const dismissalBlocked = computed(() => props.busy || !trapFocus.value);
 
@@ -83,7 +92,11 @@ function close() {
 }
 
 function onBack() {
-	if (!dismissalBlocked.value) emit('back');
+	if (!dismissalBlocked.value && !isEditingLocked.value) emit('back');
+}
+
+function onTitleUpdate(title: string) {
+	if (!isEditingLocked.value) emit('update:title', title);
 }
 
 function onEscapeKeyDown(event: KeyboardEvent) {
@@ -98,6 +111,7 @@ function onInteractOutside(event: Event) {
 }
 
 function onOpenAutoFocus(event: Event) {
+	if (isEditingLocked.value) return;
 	const autofocusTarget =
 		body.value?.querySelector<HTMLElement>(
 			'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
@@ -131,7 +145,7 @@ function onOpenAutoFocus(event: Event) {
 					icon="arrow-left"
 					variant="ghost"
 					size="small"
-					:disabled="dismissalBlocked"
+					:disabled="dismissalBlocked || isEditingLocked"
 					:class="$style.backButton"
 					:aria-label="i18n.baseText('generic.back')"
 					data-testid="agent-modal-back"
@@ -139,16 +153,16 @@ function onOpenAutoFocus(event: Event) {
 				/>
 
 				<N8nDialogTitle as-child>
-					<div :class="$style.titleGroup">
+					<div :class="$style.titleGroup" :inert="isEditingLocked || undefined">
 						<N8nInlineTextEdit
 							v-if="props.editableTitle"
 							:model-value="props.title"
 							:max-length="props.titleMaxLength"
 							:max-width="'100%'"
 							:placeholder="props.titlePlaceholder"
-							:disabled="props.busy"
+							:disabled="props.busy || isEditingLocked"
 							:class="$style.editableTitle"
-							@update:model-value="emit('update:title', $event)"
+							@update:model-value="onTitleUpdate"
 						/>
 						<span v-else :class="$style.title">{{ props.title }}</span>
 						<N8nIcon
@@ -161,7 +175,11 @@ function onOpenAutoFocus(event: Event) {
 					</div>
 				</N8nDialogTitle>
 
-				<div v-if="$slots.headerActions" :class="$style.headerActions">
+				<div
+					v-if="$slots.headerActions"
+					:class="$style.headerActions"
+					:inert="isEditingLocked || undefined"
+				>
 					<slot name="headerActions" />
 				</div>
 
@@ -190,36 +208,59 @@ function onOpenAutoFocus(event: Event) {
 			<span hidden aria-hidden="true" />
 		</FocusScope>
 
-		<div
-			ref="body"
-			:class="[
-				$style.body,
-				!props.bodyScrollable && $style.bodyNotScrollable,
-				props.bodyFlush && $style.bodyFlush,
-			]"
-			data-testid="agent-modal-body"
-		>
-			<slot />
+		<div :class="$style.bodyArea">
+			<fieldset
+				ref="body"
+				:disabled="isEditingLocked"
+				:inert="isEditingLocked || undefined"
+				:class="[
+					$style.body,
+					!props.bodyScrollable && $style.bodyNotScrollable,
+					props.bodyFlush && $style.bodyFlush,
+				]"
+				data-testid="agent-modal-body"
+			>
+				<slot />
+			</fieldset>
+			<AgentEditingOverlay v-if="editing?.assistantBuilding" :editing="editing" />
 		</div>
 
 		<N8nDialogFooter v-if="hasFooter" :class="$style.footer">
 			<slot name="footer">
 				<div :class="$style.footerLayout">
-					<div :class="$style.footerLeft">
+					<fieldset
+						:class="$style.footerLeft"
+						:disabled="isEditingLocked"
+						:inert="isEditingLocked || undefined"
+					>
 						<slot name="footerLeft" />
-					</div>
+					</fieldset>
 					<div :class="$style.footerActions" data-testid="agent-modal-footer-actions">
-						<slot name="footerBeforeCancel" />
-						<N8nButton
-							v-if="props.showCancel"
-							variant="outline"
-							:disabled="dismissalBlocked"
-							data-testid="agent-modal-cancel"
-							@click="close"
+						<fieldset
+							:class="$style.lockableActions"
+							:disabled="isEditingLocked"
+							:inert="isEditingLocked || undefined"
 						>
-							{{ i18n.baseText('generic.cancel') }}
-						</N8nButton>
-						<slot name="footerActions" />
+							<slot name="footerBeforeCancel" />
+						</fieldset>
+						<slot name="footerCancel">
+							<N8nButton
+								v-if="props.showCancel"
+								variant="outline"
+								:disabled="dismissalBlocked"
+								data-testid="agent-modal-cancel"
+								@click="close"
+							>
+								{{ i18n.baseText('generic.cancel') }}
+							</N8nButton>
+						</slot>
+						<fieldset
+							:class="$style.lockableActions"
+							:disabled="isEditingLocked"
+							:inert="isEditingLocked || undefined"
+						>
+							<slot name="footerActions" />
+						</fieldset>
 					</div>
 				</div>
 			</slot>
@@ -307,8 +348,16 @@ function onOpenAutoFocus(event: Event) {
 	margin-left: auto;
 }
 
+.bodyArea {
+	position: relative;
+	min-height: 0;
+}
+
 .body {
 	box-sizing: border-box;
+	border: 0;
+	min-width: 0;
+	margin-block: 0;
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
@@ -344,6 +393,17 @@ function onOpenAutoFocus(event: Event) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.footerLeft {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	min-width: 0;
+}
+
+.lockableActions {
+	display: contents;
 }
 
 .footerActions {

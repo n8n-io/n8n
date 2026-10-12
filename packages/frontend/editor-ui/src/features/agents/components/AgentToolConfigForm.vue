@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 import {
@@ -58,7 +59,9 @@ interface McpServerModalData {
 	onRemove?: () => void;
 }
 
-export type AgentToolConfigModalData = ToolModalData | McpServerModalData;
+export type AgentToolConfigModalData = (ToolModalData | McpServerModalData) & {
+	editing?: AgentEditingContext;
+};
 
 const props = defineProps<{
 	data: AgentToolConfigModalData;
@@ -70,6 +73,7 @@ const emit = defineEmits<{
 	'update:restricted': [restricted: boolean];
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -251,6 +255,7 @@ function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerCo
 }
 
 function confirm(): boolean {
+	if (isEditingLocked.value) return false;
 	submitCount.value += 1;
 	if (!canSave.value) return false;
 
@@ -296,11 +301,12 @@ function confirm(): boolean {
 }
 
 function remove() {
+	if (isEditingLocked.value) return;
 	props.data.onRemove?.();
 }
 
 function changeTitle(name: string) {
-	if (isCustomTool.value) return;
+	if (isEditingLocked.value || isCustomTool.value) return;
 	if (isMcpTool.value) mcpContentRef.value?.handleChangeName(name);
 	else if (isWorkflowTool.value) workflowContentRef.value?.handleChangeName(name);
 	else nodeContentRef.value?.handleChangeName(name);
@@ -356,7 +362,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:initial-node="initialNode"
 				:existing-tool-names="data.existingToolNames"
 				:project-id="data.projectId"
-				:read-only="isRestricted"
+				:read-only="isRestricted || isEditingLocked"
 				content-test-id="agent-tool-config-mcp-content"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
@@ -370,7 +376,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:project-id="data.projectId"
 				:from-ai-disabled-parameters="fromAiDisabledParameters"
 				:parameter-issues="nodeParameterIssues"
-				:read-only="isRestricted"
+				:read-only="isRestricted || isEditingLocked"
 				content-test-id="node-tool-settings-content"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"

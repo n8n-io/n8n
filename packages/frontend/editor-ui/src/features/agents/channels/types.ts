@@ -10,6 +10,7 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import type { Component, Ref, VNode } from 'vue';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
+import type { AgentEditingContext } from '../composables/useAgentEditing';
 
 export type AgentChannelMode = 'setup' | 'edit';
 export type AgentChannelView = 'list' | `${string}_${AgentChannelMode}`;
@@ -34,6 +35,7 @@ export interface AgentChannelViewExpose {
 }
 
 export interface AgentChannelRuntimeContext {
+	editing?: AgentEditingContext;
 	projectId: Ref<string>;
 	agentId: Ref<string>;
 	selectedCredentialId: Ref<string>;

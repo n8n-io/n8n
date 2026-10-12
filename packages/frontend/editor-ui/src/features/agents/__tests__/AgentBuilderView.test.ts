@@ -53,6 +53,14 @@ const pushListeners = new Set<(event: PushMessage) => void>();
 const handoffMock = vi.fn();
 const setPrefillMock = vi.fn();
 const submitSuggestionMock = vi.fn();
+const stopAssistantMock = vi.fn();
+const agentPermissionsMock = {
+	canCreate: ref(true),
+	canUpdate: ref(true),
+	canDelete: ref(false),
+	canPublish: ref(true),
+	canUnpublish: ref(true),
+};
 const clearBudgetStopsMock = vi.fn();
 const trackMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -63,19 +71,11 @@ const {
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
 	setCredentialsMock,
-	agentPermissionsMock,
 } = vi.hoisted(() => ({
 	fetchUsableCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
 	setCredentialsMock: vi.fn(),
-	agentPermissionsMock: {
-		canCreate: { value: true },
-		canUpdate: { value: true },
-		canDelete: { value: false },
-		canPublish: { value: true },
-		canUnpublish: { value: true },
-	},
 }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -685,11 +685,8 @@ const commonStubs = {
 			handoff: handoffMock,
 			setPrefill: setPrefillMock,
 			submitSuggestion: submitSuggestionMock,
+			stop: stopAssistantMock,
 		},
-	},
-	AgentBuildingIndicator: {
-		name: 'AgentBuildingIndicator',
-		template: '<div data-testid="stub-agent-building-indicator" />',
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, credentials, sessions list)
@@ -794,6 +791,8 @@ function mockPendingAgentRow(...pendingIds: string[]) {
 
 function resetViewMocks() {
 	vi.clearAllMocks();
+	agentPermissionsMock.canCreate.value = true;
+	agentPermissionsMock.canUpdate.value = true;
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
 		if (
@@ -870,6 +869,7 @@ function resetViewMocks() {
 	showMessageMock.mockReset();
 	handoffMock.mockReset();
 	setPrefillMock.mockReset();
+	stopAssistantMock.mockReset().mockResolvedValue(true);
 	submitSuggestionMock.mockReset();
 	createAgentTaskMock.mockReset();
 	createAgentTaskMock.mockResolvedValue({ id: 'task-1' });
@@ -1070,20 +1070,20 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		it('locks editing while the write runs, then reloads the config', async () => {
 			const { editor, runConfigWrite } = await renderWithConfigWrite();
-			expect(editor.props('canEditAgent')).toBe(true);
+			expect(editor.props('editingLocked')).toBe(false);
 			const gate = Promise.withResolvers<string>();
 
 			const run = runConfigWrite(async () => await gate.promise);
 			await flushPromises();
 
-			expect(editor.props('canEditAgent')).toBe(false);
+			expect(editor.props('editingLocked')).toBe(true);
 			expect(fetchConfigMock).not.toHaveBeenCalled();
 
 			gate.resolve('done');
 			await expect(run).resolves.toBe('done');
 
 			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
-			expect(editor.props('canEditAgent')).toBe(true);
+			expect(editor.props('editingLocked')).toBe(false);
 		});
 
 		it('still reloads the config and unlocks when the write throws after the server saved', async () => {
@@ -1096,7 +1096,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			).rejects.toThrow('rerun failed');
 
 			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
-			expect(editor.props('canEditAgent')).toBe(true);
+			expect(editor.props('editingLocked')).toBe(false);
 		});
 
 		it('unlocks even when reloading the config fails', async () => {
@@ -1105,7 +1105,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 			await expect(runConfigWrite(async () => 'ok')).resolves.toBe('ok');
 
-			expect(editor.props('canEditAgent')).toBe(true);
+			expect(editor.props('editingLocked')).toBe(false);
 		});
 	});
 
@@ -4101,16 +4101,116 @@ describe('AgentBuilderView — three-column shell', () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
-		expect(editor.props('canEditAgent')).toBe(true);
-		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
+		const memory = wrapper.getComponent({ name: 'AgentMemoryPanel' });
+		const originalName = editor.props('localConfig').name;
+		updateConfigMock.mockClear();
+		expect(editor.props('editingLocked')).toBe(false);
+		expect(wrapper.find('[data-testid="agent-editing-overlay"]').exists()).toBe(false);
 
 		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
-		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
-		expect(editor.props('canEditAgent')).toBe(false);
+		expect(wrapper.find('[data-testid="agent-editing-overlay"]').exists()).toBe(true);
+		expect(editor.props('editingLocked')).toBe(true);
+		expect(editor.props('canEditAgent')).toBe(true);
+		expect(wrapper.getComponent({ name: 'AgentMemoryPanel' }).vm).toBe(memory.vm);
+		expect(memory.props('disabled')).toBe(true);
+		editor.vm.$emit('update:config', { name: 'Blocked edit' });
+		await flushPromises();
+		expect(editor.props('localConfig').name).toBe(originalName);
+		expect(updateConfigMock).not.toHaveBeenCalled();
 
 		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
-		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
-		expect(editor.props('canEditAgent')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-editing-overlay"]').exists()).toBe(false);
+		expect(editor.props('editingLocked')).toBe(false);
+		expect(memory.props('disabled')).toBe(false);
+		editor.vm.$emit('update:config', { name: 'Allowed edit' });
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+	});
+
+	it('retries a failed take over and waits for build completion after cancellation succeeds', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		await wrapper.get('[data-testid="ai-panel-emit-building"]').trigger('click');
+		const takeOver = wrapper.get('[data-testid="agent-editing-take-over"]');
+		const cancellation = Promise.withResolvers<boolean>();
+		stopAssistantMock.mockReturnValueOnce(cancellation.promise);
+		await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+		expect(wrapper.get('[data-testid="agent-ai-dock"]').isVisible()).toBe(false);
+		expect(editor.props('editingLocked')).toBe(true);
+
+		await takeOver.trigger('click');
+		await takeOver.trigger('click');
+		expect(stopAssistantMock).toHaveBeenCalledTimes(1);
+		expect(takeOver.attributes('disabled')).toBeDefined();
+
+		cancellation.resolve(false);
+		await flushPromises();
+		expect(editor.props('editingLocked')).toBe(true);
+		expect(takeOver.attributes('disabled')).toBeUndefined();
+
+		await takeOver.trigger('click');
+		await flushPromises();
+		expect(stopAssistantMock).toHaveBeenCalledTimes(2);
+		expect(takeOver.attributes('disabled')).toBeDefined();
+		expect(editor.props('editingLocked')).toBe(true);
+
+		await wrapper.get('[data-testid="ai-panel-stop-building"]').trigger('click');
+		expect(wrapper.find('[data-testid="agent-editing-overlay"]').exists()).toBe(false);
+		expect(editor.props('editingLocked')).toBe(false);
+	});
+
+	it.each(['agent', 'thread'])(
+		'ignores an old cancellation result after the %s changes',
+		async (target) => {
+			history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			const wrapper = await renderView();
+			await wrapper.get('[data-testid="ai-panel-emit-building"]').trigger('click');
+			const oldCancellation = Promise.withResolvers<boolean>();
+			stopAssistantMock.mockReturnValueOnce(oldCancellation.promise);
+			await wrapper.get('[data-testid="agent-editing-take-over"]').trigger('click');
+
+			if (target === 'agent') routeParams.agentId = 'a2';
+			else routeQuery.assistantThread = 'thread-new';
+			await flushPromises();
+			if (target === 'agent') {
+				await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			}
+			await wrapper.get('[data-testid="ai-panel-emit-building"]').trigger('click');
+			await wrapper.get('[data-testid="agent-editing-take-over"]').trigger('click');
+			await flushPromises();
+
+			oldCancellation.resolve(false);
+			await flushPromises();
+			expect(stopAssistantMock).toHaveBeenCalledTimes(2);
+			expect(
+				wrapper.get('[data-testid="agent-editing-take-over"]').attributes('disabled'),
+			).toBeDefined();
+			expect(
+				wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('editingLocked'),
+			).toBe(true);
+		},
+	);
+
+	it('keeps permission and collaboration restrictions after Assistant completion', async () => {
+		const wrapper = await renderView();
+		await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		await wrapper.get('[data-testid="ai-panel-emit-building"]').trigger('click');
+		await wrapper.get('[data-testid="agent-editing-take-over"]').trigger('click');
+		await flushPromises();
+		agentPermissionsMock.canUpdate.value = false;
+		agentPermissionsMock.canCreate.value = false;
+		for (const listener of pushListeners) {
+			listener({
+				type: 'writeAccessAcquired',
+				data: { agentId: 'a1', userId: 'user-2', clientId: 'tab-2' },
+			});
+		}
+		await wrapper.get('[data-testid="ai-panel-stop-building"]').trigger('click');
+
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('canEditAgent')).toBe(false);
+		expect(editor.props('editingLocked')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-editing-overlay"]').exists()).toBe(false);
 	});
 
 	it('writes the panel thread id to the assistantThread query param', async () => {
@@ -5804,8 +5904,8 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 
 		// Editing is disabled via effectiveCanEditAgent → isEditingLocked.
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
-			false,
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('editingLocked')).toBe(
+			true,
 		);
 
 		wrapper.unmount();
@@ -5839,8 +5939,8 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		// No lock held by anyone — the tab is writable (lazy acquisition).
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
-			true,
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('editingLocked')).toBe(
+			false,
 		);
 
 		// Another client acquires the lock (takeover).
@@ -5858,8 +5958,8 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		// The banner appears and editing is disabled.
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
-			false,
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('editingLocked')).toBe(
+			true,
 		);
 
 		wrapper.unmount();
@@ -5885,7 +5985,7 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		});
 		// …but the round-trip must not disable the editor or cancel the
 		// autosave the same edit scheduled.
-		expect(editor.props('canEditAgent')).toBe(true);
+		expect(editor.props('editingLocked')).toBe(false);
 		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
 		// Once acknowledged, this tab is the writer and stays editable.
@@ -5896,7 +5996,7 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		for (const listener of pushListeners) listener(acquired);
 		await flushPromises();
 		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
-		expect(editor.props('canEditAgent')).toBe(true);
+		expect(editor.props('editingLocked')).toBe(false);
 
 		wrapper.unmount();
 	});

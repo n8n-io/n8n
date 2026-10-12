@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useSlackChannelRuntime } from './useSlackChannelRuntime';
+import type { AgentEditingContext } from '../../composables/useAgentEditing';
 
 const mocks = vi.hoisted(() => ({
 	getSetup: vi.fn(),
@@ -55,8 +56,10 @@ function createRuntime(
 	selectedCredentialId = '',
 	credentialModalOpen = ref(false),
 	ensureAgentPersisted = vi.fn().mockResolvedValue(undefined),
+	editing?: AgentEditingContext,
 ) {
 	return useSlackChannelRuntime({
+		editing,
 		projectId: ref('project-1'),
 		agentId: ref('agent-1'),
 		selectedCredentialId: ref(selectedCredentialId),
@@ -228,6 +231,34 @@ describe('useSlackChannelRuntime', () => {
 		);
 		expect(mocks.getSetup).toHaveBeenCalled();
 		expect(onConnected).toHaveBeenCalledOnce();
+	});
+
+	it('blocks installation when editing locks during preparation and allows a retry', async () => {
+		const prepared = Promise.withResolvers<void>();
+		const editing = {
+			locked: false,
+			assistantBuilding: false,
+			takingOver: false,
+			takeOver: vi.fn(),
+		};
+		const onConnected = vi.fn();
+		const runtime = createRuntime(
+			'',
+			ref(false),
+			vi.fn(() => prepared.promise),
+			editing,
+		);
+		const installing = runtime.installManagedApp('manager', 'T1', onConnected);
+
+		editing.locked = true;
+		prepared.resolve();
+		await expect(installing).resolves.toBe(false);
+		expect(mocks.install).not.toHaveBeenCalled();
+		expect(onConnected).not.toHaveBeenCalled();
+
+		editing.locked = false;
+		await expect(runtime.installManagedApp('manager', 'T1', onConnected)).resolves.toBe(true);
+		expect(mocks.install).toHaveBeenCalledOnce();
 	});
 
 	it('refreshes managed setup after the credential modal closes', async () => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing } from '../composables/useAgentEditing';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -17,6 +18,7 @@ const props = defineProps<{
 	data: AgentToolConfigModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -81,10 +83,12 @@ function updateTitle(value: string) {
 }
 
 function handleConfirm() {
+	if (isEditingLocked.value) return;
 	if (form.value?.confirm()) closeDialog();
 }
 
 function handleRemove() {
+	if (isEditingLocked.value) return;
 	form.value?.remove();
 	closeDialog();
 }
@@ -120,7 +124,7 @@ function handleRemove() {
 		<template #footerActions>
 			<N8nButton
 				variant="solid"
-				:disabled="isRestricted"
+				:disabled="isRestricted || isEditingLocked"
 				data-testid="agent-tool-config-save"
 				@click="handleConfirm"
 			>

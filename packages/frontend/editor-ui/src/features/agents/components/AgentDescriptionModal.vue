@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, ref } from 'vue';
 import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { AGENT_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
@@ -7,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import AgentModal from './modals/AgentModal.vue';
 
 export type AgentDescriptionModalData = {
+	editing?: AgentEditingContext;
 	agentName: string;
 	description: string;
 	onConfirm: (description: string) => void;
@@ -17,6 +19,7 @@ const props = defineProps<{
 	data: AgentDescriptionModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
@@ -29,6 +32,7 @@ function closeModal() {
 }
 
 function onSave() {
+	if (isEditingLocked.value) return;
 	props.data.onConfirm(description.value.trim());
 	closeModal();
 }
@@ -59,7 +63,7 @@ function onSave() {
 		<template #footerActions>
 			<N8nButton
 				variant="solid"
-				:disabled="!canSave"
+				:disabled="!canSave || isEditingLocked"
 				data-testid="agent-description-save"
 				@click="onSave"
 			>

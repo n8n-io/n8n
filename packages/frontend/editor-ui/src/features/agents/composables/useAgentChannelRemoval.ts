@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { getAgentChannelPlatform } from '../channels/registry';
 import type { AgentChannelRuntime } from '../channels/types';
 import type { useAgentIntegrationStatus } from './useAgentIntegrationStatus';
+import { useAgentEditing } from './useAgentEditing';
 
 interface PendingDisconnect {
 	channelType: string;
@@ -25,6 +26,7 @@ export function useAgentChannelRemoval(options: {
 }) {
 	const toast = useToast();
 	const i18n = useI18n();
+	const { editing } = useAgentEditing();
 	const projectId = options.projectId();
 	const agentId = options.agentId();
 	const pendingDisconnect = ref<PendingDisconnect | null>(null);
@@ -36,7 +38,7 @@ export function useAgentChannelRemoval(options: {
 	});
 
 	watch(options.disabled, (disabled) => {
-		if (disabled) pendingDisconnect.value = null;
+		if (disabled && !editing?.assistantBuilding) pendingDisconnect.value = null;
 	});
 
 	const isCurrentAgent = () =>

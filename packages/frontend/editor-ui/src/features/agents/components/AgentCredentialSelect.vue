@@ -5,6 +5,7 @@ import CredentialsDropdown, {
 	type CredentialOption as DropdownCredentialOption,
 	type ManagedCredentialOption,
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
+import { useAgentEditing } from '../composables/useAgentEditing';
 
 export interface AgentCredentialOption {
 	id: string;
@@ -39,6 +40,9 @@ const emit = defineEmits<{
 	create: [];
 }>();
 
+const { isEditingLocked } = useAgentEditing();
+const disabled = computed(() => props.disabled || isEditingLocked.value);
+
 const credentialOptions = computed<DropdownCredentialOption[]>(() =>
 	[...props.credentials]
 		.sort((a, b) => {
@@ -54,12 +58,18 @@ const credentialOptions = computed<DropdownCredentialOption[]>(() =>
 );
 
 function onCredentialSelected(credentialId: string) {
+	if (disabled.value) return;
 	emit('update:modelValue', credentialId);
+}
+
+function onCreate() {
+	if (!disabled.value) emit('create');
 }
 </script>
 
 <template>
 	<CredentialsDropdown
+		:key="String(disabled)"
 		:class="$style[props.size]"
 		:credential-options="credentialOptions"
 		:selected-credential-id="modelValue ?? null"
@@ -70,7 +80,7 @@ function onCredentialSelected(credentialId: string) {
 		:disabled="disabled"
 		:data-test-id="dataTestId"
 		@credential-selected="onCredentialSelected"
-		@new-credential="emit('create')"
+		@new-credential="onCreate"
 	/>
 </template>
 

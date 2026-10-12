@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, ref, useTemplateRef } from 'vue';
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
@@ -10,9 +11,13 @@ import AgentModal from './modals/AgentModal.vue';
 
 const props = defineProps<{
 	modalName: string;
-	data: { onConfirm: (config: AgentJsonConfig) => void | Promise<void> };
+	data: {
+		editing?: AgentEditingContext;
+		onConfirm: (config: AgentJsonConfig) => void | Promise<void>;
+	};
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
@@ -35,6 +40,7 @@ function closeModal() {
 }
 
 async function onFileChange(event: Event) {
+	if (isEditingLocked.value) return;
 	const input = event.target;
 	if (!(input instanceof HTMLInputElement)) return;
 
@@ -45,6 +51,7 @@ async function onFileChange(event: Event) {
 
 	try {
 		const parsed = JSON.parse(await file.text()) as unknown;
+		if (isEditingLocked.value) return;
 		const result = AgentJsonConfigSchema.safeParse(parsed);
 		if (!result.success) {
 			throw new Error('Invalid agent JSON');
@@ -56,7 +63,7 @@ async function onFileChange(event: Event) {
 }
 
 async function onConfirm() {
-	if (!parsedConfig.value || importing.value) return;
+	if (isEditingLocked.value || !parsedConfig.value || importing.value) return;
 
 	importing.value = true;
 	try {
@@ -103,7 +110,7 @@ async function onConfirm() {
 		<template #footerActions>
 			<N8nButton
 				:label="i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey)"
-				:disabled="!parsedConfig || importing"
+				:disabled="isEditingLocked || !parsedConfig || importing"
 				:loading="importing"
 				data-testid="agent-json-import-confirm"
 				@click="onConfirm"

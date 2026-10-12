@@ -32,6 +32,8 @@ import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
+import AgentEditingOverlay from './AgentEditingOverlay.vue';
+import { useAgentEditing } from '../composables/useAgentEditing';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -48,6 +50,7 @@ const props = defineProps<{
 	appliedSkills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
+	editingLocked?: boolean;
 	/** `agent:execute`, which a project viewer holds without holding update. */
 	canExecuteAgent?: boolean;
 	agentAvailableInMcp?: boolean;
@@ -67,7 +70,8 @@ const props = defineProps<{
 	saveDescription?: (description: string) => Promise<void>;
 }>();
 
-const childrenDisabled = computed(() => !props.canEditAgent);
+const { editing } = useAgentEditing();
+const childrenDisabled = computed(() => !props.canEditAgent || props.editingLocked);
 const isKnowledgeAdvancedExpanded = ref(false);
 
 const settingsStore = useSettingsStore();
@@ -151,11 +155,15 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
+		:class="$style.editorColumn"
+		:aria-busy="props.embeddedAiBuilding"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
-		<div :class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]">
+		<div
+			:inert="props.embeddedAiBuilding || undefined"
+			:class="[$style.panelArea, { [$style.preventScroll]: props.preventScroll }]"
+		>
 			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
 				<AgentIdentityHeader
 					:config="localConfig"
@@ -405,6 +413,7 @@ defineExpose({ onSetupTaskAction });
 				</AgentBuilderTabPanel>
 			</div>
 		</div>
+		<AgentEditingOverlay v-if="props.embeddedAiBuilding && editing" :editing="editing" />
 	</section>
 </template>
 
@@ -443,12 +452,8 @@ defineExpose({ onSetupTaskAction });
 	width: 100%;
 }
 
-.embeddedAiBuilding {
-	--agent-panel-header-opacity: 0.5;
-	--agent-row-label-opacity: 0.5;
-}
-
 .editorColumn {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	background-color: light-dark(var(--background--surface), var(--background));

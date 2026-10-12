@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { N8nAiModelSelectorDropdown, type AiModelSelectorMenuItem } from '@n8n/design-system';
@@ -41,6 +41,13 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const dropdown = useTemplateRef('dropdown');
+watch(
+	() => disabled,
+	(locked) => {
+		if (locked) dropdown.value?.close();
+	},
+);
 
 /** Only the model's own name, without the "provider/" prefix. */
 function modelShortName(model: string): string {
@@ -173,6 +180,7 @@ function onSelect(id: string) {
 
 <template>
 	<N8nAiModelSelectorDropdown
+		ref="dropdown"
 		:items="filteredMenu"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"

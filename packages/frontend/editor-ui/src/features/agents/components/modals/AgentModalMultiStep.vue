@@ -96,6 +96,9 @@ watch(
 		<template v-if="$slots.footerActions" #footerActions>
 			<slot name="footerActions" />
 		</template>
+		<template v-if="$slots.footerCancel" #footerCancel>
+			<slot name="footerCancel" />
+		</template>
 		<template v-if="$slots.footer" #footer>
 			<slot name="footer" />
 		</template>

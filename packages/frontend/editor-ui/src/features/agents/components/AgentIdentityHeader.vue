@@ -45,7 +45,7 @@ const iconPickerModel = computed<IconOrEmoji>({
 		value: personalisation.value.icon,
 	}),
 	set: (value: IconOrEmoji) => {
-		if (value.type !== 'icon') return;
+		if (props.disabled || value.type !== 'icon') return;
 		emit('update:config', {
 			personalisation: {
 				icon: value.value,
@@ -73,6 +73,7 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 		data-testid="agent-identity-header"
 	>
 		<N8nIconPicker
+			:key="String(props.disabled)"
 			v-model="iconPickerModel"
 			:button-tooltip="i18n.baseText('agents.builder.agent.personalisation.change')"
 			button-size="xlarge"

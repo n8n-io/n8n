@@ -18,6 +18,7 @@ import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
+import { useAgentEditing } from '../composables/useAgentEditing';
 import type { WorkflowToolRef } from '../types';
 import { listWorkflowToolInputFields } from '../utils/workflowToolInputFields';
 import WorkflowToolInputs from './WorkflowToolInputs.vue';
@@ -35,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { isEditingLocked } = useAgentEditing();
 const triggerLabel = workflowToolTriggerLabel();
 
 const router = useRouter();
@@ -210,6 +212,7 @@ function applyTarget(next: { id: string; name: string }) {
 }
 
 function handleSelectWorkflow(optionId: string) {
+	if (isEditingLocked.value) return;
 	const selected = workflowOptions.value.find((option) => option.id === optionId);
 	if (selected) applyTarget(selected);
 }
@@ -224,6 +227,7 @@ function openTargetWorkflow() {
 }
 
 function handleModeSwitch(next: 'list' | 'id') {
+	if (isEditingLocked.value) return;
 	mode.value = next;
 	isIdUnresolvable.value = false;
 	enteredId.value = targetWorkflowId.value ?? '';
@@ -231,6 +235,7 @@ function handleModeSwitch(next: 'list' | 'id') {
 
 /** Only IDs offered in list mode can be used as workflow tools here. */
 function handleEnterWorkflowId(id: string) {
+	if (isEditingLocked.value) return;
 	const trimmed = id.trim();
 	if (!trimmed) return;
 
@@ -309,6 +314,8 @@ defineExpose({
 			</label>
 			<div :class="$style.controlRow">
 				<N8nSelect
+					:disabled="isEditingLocked"
+					:teleported="false"
 					:model-value="mode"
 					:class="$style.modeSelector"
 					data-test-id="agent-workflow-tool-target-mode"
@@ -320,6 +327,8 @@ defineExpose({
 
 				<N8nSelect
 					v-if="mode === 'list'"
+					:disabled="isEditingLocked"
+					:teleported="false"
 					id="workflow-tool-target"
 					:model-value="selectedOptionId"
 					:class="$style.controlInput"

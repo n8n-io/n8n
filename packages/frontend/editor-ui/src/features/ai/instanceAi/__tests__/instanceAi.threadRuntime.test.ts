@@ -240,7 +240,7 @@ describe('cancelRun', () => {
 		const runtime = registry.getOrCreateRuntime('thread-cancel');
 		expect(runtime.activeRunId).toBeNull();
 
-		await runtime.cancelRun();
+		await expect(runtime.cancelRun()).resolves.toBe(true);
 
 		// Thread-scoped and idempotent server-side; the terminal state arrives
 		// as a run-finish fact over SSE (the backend appends one even for dead
@@ -2481,7 +2481,9 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 		const runtime = activeRuntime(registry);
 		mockPostCancel.mockRejectedValueOnce(new Error('network'));
 
-		await runtime.cancelRun();
+		const runId = runtime.activeRunId;
+		await expect(runtime.cancelRun()).resolves.toBe(false);
+		expect(runtime.activeRunId).toBe(runId);
 
 		expect(mockShowError).toHaveBeenCalledWith(
 			expect.objectContaining({ message: 'Failed to cancel. Try again.' }),

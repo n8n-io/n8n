@@ -7,6 +7,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createAgentSkill } from './useAgentApi';
+import type { AgentEditingContext } from './useAgentEditing';
+import { isSameAgentTool } from './useAgentToolRefAdapter';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
@@ -36,6 +38,7 @@ export interface AgentCapabilitiesTelemetry {
 }
 
 export interface UseAgentCapabilitiesActionsDeps {
+	editing?: AgentEditingContext;
 	/** Local (unsaved) agent config the handlers read + mutate via `scheduleConfigUpdate`. */
 	localConfig: Ref<AgentJsonConfig | null>;
 	/** The agent resource — provides custom-tool bodies + the skills map. */
@@ -109,6 +112,7 @@ export interface UseAgentCapabilitiesActionsDeps {
  */
 export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDeps) {
 	const {
+		editing,
 		localConfig,
 		agent,
 		projectId,
@@ -132,6 +136,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const { showError, showMessage } = useToast();
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
+		if (editing?.locked) return;
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
 		const targetAgentId = agentId.value;
@@ -139,9 +144,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		uiStore.openModalWithData({
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
+				editing,
 				mode,
-				tools: localConfig.value?.tools ?? [],
-				mcpServers: localConfig.value?.mcpServers ?? [],
+				get tools() {
+					return localConfig.value?.tools ?? [];
+				},
+				get mcpServers() {
+					return localConfig.value?.mcpServers ?? [];
+				},
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,
@@ -149,7 +159,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
 				}) => {
-					if (agentId.value !== targetAgentId) return;
+					if (editing?.locked || agentId.value !== targetAgentId) return;
 					scheduleConfigUpdate({
 						...(payload.tools && { tools: payload.tools }),
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
@@ -159,7 +169,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		});
 	}
 
+	function findCurrentToolIndex(target: AgentJsonToolConfig) {
+		return (localConfig.value?.tools ?? []).findIndex((tool) => isSameAgentTool(tool, target));
+	}
+
 	function onOpenToolFromList(target: ToolOpenTarget | number) {
+		if (editing?.locked) return;
+		const targetAgentId = agentId.value;
 		const tools = localConfig.value?.tools ?? [];
 
 		const toolIndex =
@@ -186,6 +202,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			uiStore.openModalWithData({
 				name: AGENT_TOOL_CONFIG_MODAL_KEY,
 				data: {
+					editing,
 					toolRef: tool,
 					customTool,
 					projectId: projectId.value,
@@ -200,13 +217,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						)
 						.filter((name): name is string => !!name),
 					onConfirm: (updatedTool: AgentJsonToolConfig) => {
+						if (editing?.locked || agentId.value !== targetAgentId) return;
+						const currentIndex = findCurrentToolIndex(tool);
+						if (currentIndex === -1) return;
 						const nextTools = [...(localConfig.value?.tools ?? [])];
-						nextTools[toolIndex] = updatedTool;
+						nextTools[currentIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
 					},
 					onRemove: () => {
-						if (!localConfig.value?.tools?.[toolIndex]) return;
-						onRemoveTool(toolIndex);
+						if (agentId.value !== targetAgentId) return;
+						onRemoveTool(findCurrentToolIndex(tool));
 					},
 				},
 			});
@@ -234,6 +254,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		uiStore.openModalWithData({
 			name: AGENT_TOOL_CONFIG_MODAL_KEY,
 			data: {
+				editing,
 				kind: 'mcpServer',
 				mcpServer,
 				initialNode: mcpServerToNode(mcpServer, nodeType),
@@ -244,11 +265,21 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					.filter((_, i) => i !== mcpServerIndex)
 					.map((server) => server.name),
 				onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+					if (editing?.locked || agentId.value !== targetAgentId) return;
 					const nextMcpServers = [...(localConfig.value?.mcpServers ?? [])];
-					nextMcpServers[mcpServerIndex] = updatedServer;
+					const currentIndex = nextMcpServers.findIndex((server) => server.name === mcpServer.name);
+					if (currentIndex === -1) return;
+					nextMcpServers[currentIndex] = updatedServer;
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
 				},
-				onRemove: () => onRemoveTool((localConfig.value?.tools ?? []).length + mcpServerIndex),
+				onRemove: () => {
+					if (agentId.value !== targetAgentId) return;
+					const currentIndex = (localConfig.value?.mcpServers ?? []).findIndex(
+						(server) => server.name === mcpServer.name,
+					);
+					if (currentIndex === -1) return;
+					onRemoveTool((localConfig.value?.tools ?? []).length + currentIndex);
+				},
 			},
 		});
 	}
@@ -283,6 +314,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	);
 
 	function onOpenSkillFromList(id: string) {
+		if (editing?.locked) return;
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
 		if (!skill) return;
 
@@ -296,6 +328,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
+				editing,
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				skill,
@@ -307,8 +340,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					onRemoveSkill(skillId);
 				},
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
-					if (!skillId) return;
+					if (editing?.locked || !skillId) return;
 					if (agentId.value !== targetAgentId) return;
+					if (!localConfig.value?.skills?.some((ref) => ref.id === skillId)) return;
 					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 
 					if (localSkills) {
@@ -401,6 +435,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	function onRemoveTool(index: number) {
+		if (editing?.locked) return;
 		const currentTools = localConfig.value?.tools ?? [];
 		if (index < 0) return;
 		if (index < currentTools.length) {
@@ -415,12 +450,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	function onRemoveSkill(id: string) {
+		if (editing?.locked) return;
 		const currentSkills = localConfig.value?.skills ?? [];
 		const nextSkills = currentSkills.filter((skillRef) => skillRef.id !== id);
 		scheduleConfigUpdate({ skills: nextSkills });
 	}
 
 	function onToggleTask(payload: { id: string; enabled: boolean }) {
+		if (editing?.locked) return;
 		const nextTasks = (localConfig.value?.tasks ?? []).map((taskRef) =>
 			taskRef.id === payload.id ? { ...taskRef, enabled: payload.enabled } : taskRef,
 		);
@@ -428,6 +465,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	function onToggleSkill({ id, enabled }: { id: string; enabled: boolean }) {
+		if (editing?.locked) return;
 		scheduleConfigUpdate({
 			skills: (localConfig.value?.skills ?? []).map((ref) =>
 				ref.id === id ? { ...ref, enabled } : ref,
@@ -436,6 +474,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	}
 
 	function onOpenAddSkillModal() {
+		if (editing?.locked) return;
 		telemetry?.trackOpenedAddSkillModal?.();
 
 		// Capture the target at open time: the modal can outlive an agent/node
@@ -445,18 +484,19 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
 		const isCurrentTarget = () =>
-			projectId.value === targetProjectId && agentId.value === targetAgentId;
+			!editing?.locked && projectId.value === targetProjectId && agentId.value === targetAgentId;
 
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
+				editing,
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				availableTools: configuredToolOptions(),
 				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+					if (!isCurrentTarget()) return;
 					if (localSkills) {
-						if (!isCurrentTarget()) return;
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);

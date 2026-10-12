@@ -1,24 +1,22 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
+import { reactive } from 'vue';
 
 import AgentChannelSlackRemoveConfirmation from './AgentChannelSlackRemoveConfirmation.vue';
+import { AGENT_EDITING_KEY, type AgentEditingContext } from '../../composables/useAgentEditing';
+import { AgentModalTestStub } from '../../__tests__/utils/AgentModalTestStub';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function mountConfirmation() {
+function mountConfirmation(editing: AgentEditingContext) {
 	return mount(AgentChannelSlackRemoveConfirmation, {
 		props: { open: true, loading: false },
 		global: {
+			provide: { [AGENT_EDITING_KEY as symbol]: editing },
 			stubs: {
-				Dialog: {
-					props: ['open', 'stacked', 'size'],
-					template: '<div v-if="open" :data-stacked="stacked" :data-size="size"><slot /></div>',
-				},
-				DialogHeader: { template: '<header><slot /></header>' },
-				DialogTitle: { template: '<h2><slot /></h2>' },
-				DialogFooter: { template: '<footer><slot /></footer>' },
+				AgentModal: AgentModalTestStub,
 				N8nText: { template: '<span><slot /></span>' },
 				N8nButton: {
 					emits: ['click'],
@@ -44,14 +42,25 @@ function mountConfirmation() {
 
 describe('AgentChannelSlackRemoveConfirmation', () => {
 	it('controls whether the managed Slack app is deleted', async () => {
-		const wrapper = mountConfirmation();
+		const editing = reactive({
+			locked: false,
+			assistantBuilding: false,
+			takingOver: false,
+			takeOver: vi.fn(),
+		});
+		const wrapper = mountConfirmation(editing);
 
-		expect(wrapper.attributes()).toHaveProperty('data-stacked');
-		expect(wrapper.attributes('data-size')).toBe('medium');
 		await wrapper.get('[data-testid="slack-managed-remove-confirm"]').trigger('click');
 		expect(wrapper.emitted('confirm')).toEqual([[true]]);
 
 		await wrapper.get('[data-testid="slack-managed-remove-delete-app"]').trigger('click');
+		editing.locked = true;
+		await wrapper.get('[data-testid="slack-managed-remove-delete-app"]').trigger('click');
+		await wrapper.get('[data-testid="slack-managed-remove-confirm"]').trigger('click');
+		expect(wrapper.emitted('confirm')).toEqual([[true]]);
+
+		editing.locked = false;
+		await wrapper.vm.$nextTick();
 		await wrapper.get('[data-testid="slack-managed-remove-confirm"]').trigger('click');
 		expect(wrapper.emitted('confirm')).toEqual([[true], [false]]);
 	});

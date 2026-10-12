@@ -35,10 +35,12 @@ watch(
 );
 
 function onAmount(value: number | null | undefined) {
+	if (props.disabled) return;
 	amount.value = parseBudgetAmount(value);
 }
 
 function save() {
+	if (props.disabled) return;
 	emit('save', sessionCapSave(props.config, amount.value));
 	emit('update:open', false);
 }

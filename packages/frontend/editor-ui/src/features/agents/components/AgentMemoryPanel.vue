@@ -15,6 +15,8 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import { AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE } from '../constants';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import AgentPanel from './AgentPanel.vue';
+import AgentEditingOverlay from './AgentEditingOverlay.vue';
+import { useAgentEditing } from '../composables/useAgentEditing';
 
 import type { AgentJsonConfig } from '../types';
 import shared from '../styles/agent-panel.module.scss';
@@ -28,6 +30,7 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
+const { editing } = useAgentEditing();
 const i18n = useI18n();
 const credentialDialogOpen = ref(false);
 const settingsStore = useSettingsStore();
@@ -73,11 +76,13 @@ function disableEpisodicMemory() {
 }
 
 function onCredentialSelected(credentialId: string) {
+	if (props.disabled) return;
 	enableEpisodicMemory(credentialId);
 	credentialDialogOpen.value = false;
 }
 
 function onEpisodicMemoryToggle(enabled: boolean) {
+	if (props.disabled) return;
 	if (!enabled) {
 		disableEpisodicMemory();
 		return;
@@ -147,46 +152,55 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 					}}
 				</N8nDialogTitle>
 			</N8nDialogHeader>
-			<div :class="$style.dialogContent">
-				<div :class="$style.row">
-					<div :class="$style.titleGroup">
-						<N8nText step="sm" bold :class="shared.dataEntryLabel">
-							{{
-								i18n.baseText(
-									'agents.builder.memory.episodicMemory.credential.label' as BaseTextKey,
-								)
-							}}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{
-								i18n.baseText('agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey)
-							}}
-						</N8nText>
-					</div>
-					<div :class="$style.credentialPicker">
-						<CredentialPicker
-							app-name="OpenAI"
-							size="medium"
-							button-size="large"
-							:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
-							:selected-credential-id="null"
-							:project-id="projectId"
-							:show-delete="false"
-							:hide-create-new="false"
-							:teleported="false"
-							credential-modal-append-to-body
-							:class="$style.credentialPicker"
-							data-testid="agent-episodic-memory-credential-picker"
-							@credential-selected="onCredentialSelected"
-						/>
+			<div :class="$style.dialogSurface">
+				<div :class="$style.dialogContent" :inert="props.disabled || undefined">
+					<div :class="$style.row">
+						<div :class="$style.titleGroup">
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">
+								{{
+									i18n.baseText(
+										'agents.builder.memory.episodicMemory.credential.label' as BaseTextKey,
+									)
+								}}
+							</N8nText>
+							<N8nText size="small" color="text-light">
+								{{
+									i18n.baseText(
+										'agents.builder.memory.episodicMemory.credential.hint' as BaseTextKey,
+									)
+								}}
+							</N8nText>
+						</div>
+						<div :class="$style.credentialPicker">
+							<CredentialPicker
+								app-name="OpenAI"
+								size="medium"
+								button-size="large"
+								:credential-type="AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE"
+								:selected-credential-id="null"
+								:project-id="projectId"
+								:show-delete="false"
+								:hide-create-new="false"
+								:teleported="false"
+								credential-modal-append-to-body
+								:class="$style.credentialPicker"
+								data-testid="agent-episodic-memory-credential-picker"
+								@credential-selected="onCredentialSelected"
+							/>
+						</div>
 					</div>
 				</div>
+				<AgentEditingOverlay v-if="editing?.assistantBuilding" :editing="editing" />
 			</div>
 		</N8nDialog>
 	</AgentPanel>
 </template>
 
 <style module>
+.dialogSurface {
+	position: relative;
+}
+
 .container {
 	display: flex;
 	flex-direction: column;

@@ -14,6 +14,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { computed } from 'vue';
 import type { AgentChannelConnectAction } from '../channels/types';
+import { useAgentEditing } from '../composables/useAgentEditing';
 
 interface Props {
 	integration: ChatIntegrationDescriptor;
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { isEditingLocked } = useAgentEditing();
 
 function isIconName(icon: string): icon is IconName {
 	return icon in updatedIconSet;
@@ -64,6 +66,7 @@ const statusLabel = computed(() => {
 });
 
 function selectMenuItem(itemId: string) {
+	if (isEditingLocked.value) return;
 	if (itemId === 'edit') {
 		emit('edit', props.integration.type);
 		return;
@@ -113,6 +116,7 @@ const statusTooltip = computed(() => {
 			<div :class="$style.channelActions">
 				<N8nDropdownMenu
 					v-if="configured && menuItems && menuItems.length > 0"
+					:key="String(isEditingLocked)"
 					:items="menuItems"
 					placement="bottom-end"
 					@select="selectMenuItem"
@@ -122,6 +126,7 @@ const statusTooltip = computed(() => {
 							type="button"
 							:class="$style.connectedTrigger"
 							data-testid="agent-channel-connected-trigger"
+							:disabled="isEditingLocked"
 						>
 							<span :class="$style.connectedIcon" data-testid="agent-channel-connected-indicator">
 								<N8nIcon icon="check" :size="14" aria-hidden="true" />

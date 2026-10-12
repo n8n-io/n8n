@@ -22,6 +22,7 @@ import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useAgentEditing } from '../composables/useAgentEditing';
 import AgentChannelApprovalSetting from './AgentChannelApprovalSetting.vue';
 import AgentChannelListItem from './AgentChannelListItem.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -61,6 +62,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { editing } = useAgentEditing();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
@@ -214,6 +216,7 @@ const runtimes: Record<string, AgentChannelRuntime> = Object.fromEntries(
 	Object.values(agentChannelPlatforms).map((platform) => [
 		platform.type,
 		createAgentChannelRuntime(platform, {
+			editing,
 			projectId: projectIdRef,
 			agentId: agentIdRef,
 			selectedCredentialId: computed(() => getChannelCredentialId(platform.type)),
@@ -365,6 +368,7 @@ function connectAction(channelType: string) {
 }
 
 function goToSetup(channelType: string) {
+	if (props.disabled) return;
 	clearIntegrationError(channelType);
 	openedFromList.value = true;
 	saveAttempted.value = false;
@@ -372,6 +376,7 @@ function goToSetup(channelType: string) {
 }
 
 function goToEdit(channelType: string) {
+	if (props.disabled) return;
 	prepareChannelEdit(channelType);
 	openedFromList.value = true;
 	saveAttempted.value = false;
@@ -379,7 +384,7 @@ function goToEdit(channelType: string) {
 }
 
 function goBackToList() {
-	if (actionInFlight.value) return;
+	if (props.disabled || actionInFlight.value) return;
 	prepareChannelEdit(null);
 	saveAttempted.value = false;
 	currentView.value = 'list';
@@ -431,7 +436,7 @@ async function runBeforeSave(): Promise<boolean> {
 }
 
 async function saveChannelConfig() {
-	if (actionInFlight.value) return;
+	if (props.disabled || actionInFlight.value) return;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
 	const credentialId = currentChannelCredentialId.value;
@@ -455,10 +460,12 @@ async function saveChannelConfig() {
 			trackSetupFailure(channelType, 'persist');
 			return;
 		}
+		if (props.disabled) return;
 		if (!(await runBeforeSave())) {
 			trackSetupFailure(channelType, 'before_save');
 			return;
 		}
+		if (props.disabled) return;
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
 			// Only the edit view shows the approval control, so only it may carry one.
@@ -501,7 +508,7 @@ async function persistDescription(description: string): Promise<boolean> {
  * most of what that function does (credentials, `beforeSave`, approval).
  */
 async function saveN8nChat() {
-	if (actionInFlight.value) return;
+	if (props.disabled || actionInFlight.value) return;
 	// Read the view before any await: it can unmount while a request runs.
 	const description = channelViewRef.value?.description;
 	if (description === undefined) return;
@@ -512,7 +519,9 @@ async function saveN8nChat() {
 			trackSetupFailure(N8N_CHAT_INTEGRATION_TYPE, 'persist');
 			return;
 		}
+		if (props.disabled) return;
 		if (!(await persistDescription(description))) return;
+		if (props.disabled) return;
 		if (settingUp) {
 			await connect(N8N_CHAT_INTEGRATION_TYPE, '');
 		}
@@ -703,17 +712,19 @@ watch(
 				{{ removeChannelLabel }}
 			</N8nButton>
 		</template>
+		<template v-if="showFooterActions && isN8nChatSelected" #footerCancel>
+			<N8nButton
+				variant="ghost"
+				size="medium"
+				:disabled="actionInFlight"
+				data-testid="agent-channel-cancel"
+				@click="handleModalOpenUpdate(false)"
+			>
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+		</template>
 		<template v-if="showFooterActions" #footerActions>
 			<template v-if="isN8nChatSelected">
-				<N8nButton
-					variant="ghost"
-					size="medium"
-					:disabled="actionInFlight"
-					data-testid="agent-channel-cancel"
-					@click="handleModalOpenUpdate(false)"
-				>
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
 				<N8nButton
 					variant="solid"
 					size="medium"

@@ -1,9 +1,10 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
+import { AGENT_EDITING_KEY, type AgentEditingContext } from '../composables/useAgentEditing';
 
 const mocks = vi.hoisted(() => ({
 	keepOpenAfterConnect: false,
@@ -248,6 +249,7 @@ function mountModal(
 	view: ChannelView = 'example_setup',
 	isPublished = false,
 	extraProps: Record<string, unknown> = {},
+	editing?: AgentEditingContext,
 ) {
 	return mount(AgentChannelModal, {
 		props: {
@@ -261,6 +263,7 @@ function mountModal(
 			...extraProps,
 		},
 		global: {
+			provide: { [AGENT_EDITING_KEY as symbol]: editing },
 			stubs: {
 				Dialog: {
 					props: ['open', 'showCloseButton'],
@@ -873,6 +876,36 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
 		expect(mocks.disconnect).not.toHaveBeenCalled();
 		expect(wrapper.emitted('channel-disconnected')).toBeUndefined();
+	});
+
+	it('preserves a pending removal confirmation during Assistant changes', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-managed';
+		const editing = reactive({
+			locked: false,
+			assistantBuilding: false,
+			takingOver: false,
+			takeOver: vi.fn(),
+		});
+		const wrapper = mountModal('example_edit', true, {}, editing);
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+
+		editing.assistantBuilding = true;
+		editing.locked = true;
+		await wrapper.setProps({ disabled: true });
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(true);
+		await wrapper.get('[data-testid="confirm-keep-app"]').trigger('click');
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+
+		editing.assistantBuilding = false;
+		editing.locked = false;
+		await wrapper.setProps({ disabled: false });
+		await wrapper.get('[data-testid="confirm-keep-app"]').trigger('click');
+		await flushPromises();
+		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
+			deleteExternalResource: false,
+		});
 	});
 
 	it('shows no Back action when editing a channel directly', async () => {

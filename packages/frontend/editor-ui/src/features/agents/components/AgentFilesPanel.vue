@@ -178,6 +178,7 @@ function onFilesSelected(event: Event) {
 						</td>
 						<td :class="$style.actionCell" @click.stop>
 							<N8nActionDropdown
+								:key="String(props.disabled)"
 								:items="rowActions()"
 								:disabled="props.disabled || props.loading || isMutating"
 								activator-icon="ellipsis"

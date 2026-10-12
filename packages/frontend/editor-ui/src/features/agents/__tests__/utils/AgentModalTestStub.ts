@@ -60,6 +60,7 @@ export const AgentModalTestStub = defineComponent({
 					(showFooter !== false &&
 						($slots.footerLeft ||
 							$slots.footerBeforeCancel ||
+							$slots.footerCancel ||
 							$slots.footerActions ||
 							$slots.footer))
 				"
@@ -68,12 +69,12 @@ export const AgentModalTestStub = defineComponent({
 					<slot name="footerLeft" />
 					<div data-testid="agent-modal-footer-actions">
 						<slot name="footerBeforeCancel" />
-						<button
+						<slot name="footerCancel"><button
 							v-if="showCancel"
 							data-testid="agent-modal-cancel"
 							:disabled="busy"
 							@click="$emit('update:open', false)"
-						>Cancel</button>
+						>Cancel</button></slot>
 						<slot name="footerActions" />
 					</div>
 				</slot>
@@ -112,6 +113,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
 			<template #footerBeforeCancel><slot name="footerBeforeCancel" /></template>
+			<template v-if="$slots.footerCancel" #footerCancel><slot name="footerCancel" /></template>
 			<template #footerActions><slot name="footerActions" /></template>
 			<template #footer><slot name="footer" /></template>
 		</AgentModalTestStub>

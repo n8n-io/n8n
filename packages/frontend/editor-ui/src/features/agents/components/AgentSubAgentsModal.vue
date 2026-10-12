@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, ref } from 'vue';
 import {
 	N8nButton,
@@ -49,13 +50,16 @@ type EditSubAgentModalData = {
 	onRemove?: (agentId: string) => void;
 };
 
-export type AgentSubAgentsModalData = AddSubAgentModalData | EditSubAgentModalData;
+export type AgentSubAgentsModalData = (AddSubAgentModalData | EditSubAgentModalData) & {
+	editing?: AgentEditingContext;
+};
 
 const props = defineProps<{
 	modalName: string;
 	data: AgentSubAgentsModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
@@ -106,12 +110,13 @@ function onSelectAgent(agent: AgentSubAgentOption) {
 }
 
 function onPickerItemActivate(item: ToolConnectionItem) {
-	if (item.kind !== 'agent') return;
+	if (isEditingLocked.value || item.kind !== 'agent') return;
 	const agent = availableAgents.value.find((candidate) => candidate.id === item.agentId);
 	if (agent) onSelectAgent(agent);
 }
 
 function onCreateAgent() {
+	if (isEditingLocked.value) return;
 	if (!('onCreateAgent' in props.data) || !props.data.onCreateAgent) return;
 	closeModal();
 	props.data.onCreateAgent();
@@ -124,13 +129,13 @@ function onBack() {
 }
 
 function onRemove() {
-	if (!selectedAgent.value) return;
+	if (isEditingLocked.value || !selectedAgent.value) return;
 	props.data.onRemove?.(selectedAgent.value.id);
 	closeModal();
 }
 
 function onConfirm() {
-	if (!selectedAgent.value || !canConfirm.value) return;
+	if (isEditingLocked.value || !selectedAgent.value || !canConfirm.value) return;
 
 	props.data.onConfirm({
 		agentId: selectedAgent.value.id,
@@ -228,6 +233,7 @@ function onConfirm() {
 					</N8nTooltip>
 				</label>
 				<N8nMarkdownEditor
+					:disabled="isEditingLocked"
 					:class="$style.useWhenEditor"
 					:model-value="useWhen"
 					:placeholder="i18n.baseText('agents.builder.subAgents.useWhen.placeholder')"

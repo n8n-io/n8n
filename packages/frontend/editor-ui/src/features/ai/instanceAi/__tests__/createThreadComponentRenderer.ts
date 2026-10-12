@@ -60,7 +60,7 @@ export function makeThread(): ThreadRuntime {
 		closeSSE: vi.fn(),
 		registerSetupChatTelemetryContext: vi.fn(() => vi.fn()),
 		sendMessage: vi.fn().mockResolvedValue(true),
-		cancelRun: vi.fn().mockResolvedValue(undefined),
+		cancelRun: vi.fn().mockResolvedValue(true),
 		resolveConfirmation: vi.fn(),
 		confirmAction: vi.fn().mockResolvedValue(true),
 		requestPlanChanges: vi.fn().mockResolvedValue(true),

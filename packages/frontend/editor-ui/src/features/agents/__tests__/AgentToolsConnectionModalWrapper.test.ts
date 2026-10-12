@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, watchEffect } from 'vue';
+import { defineComponent, reactive, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
@@ -1040,6 +1040,42 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [SERVER] });
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('preserves the open draft and other Assistant changes when saving after unlock', async () => {
+			const other = { ...SERVER, name: 'other' };
+			const onConfirm = vi.fn();
+			const data = reactive({
+				tools: [],
+				mcpServers: [SERVER, other],
+				mode: 'tools' as const,
+				onConfirm,
+				editing: { locked: false, assistantBuilding: false, takingOver: false, takeOver: vi.fn() },
+			});
+			renderComponent({ props: { modalName: MODAL_NAME, data } });
+			await flushPromises();
+			emitOpenDetail(
+				getItems().find((item) => item.id.startsWith('mcp:') && item.title === SERVER.name)!,
+			);
+			await flushPromises();
+			const draft = getConfigData();
+			const updated = { ...SERVER, url: 'https://draft.example.com/mcp' };
+			const otherUpdated = { ...other, url: 'https://assistant.example.com/mcp' };
+
+			data.editing.locked = true;
+			data.mcpServers = [otherUpdated, SERVER];
+			await flushPromises();
+			await saveConfiguration(updated);
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(getConfigData()).toBe(draft);
+
+			data.editing.locked = false;
+			await flushPromises();
+			await saveConfiguration(updated);
+			expect(onConfirm).toHaveBeenCalledWith({
+				tools: [],
+				mcpServers: [otherUpdated, updated],
+			});
 		});
 
 		it('removes a connected MCP server from its configure step', async () => {

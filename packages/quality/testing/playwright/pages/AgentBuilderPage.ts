@@ -10,10 +10,90 @@ export class AgentBuilderPage extends BasePage {
 	async goto(
 		projectId: string,
 		agentId: string,
-		options?: { openPreview?: boolean },
+		options?: { openPreview?: boolean; assistantThread?: string },
 	): Promise<void> {
-		const query = options?.openPreview ? '?openPreview=true' : '';
-		await this.page.goto(`/projects/${projectId}/agents/${agentId}${query}`);
+		const query = new URLSearchParams();
+		if (options?.openPreview) query.set('openPreview', 'true');
+		if (options?.assistantThread) query.set('assistantThread', options.assistantThread);
+		const suffix = query.size > 0 ? `?${query}` : '';
+		await this.page.goto(`/projects/${projectId}/agents/${agentId}${suffix}`);
+	}
+
+	getEditorColumn(): Locator {
+		return this.page.locator('[data-testid="agent-builder-editor-column"]');
+	}
+
+	getEditingOverlay(): Locator {
+		return this.getEditorColumn().locator('[data-testid="agent-editing-overlay"]');
+	}
+
+	getTakeOverButton(): Locator {
+		return this.getEditingOverlay().getByRole('button', { name: 'Take over' });
+	}
+
+	getEditingStatus(): Locator {
+		return this.getEditingOverlay().getByRole('status');
+	}
+
+	getInstructionsEditor(): Locator {
+		return this.page.locator('[data-testid="agent-instructions-document"] .tiptap');
+	}
+
+	getMainTab(name: string): Locator {
+		return this.getEditorColumn().getByRole('tab', { name, includeHidden: true });
+	}
+
+	getPreviewButton(): Locator {
+		return this.page.locator('[data-testid="agent-triggers-preview-chat-button"]');
+	}
+
+	async openAssistant(): Promise<void> {
+		await this.page.locator('[data-testid="agent-builder-instance-ai-btn"]').click();
+	}
+
+	async openDescription(): Promise<void> {
+		await this.getHeader().getByRole('button', { name: 'More actions', exact: true }).click();
+		await this.page.getByRole('menuitem', { name: 'Edit description', exact: true }).click();
+	}
+
+	getDescriptionDialog(): Locator {
+		return this.page.getByRole('dialog').filter({
+			has: this.page.locator('[data-testid="agent-description-input"]'),
+		});
+	}
+
+	getDescriptionInput(): Locator {
+		return this.getDescriptionDialog().getByRole('textbox', { includeHidden: true });
+	}
+
+	getDescriptionSaveButton(): Locator {
+		return this.getDescriptionDialog().getByRole('button', {
+			name: 'Save',
+			exact: true,
+			includeHidden: true,
+		});
+	}
+
+	getDescriptionCloseButton(): Locator {
+		return this.getDescriptionDialog().getByRole('button', { name: 'Close', exact: true });
+	}
+
+	getDescriptionCancelButton(): Locator {
+		return this.getDescriptionDialog().getByRole('button', { name: 'Cancel', exact: true });
+	}
+
+	getDescriptionTakeOverButton(): Locator {
+		return this.getDescriptionDialog().getByRole('button', { name: 'Take over' });
+	}
+
+	async tryToSelectInstructions(): Promise<string> {
+		const bounds = await this.getInstructionsEditor().boundingBox();
+		if (!bounds) throw new Error('The instructions are not visible');
+		await this.page.mouse.move(bounds.x + 10, bounds.y + 10);
+		await this.page.mouse.down();
+		await this.page.mouse.move(bounds.x + bounds.width - 10, bounds.y + 30, { steps: 5 });
+		await this.page.mouse.up();
+		return await this.page.evaluate(() => window.getSelection()?.toString() ?? '');
 	}
 
 	getBuilderContainer(): Locator {

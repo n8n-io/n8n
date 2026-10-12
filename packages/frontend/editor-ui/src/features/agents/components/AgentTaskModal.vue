@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import {
 	AGENT_TASK_NAME_MAX_LENGTH,
 	AGENT_TASK_OBJECTIVE_MAX_LENGTH,
@@ -40,6 +41,7 @@ import AgentPreviewButton from './AgentPreviewButton.vue';
 import AgentModal from './modals/AgentModal.vue';
 
 export type AgentTaskModalData = {
+	editing?: AgentEditingContext;
 	projectId: string;
 	agentId: string;
 	ensureAgentPersisted?: () => Promise<void>;
@@ -61,6 +63,7 @@ const props = defineProps<{
 	data: AgentTaskModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -341,6 +344,7 @@ function closeModal() {
 }
 
 function onPreview() {
+	if (isEditingLocked.value) return;
 	objectiveTouched.value = true;
 	if (objectiveError.value || !props.data.onPreview) return;
 
@@ -349,6 +353,7 @@ function onPreview() {
 }
 
 async function onDelete() {
+	if (isEditingLocked.value) return;
 	const current = task.value;
 	if (!current || deleting.value) return;
 
@@ -374,6 +379,7 @@ async function onDelete() {
 }
 
 async function onSave() {
+	if (isEditingLocked.value) return;
 	saveAttempted.value = true;
 	if (!canSave.value) return;
 
@@ -399,6 +405,7 @@ async function onSave() {
 		} else {
 			/** Save the agent only on submit, so closing does not create an empty agent. */
 			await props.data.ensureAgentPersisted?.();
+			if (isEditingLocked.value) return;
 			/** New tasks start running once the agent is published. */
 			await createAgentTask(rootStore.restApiContext, props.data.projectId, props.data.agentId, {
 				...base,
@@ -438,6 +445,7 @@ async function onSave() {
 					<N8nText color="primary" bold size="small">*</N8nText>
 				</N8nText>
 				<N8nMarkdownEditor
+					:disabled="isEditingLocked"
 					:class="$style.objectiveEditor"
 					:model-value="objective"
 					:placeholder="i18n.baseText('agents.builder.tasks.objective.placeholder')"
@@ -458,6 +466,8 @@ async function onSave() {
 				</N8nText>
 				<div :class="$style.scheduleRow">
 					<N8nSelect
+						:disabled="isEditingLocked"
+						:teleported="false"
 						:model-value="frequency"
 						:class="$style.frequencySelect"
 						data-testid="agent-task-frequency"
@@ -476,6 +486,8 @@ async function onSave() {
 							{{ i18n.baseText('agents.builder.tasks.schedule.on') }}
 						</N8nText>
 						<N8nSelect
+							:disabled="isEditingLocked"
+							:teleported="false"
 							:model-value="dayOfWeek"
 							:class="$style.daySelect"
 							data-testid="agent-task-day-of-week"
@@ -495,6 +507,8 @@ async function onSave() {
 							{{ i18n.baseText('agents.builder.tasks.schedule.onDay') }}
 						</N8nText>
 						<N8nSelect
+							:disabled="isEditingLocked"
+							:teleported="false"
 							:model-value="dayOfMonth"
 							:class="$style.daySelect"
 							data-testid="agent-task-day-of-month"
@@ -514,6 +528,8 @@ async function onSave() {
 							{{ i18n.baseText('agents.builder.tasks.schedule.at') }}
 						</N8nText>
 						<N8nSelect
+							:disabled="isEditingLocked"
+							:teleported="false"
 							:model-value="selectedTime"
 							:class="$style.timeSelect"
 							data-testid="agent-task-time"
@@ -561,6 +577,8 @@ async function onSave() {
 						{{ i18n.baseText('agents.builder.tasks.schedule.in') }}
 					</N8nText>
 					<N8nSelect
+						:disabled="isEditingLocked"
+						:teleported="false"
 						:model-value="timezone"
 						:class="$style.timezoneSelect"
 						:placeholder="i18n.baseText('agents.builder.tasks.schedule.timezone.placeholder')"

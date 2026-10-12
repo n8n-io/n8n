@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue';
 import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentApproval } from '@n8n/api-types';
+import { useAgentEditing } from '../composables/useAgentEditing';
 
 export type ApprovalMode = 'disabled' | 'global' | 'selected';
 
@@ -42,6 +43,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { isEditingLocked } = useAgentEditing();
+const disabled = computed(() => props.disabled || isEditingLocked.value);
 
 const approvalMode = ref<ApprovalMode>('disabled');
 const selectedEntries = ref<string[]>([]);
@@ -86,7 +89,7 @@ watch(isValid, (valid) => emit('update:valid', valid), { immediate: true });
 watch(
 	[() => props.modelValue, () => props.options],
 	([, options]) => {
-		if (approvalMode.value !== 'selected' || options.length === 0) return;
+		if (disabled.value || approvalMode.value !== 'selected' || options.length === 0) return;
 
 		const available = new Set(options.map((option) => option.value));
 		const pruned = selectedEntries.value.filter((entry) => available.has(entry));
@@ -123,12 +126,14 @@ function emitApproval() {
 }
 
 function handleModeUpdate(value: unknown) {
+	if (disabled.value) return;
 	approvalMode.value = toApprovalMode(value);
 	emitApproval();
 	emit('update:mode', approvalMode.value);
 }
 
 function handleSelectedUpdate(value: unknown) {
+	if (disabled.value) return;
 	selectedEntries.value = toStringArray(value);
 	emitApproval();
 }
@@ -144,7 +149,8 @@ function handleSelectedUpdate(value: unknown) {
 		<div :class="$style.controls">
 			<N8nSelect
 				:model-value="approvalMode"
-				:disabled="props.disabled"
+				:disabled="disabled"
+				:teleported="false"
 				size="small"
 				:data-test-id="`${props.testIdPrefix}-mode`"
 				:class="$style.modeSelect"
@@ -165,7 +171,8 @@ function handleSelectedUpdate(value: unknown) {
 			:model-value="selectedEntries"
 			multiple
 			filterable
-			:disabled="props.disabled"
+			:disabled="disabled"
+			:teleported="false"
 			size="small"
 			:loading="props.loading"
 			:placeholder="props.placeholder"

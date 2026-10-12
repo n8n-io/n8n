@@ -5,6 +5,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
+import { useAgentEditing } from './useAgentEditing';
 import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
 
@@ -18,11 +19,12 @@ export function useAgentPublish() {
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
+	const { isEditingLocked } = useAgentEditing();
 
 	const publishing = ref(false);
 
 	async function publish(projectId: string, agentId: string): Promise<AgentResource | null> {
-		if (publishing.value) return null;
+		if (publishing.value || isEditingLocked.value) return null;
 		publishing.value = true;
 		try {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
@@ -42,7 +44,7 @@ export function useAgentPublish() {
 		agentId: string,
 		agentName?: string,
 	): Promise<AgentResource | null> {
-		if (publishing.value) return null;
+		if (publishing.value || isEditingLocked.value) return null;
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.unpublish.modal.title', {
 				interpolate: { name: agentName ?? '' },
@@ -51,7 +53,7 @@ export function useAgentPublish() {
 			confirmButtonText: locale.baseText('agents.unpublish.modal.button.unpublish'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
-		if (confirmed !== MODAL_CONFIRM) return null;
+		if (confirmed !== MODAL_CONFIRM || isEditingLocked.value) return null;
 
 		publishing.value = true;
 		try {
@@ -71,14 +73,14 @@ export function useAgentPublish() {
 		projectId: string,
 		agentId: string,
 	): Promise<AgentResource | null> {
-		if (publishing.value) return null;
+		if (publishing.value || isEditingLocked.value) return null;
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.revertToPublished.modal.title'),
 			description: locale.baseText('agents.revertToPublished.modal.description'),
 			confirmButtonText: locale.baseText('agents.revertToPublished.modal.button.revert'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
-		if (confirmed !== MODAL_CONFIRM) return null;
+		if (confirmed !== MODAL_CONFIRM || isEditingLocked.value) return null;
 
 		publishing.value = true;
 		try {

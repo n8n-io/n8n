@@ -147,6 +147,27 @@ describe('InstanceAiChatPanel', () => {
 		clearPendingComposerDraft('thread-2');
 	});
 
+	it('stops the active thread and returns its cancellation result across a thread switch', async () => {
+		const first = makeThread();
+		const second = makeThread();
+		const cancellation = Promise.withResolvers<boolean>();
+		vi.mocked(first.cancelRun).mockReturnValueOnce(cancellation.promise);
+		store.getRuntime.mockImplementation((threadId) => (threadId === 'thread-1' ? first : second));
+		const wrapper = mountPanel({ subject, launch, threadId: 'thread-1' });
+		await flushPromises();
+
+		const stopping = wrapper.vm.stop();
+		await wrapper.setProps({ threadId: 'thread-next' });
+		await flushPromises();
+		cancellation.resolve(false);
+		await expect(stopping).resolves.toBe(false);
+		expect(first.cancelRun).toHaveBeenCalledTimes(1);
+		expect(second.cancelRun).not.toHaveBeenCalled();
+
+		await expect(wrapper.vm.stop()).resolves.toBe(true);
+		expect(second.cancelRun).toHaveBeenCalledTimes(1);
+	});
+
 	it('mints a thread when none is given, calling beforeNewThread first', async () => {
 		const order: string[] = [];
 		const beforeNewThread = vi.fn().mockImplementation(async () => {

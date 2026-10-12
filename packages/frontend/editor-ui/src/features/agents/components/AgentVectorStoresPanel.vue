@@ -143,6 +143,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 						</td>
 						<td :class="$style.actionCell" @click.stop>
 							<N8nActionDropdown
+								:key="String(props.disabled)"
 								:items="rowActions()"
 								:disabled="props.disabled"
 								activator-icon="ellipsis"

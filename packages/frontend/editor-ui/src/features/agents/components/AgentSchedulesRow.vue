@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing } from '../composables/useAgentEditing';
 import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 	'preview-task': [instructions: string];
 }>();
 
+const { editing } = useAgentEditing();
 const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
@@ -151,10 +153,12 @@ async function removeTask(task: TaskRow) {
 }
 
 function openTaskModal(task: TaskRow | null) {
+	if (props.disabled) return;
 	const { projectId, agentId } = props;
 	uiStore.openModalWithData({
 		name: AGENT_TASK_MODAL_KEY,
 		data: {
+			editing,
 			projectId: props.projectId,
 			agentId: props.agentId,
 			ensureAgentPersisted: props.ensureAgentPersisted,
@@ -167,7 +171,10 @@ function openTaskModal(task: TaskRow | null) {
 						enabled: task.enabled,
 					}
 				: undefined,
-			onPreview: (instructions: string) => emit('preview-task', instructions),
+			onPreview: (instructions: string) => {
+				if (!props.disabled && isCurrentAgent(projectId, agentId))
+					emit('preview-task', instructions);
+			},
 			onSaved: () => {
 				if (isCurrentAgent(projectId, agentId)) onTasksChanged();
 			},

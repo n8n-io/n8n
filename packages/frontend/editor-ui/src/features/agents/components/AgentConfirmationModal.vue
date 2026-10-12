@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, ref } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import AgentModal from './modals/AgentModal.vue';
 
 export type AgentConfirmationModalData = {
+	editing?: AgentEditingContext;
 	title: string;
 	description: string;
 	confirmButtonText: string;
@@ -19,6 +21,7 @@ const props = defineProps<{
 	data: AgentConfirmationModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const submitting = ref(false);
@@ -33,6 +36,7 @@ async function onCancel() {
 }
 
 async function onConfirm() {
+	if (isEditingLocked.value) return;
 	submitting.value = true;
 	try {
 		const shouldClose = await props.data.onConfirm?.();
@@ -67,10 +71,12 @@ async function onOpenChange(open: boolean) {
 				{{ props.data.description }}
 			</N8nText>
 		</div>
-		<template #footerActions>
+		<template #footerCancel>
 			<N8nButton variant="subtle" size="medium" :disabled="submitting" @click="onCancel">
 				{{ props.data.cancelButtonText }}
 			</N8nButton>
+		</template>
+		<template #footerActions>
 			<N8nButton variant="solid" size="medium" :loading="submitting" @click="onConfirm">
 				{{ props.data.confirmButtonText }}
 			</N8nButton>

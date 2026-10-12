@@ -204,7 +204,14 @@ function submitSuggestion(payload: SuggestionSelectionPayload) {
 	conversationRef.value?.submitSuggestion(payload);
 }
 
+async function stop(): Promise<boolean> {
+	const threadId = activeThreadId.value;
+	if (!threadId) return false;
+	return (await store.getRuntime(threadId)?.cancelRun()) ?? false;
+}
+
 defineExpose({
+	stop,
 	handoff,
 	/** Forwards to the mounted conversation's composer; a no-op while no thread is mounted. */
 	setPrefill,

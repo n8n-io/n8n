@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing } from '../composables/useAgentEditing';
 import { computed, onBeforeUnmount, provide, ref, toRaw, useId, watch } from 'vue';
 import { N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -32,6 +33,7 @@ const props = defineProps<{
 }>();
 const inputs = defineModel<NonNullable<WorkflowToolRef['inputs']>>({ required: true });
 const emit = defineEmits<{ 'update:valid': [valid: boolean] }>();
+const { isEditingLocked } = useAgentEditing();
 const i18n = useI18n();
 const id = useId();
 const rawValues = ref<Record<string, string>>({});
@@ -110,6 +112,7 @@ function displayValue(field: WorkflowToolInputFieldDef) {
 }
 
 function setMode(field: WorkflowToolInputFieldDef, mode: AgentJsonWorkflowToolInputField['mode']) {
+	if (isEditingLocked.value) return;
 	let next = { ...toRaw(inputs.value) };
 	delete rawValues.value[field.name];
 	if (mode === 'ai') {
@@ -129,6 +132,7 @@ function setMode(field: WorkflowToolInputFieldDef, mode: AgentJsonWorkflowToolIn
 }
 
 function updateValue(field: WorkflowToolInputFieldDef, update: IUpdateInformation) {
+	if (isEditingLocked.value) return;
 	const raw = formatWorkflowToolFixedValue(update.value);
 	const mode = bindingFor(field.name).mode;
 	if (mode === 'ai') return;
@@ -141,6 +145,7 @@ function updateValue(field: WorkflowToolInputFieldDef, update: IUpdateInformatio
 }
 
 function updateDescription(name: string, description: string) {
+	if (isEditingLocked.value) return;
 	let next = { ...toRaw(inputs.value) };
 	if (description.trim()) next = { ...next, [name]: { mode: 'ai', description } };
 	else delete next[name];
@@ -203,6 +208,7 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 			:aria-label="field.name"
 		>
 			<ParameterInputFull
+				:is-read-only="isEditingLocked"
 				:parameter="parameterFor(field)"
 				:value="displayValue(field)"
 				:input-mode="bindingFor(field.name).mode"

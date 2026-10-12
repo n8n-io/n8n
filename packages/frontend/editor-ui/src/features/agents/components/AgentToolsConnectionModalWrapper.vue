@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -56,6 +57,7 @@ import {
 
 import {
 	getExistingToolNames,
+	isSameAgentTool,
 	nodeTypeToNewToolRef,
 	toolRefToNode,
 	workflowToNewToolRef,
@@ -95,6 +97,7 @@ defineOptions({ inheritAttrs: false });
 const props = defineProps<{
 	modalName: string;
 	data: {
+		editing?: AgentEditingContext;
 		mode: ToolPickerMode;
 		tools: AgentJsonToolRef[];
 		mcpServers?: AgentJsonMcpServerConfig[];
@@ -108,6 +111,7 @@ const props = defineProps<{
 	};
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -169,8 +173,8 @@ function toWorkingToolEntries(
 	tools: AgentJsonToolRef[],
 	existingEntries: WorkingToolEntry[] = [],
 ): WorkingToolEntry[] {
-	return tools.map((ref, index) => ({
-		localId: existingEntries[index]?.localId ?? uuidv4(),
+	return tools.map((ref) => ({
+		localId: existingEntries.find((entry) => isSameAgentTool(entry.ref, ref))?.localId ?? uuidv4(),
 		ref,
 	}));
 }
@@ -179,8 +183,9 @@ function toWorkingMcpServerEntries(
 	servers: AgentJsonMcpServerConfig[],
 	existingEntries: WorkingMcpServerEntry[] = [],
 ): WorkingMcpServerEntry[] {
-	return servers.map((server, index) => ({
-		localId: existingEntries[index]?.localId ?? uuidv4(),
+	return servers.map((server) => ({
+		localId:
+			existingEntries.find((entry) => entry.server.name === server.name)?.localId ?? uuidv4(),
 		server,
 	}));
 }
@@ -250,6 +255,7 @@ function initialConfigTitle(data: AgentToolConfigModalData): string {
 }
 
 function openConfigModal(data: AgentToolConfigModalData) {
+	if (isEditingLocked.value) return;
 	configData.value = data;
 	configTitle.value = initialConfigTitle(data);
 	configSession.value += 1;
@@ -261,21 +267,25 @@ function closeModal() {
 }
 
 function backToPicker() {
+	if (isEditingLocked.value) return;
 	configData.value = null;
 	isCredentialModalOpen.value = false;
 	configTitle.value = '';
 }
 
 function updateConfigTitle(value: string) {
+	if (isEditingLocked.value) return;
 	configTitle.value = value;
 	configForm.value?.changeTitle(value);
 }
 
 function saveConfig() {
+	if (isEditingLocked.value) return;
 	if (configForm.value?.confirm()) closeModal();
 }
 
 function removeConfig() {
+	if (isEditingLocked.value) return;
 	configForm.value?.remove();
 	closeModal();
 }
@@ -337,6 +347,7 @@ function getExistingMcpServerNames(
 }
 
 function commit() {
+	if (isEditingLocked.value) return;
 	props.data.onConfirm({
 		tools: workingTools.value,
 		mcpServers: workingMcpServers.value,
@@ -344,6 +355,7 @@ function commit() {
 }
 
 function addToolRef(savedRef: AgentJsonToolRef) {
+	if (isEditingLocked.value) return;
 	// The policy can finish loading while the config form is open.
 	if (savedRef.type === 'node' && warnIfRestricted(savedRef.node.nodeType)) return;
 
@@ -352,6 +364,7 @@ function addToolRef(savedRef: AgentJsonToolRef) {
 }
 
 function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
+	if (isEditingLocked.value) return;
 	workingMcpServerEntries.value = [
 		...workingMcpServerEntries.value,
 		{ localId: uuidv4(), server: savedServer },
@@ -541,6 +554,7 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 }
 
 async function handleCreateWorkflow() {
+	if (isEditingLocked.value) return;
 	const projectId = props.data.projectId;
 	if (!projectId || !canCreateWorkflow.value || isCreatingWorkflow.value) return;
 
@@ -557,6 +571,7 @@ async function handleCreateWorkflow() {
 			name: `${sampleName} ${matchingWorkflows.length + 1}`,
 			projectId,
 		});
+		if (isEditingLocked.value) return;
 		const newRef = workflowToNewToolRef(newWorkflow);
 
 		openConfigForNewRef({
@@ -593,6 +608,7 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 		supportsToolApproval: props.data.supportsToolApproval,
 		existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 		onConfirm: (updatedRef: AgentJsonToolRef) => {
+			if (isEditingLocked.value) return;
 			workingToolEntries.value = workingToolEntries.value.map((e) =>
 				e.localId === entry.localId ? { ...e, ref: updatedRef } : e,
 			);
@@ -600,6 +616,7 @@ function openConfigForToolEntry(entry: WorkingToolEntry) {
 			commit();
 		},
 		onRemove: () => {
+			if (isEditingLocked.value) return;
 			workingToolEntries.value = workingToolEntries.value.filter(
 				(e) => e.localId !== entry.localId,
 			);
@@ -621,12 +638,14 @@ function openConfigForMcpEntry(entry: WorkingMcpServerEntry) {
 		supportsToolApproval: props.data.supportsToolApproval,
 		existingToolNames: getExistingMcpServerNames(workingMcpServers.value, entry.server),
 		onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+			if (isEditingLocked.value) return;
 			workingMcpServerEntries.value = workingMcpServerEntries.value.map((e) =>
 				e.localId === entry.localId ? { ...e, server: updatedServer } : e,
 			);
 			commit();
 		},
 		onRemove: () => {
+			if (isEditingLocked.value) return;
 			workingMcpServerEntries.value = workingMcpServerEntries.value.filter(
 				(e) => e.localId !== entry.localId,
 			);
@@ -862,6 +881,7 @@ function addActionLabel(item: ToolConnectionItem): string {
 }
 
 function handleRowActivate(item: ToolConnectionItem) {
+	if (isEditingLocked.value) return;
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;

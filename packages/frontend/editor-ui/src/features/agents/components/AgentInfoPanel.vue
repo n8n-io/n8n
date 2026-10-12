@@ -215,11 +215,13 @@ function scheduleDeploymentNameEmit(value: string) {
 	cancelDeploymentNameEmit();
 	deploymentNameEmitTimer = setTimeout(() => {
 		deploymentNameEmitTimer = undefined;
+		if (props.disabled) return;
 		emit('update:config', { modelDeploymentName: value });
 	}, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 }
 
 function onDeploymentNameInput(value: string) {
+	if (props.disabled) return;
 	deploymentName.value = value;
 	emit('draft:config');
 	if (props.immediateUpdates) {
@@ -241,6 +243,7 @@ function deriveDefaultDeploymentName(selection: AgentModelSelection): string {
 }
 
 function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
+	if (props.disabled) return;
 	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
 		showError(new Error(i18n.baseText('credentials.noResults')), i18n.baseText('error'));
@@ -366,6 +369,7 @@ watch(
 );
 
 const emitInstructionsDebounced = useDebounceFn(() => {
+	if (props.disabled) return;
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
@@ -378,6 +382,7 @@ function focusModel() {
 }
 
 function onInstructionsInput(value: string) {
+	if (props.disabled) return;
 	instructions.value = value;
 	emit('draft:config');
 	if (props.immediateUpdates) {
@@ -385,6 +390,10 @@ function onInstructionsInput(value: string) {
 		return;
 	}
 	void emitInstructionsDebounced();
+}
+
+function instructionsEditorAttributes(): Record<string, string> {
+	return props.disabled ? { inert: '' } : {};
 }
 defineExpose({ focusInstructions, focusModel });
 </script>
@@ -493,7 +502,8 @@ defineExpose({ focusInstructions, focusModel });
 				<N8nMarkdownEditor
 					ref="instructionsEditor"
 					:id="instructionsEditorId"
-					:class="$style.instructionsDocument"
+					:class="[$style.instructionsDocument, props.disabled && $style.instructionsLocked]"
+					:editor-props="{ attributes: instructionsEditorAttributes }"
 					:model-value="instructions"
 					:disabled="props.disabled"
 					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
@@ -510,6 +520,11 @@ defineExpose({ focusInstructions, focusModel });
 </template>
 
 <style module>
+.instructionsLocked {
+	user-select: none;
+	cursor: not-allowed;
+}
+
 .panels {
 	display: flex;
 	align-items: stretch;

@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount, provide, useTemplateRef } from 'vue';
+import {
+	ref,
+	computed,
+	watch,
+	nextTick,
+	onBeforeUnmount,
+	provide,
+	reactive,
+	useTemplateRef,
+} from 'vue';
 import {
 	StorageSerializers,
 	useElementSize,
@@ -88,6 +97,7 @@ import {
 } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
+import { AGENT_EDITING_KEY, type AgentEditingContext } from '../composables/useAgentEditing';
 import { useAgentSetupTasks } from '../components/AgentSetupTasks/useAgentSetupTasks';
 import {
 	removeProjectAgentFromListCache,
@@ -155,7 +165,6 @@ import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
-import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { useAgentCollaborationStore } from '../stores/agentCollaboration.store';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
@@ -246,7 +255,6 @@ const AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH = 320;
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
-const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 // Artifact mode reuses this route shell inside Instance AI. It still relies on
 // singleton agent session/credential stores, so only one builder shell should
@@ -615,6 +623,32 @@ const isEditingLocked = computed(
 // for a user who otherwise has permission — mirrors the workflow artifact's
 // read-only lock during a build.
 const effectiveCanEditAgent = computed(() => canEditAgent.value && !isEditingLocked.value);
+const takingOver = ref(false);
+let takeOverRequest = 0;
+
+watch([projectId, agentId, aiThreadId, embeddedAiBuilding], () => {
+	takeOverRequest += 1;
+	takingOver.value = false;
+});
+
+async function takeOverAssistant() {
+	if (!embeddedAiBuilding.value || takingOver.value) return;
+	const request = ++takeOverRequest;
+	takingOver.value = true;
+	const accepted = await aiPanelRef.value?.stop();
+	if (request !== takeOverRequest) return;
+	// A successful request stays pending until the server ends the build.
+	if (!accepted) takingOver.value = false;
+}
+
+const editingContext: AgentEditingContext = reactive({
+	locked: computed(() => !effectiveCanEditAgent.value),
+	assistantBuilding: embeddedAiBuilding,
+	takingOver,
+	takeOver: takeOverAssistant,
+});
+provide(AGENT_EDITING_KEY, editingContext);
+const { openAgentConfirmationModal } = useAgentConfirmationModal(editingContext);
 const canDeletePreviewSession = computed(() => canEditAgent.value);
 
 // The intro is for a first build only: a new agent, still blank, editable, and
@@ -816,6 +850,7 @@ const {
 const localConfig = ref<AgentJsonConfig | null>(null);
 let configEditRevision = 0;
 function markConfigDraftEdited() {
+	if (!effectiveCanEditAgent.value) return;
 	configEditRevision += 1;
 }
 const connectedTriggers = ref<string[]>([]);
@@ -1006,6 +1041,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
+	if (!effectiveCanEditAgent.value) return;
 	if (files.length === 0) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
@@ -1055,6 +1091,7 @@ async function onUploadAgentFiles(files: File[]) {
 	agentFilesUploading.value = true;
 	try {
 		await ensureAgentPersisted();
+		if (!effectiveCanEditAgent.value || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 		const uploadedFiles = await uploadAgentFiles(
 			rootStore.restApiContext,
 			targetProjectId,
@@ -1083,7 +1120,10 @@ async function onUploadAgentFiles(files: File[]) {
 }
 
 async function onDeleteAgentFile(file: AgentFileDto) {
+	if (!effectiveCanEditAgent.value) return;
 	if (deletingAgentFileId.value !== null) return;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 
 	const confirmed = await openAgentConfirmationModal({
 		title: locale.baseText('agents.builder.files.deleteModal.title', {
@@ -1095,10 +1135,12 @@ async function onDeleteAgentFile(file: AgentFileDto) {
 		confirmButtonText: locale.baseText('agents.builder.files.deleteModal.button.delete'),
 		cancelButtonText: locale.baseText('generic.cancel'),
 	});
-	if (confirmed !== MODAL_CONFIRM) return;
-
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
+	if (
+		confirmed !== MODAL_CONFIRM ||
+		!effectiveCanEditAgent.value ||
+		isStaleAgentTarget(targetProjectId, targetAgentId)
+	)
+		return;
 	deletingAgentFileId.value = file.id;
 	try {
 		await deleteAgentFile(rootStore.restApiContext, targetProjectId, targetAgentId, file.id);
@@ -1645,6 +1687,7 @@ const mcpAutosave = useAgentConfigAutosave<McpAvailabilitySnapshot>({
 });
 
 function onToggleMcpAccess(enabled: boolean) {
+	if (!effectiveCanEditAgent.value) return;
 	if (!agent.value) return;
 	// Acquire the write lock before persisting any change.
 	agentCollaborationStore.requestWriteAccess();
@@ -1909,7 +1952,7 @@ function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
 }
 
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }) {
-	if (!localConfig.value) return;
+	if (!localConfig.value || !effectiveCanEditAgent.value) return;
 	markConfigDraftEdited();
 	// Acquire the write lock before persisting any change — the lock is
 	// lazy (acquired on first edit, released on inactivity), matching the
@@ -1949,6 +1992,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 // Capability-section handlers (tools, skills, tasks, triggers). Extracted so the
 // agent node's NDV can reuse them with its own config/skill autosave funnels.
 const caps = useAgentCapabilitiesActions({
+	editing: editingContext,
 	localConfig,
 	agent,
 	projectId,
@@ -1960,6 +2004,7 @@ const caps = useAgentCapabilitiesActions({
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill }) => {
+		if (!effectiveCanEditAgent.value) return;
 		// Acquire the write lock before persisting any change.
 		agentCollaborationStore.requestWriteAccess();
 		// The persisted validation result no longer reflects the working copy —
@@ -1986,6 +2031,7 @@ const caps = useAgentCapabilitiesActions({
 const appliedSkills = caps.appliedSkills;
 
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
+	if (!effectiveCanEditAgent.value) return;
 	markConfigDraftEdited();
 	invalidateConfigValidation();
 	localConfig.value = copyAgentConfig(nextConfig);
@@ -2442,22 +2488,28 @@ async function exportAgentJson() {
 
 function openImportJsonModal() {
 	if (!effectiveCanEditAgent.value) return;
+	const targetAgentId = agentId.value;
 
 	uiStore.openModalWithData({
 		name: AGENT_JSON_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			editing: editingContext,
+			onConfirm: (config: AgentJsonConfig) => {
+				if (agentId.value !== targetAgentId) return;
+				replaceConfigAndScheduleSave(config);
+			},
 		},
 	});
 }
 
 function openDescriptionModal() {
-	if (!localConfig.value) return;
+	if (!localConfig.value || !effectiveCanEditAgent.value) return;
 	const targetAgentId = agentId.value;
 
 	uiStore.openModalWithData({
 		name: AGENT_DESCRIPTION_MODAL_KEY,
 		data: {
+			editing: editingContext,
 			agentName: localConfig.value.name,
 			description: localConfig.value.description ?? '',
 			onConfirm: (description: string) => {
@@ -2516,6 +2568,9 @@ async function onHeaderAction(action: string) {
 		return;
 	}
 	if (action === 'delete') {
+		if (isEditingLocked.value) return;
+		const capturedProjectId = projectId.value;
+		const capturedAgentId = agentId.value;
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
 				interpolate: { name: agentName.value },
@@ -2526,19 +2581,19 @@ async function onHeaderAction(action: string) {
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
-		if (confirmed !== MODAL_CONFIRM) return;
+		if (confirmed !== MODAL_CONFIRM || isEditingLocked.value) return;
 
 		// Drop any pending edits before navigation — the agent is being deleted and
 		// the unmount flush must not save against it.
 		await settleAutosave();
+		if (isEditingLocked.value || isStaleAgentTarget(capturedProjectId, capturedAgentId)) return;
 		configAutosave.cancelPendingAutosave();
 		skillAutosave.cancelPendingAutosave();
-		const capturedProjectId = projectId.value;
 
 		try {
-			await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
-			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
-			favoritesStore.removeFavoriteLocally(agentId.value, 'agent');
+			await deleteAgent(rootStore.restApiContext, capturedProjectId, capturedAgentId);
+			removeProjectAgentFromListCache(capturedProjectId, capturedAgentId);
+			favoritesStore.removeFavoriteLocally(capturedAgentId, 'agent');
 		} catch (error) {
 			showError(error, 'Could not delete agent');
 			return;
@@ -2988,6 +3043,7 @@ function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalN
 	const vectorStores = localConfig.value?.vectorStores ?? [];
 	const matchName = originalName ?? vectorStore.name;
 	const index = vectorStores.findIndex((existing) => existing.name === matchName);
+	if (originalName !== undefined && index === -1) return;
 	const nextVectorStores =
 		index === -1
 			? [...vectorStores, vectorStore]
@@ -2996,30 +3052,42 @@ function onConfirmVectorStore(vectorStore: AgentJsonVectorStoreConfig, originalN
 }
 
 function onOpenAddVectorStoreModal() {
+	if (!effectiveCanEditAgent.value) return;
+	const targetAgentId = agentId.value;
 	const vectorStores = localConfig.value?.vectorStores ?? [];
 	uiStore.openModalWithData({
 		name: AGENT_VECTOR_STORES_MODAL_KEY,
 		data: {
+			editing: editingContext,
 			projectId: projectId.value,
 			agentId: agentId.value,
 			existingNames: vectorStores.map((vectorStore) => vectorStore.name),
-			onConfirm: onConfirmVectorStore,
+			onConfirm: (vectorStore: AgentJsonVectorStoreConfig) => {
+				if (agentId.value !== targetAgentId) return;
+				onConfirmVectorStore(vectorStore);
+			},
 		},
 	});
 }
 
 function onOpenEditVectorStoreModal(vectorStore: AgentJsonVectorStoreConfig) {
+	if (!effectiveCanEditAgent.value) return;
+	const targetAgentId = agentId.value;
 	const vectorStores = localConfig.value?.vectorStores ?? [];
 	uiStore.openModalWithData({
 		name: AGENT_VECTOR_STORES_MODAL_KEY,
 		data: {
+			editing: editingContext,
 			projectId: projectId.value,
 			agentId: agentId.value,
 			existingNames: vectorStores.map((existing) => existing.name),
 			vectorStore,
-			onConfirm: (updated: AgentJsonVectorStoreConfig) =>
-				onConfirmVectorStore(updated, vectorStore.name),
+			onConfirm: (updated: AgentJsonVectorStoreConfig) => {
+				if (agentId.value !== targetAgentId) return;
+				onConfirmVectorStore(updated, vectorStore.name);
+			},
 			onRemove: (name: string) => {
+				if (agentId.value !== targetAgentId) return;
 				onConfigFieldUpdate({
 					vectorStores: (localConfig.value?.vectorStores ?? []).filter(
 						(existing) => existing.name !== name,
@@ -3187,7 +3255,12 @@ useKeybindings({
 				'--agent-builder-editor-min-width': `${AGENT_BUILDER_EDITOR_MIN_WIDTH}px`,
 			}"
 		>
-			<aside v-if="showAiPanel" :class="$style.aiDock" data-testid="agent-ai-dock">
+			<aside
+				v-if="showAiPanel || embeddedAiBuilding"
+				v-show="showAiPanel"
+				:class="$style.aiDock"
+				data-testid="agent-ai-dock"
+			>
 				<N8nResizeWrapper
 					:width="renderedSidePanelWidths.ai"
 					:min-width="AGENT_BUILDER_SIDE_PANEL_MIN_WIDTH"
@@ -3215,16 +3288,6 @@ useKeybindings({
 					</InstanceAiChatPanel>
 				</N8nResizeWrapper>
 			</aside>
-			<div
-				v-if="embeddedAiBuilding"
-				:class="$style.activityArea"
-				:style="{
-					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
-					right: isPreviewDockOpen ? `${renderedSidePanelWidths.preview}px` : undefined,
-				}"
-			>
-				<AgentBuildingIndicator />
-			</div>
 			<div v-if="showBuilderLoading" :class="$style.loading">
 				<N8nIcon icon="spinner" spin />
 			</div>
@@ -3269,7 +3332,8 @@ useKeybindings({
 					:deleting-agent-file-id="deletingAgentFileId"
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
-					:can-edit-agent="effectiveCanEditAgent"
+					:can-edit-agent="canEditAgent"
+					:editing-locked="isEditingLocked"
 					:can-execute-agent="canExecuteAgent"
 					:agent-available-in-mcp="agentAvailableInMcp"
 					:tasks-reload-key="tasksReloadKey"
@@ -3456,13 +3520,6 @@ useKeybindings({
 .editorColumn {
 	flex: 1 1 auto;
 	min-width: 0;
-}
-
-.activityArea {
-	position: absolute;
-	inset: 0;
-	z-index: 2;
-	pointer-events: none;
 }
 
 .aiDock {

@@ -1,11 +1,12 @@
 import { N8nDialog } from '@n8n/design-system';
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, inject, Teleport } from 'vue';
+import { defineComponent, h, inject, nextTick, reactive, Teleport } from 'vue';
 import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 
 import AgentModal from '../components/modals/AgentModal.vue';
 import AgentModalMultiStep from '../components/modals/AgentModalMultiStep.vue';
+import { AGENT_EDITING_KEY, type AgentEditingContext } from '../composables/useAgentEditing';
 
 vi.mock('@n8n/design-system', async () => {
 	const { defineComponent, nextTick, onMounted, ref } = await import('vue');
@@ -74,6 +75,7 @@ vi.mock('@n8n/design-system', async () => {
 			`,
 		}),
 		N8nIcon: defineComponent({ template: '<i />' }),
+		N8nSpinner: defineComponent({ template: '<i />' }),
 		N8nIconButton: defineComponent({
 			inheritAttrs: false,
 			props: ['disabled', 'icon'],
@@ -88,6 +90,7 @@ vi.mock('@n8n/design-system', async () => {
 function mountModal(
 	props: Partial<InstanceType<typeof AgentModal>['$props']> = {},
 	slots: Record<string, string> = { default: '<input data-test-id="first-body-field" />' },
+	editing?: AgentEditingContext,
 ) {
 	return mount(AgentModal, {
 		attachTo: document.body,
@@ -97,10 +100,55 @@ function mountModal(
 			...props,
 		},
 		slots,
+		global: { provide: { [AGENT_EDITING_KEY]: editing } },
 	});
 }
 
 describe('AgentModal', () => {
+	it('freezes a mounted draft and mutation actions while keeping dismissal available', async () => {
+		const editing = reactive({
+			locked: false,
+			assistantBuilding: false,
+			takingOver: false,
+			takeOver: vi.fn(),
+		});
+		const wrapper = mountModal(
+			{ editableTitle: true, showBack: true },
+			{
+				default: '<input data-test-id="draft" />',
+				footerLeft: '<button data-test-id="remove">Remove</button>',
+				footerActions: '<button data-test-id="save">Save</button>',
+			},
+			editing,
+		);
+		const draft = wrapper.get<HTMLInputElement>('[data-test-id="draft"]');
+		await draft.setValue('Unsaved change');
+
+		editing.locked = true;
+		editing.assistantBuilding = true;
+		await nextTick();
+
+		expect(wrapper.get('[data-testid="agent-modal-body"]').attributes('inert')).toBeDefined();
+		for (const selector of ['draft', 'remove', 'save', 'agent-modal-title-input']) {
+			expect(wrapper.get(`[data-test-id="${selector}"]`).element, selector).toBeDisabled();
+		}
+		expect(wrapper.get('[data-testid="agent-modal-back"]').element.matches(':disabled')).toBe(true);
+		expect(draft.element.value).toBe('Unsaved change');
+		await wrapper.get('[data-testid="agent-modal-cancel"]').trigger('click');
+		await wrapper.get('[data-testid="dialog-close-button"]').trigger('click');
+		expect(wrapper.emitted('update:open')).toEqual([[false], [false]]);
+
+		editing.locked = false;
+		editing.assistantBuilding = false;
+		await nextTick();
+
+		expect(wrapper.get('[data-test-id="draft"]').element).toBe(draft.element);
+		expect(draft.element.value).toBe('Unsaved change');
+		expect(wrapper.get('[data-test-id="save"]').element).not.toBeDisabled();
+		expect(wrapper.emitted('update:title')).toBeUndefined();
+		wrapper.unmount();
+	});
+
 	it('uses the large agent size and infers footer visibility from its slots', () => {
 		const withoutFooter = mountModal();
 		expect(withoutFooter.get('[role="dialog"]').attributes('data-size')).toBe('2xlarge');

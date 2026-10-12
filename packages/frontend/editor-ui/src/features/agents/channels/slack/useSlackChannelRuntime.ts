@@ -164,7 +164,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		appConfigurationToken: string,
 		onConnected: () => void | Promise<void>,
 	): Promise<boolean> {
+		if (context.editing?.locked) return false;
 		await context.ensureAgentPersisted?.();
+		if (context.editing?.locked) return false;
 		const { installUrl } = await createSlackAgentApp(
 			rootStore.restApiContext,
 			context.projectId.value,
@@ -182,7 +184,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		credentialId: string,
 		connected: boolean,
 	): Promise<boolean> {
-		if (!connected) return false;
+		if (!connected || context.editing?.locked) return false;
 		await finalizeSlackManagerCredential(
 			rootStore.restApiContext,
 			context.projectId.value,
@@ -194,7 +196,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	}
 
 	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
+		if (context.editing?.locked) return false;
 		await context.ensureAgentPersisted?.();
+		if (context.editing?.locked) return false;
 		let id = credentialId;
 		let createdCredentialId: string | undefined;
 		let authorizationStarted = false;
@@ -213,6 +217,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 			const credentials = await credentialsStore.fetchUsableCredentials({
 				projectId: context.projectId.value,
 			});
+			if (context.editing?.locked) return false;
 			const credential = credentials.find(
 				(item) => item.id === id && item.type === SLACK_MANAGER_CREDENTIAL_TYPE,
 			);
@@ -236,6 +241,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	}
 
 	function editManagerCredential(credentialId: string) {
+		if (context.editing?.locked) return;
 		uiStore.openExistingCredential(credentialId, {
 			hideAskAssistant: true,
 			appendToBody: true,
@@ -247,7 +253,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		workspaceId: string,
 		onConnected: () => void | Promise<void>,
 	): Promise<boolean> {
+		if (context.editing?.locked) return false;
 		await context.ensureAgentPersisted?.();
+		if (context.editing?.locked) return false;
 		const result = await installSlackManagedApp(
 			rootStore.restApiContext,
 			context.projectId.value,
@@ -268,6 +276,7 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 	async function saveSettings(
 		update: Pick<SlackManagedAppSettings, 'credentialId' | 'name' | 'description' | 'alwaysOnline'>,
 	) {
+		if (context.editing?.locked) return;
 		settingsLoading.value = true;
 		settingsError.value = false;
 		settingsSaveError.value = null;

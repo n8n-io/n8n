@@ -13,7 +13,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, inject, type PropType } from 'vue';
 
@@ -305,6 +305,34 @@ describe('NodeToolSettingsContent', () => {
 			expect(list).toHaveAttribute('data-read-only', 'false');
 		}
 		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'false');
+	});
+
+	it('preserves a draft when a parameter emits its default on a read-only transition', async () => {
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Name Field',
+					name: 'nameField',
+					type: 'string',
+					default: '',
+					disabledOptions: { show: { resource: ['deal'] } },
+				},
+			],
+		});
+		const { emitted, rerender, findByRole } = createComponentRenderer(NodeToolSettingsContent, {
+			global: { stubs: { NodeCredentials: true } },
+		})({ props: { initialNode: createMockNode({ parameters: { nameField: 'Draft' } }) } });
+		const latestName = () => (emitted('update:node') as INode[][]).at(-1)?.[0].parameters.nameField;
+		const input = await findByRole('textbox');
+		expect(input).toHaveValue('Draft');
+
+		await rerender({ readOnly: true });
+		await waitFor(() => expect(input).toBeDisabled());
+		expect(latestName()).toBe('Draft');
+		await rerender({ readOnly: false });
+		await fireEvent.update(input, 'Draft after unlock');
+		await waitFor(() => expect(latestName()).toBe('Draft after unlock'));
 	});
 
 	it('should show no-parameters notice when all params are notice type', () => {

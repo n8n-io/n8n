@@ -2,7 +2,7 @@
 import { N8nContextMenu, type ContextMenuNode } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { Slot } from 'reka-ui';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -12,6 +12,13 @@ const props = withDefaults(defineProps<{ disabled?: boolean; enabled?: boolean }
 const emit = defineEmits<{ remove: []; 'update:enabled': [enabled: boolean] }>();
 const i18n = useI18n();
 const open = ref(false);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) open.value = false;
+	},
+);
 
 type Action = 'remove' | 'toggle-activation' | 'destructive';
 
@@ -63,7 +70,13 @@ function preventEditWhileOpen(event: MouseEvent) {
 </script>
 
 <template>
-	<N8nContextMenu :items="items" :disabled="disabled" @select="select" @update:open="open = $event">
+	<N8nContextMenu
+		:key="String(disabled)"
+		:items="items"
+		:disabled="disabled"
+		@select="select"
+		@update:open="open = $event"
+	>
 		<template #trigger>
 			<Slot v-bind="$attrs" :class="$style.trigger" @click.capture="preventEditWhileOpen">
 				<slot />

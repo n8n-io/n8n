@@ -1,6 +1,7 @@
 import { configure, fireEvent } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
+import { nextTick, reactive } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -42,14 +43,20 @@ describe('AgentDescriptionModal', () => {
 		uiStore.closeModal = vi.fn();
 	});
 
-	it('saves the trimmed description and disables save when unchanged', async () => {
+	it('preserves a description draft while locked and saves it only after an explicit unlocked save', async () => {
 		const onConfirm = vi.fn();
+		const editing = reactive({
+			locked: false,
+			assistantBuilding: false,
+			takingOver: false,
+			takeOver: vi.fn(),
+		});
 		const { getByTestId } = createComponentRenderer(AgentDescriptionModal, {
 			global: { stubs },
 		})({
 			props: {
 				modalName: MODAL_NAME,
-				data: { agentName: 'Support Agent', description: 'Old', onConfirm },
+				data: { agentName: 'Support Agent', description: 'Old', onConfirm, editing },
 			},
 		});
 
@@ -58,6 +65,17 @@ describe('AgentDescriptionModal', () => {
 
 		await fireEvent.update(getByTestId('agent-description-input'), '  New description  ');
 		expect(save).not.toBeDisabled();
+
+		editing.locked = true;
+		await nextTick();
+		expect(save).toBeDisabled();
+		await fireEvent.click(save);
+		expect(onConfirm).not.toHaveBeenCalled();
+
+		editing.locked = false;
+		await nextTick();
+		expect(getByTestId('agent-description-input')).toHaveValue('  New description  ');
+		expect(onConfirm).not.toHaveBeenCalled();
 		await fireEvent.click(save);
 
 		expect(onConfirm).toHaveBeenCalledWith('New description');

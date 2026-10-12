@@ -222,7 +222,7 @@ function makeUniqueName(baseName: string, existingNames: string[]): string {
 }
 
 function handleChangeParameter(updateData: IUpdateInformation) {
-	if (!node.value) return;
+	if (props.readOnly || !node.value) return;
 
 	const nodeType = nodeTypeDescription.value;
 	if (!nodeType) {
@@ -278,7 +278,7 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 }
 
 function handleChangeSettingsValue(updateData: IUpdateInformation) {
-	if (!node.value) return;
+	if (props.readOnly || !node.value) return;
 	if (updateData.name.startsWith('parameters.')) {
 		const paramName = updateData.name.slice('parameters.'.length);
 		const newParameters = deepCopy(node.value.parameters);
@@ -302,6 +302,7 @@ function handleChangeSettingsValue(updateData: IUpdateInformation) {
 }
 
 function handleChangeCredential(updateData: INodeUpdatePropertiesInformation) {
+	if (props.readOnly) return;
 	if (node.value) {
 		node.value = {
 			...node.value,
@@ -315,6 +316,7 @@ function handleChangeCredential(updateData: INodeUpdatePropertiesInformation) {
 provide(ToolConfigCredentialSelectedKey, handleChangeCredential);
 
 function handleChangeName(name: string) {
+	if (props.readOnly) return;
 	if (node.value) {
 		userEditedName.value = true;
 		node.value = { ...node.value, name };

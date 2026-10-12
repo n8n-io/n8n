@@ -405,30 +405,32 @@ describe('AgentCapabilitiesSection', () => {
 		]);
 	});
 
-	it.each(['remove', 'deactivate'])(
-		'blocks %s when an open menu becomes read-only',
-		async (action) => {
-			const wrapper = mountSection(
-				[{ type: 'custom', id: 'helper' }],
-				{},
-				null,
-				[],
-				[],
-				{ supportsActivation: true },
-				document.body,
-			);
-			await wrapper.get('[data-testid="agent-capabilities-tool-row"]').trigger('contextmenu');
-			const remove = await screen.findByRole('menuitem', {
-				name: `agents.builder.contextMenu.${action}`,
-			});
+	it('closes an open menu when locking and allows editing after unlock', async () => {
+		const wrapper = mountSection(
+			[{ type: 'custom', id: 'helper' }],
+			{},
+			null,
+			[],
+			[],
+			{ supportsActivation: true },
+			document.body,
+		);
+		await wrapper.get('[data-testid="agent-capabilities-tool-row"]').trigger('contextmenu');
+		const remove = await screen.findByRole('menuitem', {
+			name: 'agents.builder.contextMenu.remove',
+		});
 
-			await wrapper.setProps({ disabled: true });
-			expect(remove).toHaveAttribute('aria-disabled', 'true');
-			await fireEvent.click(remove);
-			expect(wrapper.emitted('remove-tool')).toBeUndefined();
-			expect(wrapper.emitted('update:config')).toBeUndefined();
-		},
-	);
+		await wrapper.setProps({ disabled: true });
+		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+		await fireEvent.click(remove);
+		expect(wrapper.emitted('remove-tool')).toBeUndefined();
+		expect(wrapper.emitted('update:config')).toBeUndefined();
+		await wrapper.setProps({ disabled: false });
+		await wrapper.get('[data-testid="agent-capabilities-tool-row"]').trigger('click');
+		expect(wrapper.emitted('open-tool')).toEqual([
+			[{ kind: 'tool', toolType: 'custom', id: 'helper' }],
+		]);
+	});
 
 	it('toggles individual grouped tools and marks the group only when all are deactivated', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
@@ -513,10 +515,11 @@ describe('AgentCapabilitiesSection', () => {
 			},
 			document.body,
 		);
-		const group = screen.getByRole('button', { name: /2 Slack/ });
+		let group = screen.getByRole('button', { name: /2 Slack/ });
 		await fireEvent.contextMenu(group);
 		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
 		await wrapper.setProps({ disabled: false });
+		group = screen.getByRole('button', { name: /2 Slack/ });
 		await fireEvent.contextMenu(group);
 		const remove = await screen.findByRole('menuitem', {
 			name: 'agents.builder.contextMenu.remove',
@@ -526,11 +529,15 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.emitted('open-tool')).toBeUndefined();
 
 		await wrapper.setProps({ disabled: true });
-		expect(remove).toHaveAttribute('aria-disabled', 'true');
+		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
 		await fireEvent.click(remove);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
 		await wrapper.setProps({ disabled: false });
-		await userEvent.click(remove);
+		group = screen.getByRole('button', { name: /2 Slack/ });
+		await fireEvent.contextMenu(group);
+		await userEvent.click(
+			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' }),
+		);
 
 		const remaining = [tools[1], tools[2], tools[4]];
 		expect(wrapper.emitted('update:config')).toEqual([[{ tools: remaining }]]);

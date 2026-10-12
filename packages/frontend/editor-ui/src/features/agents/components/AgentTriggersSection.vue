@@ -16,6 +16,7 @@ import {
 	getAgentChannelPlatform,
 } from '../channels/registry';
 import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
+import { useAgentEditing } from '../composables/useAgentEditing';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
@@ -69,12 +70,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { editing } = useAgentEditing();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
 
 const runtimeContext = {
+	editing,
 	projectId: computed(() => props.projectId),
 	agentId: computed(() => props.agentId),
 	credentialModalOpen: ref(false),

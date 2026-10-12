@@ -130,8 +130,9 @@ describe('AgentSchedulesRow', () => {
 			'task-1',
 		);
 		expect(wrapper.text()).toContain('Daily summary');
-		expect(chip.attributes('disabled')).toBeDefined();
-		await chip.trigger('contextmenu');
+		const pendingChip = wrapper.get('[data-testid="agent-capabilities-task-row"]');
+		expect(pendingChip.attributes('disabled')).toBeDefined();
+		await pendingChip.trigger('contextmenu');
 		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
 
 		pending.resolve();

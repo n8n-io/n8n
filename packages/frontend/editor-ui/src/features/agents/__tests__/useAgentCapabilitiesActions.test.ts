@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { computed, ref, type Ref } from 'vue';
+import { computed, reactive, ref, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -8,6 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { createAgentSkill } from '../composables/useAgentApi';
+import type { AgentEditingContext } from '../composables/useAgentEditing';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
@@ -49,6 +50,7 @@ function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 
 function setup(
 	overrides: {
+		editing?: AgentEditingContext;
 		supportsToolApproval?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 		beforeAgentMutation?: () => Promise<void>;
@@ -225,6 +227,29 @@ describe('useAgentCapabilitiesActions — localSkills host seam', () => {
 		await flushPromises();
 
 		expect(createAgentSkill).toHaveBeenCalled();
+	});
+
+	it('does not create a skill if editing locks while the agent is being persisted', async () => {
+		const persistence = Promise.withResolvers<void>();
+		const editing = reactive({
+			locked: false,
+			assistantBuilding: false,
+			takingOver: false,
+			takeOver: vi.fn(),
+		});
+		const { uiStore, actions } = setup({
+			editing,
+			ensureAgentPersisted: async () => await persistence.promise,
+		});
+		actions.onOpenAddSkillModal();
+		const modalData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		modalData.onConfirm({ skill: { ...triage, name: 'New Skill' } });
+		await flushPromises();
+
+		editing.locked = true;
+		persistence.resolve();
+		await flushPromises();
+		expect(createAgentSkill).not.toHaveBeenCalled();
 	});
 
 	it('records the created skill hash so a follow-up edit is checked against it', async () => {

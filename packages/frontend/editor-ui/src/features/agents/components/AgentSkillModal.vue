@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, ref } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -19,6 +20,7 @@ import AgentModal from './modals/AgentModal.vue';
 const SKILL_FILE = 'SKILL.md';
 
 export type AgentSkillModalData = {
+	editing?: AgentEditingContext;
 	projectId: string;
 	agentId: string;
 	skill?: AgentSkill;
@@ -38,6 +40,7 @@ const props = defineProps<{
 	data: AgentSkillModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const agentTelemetry = useAgentTelemetry();
@@ -132,6 +135,7 @@ const visibleNameError = computed(() =>
 const canSave = computed(() => formIsValid.value && !validationErrors.value.name);
 
 function onSkillUploaded(importedSkill: AgentSkill) {
+	if (isEditingLocked.value) return;
 	skill.value = normalizeSkill(importedSkill);
 	selectedPath.value = SKILL_FILE;
 	submitted.value = false;
@@ -139,6 +143,7 @@ function onSkillUploaded(importedSkill: AgentSkill) {
 }
 
 function onBack() {
+	if (isEditingLocked.value) return;
 	skill.value = { name: getDefaultSkillName(), description: '', instructions: '' };
 	selectedPath.value = SKILL_FILE;
 	submitted.value = false;
@@ -147,6 +152,7 @@ function onBack() {
 }
 
 function onSkillUpdate(updates: Partial<AgentSkill>) {
+	if (isEditingLocked.value) return;
 	skill.value = normalizeSkill({ ...skill.value, ...updates });
 	if (
 		selectedPath.value !== SKILL_FILE &&
@@ -164,7 +170,7 @@ function normalizeSkill(skill: AgentSkill): AgentSkill {
 }
 
 function onAddReference() {
-	if (!canAddReference.value) return;
+	if (isEditingLocked.value || !canAddReference.value) return;
 
 	const path = nextReferencePath(skill.value.references ?? []);
 	skill.value = {
@@ -175,6 +181,7 @@ function onAddReference() {
 }
 
 function onRemoveReference(path: string) {
+	if (isEditingLocked.value) return;
 	skill.value = {
 		...skill.value,
 		references: (skill.value.references ?? []).filter((reference) => reference.path !== path),
@@ -216,6 +223,7 @@ function closeModal() {
 }
 
 function onSave() {
+	if (isEditingLocked.value) return;
 	submitted.value = true;
 	if (!canSave.value) return;
 
@@ -232,7 +240,7 @@ function onSave() {
 }
 
 function onRemove() {
-	if (!props.data.skillId) return;
+	if (isEditingLocked.value || !props.data.skillId) return;
 	props.data.onRemove?.(props.data.skillId);
 	closeModal();
 }
@@ -282,6 +290,7 @@ function onRemove() {
 					@select="selectedPath = $event"
 				/>
 				<AgentSkillViewer
+					:disabled="isEditingLocked"
 					:skill="skill"
 					:available-tools="props.data.availableTools ?? []"
 					:selected-path="selectedPath"

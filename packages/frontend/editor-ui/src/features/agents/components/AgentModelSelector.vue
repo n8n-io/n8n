@@ -91,6 +91,12 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const dropdownRef = useTemplateRef('dropdownRef');
+watch(
+	() => disabled,
+	(locked) => {
+		if (locked) dropdownRef.value?.close();
+	},
+);
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();

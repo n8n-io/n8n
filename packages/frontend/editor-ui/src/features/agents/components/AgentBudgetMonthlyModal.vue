@@ -50,17 +50,19 @@ watch(
 );
 
 function onAmount(value: number | null | undefined) {
+	if (props.disabled) return;
 	amount.value = parseBudgetAmount(value);
 	if (!hasAmount()) alertOn.value = false;
 }
 
 function onAlertToggle(value: boolean) {
-	if (!hasAmount()) return;
+	if (props.disabled || !hasAmount()) return;
 	alertOn.value = value;
 	if (value) alertPercent.value = snapAlertPercent(alertPercent.value);
 }
 
 function save() {
+	if (props.disabled) return;
 	emit(
 		'save',
 		monthlyBudgetSave(props.config, amount.value, {

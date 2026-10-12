@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing } from '../composables/useAgentEditing';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
@@ -94,12 +95,19 @@ const emit = defineEmits<{
 	'update:config': [updates: Partial<AgentJsonConfig>];
 }>();
 
+const { editing } = useAgentEditing();
 const i18n = useI18n();
 const toast = useToast();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const { createAgent } = useCreateAgent();
 const openToolGroup = ref<number | null>(null);
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled) openToolGroup.value = null;
+	},
+);
 
 const projectIdRef = computed(() => props.projectId);
 const { canCreate: canCreateAgent } = useAgentPermissions(projectIdRef);
@@ -427,6 +435,7 @@ function removeSubAgent(agentId: string) {
 }
 
 function emitSubAgentRefs(agents: typeof selectedSubAgentRefs.value) {
+	if (props.disabled) return;
 	emit('update:config', {
 		subAgents: {
 			...(props.config?.subAgents ?? {}),
@@ -445,16 +454,19 @@ function toSubAgentRef(agentId: string, useWhen?: string) {
 }
 
 async function openSubAgentsModal() {
+	if (props.disabled) return;
 	try {
 		await ensureProjectAgentsLoaded();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.subAgents.loadError'));
 		return;
 	}
+	if (props.disabled) return;
 
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
+			editing,
 			agents: availableSubAgents.value.map(({ id, name }) => {
 				const selectedRef = selectedSubAgentRefs.value.find((ref) => ref.agentId === id);
 				return {
@@ -491,9 +503,11 @@ function openExistingSubAgentModal(subAgent: {
 	useWhen: string;
 	invalidReasons: string[];
 }) {
+	if (props.disabled) return;
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
+			editing,
 			selectedAgent: {
 				id: subAgent.id,
 				name: subAgent.name,

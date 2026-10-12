@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 import {
 	useAgentCapabilitiesActions,
@@ -52,8 +52,15 @@ function makeActions(
 	const scheduleSkillSave = vi.fn();
 	const agent = ref<AgentResource | null>(null);
 	const agentId = ref('agent-1');
+	const editing = reactive({
+		locked: false,
+		assistantBuilding: false,
+		takingOver: false,
+		takeOver: vi.fn(),
+	});
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig(overrides));
 	const actions = useAgentCapabilitiesActions({
+		editing,
 		localConfig,
 		agent,
 		projectId: computed(() => 'proj-1'),
@@ -63,7 +70,7 @@ function makeActions(
 		scheduleSkillSave,
 		telemetry,
 	});
-	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig };
+	return { actions, scheduleConfigUpdate, scheduleSkillSave, agent, agentId, localConfig, editing };
 }
 
 describe('useAgentCapabilitiesActions', () => {
@@ -79,6 +86,38 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(openModalWithData).toHaveBeenCalledWith(
 			expect.objectContaining({ data: expect.objectContaining({ mode: 'workflows' }) }),
 		);
+	});
+
+	it('blocks an open tool modal while locked and resolves its target after the tools change', () => {
+		const first = { type: 'node', name: 'first' } as AgentJsonToolConfig;
+		const second = { type: 'node', name: 'second' } as AgentJsonToolConfig;
+		const edited = { ...first, description: 'Edited draft' };
+		const { actions, localConfig, editing, scheduleConfigUpdate } = makeActions({
+			tools: [first, second],
+		});
+		actions.onOpenToolFromList(0);
+		const { data } = openModalWithData.mock.calls[0][0] as {
+			data: { onConfirm: (tool: AgentJsonToolConfig) => void; onRemove: () => void };
+		};
+
+		editing.locked = true;
+		data.onConfirm(edited);
+		data.onRemove();
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+
+		localConfig.value!.tools = [second, first];
+		editing.locked = false;
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+		data.onConfirm(edited);
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ tools: [second, edited] });
+		data.onRemove();
+		expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({ tools: [second] });
+
+		localConfig.value!.tools = [second];
+		scheduleConfigUpdate.mockClear();
+		data.onConfirm(edited);
+		data.onRemove();
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
 	it('schedules array-shaped tools + mcpServers from the add-tools modal confirm payload', () => {

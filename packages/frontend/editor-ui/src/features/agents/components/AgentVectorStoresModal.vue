@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAgentEditing, type AgentEditingContext } from '../composables/useAgentEditing';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { AgentJsonVectorStoreConfig, AgentVectorStoreProvider } from '@n8n/api-types';
 import { VECTOR_STORE_NAME_REGEX, VECTOR_STORE_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
@@ -45,13 +46,16 @@ type EditVectorStoreModalData = {
 	onRemove?: (name: string) => void;
 };
 
-export type AgentVectorStoresModalData = AddVectorStoreModalData | EditVectorStoreModalData;
+export type AgentVectorStoresModalData = (AddVectorStoreModalData | EditVectorStoreModalData) & {
+	editing?: AgentEditingContext;
+};
 
 const props = defineProps<{
 	modalName: string;
 	data: AgentVectorStoresModalData;
 }>();
 
+const { isEditingLocked } = useAgentEditing(props.data.editing);
 const i18n = useI18n();
 const uiStore = useUIStore();
 const { showMessage, showError } = useToast();
@@ -125,12 +129,13 @@ function handleInteractOutside(event: Event) {
 }
 
 function selectProvider(provider: AgentVectorStoreProvider) {
+	if (isEditingLocked.value) return;
 	submitted.value = false;
 	selectedProvider.value = provider;
 }
 
 function goBack() {
-	if (isEditing.value) return;
+	if (isEditingLocked.value || isEditing.value) return;
 	submitted.value = false;
 	selectedProvider.value = null;
 	nameTouched.value = false;
@@ -165,13 +170,14 @@ const locatorValue = computed(() => {
 // Prefills the connection name from the index/table/collection name until the
 // user edits it directly, so add mode doesn't start with an empty required field.
 watch(locatorValue, (value) => {
-	if (isEditing.value || nameTouched.value) return;
+	if (isEditingLocked.value || isEditing.value || nameTouched.value) return;
 	const locator = value.trim();
 	if (!locator) return;
 	name.value = locator.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 64);
 });
 
 function onNameInput(value: string) {
+	if (isEditingLocked.value) return;
 	nameTouched.value = true;
 	name.value = value;
 }
@@ -222,6 +228,7 @@ function embeddingCredentialTypeFor(provider: AgentEmbeddingProvider): string {
 }
 
 function onEmbeddingModelUpdate(model: string) {
+	if (isEditingLocked.value) return;
 	embeddingModel.value = model;
 	const provider = getEmbeddingModelProvider(model);
 	if (!provider) return;
@@ -276,6 +283,7 @@ const credentialPermissions = computed(() => {
 });
 
 function createCredential(type: string, field: 'credential' | 'embeddingCredential') {
+	if (isEditingLocked.value) return;
 	const currentOptions = credentialsByType.value[type] ?? [];
 	credentialIdsBeforeNew.value[type] = new Set(currentOptions.map((option) => option.id));
 	pendingCredentialField.value = field;
@@ -317,7 +325,9 @@ watch(credentialModalOpen, async (isOpen, wasOpen) => {
 	if (!field || !type) return;
 
 	const before = credentialIdsBeforeNew.value[type];
+	delete credentialIdsBeforeNew.value[type];
 	await loadCredentials();
+	if (isEditingLocked.value) return;
 	const after = credentialsByType.value[type] ?? [];
 	const newCredential = before ? after.find((option) => !before.has(option.id)) : undefined;
 	if (newCredential) {
@@ -336,7 +346,6 @@ watch(credentialModalOpen, async (isOpen, wasOpen) => {
 			}
 		}
 	}
-	delete credentialIdsBeforeNew.value[type];
 });
 
 function buildVectorStoreConfig(): AgentJsonVectorStoreConfig {
@@ -370,6 +379,7 @@ function buildVectorStoreConfig(): AgentJsonVectorStoreConfig {
 }
 
 async function onTestAndConnect() {
+	if (isEditingLocked.value) return;
 	submitted.value = true;
 	if (!canTest.value || testing.value) return;
 	testing.value = true;
@@ -380,6 +390,7 @@ async function onTestAndConnect() {
 			props.data.projectId,
 			vectorStore,
 		);
+		if (isEditingLocked.value) return;
 		if (!result.success) {
 			showMessage({
 				title: i18n.baseText('agents.builder.vectorStores.modal.test.failedTitle'),
@@ -410,7 +421,7 @@ async function onTestAndConnect() {
 }
 
 function onRemove() {
-	if (!existing) return;
+	if (isEditingLocked.value || !existing) return;
 	props.data.onRemove?.(existing.name);
 	closeModal();
 }
@@ -487,6 +498,7 @@ onMounted(() => {
 				required
 			>
 				<AgentCredentialSelect
+					:disabled="isEditingLocked"
 					v-model="credential"
 					:credentials="storeCredentialOptions"
 					:placeholder="i18n.baseText('agents.builder.vectorStores.modal.credential.placeholder')"
@@ -566,6 +578,7 @@ onMounted(() => {
 				required
 			>
 				<EmbeddingModelSelector
+					:disabled="isEditingLocked"
 					:selected-model="embeddingModel"
 					:selected-credential-id="embeddingCredential || null"
 					:credentials-by-type="credentialsByType"
@@ -612,7 +625,7 @@ onMounted(() => {
 			<N8nButton
 				variant="solid"
 				:loading="testing"
-				:disabled="testing"
+				:disabled="testing || isEditingLocked"
 				data-testid="agent-vector-stores-modal-confirm"
 				@click="onTestAndConnect"
 			>

@@ -103,6 +103,27 @@ subtle step transition. The feature component owns its data and step history.
 Do not migrate `AgentMemoryPanel.vue` into this pattern. Memory needs separate
 design work.
 
+### Temporary editing locks
+
+Use `useAgentEditing` for the live editing state. Keep permission checks separate
+from temporary locks. Keep sections and dialog drafts mounted during a lock.
+Pass the same context in the data for globally mounted dialogs. Call
+`useAgentEditing(data.editing)` in the dialog to supply its descendants.
+
+`AgentEditingOverlay` blocks the editor column while the Assistant makes changes.
+`AgentModal` freezes its title, body, and mutation actions. Keep Close and Cancel
+available. Put a custom Cancel action in `footerCancel`. Close transient menus
+when the lock starts. Set expanded editors to read-only.
+
+Guard draft updates and mutation callbacks with the live lock. Check it again
+after asynchronous preparation. Resolve edited items by identity before saving.
+When the lock ends, preserve the draft until the user selects Save. Do not save
+or merge it automatically.
+
+Take over requests cancellation of the active Assistant thread. Keep the lock
+until the live build state ends. A cancellation acknowledgment does not unlock
+editing. Keep permission and collaboration restrictions after cancellation.
+
 ### Layout contract
 
 | Area       | Rule                                                                                                                                                                                                                                                                                |

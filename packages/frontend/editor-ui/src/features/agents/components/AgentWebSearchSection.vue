@@ -346,6 +346,7 @@ function onCreateFallbackCredential() {
 
 				<div :class="shared.settingControlShort">
 					<N8nDropdownMenu
+						:key="String(props.disabled)"
 						:class="$style.methodMenu"
 						:items="webSearchMenuItems"
 						:disabled="props.disabled"

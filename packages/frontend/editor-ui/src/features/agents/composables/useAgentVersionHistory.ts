@@ -6,6 +6,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { listAgentVersions, publishAgent, revertAgentToVersion } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
+import { useAgentEditing } from './useAgentEditing';
 import type { AgentResource } from '../types';
 
 const PAGE_SIZE = 20;
@@ -22,6 +23,7 @@ export function useAgentVersionHistory() {
 	const locale = useI18n();
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
+	const { isEditingLocked } = useAgentEditing();
 
 	const items = ref<AgentVersionListItemDto[]>([]);
 	const isLoading = ref(false);
@@ -85,7 +87,7 @@ export function useAgentVersionHistory() {
 		agentId: string,
 		versionId: string,
 	): Promise<AgentResource | null> {
-		if (acting.value) return null;
+		if (acting.value || isEditingLocked.value) return null;
 
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.versionHistory.revert.modal.title'),
@@ -93,7 +95,7 @@ export function useAgentVersionHistory() {
 			confirmButtonText: locale.baseText('agents.versionHistory.revert.modal.button.revert'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
-		if (confirmed !== MODAL_CONFIRM) return null;
+		if (confirmed !== MODAL_CONFIRM || isEditingLocked.value) return null;
 
 		acting.value = true;
 		try {
@@ -122,7 +124,7 @@ export function useAgentVersionHistory() {
 		agentId: string,
 		versionId: string,
 	): Promise<AgentResource | null> {
-		if (acting.value) return null;
+		if (acting.value || isEditingLocked.value) return null;
 
 		acting.value = true;
 		try {

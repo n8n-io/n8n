@@ -8903,6 +8903,7 @@
 	"agents.builder.tasks.validation.cronInvalid": "This isn't a valid cron expression",
 	"agents.builder.editor.invalidJson": "Invalid JSON",
 	"agents.builder.editorColumn.ariaLabel": "Configuration editor",
+	"agents.builder.editing.takeOver": "Take over",
 	"agents.builder.templates.title": "What should your agent do?",
 	"agents.builder.templates.subtitle": "Tell me the job. I'll handle the setup.",
 	"agents.builder.templates.prompt": "Build {name} agent to {description}",

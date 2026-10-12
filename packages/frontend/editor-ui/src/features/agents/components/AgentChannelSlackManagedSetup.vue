@@ -18,6 +18,7 @@ import CredentialsDropdown, {
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
 import AgentChannelSlackServiceLimitError from '../channels/slack/AgentChannelSlackServiceLimitError.vue';
 import { getSlackApiErrorCode } from '../channels/slack/api';
+import { useAgentEditing } from '../composables/useAgentEditing';
 
 const props = defineProps<{
 	setup: SlackManagedSetupState;
@@ -29,6 +30,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const { isEditingLocked } = useAgentEditing();
 const selectedCredentialId = ref('');
 const selectedWorkspaceId = ref('');
 const connecting = ref(false);
@@ -74,6 +76,7 @@ const hasManagerCredentials = computed(() => props.setup.managerCredentials.leng
 watch(
 	() => props.setup.managerCredentials,
 	(credentials) => {
+		if (isEditingLocked.value) return;
 		if (!credentials.some(({ id }) => id === selectedCredentialId.value)) {
 			selectedCredentialId.value =
 				credentials.find(({ connected }) => connected)?.id ?? credentials[0]?.id ?? '';
@@ -85,6 +88,7 @@ watch(
 watch(
 	workspaces,
 	(availableWorkspaces) => {
+		if (isEditingLocked.value) return;
 		if (!availableWorkspaces.some(({ id }) => id === selectedWorkspaceId.value)) {
 			selectedWorkspaceId.value = availableWorkspaces.length === 1 ? availableWorkspaces[0].id : '';
 		}
@@ -93,6 +97,7 @@ watch(
 );
 
 async function createCredential() {
+	if (isEditingLocked.value) return;
 	connecting.value = true;
 	error.value = null;
 	try {
@@ -106,7 +111,7 @@ async function createCredential() {
 }
 
 async function install() {
-	if (!selectedCredentialId.value || !selectedWorkspaceId.value) return;
+	if (isEditingLocked.value || !selectedCredentialId.value || !selectedWorkspaceId.value) return;
 	installing.value = true;
 	error.value = null;
 	try {
@@ -147,17 +152,18 @@ async function install() {
 							</N8nButton>
 							<div v-else :class="$style.actionRow">
 								<CredentialsDropdown
+									:key="String(isEditingLocked)"
 									:credential-options="credentialOptions"
 									:selected-credential-id="selectedCredentialId || null"
 									:permissions="credentialPermissions"
-									:disabled="loading || connecting"
+									:disabled="loading || connecting || isEditingLocked"
 									:loading="loading"
 									size="medium"
 									:placeholder="
 										i18n.baseText('agents.channels.slack.managed.credential.placeholder')
 									"
 									data-test-id="slack-manager-credential-select"
-									@credential-selected="selectedCredentialId = $event"
+									@credential-selected="!isEditingLocked && (selectedCredentialId = $event)"
 									@new-credential="createCredential"
 								/>
 								<N8nTooltip :content="i18n.baseText('generic.edit')" placement="top">
@@ -183,7 +189,8 @@ async function install() {
 						<div v-if="managerConnected" :class="$style.actionRow">
 							<N8nSelect
 								v-model="selectedWorkspaceId"
-								:disabled="installing"
+								:disabled="installing || isEditingLocked"
+								:teleported="false"
 								:placeholder="i18n.baseText('agents.channels.slack.managed.workspace.placeholder')"
 								data-testid="slack-managed-workspace-select"
 							>
