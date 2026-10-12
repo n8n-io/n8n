@@ -2,6 +2,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
+	AuthenticationPipeline,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
@@ -55,6 +56,9 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		if (!Container.has(IdentityService)) {
 			Container.set(IdentityService, Container.get(TrustedSourceIdentityService));
 		}
+
+		const { InboundAuthPipeline } = await import('./authentication-pipeline.js');
+		Container.set(AuthenticationPipeline, Container.get(InboundAuthPipeline));
 	}
 
 	// Ungated: the runner skips a cluster-scoped task on webhook and worker instances itself.

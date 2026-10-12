@@ -1,6 +1,7 @@
 import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
+	AuthenticationPipeline,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
@@ -11,6 +12,7 @@ import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
+import { InboundAuthPipeline } from '../authentication-pipeline';
 import { OAuth2AuthenticationService } from '../authentication.service';
 import { TrustedSourceIdentityService } from '../identity/trusted-source-identity.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
@@ -52,6 +54,10 @@ describe('InboundAuthCoreModule', () => {
 
 		it('binds the IdentityService contract to the trusted-source identity service', () => {
 			expect(Container.get(IdentityService)).toBe(identityService);
+		});
+
+		it('binds the AuthenticationPipeline contract to the inbound-auth pipeline', () => {
+			expect(Container.get(AuthenticationPipeline)).toBeInstanceOf(InboundAuthPipeline);
 		});
 	});
 
