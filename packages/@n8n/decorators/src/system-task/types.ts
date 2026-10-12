@@ -93,7 +93,8 @@ export interface SchedulerOptions {
 
 	/**
 	 * How many seconds one run may take. At this limit the signal aborts.
-	 * An integer from 1 to about 24 days. Defaults to the scheduler's task timeout.
+	 * Rounded to the whole second, never below one, at most about 24 days.
+	 * Defaults to the scheduler's task timeout.
 	 */
 	readonly timeoutSeconds?: number;
 }

@@ -85,9 +85,7 @@ it.each<[string, SchedulerOptions]>([
 	['concurrencyLimit', { maxAttempts: 3, concurrencyLimit: -1 }],
 	['concurrencyLimit', { maxAttempts: 3, concurrencyLimit: 1.5 }],
 	['concurrencyLimit', { maxAttempts: 3, concurrencyLimit: 2_147_483_648 }],
-	['timeoutSeconds', { maxAttempts: 3, timeoutSeconds: 0 }],
 	['timeoutSeconds', { maxAttempts: 3, timeoutSeconds: -1 }],
-	['timeoutSeconds', { maxAttempts: 3, timeoutSeconds: 1.5 }],
 	['timeoutSeconds', { maxAttempts: 3, timeoutSeconds: 2_147_484 }],
 ])('should reject an out-of-range %s in %o', (field, scheduler) => {
 	expect(() => resolveSystemTaskRunOptions(schedulerTask(scheduler))).toThrow(
@@ -96,6 +94,18 @@ it.each<[string, SchedulerOptions]>([
 			extra: expect.objectContaining({ name: 'test-task', field }),
 		}),
 	);
+});
+
+it.each([
+	[0, 1],
+	[0.6, 1],
+	[1.5, 2],
+])('should round the timeout %s to %s like a schedule interval', (declared, stored) => {
+	const options = resolveSystemTaskRunOptions(
+		schedulerTask({ maxAttempts: 3, timeoutSeconds: declared }),
+	);
+
+	expect(options.timeoutSeconds).toBe(stored);
 });
 
 it('should accept the longest timeout a timer honors', () => {

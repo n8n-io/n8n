@@ -59,7 +59,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 		misfireGraceSeconds: scheduler.missedAfterSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
 		maxAttempts: scheduler.maxAttempts,
 		concurrencyLimit: concurrencyLimit === 'unlimited' ? null : concurrencyLimit,
-		timeoutSeconds: scheduler.timeoutSeconds,
+		timeoutSeconds: roundedTimeoutSeconds(scheduler.timeoutSeconds),
 	};
 
 	// These end up in `int` columns, where a fractional value is rounded and anything
@@ -180,6 +180,11 @@ export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule 
 /** Rounds to the whole second the scheduler requires, never below one. */
 function wholeSeconds(seconds: number): number {
 	return Math.max(1, Math.round(seconds));
+}
+
+/** A negative value stays as is, so the range check rejects it. */
+function roundedTimeoutSeconds(seconds: number | undefined): number | undefined {
+	return seconds === undefined || seconds < 0 ? seconds : wholeSeconds(seconds);
 }
 
 /** Rounds to the whole millisecond a timer honors, never below one. */
