@@ -45,6 +45,23 @@ describe('AgentChannelTeamsAvailability', () => {
 		expect(await openedUrl({ getByTestId })).toBe(CONSENT_URL);
 	});
 
+	it('opens the approval in the same tab where Microsoft returns to it', async () => {
+		const assign = vi.fn();
+		vi.stubGlobal('location', { ...window.location, assign });
+		const { getByTestId } = renderComponent({
+			props: {
+				modelValue: availabilityFrom({ teamChannels: true }),
+				fileAccessConsentUrl: CONSENT_URL,
+				openConsentInPlace: true,
+			},
+		});
+
+		await fireEvent.click(getByTestId('teams-file-access-link'));
+
+		expect(assign).toHaveBeenCalledWith(CONSENT_URL);
+		vi.unstubAllGlobals();
+	});
+
 	it("opens the API permissions of the user's own app", async () => {
 		const { getByTestId } = renderComponent({
 			props: { modelValue: availabilityFrom({ groupChats: true }), appId: 'app-1' },

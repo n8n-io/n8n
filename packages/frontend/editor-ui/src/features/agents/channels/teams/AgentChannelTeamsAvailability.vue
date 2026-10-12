@@ -37,8 +37,19 @@ const props = withDefaults(
 		fileAccessConsentUrl?: string | null;
 		/** Checked only where the channel is saved; unchecked shows the request. */
 		fileAccessStatus?: TeamsFileAccessCheck['status'] | 'checking' | null;
+		/**
+		 * Microsoft returns to the agent page, which reopens the settings. The
+		 * setup does not keep its progress, so there the consent opens a new tab.
+		 */
+		openConsentInPlace?: boolean;
 	}>(),
-	{ startCollapsed: false, appId: null, fileAccessConsentUrl: null, fileAccessStatus: null },
+	{
+		startCollapsed: false,
+		appId: null,
+		fileAccessConsentUrl: null,
+		fileAccessStatus: null,
+		openConsentInPlace: false,
+	},
 );
 
 const i18n = useI18n();
@@ -137,7 +148,12 @@ const toast = useToast();
 
 /** A button, not a link: the callout paints every link inside it as text. */
 function openFileAccess() {
-	if (fileAccess.value) window.open(fileAccess.value.url, '_blank', 'noopener');
+	if (!fileAccess.value) return;
+	if (props.openConsentInPlace && fileAccess.value.url === props.fileAccessConsentUrl) {
+		window.location.assign(fileAccess.value.url);
+	} else {
+		window.open(fileAccess.value.url, '_blank', 'noopener');
+	}
 }
 
 /** The person setting this up is often not the administrator who approves it. */

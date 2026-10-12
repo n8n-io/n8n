@@ -172,6 +172,23 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(queryByTestId('teams-file-access-approved')).toBeNull();
 		});
 
+		it('checks again until a fresh approval reaches Microsoft', async () => {
+			vi.useFakeTimers();
+			vi.mocked(checkTeamsFileAccess)
+				.mockResolvedValueOnce({ status: 'notApproved' })
+				.mockResolvedValueOnce({ status: 'approved' });
+
+			const { findByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(2);
+			vi.useRealTimers();
+		});
+
 		it('falls back to the request when the check fails', async () => {
 			vi.mocked(checkTeamsFileAccess).mockRejectedValue(new Error('offline'));
 

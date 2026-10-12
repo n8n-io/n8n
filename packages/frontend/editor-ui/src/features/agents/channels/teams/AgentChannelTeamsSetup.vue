@@ -411,15 +411,26 @@ const readsSharedConversations = computed(
 	() => availability.value.teamChannels || availability.value.groupChats,
 );
 
+// Microsoft can take a minute or two to apply an approval just given.
+const FILE_ACCESS_RECHECK_MS = 10_000;
+const FILE_ACCESS_RECHECKS = 18;
+let fileAccessRecheck: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(fileAccessRecheck));
+
 /**
  * Only in the settings: that is where people return after sending the approval
  * link to an administrator. A failed check leaves the request on show.
  */
 async function loadFileAccess() {
+	clearTimeout(fileAccessRecheck);
 	fileAccessStatus.value = null;
 	const id = credentialId.value;
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
 	fileAccessStatus.value = 'checking';
+	await checkFileAccess(id, FILE_ACCESS_RECHECKS);
+}
+
+async function checkFileAccess(id: string, rechecksLeft: number) {
 	try {
 		const { status } = await checkTeamsFileAccess(
 			rootStore.restApiContext,
@@ -427,7 +438,14 @@ async function loadFileAccess() {
 			props.agentId,
 			id,
 		);
-		if (credentialId.value === id) fileAccessStatus.value = status;
+		if (credentialId.value !== id) return;
+		fileAccessStatus.value = status;
+		if (status === 'notApproved' && rechecksLeft > 0) {
+			fileAccessRecheck = setTimeout(
+				() => void checkFileAccess(id, rechecksLeft - 1),
+				FILE_ACCESS_RECHECK_MS,
+			);
+		}
 	} catch {
 		// Unchecked reads the same as not approved.
 		if (credentialId.value === id) fileAccessStatus.value = null;
@@ -849,6 +867,7 @@ defineExpose({
 					:app-id="setupState?.botId"
 					:file-access-consent-url="setupState?.fileAccessConsentUrl"
 					:file-access-status="fileAccessStatus"
+					open-consent-in-place
 					@update:model-value="editAvailability"
 				/>
 				<N8nText
