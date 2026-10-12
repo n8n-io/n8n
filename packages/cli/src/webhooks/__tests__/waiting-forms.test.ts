@@ -1,4 +1,5 @@
 import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionSnapshot } from '@n8n/engine';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { getHtmlSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
@@ -10,7 +11,9 @@ import {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
@@ -37,6 +40,8 @@ describe('WaitingForms', () => {
 		executionPersistence,
 		mock(),
 		mockInstanceSettings,
+		mock(),
+		mock(),
 		mock(),
 		mock(),
 	);
@@ -879,5 +884,106 @@ describe('WaitingForms', () => {
 			expect(req.headers.cookie).not.toContain('n8n-auth=');
 			expect(req.cookies['n8n-auth']).toBeUndefined();
 		});
+	});
+});
+
+describe('WaitingForms on an engine v2 execution', () => {
+	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+	const dataPlane = mock<EngineDataPlaneProxyService>();
+	const waitingForms = new WaitingForms(
+		mock(),
+		mock(),
+		mock<ExecutionPersistence>(),
+		mock(),
+		mock<InstanceSettings>(),
+		mock(),
+		mock(),
+		dataPlane,
+		mock<EngineV2ExecutionReader>(),
+	);
+
+	const formNode = { id: 'form-id', name: 'Form', type: FORM_NODE_TYPE, parameters: {} };
+	const snapshot = (status: ExecutionSnapshot['status']) =>
+		mock<ExecutionSnapshot>({ id: EXECUTION_ID, status, workflow: { nodes: [formNode] } });
+	const request = (suffix: string | undefined) =>
+		mock<WaitingWebhookRequest>({
+			method: 'GET',
+			params: { path: EXECUTION_ID, suffix },
+			query: { [WAITING_TOKEN_QUERY_PARAM]: 't' },
+			url: `/form-waiting/${EXECUTION_ID}/${suffix ?? ''}?${WAITING_TOKEN_QUERY_PARAM}=t`,
+			headers: { host: 'localhost' },
+		});
+	const response = () => {
+		const res = mock<express.Response>();
+		res.status.mockReturnValue(res);
+		return res;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('answers a bad token with the invalid-token page', async () => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: false,
+			status: 401,
+			error: 'invalid_token',
+		});
+		const res = response();
+
+		await waitingForms.executeWebhook(request(undefined), res);
+
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(res.render).toHaveBeenCalledWith('form-invalid-token');
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
+	});
+
+	it.each([
+		['waiting', { stepId: 'step-1', nodeId: 'form-id' }, 'form-waiting'],
+		['running', null, 'running'],
+		['completed', null, 'success'],
+		['failed', null, 'error'],
+	] as const)(
+		'answers the status poll of a %s execution with the word the form page acts on',
+		async (status, target, expected) => {
+			dataPlane.locateResumeTarget.mockResolvedValue({
+				ok: true,
+				value: { execution: snapshot(status), target },
+			});
+			const res = response();
+
+			await expect(
+				waitingForms.executeWebhook(request(WAITING_FORMS_EXECUTION_STATUS), res),
+			).resolves.toEqual({ noWebhookResponse: true });
+
+			expect(res.send).toHaveBeenCalledWith(expected);
+		},
+	);
+
+	it('answers nothing while a live execution has not reached its form, so the page keeps polling', async () => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: true,
+			value: { execution: snapshot('running'), target: null },
+		});
+		const res = response();
+
+		await expect(waitingForms.executeWebhook(request(undefined), res)).resolves.toEqual({
+			noWebhookResponse: true,
+		});
+
+		expect(res.render).not.toHaveBeenCalled();
+		expect(res.status).not.toHaveBeenCalled();
+	});
+
+	it('renders the completion page for an execution that completed', async () => {
+		dataPlane.locateResumeTarget.mockResolvedValue({
+			ok: true,
+			value: { execution: snapshot('completed'), target: null },
+		});
+		const res = response();
+
+		await waitingForms.executeWebhook(request(undefined), res);
+
+		expect(res.render).toHaveBeenCalledWith('form-trigger-completion', expect.any(Object));
 	});
 });
