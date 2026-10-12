@@ -1,7 +1,7 @@
-import { NodeToolJsonConfigSchema } from '@n8n/api-types';
+import { McpServerConfigSchema, NodeToolJsonConfigSchema } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { INode, INodeCredentials } from 'n8n-workflow';
-import { isNodeParameters, jsonParse } from 'n8n-workflow';
+import { isNodeParameters, jsonParse, MCP_CLIENT_TOOL_NODE_TYPE } from 'n8n-workflow';
 
 import { resolveToolNodeType } from '@/node-execution/resolve-tool-node-type';
 
@@ -13,6 +13,7 @@ const MESSAGE_AN_AGENT_NODE_TYPES = new Set([
 
 // Not strict: an inline agent is raw parameter JSON, and extra keys must not hide its tools.
 const PolicedNodeToolSchema = NodeToolJsonConfigSchema.strip();
+const PolicedMcpServerSchema = McpServerConfigSchema.strip();
 
 type PolicedNodeTool = {
 	name: string;
@@ -64,10 +65,15 @@ function readNodeTool(tool: unknown, index: number): PolicedNodeTool | null {
 	};
 }
 
-function inlineAgentTools(nodeType: string, parameters: unknown): unknown {
+function inlineAgentConfig(
+	nodeType: string,
+	parameters: unknown,
+): { tools: unknown; mcpServers: unknown } {
+	const nothing = { tools: undefined, mcpServers: undefined };
+
 	// Imported content is not schema-checked, so `parameters` can be missing.
-	if (!MESSAGE_AN_AGENT_NODE_TYPES.has(nodeType) || !isRecord(parameters)) return undefined;
-	if (parameters.agentSource !== 'inline') return undefined;
+	if (!MESSAGE_AN_AGENT_NODE_TYPES.has(nodeType) || !isRecord(parameters)) return nothing;
+	if (parameters.agentSource !== 'inline') return nothing;
 
 	// An expression has no tools to read until it runs; the tool executor polices it then.
 	const raw = parameters.inlineAgent;
@@ -76,7 +82,8 @@ function inlineAgentTools(nodeType: string, parameters: unknown): unknown {
 			? jsonParse<unknown>(raw, { fallbackValue: null })
 			: raw;
 
-	return isRecord(payload) && isRecord(payload.config) ? payload.config.tools : undefined;
+	if (!isRecord(payload) || !isRecord(payload.config)) return nothing;
+	return { tools: payload.config.tools, mcpServers: payload.config.mcpServers };
 }
 
 function toPolicedNodesWithPrefix(tools: unknown, idPrefix: string): INode[] {
@@ -103,12 +110,55 @@ function toPolicedNodesWithPrefix(tools: unknown, idPrefix: string): INode[] {
 }
 
 /**
- * One node for each node tool, in the shape the workflow points police. Untyped input on
- * purpose: callers pass parsed configs or raw parameters. `withInlineAgentToolNodes` adds the
- * tools of an inline agent that a tool embeds.
+ * The node types an MCP server runs as. A registry server keeps its own type so a rule can name
+ * that server, and every server also runs the MCP client, so a rule on the client covers them
+ * all. Mirrors the type the builder resolves for the same server.
  */
-export function toPolicedNodes(tools: unknown): INode[] {
-	return toPolicedNodesWithPrefix(tools, 'agent-tool-');
+function mcpServerNodeTypes(server: unknown): string[] {
+	if (!isRecord(server)) return [];
+
+	const parsed = PolicedMcpServerSchema.safeParse(server);
+	const registryType = parsed.success
+		? parsed.data.metadata?.nodeTypeName
+		: isRecord(server.metadata) && typeof server.metadata.nodeTypeName === 'string'
+			? server.metadata.nodeTypeName
+			: undefined;
+
+	return registryType && registryType !== MCP_CLIENT_TOOL_NODE_TYPE
+		? [registryType, MCP_CLIENT_TOOL_NODE_TYPE]
+		: [MCP_CLIENT_TOOL_NODE_TYPE];
+}
+
+function toPolicedMcpNodesWithPrefix(servers: unknown, idPrefix: string): INode[] {
+	if (!Array.isArray(servers)) return [];
+
+	return servers.flatMap((server: unknown, index): INode[] => {
+		const name = isRecord(server) && typeof server.name === 'string' ? server.name : null;
+		if (name === null) return [];
+
+		return mcpServerNodeTypes(server).map((type, typeIndex) => ({
+			id: `${idPrefix}${index}${typeIndex === 0 ? '' : `-${typeIndex}`}`,
+			name,
+			type,
+			typeVersion: 1,
+			position: [0, 0],
+			// An MCP server carries its endpoint and auth in its own config, not in node parameters.
+			parameters: {},
+			credentials: undefined,
+		}));
+	});
+}
+
+/**
+ * One node for each node tool and each MCP server, in the shape the workflow points police.
+ * Untyped input on purpose: callers pass parsed configs or raw parameters.
+ * `withInlineAgentToolNodes` adds the tools of an inline agent that a tool embeds.
+ */
+export function toPolicedNodes(tools: unknown, mcpServers?: unknown): INode[] {
+	return [
+		...toPolicedNodesWithPrefix(tools, 'agent-tool-'),
+		...toPolicedMcpNodesWithPrefix(mcpServers, 'agent-mcp-'),
+	];
 }
 
 /**
@@ -117,10 +167,11 @@ export function toPolicedNodes(tools: unknown): INode[] {
  */
 export function withInlineAgentToolNodes(nodes: readonly INode[]): readonly INode[] {
 	const embedded = nodes.flatMap((node) => {
-		const tools = toPolicedNodesWithPrefix(
-			inlineAgentTools(node.type, node.parameters),
-			`${node.id}-tool-`,
-		);
+		const config = inlineAgentConfig(node.type, node.parameters);
+		const tools = [
+			...toPolicedNodesWithPrefix(config.tools, `${node.id}-tool-`),
+			...toPolicedMcpNodesWithPrefix(config.mcpServers, `${node.id}-mcp-`),
+		];
 		return tools.length === 0 ? [] : withInlineAgentToolNodes(tools);
 	});
 

@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { INode, INodeType } from 'n8n-workflow';
+import { MCP_CLIENT_TOOL_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
@@ -143,6 +144,65 @@ describe('toPolicedNodes', () => {
 	);
 });
 
+describe('toPolicedNodes, MCP servers', () => {
+	const server = { name: 'Docs', url: 'https://mcp.example.com' };
+
+	it('turns a server into one node that runs the MCP client', () => {
+		expect(toPolicedNodes([], [server])).toEqual([
+			{
+				id: 'agent-mcp-0',
+				name: 'Docs',
+				type: MCP_CLIENT_TOOL_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: undefined,
+			},
+		]);
+	});
+
+	it('keeps the registry type of a registry server and adds the client it runs on', () => {
+		const registryServer = {
+			...server,
+			metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+		};
+
+		expect(toPolicedNodes([], [registryServer]).map((node) => [node.id, node.type])).toEqual([
+			['agent-mcp-0', '@n8n/mcp-registry.github'],
+			['agent-mcp-0-1', MCP_CLIENT_TOOL_NODE_TYPE],
+		]);
+	});
+
+	it('emits one node when the stored type is already the MCP client', () => {
+		const clientServer = {
+			...server,
+			metadata: { nodeTypeName: MCP_CLIENT_TOOL_NODE_TYPE },
+		};
+
+		expect(toPolicedNodes([], [clientServer]).map((node) => node.type)).toEqual([
+			MCP_CLIENT_TOOL_NODE_TYPE,
+		]);
+	});
+
+	it('keeps tool nodes and server nodes side by side', () => {
+		expect(toPolicedNodes([dateTimeTool], [server]).map((node) => node.id)).toEqual([
+			'agent-tool-0',
+			'agent-mcp-0',
+		]);
+	});
+
+	it('reports only the tools when no servers are passed', () => {
+		expect(toPolicedNodes([dateTimeTool]).map((node) => node.id)).toEqual(['agent-tool-0']);
+	});
+
+	it.each([undefined, null, 'servers', [null, 'x', {}, { name: 1 }]])(
+		'returns no server nodes for malformed input %p',
+		(servers) => {
+			expect(toPolicedNodes([], servers)).toEqual([]);
+		},
+	);
+});
+
 describe('withInlineAgentToolNodes', () => {
 	const code: INode = {
 		id: 'n0',
@@ -157,6 +217,19 @@ describe('withInlineAgentToolNodes', () => {
 		const nodes = [code, messageAnAgent({ agentSource: 'referenced' })];
 
 		expect(withInlineAgentToolNodes(nodes)).toBe(nodes);
+	});
+
+	it('appends the MCP servers of an inline agent', () => {
+		const agentNode = messageAnAgent({
+			agentSource: 'inline',
+			inlineAgent: { config: { mcpServers: [{ name: 'Docs', url: 'https://mcp.example.com' }] } },
+		});
+
+		const embedded = withInlineAgentToolNodes([agentNode]).slice(1);
+
+		expect(embedded.map((node) => [node.id, node.type])).toEqual([
+			['n1-mcp-0', MCP_CLIENT_TOOL_NODE_TYPE],
+		]);
 	});
 
 	it('appends the node tools of an inline agent stored as an object', () => {

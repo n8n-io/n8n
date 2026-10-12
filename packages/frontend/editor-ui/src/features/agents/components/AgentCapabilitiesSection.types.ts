@@ -1,4 +1,5 @@
 import type { SimplifiedNodeType } from '@/Interface';
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import type { AgentJsonToolRef } from '../types';
@@ -26,6 +27,12 @@ export type ToolRowItem = {
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
 	invalidReasons: string[];
+	/** True when a policy denies the node type this row runs as. It outranks `invalid` and `warning`. */
+	restricted: boolean;
+	/** The level that denied the type; absent when the policy names none. */
+	restrictedScope?: NodeTypeAvailabilityScope;
+	/** The type name the restriction popover shows. */
+	restrictedTypeLabel: string;
 };
 
 type ToolRowBase = {
@@ -42,6 +49,12 @@ type ToolRowBase = {
 	/** True when the row blocks publishing but still works in preview (e.g. an unpublished workflow). */
 	warning: boolean;
 	warningReasons: string[];
+	/** True when a policy denies the node type this row runs as. It outranks `invalid` and `warning`. */
+	restricted: boolean;
+	/** The level that denied the type; absent when the policy names none. */
+	restrictedScope?: NodeTypeAvailabilityScope;
+	/** The type name the restriction popover shows. */
+	restrictedTypeLabel: string;
 };
 
 export type GroupedToolRow = ToolRowBase & {
@@ -65,5 +78,8 @@ export type ToolMenuItem = DropdownMenuItemProps<
 		openTarget: ToolOpenTarget;
 		invalid: boolean;
 		invalidReasons: string[];
+		restricted: boolean;
+		restrictedScope?: NodeTypeAvailabilityScope;
+		restrictedTypeLabel: string;
 	}
 >;
