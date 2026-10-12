@@ -23,7 +23,9 @@ import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entiti
 import { TrustedSourceIdentityRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository';
 import { TrustedSourceIdentityService } from '@/modules/inbound-auth-core/identity/trusted-source-identity.service';
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
+import { ProvisioningRoleMappingProvider } from '@/modules/provisioning.ee/role-mapping-provider.ee';
 import { RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { RoleMappingProxyService } from '@/services/role-mapping-proxy.service';
 import { UserService } from '@/services/user.service';
 
 import { createAdmin, createMember, createOwner, createUser } from '../shared/db/users';
@@ -131,6 +133,10 @@ const secondsAgo = (seconds: number) => new Date(Math.floor(Date.now() / 1000 - 
 beforeAll(async () => {
 	await testModules.loadModules(['inbound-auth-core']);
 	await testDb.init();
+	// The provisioning module registers this on init; the test loads only inbound-auth-core.
+	Container.get(RoleMappingProxyService).registerProvider(
+		Container.get(ProvisioningRoleMappingProvider),
+	);
 
 	// Role licensing reads the license state, which only boot installs.
 	const license = new LicenseMocker();
@@ -915,6 +921,49 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			expect(rejectReason(result)).toBe('no-role');
 			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
 			expect(await bindings.count()).toBe(0);
+		});
+
+		it('does not evaluate rules for an existing jit binding when the mode is on-provision', async () => {
+			const source = await jitSource(
+				mapping('on-provision', { instanceRoleRules: [{ ...adminRule, role: 'global:nope' }] }),
+			);
+			const member = await createMember();
+			await bind(source, 'alice', member.id, { provenance: 'jit' });
+			const resolve = spyOnResolve();
+
+			expectOk(await service.identify(verified(source, claims('alice', member.email, ['admins']))));
+
+			expect(await roleOf(member.id)).toBe('global:member');
+			expect(resolve).not.toHaveBeenCalled();
+		});
+
+		it('rejects provisioning with no-role when no role mapping provider is registered', async () => {
+			vi.spyOn(Container.get(RoleMappingProxyService), 'getProvider').mockReturnValue(null);
+			const source = await jitSource(mapping('on-provision', { instanceRoleRules: [adminRule] }));
+
+			const result = await service.identify(
+				verified(source, claims('bob', 'bob@example.com', ['admins'])),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect(await users.countBy({ email: 'bob@example.com' })).toBe(0);
+			expect(await bindings.count()).toBe(0);
+		});
+
+		it('rejects a continuous jit binding with no-role when no provider is registered, without stamping lastSeenAt', async () => {
+			vi.spyOn(Container.get(RoleMappingProxyService), 'getProvider').mockReturnValue(null);
+			const source = await jitSource(mapping('continuous', { instanceRoleRules: [adminRule] }));
+			const member = await createMember();
+			const lastSeenAt = secondsAgo(7 * 86400);
+			await bind(source, 'alice', member.id, { provenance: 'jit', lastSeenAt });
+
+			const result = await service.identify(
+				verified(source, claims('alice', member.email, ['admins'])),
+			);
+
+			expect(rejectReason(result)).toBe('no-role');
+			expect((await readBinding(source, 'alice')).lastSeenAt?.getTime()).toBe(lastSeenAt.getTime());
+			expect(await roleOf(member.id)).toBe('global:member');
 		});
 
 		it('treats a rule whose expression throws as no match and applies the fallback', async () => {

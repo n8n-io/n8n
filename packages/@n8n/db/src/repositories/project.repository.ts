@@ -6,7 +6,7 @@ import { UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { Project, ProjectRelation } from '../entities';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
@@ -105,6 +105,17 @@ export class ProjectRepository extends BaseRepository<Project> {
 			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
 		}
 		return rows;
+	}
+
+	/** Id, name, type and description of every project that exists with one of these ids. */
+	async findProjectInfoByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>>> {
+		return await this.managerFor(ctx).find(Project, {
+			where: { id: In(ids) },
+			select: ['id', 'name', 'type', 'description'],
+		});
 	}
 
 	async getAccessibleProjects(userId: string) {
