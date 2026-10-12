@@ -37,17 +37,6 @@ export interface PreparedWorkflow {
 	tagIds?: string[];
 }
 
-export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
-
-/**
- * A conflict policy's verdict for one workflow. `blocked` aborts the import and
- * is set only by the `fail` policy.
- */
-export interface WorkflowDecision {
-	action: WorkflowPlannedAction;
-	blocked: boolean;
-}
-
 /**
  * The decided plan for one workflow. Discriminated by `action` so that
  * `update`/`skip` carry the pre-existing workflow they operate on, while

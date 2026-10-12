@@ -1,5 +1,5 @@
+import type { ImportBlockingIssue } from '@n8n/api-types';
 import type { Scope } from '@n8n/permissions';
-import type { PolicyViolation } from '@n8n/decorators';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
@@ -27,36 +27,7 @@ export interface AgentImportPlan {
 	issues: AgentImportIssue[];
 }
 
-export type AgentImportIssue =
-	| {
-			type: 'agent-conflict';
-			kind: 'existing' | 'lineage' | 'id' | 'task-lineage' | 'task-id';
-			sourceAgentId: string;
-			projectId: string;
-			sourceTaskId?: string;
-			targetIds: string[];
-	  }
-	| {
-			type: 'agent-invalid';
-			sourceAgentId: string;
-			path: string;
-			message: string;
-	  }
-	| {
-			type: 'agent-dependency-unresolved';
-			sourceAgentId: string;
-			projectId: string;
-			dependencyType: 'agent' | 'workflow' | 'credential';
-			referenceId: string;
-			path: string;
-			reason: 'missing' | 'inaccessible' | 'ambiguous' | 'unsupported';
-	  }
-	| {
-			type: 'agent-policy-violation';
-			sourceAgentId: string;
-			name: string;
-			violations: PolicyViolation[];
-	  };
+export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${string}` }>;
 
 export interface PreparedAgent extends Omit<SerializedAgent, 'id'> {
 	sourceAgentId: string;
