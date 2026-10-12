@@ -682,9 +682,9 @@ describe('N8nDialog', () => {
 			await user.click(getByTestId('dialog-trigger'));
 
 			const dialog = getByRole('dialog');
-			const header = dialog.querySelector('[data-slot="dialog-header"]');
-			const body = dialog.querySelector('[data-slot="dialog-body"]');
-			const footer = dialog.querySelector('[data-slot="dialog-footer"]');
+			const header = dialog.querySelector<HTMLElement>('[data-slot="dialog-header"]');
+			const body = dialog.querySelector<HTMLElement>('[data-slot="dialog-body"]');
+			const footer = dialog.querySelector<HTMLElement>('[data-slot="dialog-footer"]');
 
 			expect(header).toBeInTheDocument();
 			expect(body).toBeInTheDocument();
