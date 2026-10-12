@@ -40,7 +40,11 @@ import {
 	normalizeWorkflowToolRefs,
 } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import type { CompleteAgentDefinition, PlannedAgentDestinations } from './utils/agent-definition';
+import {
+	findMissingAgentDefinitionBodies,
+	type CompleteAgentDefinition,
+	type PlannedAgentDestinations,
+} from './utils/agent-definition';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { visitAgentCredentialReferences } from './utils/visit-agent-credential-references';
 import {
@@ -148,20 +152,11 @@ export class AgentConfigPreparationService {
 		if (!result.valid) throw new UserError(result.error);
 		prepared.config = reconcileNativeWebSearch(result.config);
 		this.validateSubAgentRefs(prepared.config.subAgents?.agents ?? [], agentId);
-		const references = [
-			['skills', prepared.config.skills ?? [], new Set(Object.keys(prepared.skills))],
-			[
-				'tools',
-				prepared.config.tools?.filter((tool) => tool.type === 'custom') ?? [],
-				new Set(Object.keys(prepared.tools)),
-			],
-			['tasks', prepared.config.tasks ?? [], new Set(prepared.tasks.keys())],
-		] as const;
-		for (const [kind, refs, ids] of references) {
-			for (const { id } of refs) {
-				if (!ids.has(id))
-					throw new UserError(`Agent references ${kind} asset "${id}" without a body.`);
-			}
+		const [missingBody] = findMissingAgentDefinitionBodies(prepared);
+		if (missingBody) {
+			throw new UserError(
+				`Agent references ${missingBody.kind} asset "${missingBody.id}" without a body.`,
+			);
 		}
 		return prepared;
 	}
