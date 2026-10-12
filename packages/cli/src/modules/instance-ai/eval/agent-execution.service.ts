@@ -136,10 +136,7 @@ export async function resolveCanonicalMcpCatalogs(
 	for (const server of mcpServers) {
 		if (result[server.name]) continue;
 		const permissions = server.toolPermissions;
-		if (
-			permissions?.categories.read === 'blocked' &&
-			permissions.categories.write === 'blocked'
-		) {
+		if (permissions?.categories.read === 'blocked' && permissions.categories.write === 'blocked') {
 			const allowedTools = Object.entries(permissions.tools ?? {})
 				.filter(([, permission]) => permission !== 'blocked')
 				.map(([name]) => ({ name, description: name }));
