@@ -1,0 +1,92 @@
+packages/nodes-base/nodes/Salesmate/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3990e88dbdd3a2 1-26
+packages/nodes-base/nodes/Salesforce/__test__/Salesforce.node.test.ts
+  s_2e1fa95fc44f8f::t_e4f9ac63e7b15b 119,160,182,211,236,244,299,320,353-356,381-384,408,438,563-566,593,614,695,750,754,788,820,850-853,882-885,913-916,945-948,973,999,1024-1027,1047-1050,1069-1072,1094,1114-1117,1136-1139,1159-1162,1184,1213-1216,1490,1549,1605,1641,1707,1775-1778,1813,1854-1857,1874,1895,1926,1962,1988,2030,2077,2123,2165,2195,2219-2222,2251,2310-2313,2345,2368,2394,2426,2492,2561,2590,2643,2681,2755,2837,2859-2862,2897,2919,2937,2958,2989,3034,3077,3116,3176,3207,3230,3279,3383,3413,3442-3445,3496,3538,3582,3611,3660,3901,3954-3957,4205,4261
+  s_2e1fa95fc44f8f::t_cb57d1c19845e1 7,3958-3985,4012-4020,4047,4080,4122,4164,4199-4204,4206-4214,4250-4260,4262-4270,4296-4304,4341,4411-4420,4459-4471,4537,4577,4632-4635,4674,4751,4797-4800
+packages/nodes-base/nodes/SendGrid/SendGrid.node.ts
+  s_2e1fa95fc44f8f::t_0c00f41546f698 647-656
+  s_2e1fa95fc44f8f::t_bf319b84bc47db 12-13
+  s_2e1fa95fc44f8f::t_e7e99e39d7e81e 86,106,123,152,156,192,200,203,306,330,362,398,428,459,490
+packages/nodes-base/nodes/Segment/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_a5979236b4f07a 1-22
+packages/nodes-base/nodes/SendGrid/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7984a2d032165a 1-22
+packages/nodes-base/nodes/Salesforce/__test__/SalesforceTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_e4f9ac63e7b15b 90,209
+  s_2e1fa95fc44f8f::t_567102dabee31a 4
+packages/nodes-base/nodes/Salesforce/SalesforceTrigger.node.ts
+  s_2e1fa95fc44f8f::t_5a43d98593704f 296
+  s_2e1fa95fc44f8f::t_ff4a943c76a035 2
+  s_2e1fa95fc44f8f::t_0c00f41546f698 203-207
+packages/nodes-base/nodes/SecurityScorecard/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_ad174ce24cddd6 9-11,13,45,49-50,56,60
+packages/nodes-base/nodes/SecurityScorecard/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e93ce85e311b1d 108-112,116
+  s_2e1fa95fc44f8f::t_eeaf3bd4b174d1 2,88,91,100-107,113-115
+packages/nodes-base/nodes/Salesforce/Salesforce.node.ts
+  s_2e1fa95fc44f8f::t_0c00f41546f698 298-302,509-513,534-538,559-563,584-588,609-613,634-638,659-663,684-688,709-713,734-738,759-763,786-790,812-816,900-904,921-925,963-967,984-988,1057-1061,1073-1083,1370-1374,1422-1426,1468-1473,1826-1830,1873-1878,2243-2247,2270-2275,2549-2553,2576-2581,2653-2658,2739-2743,2791-2795,2911-2916,3021-3025,3073-3077,3215-3219,3226-3230,3295-3299
+  s_2e1fa95fc44f8f::t_0ceccdd7465b26 1245,1617,1904,2110,2382
+  s_2e1fa95fc44f8f::t_ff4a943c76a035 14,1239,1611,1898,2104,2376
+  s_2e1fa95fc44f8f::t_5a43d98593704f 64,87,97,279,328,361,388,414,437,462,487,840,861,882,945,1008,1363,1387,1398,1414,1443,1767,1777,1791,1802,1818,1847,1931,1941,1955,1966,1982,2034,2184,2194,2208,2219,2235,2490,2500,2514,2525,2541,2732,2756,2767,2783,2813,3014,3038,3049,3065,3116,3156,3166,3180,3191,3207,3243,3254,3288,3315
+packages/nodes-base/nodes/SecurityScorecard/SecurityScorecard.node.ts
+  s_2e1fa95fc44f8f::t_0c00f41546f698 122-127,239-250,344-349
+  s_2e1fa95fc44f8f::t_366b20164081d3 8
+  s_2e1fa95fc44f8f::t_ad174ce24cddd6 10,136,156,164,183,194,206,226,230,313,322,360,372,404,429,441,472,509,534
+packages/nodes-base/nodes/Segment/Segment.node.ts
+  s_2e1fa95fc44f8f::t_a4489b8c44548b 8
+  s_2e1fa95fc44f8f::t_9549f287959744 215,347,481,612
+packages/nodes-base/nodes/Salesmate/Salesmate.node.ts
+  s_2e1fa95fc44f8f::t_0c00f41546f698 103-108,127-132,213-218,286,297-301,381,391,403,437-442,483,497,579,589,601,646,699-704,713-717,796,806,815-819
+  s_2e1fa95fc44f8f::t_04b86f40bccebe 10,84
+packages/nodes-base/nodes/Salesforce/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e93ce85e311b1d 4,701-715,755-761,819,852-858,866-872,978-984
+  s_2e1fa95fc44f8f::t_1727abe15eb30f 603,623,642,656,690,791,816,836,891,917,939,962,1011
+packages/nodes-base/nodes/Salesforce/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_60b757b1352491 14-15,17,31-32,36,41-42,49,66,69,91,95-96,162,211,219,223-225
+packages/nodes-base/nodes/Salesmate/GenericFunctions.ts
+  s_8c267bec53484d::t_f4073c3f29453f 10-11,13,18,26,35,52
+packages/nodes-base/nodes/Segment/GenericFunctions.ts
+  s_b2cadcdc3f9f65::t_deeafa85061f3f 9-10,12,17,21,28
+packages/nodes-base/nodes/SendGrid/GenericFunctions.ts
+  s_628b34ed698406::t_5393560e1ab575 8-9,11,15,20,22,26,43,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab29dcaf0e4ea22003a6afb48f07e12930644c37",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_628b34ed698406": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab9774a9ac55dc3a5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8c267bec53484d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a746eb8acd8948e9b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_b2cadcdc3f9f65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-afcae91b93f4469e0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

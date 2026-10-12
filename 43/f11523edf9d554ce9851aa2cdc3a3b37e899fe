@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Google/Task/test/GoogleTasks.node.test.ts
+  s_2e1fa95fc44f8f::t_e3571ededb42c6 1-31
+packages/nodes-base/nodes/Google/Slides/test/GoogleSlides.node.test.ts
+  s_2e1fa95fc44f8f::t_a96c45b115cc34 1-32
+packages/nodes-base/nodes/Google/Perspective/GenericFunctions.ts
+  s_c188bef911fee8::t_7b8841b35893ed 1-9,14,17,24
+packages/nodes-base/nodes/Google/Perspective/GooglePerspective.node.ts
+  s_c188bef911fee8::t_ce0331308c9986 11,260
+packages/nodes-base/nodes/Google/Slides/GenericFunctions.ts
+  s_c188bef911fee8::t_e1c250a8b08dd0 8-9,11,18,27,34
+packages/nodes-base/nodes/Google/Slides/GoogleSlides.node.ts
+  s_c188bef911fee8::t_210ce26f420f74 10,374,415,433,488-493,510,528,577
+packages/nodes-base/nodes/Google/Task/GenericFunctions.ts
+  s_c188bef911fee8::t_1b3bb3b1436f62 8-10,12,17,20,23,30,51
+packages/nodes-base/nodes/Google/Task/GoogleTasks.node.ts
+  s_c188bef911fee8::t_ad223c940c0df8 10,67,130,143,155,196,205,250
+packages/nodes-base/nodes/Google/Translate/GenericFunctions.ts
+  s_c188bef911fee8::t_16d332d6a2e1f6 8-10,12,19,23,31,38,69
+packages/nodes-base/nodes/Google/Translate/GoogleTranslate.node.ts
+  s_c188bef911fee8::t_99dfaa72c12680 10,176,201-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43f11523edf9d554ce9851aa2cdc3a3b37e899fe",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c188bef911fee8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8d07fd80c4321377",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

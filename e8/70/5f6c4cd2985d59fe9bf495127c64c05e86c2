@@ -1,0 +1,31 @@
+packages/@n8n/nodes-langchain/utils/databricks/model-services.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 4,64
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/methods/searchModels.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 6,37
+packages/@n8n/nodes-langchain/utils/databricks/list-pages.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 2,19
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 3,41
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 6,243,252
+packages/@n8n/nodes-langchain/utils/aws/listBedrockInferenceProfiles.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 1-2,32,41-42
+packages/@n8n/nodes-langchain/nodes/tools/ToolSearXng/ToolSearXng.node.ts
+  s_2e1fa95fc44f8f::t_c1b95bfbb6c749 2,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e8705f6c4cd2985d59fe9bf495127c64c05e86c2",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

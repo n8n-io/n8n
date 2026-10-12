@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Workable/test/WorkableTrigger.node.test.ts
+  s_0f34e61c0d2ecc::t_9dc87566d72c1e 1-6,29,73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9d73ea2c81b045f31f6ae98eb4a39e5576630da",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
