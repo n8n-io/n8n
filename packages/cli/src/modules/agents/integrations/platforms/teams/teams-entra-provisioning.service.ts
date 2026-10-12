@@ -90,19 +90,20 @@ export class TeamsEntraProvisioningService {
 		await this.rememberTenant(options.user, manager, tenant);
 
 		const existing = await this.findProvisionedCredential(options);
-		// The credential is a shortcut, not the record. Without it the upsert still
-		// finds the app this agent already owns, and an app deleted in the tenant
-		// falls back to making one rather than leaving the agent stuck on a
-		// credential pointing at something that is gone.
-		const found = existing ? await this.readApp(token, existing.objectId) : undefined;
-		const app = found ?? (await this.createApp(token, options.agentId, options.agentName));
+		// The registration is always resolved by the unique name n8n derives from
+		// the agent, which the upsert owns: it returns the app this agent already
+		// has, and makes one when the tenant no longer carries it. What a
+		// credential stores is a shortcut to the secret, never the address of the
+		// app the setup then writes to.
+		const app = await this.createApp(token, options.agentId, options.agentName);
 
 		// Only when there is not already one to use: every mint is a write in the
-		// customer's directory, and Entra caps how many an app may hold. A
-		// credential whose app has gone carries a secret for an app that no
-		// longer exists, so the replacement needs one of its own.
+		// customer's directory, and Entra caps how many an app may hold. A secret
+		// kept for some other registration does not open this one, so it is reused
+		// only where the credential and the upsert name the same app.
 		const secret =
-			(found ? existing?.secret : undefined) ?? (await this.addSecret(token, app.objectId));
+			(existing?.objectId === app.objectId ? existing.secret : undefined) ??
+			(await this.addSecret(token, app.objectId));
 		// Harmless when one is already there, and an app picked up from an earlier
 		// run may have lost its principal.
 		await this.createServicePrincipal(token, app.appId);
@@ -275,21 +276,6 @@ export class TeamsEntraProvisioningService {
 	}
 
 	/** `undefined` when the app is gone from the tenant, so the caller remakes it. */
-	private async readApp(token: string, objectId: string): Promise<CreatedApp | undefined> {
-		const response = await this.graph.request(token, 'GET', `/applications/${objectId}`);
-		if (response.statusCode === 404) return undefined;
-		if (!response.ok) {
-			throw new OperationalError('Could not read the app registration n8n created earlier.');
-		}
-		const appId = stringProperty(response.body, 'appId');
-		if (!appId) throw new OperationalError('Microsoft returned an app with no identifier.');
-		return {
-			objectId,
-			appId,
-			displayName: stringProperty(response.body, 'displayName') ?? 'n8n Agent',
-		};
-	}
-
 	/**
 	 * Removes only secrets whose own expiry has passed. A live one may belong to
 	 * another instance running the same agent, and Entra caps how many an app

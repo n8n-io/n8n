@@ -357,15 +357,97 @@ describe('TeamsEntraProvisioningService', () => {
 		});
 
 		it('reuses the app it registered, rather than registering a second one', async () => {
-			await service.provision(options);
+			const result = await service.provision(options);
 
-			expect(graph.request).not.toHaveBeenCalledWith(
-				expect.anything(),
+			// The upsert is keyed on a name derived from the agent, so a second run
+			// lands on the registration the first one made.
+			expect(graph.request).toHaveBeenCalledWith(
+				'graph-token',
 				'PATCH',
-				expect.stringContaining('uniqueName'),
+				"/applications(uniqueName='n8n-agent-agent-1')",
 				expect.anything(),
-				expect.anything(),
+				{ Prefer: 'create-if-missing' },
 			);
+			expect(result.appId).toBe(APP_ID);
+		});
+
+		/**
+		 * The agent's own name is the only thing the app is looked up by. A
+		 * credential names which secret may be reused and nothing else, so an
+		 * identifier stored on one cannot send the setup's writes elsewhere.
+		 */
+		describe('a credential naming an app the agent does not own', () => {
+			const FOREIGN_OBJECT_ID = '99999999-9999-9999-9999-999999999999';
+
+			beforeEach(() => {
+				// The named app is a real one in the directory, which the sign-in can
+				// reach: a name that resolves to nothing would prove nothing.
+				routeGraph({
+					[`GET /applications/${FOREIGN_OBJECT_ID}`]: ok({
+						appId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+						displayName: 'Finance API',
+					}),
+					[`POST /applications/${FOREIGN_OBJECT_ID}/addPassword`]: ok({
+						secretText: 'a-foreign-secret',
+						endDateTime: '2028-09-17T00:00:00Z',
+					}),
+				});
+				credentialsService.decrypt.mockImplementation(async (credential: { id: string }) =>
+					credential.id === 'bot-cred-1'
+						? ({
+								entraAppObjectId: FOREIGN_OBJECT_ID,
+								provisionedForAgentId: 'agent-1',
+								clientSecret: 'a-stored-secret',
+								secretExpiresAt: '2099-01-01T00:00:00Z',
+							} as never)
+						: ({} as never),
+				);
+			});
+
+			it('writes to the app its own name resolves to', async () => {
+				const result = await service.provision(options);
+
+				expect(result.appId).toBe(APP_ID);
+				for (const method of ['GET', 'POST'] as const) {
+					expect(graph.request).not.toHaveBeenCalledWith(
+						expect.anything(),
+						method,
+						expect.stringContaining(FOREIGN_OBJECT_ID),
+						expect.anything(),
+						expect.anything(),
+					);
+					expect(graph.request).not.toHaveBeenCalledWith(
+						expect.anything(),
+						method,
+						expect.stringContaining(FOREIGN_OBJECT_ID),
+						expect.anything(),
+					);
+					expect(graph.request).not.toHaveBeenCalledWith(
+						expect.anything(),
+						method,
+						expect.stringContaining(FOREIGN_OBJECT_ID),
+					);
+				}
+			});
+
+			it('mints a secret for that app rather than keeping the stored one', async () => {
+				await service.provision(options);
+
+				expect(graph.request).toHaveBeenCalledWith(
+					'graph-token',
+					'POST',
+					`/applications/${OBJECT_ID}/addPassword`,
+					expect.anything(),
+				);
+				// The stored secret opens some other registration, so it is not what
+				// the channel is left running on.
+				expect(credentialsService.update).toHaveBeenCalledWith(
+					'bot-cred-1',
+					expect.anything(),
+					expect.anything(),
+					expect.objectContaining({ clientSecret: 'a-secret', entraAppObjectId: OBJECT_ID }),
+				);
+			});
 		});
 
 		it('updates the existing credential instead of creating another', async () => {
