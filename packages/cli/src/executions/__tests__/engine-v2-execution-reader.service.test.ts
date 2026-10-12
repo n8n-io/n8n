@@ -275,6 +275,23 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('fromSnapshot', () => {
+		it('maps a snapshot the caller already holds, without a read', async () => {
+			const result = await reader.fromSnapshot(snapshot({ status: 'waiting', finishedAt: null }));
+
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+			expect(result).toEqual(
+				expect.objectContaining({ id: EXECUTION_ID, status: 'waiting', finished: false }),
+			);
+		});
+
+		it('reads as no execution when the document has no nodes', async () => {
+			await expect(
+				reader.fromSnapshot(snapshot({ workflow: { id: WORKFLOW_ID } })),
+			).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findOne', () => {
 		it('should map the snapshot onto an execution response', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
