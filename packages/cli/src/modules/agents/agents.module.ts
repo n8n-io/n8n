@@ -278,7 +278,9 @@ export class AgentsModule implements ModuleInterface {
 		const { SkillVersion } = await import('./entities/skill-version.entity.js');
 		const { SkillFile } = await import('./entities/skill-file.entity.js');
 		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
-		const { AgentHistorySkill } = await import('./entities/agent-history-skill.entity.js');
+		const { AgentVersionSkillDependency } = await import(
+			'./entities/agent-version-skill-dependency.entity.js'
+		);
 
 		return [
 			Agent,
@@ -317,7 +319,7 @@ export class AgentsModule implements ModuleInterface {
 			SkillVersion,
 			SkillFile,
 			AgentSkillDependency,
-			AgentHistorySkill,
+			AgentVersionSkillDependency,
 		];
 	}
 

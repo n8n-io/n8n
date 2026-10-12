@@ -4,7 +4,7 @@ const SKILL_TABLE = 'skill';
 const SKILL_VERSION_TABLE = 'skill_version';
 const SKILL_FILE_TABLE = 'skill_file';
 const AGENT_SKILL_DEPENDENCY_TABLE = 'agent_skill_dependency';
-const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
+const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
 
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
@@ -20,11 +20,11 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 		await this.createSkillVersionTable(context);
 		await this.createSkillFileTable(context);
 		await this.createAgentSkillDependencyTable(context);
-		await this.createAgentHistorySkillTable(context);
+		await this.createAgentVersionSkillDependencyTable(context);
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(AGENT_HISTORY_SKILL_TABLE);
+		await dropTable(AGENT_VERSION_SKILL_DEPENDENCY_TABLE);
 		await dropTable(AGENT_SKILL_DEPENDENCY_TABLE);
 		await dropTable(SKILL_FILE_TABLE);
 		await dropTable(SKILL_VERSION_TABLE);
@@ -147,7 +147,7 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' })
 			.withForeignKey('skillId', { tableName: SKILL_TABLE, columnName: 'id', onDelete: 'CASCADE' })
-			// NO ACTION for the same reason as agent_history_skill: a user or project
+			// NO ACTION for the same reason as agent_version_skill_dependency: a user or project
 			// delete removes the skill together with the agents that pin it.
 			.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,
@@ -156,10 +156,10 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			});
 	}
 
-	private async createAgentHistorySkillTable({
+	private async createAgentVersionSkillDependencyTable({
 		schemaBuilder: { createTable, column },
 	}: MigrationContext) {
-		await createTable(AGENT_HISTORY_SKILL_TABLE)
+		await createTable(AGENT_VERSION_SKILL_DEPENDENCY_TABLE)
 			.withColumns(
 				column('agentVersionId').varchar(36).primary,
 				column('skillId').varchar(36).primary,
