@@ -1,4 +1,8 @@
-import type { AiPreferenceScope, AiPreferenceSortOption, AiPreferenceUserDto } from '@n8n/api-types';
+import type {
+	AiPreferenceScope,
+	AiPreferenceSortOption,
+	AiPreferenceUserDto,
+} from '@n8n/api-types';
 import {
 	AI_PREFERENCES_SORT_OPTIONS,
 	aiPreferenceScopeOf,
