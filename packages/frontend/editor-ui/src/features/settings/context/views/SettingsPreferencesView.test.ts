@@ -115,6 +115,30 @@ describe('SettingsPreferencesView', () => {
 		});
 	});
 
+	it('reverses the last updated order on each header click', async () => {
+		contextStore.preferences = [preference()];
+		contextStore.count = 1;
+
+		const { getByText } = renderView();
+		await new Promise(process.nextTick);
+
+		await userEvent.click(getByText(/^Last updated/));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:asc',
+		});
+
+		await userEvent.click(getByText(/^Last updated/));
+		await new Promise(process.nextTick);
+		expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+			skip: 0,
+			take: 50,
+			sortBy: 'updatedAt:desc',
+		});
+	});
+
 	it('opens the create modal from the toolbar', async () => {
 		contextStore.preferences = [preference()];
 		contextStore.count = 1;

@@ -79,7 +79,12 @@ async function load() {
 }
 
 async function onOptionsUpdate(options: TableOptions) {
-	tableOptions.value = options;
+	const [previous] = tableOptions.value.sortBy;
+	const sortBy =
+		options.sortBy.length > 0 || !previous
+			? options.sortBy
+			: [{ id: previous.id, desc: !previous.desc }];
+	tableOptions.value = { ...options, sortBy };
 	await load();
 }
 

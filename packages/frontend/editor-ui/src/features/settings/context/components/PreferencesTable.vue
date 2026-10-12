@@ -93,7 +93,7 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 		<N8nDataTableServer
 			v-model:page="tableOptions.page"
 			v-model:items-per-page="tableOptions.itemsPerPage"
-			v-model:sort-by="tableOptions.sortBy"
+			:sort-by="tableOptions.sortBy"
 			v-model:selection="selection"
 			:headers="headers"
 			:items="props.preferences"
