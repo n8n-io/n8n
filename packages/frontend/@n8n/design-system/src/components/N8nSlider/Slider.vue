@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useCssModule, useId, useTemplateRef } from 'vue';
+import { computed, ref, useCssModule, useId, useSlots, useTemplateRef } from 'vue';
 import N8nText from '../N8nText';
 
 import type { SliderEmits, SliderProps, SliderValue } from './Slider.types';
@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<SliderProps>(), {
 	step: 1,
 	minDistance: 0,
 	hideLabel: false,
-	showStepMarkers: false,
+	showStepMarkers: true,
 	disabled: false,
 	hideValue: false,
 });
@@ -19,6 +19,17 @@ const props = withDefaults(defineProps<SliderProps>(), {
 const emit = defineEmits<SliderEmits>();
 const styles = useCssModule();
 const labelId = useId();
+const slots = useSlots();
+
+defineSlots<{
+	/** Replaces the visible label text. */
+	label?: () => unknown;
+}>();
+
+const hasLabel = computed(() => Boolean(props.label || slots.label));
+const accessibleLabelledBy = computed(
+	() => props.ariaLabelledby || (!props.ariaLabel && hasLabel.value ? labelId : undefined),
+);
 const isDragging = ref(false);
 const animateFill = ref(false);
 const control = useTemplateRef<HTMLDivElement>('control');
@@ -171,68 +182,83 @@ function handleDragEnd(event: PointerEvent) {
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.slider,
-			sizeClass,
-			{ [$style.disabled]: disabled, [$style.dragging]: isDragging },
-		]"
-		@pointerdown="handleDragStart"
-		@pointermove="handleDrag"
-		@pointerup="handleDragEnd"
-		@pointercancel="handleDragEnd"
-		@lostpointercapture="handleDragEnd"
-	>
-		<div
-			ref="control"
-			:class="$style.control"
-			role="slider"
-			@keydown="handleKeyDown"
-			:tabindex="disabled ? -1 : 0"
-			:aria-disabled="disabled"
-			:aria-valuenow="value"
-			:aria-valuetext="String(formattedValue)"
-			:aria-labelledby="labelId"
-			:aria-valuemin="minValue"
-			:aria-valuemax="maxValue"
-		>
-			<div :class="$style.hashmarks" aria-hidden="true">
-				<div
-					v-for="marker in markers"
-					:key="marker"
-					:class="$style.hashmark"
-					:style="{ left: `${marker}%` }"
-				/>
-			</div>
-			<div
-				:class="[$style.fill, { [$style.animateFill]: animateFill }]"
-				:style="fillStyle"
+	<div :class="[$style.wrapper, sizeClass]">
+		<div v-if="hasLabel || !hideValue" :class="$style.header">
+			<N8nText
+				v-if="hasLabel"
+				:id="labelId"
+				:step="fontSize"
+				bold
+				color="text-base"
+				:class="hideLabel ? $style.hiddenLabel : $style.label"
+			>
+				<slot name="label">{{ label }}</slot>
+			</N8nText>
+			<N8nText
+				v-if="!hideValue"
+				:step="fontSize"
+				bold
+				color="text-dark"
+				:class="$style.value"
 				aria-hidden="true"
-			/>
+				>{{ formattedValue }}</N8nText
+			>
 		</div>
-		<N8nText
-			:step="fontSize"
-			bold
-			color="text-base"
-			:id="labelId"
-			:class="hideLabel ? $style.hiddenLabel : $style.label"
-			>{{ label }}</N8nText
+		<div
+			:class="[
+				$style.slider,
+				sizeClass,
+				{ [$style.disabled]: disabled, [$style.dragging]: isDragging },
+			]"
+			@pointerdown="handleDragStart"
+			@pointermove="handleDrag"
+			@pointerup="handleDragEnd"
+			@pointercancel="handleDragEnd"
+			@lostpointercapture="handleDragEnd"
 		>
-		<N8nText
-			v-if="!hideValue"
-			:step="fontSize"
-			bold
-			color="text-dark"
-			:class="$style.value"
-			aria-hidden="true"
-			>{{ formattedValue }}</N8nText
-		>
+			<div
+				ref="control"
+				:class="$style.control"
+				role="slider"
+				@keydown="handleKeyDown"
+				:tabindex="disabled ? -1 : 0"
+				:aria-disabled="disabled"
+				:aria-valuenow="value"
+				:aria-valuetext="String(formattedValue)"
+				:aria-label="ariaLabel"
+				:aria-labelledby="accessibleLabelledBy"
+				:aria-valuemin="minValue"
+				:aria-valuemax="maxValue"
+			>
+				<div
+					:class="[$style.fill, { [$style.animateFill]: animateFill }]"
+					:style="fillStyle"
+					aria-hidden="true"
+				/>
+				<div :class="$style.hashmarks" aria-hidden="true">
+					<div v-for="marker in markers" :key="marker" :class="$style.hashmark" />
+				</div>
+			</div>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 @use '../../css/mixins/motion';
 @use '../../css/mixins/focus';
+
+.wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
 
 .slider {
 	position: relative;
@@ -243,7 +269,7 @@ function handleDragEnd(event: PointerEvent) {
 	height: var(--n8n-slider--height, var(--height--lg));
 	padding-inline: var(--n8n-slider--padding-inline, var(--spacing--xs));
 	border-radius: var(--n8n-slider--radius, var(--radius--3xs));
-	border: 1px solid var(--n8n-slider--background, var(--background--subtle));
+	border: 1px solid var(--n8n-slider--background, var(--border-color));
 	background-color: var(--n8n-slider--background, var(--background--subtle));
 	overflow: hidden;
 
@@ -252,16 +278,15 @@ function handleDragEnd(event: PointerEvent) {
 	}
 
 	&:hover .fill::after {
-		opacity: 1;
-		inset-block: min(var(--spacing--2xs), calc(100% / 5));
+		outline-color: var(--border-color);
 	}
 
 	&:hover .hashmarks {
 		opacity: 1;
 	}
 
-	&.dragging .fill::after {
-		background-color: var(--text-color);
+	&.dragging {
+		cursor: ew-resize;
 	}
 
 	&.mini {
@@ -298,46 +323,70 @@ function handleDragEnd(event: PointerEvent) {
 }
 .hashmarks {
 	position: absolute;
-	inset: 0;
+	inset: 0 5%;
 	z-index: 1;
 	opacity: 0;
+	display: grid;
+	grid-template-columns: repeat(9, minmax(0, 1fr));
+	place-items: center;
+	gap: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 .hashmark {
-	position: absolute;
-	inset-block: 35%;
-	width: 1px;
-	transform: translateX(-50%);
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
 	background-color: var(--border-color);
 }
 
 .fill {
+	isolation: isolate;
 	position: relative;
+	/** Keep the handle and its outline inside the control at the minimum value. */
+	min-width: calc(1em + var(--spacing--5xs));
 	height: 100%;
-	background-color: var(--n8n-slider--fill, var(--background--active));
+	background-color: var(
+		--n8n-slider--fill,
+		color-mix(in oklch, var(--background--subtle), black 8%)
+	);
 	will-change: width;
+	border-top-right-radius: var(--n8n-slider--radius, var(--radius--3xs));
+	border-bottom-right-radius: var(--n8n-slider--radius, var(--radius--3xs));
+	z-index: 2;
+
+	&::before {
+		content: '⋮';
+		position: absolute;
+		z-index: 2;
+		inset-inline-end: 1px;
+		inset-block: 1px;
+		display: grid;
+		width: 1em;
+		place-items: center;
+		font-size: var(--font-size--md);
+		font-weight: var(--font-weight--bold);
+		text-align: center;
+		color: var(--text-color--disabled);
+		background-color: transparent;
+	}
 
 	&::after {
 		content: '';
 		position: absolute;
-		inset-inline-start: max(var(--spacing--4xs), calc(100% - var(--spacing--4xs) - 3px));
-		inset-block: min(var(--spacing--2xs), calc(100% / 2));
-		border-radius: var(--radius--full);
-		opacity: 0;
+		inset-inline-end: 1px;
+		inset-block: 1px;
+		border-radius: var(--n8n-slider--radius, var(--radius--3xs));
+		opacity: 1;
 		transition: all var(--duration--snappy) var(--easing--ease-out);
-		width: 3px;
-		background-color: var(--text-color--subtler);
+		width: 1em;
+		background-color: light-dark(var(--background--surface), var(--color--neutral-700));
+		box-shadow: var(--shadow--xs);
+		outline: 1px solid transparent;
 	}
 }
 
 .animateFill {
 	@include motion.width-transition;
-}
-
-.label,
-.value {
-	position: relative;
-	z-index: 2;
 }
 
 .hiddenLabel {
@@ -351,6 +400,7 @@ function handleDragEnd(event: PointerEvent) {
 }
 
 .value {
+	margin-inline-start: auto;
 	font-variant-numeric: tabular-nums;
 }
 </style>

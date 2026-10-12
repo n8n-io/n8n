@@ -88,12 +88,28 @@ export const Disabled: Story = {
 	args: { disabled: true },
 };
 
-export const RightToLeft: Story = {
+export const CustomLabel: Story = {
 	render: (args) => ({
 		components: { Slider },
 		setup() {
 			return { args };
 		},
-		template: '<div dir="rtl"><Slider v-bind="args" /></div>',
+		template:
+			'<Slider v-bind="args"><template #label><strong>{{ args.label }}</strong></template></Slider>',
+	}),
+};
+
+export const AccessibleLabelOnly: Story = {
+	args: { label: undefined, ariaLabel: 'Volume', hideValue: true },
+};
+
+export const ExternalLabel: Story = {
+	args: { label: undefined, ariaLabelledby: 'external-volume-label' },
+	render: (args) => ({
+		components: { Slider },
+		setup() {
+			return { args };
+		},
+		template: '<div><span id="external-volume-label">Volume</span><Slider v-bind="args" /></div>',
 	}),
 };
