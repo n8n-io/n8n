@@ -5,7 +5,11 @@ import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentChatQueueItem, AgentBackgroundJobDto } from '@n8n/api-types';
+import type {
+	AgentChatQueueItem,
+	AgentBackgroundJobDto,
+	ProviderAttachmentCapabilities,
+} from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -75,6 +79,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
+let onAgentUnavailable: (() => void) | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -96,6 +101,7 @@ vi.mock('@n8n/i18n', () => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 			'chat.messageQueue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
+			'agents.chat.attachments.unsupportedType': `${options?.interpolate?.fileName} is not a supported file type`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -198,8 +204,9 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 }));
 
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
+const showMessageMock = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: vi.fn(), showError: showErrorMock }),
+	useToast: () => ({ showMessage: showMessageMock, showError: showErrorMock }),
 }));
 
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
@@ -217,6 +224,9 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 				'canSubmit',
 				'disabled',
 				'maxLength',
+				'showAttach',
+				'showAttachButton',
+				'acceptedMimeTypes',
 			],
 			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 			setup(_, { expose }) {
@@ -257,8 +267,10 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: {
 		channel?: { value: 'chat' | 'n8n-chat' };
 		onHistoryLoaded: (count: number) => void;
+		onAgentUnavailable?: () => void;
 	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
+		onAgentUnavailable = options.onAgentUnavailable;
 		return {
 			capabilities: computed(() => {
 				// Mirrors the composable: every capability is off on the n8n Chat channel.
@@ -337,6 +349,7 @@ describe('AgentChatPanel', () => {
 		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
+		onAgentUnavailable = undefined;
 	});
 
 	function mountPanel(
@@ -344,6 +357,7 @@ describe('AgentChatPanel', () => {
 			visible: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
+			attachmentCapabilities: ProviderAttachmentCapabilities;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
 			increaseBudget: (payload: {
@@ -353,6 +367,7 @@ describe('AgentChatPanel', () => {
 			channel: 'chat' | 'n8n-chat';
 			centerEmptyState: boolean;
 			newSession: boolean;
+			clientContext: () => Record<string, unknown> | undefined;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -406,6 +421,7 @@ describe('AgentChatPanel', () => {
 				'Find the invoice',
 				[file],
 				expect.any(Function),
+				undefined,
 			);
 			expect(messagesMock.value.at(-1)?.status).toBe('error');
 			wrapper.unmount();
@@ -441,6 +457,7 @@ describe('AgentChatPanel', () => {
 					'Find the invoice',
 					withFile ? [file] : undefined,
 					expect.any(Function),
+					undefined,
 				);
 				wrapper.unmount();
 			},
@@ -861,7 +878,7 @@ describe('AgentChatPanel', () => {
 	it('drops only a blocked hand-off own files when its target is abandoned, keeping user picks', async () => {
 		isLoadingHistoryMock.value = true;
 		const wrapper = mountPanel({ continueSessionId: 's1' });
-		const handOffFile = new File(['a'], 'hand-off.txt', { type: 'text/plain' });
+		const handOffFile = new File(['a'], 'hand-off.png', { type: 'image/png' });
 
 		(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent', [handOffFile]);
 		await flushPromises();
@@ -872,13 +889,18 @@ describe('AgentChatPanel', () => {
 		isLoadingHistoryMock.value = false;
 
 		const input = wrapper.findComponent({ name: 'ChatInputBase' });
-		const userFile = new File(['b'], 'user-picked.txt', { type: 'text/plain' });
+		const userFile = new File(['b'], 'user-picked.png', { type: 'image/png' });
 		input.vm.$emit('files-selected', [userFile]);
 		input.vm.$emit('update:modelValue', 'new message');
 		input.vm.$emit('submit');
 		await flushPromises();
 
-		expect(sendMessageMock).toHaveBeenCalledWith('new message', [userFile], expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'new message',
+			[userFile],
+			expect.any(Function),
+			undefined,
+		);
 		wrapper.unmount();
 	});
 
@@ -1013,6 +1035,26 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('renders the attach button in the composer footer when the model accepts attachments', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+	});
+
+	it('hides the built-in composer attach button in favor of its own footer button', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('showAttachButton')).toBe(false);
+	});
+
+	it('hides the attach button when the model accepts no attachments', () => {
+		const wrapper = mountPanel({
+			agentConfig: { ...defaultAgentConfig, model: 'unknown-provider/model' },
+		});
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
+	});
+
 	it('moves a queued message to the composer after removal and sends it through the normal path', async () => {
 		queuedMessagesMock.value = [
 			{
@@ -1037,7 +1079,12 @@ describe('AgentChatPanel', () => {
 		composer.vm.$emit('update:modelValue', 'updated');
 		composer.vm.$emit('submit');
 		await flushPromises();
-		expect(sendMessageMock).toHaveBeenCalledWith('updated', undefined, expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'updated',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
 		wrapper.unmount();
 	});
 
@@ -1193,6 +1240,7 @@ describe('AgentChatPanel', () => {
 				'original',
 				[expect.any(File)],
 				expect.any(Function),
+				undefined,
 			);
 			const files = sendMessageMock.mock.calls[0][1];
 			expect(files[0].name).toBe('notes.txt');
@@ -2014,8 +2062,60 @@ describe('AgentChatPanel', () => {
 		resolveBeforeSend();
 		await flushPromises();
 
-		expect(sendMessageMock).toHaveBeenCalledWith('update config', undefined, expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'update config',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
+	});
+
+	describe('clientContext', () => {
+		const send = (wrapper: ReturnType<typeof mountPanel>, text: string) =>
+			(
+				wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+			).sendMessageFromOutside(text);
+
+		it('builds the client context after beforeSend and sends it with the message', async () => {
+			const events: string[] = [];
+			const beforeSend = vi.fn(() => {
+				events.push('beforeSend');
+			});
+			const clientContext = vi.fn(() => {
+				events.push('clientContext');
+				return { timeZone: 'Europe/Helsinki' };
+			});
+			sendMessageMock.mockResolvedValue('sent');
+			const wrapper = mountPanel({ beforeSend, clientContext });
+
+			send(wrapper, 'hello');
+			await flushPromises();
+
+			expect(events).toEqual(['beforeSend', 'clientContext']);
+			expect(sendMessageMock).toHaveBeenCalledWith('hello', undefined, expect.any(Function), {
+				timeZone: 'Europe/Helsinki',
+			});
+			wrapper.unmount();
+		});
+
+		it('builds a fresh client context for each message', async () => {
+			let count = 0;
+			const clientContext = vi.fn(() => ({ count: ++count }));
+			sendMessageMock.mockResolvedValue('sent');
+			const wrapper = mountPanel({ clientContext });
+
+			send(wrapper, 'first');
+			await flushPromises();
+			send(wrapper, 'second');
+			await flushPromises();
+
+			expect(sendMessageMock.mock.calls.map((call) => call[3])).toEqual([
+				{ count: 1 },
+				{ count: 2 },
+			]);
+			wrapper.unmount();
+		});
 	});
 
 	it('retains an outside prompt during initial loading and consumes it only after acceptance', async () => {
@@ -2044,6 +2144,7 @@ describe('AgentChatPanel', () => {
 			'Test this task',
 			undefined,
 			expect.any(Function),
+			undefined,
 		);
 		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
 		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
@@ -2059,7 +2160,7 @@ describe('AgentChatPanel', () => {
 
 	it('sends files queued with an outside message, surviving the blocked-on-history-load retry', async () => {
 		isLoadingHistoryMock.value = true;
-		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['content'], 'notes.png', { type: 'image/png' });
 		const wrapper = mountPanel();
 
 		(
@@ -2076,12 +2177,13 @@ describe('AgentChatPanel', () => {
 			'Test this task',
 			[file],
 			expect.any(Function),
+			undefined,
 		);
 		wrapper.unmount();
 	});
 
 	it('sends an outside message that carries only files', async () => {
-		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['content'], 'notes.png', { type: 'image/png' });
 		const wrapper = mountPanel();
 
 		(
@@ -2091,7 +2193,12 @@ describe('AgentChatPanel', () => {
 		).sendMessageFromOutside('', [file]);
 		await flushPromises();
 
-		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('', [file], expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'',
+			[file],
+			expect.any(Function),
+			undefined,
+		);
 		wrapper.unmount();
 	});
 
@@ -2116,6 +2223,7 @@ describe('AgentChatPanel', () => {
 			'Test these instructions',
 			undefined,
 			expect.any(Function),
+			undefined,
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
@@ -2205,7 +2313,7 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 		const draft = '  keep this draft  ';
-		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 		chatInput.vm.$emit('update:modelValue', draft);
 		chatInput.vm.$emit('files-selected', [file]);
 		chatInput.vm.$emit('submit');
@@ -2228,6 +2336,7 @@ describe('AgentChatPanel', () => {
 			draft.trim(),
 			[file],
 			expect.any(Function),
+			undefined,
 		);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
@@ -2251,6 +2360,7 @@ describe('AgentChatPanel', () => {
 			'keep this draft',
 			undefined,
 			expect.any(Function),
+			undefined,
 		);
 		wrapper.unmount();
 	});
@@ -2265,7 +2375,7 @@ describe('AgentChatPanel', () => {
 			});
 			const wrapper = mountPanel();
 			const input = wrapper.findComponent({ name: 'ChatInputBase' });
-			const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+			const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 			input.vm.$emit('update:modelValue', 'original draft');
 			input.vm.$emit('files-selected', [file]);
 			input.vm.$emit('submit');
@@ -2273,7 +2383,7 @@ describe('AgentChatPanel', () => {
 			expect(input.props('disabled')).toBe(false);
 			expect(input.props('canSubmit')).toBe(false);
 			input.vm.$emit('update:modelValue', 'edited draft');
-			const nextFile = new File(['more'], 'more.txt', { type: 'text/plain' });
+			const nextFile = new File(['more'], 'more.png', { type: 'image/png' });
 			input.vm.$emit('files-selected', [nextFile]);
 			messagesMock.value = [
 				{ id: 'snapshot', role: 'assistant', content: 'progress', status: 'streaming' },
@@ -2289,6 +2399,7 @@ describe('AgentChatPanel', () => {
 				'edited draft',
 				outcome === 'busy' ? [file, nextFile] : [nextFile],
 				expect.any(Function),
+				undefined,
 			);
 			wrapper.unmount();
 		},
@@ -2436,7 +2547,7 @@ describe('AgentChatPanel', () => {
 			try {
 				const composer = wrapper.findComponent({ name: 'ChatInputBase' });
 				composer.vm.$emit('update:modelValue', 'Keep this draft');
-				const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+				const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 				composer.vm.$emit('files-selected', [file]);
 				messagesMock.value = [
 					{
@@ -2477,6 +2588,7 @@ describe('AgentChatPanel', () => {
 					'Keep this draft',
 					[file],
 					expect.any(Function),
+					undefined,
 				);
 			} finally {
 				wrapper.unmount();
@@ -2824,7 +2936,12 @@ describe('AgentChatPanel', () => {
 		).sendMessageFromOutside('any news?');
 		await flushPromises();
 
-		expect(sendMessageMock).toHaveBeenCalledWith('any news?', undefined, expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'any news?',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
 		expect(cancelAndSteerMock).not.toHaveBeenCalled();
 	});
 
@@ -2885,7 +3002,12 @@ describe('AgentChatPanel', () => {
 		await flushPromises();
 
 		expect(cancelAndSteerMock).not.toHaveBeenCalled();
-		expect(sendMessageMock).toHaveBeenCalledWith('something new', undefined, expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'something new',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
 	});
 
 	// An abandoned wait card earlier in the thread must not hide a real question
@@ -2967,14 +3089,14 @@ describe('AgentChatPanel', () => {
 
 		expect(chatInput.props('isStreaming')).toBe(false);
 		expect(chatInput.props('showStopButton')).toBe(true);
-		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 		chatInput.vm.$emit('files-selected', [file]);
 		await nextTick();
 		expect(chatInput.props('showStopButton')).toBe(false);
 		expect(chatInput.props('canSubmit')).toBe(true);
 		chatInput.vm.$emit('submit');
 		await flushPromises();
-		expect(sendMessageMock).toHaveBeenCalledWith('', [file], expect.any(Function));
+		expect(sendMessageMock).toHaveBeenCalledWith('', [file], expect.any(Function), undefined);
 		sendMessageMock.mock.lastCall?.[2]?.();
 		await nextTick();
 		expect(chatInput.props('showStopButton')).toBe(true);
@@ -3031,6 +3153,64 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
 	});
+
+	describe('attachment capabilities', () => {
+		it('shows the attach button from the prop even with an empty model', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: true, pdf: true, audio: false },
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(true);
+			expect(chatInput.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+		});
+
+		it('hides the attach button when every family in the prop is false', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: false, pdf: false, audio: false },
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(false);
+		});
+
+		it('rejects a file whose type the capabilities do not accept, with a toast, and keeps a supported one', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: true, pdf: false, audio: false },
+			});
+			const unsupported = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+			const supported = new File(['img'], 'photo.png', { type: 'image/png' });
+
+			(
+				wrapper.vm as unknown as {
+					sendMessageFromOutside: (message: string, files?: File[]) => void;
+				}
+			).sendMessageFromOutside('', [unsupported, supported]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'report.pdf is not a supported file type',
+			});
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'',
+				[supported],
+				expect.any(Function),
+				undefined,
+			);
+		});
+	});
+
+	it('emits agent-unavailable when the stream reports the agent is no longer available', () => {
+		const wrapper = mountPanel();
+
+		onAgentUnavailable?.();
+
+		expect(wrapper.emitted('agent-unavailable')).toHaveLength(1);
+	});
 });
 
 describe('AgentPreviewDock stream lifecycle', () => {
@@ -3086,6 +3266,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 				'Message from the dock',
 				undefined,
 				expect.any(Function),
+				undefined,
 			);
 		} finally {
 			wrapper.unmount();

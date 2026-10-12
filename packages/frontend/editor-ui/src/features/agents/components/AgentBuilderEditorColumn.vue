@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
@@ -14,6 +14,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
@@ -55,6 +56,7 @@ const props = defineProps<{
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 	preventScroll?: boolean;
+	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
@@ -71,6 +73,15 @@ const isKnowledgeAdvancedExpanded = ref(false);
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
+
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+watch(
+	() => props.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
 );
 
 const emit = defineEmits<{
@@ -140,7 +151,7 @@ defineExpose({ onSetupTaskAction });
 
 <template>
 	<section
-		:class="$style.editorColumn"
+		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -432,12 +443,18 @@ defineExpose({ onSetupTaskAction });
 	width: 100%;
 }
 
+.embeddedAiBuilding {
+	--agent-panel-header-opacity: 0.5;
+	--agent-row-label-opacity: 0.5;
+}
+
 .editorColumn {
 	display: flex;
 	flex-direction: column;
 	background-color: light-dark(var(--background--surface), var(--background));
 	min-height: 0;
-	min-width: var(--agent-builder-editor-min-width, 35rem);
+	min-width: 0;
+	container: agent-editor / inline-size;
 }
 
 .panelArea {
@@ -452,6 +469,14 @@ defineExpose({ onSetupTaskAction });
 	overflow: auto;
 	scrollbar-gutter: stable;
 	@include scrollbar-mixins.hoverable-scroll-bar;
+}
+
+// A container query does not resolve a custom property.
+// 40rem is two 16rem steps plus one 8rem step.
+@container agent-editor (max-width: 40rem) {
+	.panelArea {
+		--agent-builder-content-padding-inline: var(--spacing--sm);
+	}
 }
 
 .preventScroll {

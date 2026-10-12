@@ -13,8 +13,14 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
-const { nodeTypeName } = defineProps<{
+import {
+	RESTRICTED_TYPE_COPY,
+	type RestrictedTypeKind,
+} from '../type-availability-policies.constants';
+
+const { nodeTypeName, kind = 'node' } = defineProps<{
 	nodeTypeName: string;
+	kind?: RestrictedTypeKind;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -26,12 +32,12 @@ const isLoading = ref(false);
 let lookupId = 0;
 
 const description = computed(() =>
-	i18n.baseText('typeAvailabilityPolicies.contactAdmin.description', {
+	i18n.baseText(RESTRICTED_TYPE_COPY[kind].contactDescription, {
 		interpolate: { nodeType: nodeTypeName },
 	}),
 );
 const mailSubject = computed(() =>
-	i18n.baseText('typeAvailabilityPolicies.contactAdmin.mailSubject', {
+	i18n.baseText(RESTRICTED_TYPE_COPY[kind].mailSubject, {
 		interpolate: { nodeType: nodeTypeName },
 	}),
 );
@@ -66,6 +72,7 @@ function mailtoHref(email: string): string {
 		v-model:open="open"
 		:header="i18n.baseText('typeAvailabilityPolicies.contactAdmin.title')"
 		size="medium"
+		stacked
 		data-test-id="contact-instance-admin-modal"
 	>
 		<N8nDialogBody :class="$style.body">

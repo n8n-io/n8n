@@ -104,8 +104,8 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			</N8nText>
 		</template>
 
-		<div :class="$style.row">
-			<div :class="$style.titleGroup">
+		<div :class="shared.settingRow">
+			<div :class="shared.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.memory.episodicMemory.label') }}
 				</N8nText>
@@ -129,7 +129,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 			<N8nSwitch
 				:model-value="episodicMemoryEnabled"
 				:disabled="props.disabled"
-				:class="$style.switch"
+				:class="shared.settingControl"
 				data-testid="agent-episodic-memory-toggle"
 				@update:model-value="(value) => onEpisodicMemoryToggle(Boolean(value))"
 			/>
@@ -211,11 +211,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	min-width: 0;
 }
 
-.titleGroup > :global(.n8n-text) {
-	max-width: 100%;
-	overflow-wrap: anywhere;
-}
-
 .dialogContent {
 	display: flex;
 	flex-direction: column;
@@ -244,10 +239,6 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-}
-
-.switch {
-	flex-shrink: 0;
 }
 
 .changeCredentialButton {

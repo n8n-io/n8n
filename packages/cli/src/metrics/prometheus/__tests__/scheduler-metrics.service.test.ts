@@ -12,6 +12,7 @@ import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service'
 import type { CacheService } from '@n8n/backend-services';
 
 import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
@@ -55,8 +56,14 @@ describe('PrometheusSchedulerMetricsService', () => {
 		service = new PrometheusSchedulerMetricsService(
 			config,
 			instanceSettings,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
-			taskRepository,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				mock(),
+				mock(),
+				taskRepository,
+				mock(),
+			),
 		);
 
 		sharedCounterInc = vi.fn();

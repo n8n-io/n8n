@@ -22,6 +22,8 @@ export type JobData = {
 	loadStaticData: boolean;
 	pushRef?: string;
 	streamingEnabled?: boolean;
+	/** What on main awaits this run's outcome, see IWorkflowExecutionDataProcess. */
+	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;

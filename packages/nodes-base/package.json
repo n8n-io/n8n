@@ -7,6 +7,9 @@
     "*": {
       "aws-credentials": [
         "dist/credentials/common/aws/index.d.ts"
+      ],
+      "google-service-account": [
+        "dist/credentials/common/google/index.d.ts"
       ]
     }
   },
@@ -30,7 +33,8 @@
   },
   "files": [
     "dist",
-    "aws-credentials.js"
+    "aws-credentials.js",
+    "google-service-account.js"
   ],
   "n8n": {
     "credentials": [

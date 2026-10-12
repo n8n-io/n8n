@@ -65,7 +65,7 @@ catalog:
   '@ai-sdk/mistral': ^4.0.14
   '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
-  '@ai-sdk/openai-compatible': ^3.0.14
+  '@ai-sdk/openai-compatible': ^3.0.44
   '@ai-sdk/otel': ^1.0.66
   '@ai-sdk/provider-utils': ^5.0.27
   '@ai-sdk/xai': ^4.0.18
@@ -487,6 +487,8 @@ overrides:
   # A second copy rejects each keystroke.
   prosemirror-model: 1.25.12
   'prosemirror-view@<1.42.3': 1.42.3
+  # The @icetee/ftp patch replaces xregexp with native RegExp.
+  '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
 
 patchedDependencies:
   bull@4.16.4: patches/bull@4.16.4.patch
@@ -511,6 +513,7 @@ patchedDependencies:
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
   '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
   '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
+  '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
 
 allowBuilds:
   '@biomejs/biome': false

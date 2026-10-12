@@ -614,6 +614,27 @@ describe('ParameterInput.vue', () => {
 		);
 	});
 
+	test('shows an object held by a string parameter as JSON with an issue', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				path: 'channelId',
+				parameter: createTestNodeProperties({
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+				}),
+				modelValue: { __rl: true, mode: 'id', value: 'C0123' },
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelector('input')).toHaveValue(
+				'{"__rl":true,"mode":"id","value":"C0123"}',
+			),
+		);
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
+	});
+
 	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {
 		const { container, emitted } = renderComponent({
 			props: {

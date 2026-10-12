@@ -41,8 +41,10 @@ vi.mock('ai', async () => {
 	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
-			await mockGenerateText(call),
+		generateText: async (call: GenerateTextCall) => {
+			const result = await mockGenerateText(call);
+			return { ...result, finalStep: { providerMetadata: result.providerMetadata } };
+		},
 	};
 });
 
@@ -313,7 +315,11 @@ describe('renderObserverTranscript', () => {
 								Array.from({ length: 41 }, (_, index) => [`section${index}`, document]),
 							),
 							image: { type: 'image-data', data: binary, mediaType: 'image/png' },
-							file: { type: 'file-data', data: binary, mediaType: 'application/pdf' },
+							file: {
+								type: 'file',
+								data: { type: 'data', data: binary },
+								mediaType: 'application/pdf',
+							},
 							blob: binary,
 							imageUrl: `data:image/png;base64,${binary}`,
 						},

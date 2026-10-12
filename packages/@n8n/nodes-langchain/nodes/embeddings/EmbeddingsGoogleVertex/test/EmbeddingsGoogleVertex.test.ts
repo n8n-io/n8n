@@ -29,7 +29,7 @@ describe('EmbeddingsGoogleVertex - location resolution', () => {
 		parameters: {},
 	};
 
-	const setupMockContext = (location: string | undefined) => {
+	const setupMockContext = (location: string | undefined, authentication?: string) => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			mockNode,
@@ -39,9 +39,11 @@ describe('EmbeddingsGoogleVertex - location resolution', () => {
 			privateKey: 'test-private-key',
 			email: 'test@n8n.io',
 			region: 'us-central1',
+			projectId: 'target-project',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
 		mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+			if (paramName === 'authentication') return authentication;
 			if (paramName === 'modelName') return 'text-embedding-005';
 			if (paramName === 'projectId') return 'test-project';
 			if (paramName === 'location') return location;
@@ -56,23 +58,33 @@ describe('EmbeddingsGoogleVertex - location resolution', () => {
 		vi.clearAllMocks();
 	});
 
-	it('routes the EU multi-region location through the .rep. data-residency endpoint', async () => {
-		const mockContext = setupMockContext('eu');
+	it.each([undefined, 'googleApi', 'googleVertexAiApi'])(
+		'routes the EU override with authentication %s',
+		async (authentication) => {
+			const mockContext = setupMockContext('eu', authentication);
 
-		await node.supplyData.call(mockContext, 0);
+			await node.supplyData.call(mockContext, 0);
 
-		const callArgs = MockedVertexAIEmbeddings.mock.calls[0][0];
-		expect(callArgs.location).toBe('eu');
-		expect(callArgs.endpoint).toBe('aiplatform.eu.rep.googleapis.com');
-	});
+			const callArgs = MockedVertexAIEmbeddings.mock.calls[0][0];
+			expect(callArgs.location).toBe('eu');
+			expect(mockContext.getCredentials).toHaveBeenCalledWith(authentication ?? 'googleApi');
+			expect(callArgs.endpoint).toBe('aiplatform.eu.rep.googleapis.com');
+			expect(callArgs.authOptions?.projectId).toBe(
+				authentication === 'googleVertexAiApi' ? 'target-project' : 'test-project',
+			);
+		},
+	);
 
-	it('falls back to the credential region with no endpoint override', async () => {
-		const mockContext = setupMockContext('');
+	it.each([undefined, 'googleVertexAiApi'])(
+		'falls back to the credential region with authentication %s',
+		async (authentication) => {
+			const mockContext = setupMockContext('', authentication);
 
-		await node.supplyData.call(mockContext, 0);
+			await node.supplyData.call(mockContext, 0);
 
-		const callArgs = MockedVertexAIEmbeddings.mock.calls[0][0];
-		expect(callArgs.location).toBe('us-central1');
-		expect(callArgs).not.toHaveProperty('endpoint');
-	});
+			const callArgs = MockedVertexAIEmbeddings.mock.calls[0][0];
+			expect(callArgs.location).toBe('us-central1');
+			expect(callArgs).not.toHaveProperty('endpoint');
+		},
+	);
 });

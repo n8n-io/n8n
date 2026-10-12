@@ -31,6 +31,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { generateFixSuggestion } from './agent-eval-fix-suggestion';
 import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
@@ -600,7 +601,8 @@ export class AgentEvalRunnerService {
 	 * On a successful execution, also grades the output via {@link judgeCase}
 	 * and persists the verdict — this is the one place both `executeRun`'s pool
 	 * and `rerunResult` (which calls this same method) run a case, so neither
-	 * duplicates the judging step.
+	 * duplicates the judging step. A failed rule also gets a fix suggestion on
+	 * its verdict, see {@link suggestFix}.
 	 */
 	private async runCase(
 		resultRow: AgentEvalResult,
@@ -640,7 +642,9 @@ export class AgentEvalRunnerService {
 			// covers both.
 			let verdict: JsonObject | null = null;
 			try {
-				verdict = toJsonObject(await this.judgeCase(resolvedCase, execResult.finalText, ctx));
+				const judged = await this.judgeCase(resolvedCase, execResult.finalText, ctx);
+				const suggestion = await this.suggestFix(judged, resolvedCase, execResult.finalText, ctx);
+				verdict = toJsonObject(suggestion ? { ...judged, suggestion } : judged);
 			} catch (error) {
 				this.logger.error(`[AgentEvalRunner] Could not judge case ${resultRow.id}`, {
 					error: error instanceof Error ? error.message : String(error),
@@ -696,6 +700,33 @@ export class AgentEvalRunnerService {
 				criteria: readSnapshotText(resolvedCase.snapshot, 'criteria'),
 				expectedOutput: readSnapshotText(resolvedCase.snapshot, 'expectedOutput'),
 			},
+			ctx,
+		);
+	}
+
+	/**
+	 * Asks for one instruction that would fix a failed rule. Only a rule
+	 * (`criteria`) that the judge graded and failed gets one: a gold-answer
+	 * mismatch, a pass, a skip and a judge error get none. Best-effort: it
+	 * returns `null` on failure.
+	 */
+	private async suggestFix(
+		verdict: AgentEvalVerdict,
+		resolvedCase: ResolvedCase,
+		output: string,
+		ctx: { agentId: string; projectId: string; user: User },
+	): Promise<string | null> {
+		if (verdict.status !== 'completed' || verdict.outcome !== 'fail') return null;
+		const rule = readSnapshotText(resolvedCase.snapshot, 'criteria');
+		if (!rule) return null;
+
+		return await generateFixSuggestion(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{ input: resolvedCase.input, output, rule, reasoning: verdict.reasoning },
 			ctx,
 		);
 	}

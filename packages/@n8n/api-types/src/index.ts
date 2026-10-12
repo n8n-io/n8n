@@ -329,6 +329,9 @@ export type {
 	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
+	BreakingChangeWorkflowOwner,
+	MigrationWorkflowOwnerResponse,
+	MigrationOwnerSource,
 	BreakingChangeInstanceIssue,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
@@ -345,8 +348,11 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeRuleImpactSchema,
+	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
+	migrationOwnerSourceSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {
@@ -708,6 +714,7 @@ export type {
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalAgentToolCallRecord,
 	InstanceAiEvalAgentModelTurnRecord,
@@ -858,6 +865,11 @@ export {
 	PreviewRunOptionsDto,
 	rerunResultOptionsSchema,
 	RerunResultOptionsDto,
+	ApplyAgentEvalSuggestionsDto,
+	ApplyPreviewSuggestionDto,
+	applyPreviewSuggestionSchema,
+	applyAgentEvalSuggestionsSchema,
+	MAX_APPLY_SUGGESTIONS,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -888,6 +900,10 @@ export type {
 	PreviewRunOptions,
 	PreviewRunResult,
 	RerunResultOptions,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 } from './schemas/agent-evals.schema';
 
 export {
