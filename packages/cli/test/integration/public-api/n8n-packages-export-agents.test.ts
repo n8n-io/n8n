@@ -35,6 +35,7 @@ import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 beforeAll(async () => await testModules.loadModules(['n8n-packages', 'agents']));
 const server = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -59,7 +60,9 @@ beforeEach(async () => {
 		id: 'support_source',
 		name: 'Support',
 		projectId: project.id,
-		schema: AgentJsonConfigSchema.parse({ name: 'Support', model: '', instructions: '' }),
+		schema: storedAgentConfig(
+			AgentJsonConfigSchema.parse({ name: 'Support', model: '', instructions: '' }),
+		),
 		versionId: 'draft-version',
 	});
 	dependency = await repository.save({
@@ -90,14 +93,16 @@ afterEach(async () => {
 async function addReferences() {
 	await repository.save({
 		id: agent.id,
-		schema: AgentJsonConfigSchema.parse({
-			...agent.schema,
-			subAgents: { agents: [{ agentId: dependency.id, enabled: false }] },
-			tools: [
-				...(agent.schema?.tools ?? []),
-				{ type: 'workflow', workflowId: workflow.id, workflow: 'Display only', enabled: false },
-			],
-		}),
+		schema: storedAgentConfig(
+			AgentJsonConfigSchema.parse({
+				...agent.schema,
+				subAgents: { agents: [{ agentId: dependency.id, enabled: false }] },
+				tools: [
+					...(agent.schema?.tools ?? []),
+					{ type: 'workflow', workflowId: workflow.id, workflow: 'Display only', enabled: false },
+				],
+			}),
+		),
 	});
 }
 
@@ -126,7 +131,11 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 	const { config, tasks, ...content } = serializedAgentSchema.parse(
 		looseAgentsFixture().files['agents/support/agent.json'],
 	);
-	agent = await repository.save({ ...agent, ...content, schema: config });
+	agent = await repository.save({
+		...agent,
+		...content,
+		schema: config && storedAgentConfig(config),
+	});
 	await Container.get(AgentTaskRepository).save(
 		Object.entries(tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
 	);
@@ -229,7 +238,7 @@ it.each(['published-strict', 'ignore-unpublished'] as const)(
 			agentId: agent.id,
 			versionId: 'published-version',
 			publishedBy: 'Package test',
-			schema,
+			schema: storedAgentConfig(schema),
 			skills: {},
 			tools: {},
 		});
@@ -308,21 +317,23 @@ it('requires variable:list only when Agent variable values are included', async 
 	await createProjectVariable('REGION', 'source-project', project);
 	await repository.save({
 		id: agent.id,
-		schema: AgentJsonConfigSchema.parse({
-			...agent.schema,
-			tools: [
-				{
-					type: 'node',
-					name: 'Fetch',
-					enabled: false,
-					node: {
-						nodeType: 'n8n-nodes-base.httpRequest',
-						nodeTypeVersion: 4,
-						nodeParameters: { url: '={{ $vars.REGION }}' },
+		schema: storedAgentConfig(
+			AgentJsonConfigSchema.parse({
+				...agent.schema,
+				tools: [
+					{
+						type: 'node',
+						name: 'Fetch',
+						enabled: false,
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequest',
+							nodeTypeVersion: 4,
+							nodeParameters: { url: '={{ $vars.REGION }}' },
+						},
 					},
-				},
-			],
-		}),
+				],
+			}),
+		),
 	});
 	const caller = await createOwnerWithApiKey({ scopes: ['agent:export'] });
 	const response = await server
