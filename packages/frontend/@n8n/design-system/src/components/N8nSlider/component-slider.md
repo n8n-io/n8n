@@ -30,7 +30,7 @@ An input that lets the user select one numeric value within given limits.
 | `ariaLabel` | `string` | `undefined` | Names the slider without a visible label. |
 | `ariaLabelledby` | `string` | `undefined` | References an external label. Takes priority over other accessible names. |
 | `hideLabel` | `boolean` | `false` | Visually hides the label but keeps its accessible name. |
-| `showStepMarkers` | `boolean` | `false` | Adds nine markers at 10% intervals when `maxValue > minValue`. Markers appear on hover, not keyboard focus. They do not follow `step`. |
+| `showStepMarkers` | `boolean` | `true` | Adds nine markers at 10% intervals when `maxValue > minValue`. Markers appear on hover, not keyboard focus. They do not follow `step`. |
 | `disabled` | `boolean` | `false` | Blocks user input and removes the control from the tab order. |
 | `formatValue` | `(value: number) => string` | `undefined` | Formats the visible value and accessible value text. Uses the numeric value when omitted. |
 | `hideValue` | `boolean` | `false` | Removes the visible value. Keeps accessible value text. |
@@ -109,6 +109,8 @@ Keyboard input uses a step of `1` when `step <= 0`. Arrow and Page keys change t
 - The current styles do not define a disabled appearance.
 
 ## Accessibility
+
+Supply a non-empty `label`, a `label` slot, `ariaLabel`, or `ariaLabelledby`. The component rejects configurations without a naming source on mount and update. Slot content must supply meaningful label text. An external label reference must point to an existing element with label text.
 
 - The track is the single keyboard focus target and has `role="slider"`.
 - `aria-labelledby` refers to the label outside the slider role.

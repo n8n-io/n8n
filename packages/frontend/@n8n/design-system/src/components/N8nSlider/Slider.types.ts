@@ -25,7 +25,7 @@ export interface SliderProps {
 	ariaLabelledby?: string;
 	/** Hides the visible label. Default false. */
 	hideLabel?: boolean;
-	/** Enables step markers. Default false. */
+	/** Enables step markers. Default true. */
 	showStepMarkers?: boolean;
 	/** Disables user input. Default false. */
 	disabled?: boolean;
