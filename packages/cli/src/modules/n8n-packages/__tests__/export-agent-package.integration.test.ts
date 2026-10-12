@@ -29,6 +29,7 @@ import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 const parser = new N8nPackageParser(mock<Logger>(), mock<NodeTypes>(), mock<WorkflowSerializer>());
 const limits = new PackageImportConfig();
@@ -80,7 +81,7 @@ beforeAll(async () => {
 			id: draft.id,
 			name: draft.name,
 			projectId: project.id,
-			schema: draft.config,
+			schema: draft.config && storedAgentConfig(draft.config),
 			skills: draft.skills,
 			tools: draft.tools,
 			availableInMCP: draft.availableInMCP,
@@ -95,7 +96,7 @@ beforeAll(async () => {
 		const history = await historyRepository.saveVersion({
 			versionId: `${agent.id}_published`,
 			agentId: agent.id,
-			schema: published.config,
+			schema: storedAgentConfig(published.config),
 			skills: published.skills,
 			tools: published.tools,
 			publishedBy: 'Package test',

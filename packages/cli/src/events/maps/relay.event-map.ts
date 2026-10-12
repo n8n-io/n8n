@@ -995,6 +995,26 @@ export type RelayEventMap = {
 
 	// #endregion
 
+	// #region Trusted sources
+
+	'trusted-source-identity-linked': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		provenance: 'claim-match';
+	};
+
+	'trusted-source-user-provisioned': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		role: string;
+	};
+
+	// #endregion
+
 	// #region Token exchange
 
 	'token-exchange-succeeded': {

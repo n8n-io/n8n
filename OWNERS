@@ -65,7 +65,7 @@ packages/@n8n/cli/src/commands/tag/                     @n8n-io/context
 packages/@n8n/cli/src/commands/project/                 @n8n-io/ligo
 packages/@n8n/cli/src/commands/source-control/          @n8n-io/ligo
 packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
-packages/@n8n/cli/src/commands/skill/                   @n8n-io/ai
+packages/@n8n/cli/src/commands/skill/                   @n8n-io/context
 
 # packages/cli
 packages/cli/                                           @n8n-io/catalysts
