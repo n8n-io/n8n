@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/SentryIo/SentryIo.node.ts
+  s_2e1fa95fc44f8f::t_0c36473d2e0770 10
+  s_2e1fa95fc44f8f::t_1efea91aac8d65 155,181-186,221,265,286,297,325,331,339,367,374,403,416,429,441,447,464,472,482,488,511,517,580,636,642,661,676,685
+packages/nodes-base/nodes/SentryIo/GenericFunctions.ts
+  s_0f34e61c0d2ecc::t_e629107fe8a175 10-12,14-21,26,31,40,42,59-63,75,82,111
+packages/nodes-base/nodes/SentryIo/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_fb4e760dcdc909 3-4,18,32,47,63,68-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "901d1269b7ab5f73d51514ea133a36e4eadcd3a0",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
