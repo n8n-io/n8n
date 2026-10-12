@@ -14,7 +14,11 @@ import {
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	appendHostEventSources,
+	findHostEventRenderer,
 	findToolResultRenderer,
+	getHostEventItems,
+	type AgentsChatHostEventItems,
 	type AgentsChatToolResultRenderer,
 } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
@@ -30,6 +34,7 @@ import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.v
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
@@ -171,7 +176,54 @@ const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefin
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+/** True when the bubble of `message` shows something besides host events. */
+function hasBubbleContent(message: ChatMessage): boolean {
+	return !!(
+		message.content.trim() ||
+		message.renderParts?.length ||
+		message.toolCalls?.length ||
+		message.thinkingSegments?.length ||
+		message.thinking ||
+		message.interactive ||
+		message.interactives?.length ||
+		message.attachments?.length ||
+		message.budgetNotices?.length
+	);
+}
+
+/**
+ * Keeps only the host events that an extension renders: on assistant messages,
+ * and `transient` events only while the turn runs or waits for the user. A
+ * message that then shows nothing is dropped, so no empty bubble shows. A
+ * streaming message stays for the typing indicator.
+ */
+const visibleMessages = computed(() => {
+	if (!props.messages.some((message) => message.hostEvents?.length)) return props.messages;
+	const extensions = interactionExtensions?.value ?? [];
+	return props.messages.flatMap((message) => {
+		if (!message.hostEvents?.length) return [message];
+		const live =
+			message.status === CHAT_MESSAGE_STATUS.STREAMING ||
+			message.status === CHAT_MESSAGE_STATUS.AWAITING_USER;
+		const hostEvents =
+			message.role === 'assistant'
+				? message.hostEvents.filter((event) => {
+						const placement = findHostEventRenderer(event, extensions)?.placement;
+						return placement === 'transient' ? live : placement !== undefined;
+					})
+				: [];
+		if (hostEvents.length === message.hostEvents.length) return [message];
+		const keep =
+			hostEvents.length > 0 ||
+			hasBubbleContent(message) ||
+			!!message.backgroundJobSignal ||
+			message.status === CHAT_MESSAGE_STATUS.STREAMING;
+		return keep ? [{ ...message, hostEvents: hostEvents.length ? hostEvents : undefined }] : [];
+	});
+});
+
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(visibleMessages.value));
+
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
@@ -215,6 +267,31 @@ const retryErrorMessageId = computed(() => {
 	const message = props.messages.at(-1);
 	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
 });
+
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [] };
+
+/** Host event components of each assistant group. `transient` events show only before text. */
+const hostEventItems = computed(() => {
+	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
+	const extensions = interactionExtensions?.value ?? [];
+	for (const group of displayGroups.value) {
+		if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN && group.hostEvents) {
+			const showTransient = !group.finalMessage?.content.trim();
+			itemsByGroupId.set(group.id, getHostEventItems(group.hostEvents, extensions, showTransient));
+		} else if (group.kind === DISPLAY_GROUP_KIND.MESSAGE && group.message.hostEvents) {
+			const { message } = group;
+			const sources = appendHostEventSources([], message);
+			const showTransient = !message.content.trim();
+			itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+		}
+	}
+	return itemsByGroupId;
+});
+
+function getGroupHostEventItems(groupId: string): AgentsChatHostEventItems {
+	return hostEventItems.value.get(groupId) ?? EMPTY_HOST_EVENT_ITEMS;
+}
+
 const streamingGroupId = computed(() =>
 	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
 		? displayGroups.value.at(-1)?.id
@@ -519,6 +596,10 @@ watch(
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
+
+// The stream replaces `hostEvents` with a new array on every host event,
+// including a keyed update that keeps the event id.
+watch(() => props.messages.at(-1)?.hostEvents, autoScrollIfSticky, { flush: 'post' });
 </script>
 
 <template>
@@ -542,6 +623,7 @@ watch(
 				:class="[$style.message, $style.assistant]"
 			>
 				<div :class="$style.content">
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
@@ -609,6 +691,7 @@ watch(
 						:pending="budgetIncreasePending"
 						@increase="emit('increase-budget', $event)"
 					/>
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -666,6 +749,7 @@ watch(
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
 				<div :class="$style.content">
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
@@ -757,6 +841,7 @@ watch(
 							@increase="emit('increase-budget', $event)"
 						/>
 					</template>
+					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
 						theme="info"
