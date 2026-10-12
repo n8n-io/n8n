@@ -509,7 +509,7 @@ function onRemove() {
 }
 
 .picker {
-	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
+	width: min(calc(52rem - var(--spacing--lg) * 2), calc(100dvw - var(--spacing--lg) * 5));
 	height: 100%;
 }
 
@@ -530,7 +530,7 @@ function onRemove() {
 }
 
 .scopeSelect {
-	width: calc(var(--spacing--5xl) * 2);
+	width: calc(var(--spacing--4xl) + var(--spacing--3xl));
 }
 
 @media (max-width: 480px) {
