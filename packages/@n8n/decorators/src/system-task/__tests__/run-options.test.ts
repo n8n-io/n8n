@@ -65,9 +65,7 @@ it.each([
 	{ concurrencyLimit: -1 },
 	{ concurrencyLimit: 1.5 },
 	{ concurrencyLimit: 2_147_483_648 },
-	{ timeoutSeconds: 0 },
 	{ timeoutSeconds: -1 },
-	{ timeoutSeconds: 1.5 },
 	{ timeoutSeconds: 2_147_484 },
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
@@ -105,6 +103,18 @@ it('should leave the timeout to the scheduler when a task does not override it',
 	const options = resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent' }));
 
 	expect(options.timeoutSeconds).toBeUndefined();
+});
+
+it.each([
+	[0, 1],
+	[0.6, 1],
+	[1.5, 2],
+])('should round the timeout %s to %s like a schedule interval', (declared, stored) => {
+	const options = resolveSystemTaskRunOptions(
+		taskWith({ effects: 'idempotent', timeoutSeconds: declared }),
+	);
+
+	expect(options.timeoutSeconds).toBe(stored);
 });
 
 it('should accept the longest timeout a timer honors', () => {

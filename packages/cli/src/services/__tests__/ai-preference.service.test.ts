@@ -419,6 +419,28 @@ describe('AiPreferenceService', () => {
 			expect(created.source).toBe('aia');
 		});
 
+		it('names the caller as the author of a new row', async () => {
+			const author = mock<User>({
+				id: 'user-1',
+				role: GLOBAL_MEMBER_ROLE,
+				email: 'jane@acme.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
+
+			const created = await service.create(author, { content: 'Rule.', scope: 'user' }, 'aia');
+
+			expect(aiPreferenceRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ createdById: 'user-1' }),
+			);
+			expect(created.createdBy).toEqual({
+				id: 'user-1',
+				email: 'jane@acme.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
+		});
+
 		it('counts the target scope before it writes', async () => {
 			await service.create(member, { content: 'Rule.', scope: 'user' }, 'ui');
 
@@ -842,6 +864,35 @@ describe('AiPreferenceService', () => {
 				'aiPreference:update',
 				'aiPreference:delete',
 			]);
+		});
+
+		it('returns the author of the row, and no author once that user is deleted', async () => {
+			const author = mock<User>({
+				id: 'user-2',
+				email: 'jane@acme.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
+			const visibleRow = (createdBy: User | null) =>
+				row({
+					id: 'pref-1',
+					content: 'Everyone.',
+					createdById: createdBy?.id ?? null,
+					createdBy,
+					createdAt: new Date('2025-01-01'),
+					updatedAt: new Date('2025-01-02'),
+				});
+
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValueOnce(visibleRow(author));
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValueOnce(visibleRow(null));
+
+			expect((await service.getById(member, 'pref-1')).createdBy).toEqual({
+				id: 'user-2',
+				email: 'jane@acme.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			});
+			expect((await service.getById(member, 'pref-1')).createdBy).toBeNull();
 		});
 
 		// The card reads the rights off the dto, so a row the caller may see and not write must

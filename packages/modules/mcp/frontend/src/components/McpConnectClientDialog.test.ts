@@ -69,6 +69,30 @@ describe('McpConnectClientDialog', () => {
 		expect(body().queryByText('Authenticate')).not.toBeInTheDocument();
 	});
 
+	it('should show the shared Antigravity config file and entry', async () => {
+		renderComponent({ pinia });
+
+		await waitFor(() => {
+			expect(body().getByTestId('mcp-connect-client-picker-trigger')).toBeInTheDocument();
+		});
+		await userEvent.click(body().getByTestId('mcp-connect-client-picker-trigger'));
+		const menuLabel = await body().findByText('Antigravity');
+		expect(
+			menuLabel.closest('[role="menuitem"]')?.querySelector('svg.brand-icon'),
+		).toBeInTheDocument();
+		await userEvent.click(menuLabel);
+
+		expect(
+			body().getByTestId('mcp-connect-client-picker-trigger').querySelector('svg.brand-icon'),
+		).toBeInTheDocument();
+		expect(body().getByText(/~\/\.gemini\/config\/mcp_config\.json/)).toHaveTextContent(
+			'IDE, desktop app, and CLI (agy) share this file',
+		);
+		expect(body().getByTestId('mcp-config-snippet')).toHaveTextContent('mcpServers');
+		expect(body().getByTestId('mcp-config-snippet')).toHaveTextContent('serverUrl');
+		expect(body().queryByTestId('mcp-connect-one-click')).not.toBeInTheDocument();
+	});
+
 	it('should show only the server URL (no one-click) for web clients without a connector URL', async () => {
 		renderComponent({ pinia });
 

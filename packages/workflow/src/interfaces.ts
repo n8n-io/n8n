@@ -623,6 +623,8 @@ export interface IHttpRequestOptions {
 		protocol?: string;
 	};
 	timeout?: number;
+	/** Maximum decoded body size in bytes for buffered responses. Unset keeps the response unlimited. */
+	maxResponseBodyBytes?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
 	/**

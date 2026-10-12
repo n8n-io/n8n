@@ -106,7 +106,7 @@ const confirmDestructiveChangesSchema = z
 	.openapi({
 		description:
 			'Also applies destructive data table changes, which a `destructive-change` conflict reports: ' +
-			'removed, renamed, or retyped columns. The values in those columns are removed. ' +
+			'removed or retyped columns. The values in those columns are removed. ' +
 			'Rows and other columns are kept. The confirmation covers every such change when Continue runs, ' +
 			'including changes that are not in the reviewed result.',
 	});

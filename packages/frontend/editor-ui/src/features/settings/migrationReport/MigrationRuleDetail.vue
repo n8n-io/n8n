@@ -250,7 +250,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 });
 
 // A workflow without a run in this period is probably not used any more.
-const STALE_WORKFLOW_AFTER = 60 * TIME.DAY;
+const STALE_WORKFLOW_AFTER = 90 * TIME.DAY;
 
 function isStale(workflow: AffectedWorkflow): boolean {
 	if (!workflow.lastExecutedAt) return false;
@@ -362,10 +362,11 @@ function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
 	);
 }
 
-async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
-	const workflows = bulkTargets(status);
-	if (workflows.length === 0) return;
-
+/** Changes the state of all `workflows` in one request. Returns false when the request fails. */
+async function changeFindingStatuses(
+	workflows: AffectedWorkflow[],
+	status: MigrationFindingTriageStatus,
+): Promise<boolean> {
 	const workflowIds = workflows.map((workflow) => workflow.id);
 	setFindingStatuses(new Map(workflowIds.map((workflowId) => [workflowId, status])));
 	setSaving(workflowIds, true);
@@ -376,17 +377,57 @@ async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
 			workflowIds,
 			status,
 		);
-		// Keep the rows that the user selected while the request was in flight.
-		const changed = new Set(workflowIds);
-		selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
-			(workflowId) => !changed.has(workflowId),
-		);
+		return true;
 	} catch (error) {
 		setFindingStatuses(new Map(workflows.map((workflow) => [workflow.id, workflow.status])));
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
+		return false;
 	} finally {
 		setSaving(workflowIds, false);
 	}
+}
+
+async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
+	const workflows = bulkTargets(status);
+	if (workflows.length === 0) return;
+
+	if (!(await changeFindingStatuses(workflows, status))) return;
+	// Keep the rows that the user selected while the request was in flight.
+	const changed = new Set(workflows.map((workflow) => workflow.id));
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+		(workflowId) => !changed.has(workflowId),
+	);
+}
+
+// The callout offers to dismiss open findings on workflows that did not run for
+// 12 months. The "Last run" filter uses the same rule, so "Review" can show them.
+const UNUSED_WORKFLOW_FILTERS: WorkflowFilters = {
+	...DEFAULT_WORKFLOW_FILTERS,
+	lastRun: 'over12Months',
+};
+
+const unusedOpenWorkflows = computed(() => {
+	const now = Date.now();
+	return state.value.affectedWorkflows.filter(
+		(workflow) =>
+			findingState(workflow) === 'open' &&
+			!savingWorkflowIds.value.has(workflow.id) &&
+			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now),
+	);
+});
+
+// Show only the rows that the callout counts.
+function reviewUnusedWorkflows() {
+	searchInput.value = '';
+	searchQuery.value = '';
+	stateFilter.value = 'open';
+	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
+}
+
+async function markUnusedWorkflowsAsWontFix() {
+	const workflows = unusedOpenWorkflows.value;
+	if (workflows.length === 0) return;
+	await changeFindingStatuses(workflows, 'wont_fix');
 }
 
 function workflowUrl(workflow: AffectedWorkflow): string {
@@ -595,6 +636,42 @@ const sortedWorkflows = computed(() => {
 				</N8nText>
 			</template>
 		</header>
+
+		<div
+			v-if="!isLoading && canMigrate && unusedOpenWorkflows.length > 0"
+			:class="$style.unusedCallout"
+			data-test-id="migration-rule-unused-callout"
+		>
+			<N8nText color="text-dark">
+				{{
+					i18n.baseText('settings.migrationReport.detail.unusedCallout.message', {
+						adjustToNumber: unusedOpenWorkflows.length,
+						interpolate: { count: String(unusedOpenWorkflows.length) },
+					})
+				}}
+			</N8nText>
+			<div :class="$style.unusedCalloutActions">
+				<N8nButton
+					variant="ghost"
+					size="small"
+					data-test-id="migration-rule-unused-review"
+					@click="reviewUnusedWorkflows"
+				>
+					{{ i18n.baseText('settings.migrationReport.detail.unusedCallout.review') }}
+				</N8nButton>
+				<N8nButton
+					size="small"
+					data-test-id="migration-rule-unused-mark-all"
+					@click="markUnusedWorkflowsAsWontFix"
+				>
+					{{
+						i18n.baseText('settings.migrationReport.detail.unusedCallout.markAll', {
+							interpolate: { count: String(unusedOpenWorkflows.length) },
+						})
+					}}
+				</N8nButton>
+			</div>
+		</div>
 
 		<div :class="$style.toolbar">
 			<div :class="$style.quickFilters">
@@ -846,6 +923,24 @@ const sortedWorkflows = computed(() => {
 	width: 100%;
 	max-width: var(--settings-content--max-width, 45rem);
 	margin-inline: auto;
+}
+
+.unusedCallout {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--md);
+	margin-bottom: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+}
+
+.unusedCalloutActions {
+	display: flex;
+	flex-shrink: 0;
+	gap: var(--spacing--2xs);
 }
 
 .cellStack {
