@@ -16,6 +16,8 @@ import {
 	supabaseLoadToVectorStore,
 } from './vector-stores.migration';
 import { writeBinaryFileToReadWriteFile } from './write-binary-file-to-read-write-file.migration';
+import { icalToConvertToFile } from './ical-to-convert-to-file.migration';
+import { workflowTriggerToN8nTrigger } from './workflow-trigger-to-n8n-trigger.migration';
 import type { Migration } from '../node-migration';
 
 export const nodeRemovalMigrations: Migration[] = [
@@ -33,4 +35,6 @@ export const nodeRemovalMigrations: Migration[] = [
 	supabaseInsertToVectorStore,
 	supabaseLoadToVectorStore,
 	writeBinaryFileToReadWriteFile,
+	icalToConvertToFile,
+	workflowTriggerToN8nTrigger,
 ];
