@@ -62,12 +62,12 @@ describe('WorkflowSharingService', () => {
 				scopes: ['workflow:read'],
 			});
 
-			expect(sharedWorkflowRepository.findWorkflowIdsAccessibleToUser).toHaveBeenCalledWith(
-				member.id,
-				['workflow:owner'],
-				['project:viewer'],
-				undefined,
-			);
+			expect(sharedWorkflowRepository.findWorkflowIdsAccessibleToUser).toHaveBeenCalledWith({
+				userId: member.id,
+				workflowRoleSlugs: ['workflow:owner'],
+				projectRoleSlugs: ['project:viewer'],
+				projectId: undefined,
+			});
 			expect(result).toEqual(['workflow-1']);
 		});
 	});
