@@ -136,6 +136,15 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			const other = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.gmailTrigger' });
 			expect(makeRegistrar().interceptsNode(other)).toBe(false);
 		});
+
+		it('ignores a stale saved skipDurableScheduler parameter', () => {
+			const staleNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: true },
+			});
+			expect(makeRegistrar().interceptsNode(staleNode)).toBe(true);
+		});
 	});
 
 	describe('Cron node', () => {
