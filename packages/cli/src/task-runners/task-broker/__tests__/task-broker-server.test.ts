@@ -1,5 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { createServer as createHttpServer, type Server } from 'node:http';
 import type { Socket } from 'node:net';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +17,7 @@ describe('TaskBrokerServer', () => {
 	const createServer = (overrides?: {
 		authController?: TaskBrokerAuthController;
 		logger?: Logger;
+		port?: number;
 	}) => {
 		const authController = overrides?.authController ?? mock<TaskBrokerAuthController>();
 		const taskBrokerWsServer = mock<TaskBrokerWsServer>();
@@ -21,7 +25,12 @@ describe('TaskBrokerServer', () => {
 		const server = new TaskBrokerServer(
 			overrides?.logger ?? mock<Logger>(),
 			mock<GlobalConfig>({
-				taskRunners: { path: '/runners', authToken: 'token' },
+				taskRunners: {
+					path: '/runners',
+					authToken: 'token',
+					port: overrides?.port ?? 0,
+					listenAddress: '127.0.0.1',
+				},
 				endpoints: { health: '/health' },
 				sentry: { backendDsn: '' },
 			}),
@@ -32,6 +41,60 @@ describe('TaskBrokerServer', () => {
 
 		return { server, authController, taskBrokerWsServer };
 	};
+
+	describe('start', () => {
+		it('should start when the configured port is available', async () => {
+			const { server, taskBrokerWsServer } = createServer();
+
+			try {
+				await server.start();
+
+				expect(server.port).toBeGreaterThan(0);
+				expect(taskBrokerWsServer.start).toHaveBeenCalledOnce();
+				await request(`http://127.0.0.1:${server.port}`)
+					.get('/healthz')
+					.expect(200, { status: 'ok' });
+			} finally {
+				await server.stop();
+			}
+		});
+
+		// CAT-4920: A port conflict must reject startup instead of leaving test hooks pending.
+		it('should reject startup when the configured port is already in use', async () => {
+			const occupiedServer = createHttpServer();
+			let server: TaskBrokerServer | undefined;
+
+			try {
+				occupiedServer.listen(0, '127.0.0.1');
+				await once(occupiedServer, 'listening');
+				const address = occupiedServer.address();
+				assert(address && typeof address !== 'string');
+
+				({ server } = createServer({ port: address.port }));
+				const startup = server.start().then(
+					() => ({ status: 'started' }),
+					(error: unknown) => ({ status: 'rejected', error }),
+				);
+				// @ts-expect-error Private property
+				const brokerHttpServer: Server = server.server;
+				const [bindError] = await once(brokerHttpServer, 'error');
+				expect(bindError).toMatchObject({ code: 'EADDRINUSE' });
+
+				// Let the bind error propagate through the startup promise before checking its state.
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(await Promise.race([startup, Promise.resolve({ status: 'pending' })])).toEqual({
+					status: 'rejected',
+					error: expect.objectContaining({ code: 'EADDRINUSE' }),
+				});
+			} finally {
+				try {
+					await server?.stop();
+				} finally {
+					await new Promise<void>((resolve) => occupiedServer.close(() => resolve()));
+				}
+			}
+		});
+	});
 
 	describe('GET /healthz', () => {
 		it('should return 200 regardless of N8N_ENDPOINT_HEALTH', async () => {
