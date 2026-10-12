@@ -270,7 +270,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				<N8nInputLabel
 					:class="$style.readOnlyField"
 					:label="i18n.baseText('agents.builder.skills.description.label')"
-					size="small"
+					size="medium"
 				>
 					<N8nText
 						tag="p"
@@ -283,7 +283,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				<N8nInputLabel
 					:class="$style.readOnlyField"
 					:label="i18n.baseText('agents.builder.skills.instructions.label')"
-					size="small"
+					size="medium"
 				>
 					<N8nMarkdown
 						:class="$style.readOnlyMarkdown"
@@ -296,7 +296,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				v-else-if="selectedReference"
 				:class="$style.readOnlyField"
 				:label="selectedReference.path"
-				size="small"
+				size="medium"
 			>
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
