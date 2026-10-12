@@ -15,7 +15,7 @@ import {
 	writeManifestEntry,
 } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
@@ -28,11 +28,11 @@ export class AgentExporter {
 
 	async prepare(
 		agent: Agent,
-		policy: WorkflowVersionPolicy = WorkflowVersionPolicy.Latest,
+		policy: ExportVersionPolicy = ExportVersionPolicy.Latest,
 	): Promise<PreparedAgentExport | undefined> {
 		if (agent.activeVersionId === null) {
-			if (policy === WorkflowVersionPolicy.IgnoreUnpublished) return undefined;
-			if (policy === WorkflowVersionPolicy.PublishedStrict) {
+			if (policy === ExportVersionPolicy.IgnoreUnpublished) return undefined;
+			if (policy === ExportVersionPolicy.PublishedStrict) {
 				throw new PackageExportBlockedError(
 					`Agent "${agent.id}" has no published version. Export aborted.`,
 				);
@@ -42,7 +42,7 @@ export class AgentExporter {
 		let definition: AgentDefinition;
 		let versionId = agent.versionId;
 		let integrations = agent.integrations ?? [];
-		if (policy !== WorkflowVersionPolicy.Latest && agent.activeVersionId !== null) {
+		if (policy !== ExportVersionPolicy.Latest && agent.activeVersionId !== null) {
 			const version = agent.activeVersion;
 			if (!version) {
 				throw new UnexpectedError('Published version was not loaded for Agent', {

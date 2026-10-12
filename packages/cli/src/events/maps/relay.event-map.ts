@@ -146,6 +146,7 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -157,6 +158,7 @@ export type RelayEventMap = {
 	'n8n-package-export-failed': {
 		user: UserLike;
 		reason: PackageFailureReason;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -989,6 +991,26 @@ export type RelayEventMap = {
 		ruleType: 'instance' | 'project';
 		count: number;
 		reason: 'strategy-switch';
+	};
+
+	// #endregion
+
+	// #region Trusted sources
+
+	'trusted-source-identity-linked': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		provenance: 'claim-match';
+	};
+
+	'trusted-source-user-provisioned': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		role: string;
 	};
 
 	// #endregion

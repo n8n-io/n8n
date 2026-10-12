@@ -68,6 +68,72 @@ function wireVariables(
 }
 
 describe('VariableExporter', () => {
+	it.each([true, false])(
+		'uses the Agent project when the shadowing variable is accessible: %s',
+		async (accessible) => {
+			const deps = makeExporter();
+			const global = makeVariable({ id: 'global' });
+			const scoped = projectVariable('agent-project', { id: 'scoped' });
+			wireVariables(deps, {
+				all: [global, scoped],
+				accessible: accessible ? [global, scoped] : [global],
+				workflowProjects: [],
+			});
+			const result = await deps.exporter.export({
+				user,
+				writer: new CapturingWriter(),
+				includeVariableValues: false,
+				requirements: [{ agentId: 'agent', projectId: 'agent-project', variableName: 'API_URL' }],
+			});
+			expect(result.entries.map(({ id }) => id)).toEqual(accessible ? ['scoped'] : []);
+			expect(result.requirements).toEqual([
+				{ name: 'API_URL', usedBy: [{ kind: 'agent', id: 'agent' }] },
+			]);
+			expect(deps.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([false, true])(
+		'shares variable collision rules across entity kinds with project placement: %s',
+		async (projectPlacement) => {
+			const deps = makeExporter();
+			wireVariables(deps, {
+				all: [projectVariable('a', { id: 'var_a' }), projectVariable('b', { id: 'var_b' })],
+				workflowProjects: [['same-id', 'a']],
+			});
+			const run = deps.exporter.export({
+				user,
+				writer: new CapturingWriter(),
+				includeVariableValues: false,
+				requirements: [
+					req('same-id', 'API_URL'),
+					{ agentId: 'same-id', projectId: 'b', variableName: 'API_URL' },
+				],
+				projectTargetsById: projectPlacement
+					? new Map([
+							['a', 'projects/a'],
+							['b', 'projects/b'],
+						])
+					: undefined,
+			});
+			if (!projectPlacement) {
+				await expect(run).rejects.toThrow(PackageExportBlockedError);
+				return;
+			}
+			const result = await run;
+			expect(result.entries).toHaveLength(2);
+			expect(result.requirements).toEqual([
+				{
+					name: 'API_URL',
+					usedBy: [
+						{ kind: 'workflow', id: 'same-id' },
+						{ kind: 'agent', id: 'same-id' },
+					],
+				},
+			]);
+		},
+	);
+
 	describe('empty input', () => {
 		it('returns an empty result and touches no service when given no requirements', async () => {
 			const { exporter, variablesService, sharedWorkflowRepository } = makeExporter();

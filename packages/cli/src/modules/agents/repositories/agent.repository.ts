@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -38,10 +38,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * upsert, so an id minted by the client that already names a row would
 	 * update that row instead of colliding on the primary key.
 	 */
-	async insertNew(agent: Agent): Promise<void> {
+	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
-		await this.insert(agent as QueryDeepPartialEntity<Agent>);
+		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -54,6 +54,45 @@ export class AgentRepository extends BaseRepository<Agent> {
 			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findForExport(
+		agentIds: string[],
+		projectIds: string[] | null,
+		options: { includeActiveVersion: boolean },
+	): Promise<Agent[]> {
+		if (agentIds.length === 0 || projectIds?.length === 0) return [];
+		// Keep both ID filters below the database parameter limit.
+		const projectBatches = projectIds === null ? [null] : chunkIds([...new Set(projectIds)]);
+		const agents: Agent[] = [];
+		for (const ids of chunkIds([...new Set(agentIds)])) {
+			for (const projects of projectBatches) {
+				const found = await this.find({
+					where: { id: In(ids), ...(projects === null ? {} : { projectId: In(projects) }) },
+					relations: { activeVersion: options.includeActiveVersion },
+				});
+				agents.push(...found);
+			}
+		}
+		return agents.sort((left, right) => left.id.localeCompare(right.id));
+	}
+
+	async findIdsInProjectsForExport(projectIds: string[]): Promise<string[]> {
+		const ids: string[] = [];
+		for (const projects of chunkIds([...new Set(projectIds)])) {
+			const agents = await this.find({ select: ['id'], where: { projectId: In(projects) } });
+			ids.push(...agents.map(({ id }) => id));
+		}
+		return ids.sort();
+	}
+
+	async findExistingIds(agentIds: string[]): Promise<Set<string>> {
+		const ids = new Set<string>();
+		for (const chunk of chunkIds(agentIds)) {
+			const agents = await this.find({ select: ['id'], where: { id: In(chunk) } });
+			for (const { id } of agents) ids.add(id);
+		}
+		return ids;
 	}
 
 	/**
@@ -603,5 +642,23 @@ export class AgentRepository extends BaseRepository<Agent> {
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
+	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
+	 * write does not check `revision`: call it only in the same transaction as a
+	 * won `saveDraftFenced`.
+	 */
+	async updateDraftSchema(
+		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
 	}
 }
