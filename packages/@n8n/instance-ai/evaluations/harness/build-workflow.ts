@@ -841,12 +841,31 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
 				);
 			}
-			credentialSetupLane = await startCredentialSetupLane({
+			const lane = await startCredentialSetupLane({
 				client,
 				selection: config.credentialSetupSelection,
 				logger,
 				localCredentialType: config.credentialSetupType,
 			});
+			credentialSetupLane = lane;
+			// The agent tests the credential it saves. Without this, that test reaches
+			// the real provider and rejects every key the stand-in issued.
+			if (lane?.credentialType && lane.verifyBaseUrl && lane.credentialUrlField) {
+				try {
+					await client.setThreadCredentialTestTarget(threadId, {
+						credentialType: lane.credentialType,
+						baseUrl: lane.verifyBaseUrl,
+						urlField: lane.credentialUrlField,
+					});
+				} catch (error: unknown) {
+					// An older backend has no endpoint: the agent's own test then reaches the
+					// real provider, as before. Any other failure is a lane boot failure.
+					if (!(error instanceof N8nApiError && error.status === 404)) throw error;
+					logger.info(
+						`  Credential-test target endpoint unavailable, agent tests reach the real provider${config.laneTag ?? ''}`,
+					);
+				}
+			}
 			laneBootFailed = false;
 		}
 

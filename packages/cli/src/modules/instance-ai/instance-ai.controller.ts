@@ -24,6 +24,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalCredentialTestTargetRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findSeedFolderIssues,
@@ -1205,6 +1206,24 @@ export class InstanceAiController {
 			payload.credentialIds,
 			payload.bypassCredentialTest,
 		);
+		return { ok: true };
+	}
+
+	/**
+	 * Send the thread's connection tests for one credential type to a provider
+	 * stand-in, so the agent's own test checks the captured secret.
+	 */
+	@Post('/eval/thread-credential-test-target')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialTestTarget(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialTestTargetRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const { threadId, ...target } = payload;
+		this.evalCredentialAllowlists.setTestTarget(threadId, target);
 		return { ok: true };
 	}
 
