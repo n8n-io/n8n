@@ -2,15 +2,15 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
-import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
+import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
-import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
-import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import type { CompleteAgentDefinition } from '@/modules/agents/utils/agent-definition';
+import type { Agent } from '@/modules/agents/entities/agent.entity';
 
 import { agentBodyIssues } from './agent-body-issues';
 import { AgentImportMatchService } from './agent-import-match.service';
@@ -22,6 +22,7 @@ import {
 	type AgentImportPlan,
 	type AgentPlanItem,
 	type PreparedAgent,
+	type PersistedAgentOutcome,
 } from './agent-import.types';
 import type { ImportWorkflowProperties } from '../../n8n-packages.types';
 import { decideImportConflictAction } from '../import-conflict-policy';
@@ -34,13 +35,72 @@ export class AgentImporter {
 		private readonly matcher: AgentImportMatchService,
 		private readonly agentsService: AgentsService,
 		private readonly configService: AgentConfigService,
-		private readonly skillsService: AgentSkillsService,
-		private readonly toolsService: AgentCustomToolsService,
-		private readonly taskService: AgentTaskService,
+		private readonly configPreparation: AgentConfigPreparationService,
 		private readonly policyService: AgentPolicyService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
 	) {}
+
+	async apply(
+		context: AgentImportMatchContext,
+		plan: AgentImportPlan,
+	): Promise<PersistedAgentOutcome[]> {
+		const outcomes: PersistedAgentOutcome[] = [];
+		// The project has been created. Pending-project planning grants no apply-time exception.
+		await this.assertScopes(
+			{ ...context, projectPendingCreation: false },
+			requiredAgentScopes(plan),
+		);
+		for (const item of plan.items) {
+			if (item.action === 'skip' && item.existing) {
+				outcomes.push({
+					status: 'skipped',
+					agent: item.existing,
+					sourceAgentId: item.sourceAgentId,
+				});
+				continue;
+			}
+			const definition = completeDefinition(item);
+			const options = {
+				metadata: {
+					sourceAgentId: item.sourceAgentId,
+					sourceTaskIds: new Map([...item.taskIds].map(([source, target]) => [target, source])),
+					availableInMCP: item.availableInMCP,
+				},
+				plannedDestinations: plan.plannedDestinations,
+			};
+			let agent: Agent;
+			if (item.action === 'create') {
+				agent = await this.agentsService.create(context.projectId, item.name, {
+					...options,
+					id: item.targetAgentId,
+					definition,
+					user: context.user,
+					actor: { kind: 'user', user: context.user },
+				});
+			} else if (item.existing) {
+				agent = await this.configService.replaceDefinition(
+					item.targetAgentId,
+					context.projectId,
+					definition,
+					context.user,
+					{
+						...options,
+						expectedRevision: item.existing.revision,
+					},
+				);
+			} else {
+				throw new UnexpectedError('An existing Agent is required for the planned action.');
+			}
+			outcomes.push({
+				status: item.action === 'create' ? 'created' : 'updated',
+				agent,
+				sourceAgentId: item.sourceAgentId,
+				item,
+			});
+		}
+		return outcomes;
+	}
 
 	async plan(
 		context: AgentImportMatchContext,
@@ -214,23 +274,15 @@ export class AgentImporter {
 	}
 
 	private async validateDefinition(item: AgentPlanItem): Promise<void> {
-		this.skillsService.validateSkills(Object.values(item.skills));
 		for (const [id, tool] of Object.entries(item.tools)) {
-			this.toolsService.validateDescriptor(tool.descriptor);
 			if (id !== tool.descriptor.name)
 				throw new UserError(`Custom tool "${id}" must use its descriptor name as its ID.`);
 		}
-		this.taskService.validateTasks(Object.values(item.tasks));
-		if (Object.keys(item.tasks).length > 0)
-			this.taskService.assertAgentHasConfig(item.config !== null);
-		if (!item.config) return;
-		this.configService.validateSubAgentRefs(
-			item.config.subAgents?.agents ?? [],
+		const definition = await this.configPreparation.validateDefinition(
 			item.targetAgentId,
+			completeDefinition(item),
 		);
-		const validation = await this.configService.validateConfig(item.config);
-		if (!validation.valid) throw new UserError(validation.error);
-		item.config = validation.config;
+		item.config = definition.config;
 	}
 
 	private async assertScopes(context: AgentImportMatchContext, scopes: Scope[]): Promise<void> {
@@ -242,4 +294,14 @@ export class AgentImporter {
 			);
 		}
 	}
+}
+
+function completeDefinition(item: PreparedAgent): CompleteAgentDefinition {
+	return {
+		name: item.name,
+		config: item.config,
+		skills: item.skills,
+		tools: item.tools,
+		tasks: new Map(Object.entries(item.tasks)),
+	};
 }

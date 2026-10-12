@@ -1,5 +1,6 @@
 import { ProjectScopeService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
+import { getStaticSubworkflowId, setStaticSubworkflowId } from 'n8n-workflow';
 
 import { extractAgentWorkflowRefs } from '@/modules/agents/utils/extract-agent-workflow-refs';
 import { visitAgentCredentialReferences } from '@/modules/agents/utils/visit-agent-credential-references';
@@ -14,10 +15,6 @@ import type {
 } from './agent-import.types';
 import type { ImportPlan } from '../../engine/import-orchestrator';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
-import {
-	getStaticSubworkflowId,
-	setStaticSubworkflowId,
-} from '../workflow/references/sub-workflow-node.reference';
 import { WorkflowImportMatchService } from '../workflow/workflow-import-match.service';
 
 interface PlannedTarget {
@@ -82,6 +79,18 @@ export class AgentImportBindings {
 	): Promise<void> {
 		const { agentPlan } = plan;
 		if (!agentPlan) return;
+		agentPlan.plannedDestinations = {
+			agents: new Map(
+				[...agents.values()]
+					.filter((target) => target.creating)
+					.map((target) => [target.id, target.projectId]),
+			),
+			workflows: new Map(
+				[...workflows.values()]
+					.filter((target) => target.creating)
+					.map((target) => [target.id, target.projectId]),
+			),
+		};
 		const items = agentPlan.items.filter(({ action }) => action !== 'skip');
 		if (items.length === 0) return;
 		const context = {
