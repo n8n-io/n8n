@@ -39,7 +39,7 @@ describe('loadRoutingCases', () => {
 				tags: ['routing', 'bucket:clarify', 'accepts:clarify:open'],
 			}),
 			'route-prod-agent-one.json': exportedCase([], {
-				tags: ['routing', 'bucket:agent', 'accepts:clarify:agent'],
+				tags: ['routing', 'bucket:agent', 'accepts:clarify:agent', 'accepts:answer:agent'],
 				conversation: [{ role: 'user', text: ['Answer our support inbox.', 'Use our FAQ.'] }],
 			}),
 			'results.json': '{}',
@@ -53,18 +53,21 @@ describe('loadRoutingCases', () => {
 				id: 'route-clarify-open',
 				bucket: 'clarify',
 				accepts: ['clarify:open'],
+				after: [],
 				userMessage: 'It failed again.',
 			},
 			{
 				id: 'route-debug-two',
 				bucket: 'debug',
 				accepts: ['debug', 'clarify'],
+				after: ['debug'],
 				userMessage: 'It failed again.',
 			},
 			{
 				id: 'route-prod-agent-one',
 				bucket: 'agent',
-				accepts: ['agent', 'clarify:agent'],
+				accepts: ['agent', 'clarify:agent', 'answer:agent'],
+				after: ['agent'],
 				userMessage: 'Answer our support inbox.\nUse our FAQ.',
 			},
 		]);
@@ -84,24 +87,72 @@ describe('loadRoutingCases', () => {
 		]);
 	});
 
-	it('returns the cases that need setup without running them', () => {
+	it('loads the seed, the open workflow and the accounts of a case', () => {
+		const dir = caseDir({
+			'route-debug-seeded.json': exportedCase([], {
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'Build me a daily report.' }],
+					workflows: [{ id: 'wf-report', name: 'Daily report', nodes: [], connections: {} }],
+					priorRuns: [{ workflow: 'wf-report' }],
+				},
+				conversation: [
+					{ role: 'user', text: 'It failed again.', attach: { workflow: 'wf-report' } },
+				],
+				credentials: [{ type: 'slackApi' }],
+			}),
+		});
+
+		const [seeded] = loadRoutingCases(dir).cases;
+
+		expect(seeded.attach).toEqual({ workflow: 'wf-report' });
+		expect(seeded.credentials).toEqual([{ type: 'slackApi' }]);
+		expect(seeded.seed?.messages).toHaveLength(1);
+		expect(seeded.seed?.priorRuns).toEqual([{ workflow: 'wf-report' }]);
+		expect(seeded.seed?.workflows).toEqual([
+			{ id: 'wf-report', name: 'Daily report', nodes: [], connections: {} },
+		]);
+	});
+
+	it('reads the stage directions of the second user turn and the after tags', () => {
+		const dir = caseDir({
+			'route-clarify-directed.json': exportedCase([], {
+				tags: ['routing', 'bucket:clarify', 'accepts:clarify:open', 'after:agent'],
+				conversation: [
+					{ role: 'user', text: 'Help me with leads.' },
+					{ role: 'user', text: ['[Leads message us all day.]', '[The user wants replies.]'] },
+				],
+			}),
+		});
+
+		const [directed] = loadRoutingCases(dir).cases;
+
+		expect(directed).toMatchObject({
+			userMessage: 'Help me with leads.',
+			direction: '[Leads message us all day.]\n[The user wants replies.]',
+			after: ['agent'],
+		});
+	});
+
+	it('returns the cases that need setup the stub instance cannot do, without running them', () => {
 		const dir = caseDir({
 			'route-debug-ok.json': exportedCase(),
-			'route-debug-no-accounts.json': exportedCase([], { credentials: [] }),
-			'route-debug-seeded.json': exportedCase([], {
-				seed: { mode: 'inline', messages: [{ role: 'user', text: 'Build me a daily report.' }] },
+			'route-debug-replay.json': exportedCase([], {
+				seed: { mode: 'replay', threadId: 'thread-1' },
 			}),
-			'route-debug-with-account.json': exportedCase([], { credentials: [{ type: 'slackApi' }] }),
+			'route-debug-in-folder.json': exportedCase([], {
+				seed: { mode: 'inline', folders: [{ id: 'folder-1', name: 'Reports' }] },
+			}),
 			'route-debug-in-browser.json': exportedCase([], { credentialFixture: 'local' }),
 		});
 
 		const { cases, needsSetup } = loadRoutingCases(dir);
 
-		expect(cases.map((c) => c.id)).toEqual(['route-debug-no-accounts', 'route-debug-ok']);
+		expect(cases.map((c) => c.id)).toEqual(['route-debug-ok']);
 		expect(needsSetup).toEqual([
 			'route-debug-in-browser',
-			'route-debug-seeded',
-			'route-debug-with-account',
+			'route-debug-in-folder',
+			'route-debug-replay',
 		]);
 	});
 
@@ -128,7 +179,14 @@ describe('loadRoutingCases', () => {
 			'route-debug-two-turns.json': exportedCase([], {
 				conversation: [
 					{ role: 'user', text: 'It failed.' },
-					{ role: 'user', text: 'Again.' },
+					{ role: 'user', text: '[Hourly.] Again.' },
+				],
+			}),
+			'route-clarify-direction-no-after.json': exportedCase([], {
+				...tags('bucket:clarify', 'accepts:clarify:open'),
+				conversation: [
+					{ role: 'user', text: 'Help me with leads.' },
+					{ role: 'user', text: '[Leads message us all day.]' },
 				],
 			}),
 		});
@@ -136,7 +194,7 @@ describe('loadRoutingCases', () => {
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-clarify-no-accepts\.json: accepts: a bucket:clarify case needs an accepts:<token> tag[\s\S]*route-debug-assistant-turn\.json: needs exactly one user message[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs exactly one user message/,
+					/route-clarify-direction-no-after\.json: a case with stage directions needs an after:<route> tag[\s\S]*route-clarify-no-accepts\.json: accepts: a bucket:clarify case needs an accepts:<token> tag[\s\S]*route-debug-assistant-turn\.json: needs one user message[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs one user message, then at most one user turn with only \[stage directions\]/,
 				),
 			}),
 		);

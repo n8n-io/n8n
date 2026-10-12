@@ -25,7 +25,9 @@ export function buildCriteriaPrompt(input: string, output: string, criteria: str
 		'- pass = the response satisfies the rule',
 		'- fail = the response breaks the rule, or does not do what the rule requires',
 		'',
-		'Respond with ONLY a JSON object (no markdown fences): {"pass": true/false, "reasoning": "<explanation>"}',
+		'Keep the reasoning to 1 or 2 short sentences: say why the response passes or fails the rule, with no preamble and no quotes of the response.',
+		'',
+		'Respond with ONLY a JSON object (no markdown fences): {"pass": true/false, "reasoning": "<1-2 short sentences>"}',
 	].join('\n');
 }
 

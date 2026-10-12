@@ -697,8 +697,26 @@ export class JobProcessor {
 			}
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
-				// oxlint-disable-next-line typescript/no-deprecated
-				context.addInputData(NodeConnectionTypes.AiTool, [
+				const toolRunIndex = context.getNextRunIndex();
+				const recordToolData = async (
+					type: 'input' | 'output',
+					data: INodeExecutionData[][] | NodeOperationError,
+				) => {
+					try {
+						await context.addExecutionDataFunctions(
+							type,
+							data,
+							NodeConnectionTypes.AiTool,
+							toolNode.name,
+							toolRunIndex,
+						);
+					} catch (error) {
+						this.logger.warn(
+							`There was a problem logging ${type} data of node "${toolNode.name}": ${error instanceof Error ? error.message : String(error)}`,
+						);
+					}
+				};
+				await recordToolData('input', [
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
 
@@ -708,10 +726,8 @@ export class JobProcessor {
 				} catch (error) {
 					// Record the failure so the tool node shows as errored, not stuck
 					// "running"; rethrow so the caller returns an error to the client.
-					// oxlint-disable-next-line typescript/no-deprecated
-					context.addOutputData(
-						NodeConnectionTypes.AiTool,
-						0,
+					await recordToolData(
+						'output',
 						error instanceof NodeOperationError
 							? error
 							: new NodeOperationError(toolNode, error as Error),
@@ -724,8 +740,7 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
-				// oxlint-disable-next-line typescript/no-deprecated
-				context.addOutputData(NodeConnectionTypes.AiTool, 0, [[{ json: { response } }]]);
+				await recordToolData('output', [[{ json: { response } }]]);
 
 				return response;
 			}

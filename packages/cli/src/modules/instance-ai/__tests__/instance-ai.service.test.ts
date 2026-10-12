@@ -253,7 +253,7 @@ import type {
 	InstanceContextInjection,
 	InstanceContextSurface,
 } from '@n8n/api-types';
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiHandoffContext } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -270,6 +270,7 @@ import {
 	loadInstanceAiPromptSkills,
 	resumeAgentRun,
 	streamAgentRun,
+	isQuotaExhaustedError,
 	setupSandboxWorkspace,
 	shutdownProductTelemetryProviders,
 	emitAgentSnapshotTraceEvent,
@@ -879,7 +880,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			modelService: {
+				resolveAgentModelConfig: Mock;
+				resolveProxyModel: Mock;
+				getCredits: Mock;
+			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -955,6 +960,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			getCredits: vi.fn(async () => ({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+			})),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = {
@@ -1250,7 +1259,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveExperimentGates: Mock;
 			};
 			instanceWriteAccess: { isReadOnly: Mock };
-			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
+			modelService: {
+				resolveAgentModelConfig: Mock;
+				resolveProxyModel: Mock;
+				getCredits: Mock;
+			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
 			dbIterationLogStorage: unknown;
@@ -1324,6 +1337,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
+			getCredits: vi.fn(async () => ({
+				creditsQuota: UNLIMITED_CREDITS,
+				creditsClaimed: 0,
+			})),
 		};
 		service.ensureThreadExists = vi.fn(async () => {});
 		service.agentMemory = {
@@ -5454,6 +5471,39 @@ describe('InstanceAiService — planned task settlement', () => {
 			expect.objectContaining({
 				type: 'agent-completed',
 				payload: { role: 'builder', result: '', status: 'cancelled' },
+			}),
+		);
+	});
+
+	it('stops a background builder as out of credits when the thread is cancelled for quota', async () => {
+		const { service } = createSettlementService();
+
+		service.cancelRun('thread-a', 'quota_exhausted');
+		await flush();
+
+		const abortReason = service.backgroundTasks.cancelThread.mock.calls[0]?.[1];
+		expect(isQuotaExhaustedError(abortReason)).toBe(true);
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'error',
+				agentId: 'orchestrator-task-run-1',
+				payload: expect.objectContaining({
+					code: 'quota_exhausted',
+					content: expect.stringContaining('credits'),
+				}),
+			}),
+		);
+		expect(service.eventBus.publish).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({
+				type: 'agent-completed',
+				payload: expect.objectContaining({
+					role: 'builder',
+					result: '',
+					status: 'error',
+					error: expect.stringContaining('credits'),
+				}),
 			}),
 		);
 	});

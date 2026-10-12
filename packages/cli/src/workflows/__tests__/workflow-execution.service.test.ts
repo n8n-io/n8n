@@ -320,6 +320,50 @@ describe('WorkflowExecutionService', () => {
 			);
 		});
 
+		test('marks a fire-and-forget polled run as suspendable', async () => {
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ callerAwaitsOutcome: 'none' }),
+				false,
+				undefined,
+				{ executionId: 'exec-9', expectedStatus: 'new' },
+				undefined,
+			);
+		});
+
+		test.each(['response', 'completion'] as const)(
+			'forwards the %s caller state for a polled run',
+			async (callerAwaitsOutcome) => {
+				await workflowExecutionService.runPolledWorkflow(
+					workflow,
+					node,
+					pollItems,
+					additionalData,
+					'trigger',
+					cursor,
+					responsePromise,
+					undefined,
+					callerAwaitsOutcome,
+				);
+
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({ callerAwaitsOutcome }),
+					false,
+					undefined,
+					{ executionId: 'exec-9', expectedStatus: 'new' },
+					responsePromise,
+				);
+			},
+		);
+
 		test('prepares the new execution before commit, then starts the run without reloading static data', async () => {
 			const callOrder: string[] = [];
 			workflowRunner.prepareNewExecution.mockImplementation(async () => {

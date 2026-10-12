@@ -12,8 +12,12 @@ Use this after deciding a config change is needed and before calling
 ### Workflow
 
 Follow Config Freshness for authoritative reads, hashes, and stale recovery.
-- For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
-- For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
+- For \`write_config\`, send a \`config\` object with only the top-level fields
+  you set or change, plus \`baseConfigHash\`. Omitted top-level fields keep
+  their stored value, so do not copy \`model\`, \`credential\`, \`memory\`,
+  \`personalisation\`, \`config\`, or \`integrations\` back unless you change them.
+- For \`patch_config\`, send an array of RFC 6902 operation objects plus \`baseConfigHash\`.
+- Send objects and arrays, not JSON strings.
 - Pass the \`configHash\` from your latest config read or from your latest
   write result as \`baseConfigHash\`; do not read the config again between your
   own writes.
@@ -140,7 +144,9 @@ Bad: replacing \`config\` while dropping unrelated settings
 
 ### Gotchas
 
-- \`write_config\` replaces the full config; include every field that should survive.
+- \`write_config\` keeps every top-level field you omit. A top-level field you
+  send replaces the stored field whole: to change one key inside \`config\`
+  (for example \`config.webSearch\`), use \`patch_config\` on that path instead.
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
 - Removing an integration means deleting its entry from \`integrations[]\`; do

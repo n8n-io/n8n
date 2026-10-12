@@ -15,7 +15,7 @@ import * as Helpers from './helpers';
 import type { IDataObject } from '../src';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
-import { CALLABLE_METHODS } from '../src/expressions/native-evaluation';
+import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-evaluation';
 import { Workflow } from '../src/workflow';
 
 // Three pre-existing, flag-independent quickjs bridge behaviours are kept out
@@ -24,7 +24,9 @@ import { Workflow } from '../src/workflow';
 // comes back as U+FFFD replacement characters, and undefined inside an array
 // result comes back as null (vm keeps undefined; native sides with vm). Data
 // strings stay NUL-free and inside the Basic Multilingual Plane; the array
-// case is skipped below.
+// case is skipped below. quickjs and V8 also use different shortest-digit
+// algorithms for Number.prototype.toString with a radix other than 10, which
+// the spec permits; expressions that pass a radix are skipped under quickjs.
 const noNul = (s: string) => !s.includes('\0');
 const bmpString = (maxLength: number) =>
 	fc
@@ -84,11 +86,54 @@ const path = fc
 	)
 	.map(([key, rest]) => `$json.${key}${rest}`);
 
+const arrayLiteral = fc.array(literal, { maxLength: 3 }).map((items) => `[${items.join(', ')}]`);
+
+// Callback bodies read the parameter (`p`), a root path or a literal; one
+// level only, since a callback inside a callback is declined anyway.
+const paramPath = fc
+	.oneof(
+		fc.constant(''),
+		fc.tuple(hop, fc.constantFrom(...INNER_KEYS, 'length')).map(([h, k]) => `${h}${k}`),
+		fc
+			.tuple(hop, fc.integer({ min: 0, max: 2 }))
+			.map(([h, i]) => (h === '.' ? `[${i}]` : `?.[${i}]`)),
+	)
+	.map((rest) => `p${rest}`);
+const body = fc.oneof(
+	{ weight: 3, arbitrary: paramPath },
+	literal,
+	path,
+	fc
+		.tuple(
+			paramPath,
+			fc.constantFrom('===', '!==', '<', '>', '+', '&&', '??'),
+			fc.oneof(literal, path, paramPath),
+		)
+		.map(([l, op, r]) => `(${l} ${op} ${r})`),
+	fc
+		.tuple(
+			paramPath,
+			hop,
+			fc.constantFrom(...CALLABLE_METHODS),
+			fc.array(literal, { maxLength: 1 }),
+		)
+		.map(([recv, h, method, args]) => `(${recv})${h}${method}(${args.join(', ')})`),
+);
+
 const { expr } = fc.letrec<{ expr: string }>((tie) => ({
 	expr: fc.oneof(
 		{ depthSize: 'small', withCrossShrink: true },
 		{ weight: 4, arbitrary: path },
 		{ weight: 2, arbitrary: literal },
+		arrayLiteral,
+		fc
+			.tuple(
+				fc.oneof({ weight: 3, arbitrary: path }, arrayLiteral, tie('expr')),
+				hop,
+				fc.constantFrom(...ITERATOR_METHODS),
+				body,
+			)
+			.map(([recv, h, method, b]) => `(${recv})${h}${method}(p => ${b})`),
 		fc.tuple(fc.constantFrom('!', '-', '+'), tie('expr')).map(([op, e]) => `${op}(${e})`),
 		fc
 			.tuple(
@@ -188,7 +233,10 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 		}
 	};
 
-	test('native and engine agree on value or error', () => {
+	// 300 runs through two engine evaluations each take a few seconds on an
+	// isolate engine, and longer when the three engine projects share a
+	// machine; the default 5 s test timeout is not a budget for that.
+	test('native and engine agree on value or error', { timeout: 30_000 }, () => {
 		fc.assert(
 			fc.property(expression, data, (expr, json) => {
 				const viaEngine = outcome(expr, json, false);
@@ -198,7 +246,9 @@ describe('Expression - fast native evaluation fuzz parity', () => {
 					Expression.getActiveImplementation() === 'quickjs' &&
 					Array.isArray(viaNative.value) &&
 					viaNative.value.some((element) => element === undefined);
-				if (holesAsNull) return;
+				const radixToString =
+					Expression.getActiveImplementation() === 'quickjs' && /\.toString\([^)]/.test(expr);
+				if (holesAsNull || radixToString) return;
 
 				if (viaEngine.error) {
 					expect(viaNative.error).toBeInstanceOf(viaEngine.error.constructor);

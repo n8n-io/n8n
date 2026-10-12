@@ -56,6 +56,22 @@ describe('inboundFrom', () => {
 		expect(inbound.surface).toBe('trigger');
 		expect(inbound.acceptedSourceIds).toEqual(['source-a']);
 	});
+
+	it('leaves grant unset when the resource issues no grant', () => {
+		expect(inboundFrom(resource, request)).not.toHaveProperty('grant');
+	});
+
+	it('takes grant from the resource when it issues one', () => {
+		const granting: ProtectedResource = {
+			...resource,
+			surface: 'trigger',
+			getGrant: () => ({ audiences: [resourceUrl], executeAccessWorkflowId: 'wf-1' }),
+		};
+
+		const inbound = inboundFrom(granting, request);
+
+		expect(inbound.grant).toEqual({ audiences: [resourceUrl], executeAccessWorkflowId: 'wf-1' });
+	});
 });
 
 describe('extractBearer', () => {

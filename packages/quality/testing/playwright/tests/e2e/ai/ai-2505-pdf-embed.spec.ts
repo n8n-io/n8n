@@ -1,5 +1,7 @@
 import { test } from '../../../fixtures/base';
 
+test.use({ capability: { env: { N8N_DEPRECATED_NODES_BLOCK: 'false' } } });
+
 /**
  * Regression guard for AI-2505 — PDF embedding via Default Data Loader →
  * In-Memory Vector Store insert was throwing

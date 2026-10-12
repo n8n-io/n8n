@@ -31,7 +31,14 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	// MistralCloudApi.credentials.ts  → apiKey only
 	mistral: (c) => ({ apiKey: c.apiKey }),
 	// VercelAiGatewayApi.credentials.ts → apiKey, url (base URL)
-	vercel: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	vercel: (c) => ({
+		apiKey: c.apiKey,
+		// The credential URL serves the OpenAI-compatible API. Let the SDK select its native URL.
+		baseURL:
+			typeof c.url === 'string' && /^https:\/\/ai-gateway\.vercel\.sh\/v1\/?$/i.test(c.url)
+				? undefined
+				: c.url,
+	}),
 	// OpenRouterApi.credentials.ts → apiKey, url (hidden, base URL)
 	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// NvidiaApi.credentials.ts → apiKey, url (base URL)
