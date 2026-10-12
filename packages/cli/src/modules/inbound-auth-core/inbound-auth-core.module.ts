@@ -10,6 +10,7 @@ import {
 	type AuthorizationServerMetadata,
 	type Jwk,
 } from '@n8n/inbound-auth';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 // Discovery of the local source must fail, not succeed with made-up documents.
@@ -26,7 +27,8 @@ class UnregisteredLocalAuthorizationServer extends LocalAuthorizationServer {
 /**
  * Owns the `trusted_source` and `trusted_source_identity` tables and binds the inbound-auth
  * contracts. Main, webhook and worker instances load it, because workers and webhook processes
- * resolve the same entities and contracts as main.
+ * resolve the same entities and contracts as main. Only main instances seed the system trusted
+ * source.
  */
 @BackendModule({ name: 'inbound-auth-core', instanceTypes: ['main', 'webhook', 'worker'] })
 export class InboundAuthCoreModule implements ModuleInterface {
@@ -44,6 +46,11 @@ export class InboundAuthCoreModule implements ModuleInterface {
 		const { TrustedSourceDbGate } = await import('./trusted-source.gate.js');
 		if (!Container.has(TrustedSourceGate)) {
 			Container.set(TrustedSourceGate, Container.get(TrustedSourceDbGate));
+		}
+
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { SystemTrustedSourceSeeder } = await import('./system-trusted-source.seeder.js');
+			await Container.get(SystemTrustedSourceSeeder).seed();
 		}
 
 		const { OAuth2AuthenticationService } = await import('./authentication.service.js');
