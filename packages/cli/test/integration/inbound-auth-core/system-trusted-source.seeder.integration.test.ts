@@ -10,6 +10,8 @@ import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entiti
 import { TrustedSourceRepository } from '@/modules/inbound-auth-core/database/repositories/trusted-source.repository';
 import { SystemTrustedSourceSeeder } from '@/modules/inbound-auth-core/system-trusted-source.seeder';
 import {
+	ERROR_RETRY_SECONDS,
+	HEALTHY_REFRESH_SECONDS,
 	SystemTrustedSourceModificationError,
 	TrustedSourceDbStore,
 } from '@/modules/inbound-auth-core/trusted-source.store';
@@ -29,6 +31,15 @@ const seederFor = (url = baseUrl) =>
 	new SystemTrustedSourceSeeder(store, mock<UrlService>({ getInstanceBaseUrl: () => url }), logger);
 
 const systemRow = async () => await rows.findOneByOrFail({ id: ID });
+
+const dueIds = async () =>
+	(
+		await Container.get(TrustedSourceRepository).findDue({
+			errorRetrySeconds: ERROR_RETRY_SECONDS,
+			healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
+			limit: 10,
+		})
+	).map((row) => row.id);
 
 const adminConfig: TrustedSourceConfigInput = {
 	version: 1,
@@ -109,10 +120,21 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		expect(logger.error).not.toHaveBeenCalled();
 	});
 
-	it('moves only the issuer when the instance base URL changes', async () => {
+	it('moves the issuer and makes the source due for discovery when the base URL changes', async () => {
 		await seederFor().seed();
-		// Backdate, so the bump is visible on a database clock with whole-second precision.
-		await rows.update({ id: ID }, { updatedAt: new Date('2026-01-01T00:00:00.000Z') });
+		// A source that discovery checked just now, with a run in flight. Backdate `updatedAt`, so the
+		// bump is visible on a database clock with whole-second precision.
+		await rows.update(
+			{ id: ID },
+			{
+				status: 'healthy',
+				lastCheckedAt: new Date(),
+				discoveryClaimToken: 'run-before-the-move',
+				discoveryClaimedAt: new Date(),
+				updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+			},
+		);
+		expect(await dueIds()).toEqual([]);
 		const before = await systemRow();
 		// Warm every cache entry the move must invalidate.
 		expect(await store.getById(ID)).toMatchObject({ issuer: baseUrl });
@@ -122,10 +144,24 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		await seederFor(MOVED_URL).seed();
 
 		const after = await systemRow();
-		expect(after.issuer).toBe(MOVED_URL);
+		expect(after).toMatchObject({
+			issuer: MOVED_URL,
+			status: 'healthy',
+			lastCheckedAt: null,
+			discoveryClaimToken: null,
+			discoveryClaimedAt: null,
+		});
 		expect(after.updatedAt.getTime()).toBeGreaterThan(before.updatedAt.getTime());
-		expect({ ...after, issuer: before.issuer, updatedAt: before.updatedAt }).toEqual(before);
+		expect({
+			...after,
+			issuer: before.issuer,
+			lastCheckedAt: before.lastCheckedAt,
+			discoveryClaimToken: before.discoveryClaimToken,
+			discoveryClaimedAt: before.discoveryClaimedAt,
+			updatedAt: before.updatedAt,
+		}).toEqual(before);
 		expect(await rows.count()).toBe(1);
+		expect(await dueIds()).toEqual([ID]);
 
 		expect(await store.getByIssuer(baseUrl)).toBeUndefined();
 		expect(await store.getByIssuer(MOVED_URL)).toMatchObject({ id: ID, issuer: MOVED_URL });

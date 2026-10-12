@@ -245,7 +245,14 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		if (holder) return holder.id === id ? 'unchanged' : 'conflict';
 
 		try {
-			await this.trustedSourceRepository.updateById(id, { issuer });
+			// The keys do not change, so the source stays usable. Discovery fetches the metadata for the
+			// new issuer on its next run. A run that started before the move loses its lease.
+			await this.trustedSourceRepository.updateById(id, {
+				issuer,
+				lastCheckedAt: null,
+				discoveryClaimToken: null,
+				discoveryClaimedAt: null,
+			});
 		} catch (error) {
 			// Another row can take the issuer between the check and the update. A conflict must not
 			// stop the boot, so classify it by reading the issuer again.

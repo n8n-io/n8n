@@ -31,12 +31,13 @@ export const SYSTEM_TRUSTED_SOURCE_CONFIG = {
 /**
  * Seeds the trusted source for n8n's own OAuth server, with the instance base URL as its issuer.
  *
- * Every process seeds, not only the leader: a webhook process can serve requests before any main
- * has booted. The insert is idempotent, so concurrent seeders need no leader check.
+ * Only main instances seed. Authentication refuses the source until discovery marks it healthy, and
+ * discovery runs only on main. It also requires the issuer to match the metadata of main's local
+ * authorization server, so the issuer must be main's base URL. Several mains can seed at once: the
+ * insert is idempotent, so they need no leader check.
  *
- * Each process sets the issuer to its own instance base URL. That URL is also the `iss` of the
- * tokens that a main or webhook process mints. So every process must resolve the same base URL: a
- * process that resolves another one moves the issuer away from the tokens of the others.
+ * A webhook process also mints tokens, with its own base URL as `iss`. So it must resolve the same
+ * base URL as main, or the source refuses its tokens.
  */
 @Service()
 export class SystemTrustedSourceSeeder {

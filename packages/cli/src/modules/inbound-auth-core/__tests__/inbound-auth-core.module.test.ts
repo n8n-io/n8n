@@ -7,6 +7,7 @@ import {
 	TrustedSourceGate,
 	TrustedSourceStore,
 } from '@n8n/inbound-auth';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -25,6 +26,7 @@ describe('InboundAuthCoreModule', () => {
 		const identityService = mock<TrustedSourceIdentityService>();
 
 		beforeAll(async () => {
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			Container.set(TrustedSourceDbStore, dbStore);
 			Container.set(TrustedSourceDbGate, dbGate);
 			Container.set(TrustedSourceIdentityService, identityService);
@@ -49,6 +51,19 @@ describe('InboundAuthCoreModule', () => {
 				expect.objectContaining({ id: 'n8n-internal' }),
 			);
 		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'does not seed the system trusted source on a %s instance',
+			async (instanceType) => {
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.seedSystemSource.mockClear();
+
+				await new InboundAuthCoreModule().init();
+
+				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			},
+		);
 
 		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
 			const server = Container.get(LocalAuthorizationServer);
