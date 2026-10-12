@@ -2,6 +2,7 @@ packages/cli/src/modules/inbound-auth-core/identity/trusted-source-identity.serv
   h_435b1d7d3e52c0 48,73-74,76-78,96-108,110-153,162,164,175-178,186-193,202,217,224-225,243,255-257,278,307,325,336-338,341-342,345
   s_60f5633681e4e3::t_e229cc81fecfc0 1,14,26,75,109,174,184-185,335
   s_60f5633681e4e3::t_47ebbea35b70f2 79,179,246
+  s_60f5633681e4e3::t_5aec02d8e7dedf 328
 packages/cli/test/integration/inbound-auth-core/trusted-source-identity.service.integration.test.ts
   s_60f5633681e4e3::t_a43be13bf0b8fb 2,30,135-138
   s_60f5633681e4e3::t_d6bdc3cd88bab5 139
