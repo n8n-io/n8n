@@ -3648,6 +3648,7 @@
 	"settings.mcp.connectDialog.install.description": "Run this command to add n8n to {client} (it must already be installed)",
 	"settings.mcp.connectDialog.configure.title": "Configure",
 	"settings.mcp.connectDialog.configure.description": "Add this to your config file to connect to n8n",
+	"settings.mcp.connectDialog.configure.antigravity.description": "Add this mcpServers entry to ~/.gemini/config/mcp_config.json. The Antigravity IDE, desktop app, and CLI (agy) share this file.",
 	"settings.mcp.connectDialog.configure.titleAlt": "Or configure manually",
 	"settings.mcp.connectDialog.configure.descriptionAlt": "Prefer not to run the command? Add this to your config file instead",
 	"settings.mcp.connectDialog.authenticate.title": "Authenticate",

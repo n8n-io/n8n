@@ -80,7 +80,7 @@ url = "${serverUrl}"`;
     }
   }
 }`;
-	const windsurfSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "serverUrl": "${serverUrl}"\n    }\n  }\n}`;
+	const serverUrlSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "serverUrl": "${serverUrl}"\n    }\n  }\n}`;
 
 	// One-click deep links, exactly as each editor expects: Cursor takes base64 of
 	// `{"url": …}` in a `config` query param, VS Code a URL-encoded JSON object.
@@ -155,6 +155,13 @@ url = "${serverUrl}"`;
 			id: 'ide',
 			clients: [
 				{
+					id: 'antigravity',
+					name: 'Antigravity',
+					category: 'ide',
+					icon: null,
+					configSnippet: serverUrlSnippet,
+				},
+				{
 					id: 'cursor',
 					name: 'Cursor',
 					category: 'ide',
@@ -175,7 +182,7 @@ url = "${serverUrl}"`;
 					name: 'Windsurf',
 					category: 'ide',
 					icon: null,
-					configSnippet: windsurfSnippet,
+					configSnippet: serverUrlSnippet,
 				},
 			],
 		},
