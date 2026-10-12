@@ -781,7 +781,7 @@ describe('AgentChatController budget notice', () => {
 	it('emits a budget-notice event when the resumed preview run reports one', async () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
 		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
-			config.onBudgetNotice?.();
+			config.onBudgetNotice?.({ code: 'budget.alert' });
 			yield { type: 'finish', finishReason: 'stop' };
 		});
 

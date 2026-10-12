@@ -32,6 +32,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
+import { AgentSpendLedger } from '../../budget-guardrail';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import { SubAgentRunner } from '../sub-agent-runner';
 import type {
@@ -665,13 +666,14 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a guardrail stop as a completion that carries the finish reason', async () => {
+	it('reports a guardrail stop as a failure that carries the stop code', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
 				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
 				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
 			]),
 		);
+		const onBudgetNotice = vi.fn();
 
 		await expect(
 			runner.run(spawnRequest, {
@@ -679,14 +681,64 @@ describe('SubAgentRunner', () => {
 				projectId,
 				credentialProvider,
 				runType: 'production',
+				onBudgetNotice,
 			}),
 		).resolves.toMatchObject({
-			status: 'completed',
+			status: 'failed',
 			result: {
 				runId: 'child-run-1',
 				finishReason: 'guardrail',
+				guardrail: { code: 'budget.session' },
 			},
 		});
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session', agentId: 'agent-1' });
+	});
+
+	it('does not emit a budget notice for a non-budget guardrail stop', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.misconfigured' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: { finishReason: 'guardrail' },
+		});
+		expect(onBudgetNotice).not.toHaveBeenCalled();
+	});
+
+	it('forwards the budget notice sink into the child guardrail options', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		const onBudgetNotice = vi.fn();
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			rootSessionId: parentThreadId,
+			rootSessionCapUsd: 5,
+			onBudgetNotice,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		const sink = options?.guardrails?.onNotice;
+		expect(sink).toBeDefined();
+		sink?.({ code: 'budget.alert' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.alert', agentId: 'agent-1' });
+		sink?.({ code: 'pii.block' });
+		expect(onBudgetNotice).toHaveBeenCalledTimes(1);
 	});
 
 	it('applies the self-delegation model while preserving the parent draft', async () => {

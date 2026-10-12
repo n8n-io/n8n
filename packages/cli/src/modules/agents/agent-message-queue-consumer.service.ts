@@ -1,4 +1,4 @@
-import type { AgentSseEvent } from '@n8n/api-types';
+import type { AgentBudgetNotice, AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, type User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -243,7 +243,12 @@ export class AgentMessageQueueConsumer {
 			abortSignal: signal,
 			errorMode: 'forward',
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
-			onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
+			onBudgetNotice: (notice: AgentBudgetNotice) =>
+				send({
+					type: 'budget-notice',
+					code: notice.code,
+					...(notice.agentId !== undefined ? { agentId: notice.agentId } : {}),
+				}),
 		});
 		if (result.status === 'completed')
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });

@@ -24,11 +24,14 @@ export * from './sub-agent.schema';
 export * from './types';
 export * from './workflow-wait';
 export type {
+	AgentBudgetNotice,
+	AgentBudgetNoticeCode,
 	AgentSseEvent,
 	AgentSseMessage,
 	ForwardedChildChunkWire,
 	ToolSuspendedPayload,
 } from '../agent-sse';
+export { isAgentBudgetNoticeCode } from '../agent-sse';
 export { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '../agent-builder-tool-node-types';
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).

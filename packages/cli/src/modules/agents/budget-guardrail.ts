@@ -1,12 +1,17 @@
 import {
 	createBudgetGuardrail,
 	type ExecutionOptions,
+	type GuardrailsOptions,
 	type RunOptions,
 	type SpendEntry,
 	type SpendLedger,
 	type SpendTotal,
 } from '@n8n/agents';
-import type { BudgetGuardrailConfig } from '@n8n/api-types';
+import {
+	isAgentBudgetNoticeCode,
+	type AgentBudgetNotice,
+	type BudgetGuardrailConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
@@ -130,7 +135,7 @@ export interface BudgetAttachInput {
 	 */
 	useRootSessionCap?: boolean;
 	/** Preview chat shows the approaching card. Cloud also emails the project owner. */
-	onNotice?: (notice: { code: 'budget.alert' }) => void;
+	onNotice?: (notice: AgentBudgetNotice) => void;
 }
 
 interface ResolvedBudgetLimits {
@@ -228,6 +233,21 @@ function hasId(value: string | undefined): value is string {
 	return value !== undefined && value.length > 0;
 }
 
+/**
+ * Adapts the budget notice callback to the SDK's guardrail notice sink, so a
+ * delegated run can forward it to its own children. Drops non-budget codes.
+ */
+function toGuardrailNoticeSink(input: BudgetAttachInput): GuardrailsOptions['onNotice'] {
+	if (!input.onNotice) return undefined;
+	return (notice) => {
+		if (!isAgentBudgetNoticeCode(notice.code)) return;
+		input.onNotice?.({
+			code: notice.code,
+			...(notice.agentId !== undefined ? { agentId: notice.agentId } : {}),
+		});
+	};
+}
+
 /** Appends the budget hook when a bucket is on. Leaves the options unchanged otherwise. */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
@@ -243,6 +263,7 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 		...limits,
 		...(onNotice ? { onNotice } : {}),
 	});
+	const sink = toGuardrailNoticeSink(input);
 	const existing = options.guardrails;
 	return {
 		...options,
@@ -250,6 +271,11 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 			hooks: [...(existing?.hooks ?? []), hook],
 			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
 			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
+			...(sink !== undefined
+				? { onNotice: sink }
+				: existing?.onNotice !== undefined
+					? { onNotice: existing.onNotice }
+					: {}),
 		},
 	};
 }

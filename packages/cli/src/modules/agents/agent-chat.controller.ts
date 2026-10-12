@@ -13,6 +13,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	N8N_CHAT_INTEGRATION_TYPE,
 	ViewableMimeTypes,
+	type AgentBudgetNotice,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -432,7 +433,12 @@ export class AgentChatController {
 				chatSurface: 'preview',
 				errorMode: 'forward',
 				onChunk,
-				onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
+				onBudgetNotice: (notice: AgentBudgetNotice) =>
+					send({
+						type: 'budget-notice',
+						code: notice.code,
+						...(notice.agentId !== undefined ? { agentId: notice.agentId } : {}),
+					}),
 				onExecutionStarted,
 				abortSignal,
 			});
