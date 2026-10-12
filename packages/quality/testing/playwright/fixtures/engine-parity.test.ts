@@ -74,25 +74,22 @@ describe('engineParityDisposition', () => {
 describe('watchCanvasRuns', () => {
 	type Handler = (route: Route) => Promise<void>;
 
-	/** A context that records its routes, so a test can answer one run through them. */
+	/** A context that records its routes, so a test can answer one request through the one that matches. */
 	function fakeContext() {
-		const handlers: Handler[] = [];
+		const routes: Array<{ matcher: (url: URL) => boolean; handler: Handler }> = [];
 		const context = {
-			route: vi.fn(async (_matcher: unknown, handler: Handler) => {
-				handlers.push(handler);
+			route: vi.fn(async (matcher: (url: URL) => boolean, handler: Handler) => {
+				routes.push({ matcher, handler });
 			}),
 		} as unknown as BrowserContext;
 
-		/** Answers `POST /rest/workflows/:id/run` with the given body through the recorded route. */
-		async function answerRun(status: number, body: unknown) {
+		async function answer(url: string, status: number, body: unknown) {
 			const response = { ok: () => status < 400, status: () => status, json: async () => body };
 			const fulfill = vi.fn();
-			for (const handler of handlers) {
+			for (const { matcher, handler } of routes) {
+				if (!matcher(new URL(url))) continue;
 				await handler({
-					request: () => ({
-						method: () => 'POST',
-						url: () => 'http://localhost:5678/rest/workflows/wf-1/run',
-					}),
+					request: () => ({ method: () => 'POST', url: () => url }),
 					fetch: async () => response,
 					fulfill,
 				} as unknown as Route);
@@ -100,7 +97,11 @@ describe('watchCanvasRuns', () => {
 			return { fulfill, response };
 		}
 
-		return { context, answerRun };
+		/** Answers `POST /rest/workflows/:id/run` with the given body. */
+		const answerRun = async (status: number, body: unknown) =>
+			await answer('http://localhost:5678/rest/workflows/wf-1/run', status, body);
+
+		return { context, answer, answerRun };
 	}
 
 	const V2_ID = '0199c3a1-8f4e-7c2b-9a1d-2f6b8e4c1a77';
@@ -130,6 +131,18 @@ describe('watchCanvasRuns', () => {
 		const { fulfill, response } = await answerRun(200, { data: { executionId: V2_ID } });
 
 		expect(fulfill).toHaveBeenCalledWith({ response });
+	});
+
+	test('leaves a request that is not a run alone', async () => {
+		const { context, answer } = fakeContext();
+		const guard = await watchCanvasRuns(context, { engineType: 'v2' });
+
+		const { fulfill } = await answer('http://localhost:5678/rest/workflows/wf-1', 200, {
+			data: { executionId: '1783' },
+		});
+
+		expect(fulfill).not.toHaveBeenCalled();
+		expect(() => guard.assertRoutedToEngine()).not.toThrow();
 	});
 
 	test('ignores a run the control plane refused', async () => {
