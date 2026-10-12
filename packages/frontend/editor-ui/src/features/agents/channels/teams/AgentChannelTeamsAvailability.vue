@@ -6,17 +6,32 @@
  * manifest fields: changing one produces a new app package either way.
  */
 import { computed, ref } from 'vue';
-import { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch2 } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nLink,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSwitch2,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { TeamsAvailability } from './constants';
+import {
+	ENTRA_APP_REGISTRATIONS_URL,
+	entraApiPermissionsUrl,
+	type TeamsAvailability,
+} from './constants';
 
 export type { TeamsAvailability } from './constants';
 
 const value = defineModel<TeamsAvailability>({ required: true });
 
-const props = withDefaults(defineProps<{ startCollapsed?: boolean }>(), {
-	startCollapsed: false,
-});
+const props = withDefaults(
+	defineProps<{
+		startCollapsed?: boolean;
+		/** The Entra app n8n created, if any. Without it the user registered their own. */
+		appId?: string;
+	}>(),
+	{ startCollapsed: false, appId: undefined },
+);
 
 const i18n = useI18n();
 
@@ -73,6 +88,25 @@ const rows = computed(() => [
 	...(value.value.groupChats ? [READ_GROUPS] : []),
 ]);
 
+/**
+ * Files attached in a shared conversation live in SharePoint or OneDrive, which
+ * only an app permission that an administrator grants can read.
+ */
+const fileAccess = computed(() => {
+	if (!value.value.teamChannels && !value.value.groupChats) return null;
+	return props.appId
+		? {
+				text: 'agents.channels.teams.setup.availability.fileAccess' as const,
+				link: 'agents.channels.teams.setup.availability.fileAccessLink' as const,
+				url: entraApiPermissionsUrl(props.appId),
+			}
+		: {
+				text: 'agents.channels.teams.setup.availability.fileAccessManual' as const,
+				link: 'agents.channels.teams.setup.availability.fileAccessManualLink' as const,
+				url: ENTRA_APP_REGISTRATIONS_URL,
+			};
+});
+
 /** A collapsed panel still has to say what it is set to. */
 const summary = computed(() => {
 	const { teamChannels, readAllChannelMessages, groupChats, readAllGroupMessages } = value.value;
@@ -97,39 +131,55 @@ const summary = computed(() => {
 </script>
 
 <template>
-	<N8nSettingsRowGroup :class="$style.group">
-		<N8nSettingsRow
-			v-model="open"
-			:title="i18n.baseText('agents.channels.teams.setup.availability.whereTitle')"
-			:description="summary"
-			expandable
-			expand-label=""
-			collapse-label=""
-			:show-divider="false"
-			data-testid="teams-availability"
-		>
-			<template #expanded>
-				<N8nSettingsRow
-					v-for="row in rows"
-					:key="row.key"
-					:title="i18n.baseText(row.title)"
-					:description="i18n.baseText(row.hint)"
-				>
-					<template #action>
-						<N8nSwitch2
-							:model-value="value[row.key]"
-							:aria-label="i18n.baseText(row.title)"
-							:data-testid="row.testId"
-							@update:model-value="set({ [row.key]: $event })"
-						/>
-					</template>
-				</N8nSettingsRow>
+	<div :class="$style.availability">
+		<N8nSettingsRowGroup :class="$style.group">
+			<N8nSettingsRow
+				v-model="open"
+				:title="i18n.baseText('agents.channels.teams.setup.availability.whereTitle')"
+				:description="summary"
+				expandable
+				expand-label=""
+				collapse-label=""
+				:show-divider="false"
+				data-testid="teams-availability"
+			>
+				<template #expanded>
+					<N8nSettingsRow
+						v-for="row in rows"
+						:key="row.key"
+						:title="i18n.baseText(row.title)"
+						:description="i18n.baseText(row.hint)"
+					>
+						<template #action>
+							<N8nSwitch2
+								:model-value="value[row.key]"
+								:aria-label="i18n.baseText(row.title)"
+								:data-testid="row.testId"
+								@update:model-value="set({ [row.key]: $event })"
+							/>
+						</template>
+					</N8nSettingsRow>
+				</template>
+			</N8nSettingsRow>
+		</N8nSettingsRowGroup>
+		<N8nCallout v-if="fileAccess" theme="info" data-testid="teams-file-access">
+			{{ i18n.baseText(fileAccess.text) }}
+			<template #trailingContent>
+				<N8nLink :to="fileAccess.url" new-window size="small" data-testid="teams-file-access-link">
+					{{ i18n.baseText(fileAccess.link) }}
+				</N8nLink>
 			</template>
-		</N8nSettingsRow>
-	</N8nSettingsRowGroup>
+		</N8nCallout>
+	</div>
 </template>
 
 <style module lang="scss">
+.availability {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
 /*
  * The group paints the page surface, which in dark mode is darker than the
  * modal it sits in. Letting the modal show through keeps it flat in both themes.

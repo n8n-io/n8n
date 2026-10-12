@@ -113,6 +113,25 @@ describe('TeamsEntraProvisioningService', () => {
 		expect(result.organizationName).toBe('Acme Corp');
 	});
 
+	it('declares the Graph file permission, so an administrator can grant it later', async () => {
+		await service.provision(options);
+
+		expect(graph.request).toHaveBeenCalledWith(
+			'graph-token',
+			'PATCH',
+			"/applications(uniqueName='n8n-agent-agent-1')",
+			expect.objectContaining({
+				requiredResourceAccess: [
+					{
+						resourceAppId: '00000003-0000-0000-c000-000000000000',
+						resourceAccess: [{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' }],
+					},
+				],
+			}),
+			{ Prefer: 'create-if-missing' },
+		);
+	});
+
 	it('writes the channel credential itself, so the user never handles a secret', async () => {
 		const result = await service.provision(options);
 

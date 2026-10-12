@@ -47,6 +47,7 @@ import type {
 } from './agent-chat-integration';
 import {
 	ChatIntegrationRegistry,
+	InboundAttachmentAccessError,
 	onceStatusHandle,
 	postToUserOrThread,
 } from './agent-chat-integration';
@@ -1140,7 +1141,11 @@ export class AgentChatBridge {
 					threadId,
 					error: error instanceof Error ? error.message : String(error),
 				});
-				attachmentNotes.push(`[Attachment "${name}" could not be processed]`);
+				attachmentNotes.push(
+					error instanceof InboundAttachmentAccessError
+						? `[Attachment "${name}" could not be read: ${error.message}]`
+						: `[Attachment "${name}" could not be processed]`,
+				);
 			}
 		}
 

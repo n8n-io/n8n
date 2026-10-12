@@ -1,3 +1,4 @@
+import { InboundAttachmentAccessError } from '../../../agent-chat-integration';
 import {
 	fetchTeamsMessageFiles,
 	graphHttpOf,
@@ -94,6 +95,22 @@ describe('fetchTeamsMessageFiles', () => {
 		});
 
 		expect(await fetchTeamsMessageFiles(http, channelActivity('100', '100'))).toEqual([]);
+	});
+
+	it('explains a refused download, so the agent can tell the user to ask an administrator', async () => {
+		const { http, get } = graphReturning({
+			attachments: [
+				{
+					contentType: 'reference',
+					contentUrl: 'https://contoso.sharepoint.com/a.pdf',
+					name: 'a.pdf',
+				},
+			],
+		});
+		const [file] = await fetchTeamsMessageFiles(http, channelActivity('100', '100'));
+		get.mockRejectedValueOnce(Object.assign(new Error('403'), { response: { status: 403 } }));
+
+		await expect(file.fetchData?.()).rejects.toBeInstanceOf(InboundAttachmentAccessError);
 	});
 
 	it('makes no Graph call for a direct message', async () => {

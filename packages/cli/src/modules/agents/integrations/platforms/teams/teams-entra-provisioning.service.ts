@@ -31,6 +31,12 @@ function usableSecret(
 	if (Number.isNaN(expiry) || expiry - Date.now() < SECRET_RENEW_BEFORE_MS) return undefined;
 	return { value, expiresAt };
 }
+/** Lets the bot download files attached in channels and group chats. */
+const GRAPH_FILES_READ_ALL = {
+	resourceAppId: '00000003-0000-0000-c000-000000000000',
+	resourceAccess: [{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' }],
+};
+
 const ENTRA_APP_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Overview/appId';
 
@@ -237,6 +243,9 @@ export class TeamsEntraProvisioningService {
 				// Not how the app is found — that is `uniqueName` — but it is what
 				// someone sees in the Entra portal when they ask what made this.
 				tags: [uniqueName],
+				// Declared only. An administrator grants it from the setup's file
+				// access callout; the sign-in here cannot grant app permissions.
+				requiredResourceAccess: [GRAPH_FILES_READ_ALL],
 			},
 			{ Prefer: 'create-if-missing' },
 		);

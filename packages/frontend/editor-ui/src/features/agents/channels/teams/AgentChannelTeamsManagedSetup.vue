@@ -854,7 +854,11 @@ const downloadPackage = async () =>
 					v-else-if="step.id === 'availability' && statusOf[step.id] === 'active'"
 					:class="$style.stepContent"
 				>
-					<AgentChannelTeamsAvailability v-model="availability" start-collapsed />
+					<AgentChannelTeamsAvailability
+						v-model="availability"
+						start-collapsed
+						:app-id="provisionedApp?.appId"
+					/>
 				</div>
 
 				<div

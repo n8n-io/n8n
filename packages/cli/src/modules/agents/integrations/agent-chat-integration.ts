@@ -6,7 +6,7 @@ import {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Attachment, Thread, Author, Message } from 'chat';
-import type { Logger } from 'n8n-workflow';
+import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
@@ -31,6 +31,12 @@ import type {
  * Channel identity, without the decrypted credential. Enough for checks that
  * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
  */
+/**
+ * The platform refused an attachment download for a reason the user can fix.
+ * The message reaches the agent, so it can tell the user what to do.
+ */
+export class InboundAttachmentAccessError extends UserError {}
+
 export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;

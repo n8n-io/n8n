@@ -2,6 +2,8 @@ import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment } from 'chat';
 
+import { InboundAttachmentAccessError } from '../../agent-chat-integration';
+
 const GRAPH_ORIGIN = 'https://graph.microsoft.com';
 const GRAPH_V1 = `${GRAPH_ORIGIN}/v1.0`;
 
@@ -71,6 +73,10 @@ export function graphMessagePath(activity: unknown): string | undefined {
 	return rootId === messageId ? root : `${root}/replies/${enc(messageId)}`;
 }
 
+function statusOf(error: unknown): unknown {
+	return isRecord(error) && isRecord(error.response) ? error.response.status : undefined;
+}
+
 /** Graph addresses a sharing URL as `u!` plus its unpadded base64url form. */
 function shareIdOf(url: string): string {
 	return `u!${Buffer.from(url, 'utf8').toString('base64url')}`;
@@ -91,11 +97,18 @@ export async function fetchTeamsMessageFiles(
 	if (!isRecord(message)) return [];
 
 	const download = (url: string) => async () => {
-		const { data } = await http.get(url, {
-			responseType: 'arraybuffer',
-			maxContentLength: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
-		});
-		return toBuffer(data);
+		try {
+			const { data } = await http.get(url, {
+				responseType: 'arraybuffer',
+				maxContentLength: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+			});
+			return toBuffer(data);
+		} catch (error) {
+			if (statusOf(error) !== 403) throw error;
+			throw new InboundAttachmentAccessError(
+				'a Microsoft administrator has not allowed file access for this app yet. Ask them to grant admin consent for its Files.Read.All permission in Microsoft Entra',
+			);
+		}
 	};
 
 	const files: Attachment[] = [];

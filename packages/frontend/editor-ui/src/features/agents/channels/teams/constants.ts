@@ -1,6 +1,14 @@
 /** What the app package is called wherever it is offered. */
 export const TEAMS_PACKAGE_FILENAME = 'n8n-agent-teams-app.zip';
 
+/** Where an administrator grants an app's Microsoft Graph permissions. */
+export function entraApiPermissionsUrl(appId: string): string {
+	return `https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/${encodeURIComponent(appId)}`;
+}
+
+export const ENTRA_APP_REGISTRATIONS_URL =
+	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade';
+
 /** The four availability settings a Teams channel runs on. */
 export interface TeamsAvailability {
 	teamChannels: boolean;
