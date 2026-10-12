@@ -78,8 +78,10 @@ export interface SchedulerOptions {
 	readonly maxAttempts: number;
 
 	/**
-	 * How many seconds after its planned time an occurrence counts as missed,
-	 * if it has not started. A missed occurrence does not run. Defaults to 60.
+	 * How many seconds after its planned time an occurrence may still start.
+	 * After this, the occurrence is missed and does not run. Only `catchUp` can
+	 * run the latest occurrence that was missed while the scheduler was down.
+	 * Defaults to 60.
 	 */
 	readonly missedAfterSeconds?: number;
 
