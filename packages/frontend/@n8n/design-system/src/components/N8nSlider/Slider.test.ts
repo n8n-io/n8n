@@ -1,5 +1,8 @@
 import { fireEvent, render } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
+import { defineComponent, ref } from 'vue';
 
+import type { SliderProps } from './Slider.types';
 import Slider from './Slider.vue';
 import type { InputSize } from '../../types/input';
 
@@ -48,6 +51,58 @@ describe('components/N8nSlider', () => {
 
 		expect(wrapper.getByRole('slider', { name: 'Custom volume' })).toBeInTheDocument();
 		expect(wrapper.queryByText('Fallback')).not.toBeInTheDocument();
+	});
+
+	it.each<SliderProps>([{}, { label: ' ' }, { ariaLabel: ' ' }, { ariaLabelledby: ' ' }])(
+		'rejects a missing accessible-name source: %j',
+		(props) => {
+			expect(() => mount(Slider, { props })).toThrow(
+				'N8nSlider requires a label, a label slot, ariaLabel, or ariaLabelledby.',
+			);
+		},
+	);
+
+	it('uses a label slot without a label prop', () => {
+		const wrapper = render(Slider, { slots: { label: '<span>Volume</span>' } });
+
+		expect(wrapper.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+	});
+
+	it('updates the label and naming reference when a label slot changes', async () => {
+		const showLabel = ref(false);
+		const parent = defineComponent({
+			components: { Slider },
+			setup() {
+				return { showLabel };
+			},
+			template: `
+				<button @click="showLabel = !showLabel">Toggle label</button>
+				<Slider :aria-label="showLabel ? undefined : 'Volume'">
+					<template v-if="showLabel" #label>Custom volume</template>
+				</Slider>
+			`,
+		});
+		const wrapper = render(parent);
+		const control = wrapper.getByRole('slider', { name: 'Volume' });
+
+		expect(wrapper.queryByText('Custom volume')).not.toBeInTheDocument();
+		await fireEvent.click(wrapper.getByRole('button'));
+		expect(wrapper.getByRole('slider', { name: 'Custom volume' })).toHaveAttribute(
+			'aria-labelledby',
+			wrapper.getByText('Custom volume').id,
+		);
+		await fireEvent.click(wrapper.getByRole('button'));
+		expect(wrapper.queryByText('Custom volume')).not.toBeInTheDocument();
+		expect(control).not.toHaveAttribute('aria-labelledby');
+		expect(wrapper.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+	});
+
+	it('shows markers by default and can disable them', async () => {
+		const wrapper = render(Slider, { props: { label: 'Volume' } });
+
+		expect(wrapper.container.querySelectorAll('.hashmark')).toHaveLength(9);
+		await wrapper.rerender({ showStepMarkers: false });
+		expect(wrapper.container.querySelectorAll('.hashmark')).toHaveLength(0);
 	});
 
 	it('applies aria-label to the slider control', () => {
