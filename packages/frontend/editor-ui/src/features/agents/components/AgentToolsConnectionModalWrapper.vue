@@ -963,7 +963,6 @@ function handleRowActivate(item: ToolConnectionItem) {
 					? {
 							category: 'workflows',
 							label: i18n.baseText('generic.create.workflow'),
-							description: i18n.baseText('projectRoles.workflow:create.tooltip'),
 							testId: 'tools-connection-create-workflow',
 						}
 					: undefined

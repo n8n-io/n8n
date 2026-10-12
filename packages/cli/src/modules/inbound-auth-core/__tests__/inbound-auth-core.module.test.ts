@@ -1,16 +1,19 @@
 import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
+	AuthenticationPipeline,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
 	TrustedSourceGate,
 	TrustedSourceStore,
 } from '@n8n/inbound-auth';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
+import { InboundAuthPipeline } from '../authentication-pipeline';
 import { OAuth2AuthenticationService } from '../authentication.service';
 import { TrustedSourceIdentityService } from '../identity/trusted-source-identity.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
@@ -25,6 +28,7 @@ describe('InboundAuthCoreModule', () => {
 		const identityService = mock<TrustedSourceIdentityService>();
 
 		beforeAll(async () => {
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			Container.set(TrustedSourceDbStore, dbStore);
 			Container.set(TrustedSourceDbGate, dbGate);
 			Container.set(TrustedSourceIdentityService, identityService);
@@ -39,6 +43,30 @@ describe('InboundAuthCoreModule', () => {
 			expect(Container.get(TrustedSourceGate)).toBe(dbGate);
 		});
 
+		it('seeds the system trusted source once', async () => {
+			// Mock history from `beforeAll` does not survive into the test, so init again here.
+			dbStore.seedSystemSource.mockClear();
+			await new InboundAuthCoreModule().init();
+
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+			expect(dbStore.seedSystemSource).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'n8n-internal' }),
+			);
+		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'does not seed the system trusted source on a %s instance',
+			async (instanceType) => {
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.seedSystemSource.mockClear();
+
+				await new InboundAuthCoreModule().init();
+
+				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			},
+		);
+
 		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
 			const server = Container.get(LocalAuthorizationServer);
 
@@ -52,6 +80,10 @@ describe('InboundAuthCoreModule', () => {
 
 		it('binds the IdentityService contract to the trusted-source identity service', () => {
 			expect(Container.get(IdentityService)).toBe(identityService);
+		});
+
+		it('binds the AuthenticationPipeline contract to the inbound-auth pipeline', () => {
+			expect(Container.get(AuthenticationPipeline)).toBeInstanceOf(InboundAuthPipeline);
 		});
 	});
 

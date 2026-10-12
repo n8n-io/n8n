@@ -235,6 +235,7 @@ export class AiPreferenceService {
 		);
 		row.project = target.project;
 		row.user = target.user;
+		row.createdBy = user;
 
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
@@ -556,6 +557,14 @@ export class AiPreferenceService {
 				: null,
 			projectId: row.projectId,
 			source: row.source,
+			createdBy: row.createdBy
+				? {
+						id: row.createdBy.id,
+						email: row.createdBy.email,
+						firstName: row.createdBy.firstName,
+						lastName: row.createdBy.lastName,
+					}
+				: null,
 			project: row.project
 				? {
 						id: row.project.id,
