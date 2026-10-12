@@ -24,6 +24,7 @@ Manual trials run the full build, unit tests, lint, typecheck, packaging checks,
 They do not apply PR change scoping. Compare job timings with that difference in mind.
 Use `runner_provider=blacksmith` for a matched full-suite control run.
 The Namespace E2E profile uses 4 vCPU and 8 GB RAM. It costs the same as 2 vCPU and 8 GB (4 units per minute).
+Namespace bills `max(vCPU, GB of RAM / 2)` units, so every profile uses the most vCPU its memory pays for: build 16x32, tests 8x16, tools 4x8.
 It needs the MockServer wait fix (DEVP-1269). Without it, the worker keeps all MockServer logs in memory.
 Record the CPU difference when comparing with Blacksmith's 2-vCPU runners.
 

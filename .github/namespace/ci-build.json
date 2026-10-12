@@ -1,9 +1,9 @@
 {
 	"tag": "n8n-ci-build",
-	"description": "n8n CI build trial: 8 vCPU, 32 GB RAM",
+	"description": "n8n CI build trial: 16 vCPU, 32 GB RAM",
 	"os": "ubuntu-22.04",
 	"instance_shape": {
-		"virtual_cpu": 8,
+		"virtual_cpu": 16,
 		"memory_megabytes": 32768,
 		"machine_arch": "amd64",
 		"os": "linux"
