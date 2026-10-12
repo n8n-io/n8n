@@ -29,23 +29,18 @@ jobs:
     needs: image
     strategy:
       fail-fast: false
+      # Same specs (shards 1 and 14 of the full suite) with one and two workers.
       matrix:
-        provider: [blacksmith, namespace]
-        include:
-          - provider: blacksmith
-            runner: blacksmith-2vcpu-ubuntu-2204
-          - provider: namespace
-            runner: namespace-profile-n8n-ci-e2e-memory-probe
-    name: '8-GB probe: ${{ matrix.provider }}'
-    runs-on: ${{ matrix.runner }}
+        workers: ['1', '2']
+    name: '4x8 probe: ${{ matrix.workers }} worker(s)'
+    runs-on: namespace-profile-n8n-ci-e2e
     timeout-minutes: 50
     env:
       NODE_OPTIONS: --max-old-space-size=6144
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/quality/testing/playwright/.playwright-browsers
-      PLAYWRIGHT_WORKERS: '1'
       TEST_IMAGE_N8N: n8nio/n8n:local
       N8N_SKIP_LICENSES: 'true'
-      CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.provider }}
+      CURRENTS_CI_BUILD_ID: memory-probe-${{ github.run_id }}-${{ github.run_attempt }}-workers-${{ matrix.workers }}
       CURRENTS_PROJECT_ID: qyhJh8 # n8n-sandbox
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -73,6 +68,7 @@ jobs:
           N8N_SANDBOX_SERVICE_URL: ${{ secrets.N8N_SANDBOX_SERVICE_URL }}
           N8N_SANDBOX_SERVICE_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
           PLAYWRIGHT_A11Y_REPORT: '1'
+          WORKERS: ${{ matrix.workers }}
         run: |
           export MEMORY_PROBE_DIR="$RUNNER_TEMP/memory-probe"
           mkdir -p "$MEMORY_PROBE_DIR"
@@ -97,8 +93,14 @@ jobs:
           sampler=$!
           trap 'kill "$sampler" 2>/dev/null || true' EXIT
           export NODE_OPTIONS="$NODE_OPTIONS --require=$GITHUB_WORKSPACE/.github/namespace/memory-probe.cjs"
-          # No retries: each test runs once on every provider.
-          pnpm --filter=n8n-playwright test:container:multi-main:e2e --workers=1 --retries=0 \
+          # No retries: each test runs once in every variant.
+          pnpm --filter=n8n-playwright test:container:multi-main:e2e --workers="$WORKERS" --retries=0 \
+            tests/e2e/workflows/editor/ndv/pinning.spec.ts \
+            tests/e2e/building-blocks/canvas-actions.spec.ts \
+            tests/e2e/workflows/editor/expressions/mapping.spec.ts \
+            tests/e2e/ai/langchain-agents.spec.ts \
+            tests/e2e/projects/project-settings.spec.ts \
+            tests/e2e/scheduling/schedule-trigger-timezone.spec.ts \
             tests/e2e/workflows/editor/ndv/ndv-floating-nodes.spec.ts \
             tests/e2e/ai/assistant-credential-help.spec.ts \
             tests/e2e/ai/workflow-builder-smoke.spec.ts \
@@ -116,7 +118,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: memory-probe-${{ matrix.provider }}
+          name: memory-probe-workers-${{ matrix.workers }}
           # The JSON results give each test's start time for the memory samples.
           path: |
             ${{ runner.temp }}/memory-probe
