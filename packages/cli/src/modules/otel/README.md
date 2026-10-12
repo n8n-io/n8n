@@ -62,6 +62,31 @@ project name holds the user's name and email.
 This key is n8n's single source of truth for the execution identity. Inbound and outbound
 baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
 
+### Start marker spans
+
+A span leaves n8n only when it ends. A marker span tells a trace backend that an execution
+or a node started, before the real span ends.
+
+| Environment variable                       | Default | Marker                                       |
+| ------------------------------------------ | ------- | -------------------------------------------- |
+| `N8N_OTEL_TRACES_EMIT_WORKFLOW_START_SPAN` | `false` | `workflow.execute.started` under each workflow span |
+| `N8N_OTEL_TRACES_EMIT_NODE_START_SPAN`     | `false` | `node.execute.started` under each node span   |
+
+- A marker is a child of the span that it announces. Its duration is 0 ms.
+- A marker has the start attributes of its parent and the execution identity. The node
+  marker does not have node custom tags, because n8n sets them when the node ends.
+- Each `workflow.execute` span gets one workflow marker. A resume after a Wait node starts a
+  new segment with its own `workflow.execute` span.
+- In queue mode, main and the worker each send a `workflow.execute` span for each segment,
+  so each segment gets two workflow markers. The marker from main shows when main queued the
+  execution. The marker from the worker shows when the worker started it. The resource
+  attribute `n8n.instance.role` (`main` or `worker`) tells them apart.
+- The node marker follows the rules of `node.execute`. With
+  `N8N_OTEL_TRACES_INCLUDE_NODE_SPANS=false`, no node marker exists. The node flag doubles
+  the number of node spans.
+- Both flags follow `N8N_OTEL_TRACES_PRODUCTION_ONLY`. Set them on workers too.
+- A marker that fails logs a warning. It does not stop the real span or the execution.
+
 ### Module architecture
 ```mermaid
 graph TD

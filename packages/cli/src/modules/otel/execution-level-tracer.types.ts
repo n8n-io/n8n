@@ -28,6 +28,7 @@ export type StartWorkflowParams = {
 	savedIdentity?: ExecutionIdentity;
 	workflow: WorkflowContext;
 	project?: ProjectContext;
+	emitStartSpan?: boolean;
 };
 
 export type EndWorkflowParams = {
@@ -59,6 +60,7 @@ type NodeTracingParams = Pick<INode, 'id' | 'name' | 'type' | 'typeVersion'>;
 export type StartNodeParams = {
 	executionId: string;
 	node: NodeTracingParams;
+	emitStartSpan?: boolean;
 };
 
 type EndNodeError = {

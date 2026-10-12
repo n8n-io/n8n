@@ -16,11 +16,13 @@ import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_MANAGED_TAG, type CredentialTypeAvailability } from '@n8n/api-types';
 import {
+	ContactInstanceAdminModal,
 	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
+import ModelSelectorRestrictedMarker from './model-selector/ModelSelectorRestrictedMarker.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
@@ -42,6 +44,7 @@ const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
+	restriction?: CredentialTypeAvailability;
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -98,6 +101,7 @@ const pendingDefaultCredential = ref<{
 	provider: AgentModelProvider;
 	credentialId: string;
 } | null>(null);
+const contactAdminSubject = ref<string | null>(null);
 const forceModelOptionsDisabled = ref(false);
 const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
@@ -232,6 +236,17 @@ const restrictedLabel = computed(() =>
 		: undefined,
 );
 
+function restrictedCredentialsName(item: MenuItem): string {
+	return i18n.baseText('agents.modelSelector.restrictedCredentials', {
+		interpolate: { provider: item.label },
+	});
+}
+
+function requestContactAdmin(subject: string) {
+	dropdownRef.value?.close();
+	contactAdminSubject.value = subject;
+}
+
 function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const definition = AGENT_MODEL_PROVIDER_DEFINITIONS[provider];
 	const credentialTypes = getProviderCredentialTypes(provider);
@@ -245,6 +260,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				provider,
 				credentialType: credentialTypes[0],
 				restrictedLabel: i18n.baseText(SCOPE_LABEL_KEY[restriction.scope ?? 'instance']),
+				restriction,
 			},
 		};
 	}
@@ -690,30 +706,53 @@ defineExpose({
 </script>
 
 <template>
-	<N8nAiModelSelectorDropdown
-		ref="dropdownRef"
-		:items="filteredMenu"
-		:is-loading="isLoading || isResolvingDefaultModel"
-		:selected-label="selectedLabel"
-		:selected-credential-name="selectedCredentialName"
-		:credentials-missing="isCredentialsMissing"
-		:restricted-label="restrictedLabel"
-		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
-		:disabled="disabled"
-		data-test-id="agent-model-selector"
-		credential-data-test-id="agent-model-selector-credential"
-		@search="handleSearch"
-		@select="onSelect"
-	>
-		<template #trigger-leading="{ ui }">
-			<ModelSelectorTriggerIcon
-				:credential-type-name="triggerCredentialTypeName"
-				:class="ui.class"
-			/>
-		</template>
+	<div :class="$style.root">
+		<N8nAiModelSelectorDropdown
+			ref="dropdownRef"
+			:items="filteredMenu"
+			:is-loading="isLoading || isResolvingDefaultModel"
+			:selected-label="selectedLabel"
+			:selected-credential-name="selectedCredentialName"
+			:credentials-missing="isCredentialsMissing"
+			:restricted-label="restrictedLabel"
+			:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
+			:disabled="disabled"
+			data-test-id="agent-model-selector"
+			credential-data-test-id="agent-model-selector-credential"
+			@search="handleSearch"
+			@select="onSelect"
+		>
+			<template #trigger-leading="{ ui }">
+				<ModelSelectorTriggerIcon
+					:credential-type-name="triggerCredentialTypeName"
+					:class="ui.class"
+				/>
+			</template>
 
-		<template #item-leading="{ item, ui }">
-			<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
-		</template>
-	</N8nAiModelSelectorDropdown>
+			<template #item-leading="{ item, ui }">
+				<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
+			</template>
+
+			<template #item-restricted="{ item }">
+				<ModelSelectorRestrictedMarker
+					:name="restrictedCredentialsName(item)"
+					:scope="item.data?.restriction?.scope"
+					@contact-admin="requestContactAdmin(restrictedCredentialsName(item))"
+				/>
+			</template>
+		</N8nAiModelSelectorDropdown>
+		<ContactInstanceAdminModal
+			kind="credential"
+			:node-type-name="contactAdminSubject ?? ''"
+			:open="contactAdminSubject !== null"
+			@update:open="(isOpen) => !isOpen && (contactAdminSubject = null)"
+		/>
+	</div>
 </template>
+
+<style lang="scss" module>
+// The dialog is a sibling of the dropdown; the wrapper must not change the host layout.
+.root {
+	display: contents;
+}
+</style>

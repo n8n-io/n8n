@@ -168,6 +168,29 @@ describe('N8nAiModelSelectorDropdown', () => {
 		expect(getByTestId('ai-model-selector-restricted-icon')).toBeInTheDocument();
 	});
 
+	it('renders the item-restricted slot in place of the lock', async () => {
+		const { getByTestId, queryByTestId } = render(N8nAiModelSelectorDropdown, {
+			props: {
+				...defaultProps,
+				items: [
+					...baseItems,
+					{
+						id: 'anthropic',
+						label: 'Anthropic',
+						disabled: true,
+						data: { restrictedLabel: 'Restricted on this instance' },
+					},
+				],
+			},
+			slots: { 'item-restricted': '<span data-test-id="custom-restricted-marker" />' },
+		});
+
+		await userEvent.click(getByTestId('ai-model-selector'));
+
+		await waitFor(() => expect(getByTestId('custom-restricted-marker')).toBeInTheDocument());
+		expect(queryByTestId('ai-model-selector-restricted-icon')).not.toBeInTheDocument();
+	});
+
 	it('emits select and search events', async () => {
 		const { getByTestId, getByText, emitted } = render(N8nAiModelSelectorDropdown, {
 			props: {

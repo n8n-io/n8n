@@ -79,6 +79,7 @@ const emit = defineEmits<{
 defineSlots<{
 	'trigger-leading'?: (props: { ui: { class: string } }) => void;
 	'item-leading'?: (props: { item: AiModelSelectorMenuItem<TData>; ui: { class: string } }) => void;
+	'item-restricted'?: (props: { item: AiModelSelectorMenuItem<TData> }) => void;
 }>();
 
 const dropdownRef = useTemplateRef('dropdownRef');
@@ -106,6 +107,7 @@ defineExpose({
 	open: () => {
 		if (!disabled) dropdownRef.value?.open();
 	},
+	close: () => dropdownRef.value?.close(),
 });
 </script>
 
@@ -233,12 +235,14 @@ defineExpose({
 				<N8nText size="xsmall" color="text-light" data-test-id="ai-model-selector-restriction">
 					{{ item.data.restrictedLabel }}
 				</N8nText>
-				<N8nIcon
-					icon="lock"
-					size="xsmall"
-					color="text-light"
-					data-test-id="ai-model-selector-restricted-icon"
-				/>
+				<slot name="item-restricted" :item="item">
+					<N8nIcon
+						icon="lock"
+						size="xsmall"
+						color="text-light"
+						data-test-id="ai-model-selector-restricted-icon"
+					/>
+				</slot>
 			</span>
 			<N8nTooltip
 				v-else-if="item.data?.description"
