@@ -41,6 +41,23 @@ export interface PlannedAgentDestinations {
 	workflows?: ReadonlyMap<string, string>;
 }
 
+export function findMissingAgentDefinitionBodies(
+	definition: Pick<CompleteAgentDefinition, 'config' | 'skills' | 'tools' | 'tasks'>,
+) {
+	const references = [
+		['skills', definition.config?.skills ?? [], new Set(Object.keys(definition.skills))],
+		[
+			'tools',
+			definition.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],
+			new Set(Object.keys(definition.tools)),
+		],
+		['tasks', definition.config?.tasks ?? [], new Set(definition.tasks.keys())],
+	] as const;
+	return references.flatMap(([kind, refs, ids]) =>
+		refs.filter(({ id }) => !ids.has(id)).map(({ id }) => ({ kind, id })),
+	);
+}
+
 /** Keep configuration, inline bodies and skill bodies from the same draft or version. */
 export function getAgentDefinitionContent(
 	source: Pick<AgentHistory, 'schema' | 'tools'>,
