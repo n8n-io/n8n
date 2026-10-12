@@ -693,18 +693,12 @@ describe('N8nDialog', () => {
 			expect(body).toContainElement(getByTestId('dialog-body'));
 			expect(footer).toContainElement(getByTestId('dialog-cancel'));
 			expect(body).not.toContainElement(footer);
-			expect(
-				header!.compareDocumentPosition(body!) & Node.DOCUMENT_POSITION_FOLLOWING,
-			).toBeTruthy();
-			expect(
-				body!.compareDocumentPosition(footer!) & Node.DOCUMENT_POSITION_FOLLOWING,
-			).toBeTruthy();
+			expect(header!.compareDocumentPosition(body!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+			expect(body!.compareDocumentPosition(footer!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
 			const closeButton = getByRole('button', { name: 'Close dialog' });
 			expect(header).not.toContainElement(closeButton);
-			expect(
-				footer!.compareDocumentPosition(closeButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-			).toBeTruthy();
+			expect(footer!.compareDocumentPosition(closeButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 	});
 
