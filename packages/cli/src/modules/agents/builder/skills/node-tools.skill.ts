@@ -65,6 +65,9 @@ conventions. Never add an incomplete tool or use a placeholder URL.
   follow its MCP Servers section, and stop this node-tool workflow.
 - If it returns \`kind: "node"\`, use its returned node results and call
   \`agent_builder_get_node_types\`; do not repeat the same search with \`agent_builder_search_nodes\`.
+- Fetch every node definition that the build needs in one
+  \`agent_builder_get_node_types\` call, with all nodes and operations together.
+  Do not fetch one service per call.
 - Call \`agent_builder_search_nodes\` directly only when the user explicitly requests an n8n
   node, when refining node results, or when a verified MCP server lacks the
   requested capability.

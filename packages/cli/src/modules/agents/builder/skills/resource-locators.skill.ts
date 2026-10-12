@@ -57,7 +57,9 @@ agent, resolve the credential and any ambiguity immediately instead.
 
 ## Workflow
 
-1. Discover and inspect the node with \`agent_builder_search_nodes\`, then \`agent_builder_get_node_types\`.
+1. Inspect the node with \`agent_builder_get_node_types\`. Use the node results
+   from the \`agent-context\` integration lookup and the definitions you already
+   fetched. Call \`agent_builder_search_nodes\` only when no lookup returned the node.
 2. Identify dynamic selectors from node metadata. Treat these as build-time
    lookup fields:
    - \`type: "resourceLocator"\`

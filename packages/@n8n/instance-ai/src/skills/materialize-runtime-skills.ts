@@ -13,6 +13,7 @@ import {
 	type Workspace,
 } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';
@@ -73,6 +74,16 @@ interface MaterializeRuntimeSkillsOptions {
 	root: string;
 	workspaceRoot?: string;
 	logger: Logger;
+	/** A bundle already built for the same source and root. */
+	bundle?: RuntimeSkillWorkspaceBundle;
+}
+
+export interface WorkspaceRuntimeSkillSource extends RuntimeSkillSource {
+	/**
+	 * Resolves when the skill files are in the workspace. Skill loads do not
+	 * wait for the files, so sandbox commands that read them must wait here.
+	 */
+	whenFilesWritten?: () => Promise<void>;
 }
 
 interface LazyWorkspaceRuntimeSkillSourceOptions {
@@ -390,6 +401,7 @@ export async function loadPrebakedRuntimeSkillsBundle({
 	root,
 	workspaceRoot = root,
 	logger,
+	bundle,
 }: MaterializeRuntimeSkillsOptions): Promise<RuntimeSkillWorkspaceBundle | undefined> {
 	if (source.registry.skills.length === 0) return undefined;
 
@@ -420,13 +432,14 @@ export async function loadPrebakedRuntimeSkillsBundle({
 			count: bundle.skills.length,
 		}),
 		buildBundle: async () =>
-			await buildRuntimeSkillWorkspaceBundle({
+			bundle ??
+			(await buildRuntimeSkillWorkspaceBundle({
 				source,
 				root,
 				workspaceRoot,
 				skillsRoot,
 				logger,
-			}),
+			})),
 	});
 }
 
@@ -596,6 +609,7 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	workspace,
 	root,
 	logger,
+	bundle,
 }: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
 	return await traceSandboxOperation(
 		'sync-skills',
@@ -613,13 +627,14 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 				resourceLabel: RUNTIME_SKILL_FILE_LABEL,
 				logger,
 				loadPrebaked: async () =>
-					await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
+					await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger, bundle }),
 				buildBundle: async () => {
-					const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
-					if (!bundle) {
+					const built =
+						bundle ?? (await buildRuntimeSkillWorkspaceBundle({ source, root, logger }));
+					if (!built) {
 						throw new Error('Expected runtime skill bundle after registry validation');
 					}
-					return bundle;
+					return built;
 				},
 				materializedLogMessage: 'Materialized runtime skills into workspace',
 				materializedLogContext: (bundle) => ({
@@ -638,17 +653,23 @@ export function createLazyWorkspaceRuntimeSkillSource({
 	source,
 	workspace,
 	logger,
-}: LazyWorkspaceRuntimeSkillSourceOptions): RuntimeSkillSource {
+}: LazyWorkspaceRuntimeSkillSourceOptions): WorkspaceRuntimeSkillSource {
 	if (!workspace || source.registry.skills.length === 0) return source;
 	const runtimeWorkspace = workspace;
 
-	let materialized: MaterializedRuntimeSkills | undefined;
-	let materializePromise: Promise<MaterializedRuntimeSkills | undefined> | undefined;
+	interface BuiltSkills {
+		bundle: RuntimeSkillWorkspaceBundle;
+		root: string;
+	}
+	let built: BuiltSkills | undefined;
+	let buildPromise: Promise<BuiltSkills | undefined> | undefined;
+	let filesWritten = false;
+	let writePromise: Promise<void> | undefined;
 
-	const workspaceSource: RuntimeSkillSource = {
+	const workspaceSource: WorkspaceRuntimeSkillSource = {
 		registry: source.registry,
 		prepare: async () => {
-			await ensureMaterialized();
+			await ensureBuilt();
 		},
 		loadSkill: async (skillId: string) => await (await ensureSource()).loadSkill(skillId),
 		...(source.loadFile
@@ -659,30 +680,60 @@ export function createLazyWorkspaceRuntimeSkillSource({
 					},
 				}
 			: {}),
+		whenFilesWritten: async () => {
+			if (!built) return;
+			await writeFiles(built).catch(logWriteFailure);
+		},
 	};
 
-	async function ensureMaterialized(): Promise<MaterializedRuntimeSkills | undefined> {
-		if (materialized) return materialized;
+	// Skill text comes from the in-memory bundle, so a load returns before the
+	// sandbox writes finish. The writes continue in the background.
+	async function ensureBuilt(): Promise<RuntimeSkillWorkspaceBundle | undefined> {
+		if (!built) {
+			buildPromise ??= (async () => {
+				const root = await getWorkspaceRoot(runtimeWorkspace);
+				const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
+				if (!bundle) return undefined;
+				built = { bundle, root };
+				workspaceSource.registry = bundle.source.registry;
+				return built;
+			})().catch((error: unknown) => {
+				buildPromise = undefined;
+				throw error;
+			});
+			await buildPromise;
+		}
+		if (built) void writeFiles(built).catch(logWriteFailure);
+		return built?.bundle;
+	}
 
-		materializePromise ??= (async () => {
-			const root = await getWorkspaceRoot(runtimeWorkspace);
-			const options = { source, workspace: runtimeWorkspace, root, logger };
-			const result = await materializeRuntimeSkillsIntoWorkspace(options);
-			if (result) {
-				materialized = result;
-				workspaceSource.registry = result.source.registry;
-			}
-			return result;
-		})().catch((error: unknown) => {
-			materializePromise = undefined;
-			throw error;
+	async function writeFiles({ bundle, root }: BuiltSkills): Promise<void> {
+		if (filesWritten) return;
+		writePromise ??= materializeRuntimeSkillsIntoWorkspace({
+			source,
+			workspace: runtimeWorkspace,
+			root,
+			logger,
+			bundle,
+		})
+			.then(() => {
+				filesWritten = true;
+			})
+			.catch((error: unknown) => {
+				writePromise = undefined;
+				throw error;
+			});
+		await writePromise;
+	}
+
+	function logWriteFailure(error: unknown): void {
+		logger.warn('Failed to write runtime skills into the workspace', {
+			error: getErrorMessage(error),
 		});
-
-		return await materializePromise;
 	}
 
 	async function ensureSource(): Promise<RuntimeSkillSource> {
-		return (await ensureMaterialized())?.source ?? source;
+		return (await ensureBuilt())?.source ?? source;
 	}
 
 	return workspaceSource;

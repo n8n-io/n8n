@@ -266,7 +266,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(materialized.skills.map(({ id }) => id)).not.toContain('post-build-flow');
 	});
 
-	it('materializes skills into the workspace before load_skill reads them', async () => {
+	it('materializes skills into the workspace when load_skill first runs', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand } = createMockWorkspace();
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
@@ -277,6 +277,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(runtimeSource);
 
 		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await runtimeSource.whenFilesWritten?.();
 		const root = '/home/daytona/workspace';
 		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
 		const skillPath = `${skillDir}/SKILL.md`;
@@ -290,6 +291,57 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns the skill before the workspace writes finish', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, writes, writeFile } = createMockWorkspace();
+		let releaseWrites: () => void = () => {};
+		const writesReleased = new Promise<void>((resolve) => {
+			releaseWrites = resolve;
+		});
+		writeFile.mockImplementation(async (path: string, content: string | Buffer) => {
+			await writesReleased;
+			writes.set(path, Buffer.isBuffer(content) ? content.toString('utf-8') : content);
+		});
+		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
+			source,
+			workspace,
+		});
+
+		const result = await createSkillLoadTool(runtimeSource).handler?.(
+			{ skillId: 'data-table-manager' },
+			{},
+		);
+
+		const skillPath = `/home/daytona/workspace/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
+		expect(skillLoadText(result)).toContain(skillPath);
+		expect(writes.has(skillPath)).toBe(false);
+
+		let filesWritten = false;
+		const pending = runtimeSource.whenFilesWritten?.().then(() => {
+			filesWritten = true;
+		});
+		await Promise.resolve();
+		expect(filesWritten).toBe(false);
+
+		releaseWrites();
+		await pending;
+		expect(writes.get(skillPath)).toContain('workflow_builder_data_tables');
+	});
+
+	it('does not wait for skill files when no skill was loaded', async () => {
+		const { workspace, writeFile } = createMockWorkspace();
+		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
+			source: loadInstanceAiRuntimeSkillSource(),
+			workspace,
+		});
+
+		await runtimeSource.whenFilesWritten?.();
+
+		expect(writeFile).not.toHaveBeenCalled();
 	});
 
 	it('uses prebaked runtime skills when the manifest matches the source hash', async () => {
@@ -309,6 +361,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		});
 		const loadTool = createSkillLoadTool(runtimeSource);
 		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await runtimeSource.whenFilesWritten?.();
 
 		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
 		const skillPath = `${skillDir}/SKILL.md`;
@@ -341,6 +394,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(runtimeSource);
 
 		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await runtimeSource.whenFilesWritten?.();
 
 		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();
@@ -362,6 +416,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(runtimeSource);
 
 		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
+		await runtimeSource.whenFilesWritten?.();
 
 		const skillPath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager/SKILL.md`;
 		expect(writeFile).toHaveBeenCalled();

@@ -1077,8 +1077,12 @@ describe('InstanceAiService — runtime workspace setup', () => {
 
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
-			2,
+			1,
 			expect.objectContaining({ id: 'instance-ai-runtime-skill-workspace' }),
+		);
+		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ beforeUse: expect.any(Function) }),
 		);
 		expect(createLazyWorkspaceRuntimeSkillSource).toHaveBeenCalledTimes(1);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledTimes(1);
