@@ -768,6 +768,15 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(createHubSkill).not.toHaveBeenCalled();
 	});
 
+	it('detaches a skill from the picker preview by dropping its ref only', () => {
+		const { modalData, scheduleConfigUpdate } = setupHub();
+
+		modalData.onRemove?.('tone');
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
+		expect(createHubSkill).not.toHaveBeenCalled();
+	});
+
 	it('passes the flag to the edit modal so it can check the edit permission', () => {
 		const { actions, uiStore } = setupHub();
 

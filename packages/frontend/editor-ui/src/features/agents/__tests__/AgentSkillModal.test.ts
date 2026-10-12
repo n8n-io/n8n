@@ -56,7 +56,7 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 				</button>
 				<div v-if="items.length === 0" data-testid="agent-skill-picker-empty">{{ emptyMessage }}</div>
 				<div v-for="item in items" :key="item.id" data-testid="agent-skill-picker-row">
-					<span>{{ item.title }}</span>
+					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
 					<span data-testid="agent-skill-picker-scope">{{ item.scopeLabel }}</span>
 					<span v-if="item.disabled" data-testid="agent-skill-picker-disabled">{{ item.disabledReason }}</span>
 					<span v-else-if="item.status === 'connected'" data-testid="agent-skill-picker-added">{{ connectedLabel(item) }}</span>
@@ -500,6 +500,95 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-modal-back'));
 			expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
+			expect(getByTestId('agent-skill-picker')).toBeVisible();
+		});
+
+		it('opens a read-only preview from a row click and adds the skill from there', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
+			getHubSkill.mockResolvedValue(
+				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: true }),
+			);
+			const onAttach = vi.fn();
+			const { findAllByTestId, findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach,
+			});
+
+			await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[1]);
+
+			expect(await findByTestId('agent-skill-preview')).toBeInTheDocument();
+			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
+			expect(getByTestId('agent-skill-instructions-editor')).toHaveValue('Instructions');
+			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-remove')).not.toBeInTheDocument();
+			expect(onAttach).not.toHaveBeenCalled();
+
+			await fireEvent.click(getByTestId('agent-skill-preview-add'));
+
+			expect(onAttach).toHaveBeenCalledWith(instanceSkill);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('offers to remove an attached skill from its preview', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			getHubSkill.mockResolvedValue(
+				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+			);
+			const onRemove = vi.fn();
+			const { findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				attachedSkillIds: ['tone'],
+				onAttach: vi.fn(),
+				onRemove,
+			});
+
+			await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+			await findByTestId('agent-skill-preview');
+
+			expect(queryByTestId('agent-skill-preview-add')).not.toBeInTheDocument();
+			await fireEvent.click(getByTestId('agent-skill-remove'));
+
+			expect(onRemove).toHaveBeenCalledWith('tone');
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('returns from the preview to the picker', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			getHubSkill.mockResolvedValue(
+				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+			);
+			const { findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+			});
+
+			await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+			await findByTestId('agent-skill-preview');
+			await fireEvent.click(getByTestId('agent-modal-back'));
+
+			expect(queryByTestId('agent-skill-preview')).not.toBeInTheDocument();
+			expect(getByTestId('agent-skill-picker')).toBeVisible();
+		});
+
+		it('stays on the picker when the preview cannot load', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			getHubSkill.mockRejectedValue(new Error('Not found'));
+			const { findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				onAttach: vi.fn(),
+			});
+
+			await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(
+					expect.any(Error),
+					'agents.builder.skills.picker.previewError',
+				),
+			);
+			expect(queryByTestId('agent-skill-preview')).not.toBeInTheDocument();
 			expect(getByTestId('agent-skill-picker')).toBeVisible();
 		});
 

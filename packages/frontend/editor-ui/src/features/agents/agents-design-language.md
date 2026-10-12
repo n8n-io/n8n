@@ -227,7 +227,10 @@ When the skills hub is on, `Add skill` starts with the skill picker. The picker
 shows only skills that the Agent can use: skills of its project and instance
 skills. Show the scope next to the skill name. Show `Added` for an attached
 skill. Disable a skill whose name is hard to tell apart from an attached skill,
-and give the reason in its tooltip. `Create skill` opens the upload screen, and
+and give the reason in its tooltip. The row action adds the skill. A row click
+opens a read-only preview with Back, Cancel, and `Add skill`. The preview of an
+attached skill shows `Remove skill` instead of `Add skill`. Do not edit a skill
+from the picker. `Create skill` opens the upload screen, and
 Back returns to the picker. A user who can create instance skills selects the
 scope with `Save to` at the bottom left of the editor.
 

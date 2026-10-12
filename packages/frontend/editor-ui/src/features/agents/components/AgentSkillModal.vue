@@ -88,7 +88,7 @@ const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
 const isEditing = computed(() => !!props.data.skillId);
 const hasPicker = !props.data.skillId && !!props.data.hubSkillsEnabled && !!props.data.onAttach;
-const step = ref<'select' | 'upload' | 'manual' | 'edit'>(
+const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
 );
 const isImporting = ref(false);
@@ -118,6 +118,31 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 		};
 	}),
 );
+
+const previewSkill = ref<SkillDetail | null>(null);
+const previewPath = ref(SKILL_FILE);
+const previewLoading = ref(false);
+const previewIsAdded = computed(
+	() => !!previewSkill.value && attachedSkillIds.value.has(previewSkill.value.id),
+);
+const footerLeftContent = computed<'remove' | 'scope' | undefined>(() => {
+	if (step.value === 'preview') {
+		return previewIsAdded.value && props.data.onRemove ? 'remove' : undefined;
+	}
+	if (isEditing.value && props.data.onRemove) return 'remove';
+	return showScopeSelect.value ? 'scope' : undefined;
+});
+const footerPrimaryAction = computed<'add' | 'save' | undefined>(() => {
+	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
+	return isReadOnly.value ? undefined : 'save';
+});
+const modalTitle = computed(() => {
+	if (step.value === 'select' || step.value === 'upload') {
+		return i18n.baseText('agents.builder.skills.add');
+	}
+	if (step.value === 'preview') return previewSkill.value?.name ?? '';
+	return skill.value.name;
+});
 
 const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
@@ -231,9 +256,27 @@ async function loadSkillAccess(skillId: string) {
 	}
 }
 
-function onPickerItemActivate(item: ToolConnectionItem) {
+function onPickerItemAdd(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled || item.status === 'connected') return;
-	const librarySkill = librarySkills.value.find((candidate) => candidate.id === item.skillId);
+	attachLibrarySkill(item.skillId);
+}
+
+async function onPickerItemPreview(item: ToolConnectionItem) {
+	if (item.kind !== 'skill' || item.disabled) return;
+	previewLoading.value = true;
+	try {
+		previewSkill.value = await getHubSkill(rootStore.restApiContext, item.skillId);
+		previewPath.value = SKILL_FILE;
+		step.value = 'preview';
+	} catch (error) {
+		showError(error, i18n.baseText('agents.builder.skills.picker.previewError'));
+	} finally {
+		previewLoading.value = false;
+	}
+}
+
+function attachLibrarySkill(skillId: string) {
+	const librarySkill = librarySkills.value.find((candidate) => candidate.id === skillId);
 	if (!librarySkill) return;
 	props.data.onAttach?.(librarySkill);
 	closeModal();
@@ -252,7 +295,7 @@ function onSkillUploaded(importedSkill: AgentSkill) {
 }
 
 function onBack() {
-	if (step.value === 'upload') {
+	if (step.value === 'upload' || step.value === 'preview') {
 		step.value = 'select';
 		return;
 	}
@@ -346,8 +389,9 @@ function onSave() {
 }
 
 function onRemove() {
-	if (!props.data.skillId) return;
-	props.data.onRemove?.(props.data.skillId);
+	const skillId = step.value === 'preview' ? previewSkill.value?.id : props.data.skillId;
+	if (!skillId) return;
+	props.data.onRemove?.(skillId);
 	closeModal();
 }
 </script>
@@ -356,19 +400,15 @@ function onRemove() {
 	<AgentModalMultiStep
 		:open="modalOpen"
 		:step="step"
-		:title="
-			step === 'select' || step === 'upload'
-				? i18n.baseText('agents.builder.skills.add')
-				: skill.name
-		"
+		:title="modalTitle"
 		:title-placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
 		:title-max-length="128"
 		:title-error="visibleNameError"
 		:editable-title="step === 'manual' || (step === 'edit' && !isReadOnly)"
-		:show-back="step === 'manual' || (step === 'upload' && hasPicker)"
-		:show-footer="step === 'manual' || step === 'edit'"
+		:show-back="step === 'manual' || step === 'preview' || (step === 'upload' && hasPicker)"
+		:show-footer="step === 'manual' || step === 'edit' || step === 'preview'"
 		:body-flush="step !== 'select'"
-		:busy="isImporting"
+		:busy="isImporting || previewLoading"
 		size="fit"
 		data-testid="agent-skill-modal"
 		@update:open="!$event && closeModal()"
@@ -406,12 +446,30 @@ function onRemove() {
 				show-connect-actions
 				persistent-scrollbar
 				data-testid="agent-skill-picker"
-				@connect="onPickerItemActivate"
-				@open-detail="onPickerItemActivate"
+				@connect="onPickerItemAdd"
+				@open-detail="onPickerItemPreview"
 				@create="step = 'upload'"
 			/>
 		</div>
-		<template v-if="step !== 'select'">
+		<div
+			v-if="step === 'preview' && previewSkill"
+			:class="$style.content"
+			data-testid="agent-skill-preview"
+		>
+			<AgentSkillFileNav
+				:skill="previewSkill.skill"
+				:selected-path="previewPath"
+				read-only
+				@select="previewPath = $event"
+			/>
+			<AgentSkillViewer
+				:skill="previewSkill.skill"
+				:selected-path="previewPath"
+				disabled
+				@select:path="previewPath = $event"
+			/>
+		</div>
+		<template v-else-if="step !== 'select'">
 			<N8nCallout
 				v-if="openedWithMissingContent && !isReadOnly"
 				theme="warning"
@@ -460,9 +518,9 @@ function onRemove() {
 			</div>
 		</template>
 
-		<template v-if="(isEditing && data.onRemove) || showScopeSelect" #footerLeft>
+		<template v-if="footerLeftContent" #footerLeft>
 			<N8nButton
-				v-if="isEditing"
+				v-if="footerLeftContent === 'remove'"
 				variant="ghost"
 				data-testid="agent-skill-remove"
 				@click="onRemove"
@@ -489,8 +547,16 @@ function onRemove() {
 				</N8nSelect>
 			</label>
 		</template>
-		<template v-if="!isReadOnly" #footerActions>
-			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
+		<template v-if="footerPrimaryAction" #footerActions>
+			<N8nButton
+				v-if="footerPrimaryAction === 'add'"
+				variant="solid"
+				data-testid="agent-skill-preview-add"
+				@click="previewSkill && attachLibrarySkill(previewSkill.id)"
+			>
+				{{ i18n.baseText('agents.builder.skills.picker.add') }}
+			</N8nButton>
+			<N8nButton v-else variant="solid" data-testid="agent-skill-create-save" @click="onSave">
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>

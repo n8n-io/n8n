@@ -448,6 +448,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				attachedSkillIds: appliedSkills.value.map(({ id }) => id),
 				projectLabel: projectName.value ?? undefined,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
+				onRemove: (skillId: string) => {
+					if (!isCurrentTarget()) return;
+					onRemoveSkill(skillId);
+				},
 				onAttach: (librarySkill: SkillListItem) => {
 					void attachHubSkill(
 						isCurrentTarget,

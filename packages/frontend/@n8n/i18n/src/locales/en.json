@@ -8910,6 +8910,7 @@
 	"agents.builder.skills.picker.empty": "No skills to add. Create one, or ask an admin to share one with this project.",
 	"agents.builder.skills.picker.noResults": "No skills match your search",
 	"agents.builder.skills.picker.loadError": "Could not load skills",
+	"agents.builder.skills.picker.previewError": "Could not load the skill",
 	"agents.builder.skills.picker.similarName": "Skills {names} have names that are hard to tell apart. Rename one of them.",
 	"agents.builder.skills.attach.error": "Could not add skill",
 	"agents.builder.skills.scope.label": "Save to",
