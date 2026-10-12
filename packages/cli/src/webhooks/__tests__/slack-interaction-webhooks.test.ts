@@ -46,6 +46,8 @@ describe('SlackInteractionWebhooks', () => {
 		mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET }),
 		mock<EventService>(),
 		mock(),
+		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {
