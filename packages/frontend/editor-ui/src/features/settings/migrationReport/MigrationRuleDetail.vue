@@ -21,6 +21,7 @@ import {
 	N8nInput,
 	N8nLink,
 	N8nLoading,
+	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
 	N8nText,
 	N8nUserSelect,
@@ -35,7 +36,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
 import FindingStateSelect from './components/FindingStateSelect.vue';
@@ -296,13 +297,23 @@ const openCount = computed(
 const savingWorkflowIds = ref<Set<string>>(new Set());
 
 // The state is a shallow ref, so replace the list to make the table update.
-function setFindingStatus(workflowId: string, status: MigrationFindingTriageStatus) {
+function setFindingStatuses(statuses: Map<string, MigrationFindingTriageStatus>) {
 	state.value = {
 		...state.value,
-		affectedWorkflows: state.value.affectedWorkflows.map((workflow) =>
-			workflow.id === workflowId ? { ...workflow, status } : workflow,
-		),
+		affectedWorkflows: state.value.affectedWorkflows.map((workflow) => {
+			const status = statuses.get(workflow.id);
+			return status ? { ...workflow, status } : workflow;
+		}),
 	};
+}
+
+function setSaving(workflowIds: string[], saving: boolean) {
+	const next = new Set(savingWorkflowIds.value);
+	for (const workflowId of workflowIds) {
+		if (saving) next.add(workflowId);
+		else next.delete(workflowId);
+	}
+	savingWorkflowIds.value = next;
 }
 
 async function onFindingStatusChange(
@@ -312,8 +323,8 @@ async function onFindingStatusChange(
 	const previousStatus = workflow.status;
 	if (status === previousStatus || savingWorkflowIds.value.has(workflow.id)) return;
 
-	setFindingStatus(workflow.id, status);
-	savingWorkflowIds.value = new Set(savingWorkflowIds.value).add(workflow.id);
+	setFindingStatuses(new Map([[workflow.id, status]]));
+	setSaving([workflow.id], true);
 	try {
 		await breakingChangesApi.updateFindingStatus(
 			rootStore.restApiContext,
@@ -322,12 +333,59 @@ async function onFindingStatusChange(
 			status,
 		);
 	} catch (error) {
-		setFindingStatus(workflow.id, previousStatus);
+		setFindingStatuses(new Map([[workflow.id, previousStatus]]));
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
 	} finally {
-		const saving = new Set(savingWorkflowIds.value);
-		saving.delete(workflow.id);
-		savingWorkflowIds.value = saving;
+		setSaving([workflow.id], false);
+	}
+}
+
+const selectedWorkflowIds = ref<string[]>([]);
+
+const selectedWorkflows = computed(() => {
+	const selected = new Set(selectedWorkflowIds.value);
+	return state.value.affectedWorkflows.filter((workflow) => selected.has(workflow.id));
+});
+
+// A migrated row has no state to change, so it cannot be selected.
+function isSelectable(workflow: AffectedWorkflow): boolean {
+	return !migratedWorkflowIds.value.has(workflow.id);
+}
+
+/** The selected rows that a bulk change to `status` would change. */
+function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
+	return selectedWorkflows.value.filter(
+		(workflow) =>
+			workflow.status !== status &&
+			isSelectable(workflow) &&
+			!savingWorkflowIds.value.has(workflow.id),
+	);
+}
+
+async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
+	const workflows = bulkTargets(status);
+	if (workflows.length === 0) return;
+
+	const workflowIds = workflows.map((workflow) => workflow.id);
+	setFindingStatuses(new Map(workflowIds.map((workflowId) => [workflowId, status])));
+	setSaving(workflowIds, true);
+	try {
+		await breakingChangesApi.updateFindingStatuses(
+			rootStore.restApiContext,
+			props.migrationRuleId,
+			workflowIds,
+			status,
+		);
+		// Keep the rows that the user selected while the request was in flight.
+		const changed = new Set(workflowIds);
+		selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+			(workflowId) => !changed.has(workflowId),
+		);
+	} catch (error) {
+		setFindingStatuses(new Map(workflows.map((workflow) => [workflow.id, workflow.status])));
+		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
+	} finally {
+		setSaving(workflowIds, false);
 	}
 }
 
@@ -456,6 +514,14 @@ const filteredWorkflows = computed(() => {
 			(!stateFilter.value || findingState(workflow) === stateFilter.value) &&
 			matchesWorkflowFilters(workflow, workflowFilters.value, now),
 	);
+});
+
+// A bulk action must not change rows the user cannot see, so a search or a
+// filter drops the hidden rows from the selection.
+watch(filteredWorkflows, (workflows) => {
+	const visible = new Set(workflows.map((workflow) => workflow.id));
+	const kept = selectedWorkflowIds.value.filter((workflowId) => visible.has(workflowId));
+	if (kept.length !== selectedWorkflowIds.value.length) selectedWorkflowIds.value = kept;
 });
 
 // The owner cell shows a label, so it sorts by that label and not by the owner object.
@@ -617,6 +683,9 @@ const sortedWorkflows = computed(() => {
 		<N8nDataTableServer
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
+			v-model:selection="selectedWorkflowIds"
+			:show-select="canMigrate"
+			:item-selectable="isSelectable"
 			:items-per-page="sortedWorkflows.length + 1"
 			:items="sortedWorkflows"
 			:items-length="sortedWorkflows.length"
@@ -743,6 +812,30 @@ const sortedWorkflows = computed(() => {
 				</div>
 			</template>
 		</N8nDataTableServer>
+
+		<div v-if="selectedWorkflowIds.length > 0" :class="$style.selectionBar">
+			<N8nSelectedItemsInfo
+				:selected-count="selectedWorkflowIds.length"
+				@clear-selection="selectedWorkflowIds = []"
+			>
+				<template #actions>
+					<N8nButton
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
+						:disabled="bulkTargets('wont_fix').length === 0"
+						data-test-id="migration-bulk-wont-fix-button"
+						@click="onBulkStatusChange('wont_fix')"
+					/>
+					<N8nButton
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.detail.bulk.reopen')"
+						:disabled="bulkTargets('open').length === 0"
+						data-test-id="migration-bulk-reopen-button"
+						@click="onBulkStatusChange('open')"
+					/>
+				</template>
+			</N8nSelectedItemsInfo>
+		</div>
 	</N8nSettingsLayout>
 </template>
 
@@ -784,6 +877,15 @@ const sortedWorkflows = computed(() => {
 	align-items: center;
 	justify-content: end;
 	gap: var(--spacing--sm);
+}
+
+/* Sticks to the bottom of the viewport, so the floating selection bar stays in
+   view while a long table scrolls. The height holds the bar and its bottom
+   offset, so the bar does not cover the rows of a short table. */
+.selectionBar {
+	position: sticky;
+	bottom: 0;
+	height: calc(var(--spacing--3xl) + var(--spacing--2xl));
 }
 
 .toolbar {
