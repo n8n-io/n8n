@@ -1,0 +1,57 @@
+packages/nodes-base/nodes/Storyblok/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_36e75da18e1d24 1-27
+  s_2e1fa95fc44f8f::t_3174cae0f886f5 28-30
+packages/nodes-base/nodes/Stackby/GenericFunction.ts
+  s_2e1fa95fc44f8f::t_e7fb0ebc6f4685 10-11,13,22,28,36,60
+packages/nodes-base/nodes/Spotify/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_47c25ada39a5f1 1-21
+packages/nodes-base/nodes/Strapi/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_317d881755c373 11-12,14,21,39,44-47,96
+packages/nodes-base/nodes/Strapi/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_45b5fda522025d 1-35
+packages/nodes-base/nodes/Strava/StravaTrigger.node.ts
+  s_2e1fa95fc44f8f::t_64c44fb392fefb 10
+  s_2e1fa95fc44f8f::t_b63958c211c7de 129,146,168,177,189,216,274,276
+packages/nodes-base/nodes/Strapi/Strapi.node.ts
+  s_2e1fa95fc44f8f::t_9a46e700fe9a51 12,178,201,249,260,293,304,329,372
+packages/nodes-base/nodes/Storyblok/Storyblok.node.ts
+  s_2e1fa95fc44f8f::t_c85de7d99f5c71 10
+  s_2e1fa95fc44f8f::t_3b1fa415787c02 120,135,181,191,265,276,291,301,324,337
+packages/nodes-base/nodes/Stackby/Stackby.node.ts
+  s_2e1fa95fc44f8f::t_e7fb0ebc6f4685 188,191,213,220,248,252,268-269,272,274,278-279,305,318,327
+  s_2e1fa95fc44f8f::t_84977361f46606 7,9
+packages/nodes-base/nodes/Spotify/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_51926cf356313a 2,21,49
+packages/nodes-base/nodes/Spotify/Spotify.node.ts
+  s_2e1fa95fc44f8f::t_4945df34a61f20 798,808,822,830,850,856,864,872,884,898,906,930,934,958,980,1011,1029,1041,1049,1055,1097,1105,1111,1148,1155,1183,1187,1221,1224,1229,1259,1281
+  s_2e1fa95fc44f8f::t_97ac20e81022f3 9-10
+packages/nodes-base/nodes/Spotify/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_5b47a065a3980c 9,20,50,67
+packages/nodes-base/nodes/Storyblok/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_3b1fa415787c02 9,16,22,64
+packages/nodes-base/nodes/Strava/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_90a1efca974698 1-27
+packages/nodes-base/nodes/Strava/Strava.node.ts
+  s_2e1fa95fc44f8f::t_b63958c211c7de 100,106,123,141,154,161,177
+  s_2e1fa95fc44f8f::t_64c44fb392fefb 9
+packages/nodes-base/nodes/Strava/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_b63958c211c7de 10-11,13,18,23,27,38,61
+packages/nodes-base/nodes/Stackby/__tests__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_ae97d494a4bcd8 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "795d97b9ad819c4e9bdbce1dc1eb5e63958c27b4",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,86 @@
+packages/nodes-base/nodes/Grafana/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_2210f06c5cc1cc 1-28
+packages/nodes-base/nodes/Gong/Gong.node.ts
+  s_2e1fa95fc44f8f::t_2de70ded8fafdc 3
+  s_2e1fa95fc44f8f::t_5db6b412cb0afe 106-112,149-155
+packages/nodes-base/nodes/Gong/descriptions/CallDescription.ts
+  s_2e1fa95fc44f8f::t_731f8cf4102a9d 9
+  s_12e7f256626c98::t_9d83dc1d49e995 298
+packages/nodes-base/nodes/Grist/test/gristApiRequest.test.ts
+  s_2e1fa95fc44f8f::t_ceacbcd81162fd 35,37,56,58,65-79
+  s_2e1fa95fc44f8f::t_6dd0f29da0becb 36
+  s_2e1fa95fc44f8f::t_f113d72a1df637 57
+  s_2e1fa95fc44f8f::t_52194b1bebe7a2 2,29,50,91-93
+packages/nodes-base/nodes/Gotify/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_9a54e0add3e1e1 1-27
+packages/nodes-base/nodes/GoToWebinar/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c770714b122fc8 1-33
+packages/nodes-base/nodes/GoToWebinar/GenericFunctions.ts
+  s_93035ae9b819fc::t_572a48f3d775f5 12-13,15,31,38,44,84,125,144,179,211,238,265
+packages/nodes-base/nodes/GoToWebinar/GoToWebinar.node.ts
+  s_93035ae9b819fc::t_d85b09d135a231 4,182,192,204,234,248,258,272,298,308,318,328,387,397,408,417,435,467,477,496,525,542,552,581,627
+packages/nodes-base/nodes/Gong/GenericFunctions.ts
+  s_0c8ab979236670::t_0bae5025fa748e 14-15,17,22,32,34,53,65,67,90
+packages/nodes-base/nodes/Gotify/GenericFunctions.ts
+  s_0c8ab979236670::t_743bf31285ec95 8-9,11,16,25,33,42,52
+packages/nodes-base/nodes/Gotify/Gotify.node.ts
+  s_2e1fa95fc44f8f::t_cdfced5e97d6cd 8,276,281-285,297,303-309
+packages/nodes-base/nodes/Grafana/GenericFunctions.ts
+  s_0c8ab979236670::t_dc217feb9142b1 8-9,11,20,28,35
+packages/nodes-base/nodes/Grafana/Grafana.node.ts
+  s_2e1fa95fc44f8f::t_69b0377c739c10 10,96,104-108,113-117,122-126,170-175,185,196,222,234,251,255-259,282-287,311,320-324,333,349-355,380,384-388,396-401,422,433,445,447,474-479,488-492,500,528
+packages/nodes-base/nodes/Grist/GenericFunctions.ts
+  s_0c8ab979236670::t_dcb3d3659514d9 8-9,11,51,59,61
+packages/nodes-base/nodes/Grist/Grist.node.ts
+  s_0c8ab979236670::t_5b21ee4655646c 12,14-15,103,118-126,197,261,277,314,330
+packages/nodes-base/nodes/Grist/test/Grist.node.test.ts
+  s_94422d44c623aa::t_76a75e2f134abd 70,222,274,311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9088f5c6c36eec39b2e49c82d1208c71ac5eca58",
+  "prompts": {},
+  "sessions": {
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_12e7f256626c98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a286d667b0e666e1e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_93035ae9b819fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac3698ad351421391",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_94422d44c623aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3060691ca30bf421",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

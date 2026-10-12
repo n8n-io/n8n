@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Tapfiliate/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_321087f1d9ed30 1-374
+packages/nodes-base/nodes/Stripe/__tests__/requests/Stripe.workflow.test.ts
+  s_2e1fa95fc44f8f::t_221738ef2f7137 13
+  s_2e1fa95fc44f8f::t_b37770591bfbe5 1-12,14-58
+packages/nodes-base/nodes/SyncroMSP/test/SyncroMsp.workflow.test.ts
+  s_2e1fa95fc44f8f::t_9712d43eaf3158 1-42
+  s_2e1fa95fc44f8f::t_7e3f293f7ecda5 43-45
+packages/nodes-base/nodes/SurveyMonkey/test/SurveyMonkeyTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_53fd7c08d313f1 1-31,37-131,133-152
+  s_2e1fa95fc44f8f::t_6005aae4dc4784 32-36
+  s_2e1fa95fc44f8f::t_44ef700b222937 132
+packages/nodes-base/nodes/SyncroMSP/test/requests.workflow.json
+  s_2e1fa95fc44f8f::t_321087f1d9ed30 1-431
+packages/nodes-base/nodes/Tapfiliate/test/Tapfiliate.workflow.test.ts
+  s_2e1fa95fc44f8f::t_8d3fda58cff0e0 1-46
+packages/nodes-base/nodes/Stripe/__tests__/requests/StripeTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_2dd12bc21d6f0f 1-42
+packages/nodes-base/nodes/Stripe/__tests__/requests/requests.workflow.json
+  s_2e1fa95fc44f8f::t_321087f1d9ed30 1-503
+packages/nodes-base/nodes/SyncroMSP/test/transport.test.ts
+  s_2e1fa95fc44f8f::t_bb7e0dd08ce913 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "539c2d11cdf8fdf9c5907d81279bc158b0a3226b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
