@@ -1,6 +1,10 @@
 import { setActivePinia } from 'pinia';
-import { useLogStreamingStore } from './logStreaming.store';
 import { createTestingPinia } from '@pinia/testing';
+import { saveDestinationToDb } from '@n8n/rest-api-client/api/eventbus.ee';
+
+import { useLogStreamingStore } from './logStreaming.store';
+
+vi.mock('@n8n/rest-api-client/api/eventbus.ee');
 
 describe('LogStreamingStore', () => {
 	let logStreamingStore: ReturnType<typeof useLogStreamingStore>;
@@ -120,6 +124,19 @@ describe('LogStreamingStore', () => {
 			// segment boundary: neither must swallow the other's events.
 			expect(fooGroup!.children.map((c) => c.name)).toEqual(['n8n.foo.created']);
 			expect(foobarGroup!.children.map((c) => c.name)).toEqual(['n8n.foobar.created']);
+		});
+	});
+
+	describe('saveDestination', () => {
+		it('should pass save errors to the caller', async () => {
+			const error = new Error('Invalid URL');
+			vi.mocked(saveDestinationToDb).mockRejectedValueOnce(error);
+
+			await expect(
+				logStreamingStore.saveDestination({
+					id: 'destinationId',
+				}),
+			).rejects.toBe(error);
 		});
 	});
 });

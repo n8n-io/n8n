@@ -331,6 +331,14 @@ describe('CreateDestinationDto', () => {
 				expectedErrorPaths: ['url'],
 			},
 			{
+				name: 'webhook URL without a domain',
+				request: {
+					__type: '$$MessageEventBusDestinationWebhook',
+					url: 'https://destination',
+				},
+				expectedErrorPaths: ['url'],
+			},
+			{
 				name: 'webhook with invalid authentication type',
 				request: {
 					__type: '$$MessageEventBusDestinationWebhook',
@@ -351,6 +359,14 @@ describe('CreateDestinationDto', () => {
 				request: {
 					__type: '$$MessageEventBusDestinationSentry',
 					dsn: 'not-a-url',
+				},
+				expectedErrorPaths: ['dsn'],
+			},
+			{
+				name: 'sentry DSN without a domain',
+				request: {
+					__type: '$$MessageEventBusDestinationSentry',
+					dsn: 'https://sentry',
 				},
 				expectedErrorPaths: ['dsn'],
 			},
@@ -386,6 +402,23 @@ describe('CreateDestinationDto', () => {
 					host: '',
 				},
 				expectedErrorPaths: ['host'],
+			},
+			{
+				name: 'syslog with numeric shorthand host',
+				request: {
+					__type: '$$MessageEventBusDestinationSyslog',
+					host: '1',
+				},
+				expectedErrorPaths: ['host'],
+			},
+			{
+				name: 'syslog with invalid host and port',
+				request: {
+					__type: '$$MessageEventBusDestinationSyslog',
+					host: '',
+					port: 0,
+				},
+				expectedErrorPaths: ['host', 'port'],
 			},
 			{
 				name: 'syslog with invalid port (negative)',

@@ -41,6 +41,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
@@ -79,6 +80,7 @@ const { modalName, destination, isNew, eventBus } = props;
 
 const i18n = useI18n();
 const { confirm } = useMessage();
+const { showError } = useToast();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
 // The log-streaming settings modal can open outside the workflow editor, where
@@ -344,8 +346,11 @@ async function saveDestination() {
 	if (unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
-	const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
-	if (saveResult) {
+	isSaving.value = true;
+	try {
+		const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
+		if (!saveResult) return;
+
 		hasOnceBeenSaved.value = true;
 		testMessageSent.value = false;
 		unchanged.value = true;
@@ -366,6 +371,10 @@ async function saveDestination() {
 			is_complete: isDestinationComplete(nodeParameters.value),
 			is_active: destination.enabled,
 		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+	} finally {
+		isSaving.value = false;
 	}
 }
 

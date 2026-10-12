@@ -4197,6 +4197,7 @@
 	"settings.log-streaming.destinationDelete.confirmButtonText": "Yes, delete",
 	"settings.log-streaming.destinationDelete.headline": "Delete Destination?",
 	"settings.log-streaming.destinationDelete.message": "Are you sure that you want to delete '{destinationName}'?",
+	"settings.log-streaming.destinationSave.error": "Destination couldn't be saved",
 	"settings.log-streaming.addDestination": "Add new destination",
 	"settings.log-streaming.destinations": "Log destinations",
 	"settings.api.trial.upgradePlan.title": "Upgrade to use API",
