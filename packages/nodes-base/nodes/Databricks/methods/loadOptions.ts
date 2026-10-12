@@ -1,43 +1,29 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
+import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
 import { fetchLakebaseColumns } from '../actions/lakebase/schema';
-import { resolveLakebaseRestBase } from '../transport';
-
-const LOCATORS = [
-	'lakebaseProject',
-	'lakebaseBranch',
-	'lakebaseDatabase',
-	'lakebaseSchema',
-	'lakebaseTable',
-] as const;
-
-/**
- * Reads the five locators. Load options run before the node has an item, so this
- * cannot use the resolvers in `actions/lakebase/helpers.ts`, which take an item index.
- */
-function readLocators(context: ILoadOptionsFunctions): string[] | undefined {
-	const values = LOCATORS.map((name) => {
-		const value = context.getNodeParameter(name, undefined, { extractValue: true });
-		return typeof value === 'string' ? value : '';
-	});
-
-	return values.every(Boolean) ? values : undefined;
-}
+import { explainLakebaseSchemaError, resolveLakebaseRestBase } from '../transport';
 
 async function listColumns(context: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const locators = readLocators(context);
+	const { project, branch, database, schema, table } = getSelectedLakebaseTarget(context);
 	// An unset locator means the user has not finished choosing a table yet
-	if (!locators) return [];
+	if (!project || !branch || !database || !schema || !table) return [];
 
-	const [project, branch, database, schema, table] = locators;
-	const base = await resolveLakebaseRestBase(context, project, branch);
-	const columns = await fetchLakebaseColumns(
-		context,
-		`${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
-		table,
-	);
+	try {
+		const base = await resolveLakebaseRestBase(context, project, branch);
+		const columns = await fetchLakebaseColumns(
+			context,
+			`${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`,
+			table,
+		);
 
-	return columns.map((column) => ({ name: column.name, value: column.name }));
+		return columns.map((column) => ({ name: column.name, value: column.name }));
+	} catch (error) {
+		explainLakebaseSchemaError(
+			error,
+			'Turn on the "OpenAPI specification" setting of the Data API to list columns, or enter the column name with an expression',
+		);
+	}
 }
 
 export async function getLakebaseColumns(
