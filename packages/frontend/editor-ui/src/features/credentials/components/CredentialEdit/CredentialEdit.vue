@@ -1855,8 +1855,8 @@ const { width } = useElementSize(credNameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
-	padding-bottom: var(--spacing--lg);
-	padding-inline: var(--spacing--4xs);
+	padding-block-end: var(--n8n-dialog-region--padding);
+	padding-inline: var(--n8n-dialog-region--padding);
 }
 
 .credName {
@@ -1881,22 +1881,31 @@ const { width } = useElementSize(credNameRef);
 .sidebar {
 	max-width: 170px;
 	min-width: 170px;
-	margin-right: var(--spacing--lg);
-	padding-inline-start: var(--spacing--lg);
+	padding-inline-start: var(--n8n-dialog-region--padding);
 	flex-grow: 1;
 
 	ul {
 		padding: 0 !important;
 	}
+
+	[data-test-id='menu-item'] {
+		padding-inline-start: var(--spacing--sm);
+	}
 }
 
 .dialogShell {
-	--n8n-dialog-content--padding: 0;
-	/* Match the header padding. Region padding is 0, so the default inset would sit in the corner. */
+	--n8n-dialog-content--padding: var(--spacing--lg);
+	/* Header block padding is smaller than the region padding. */
 	--n8n-dialog-close--inset-block-start: var(--spacing--md);
-	--n8n-dialog-close--inset-inline-end: var(--spacing--lg);
+	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
 	height: 80dvh;
 	max-height: calc(var(--height--5xl) * 8);
+
+	[data-slot='dialog-body'] {
+		padding: 0;
+		margin: 0;
+		overflow: hidden;
+	}
 }
 
 .header {
@@ -1904,14 +1913,14 @@ const { width } = useElementSize(credNameRef);
 	flex-direction: row;
 	align-items: center;
 	flex-shrink: 0;
-	padding: var(--spacing--md) var(--spacing--lg);
+	padding-block: var(--spacing--md);
+	padding-inline: var(--n8n-dialog-region--padding);
 }
 
 .container {
 	display: flex;
 	flex: 1;
 	min-height: 0;
-	padding-top: var(--spacing--lg);
 }
 
 .credInfo {
@@ -1956,7 +1965,6 @@ const { width } = useElementSize(credNameRef);
 	.sidebar {
 		min-width: calc(var(--spacing--5xl) + var(--spacing--2xl));
 		max-width: calc(var(--spacing--5xl) + var(--spacing--2xl));
-		margin-right: var(--spacing--sm);
 	}
 }
 </style>
