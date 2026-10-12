@@ -157,7 +157,6 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 
 		<slot />
 
-		<!-- Last in the DOM so Tab reaches it after the fields and actions. -->
 		<N8nDialogClose v-if="showCloseButton" :class="$style.dismiss" />
 	</DialogContent>
 </template>
@@ -190,7 +189,6 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 .content {
 	--n8n-dialog-region--padding: var(--n8n-dialog-content--padding, var(--spacing--md));
 	--n8n-dialog-close--size: var(--spacing--lg);
-	/* One default title line. The close button stays on this line when the title wraps. */
 	--n8n-dialog-title--line: calc(var(--font-size--lg) * var(--line-height--xl));
 	--n8n-dialog-close--inset-block-start: calc(
 		var(--n8n-dialog-region--padding) +
@@ -198,20 +196,16 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	);
 	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
 
-	/* The header's bottom padding is the space above the body. Without a header, the body supplies it. */
-	&:not(:has([data-slot='dialog-header'])) :global([data-slot='dialog-body']) {
+	&:not(:has([data-slot='dialog-header'])) [data-slot='dialog-body'] {
 		padding-block-start: var(--n8n-dialog-region--padding);
 		margin-block-start: 0;
 	}
 
-	/* Start the body below the corner close button. */
-	&:not(:has([data-slot='dialog-header'])):has(.dismiss) :global([data-slot='dialog-body']) {
+	&:not(:has([data-slot='dialog-header'])):has(.dismiss) [data-slot='dialog-body'] {
 		padding-block-start: calc(var(--n8n-dialog-close--size) + var(--spacing--xs));
 	}
 
-	/* The footer's top padding is the space below the body.
-	   Keep a gutter so the last control's focus outline stays inside the scrollport. */
-	&:has([data-slot='dialog-footer']) :global([data-slot='dialog-body']) {
+	&:has([data-slot='dialog-footer']) [data-slot='dialog-body'] {
 		padding-block-end: var(--focus--border-width);
 		margin-block-end: calc(var(--focus--border-width) * -1);
 	}
@@ -233,7 +227,6 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	/* Cap the dialog so the body can scroll and the header and footer stay in place. */
 	max-height: calc(100dvh - var(--spacing--lg));
 
 	border-radius: var(--radius--lg);
@@ -328,7 +321,7 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
 
-	:global([data-slot='dialog-body']) {
+	[data-slot='dialog-body'] {
 		flex: 1 1 auto;
 		overflow: auto;
 	}
