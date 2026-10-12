@@ -24,7 +24,7 @@
   ],
   "dependencies": {
     "@n8n/utils": "workspace:*",
-    "imapflow": "1.7.1",
+    "imapflow": "catalog:",
     "libmime": "5.4.2"
   },
   "devDependencies": {

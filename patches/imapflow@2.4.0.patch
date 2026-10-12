@@ -1,0 +1,76 @@
+diff --git a/dist/cjs/commands/idle.js b/dist/cjs/commands/idle.js
+index 9696010404c1fc3b74a097989604f3c1084737ee..defea76b330bb58e5628c023e373d2c8a822083d 100644
+--- a/dist/cjs/commands/idle.js
++++ b/dist/cjs/commands/idle.js
+@@ -18,10 +18,12 @@ function claimIdling(connection) {
+     let token = {};
+     connection._idleSession = token;
+     connection.idling = true;
++    connection._idleConfirmed = false;
+     return () => {
+         if (connection._idleSession === token) {
+             connection._idleSession = null;
+             connection.idling = false;
++            connection._idleConfirmed = false;
+         }
+     };
+ }
+@@ -112,6 +114,7 @@ async function runIdle(connection) {
+                     cid: connection.id
+                 });
+                 canEnd = true;
++                connection._idleConfirmed = true;
+                 if (doneRequested) {
+                     try {
+                         await preCheck();
+diff --git a/dist/cjs/imap-flow.js b/dist/cjs/imap-flow.js
+index dc42e9814ea25340558f0dce70b74494e4e4a0b8..e0202ce94db2183e917a8425308ae78a337c8e55 100644
+--- a/dist/cjs/imap-flow.js
++++ b/dist/cjs/imap-flow.js
+@@ -1201,7 +1201,7 @@ class ImapFlow extends node_events_1.EventEmitter {
+                     // A throttle back-off is quiet by design, the NOOP below probes that the server
+                     // is still there
+                     const quietExpected = this.idling || this._openDownloads || this.currentLock || this._throttleWaits.size;
+-                    const commandStuck = this.currentRequest && !(this.idling && this.currentRequest.command === 'IDLE');
++                    const commandStuck = this.currentRequest && !(this.idling && this._idleConfirmed && this.currentRequest.command === 'IDLE');
+                     // A recovery NOOP that has not settled by the next timeout means the peer is gone
+                     if (quietExpected && !commandStuck && !this._recoveryPending) {
+                         // The inactivity timer is one-shot, re-armed only by traffic. The NOOP can not
+diff --git a/dist/esm/commands/idle.js b/dist/esm/commands/idle.js
+index 7088077c01fb8189661bc51d00541a5ba30ac063..e0c4a97df7452533b0770d612caae70f5c834320 100644
+--- a/dist/esm/commands/idle.js
++++ b/dist/esm/commands/idle.js
+@@ -15,10 +15,12 @@ function claimIdling(connection) {
+     let token = {};
+     connection._idleSession = token;
+     connection.idling = true;
++    connection._idleConfirmed = false;
+     return () => {
+         if (connection._idleSession === token) {
+             connection._idleSession = null;
+             connection.idling = false;
++            connection._idleConfirmed = false;
+         }
+     };
+ }
+@@ -109,6 +111,7 @@ async function runIdle(connection) {
+                     cid: connection.id
+                 });
+                 canEnd = true;
++                connection._idleConfirmed = true;
+                 if (doneRequested) {
+                     try {
+                         await preCheck();
+diff --git a/dist/esm/imap-flow.js b/dist/esm/imap-flow.js
+index 6b9bc9cb1fb54ebff3b90787490d3a99c225fb55..60db5e2db8c73b8bd06afb920e010b1983d894ea 100644
+--- a/dist/esm/imap-flow.js
++++ b/dist/esm/imap-flow.js
+@@ -1160,7 +1160,7 @@ export class ImapFlow extends EventEmitter {
+                     // A throttle back-off is quiet by design, the NOOP below probes that the server
+                     // is still there
+                     const quietExpected = this.idling || this._openDownloads || this.currentLock || this._throttleWaits.size;
+-                    const commandStuck = this.currentRequest && !(this.idling && this.currentRequest.command === 'IDLE');
++                    const commandStuck = this.currentRequest && !(this.idling && this._idleConfirmed && this.currentRequest.command === 'IDLE');
+                     // A recovery NOOP that has not settled by the next timeout means the peer is gone
+                     if (quietExpected && !commandStuck && !this._recoveryPending) {
+                         // The inactivity timer is one-shot, re-armed only by traffic. The NOOP can not
