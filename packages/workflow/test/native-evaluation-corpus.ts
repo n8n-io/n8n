@@ -246,7 +246,6 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.name.hash() }}',
 	'={{ $json.item.name.toTitleCase() }}',
 	'={{ $json.item.name.toJsonString() }}',
-	'={{ $json.item.name.extractDomain() }}',
 	'={{ $json.item.my_object.toJsonString() }}',
 	'={{ $json.item.my_object.keys() }}',
 	"={{ $json.item.my_object.hasField('addresses') }}",
@@ -436,13 +435,23 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $json.item.names.findIndex(n => n) }}',
 	'={{ $json.item.names.findLast(n => n) }}',
 	"={{ $json.item.names['some'](n => n) }}",
-	// Date-valued extensions, the random one, and non-allowlisted natives
-	// stay on the engine.
+	// Date-valued extensions, the random one, the unbounded or superlinear
+	// ones, and non-allowlisted natives stay on the engine.
 	'={{ $json.item.name.toDateTime() }}',
 	'={{ $json.item.name.toDate() }}',
 	'={{ $json.item.count.toDateTime() }}',
 	'={{ $json.item.names.randomItem() }}',
 	"={{ $json.item.when.plus(1, 'day') }}",
+	'={{ $json.item.names.chunk(-1) }}',
+	'={{ $json.item.names.unique() }}',
+	'={{ $json.item.names.removeDuplicates() }}',
+	'={{ $json.item.name.isEmail() }}',
+	'={{ $json.item.name.extractEmail() }}',
+	'={{ $json.item.name.extractDomain() }}',
+	'={{ $json.item.name.removeMarkdown() }}',
+	'={{ $json.item.name.toSentenceCase() }}',
+	'={{ $json.item.mixed.min() }}',
+	'={{ $json.item.mixed.max() }}',
 	'={{ $json.item.name.padStart(8) }}',
 	// sort()/fill() mutate the receiver in place; only immutable variants are
 	// allowlisted. A callback makes any call non-simple.

@@ -244,16 +244,35 @@ export const CALLABLE_METHODS = new Set([
 
 // Expression extensions the native path hands to extend(), the host dispatch
 // the engines call for them too, so both paths share one implementation and
-// its errors. Pure functions of JSON receiver and arguments only: the Date
-// extensions, the to-date conversions and randomItem are excluded, as a
-// Luxon or Date value has no representation here and a random result no
-// parity. The runtime receiver still picks the implementation (a number's
-// format() is not a date's), and a non-JSON result bails to the engine.
-const NON_JSON_EXTENSIONS = new Set(['toDate', 'toDateTime', 'randomItem']);
+// its errors. Pure functions of JSON receiver and arguments, linear in the
+// receiver, so the content weight charged below bounds them. The runtime
+// receiver still picks the implementation (a number's format() is not a
+// date's), and a non-JSON result bails to the engine.
+const EXCLUDED_EXTENSIONS = new Set([
+	// A Luxon or Date value has no representation here; a random result has
+	// no parity. The Date extensions are left out as a whole below.
+	'toDate',
+	'toDateTime',
+	'randomItem',
+	// A negative size loops forever; the engines kill it, this thread cannot.
+	'chunk',
+	// Quadratic: deep equality per pair, or regex backtracking per position,
+	// or the tail rebuilt per sentence. The engine's timeout owns those.
+	'unique',
+	'removeDuplicates',
+	'isEmail',
+	'extractEmail',
+	'extractDomain',
+	'removeMarkdown',
+	'toSentenceCase',
+	// Spread into Math.min/max: the engines overflow at sizes under the cap.
+	'min',
+	'max',
+]);
 export const EXTENSION_METHODS: ReadonlySet<string> = new Set(
 	ExpressionExtensions.filter((extension) => extension.typeName !== 'Date')
 		.flatMap((extension) => Object.keys(extension.functions))
-		.filter((name) => !NON_JSON_EXTENSIONS.has(name)),
+		.filter((name) => !EXCLUDED_EXTENSIONS.has(name)),
 );
 
 // The engine evaluates under a timeout and a memory limit; this interpreter
