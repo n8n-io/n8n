@@ -608,6 +608,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    imapflow:
+      specifier: 2.4.0
+      version: 2.4.0
     isolated-vm:
       specifier: ^7.0.1
       version: 7.0.1
@@ -1077,7 +1080,7 @@ patchedDependencies:
   bull@4.16.4: d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0
   element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
-  imapflow@1.7.1: 9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025
+  imapflow@2.4.0: 01a59ad77ec68def3024c157893ec840766e308aa5c6b5fdef4a40fee5e855e3
   lodash@4.18.1: 81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b
   minifaker: bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33
   pdfjs-dist@5.4.296: e652436fd7a04798432ecfcf33f92fbe6ebedbc248af535faca00b8181aa936f
@@ -1375,7 +1378,7 @@ importers:
         version: 1.0.27(@aws-sdk/credential-provider-node@3.972.80)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(@smithy/signature-v4@5.7.2)(cheerio@1.1.0)(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(2c7cff29d0c770c5716f6aff97059c1e)
+        version: 1.1.27(c7a5fd2add6e769e34155dc3d659366e)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -3072,8 +3075,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       imapflow:
-        specifier: 1.7.1
-        version: 1.7.1(patch_hash=9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025)
+        specifier: 'catalog:'
+        version: 2.4.0(patch_hash=01a59ad77ec68def3024c157893ec840766e308aa5c6b5fdef4a40fee5e855e3)
       libmime:
         specifier: 5.4.2
         version: 5.4.2
@@ -16034,6 +16037,9 @@ packages:
   '@zone-eu/mailsplit@5.4.15':
     resolution: {integrity: sha512-c7ZpxauvF4AEkDJlKDYO7iMUtMuqJMBnDWNff1cyx+d7zaBVR3iFEmXhNHOVoMmVyVF3pTZLsLIJsEFKDldOAA==}
 
+  '@zone-eu/mailsplit@5.4.20':
+    resolution: {integrity: sha512-6B2w0zRBWOwbO5h7SL5N/2z1AuNchTP3OT33MObUr4/cz9bWPrZ6KadLKxnSrOZG0AGu7Q03p4X7eQhZHc1u/A==}
+
   abbrev@1.1.1:
     resolution: {integrity: sha512-nne9/IiQ/hzIhY6pdDnbBtz7DjPTKrY00P/zvPSm5pOFkl6xuGrGnXn/VtTNNfNtAfZ9/1RtehkszU9qcTii0Q==}
 
@@ -17980,6 +17986,10 @@ packages:
     resolution: {integrity: sha512-EuJWwlHPZ1LbADuKTClvHtwbaFn4rOD+dRAbWysqEOXRc2Uui0hJInNJrsdH0c+OhJA4nrCBdSkW4DD5YxAo6A==}
     engines: {node: '>=8.10.0'}
 
+  encoding-japanese@2.4.0:
+    resolution: {integrity: sha512-PE0KjlsDy9JSsoU4C2Q8NXb1kC4c+bZRac9ZvHXUE4q1Ht63gScKMdEy9jst9+Fi3M4eDkqzkEhBZvix4blP2A==}
+    engines: {node: '>=18.0.0'}
+
   encoding-sniffer@0.2.0:
     resolution: {integrity: sha512-ju7Wq1kg04I3HtiYIOrUrdfdDvkyO9s5XM8QAj/bN61Yo/Vb4vgJxy5vi4Yxk01gWHbrofpPtpxM8bKger9jhg==}
 
@@ -19249,8 +19259,9 @@ packages:
     resolution: {integrity: sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg==}
     engines: {node: '>= 4'}
 
-  imapflow@1.7.1:
-    resolution: {integrity: sha512-etpyRH7wOPQGawjl/5ChgaaX5NRK2fxJAi9EFFNwv0N3FXsvjsL3Qu5dJ4i/myH61Cq2RSTb6vI5T9rXDbXD+g==}
+  imapflow@2.4.0:
+    resolution: {integrity: sha512-42quCGcSiPFH2ho+/n89lXwR2JA0iuYcE+pe3BvezF24tXgSOrvB/KsJr0i45lCpLSAMZdE+iSFLCokXUGo2sA==}
+    engines: {node: '>=20.0.0'}
 
   immediate@3.0.6:
     resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}
@@ -20085,17 +20096,26 @@ packages:
   libbase64@1.3.0:
     resolution: {integrity: sha512-GgOXd0Eo6phYgh0DJtjQ2tO8dc0IVINtZJeARPeiIJqge+HdsWSuaDTe8ztQ7j/cONByDZ3zeB325AHiv5O0dg==}
 
+  libbase64@1.3.2:
+    resolution: {integrity: sha512-fFCoI0ceXhTu/0QiJ6Uf6BV9k7X/8QW2/D4BR1vw3BPrHcIjLbGLH+U7inQ4SeWrfNCOmpGE09Qt4XjSFfus0g==}
+
   libmime@5.3.7:
     resolution: {integrity: sha512-FlDb3Wtha8P01kTL3P9M+ZDNDWPKPmKHWaU/cG/lg5pfuAwdflVpZE+wm9m7pKmC5ww6s+zTxBKS1p6yl3KpSw==}
 
   libmime@5.4.2:
     resolution: {integrity: sha512-+IQnCOdPiufGBkOii+Ze8F7iniyBzOwvWDbn1DyExBpc9pT2B3IEMQi7GUc/PpqhNUh/sr1SG9UXDITQoR0VIA==}
 
+  libmime@5.4.7:
+    resolution: {integrity: sha512-r1ENu4wMVSB52AAORwaW4L/MeQJr9rryzHLRpcjud3zcUPWXh1Xkgn+tAqL8oTnRO/LW7y5xxPBE20ta5amtMA==}
+
   libpq@1.11.0:
     resolution: {integrity: sha512-mHoPlvMwYDMJV36bS2w3eSdFD4eDSm7P9FsvruUldQxzE23/W6qitT9VU/yD1+g2vpgpDktnk2iEYJyhy1RR5g==}
 
   libqp@2.1.1:
     resolution: {integrity: sha512-0Wd+GPz1O134cP62YU2GTOPNA7Qgl09XwCqM5zpBv87ERCXdfDtyKXvV7c9U22yWJh44QZqBocFnXN11K96qow==}
+
+  libqp@2.1.2:
+    resolution: {integrity: sha512-rp+U80tl9Os4K7GnVbPzPRmghPu6eqB8rcF+ontvNAnoga0JhMFG/bkTD/reC8yoznKMgOc5/ttZHJasiWeFPw==}
 
   libsql@0.5.29:
     resolution: {integrity: sha512-8lMP8iMgiBzzoNbAPQ59qdVcj6UaE/Vnm+fiwX4doX4Narook0a4GPKWBEv+CR8a1OwbfkgL18uBfBjWdF0Fzg==}
@@ -23303,12 +23323,12 @@ packages:
     resolution: {integrity: sha512-HehCEsotFqbPW9sJ8WVYB6UbmIMv7kUUORIF2Nncq4VQvBfNBLibW9YZR5dlYCSUhwcD628pRllm7n+E+YTzJw==}
     engines: {node: '>= 14'}
 
-  socks@2.8.3:
-    resolution: {integrity: sha512-l5x7VUUWbjVFbafGLxPWkYsHIhEvmF85tbIeFZWc8ZPtoMyybuEhL7Jye/ooC4/d48FgOjSJXgsF/AJPYCW8Zw==}
+  socks@2.8.10:
+    resolution: {integrity: sha512-e0VyvkVTwVYViNovRkZ9aodhxVlyoMn7eJhVUPxZ+eK9P/7CBkxvvsBOHqFPEH416726W8tLXXXjKwqgTErrCQ==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
-  socks@2.8.9:
-    resolution: {integrity: sha512-LJhUYUvItdQ0LkJTmPeaEObWXAqFyfmP85x0tch/ez9cahmhlBBLbIqDFnvBnUJGagb0JbIQrkBs1wJ+yRYpEw==}
+  socks@2.8.3:
+    resolution: {integrity: sha512-l5x7VUUWbjVFbafGLxPWkYsHIhEvmF85tbIeFZWc8ZPtoMyybuEhL7Jye/ooC4/d48FgOjSJXgsF/AJPYCW8Zw==}
     engines: {node: '>= 10.0.0', npm: '>= 3.0.0'}
 
   sonic-boom@4.2.1:
@@ -27264,7 +27284,7 @@ snapshots:
       gensync: 1.0.0-beta.2
       import-meta-resolve: 4.2.0
       json5: 2.2.3
-      obug: 2.1.3
+      obug: 2.2.1
       semver: 7.7.3
 
   '@babel/generator@7.29.1':
@@ -27527,7 +27547,7 @@ snapshots:
       '@babel/parser': 8.0.4
       '@babel/template': 8.0.0
       '@babel/types': 8.0.4
-      obug: 2.1.3
+      obug: 2.2.1
 
   '@babel/types@7.29.8':
     dependencies:
@@ -28828,7 +28848,7 @@ snapshots:
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/remapping@2.3.5':
@@ -28851,7 +28871,7 @@ snapshots:
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   '@js-joda/core@6.1.0': {}
 
@@ -29013,7 +29033,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(2c7cff29d0c770c5716f6aff97059c1e)':
+  '@langchain/community@1.1.27(c7a5fd2add6e769e34155dc3d659366e)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -29061,7 +29081,7 @@ snapshots:
       jsonwebtoken: 9.0.3
       lodash: 4.18.1(patch_hash=81ead1b07fc8efda87bd2724dbd876ab49f4a0aa03f96c3770060b2ea47d9e0b)
       mammoth: 1.12.1
-      mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9)
+      mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.10)
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5
       pg: 8.21.0(pg-native@3.8.0)
@@ -34397,6 +34417,12 @@ snapshots:
       libmime: 5.4.2
       libqp: 2.1.1
 
+  '@zone-eu/mailsplit@5.4.20':
+    dependencies:
+      libbase64: 1.3.2
+      libmime: 5.4.7
+      libqp: 2.1.2
+
   abbrev@1.1.1: {}
 
   abbrev@3.0.1: {}
@@ -36576,6 +36602,8 @@ snapshots:
 
   encoding-japanese@2.2.0: {}
 
+  encoding-japanese@2.4.0: {}
+
   encoding-sniffer@0.2.0:
     dependencies:
       iconv-lite: 0.6.3
@@ -38397,16 +38425,16 @@ snapshots:
 
   ignore@7.0.5: {}
 
-  imapflow@1.7.1(patch_hash=9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025):
+  imapflow@2.4.0(patch_hash=01a59ad77ec68def3024c157893ec840766e308aa5c6b5fdef4a40fee5e855e3):
     dependencies:
-      '@zone-eu/mailsplit': 5.4.15
-      encoding-japanese: 2.2.0
+      '@zone-eu/mailsplit': 5.4.20
+      encoding-japanese: 2.4.0
       iconv-lite: 0.7.3
-      libbase64: 1.3.0
-      libmime: 5.4.2
-      libqp: 2.1.1
+      libbase64: 1.3.2
+      libmime: 5.4.7
+      libqp: 2.1.2
       pino: 10.3.1
-      socks: 2.8.9
+      socks: 2.8.10
 
   immediate@3.0.6: {}
 
@@ -39253,6 +39281,8 @@ snapshots:
 
   libbase64@1.3.0: {}
 
+  libbase64@1.3.2: {}
+
   libmime@5.3.7:
     dependencies:
       encoding-japanese: 2.2.0
@@ -39267,12 +39297,21 @@ snapshots:
       libbase64: 1.3.0
       libqp: 2.1.1
 
+  libmime@5.4.7:
+    dependencies:
+      encoding-japanese: 2.4.0
+      iconv-lite: 0.7.3
+      libbase64: 1.3.2
+      libqp: 2.1.2
+
   libpq@1.11.0:
     dependencies:
       bindings: 1.5.0
       nan: 2.26.2
 
   libqp@2.1.1: {}
+
+  libqp@2.1.2: {}
 
   libsql@0.5.29:
     dependencies:
@@ -40521,6 +40560,17 @@ snapshots:
       gcp-metadata: 5.3.0(supports-color@8.1.1)
       socks: 2.8.3
 
+  mongodb@6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.10):
+    dependencies:
+      '@mongodb-js/saslprep': 1.3.2
+      bson: 6.10.4
+      mongodb-connection-string-url: 3.0.2
+    optionalDependencies:
+      '@aws-sdk/credential-providers': 3.808.0
+      gcp-metadata: 5.3.0(supports-color@8.1.1)
+      socks: 2.8.10
+    optional: true
+
   mongodb@6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.3):
     dependencies:
       '@mongodb-js/saslprep': 1.3.2
@@ -40530,17 +40580,6 @@ snapshots:
       '@aws-sdk/credential-providers': 3.808.0
       gcp-metadata: 5.3.0(supports-color@8.1.1)
       socks: 2.8.3
-
-  mongodb@6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0(supports-color@8.1.1))(socks@2.8.9):
-    dependencies:
-      '@mongodb-js/saslprep': 1.3.2
-      bson: 6.10.4
-      mongodb-connection-string-url: 3.0.2
-    optionalDependencies:
-      '@aws-sdk/credential-providers': 3.808.0
-      gcp-metadata: 5.3.0(supports-color@8.1.1)
-      socks: 2.8.9
-    optional: true
 
   monocart-coverage-reports@2.12.12:
     dependencies:
@@ -43323,16 +43362,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  socks@2.8.10:
+    dependencies:
+      ip-address: 10.3.1
+      smart-buffer: 4.2.0
+
   socks@2.8.3:
     dependencies:
       ip-address: 9.0.5
       smart-buffer: 4.2.0
     optional: true
-
-  socks@2.8.9:
-    dependencies:
-      ip-address: 10.3.1
-      smart-buffer: 4.2.0
 
   sonic-boom@4.2.1:
     dependencies:
@@ -44353,7 +44392,7 @@ snapshots:
   tsx@4.19.3:
     dependencies:
       esbuild: 0.28.1
-      get-tsconfig: 4.13.0
+      get-tsconfig: 4.14.3
     optionalDependencies:
       fsevents: 2.3.3
 
