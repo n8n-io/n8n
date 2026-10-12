@@ -149,8 +149,8 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' })
 			.withForeignKey('skillId', { tableName: SKILL_TABLE, columnName: 'id', onDelete: 'CASCADE' })
-			// NO ACTION for the same reason as agent_version_skill_dependency: a user or project
-			// delete removes the skill together with the agents that pin it.
+			// NO ACTION keeps a pinned version from being deleted on its own. A skill delete
+			// removes these rows first, through the skillId cascade.
 			.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,
 				columnName: 'id',
@@ -174,14 +174,15 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 				columnName: 'versionId',
 				onDelete: 'CASCADE',
 			})
-			// NO ACTION, not RESTRICT: the check runs at the end of the statement, so a
-			// user or project delete can remove its skills together with the agents that
-			// pin them. The service refuses to delete a pinned skill on its own.
+			// CASCADE, as in agent_skill_dependency: a user or project delete removes a skill
+			// and the agents that pin it, and Postgres checks NO ACTION before the agent
+			// cascade runs. The service refuses to delete a skill that is in use.
 			.withForeignKey('skillId', {
 				tableName: SKILL_TABLE,
 				columnName: 'id',
-				onDelete: 'NO ACTION',
+				onDelete: 'CASCADE',
 			})
+			// NO ACTION keeps a pinned version from being deleted on its own.
 			.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,
 				columnName: 'id',
