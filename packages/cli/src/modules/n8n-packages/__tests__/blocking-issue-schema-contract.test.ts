@@ -86,5 +86,8 @@ describe('BlockingIssue / ImportBlockingIssue contract', () => {
 
 	it('covers the same set of variants on both sides (nothing added or removed)', () => {
 		expectTypeOf<BlockingIssue['type']>().branded.toEqualTypeOf<ImportBlockingIssue['type']>();
+		expectTypeOf<Extract<BlockingIssue, { type: `agent-${string}` }>>().branded.toEqualTypeOf<
+			Extract<ImportBlockingIssue, { type: `agent-${string}` }>
+		>();
 	});
 });
