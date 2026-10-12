@@ -7,6 +7,7 @@ import type {
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import {
+	CHAT_NODE_TYPE,
 	Expression,
 	isNodeClassInstance,
 	SEND_AND_WAIT_OPERATION,
@@ -102,7 +103,8 @@ export class V1StepExecutor implements IStepExecutor {
 		const node = toV1Node(request.node, stepConfig);
 		// The response to a send-and-wait message needs a step-bound resume request,
 		// which engine v2 does not have yet. Fail before the node sends the message.
-		if (node.parameters.operation === SEND_AND_WAIT_OPERATION) {
+		// The Chat node waits for a chat reply in every version and operation.
+		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
 
