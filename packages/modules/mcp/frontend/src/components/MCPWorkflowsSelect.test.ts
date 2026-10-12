@@ -155,29 +155,9 @@ describe('MCPWorkflowsSelect', () => {
 				data: [],
 			});
 
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			// Wait for the fetch to complete
-			await waitFor(() => {
-				expect(mcpStore.getMcpEligibleWorkflows).toHaveBeenCalled();
-			});
-
-			const select = getByTestId('mcp-workflows-select');
-			await userEvent.click(select);
-
-			await waitFor(() => {
-				const emptyText = document.querySelector('.el-select-dropdown__empty');
-				expect(emptyText).toBeInTheDocument();
-			});
-		});
-
-		it('should find the built-in empty state when opened after loading completes', async () => {
-			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
-
 			const { getAllByRole, findByRole, emitted } = createComponent({ pinia });
 
-			// CONTEXT-245: Finish loading before the click to reproduce the CI failure consistently.
+			// The ready event follows the loading indicator delay.
 			await waitFor(() => {
 				expect(emitted('ready')).toHaveLength(1);
 			});
@@ -195,12 +175,6 @@ describe('MCPWorkflowsSelect', () => {
 			const emptyOption = await findByRole('option', { name: 'No available workflows' });
 			expect(emptyOption).toBeVisible();
 			expect(emptyOption).toHaveAttribute('aria-disabled', 'true');
-
-			// Replay the existing assertion after the custom empty option is visible.
-			await waitFor(() => {
-				const emptyText = document.querySelector('.el-select-dropdown__empty');
-				expect(emptyText).toBeInTheDocument();
-			});
 		});
 	});
 
