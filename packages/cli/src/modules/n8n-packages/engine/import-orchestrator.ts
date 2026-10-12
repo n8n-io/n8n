@@ -10,12 +10,13 @@ import {
 } from '../entities/credential/credential-conflict-policy';
 import {
 	requiredAgentScopes,
+	type AgentImportOutcome,
 	type AgentImportPlan,
 	type PreparedAgent,
 	type PersistedAgentOutcome,
 } from '../entities/agent/agent-import.types';
 import { CredentialImporter } from '../entities/credential/credential-importer';
-import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
+import { consumersBlockedByCredentials } from '../entities/credential/credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
@@ -55,7 +56,7 @@ import type {
 import {
 	collectMissingNodeTypes,
 	missingNodeTypeBlockingFailures,
-	workflowsWithMissingNodeTypes,
+	consumersWithMissingNodeTypes,
 	type MissingNodeTypeRequirement,
 } from '../entities/workflow/missing-node-type-mode';
 import type {
@@ -66,8 +67,12 @@ import type {
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.types';
 import { WorkflowRemover } from '../entities/workflow/workflow-remover';
-import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
-import type { WorkflowPublishingBlockedReason } from '../entities/workflow/workflow-publishing-policy.types';
+import {
+	WorkflowPublisher,
+	type PackagePublishingRequest,
+	type PackagePublishingResults,
+} from '../entities/workflow/workflow-publisher';
+import type { PublishingBlockedReason } from '../entities/publishing';
 import { createBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
@@ -449,11 +454,7 @@ export class ImportOrchestrator {
 		};
 	}
 
-	/**
-	 * Writes this scope's content. Workflows land unpublished: publishing needs every workflow in
-	 * the package present first, so the caller runs {@link WorkflowPublisher.applyToPackage} once
-	 * all scopes have been applied.
-	 */
+	/** Writes one scope's definitions. Call {@link publishPackage} after all scopes are applied. */
 	async apply(
 		plan: ImportPlan,
 		seedWorkflowBindings?: ImportBindingMap,
@@ -483,25 +484,8 @@ export class ImportOrchestrator {
 
 		await this.dataTableImporter.apply(context, dataTablePlan);
 
-		// Which workflows the publish phase must leave inactive. Known only now, because it depends
-		// on which credentials actually ended up stubbed or incomplete.
-		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
-		// Weakest reason first, so a later, stronger reason overwrites it.
-		for (const sourceWorkflowId of workflowsBlockedFromPublish(
-			credentialRequest.requirements,
-			new Set(credentialResult.incomplete),
-		)) {
-			blockedFromPublish.set(sourceWorkflowId, 'incomplete-credential');
-		}
-		for (const sourceWorkflowId of workflowsBlockedFromPublish(
-			credentialRequest.requirements,
-			new Set(credentialResult.stubbed),
-		)) {
-			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
-		}
-		for (const sourceWorkflowId of workflowsWithMissingNodeTypes(plan.missingNodeTypes)) {
-			blockedFromPublish.set(sourceWorkflowId, 'missing-node-type');
-		}
+		const workflowBlockers = publishingBlockers(plan, credentialResult, 'workflow');
+		const agentBlockers = publishingBlockers(plan, credentialResult, 'agent');
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
 			{ ...context, droppedTagIds: droppedTagIds(tagPlan) },
@@ -533,9 +517,11 @@ export class ImportOrchestrator {
 		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
 
 		return {
-			agentOutcomes,
+			agentOutcomes: agentOutcomes.map((outcome) =>
+				withBlockedFromPublish(outcome, agentBlockers.get(outcome.sourceAgentId)),
+			),
 			workflowOutcomes: outcomes.map((outcome) =>
-				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
+				withBlockedFromPublish(outcome, workflowBlockers.get(outcome.sourceWorkflowId)),
 			),
 			removedWorkflows,
 			removedFolders,
@@ -547,6 +533,29 @@ export class ImportOrchestrator {
 			variableResult,
 			tagPlan,
 		};
+	}
+
+	async publishPackage({
+		content,
+		...request
+	}: Omit<PackagePublishingRequest, 'persisted'> & { content: ImportContentResult[] }): Promise<{
+		workflows: PackagePublishingResults;
+		agentOutcomes: AgentImportOutcome[];
+	}> {
+		const workflows = await this.workflowPublisher.applyToPackage({
+			...request,
+			persisted: content.flatMap((scope) => scope.workflowOutcomes),
+		});
+		const persisted = content.flatMap((scope) => scope.agentOutcomes);
+		if (persisted.length === 0) return { workflows, agentOutcomes: [] };
+
+		// Workflow tools require published workflows. Subagents only require saved definitions.
+		const { AgentPublisher } = await import('../entities/agent/agent-publisher.js');
+		const agentOutcomes = await Container.get(AgentPublisher).applyToPackage(
+			request.user,
+			persisted,
+		);
+		return { workflows, agentOutcomes };
 	}
 
 	private collectBlockingIssues({
@@ -675,10 +684,36 @@ function scopeAgentRequirements(
 	};
 }
 
-function withBlockedFromPublish(
-	outcome: PersistedWorkflowOutcome,
-	blockedFromPublish: WorkflowPublishingBlockedReason | undefined,
-): PersistedWorkflowOutcome {
+function publishingBlockers(
+	plan: ImportPlan,
+	credentials: CredentialApplyResult,
+	kind: PackageRequirementConsumer['kind'],
+): Map<string, PublishingBlockedReason> {
+	const blocked = new Map<string, PublishingBlockedReason>();
+	const credentialBlockers = [
+		['incomplete-credential', credentials.incomplete],
+		['stub-credential', credentials.stubbed],
+	] as const;
+	for (const [reason, sourceIds] of credentialBlockers) {
+		for (const id of consumersBlockedByCredentials(
+			plan.input.credentialRequest.requirements,
+			new Set(sourceIds),
+			kind,
+		)) {
+			blocked.set(id, reason);
+		}
+	}
+	// Missing node types take precedence because the definition cannot run.
+	for (const id of consumersWithMissingNodeTypes(plan.missingNodeTypes, kind)) {
+		blocked.set(id, 'missing-node-type');
+	}
+	return blocked;
+}
+
+function withBlockedFromPublish<T extends PersistedWorkflowOutcome | PersistedAgentOutcome>(
+	outcome: T,
+	blockedFromPublish: PublishingBlockedReason | undefined,
+): T {
 	if (outcome.status === 'skipped' || !blockedFromPublish) return outcome;
 	return { ...outcome, blockedFromPublish };
 }

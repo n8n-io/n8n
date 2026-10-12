@@ -8,7 +8,7 @@ import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-defi
 import type { ImportContext, WorkflowIdPolicy } from '../../n8n-packages.types';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
 import type { ImportDecision } from '../import-conflict-policy';
-import type { PublishingAction } from '../workflow/workflow-publishing-policy.types';
+import type { PublishingAction, PublishingBlockedReason, PublishingOutcome } from '../publishing';
 
 export interface AgentPlanItem extends PreparedAgent {
 	action: ImportDecision['action'];
@@ -36,7 +36,15 @@ export type PersistedAgentOutcome =
 			agent: Agent;
 			sourceAgentId: string;
 			item: AgentPlanItem;
+			blockedFromPublish?: PublishingBlockedReason;
 	  };
+
+export interface AgentImportOutcome {
+	status: PersistedAgentOutcome['status'];
+	agent: Agent;
+	sourceAgentId: string;
+	publishing: PublishingOutcome;
+}
 
 export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${string}` }>;
 
