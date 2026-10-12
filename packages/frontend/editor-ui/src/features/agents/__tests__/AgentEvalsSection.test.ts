@@ -76,8 +76,8 @@ vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
 // bare identifier, which only auto-unwraps for genuine refs. A plain object
 // would read as itself (always truthy) instead of its `.value`.
 const isFeatureEnabled = ref(false);
-vi.mock('@/experiments/testAgentPreview/useTestAgentPreviewExperiment', () => ({
-	useTestAgentPreviewExperiment: () => ({ isFeatureEnabled }),
+vi.mock('@/features/agents/composables/useTestAgentPreviewFlag', () => ({
+	useTestAgentPreviewFlag: () => ({ isFeatureEnabled }),
 }));
 
 const PROJECT_ID = 'project-1';

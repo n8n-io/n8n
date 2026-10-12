@@ -11,6 +11,9 @@ export {
 export const AGENTS_MODULE_NAME = 'agents';
 export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
+/** Boolean rollout flag for the agent test preview and checks UI. */
+export const TEST_AGENT_PREVIEW_FLAG = 'test_agent_preview';
+
 /** The shared "chat with a published agent over n8n Chat" screen. */
 export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
 
