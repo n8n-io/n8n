@@ -16,12 +16,14 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentEvalsStore } from '../agentEvals.store';
+import { useApplyAgentEvalSuggestions } from '../composables/useApplyAgentEvalSuggestions';
 import {
 	readAgentAnswer,
 	readCaseRequest,
 	readCaseWhatToCheck,
 	readErrorMessage,
 	readVerdictReasoning,
+	readVerdictSuggestion,
 	toAvatarKind,
 } from '../utils/agent-eval-review';
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
@@ -84,6 +86,8 @@ type CheckRow = {
 	errorMessage: string | null;
 	toolCalls: ToolCall[];
 	whatToCheck: string | null;
+	/** The judge's proposed instruction for a failed check, if it made one. */
+	fixSuggestion: string | null;
 };
 
 const rows = computed<CheckRow[]>(() =>
@@ -101,6 +105,7 @@ const rows = computed<CheckRow[]>(() =>
 			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
 			toolCalls: toDisplayToolCalls(result.toolCalls),
 			whatToCheck: readCaseWhatToCheck(result.input),
+			fixSuggestion: readVerdictSuggestion(result.verdict),
 		};
 	}),
 );
@@ -217,6 +222,36 @@ async function onRerunCheck(resultId: string) {
 		await store.rerunResult(props.projectId, props.agentId, resultId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
+}
+
+const { applyingIds: applyingSuggestionIds, applySuggestions } = useApplyAgentEvalSuggestions(
+	() => ({ projectId: props.projectId, agentId: props.agentId }),
+);
+const applyingAll = ref(false);
+
+// A long list goes out as successive requests, so the cap on one request is the
+// composable's concern, not this button's.
+const applicableSuggestionIds = computed(() =>
+	rows.value
+		.filter((row) => row.fixSuggestion !== null && row.status !== 'waiting')
+		.map((row) => row.id),
+);
+
+// A long apply sends its batches one after another, so the checks still waiting to be sent
+// must not change under it. Every row waits until the whole apply is done.
+const isApplyingSuggestions = computed(() => applyingSuggestionIds.value.length > 0);
+
+async function onApplySuggestion(resultId: string) {
+	await applySuggestions([resultId]);
+}
+
+async function onApplyAllSuggestions() {
+	applyingAll.value = true;
+	try {
+		await applySuggestions(applicableSuggestionIds.value);
+	} finally {
+		applyingAll.value = false;
 	}
 }
 
@@ -436,6 +471,17 @@ onBeforeUnmount(store.stopPollingRun);
 			</div>
 			<div :class="$style.actions">
 				<N8nButton
+					v-if="applicableSuggestionIds.length > 0 && !showingPreviousRun"
+					variant="solid"
+					size="small"
+					:disabled="disabled || rerunning || inFlight || isApplyingSuggestions"
+					:loading="applyingAll"
+					data-testid="agent-eval-checks-apply-all-suggestions"
+					@click="onApplyAllSuggestions"
+				>
+					{{ i18n.baseText('agents.builder.agentEvals.suggestion.applyAll') }}
+				</N8nButton>
+				<N8nButton
 					variant="subtle"
 					size="small"
 					:disabled="disabled || rerunning"
@@ -460,7 +506,9 @@ onBeforeUnmount(store.stopPollingRun);
 				:tool-calls="row.toolCalls"
 				:project-id="projectId"
 				:what-to-check="row.whatToCheck"
-				:disabled="disabled || showingPreviousRun"
+				:fix-suggestion="row.fixSuggestion"
+				:applying-suggestion="applyingSuggestionIds.includes(row.id)"
+				:disabled="disabled || showingPreviousRun || isApplyingSuggestions"
 				:running-check="row.status === 'waiting'"
 				hide-revise
 				view="complete"
@@ -468,6 +516,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:test-id="`agent-eval-check-${row.id}`"
 				@actually-fine="onActuallyFine(row.id)"
 				@rerun-check="onRerunCheck(row.id)"
+				@apply-suggestion="onApplySuggestion(row.id)"
 				@save-what-to-check="onSaveWhatToCheck(row.id, $event)"
 				@delete-check="onDeleteCheck(row)"
 			/>
@@ -544,7 +593,7 @@ onBeforeUnmount(store.stopPollingRun);
 	width: 100%;
 	border-radius: var(--radius--xl);
 	border: var(--border);
-	background-color: white;
+	background-color: var(--background--surface);
 }
 
 .list > * {

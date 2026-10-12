@@ -5,6 +5,7 @@ import {
 	createWorkflow,
 	createActiveWorkflow,
 	createWorkflowWithHistory,
+	createWorkflowHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
@@ -25,6 +26,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowPublishedVersionRepository,
+	CredentialsRepository,
 	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -1356,6 +1358,115 @@ describe('PATCH /workflows/:workflowId', () => {
 				);
 			},
 		);
+
+		describe('restoring a history version', () => {
+			const nodeWith = (credential: { id: string; name: string }, url = 'https://v1.test') => ({
+				id: 'uuid-restore-1',
+				name: 'Call',
+				parameters: { url },
+				position: [0, 0] as [number, number],
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+			});
+
+			/**
+			 * A member's workflow whose earlier version used the owner's credential. The
+			 * current version no longer has that node, and the member cannot use it.
+			 */
+			const setUp = async () => {
+				// The type must match the node's credential key, so the server resolves it by id.
+				const credential = await saveCredential(
+					{ ...randomCredentialPayload(), type: 'httpHeaderAuth' },
+					{ user: owner },
+				);
+				const workflow = await createWorkflow({}, member);
+				const oldVersionId = uuid();
+				await createWorkflowHistory(workflow, member, undefined, {
+					versionId: oldVersionId,
+					nodes: [nodeWith(credential)],
+				});
+				return { credential, workflow, oldVersionId };
+			};
+
+			test('restores a version with a credential the user cannot use', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes).toEqual([nodeWith(credential)]);
+			});
+
+			test('restores a version after its credential was renamed', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+				await Container.get(CredentialsRepository).update(credential.id, { name: 'Renamed' });
+
+				// The editor sends the nodes as the version stored them, with the old name.
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].credentials.httpHeaderAuth).toEqual({
+					id: credential.id,
+					name: 'Renamed',
+				});
+			});
+
+			test('blocks the same nodes in an ordinary save', async () => {
+				const { credential, workflow } = await setUp();
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(
+					"You don't have access to the credentials in the 'Call' node. Ask the owner to share them with you.",
+				);
+			});
+
+			test('blocks a node that differs from the restored version', async () => {
+				const { credential, workflow, oldVersionId } = await setUp();
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential, 'https://changed.test')],
+					restoredFromVersionId: oldVersionId,
+				});
+
+				expect(response.statusCode).toBe(400);
+			});
+
+			test("refuses a version that is not in this workflow's history", async () => {
+				const { credential, workflow } = await setUp();
+				const otherWorkflow = await createWorkflow({}, member);
+				const otherVersionId = uuid();
+				await createWorkflowHistory(otherWorkflow, member, undefined, {
+					versionId: otherVersionId,
+					nodes: [nodeWith(credential)],
+				});
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [nodeWith(credential)],
+					restoredFromVersionId: otherVersionId,
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(
+					"The version to restore is not in this workflow's history.",
+				);
+			});
+		});
 
 		describe('credentials in an agent node parameter', () => {
 			// The agent node keeps the model credential and its tool credentials in

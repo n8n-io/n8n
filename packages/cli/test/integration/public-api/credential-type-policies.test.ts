@@ -4,6 +4,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -667,5 +668,56 @@ describe('credential type policies public API attachments', () => {
 			.send({ attachments: [{ policyId: created.body.policy.id, priority: 0, isFloor: false }] });
 
 		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('credential type policies public API extends rules', () => {
+	const EXTENDS_RULE = {
+		id: 'r1',
+		action: 'deny',
+		selector: { kind: 'extends', value: 'oAuth2Api' },
+	};
+
+	// Per test: the shared setup restores every mock after each one.
+	beforeEach(() => {
+		vi.spyOn(Container.get(LoadNodesAndCredentials), 'knownCredentials', 'get').mockReturnValue({
+			oAuth2Api: { className: '', sourcePath: '' },
+		});
+	});
+
+	test('an extends rule reads back through every response shape', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+
+		const instancePut = await agent
+			.put('/credential-type-policies/instance')
+			.send({ rules: [EXTENDS_RULE], defaultAction: 'allow', version: 0 });
+		expect(instancePut.statusCode).toBe(200);
+		expect(instancePut.body.rules).toEqual([EXTENDS_RULE]);
+
+		const instanceGet = await agent.get('/credential-type-policies/instance');
+		expect(instanceGet.body.rules).toEqual([EXTENDS_RULE]);
+
+		const created = await agent
+			.post('/credential-type-policies/policies')
+			.send({ rules: [EXTENDS_RULE] });
+		expect(created.statusCode).toBe(201);
+		const policyId = created.body.policy.id as string;
+
+		const document = await agent.get(`/credential-type-policies/policies/${policyId}`);
+		expect(document.body.rules).toEqual([EXTENDS_RULE]);
+
+		const list = await agent.get('/credential-type-policies/policies');
+		expect(list.statusCode).toBe(200);
+		expect(list.body.data.map((policy: { rules: unknown }) => policy.rules)).toContainEqual([
+			EXTENDS_RULE,
+		]);
+
+		const attachments = await agent
+			.put(`/credential-type-policies/scopes/${instancePut.body.scopeId}/attachments`)
+			.send({ attachments: [{ policyId, priority: 1, isFloor: false }] });
+		expect(attachments.statusCode).toBe(200);
+		expect(attachments.body.attachments).toEqual([
+			{ policyId, rules: [EXTENDS_RULE], priority: 1, isFloor: false },
+		]);
 	});
 });
