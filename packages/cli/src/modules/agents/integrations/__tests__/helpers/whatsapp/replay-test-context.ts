@@ -139,7 +139,7 @@ export function whatsAppThreadId(
 
 export function createWhatsAppIntegration(
 	channelRateLimitGuard = new ChannelRateLimitGuard(),
-	webhookVerification = mock<WhatsAppWebhookVerificationStore>(),
+	webhookVerification: WhatsAppWebhookVerificationStore = mock<WhatsAppWebhookVerificationStore>(),
 ): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),

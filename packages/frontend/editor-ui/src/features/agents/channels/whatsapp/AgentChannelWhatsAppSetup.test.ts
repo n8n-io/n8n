@@ -10,6 +10,7 @@ import { defineComponent, ref } from 'vue';
 import type { WhatsAppCredentialCheck } from '@n8n/api-types';
 
 import AgentChannelWhatsAppSetup from './AgentChannelWhatsAppSetup.vue';
+import { ResponseError } from '@n8n/rest-api-client';
 import { checkWhatsAppCredential, getWhatsAppWebhookStatus } from './api';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -363,6 +364,42 @@ describe('AgentChannelWhatsAppSetup', () => {
 
 			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
 			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+		});
+
+		it('stops polling while the agent is not saved, then resumes once a credential saves it', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			vi.mocked(getWhatsAppWebhookStatus)
+				.mockRejectedValueOnce(new ResponseError('Agent not found', { httpStatusCode: 404 }))
+				.mockResolvedValue({ verified: true });
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ ensureAgentPersisted }),
+			});
+			await flushPromises();
+
+			await vi.advanceTimersByTimeAsync(POLL_MS * 5);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+
+			await rerender(props({ modelValue: 'cred-1', ensureAgentPersisted }));
+			await flushPromises();
+
+			expect(ensureAgentPersisted).toHaveBeenCalled();
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+		});
+
+		it('does not start a second poll when a credential is picked while polling', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			const { rerender } = renderComponent({ props: props() });
+			await flushPromises();
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+
+			await rerender(props({ modelValue: 'cred-1' }));
+			await flushPromises();
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(POLL_MS);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
 		});
 
 		it('stops polling once the view is gone', async () => {

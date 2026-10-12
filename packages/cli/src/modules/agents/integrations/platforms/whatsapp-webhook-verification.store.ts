@@ -35,6 +35,21 @@ export class WhatsAppWebhookVerificationStore {
 		}
 	}
 
+	/**
+	 * Never throws: removing the channel has already succeeded when this runs,
+	 * and a leftover record expires on its own.
+	 */
+	async clear(agentId: string): Promise<void> {
+		try {
+			await this.cacheService.delete(cacheKey(agentId));
+		} catch (error) {
+			this.logger.warn('[WhatsAppIntegration] Failed to clear the webhook handshake', {
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	async isVerified(agentId: string): Promise<boolean> {
 		return (await this.cacheService.get<boolean>(cacheKey(agentId))) === true;
 	}

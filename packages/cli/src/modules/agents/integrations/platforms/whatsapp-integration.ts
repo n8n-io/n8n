@@ -17,6 +17,7 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
+	type AgentIntegrationRemovalContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 	type BridgeMessageContextParams,
@@ -200,6 +201,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+	}
+
+	/**
+	 * A new setup of this agent can use a different Meta app. Without this, step
+	 * 4 would confirm the handshake that the removed channel's app completed.
+	 */
+	async onRemove(ctx: AgentIntegrationRemovalContext): Promise<undefined> {
+		await this.webhookVerification.clear(ctx.agentId);
+		return undefined;
 	}
 
 	/**

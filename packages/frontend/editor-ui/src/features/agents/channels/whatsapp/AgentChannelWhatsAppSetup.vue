@@ -11,6 +11,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { ResponseError } from '@n8n/rest-api-client';
 import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	listenForCredentialChanges,
@@ -79,6 +80,12 @@ const WEBHOOK_POLL_MS = 3 * TIME.SECOND;
 
 const verifyToken = shallowRef('');
 
+const webhookVerified = ref(false);
+let pollTimer: ReturnType<typeof setTimeout> | undefined;
+let unmounted = false;
+// Set when the status check found no saved agent. Picking a credential saves it.
+let waitingForAgent = false;
+
 const webhookUrl = computed(() => {
 	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
 	return `${base}/rest/projects/${props.projectId}/agents/v2/${props.agentId}/webhooks/whatsapp`;
@@ -143,6 +150,7 @@ async function runCredentialCheck() {
 			return;
 		}
 		if (!verifyToken.value) void loadVerifyToken();
+		resumeWebhookPolling();
 	}
 
 	let result: WhatsAppCredentialCheck;
@@ -175,10 +183,6 @@ listenForCredentialChanges({
 // Webhook handshake (step 4)
 // ---------------------------------------------------------------------------
 
-const webhookVerified = ref(false);
-let pollTimer: ReturnType<typeof setTimeout> | undefined;
-let unmounted = false;
-
 async function pollWebhookStatus() {
 	try {
 		const status = await getWhatsAppWebhookStatus(
@@ -187,12 +191,23 @@ async function pollWebhookStatus() {
 			props.agentId,
 		);
 		webhookVerified.value = status.verified;
-	} catch {
-		// The agent may not be saved yet. Keep polling: it is saved when a credential is picked.
+	} catch (error) {
+		// A new agent has no row until a credential is picked, so polling now would
+		// only repeat the same 404. `resumeWebhookPolling` starts it again.
+		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+			waitingForAgent = true;
+			return;
+		}
 	}
 	if (!webhookVerified.value && !unmounted) {
 		pollTimer = setTimeout(() => void pollWebhookStatus(), WEBHOOK_POLL_MS);
 	}
+}
+
+function resumeWebhookPolling() {
+	if (!waitingForAgent || unmounted) return;
+	waitingForAgent = false;
+	void pollWebhookStatus();
 }
 
 onMounted(() => {

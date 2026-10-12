@@ -1,3 +1,4 @@
+import type { User } from '@n8n/db';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
 import { OperationalError, UserError, type Logger } from 'n8n-workflow';
@@ -1065,6 +1066,23 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			const second = deriveWhatsAppVerifyToken('encryption-key', 'agent-2');
 
 			expect(first).not.toBe(second);
+		});
+	});
+
+	describe('onRemove', () => {
+		it('clears the recorded handshake for the agent', async () => {
+			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
+			const integration = createWhatsAppIntegration(undefined, webhookVerification);
+
+			const warning = await integration.onRemove({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				credentialId: 'cred-whatsapp',
+				user: mock<User>(),
+			});
+
+			expect(warning).toBeUndefined();
+			expect(webhookVerification.clear).toHaveBeenCalledExactlyOnceWith('agent-1');
 		});
 	});
 
