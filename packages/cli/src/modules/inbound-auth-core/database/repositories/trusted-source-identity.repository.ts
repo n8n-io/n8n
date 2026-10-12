@@ -1,13 +1,14 @@
 import {
 	BaseRepository,
 	OperationContext,
+	ProjectRelation,
 	Role,
 	TransactionRunner,
 	User,
 	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type DeepPartial } from '@n8n/typeorm';
+import { DataSource, type DeepPartial, In } from '@n8n/typeorm';
 
 import {
 	TrustedSourceIdentityEntity,
@@ -86,6 +87,16 @@ export class TrustedSourceIdentityRepository {
 		return await this.store.managerFor(ctx).exists(Role, { where: { slug, roleType: 'global' } });
 	}
 
+	/** True when every slug names a project role. Reads inside the identity transaction. */
+	async projectRolesExist(slugs: string[], ctx: OperationContext = {}): Promise<boolean> {
+		const unique = [...new Set(slugs)];
+		if (unique.length === 0) return true;
+		const count = await this.store
+			.managerFor(ctx)
+			.count(Role, { where: { slug: In(unique), roleType: 'project' } });
+		return count === unique.length;
+	}
+
 	async touchLastSeen(
 		sourceId: string,
 		subject: string,
@@ -121,6 +132,7 @@ export class TrustedSourceIdentityRepository {
 		ctx: OperationContext,
 		user: DeepPartial<User>,
 		binding: Pick<InsertTrustedSourceIdentityRow, 'sourceId' | 'subject' | 'provenance' | 'status'>,
+		projectRoles: { projectId: string; role: string }[] = [],
 	): Promise<User> {
 		return await this.store.runInTransaction(ctx, async (tx) => {
 			const { user: createdUser } = await this.users.createUserWithProject(user, tx);
@@ -129,6 +141,16 @@ export class TrustedSourceIdentityRepository {
 				...binding,
 				userId: createdUser.id,
 			});
+
+			for (const { projectId, role } of projectRoles) {
+				await tx.save(ProjectRelation, {
+					userId: createdUser.id,
+					projectId,
+					role: {
+						slug: role,
+					},
+				});
+			}
 
 			return createdUser;
 		});

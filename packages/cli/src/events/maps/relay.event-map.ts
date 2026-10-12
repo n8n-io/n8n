@@ -946,7 +946,7 @@ export type RelayEventMap = {
 	'expression-mapping-roles-resolved': {
 		userId: string;
 		userEmail: string;
-		provider: 'oidc' | 'saml' | 'ldap';
+		provider: 'oidc' | 'saml' | 'ldap' | 'oauth2';
 		instanceRole: {
 			role: string;
 			previousRole: string;
