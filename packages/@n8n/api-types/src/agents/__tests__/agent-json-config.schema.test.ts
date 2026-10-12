@@ -56,6 +56,30 @@ describe('AgentJsonConfigSchema — model', () => {
 
 		expect(result.success).toBe(true);
 	});
+
+	it('accepts gateway model IDs containing @ after the provider', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: 'openai/@OpenAI/gpt-5-mini',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects @ in the provider segment', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '@openai/gpt-5-mini',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a model without a provider', () => {
+		const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, model: 'gpt-5-mini' });
+
+		expect(result.success).toBe(false);
+	});
 });
 
 describe('AgentJsonConfigSchema — reasoning', () => {
