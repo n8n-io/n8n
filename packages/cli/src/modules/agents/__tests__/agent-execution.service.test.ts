@@ -1110,6 +1110,7 @@ describe('AgentExecutionService', () => {
 				agentName: 'Agent',
 				projectId: 'project-1',
 				userMessage: 'Run',
+				source: 'instance-ai',
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
@@ -1145,6 +1146,7 @@ describe('AgentExecutionService', () => {
 				agent_id: 'agent-1',
 				thread_id: 'thread-1',
 				run_type: 'test',
+				source: 'instance-ai',
 				turn_status: 'succeeded',
 				configuration: {
 					model: 'anthropic/claude-sonnet-4-5',

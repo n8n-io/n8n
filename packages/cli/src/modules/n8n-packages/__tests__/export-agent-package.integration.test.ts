@@ -24,7 +24,7 @@ import { DirectoryPackageWriter } from '../io/directory/directory-package-writer
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { PackageImportConfig } from '../n8n-packages.config';
-import { WorkflowVersionPolicy } from '../n8n-packages.types';
+import { ExportVersionPolicy } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import { serializedAgentSchema, type SerializedAgent } from '../spec/serialized/agent.schema';
 import { looseAgentsFixture } from './fixtures/agent-package-fixtures';
@@ -129,12 +129,12 @@ afterEach(async () => {
 });
 
 it.each([
-	{ prefix: '', policy: WorkflowVersionPolicy.Latest, selected: 'draft' },
-	{ prefix: '', policy: WorkflowVersionPolicy.PublishedStrict, selected: 'published' },
-	{ prefix: 'projects/operations', policy: WorkflowVersionPolicy.Latest, selected: 'draft' },
+	{ prefix: '', policy: ExportVersionPolicy.Latest, selected: 'draft' },
+	{ prefix: '', policy: ExportVersionPolicy.PublishedStrict, selected: 'published' },
+	{ prefix: 'projects/operations', policy: ExportVersionPolicy.Latest, selected: 'draft' },
 	{
 		prefix: 'projects/operations',
-		policy: WorkflowVersionPolicy.PublishedStrict,
+		policy: ExportVersionPolicy.PublishedStrict,
 		selected: 'published',
 	},
 ] as const)(

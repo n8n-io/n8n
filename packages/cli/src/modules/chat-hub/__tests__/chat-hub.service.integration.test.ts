@@ -1483,6 +1483,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -1601,6 +1602,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -1733,6 +1735,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -1874,6 +1877,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -1930,6 +1934,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId: capturedExecutionId,
+								executedInThisProcess: true,
 							});
 						});
 					});
@@ -2064,6 +2069,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -2205,6 +2211,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -2298,6 +2305,7 @@ describe('chatHub', () => {
 									runData,
 									newStaticData: {},
 									executionId: capturedExecutionId,
+									executedInThisProcess: true,
 								});
 							});
 						});
@@ -2449,6 +2457,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -2658,6 +2667,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -2793,6 +2803,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -2909,6 +2920,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 
@@ -3025,6 +3037,7 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
 							});
 						});
 

@@ -560,6 +560,32 @@ function createInertAbortSignal(): AbortSignal {
 	return new AbortController().signal;
 }
 
+/** True when the balance can no longer start another assistant run. */
+export function isAssistantCreditBalanceExhausted(credits: {
+	creditsQuota: number;
+	creditsClaimed: number;
+	quotaLocked?: boolean;
+}): boolean {
+	if (credits.quotaLocked) return true;
+	return credits.creditsQuota >= 0 && credits.creditsClaimed >= credits.creditsQuota;
+}
+
+function assistantCreditsExhaustedError(): QuotaExhaustedStreamError {
+	return new QuotaExhaustedStreamError(new Error('Assistant credits exhausted'));
+}
+
+function asQuotaExhaustedError(error: unknown): QuotaExhaustedStreamError | undefined {
+	if (error instanceof QuotaExhaustedStreamError) return error;
+	if (!isQuotaExhaustedError(error)) return undefined;
+	if (error instanceof Error) return new QuotaExhaustedStreamError(error);
+	return assistantCreditsExhaustedError();
+}
+
+function quotaExhaustedFromSignal(signal: AbortSignal): QuotaExhaustedStreamError | undefined {
+	if (!('reason' in signal)) return undefined;
+	return asQuotaExhaustedError(signal.reason);
+}
+
 function getAbortReason(signal: AbortSignal): string {
 	const reason = (signal as AbortSignal & { reason?: unknown }).reason;
 	if (
@@ -618,6 +644,15 @@ function classifyUnclaimedResume(
 	flags: { aborted: boolean; preserveHitl: boolean },
 ): UnclaimedResumeOutcome {
 	if (isStaleResumeError(error)) return { kind: 'stale' };
+	// A quota stop aborts the signal. That is not a user cancel.
+	if (isQuotaExhaustedError(error)) {
+		return {
+			kind: 'errored',
+			reason: getUserFacingErrorMessage(error),
+			errorCode: getUserFacingErrorCode(error),
+			errorMessage: getErrorMessage(error),
+		};
+	}
 	if (flags.aborted) return flags.preserveHitl ? { kind: 'preserve-hitl' } : { kind: 'cancelled' };
 	return {
 		kind: 'errored',
@@ -857,6 +892,9 @@ export class InstanceAiService {
 			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 			this.instanceAiConfig.maxConcurrentSubAgents,
 		);
+		this.creditService.onQuotaExhausted((exhaustedUser) => {
+			this.stopRunsForQuotaExhaustion(exhaustedUser);
+		});
 		this.suspendedThreads = new SuspendedThreadPersistenceService({
 			logger: this.logger,
 			config: this.instanceAiConfig,
@@ -1150,6 +1188,25 @@ export class InstanceAiService {
 		producedNoOutput: boolean;
 	}): boolean {
 		return args.turnHadAttachments && args.producedNoOutput;
+	}
+
+	/**
+	 * Refuse a new run when the balance is already exhausted. A failed balance
+	 * read must not wall the user: the proxy still enforces the quota.
+	 */
+	private async assertAssistantCreditsAvailable(user: User): Promise<void> {
+		let credits: Awaited<ReturnType<InstanceAiModelService['getCredits']>>;
+		try {
+			credits = await this.modelService.getCredits(user);
+		} catch (error) {
+			this.logger.debug('Skipping pre-run credit check; balance read failed', {
+				userId: user.id,
+				error: getErrorMessage(error),
+			});
+			return;
+		}
+		if (!isAssistantCreditBalanceExhausted(credits)) return;
+		throw assistantCreditsExhaustedError();
 	}
 
 	private async reclassifyMaskedStreamFailure(
@@ -1560,11 +1617,48 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
+	/**
+	 * Stop every live run and background task for this user. A cached proxy
+	 * token would otherwise let those loops continue after the balance hits zero.
+	 */
+	private stopRunsForQuotaExhaustion(user: User): void {
+		const threadIds = new Set(this.runState.listLiveThreadIdsForUser(user.id));
+		for (const task of this.backgroundTasks.listRunningTasks()) {
+			if (this.runState.getThreadUser(task.threadId)?.id === user.id) {
+				threadIds.add(task.threadId);
+			}
+		}
+		for (const threadId of threadIds) {
+			try {
+				this.cancelRun(threadId, 'quota_exhausted');
+			} catch (error) {
+				this.logger.warn('Failed to stop a run after assistant credits ran out', {
+					threadId,
+					userId: user.id,
+					error: getErrorMessage(error),
+				});
+			}
+		}
+	}
+
 	cancelRun(threadId: string, reason = 'user_cancelled'): void {
-		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
+		const quotaStop = reason === 'quota_exhausted';
+		const abortReason = quotaStop ? assistantCreditsExhaustedError() : undefined;
+		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
 			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
+			if (quotaStop) {
+				this.eventBus.publish(threadId, {
+					type: 'error',
+					runId: task.runId,
+					agentId: orchestratorAgentId(task.runId),
+					payload: {
+						content: QUOTA_EXHAUSTED_USER_MESSAGE,
+						code: 'quota_exhausted',
+					},
+				});
+			}
 			this.eventBus.publish(threadId, {
 				type: 'agent-completed',
 				runId: task.runId,
@@ -1572,7 +1666,8 @@ export class InstanceAiService {
 				payload: {
 					role: task.role,
 					result: '',
-					status: 'cancelled',
+					status: quotaStop ? 'error' : 'cancelled',
+					...(quotaStop ? { error: QUOTA_EXHAUSTED_USER_MESSAGE } : {}),
 				},
 			});
 			void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
@@ -1592,7 +1687,7 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
-			active.abortController.abort();
+			active.abortController.abort(abortReason);
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
 			// resolver) get cleaned up here so the index never outlives the run.
@@ -1602,8 +1697,26 @@ export class InstanceAiService {
 
 		if (suspended) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(suspended.runId);
-			suspended.abortController.abort();
-			void this.finalizeCancelledSuspendedRun(suspended, reason);
+			suspended.abortController.abort(abortReason);
+			if (quotaStop && abortReason) {
+				void this.emitTerminalRun({
+					threadId,
+					runId: suspended.runId,
+					status: 'errored',
+					reason: QUOTA_EXHAUSTED_USER_MESSAGE,
+					errorCode: 'quota_exhausted',
+					errorInfo: {
+						errorMessage: abortReason.message,
+						errorSource: 'exception',
+					},
+					messageGroupId: suspended.messageGroupId,
+					user: suspended.user,
+					...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
+					promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
+				});
+			} else {
+				void this.finalizeCancelledSuspendedRun(suspended, reason);
+			}
 		}
 
 		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
@@ -2515,6 +2628,9 @@ export class InstanceAiService {
 
 		// There's another ensure lock check at `getCredits`, which only fires when the frontend mounts.
 		await this.creditService.ensureQuotaLockApplied(user);
+		// Stop before this run resolves a model. A cached proxy token stays valid
+		// after the balance hits zero, so a later token request would not 403.
+		await this.assertAssistantCreditsAvailable(user);
 
 		const { searchProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
@@ -3828,6 +3944,7 @@ export class InstanceAiService {
 		let contextTurn: InstanceContextTurnBinding | undefined;
 		let contextResult: StreamRunResult | undefined;
 		let contextSegmentReported = false;
+		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
 		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 
@@ -3951,6 +4068,8 @@ export class InstanceAiService {
 
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
+				const quotaAbort = quotaExhaustedFromSignal(signal);
+				if (quotaAbort) throw quotaAbort;
 				await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
@@ -4613,6 +4732,11 @@ export class InstanceAiService {
 				return;
 			}
 
+			if (result.status === 'cancelled') {
+				const quotaAbort = quotaExhaustedFromSignal(signal);
+				if (quotaAbort) throw quotaAbort;
+			}
+
 			const outputText = await (result.text ?? Promise.resolve(''));
 			const terminalError =
 				result.status === 'errored'
@@ -4733,8 +4857,11 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
+			const quotaAbort = quotaExhaustedFromSignal(signal) ?? asQuotaExhaustedError(error);
+			if (quotaAbort) blockedForQuota = true;
+
 			// Shutdown keeps the pending card. Do not finalize its segment here.
-			if (signal.aborted && this.shouldPreserveHitlOnShutdown(runId)) return;
+			if (signal.aborted && !quotaAbort && this.shouldPreserveHitlOnShutdown(runId)) return;
 
 			const contextWork = contextResult
 				? contextResult.workSummary
@@ -4746,13 +4873,13 @@ export class InstanceAiService {
 				contextSegmentReported = true;
 				this.emitInstanceContextTurn(contextTurn, {
 					segment: 'whole',
-					status: signal.aborted ? 'cancelled' : 'errored',
+					status: signal.aborted && !quotaAbort ? 'cancelled' : 'errored',
 					reach: contextReach,
 					workSummary: contextWork,
 					usage: contextResult?.usage,
 				});
 			}
-			if (signal.aborted) {
+			if (signal.aborted && !quotaAbort) {
 				if (!streamReached) {
 					await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				}
@@ -4798,10 +4925,12 @@ export class InstanceAiService {
 				return;
 			}
 
-			const terminalError = await this.reclassifyMaskedStreamFailure(error, user, {
-				threadId,
-				runId,
-			});
+			const terminalError =
+				quotaAbort ??
+				(await this.reclassifyMaskedStreamFailure(error, user, {
+					threadId,
+					runId,
+				}));
 			// The attachment is persisted in history before the model call is known to
 			// have succeeded, so a refused file would fail every later turn as well.
 			// Drop it here to keep the thread usable, and tell the user what really
@@ -4916,7 +5045,7 @@ export class InstanceAiService {
 			//   3. UI projection — always, so a stopped run's task states reach
 			//      the client.
 			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
-				const reschedule = !signal.aborted;
+				const reschedule = !signal.aborted && !blockedForQuota;
 				if (checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(user, threadId, checkpoint.checkpointTaskId, {
 						reschedule,
@@ -5910,6 +6039,7 @@ export class InstanceAiService {
 		const contextTurn = this.instanceContextTurnBinding(opts);
 		let contextResult: StreamRunResult | undefined;
 		let contextSegmentReported = false;
+		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
 		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 		/**
@@ -6170,6 +6300,11 @@ export class InstanceAiService {
 				return;
 			}
 
+			if (result.status === 'cancelled') {
+				const quotaAbort = quotaExhaustedFromSignal(opts.signal);
+				if (quotaAbort) throw quotaAbort;
+			}
+
 			const outputText = await (result.text ?? Promise.resolve(''));
 			resumedRunProducedOutput = outputText.length > 0;
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
@@ -6312,13 +6447,17 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
+			const quotaAbort = quotaExhaustedFromSignal(opts.signal) ?? asQuotaExhaustedError(error);
+			if (quotaAbort) blockedForQuota = true;
+
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
-				await this.settleUnclaimedResume(opts, error, 'exception', promptVersion);
+				await this.settleUnclaimedResume(opts, quotaAbort ?? error, 'exception', promptVersion);
 				return;
 			}
 
-			if (opts.signal.aborted && this.shouldPreserveHitlOnShutdown(opts.runId)) return;
+			if (opts.signal.aborted && !quotaAbort && this.shouldPreserveHitlOnShutdown(opts.runId))
+				return;
 
 			const contextWork = contextResult
 				? contextResult.workSummary
@@ -6331,13 +6470,13 @@ export class InstanceAiService {
 				contextSegmentReported = true;
 				this.emitInstanceContextTurn(contextTurn, {
 					segment: 'resumed',
-					status: opts.signal.aborted ? 'cancelled' : 'errored',
+					status: opts.signal.aborted && !quotaAbort ? 'cancelled' : 'errored',
 					reach: segmentReach,
 					workSummary: contextWork,
 					usage: contextResult?.usage,
 				});
 			}
-			if (opts.signal.aborted) {
+			if (opts.signal.aborted && !quotaAbort) {
 				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
 				const cancellationReason = runTimeout.timedOut
@@ -6389,10 +6528,12 @@ export class InstanceAiService {
 				return;
 			}
 
-			const terminalError = await this.reclassifyMaskedStreamFailure(error, opts.user, {
-				threadId: opts.threadId,
-				runId: opts.runId,
-			});
+			const terminalError =
+				quotaAbort ??
+				(await this.reclassifyMaskedStreamFailure(error, opts.user, {
+					threadId: opts.threadId,
+					runId: opts.runId,
+				}));
 			// Same reasoning as the resumed errored-result path above: a suspended
 			// file-bearing turn replays its attachments, so a thrown refusal here would
 			// leave them in history too. Gated on the run having produced nothing,
@@ -6503,7 +6644,7 @@ export class InstanceAiService {
 				!segmentSuspended &&
 				!this.runState.hasSuspendedRun(opts.threadId)
 			) {
-				const reschedule = !opts.signal.aborted;
+				const reschedule = !opts.signal.aborted && !blockedForQuota;
 				if (opts.checkpoint?.isCheckpointFollowUp) {
 					await this.finalizeCheckpointFollowUp(
 						opts.user,

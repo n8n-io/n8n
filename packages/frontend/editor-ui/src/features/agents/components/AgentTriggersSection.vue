@@ -161,26 +161,31 @@ function channelRuntimeErrorMessage(channel: string): string {
 	return runtimeErrors.value[channel] || i18n.baseText('agents.channels.modal.notRunning.tooltip');
 }
 
+// n8n Chat always shows, even when it is not in the agent config.
 const channelRows = computed(() =>
-	props.connectedTriggers
-		.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE || isN8nChatEnabled.value)
-		.map((channel) => {
-			const integration = channelList.value.find(({ type }) => type === channel);
-			const credentialId = connectedCredentials.value[channel];
-			// A channel that is configured correctly but failed to start is just as
-			// broken from here as a misconfigured one, so it uses the same affordance.
-			const invalidReasons = [
-				...(channelIssueMessages.value.get(channel) ?? []),
-				...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
-			];
-			return {
-				type: channel,
-				label: integration?.label ?? channel,
-				icon: channelIcon(integration?.icon),
-				credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
-				invalidReasons,
-			};
-		}),
+	[
+		...(isN8nChatEnabled.value ? [N8N_CHAT_INTEGRATION_TYPE] : []),
+		...props.connectedTriggers.filter((channel) => channel !== N8N_CHAT_INTEGRATION_TYPE),
+	].map((channel) => {
+		const integration = channelList.value.find(({ type }) => type === channel);
+		const credentialId = connectedCredentials.value[channel];
+		// A channel that is configured correctly but failed to start is just as
+		// broken from here as a misconfigured one, so it uses the same affordance.
+		const invalidReasons = [
+			...(channelIssueMessages.value.get(channel) ?? []),
+			...(hasRuntimeError(channel) ? [channelRuntimeErrorMessage(channel)] : []),
+		];
+		return {
+			type: channel,
+			label: integration?.label ?? channel,
+			icon: channelIcon(integration?.icon),
+			credentialName: credentialId ? credentialNamesById.value[credentialId] : undefined,
+			invalidReasons,
+			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
+			connected:
+				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),
+		};
+	}),
 );
 
 async function loadChannelDetails() {
@@ -239,9 +244,10 @@ function openChannelModal() {
 	channelModalOpen.value = true;
 }
 
-function openChannelEdit(channelType: string) {
+function openChannelEdit(channelType: string, connected: boolean) {
 	const hasEditableChannelView = channelList.value.some(({ type }) => type === channelType);
-	channelModalView.value = hasEditableChannelView ? `${channelType}_edit` : 'list';
+	const mode = connected ? 'edit' : 'setup';
+	channelModalView.value = hasEditableChannelView ? `${channelType}_${mode}` : 'list';
 	channelModalOpen.value = true;
 }
 
@@ -278,16 +284,17 @@ function handleChannelDisconnected(channelType: string) {
 			<AgentItemContextMenu
 				v-for="channel in channelRows"
 				:key="channel.type"
-				:disabled="props.disabled || removingChannel"
+				:disabled="props.disabled || removingChannel || !channel.connected"
 				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
 				<AgentChipButton
 					:icon="channel.icon"
+					:deactivated="!channel.connected"
 					:invalid="channel.invalidReasons.length > 0"
 					:invalid-reasons="channel.invalidReasons"
 					:disabled="props.disabled || removingChannel"
 					:class="$style.channelChip"
-					@click="openChannelEdit(channel.type)"
+					@click="openChannelEdit(channel.type, channel.connected)"
 				>
 					{{ channel.label }}
 				</AgentChipButton>
