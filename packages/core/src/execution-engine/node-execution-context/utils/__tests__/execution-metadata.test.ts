@@ -178,9 +178,9 @@ describe('Execution Metadata functions', () => {
 		test('truncates a value over the length limit and logs one warning', () => {
 			const { metadata, executionData } = createExecutionDataWithMetadata();
 
-			setWorkflowExecutionMetadata(executionData, 'test1', 'a'.repeat(VALUE_MAX_LENGTH + 1));
+			setWorkflowExecutionMetadata(executionData, 'test1', 'a'.repeat(VALUE_MAX_LENGTH) + 'b');
 
-			expect(metadata.test1).toHaveLength(VALUE_MAX_LENGTH);
+			expect(metadata.test1).toBe('a'.repeat(VALUE_MAX_LENGTH));
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				`Custom data value over ${VALUE_MAX_LENGTH} characters long. Truncating to ${VALUE_MAX_LENGTH} characters.`,
@@ -203,7 +203,7 @@ describe('Execution Metadata functions', () => {
 		test('truncates a key over the length limit and logs one warning', () => {
 			const { metadata, executionData } = createExecutionDataWithMetadata();
 
-			setWorkflowExecutionMetadata(executionData, 'a'.repeat(KEY_MAX_LENGTH + 1), 'value1');
+			setWorkflowExecutionMetadata(executionData, 'a'.repeat(KEY_MAX_LENGTH) + 'b', 'value1');
 
 			expect(metadata).toEqual({ ['a'.repeat(KEY_MAX_LENGTH)]: 'value1' });
 			expect(logger.warn).toHaveBeenCalledTimes(1);
