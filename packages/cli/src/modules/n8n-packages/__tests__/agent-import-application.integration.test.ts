@@ -28,6 +28,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
+import { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
@@ -359,6 +360,27 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		activeVersionId: initial.versionId,
 	});
 	expect(await tasks.findByAgentId(initial.id)).toEqual([]);
+});
+
+it('completes a committed update when the setup check fails', async () => {
+	const input = fixture();
+	input.manifest.agents.splice(1);
+	const initial = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	source(input).config!.instructions = 'Updated instructions';
+	vi.clearAllMocks();
+	vi.spyOn(
+		Container.get(AgentSetupCompletionService),
+		'recordIfSetupComplete',
+	).mockRejectedValueOnce(new Error('Setup check is unavailable'));
+	await importSelected(input);
+	expect(await agents.findById(initial.id)).toMatchObject({
+		schema: { instructions: 'Updated instructions' },
+	});
+	expect(runtimes.clearRuntimes).toHaveBeenCalledWith(initial.id);
+	expect(broadcaster.notify).toHaveBeenCalledWith(
+		expect.objectContaining({ agentId: initial.id }),
+		undefined,
+	);
 });
 
 it('applies a project package after authorized project creation', async () => {
