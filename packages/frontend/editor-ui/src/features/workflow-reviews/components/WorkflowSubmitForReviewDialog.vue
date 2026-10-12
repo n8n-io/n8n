@@ -394,7 +394,6 @@ const submit = async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	margin-top: var(--spacing--xs);
 }
 
 .heading {
