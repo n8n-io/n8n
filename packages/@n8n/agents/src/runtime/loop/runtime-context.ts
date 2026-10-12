@@ -21,6 +21,7 @@ import {
 	FLAG_MEMORY_TOOL_NAME,
 	resolveEpisodicMemoryCapture,
 } from '../memory/episodic-memory-capture';
+import { isGoogleVertexAnthropicModel } from '../model/google-vertex';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel, supportsSplitSystemMessages } from '../model/model-factory';
@@ -374,7 +375,10 @@ export class RuntimeContextBuilder {
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const quirks = getProviderQuirks(getProviderPrefix(this.modelId));
+		const provider = isGoogleVertexAnthropicModel(this.modelId)
+			? 'google-vertex-anthropic'
+			: getProviderPrefix(this.modelId);
+		const quirks = getProviderQuirks(provider);
 		return quirks.thinkingToProviderOptions?.(this.config.thinking, this.modelId);
 	}
 

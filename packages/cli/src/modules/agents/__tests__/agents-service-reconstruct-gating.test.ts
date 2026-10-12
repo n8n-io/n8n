@@ -59,6 +59,9 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint injection branch
@@ -657,6 +660,13 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.list.mockResolvedValue([
 			{ id: 'vertex-cred', name: 'Vertex', type: 'googleVertexAiApi' },
@@ -702,6 +712,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			},
 			medium: {
 				id: 'google-vertex/gemini-3-flash-preview',
+				sdk: '@ai-sdk/google-vertex',
 				project: 'child-project',
 				location: 'europe-west1',
 				clientEmail: 'agent@example.test',

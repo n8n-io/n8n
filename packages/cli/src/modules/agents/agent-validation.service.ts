@@ -419,7 +419,6 @@ export class AgentValidationService {
 	): Promise<void> {
 		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
 		const slots: Array<[string, ModelSlot | undefined]> = [
-			['', config],
 			...Object.entries(config.subAgents?.modelsByDifficulty ?? {}).map(
 				([difficulty, model]): [string, ModelSlot] => [
 					`subAgents.modelsByDifficulty.${difficulty}.`,

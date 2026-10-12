@@ -1,5 +1,6 @@
 import type { ModelConfig } from '../../../types/sdk/agent';
 import { getModelIdString } from '../../../utils/model';
+import { RuntimeContextBuilder } from '../runtime-context';
 
 describe('getModelIdString', () => {
 	it('returns a plain string model id unchanged', () => {
@@ -32,5 +33,43 @@ describe('getModelIdString', () => {
 	it('falls back to "unknown" when neither id nor modelId is present', () => {
 		const model = {} as unknown as ModelConfig;
 		expect(getModelIdString(model)).toBe('unknown');
+	});
+});
+
+describe('Vertex thinking options', () => {
+	it.each([
+		{
+			modelId: 'google-vertex/claude-sonnet-4-5',
+			expected: { anthropic: { thinking: { type: 'enabled', budgetTokens: 4096 } } },
+		},
+		{
+			modelId: 'google-vertex/claude-opus-5@default',
+			expected: {
+				anthropic: {
+					thinking: { type: 'adaptive', display: 'summarized' },
+					effort: 'medium',
+				},
+			},
+		},
+		{ modelId: 'google-vertex/gemini-3-flash-preview', expected: undefined },
+	])('maps thinking for $modelId without changing its ID', ({ modelId, expected }) => {
+		const builder = new RuntimeContextBuilder(
+			{
+				name: 'test',
+				model: {
+					id: modelId,
+					project: 'test-project',
+					location: 'global',
+					clientEmail: 'test@example.com',
+					privateKey: 'test-key',
+				},
+				instructions: '',
+				thinking: { budgetTokens: 4096 },
+			},
+			undefined,
+		);
+
+		expect(builder.buildStaticLoopContext().providerOptions).toEqual(expected);
+		expect(builder.modelId).toBe(modelId);
 	});
 });

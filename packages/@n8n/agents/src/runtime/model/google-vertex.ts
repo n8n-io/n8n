@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import type { GoogleVertexProviderSettings } from '@ai-sdk/google-vertex';
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { isRecord } from '@n8n/utils/is-record';
 import type { LanguageModel } from 'ai';
@@ -10,7 +11,43 @@ import type { ProviderCredentials } from './provider-credentials';
 
 type VertexSettings = GoogleVertexProviderSettings & { project: string; location: string };
 
-/** Select the Vertex API from the catalog's SDK override. */
+const VERTEX_MAAS_MODEL_PREFIXES = [
+	'deepseek-ai/deepseek-',
+	'google/gemma-',
+	'meta/llama-',
+	'minimax/minimax-',
+	'moonshotai/kimi-',
+	'openai/gpt-oss-',
+	'qwen/qwen',
+	'zai-org/glm-',
+];
+
+/** Keep saved models usable when catalog metadata is unavailable. */
+export function resolveGoogleVertexSdk(model: string, sdk?: string): string | undefined {
+	if (sdk !== undefined) return sdk;
+	if (model.startsWith('gemini-')) return '@ai-sdk/google-vertex';
+	if (model.startsWith('claude-')) return '@ai-sdk/google-vertex/anthropic';
+	if (model.startsWith('mistral-') || model.startsWith('codestral-')) return '@ai-sdk/mistral';
+	if (
+		model.startsWith('xai/grok-') ||
+		(model.endsWith('-maas') &&
+			VERTEX_MAAS_MODEL_PREFIXES.some((prefix) => model.startsWith(prefix)))
+	) {
+		return '@ai-sdk/openai-compatible';
+	}
+	return undefined;
+}
+
+/** Identify Claude models that use the shared Vertex provider ID. */
+export function isGoogleVertexAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return (
+		provider === 'google-vertex' &&
+		resolveGoogleVertexSdk(model) === '@ai-sdk/google-vertex/anthropic'
+	);
+}
+
+/** Select the Vertex API for the model. */
 export function createGoogleVertexModel(
 	creds: ProviderCredentials<'google-vertex'>,
 	model: string,
@@ -27,8 +64,7 @@ export function createGoogleVertexModel(
 		},
 		fetch,
 	};
-	// Keep existing Gemini configs usable when catalog metadata is unavailable.
-	const sdk = creds.sdk ?? (model.startsWith('gemini-') ? '@ai-sdk/google-vertex' : undefined);
+	const sdk = resolveGoogleVertexSdk(model, creds.sdk);
 	switch (sdk) {
 		case '@ai-sdk/google-vertex': {
 			const { createGoogleVertex } =

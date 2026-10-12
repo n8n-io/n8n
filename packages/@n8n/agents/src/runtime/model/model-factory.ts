@@ -4,7 +4,11 @@ import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/m
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
-import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
+import {
+	createGoogleVertexModel,
+	isGoogleVertexAnthropicModel,
+	parseGoogleVertexAuthOptions,
+} from './google-vertex';
 import {
 	endpointRouteKey,
 	guardOpenAiRoutes,
@@ -192,7 +196,9 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
-	switch (getModelIdString(model).split('/')[0]) {
+	const modelId = getModelIdString(model);
+	if (isGoogleVertexAnthropicModel(modelId)) return true;
+	switch (modelId.split('/')[0]) {
 		case 'anthropic':
 		case 'google-vertex-anthropic':
 		case 'openrouter':

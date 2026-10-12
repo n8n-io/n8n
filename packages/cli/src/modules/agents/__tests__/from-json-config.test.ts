@@ -13,6 +13,9 @@ import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-j
 import type { ToolExecutor } from '../json-config/from-json-config';
 import { buildVectorStore } from '../json-config/vector-store-factory';
 
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
 vi.mock('../json-config/vector-store-factory', () => ({
 	buildVectorStore: vi.fn(),
 }));
@@ -1207,6 +1210,14 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures agent and memory worker models with their own credentials and projects', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3.1-pro-preview': { sdk: '@ai-sdk/google-vertex' },
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
 		const modelSpy = vi.spyOn(AgentsRuntime.Agent.prototype, 'model');
 		const observeSpy = vi.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
@@ -1255,6 +1266,7 @@ describe('buildFromJson()', () => {
 
 		expect(modelSpy).toHaveBeenCalledWith({
 			id: 'google-vertex/gemini-3.1-pro-preview',
+			sdk: '@ai-sdk/google-vertex',
 			project: 'main-key-project',
 			clientEmail: 'main-key@example.iam.gserviceaccount.com',
 			privateKey: 'main-key-private-key',
@@ -1262,6 +1274,7 @@ describe('buildFromJson()', () => {
 		});
 		expect(observeSpy).toHaveBeenCalledWith({
 			id: 'google-vertex/gemini-3-flash-preview',
+			sdk: '@ai-sdk/google-vertex',
 			project: 'observer-key-project',
 			clientEmail: 'observer-key@example.iam.gserviceaccount.com',
 			privateKey: 'observer-key-private-key',
