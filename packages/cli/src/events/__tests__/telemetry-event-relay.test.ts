@@ -4672,6 +4672,30 @@ describe('TelemetryEventRelay', () => {
 				},
 			);
 		});
+
+		it('omits synced_at when the report has no sync time', () => {
+			eventService.emit('migration-report-viewed', {
+				user: { id: 'user-1' },
+				targetVersion: 'v3',
+				refreshed: false,
+				report: {
+					report: {
+						targetVersion: 'v3',
+						currentVersion: '2.0.0',
+						instanceResults: [],
+						workflowResults: [],
+					},
+					totalWorkflows: 0,
+					totalAffectedWorkflows: 0,
+					shouldCache: false,
+				},
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT,
+				expect.objectContaining({ synced_at: undefined }),
+			);
+		});
 	});
 
 	describe('workflow history compaction events', () => {
