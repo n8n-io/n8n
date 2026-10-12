@@ -115,7 +115,7 @@ packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/knowledge
 
-packages/cli/src/evaluation.ee/                         @n8n-io/ai
+packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
 packages/cli/src/chat/                                  @n8n-io/ai
 packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/cli/src/modules/workflow-builder/              @n8n-io/ai-assistant
@@ -282,3 +282,14 @@ packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
 packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required
+
+# AI Trust (evaluations)
+# Placed last so these rules override the broader package rules above.
+
+packages/@n8n/instance-ai/evaluations/                   @n8n-io/ai-trust
+packages/cli/src/modules/instance-ai/eval/               @n8n-io/ai-trust
+packages/quality/testing/playwright/tests/evals/instance-ai/ @n8n-io/ai-trust
+.agents/skills/create-instance-ai-eval/                  @n8n-io/ai-trust
+packages/cli/src/modules/agent-evals/                    @n8n-io/ai-trust
+packages/@n8n/agents/src/evals/                          @n8n-io/ai-trust
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/ @n8n-io/ai-trust
