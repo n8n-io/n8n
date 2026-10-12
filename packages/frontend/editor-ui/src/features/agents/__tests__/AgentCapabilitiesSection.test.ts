@@ -32,6 +32,18 @@ function createNodeType(name: string, displayName: string): SimplifiedNodeType {
 	};
 }
 
+// The store-backed fallback needs Pinia, which this suite does not mount.
+const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
+vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
+	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
+	RestrictedNodePopover: {
+		name: 'RestrictedNodePopover',
+		props: ['nodeTypeName', 'scope', 'anchor', 'side', 'markerSize'],
+		template:
+			'<span data-testid="node-restricted-icon" :data-scope="scope" :data-node-type="nodeTypeName" />',
+	},
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType,
@@ -134,12 +146,6 @@ function mountSection(
 					name: 'AgentChannelModal',
 					props: ['view', 'open'],
 					template: '<div v-if="open" data-testid="agent-channel-modal-stub" :data-view="view" />',
-				},
-				RestrictedNodePopover: {
-					name: 'RestrictedNodePopover',
-					props: ['nodeTypeName', 'scope', 'anchor', 'side', 'markerSize'],
-					template:
-						'<span data-testid="node-restricted-icon" :data-scope="scope" :data-node-type="nodeTypeName" />',
 				},
 			},
 		},
@@ -1514,6 +1520,7 @@ describe('AgentCapabilitiesSection', () => {
 describe('AgentCapabilitiesSection — restricted node types', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		storeRestrictions.clear();
 	});
 
 	const slackTool = (name: string): AgentJsonToolRef => ({
@@ -1623,6 +1630,33 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		await wrapper.find('[data-testid="node-restricted-icon"]').trigger('click');
 
 		expect(wrapper.emitted('open-tool')).toBeUndefined();
+	});
+
+	it('keeps the lock from the policy store while an unsaved edit clears the issues', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
+		// No issues: the builder drops the stale result as soon as the draft is edited.
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [],
+		});
+		await flushPromises();
+
+		const lock = wrapper.find('[data-testid="node-restricted-icon"]');
+		expect(lock.exists()).toBe(true);
+		expect(lock.attributes('data-scope')).toBe('project');
+	});
+
+	it('prefers the scope the publish gate reported over the store verdict', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="node-restricted-icon"]').attributes('data-scope')).toBe(
+			'instance',
+		);
 	});
 
 	it('locks an MCP server chip whose node type a policy denies', async () => {

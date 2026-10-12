@@ -38,7 +38,10 @@ import type {
 	SingleToolRow,
 } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import {
+	getNodeTypeRestriction,
+	RestrictedNodePopover,
+} from '@n8n/frontend-module-type-availability-policies';
 
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
@@ -164,9 +167,12 @@ const subAgentIssueMessages = computed(() =>
 );
 
 /**
- * The restricted capabilities, read from the validation issues rather than from the policy store:
- * the backend reports what its own publish gate would refuse, so the lock and the blocked Publish
- * can never disagree. Tools key on their position, MCP servers on their name.
+ * The restricted capabilities, from the validation issues: the backend reports what its own
+ * publish gate would refuse, so the reported lock and the blocked Publish agree. Tools key on
+ * their position, MCP servers on their name.
+ *
+ * The issues go empty while an edit is unsaved, because the builder drops the stale result. The
+ * store verdict covers that window, so a lock does not blink off mid-edit — see `toolRestriction`.
  */
 const restrictedTools = computed(() => {
 	const scopes = new Map<number, NodeTypeAvailabilityScope | undefined>();
@@ -187,17 +193,30 @@ const restrictedMcpServers = computed(() => {
 	return scopes;
 });
 
+/** The project's own verdict, which an unsaved edit cannot invalidate. */
+function storedRestriction(entry: CapabilityToolEntry): NodeTypeAvailabilityScope | null {
+	const nodeType = toolNodeType(entry);
+	if (!nodeType) return null;
+	return getNodeTypeRestriction(nodeType.name)?.scope ?? null;
+}
+
 function toolRestriction(entry: CapabilityToolEntry): {
 	restricted: boolean;
 	scope: NodeTypeAvailabilityScope | undefined;
 } {
+	// A reported issue wins: it carries the scope the publish gate itself decided on.
 	if (entry.kind === 'mcpServer') {
-		const servers = restrictedMcpServers.value;
-		return { restricted: servers.has(entry.server.name), scope: servers.get(entry.server.name) };
+		if (restrictedMcpServers.value.has(entry.server.name)) {
+			return { restricted: true, scope: restrictedMcpServers.value.get(entry.server.name) };
+		}
+	} else if (restrictedTools.value.has(entry.index)) {
+		return { restricted: true, scope: restrictedTools.value.get(entry.index) };
 	}
 
-	const tools = restrictedTools.value;
-	return { restricted: tools.has(entry.index), scope: tools.get(entry.index) };
+	const stored = storedRestriction(entry);
+	return stored === null
+		? { restricted: false, scope: undefined }
+		: { restricted: true, scope: stored };
 }
 
 async function ensureSubAgentNamesLoaded() {
