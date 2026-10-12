@@ -2408,7 +2408,9 @@ export class TelemetryEventRelay extends EventRelay {
 				impact: rule.ruleImpact,
 				affected_workflows: rule.nbAffectedWorkflows,
 			})),
-			synced_at: new Date(report.report.generatedAt).toISOString(),
+			synced_at: report.report.generatedAt
+				? new Date(report.report.generatedAt).toISOString()
+				: undefined,
 		});
 	}
 

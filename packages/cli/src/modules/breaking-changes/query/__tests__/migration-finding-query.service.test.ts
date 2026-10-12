@@ -325,16 +325,10 @@ describe('MigrationFindingQueryService', () => {
 			expect(workflowRepository.count).not.toHaveBeenCalled();
 		});
 
-		it('falls back to the current time as generatedAt when no sync ran yet', async () => {
-			const now = new Date('2026-06-01T12:00:00.000Z');
-			vi.useFakeTimers({ now });
-			try {
-				const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
+		it('reports no generatedAt when no sync ran yet', async () => {
+			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
-				expect(result.report.generatedAt).toEqual(now);
-			} finally {
-				vi.useRealTimers();
-			}
+			expect(result.report.generatedAt).toBeUndefined();
 		});
 	});
 
