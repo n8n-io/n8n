@@ -49,5 +49,4 @@ describe('ChatCollapsibleContainer', () => {
 		expect(wrapper.emitted('update:expanded')).toBeUndefined();
 		wrapper.unmount();
 	});
-
 });
