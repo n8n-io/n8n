@@ -260,3 +260,65 @@ describe('reclassifyMaskedStreamFailure', () => {
 		expect(service.modelService.getCredits).not.toHaveBeenCalled();
 	});
 });
+
+describe('assertAssistantCreditsAvailable', () => {
+	type AssertInternals = {
+		assertAssistantCreditsAvailable: (user: User) => Promise<void>;
+		modelService: { getCredits: ReturnType<typeof vi.fn> };
+		logger: { debug: ReturnType<typeof vi.fn> };
+	};
+
+	const user = { id: 'user-1' } as User;
+
+	function createService(getCredits: () => Promise<InstanceAiCredits>): AssertInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as AssertInternals;
+		service.modelService = { getCredits: vi.fn(getCredits) };
+		service.logger = { debug: vi.fn() };
+		return service;
+	}
+
+	it('fails the run with quota_exhausted before a model call when the balance is used up', async () => {
+		const service = createService(async () => ({ creditsQuota: 800, creditsClaimed: 800 }));
+
+		const rejected = await service.assertAssistantCreditsAvailable(user).then(
+			() => undefined,
+			(error: unknown) => error,
+		);
+
+		expect(rejected).toBeInstanceOf(QuotaExhaustedStreamError);
+		expect(isQuotaExhaustedError(rejected)).toBe(true);
+		expect(service.modelService.getCredits).toHaveBeenCalledTimes(1);
+	});
+
+	it('fails the run when the pool is locked', async () => {
+		const service = createService(async () => ({
+			creditsQuota: 800,
+			creditsClaimed: 10,
+			quotaLocked: true,
+		}));
+
+		await expect(service.assertAssistantCreditsAvailable(user)).rejects.toBeInstanceOf(
+			QuotaExhaustedStreamError,
+		);
+	});
+
+	it('allows a run that still has credits', async () => {
+		const service = createService(async () => ({ creditsQuota: 800, creditsClaimed: 10 }));
+
+		await expect(service.assertAssistantCreditsAvailable(user)).resolves.toBeUndefined();
+	});
+
+	it('allows the unlimited-credits sentinel', async () => {
+		const service = createService(async () => ({ creditsQuota: -1, creditsClaimed: 0 }));
+
+		await expect(service.assertAssistantCreditsAvailable(user)).resolves.toBeUndefined();
+	});
+
+	it('allows the run when the balance cannot be read', async () => {
+		const service = createService(async () => {
+			throw new Error('service unavailable');
+		});
+
+		await expect(service.assertAssistantCreditsAvailable(user)).resolves.toBeUndefined();
+	});
+});

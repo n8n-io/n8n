@@ -111,6 +111,11 @@ const props = withDefaults(
 		 * increase action. Resolves true once the new cap is saved.
 		 */
 		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+		/**
+		 * Builds the client context that is sent with each new message (for
+		 * example the user's time zone). Project agents ignore it.
+		 */
+		clientContext?: () => Record<string, unknown> | undefined;
 	}>(),
 	{
 		visible: true,
@@ -126,6 +131,7 @@ const props = withDefaults(
 		centerEmptyState: false,
 		budgetCards: false,
 		increaseBudget: undefined,
+		clientContext: undefined,
 	},
 );
 
@@ -1064,7 +1070,10 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 
 		const installedPreview = previewFirstMessage(text, files) ?? ownedHandoffPreview;
 		let accepted = false;
-		const sending = sendMessage(text, files.length > 0 ? files : undefined, (queueId) => {
+		// Build the context after `beforeSend`, so it reflects the host state at send time.
+		const clientContext = props.clientContext?.();
+		const sentFiles = files.length > 0 ? files : undefined;
+		const onAccepted = (queueId?: string) => {
 			accepted = true;
 			if (!isCurrentTarget()) return;
 			if (installedPreview && firstMessagePreview.value === installedPreview) {
@@ -1083,7 +1092,8 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 			queueExpanded.value = false;
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
-		});
+		};
+		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
 		const result = await sending;
 		// A send the server never accepted (busy, failed, lost) won't bring the real

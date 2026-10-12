@@ -505,6 +505,71 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0]).toEqual(switched);
 		});
 
+		describe('restoring a history version', () => {
+			const historyNode = () =>
+				httpNode(
+					{ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } },
+					{ url: 'https://v1.test' },
+				);
+
+			it('keeps a node exactly as the restored version stored it', () => {
+				// The current version dropped the node; the user cannot use its credential.
+				const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [historyNode()] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[historyNode()],
+				);
+
+				expect(result.nodes[0]).toEqual(historyNode());
+			});
+
+			it('keeps it over the current read-only version of the same node', () => {
+				const current = httpNode(
+					{ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } },
+					{ url: 'https://v2.test' },
+				);
+				const previousVersion = { nodes: [current] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [historyNode()] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[historyNode()],
+				);
+
+				expect(result.nodes[0]).toEqual(historyNode());
+			});
+
+			it('rejects a node that differs from the restored version', () => {
+				const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+				const changed = httpNode(
+					{ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } },
+					{ url: 'https://changed.test' },
+				);
+				const newVersion = { nodes: [changed] } as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible, [
+						historyNode(),
+					]),
+				).toThrow(/credentials in the 'Call' node/);
+			});
+
+			it('rejects the same node in an ordinary save', () => {
+				const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [historyNode()] } as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(newVersion, previousVersion, accessible),
+				).toThrow(/credentials in the 'Call' node/);
+			});
+		});
+
 		it('restores a read-only node whose unresolved credential is replaced', () => {
 			const previous = httpNode({ httpHeaderAuth: { id: null, name: 'Old' } });
 			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;

@@ -1,21 +1,21 @@
-import type { WorkflowCredentialRequirement } from './credential/credential.types';
-import type { WorkflowDataTableRequirement } from './data-table/data-table.types';
+import type { CredentialRequirement } from './credential/credential.types';
+import type { DataTableRequirement } from './data-table/data-table.types';
 import type { WorkflowTagUsage } from './tag/tag.types';
-import type { WorkflowVariableRequirement } from './variable/variable.types';
-import type { WorkflowNodeTypeSource } from './workflow/node-type-usage';
+import type { VariableRequirement } from './variable/variable.types';
+import type { NodeTypeSource } from './workflow/node-type-usage';
 
-export interface WorkflowExportRequirements {
-	credentials: WorkflowCredentialRequirement[];
-	dataTables: WorkflowDataTableRequirement[];
-	variables: WorkflowVariableRequirement[];
+export interface ExportRequirements {
+	credentials: CredentialRequirement[];
+	dataTables: DataTableRequirement[];
+	variables: VariableRequirement[];
 	tags: WorkflowTagUsage[];
-	/** Per-workflow node lists; folded into unique pairs at manifest-assembly time. */
-	nodeTypes: WorkflowNodeTypeSource[];
+	/** Node lists are folded into unique pairs when the manifest is assembled. */
+	nodeTypes: NodeTypeSource[];
 }
 
 export const mergeRequirements = (
-	...parts: Array<WorkflowExportRequirements | undefined>
-): WorkflowExportRequirements => ({
+	...parts: Array<ExportRequirements | undefined>
+): ExportRequirements => ({
 	credentials: parts.flatMap((part) => part?.credentials ?? []),
 	dataTables: parts.flatMap((part) => part?.dataTables ?? []),
 	variables: parts.flatMap((part) => part?.variables ?? []),

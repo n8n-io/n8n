@@ -88,6 +88,8 @@ describe('OtelSettingsService', () => {
 				tracesSampleRate: 1.0,
 				startupConnectivityTimeoutMs: 2_000,
 				includeNodeSpans: true,
+				emitWorkflowStartSpan: false,
+				emitNodeStartSpan: false,
 				injectOutbound: true,
 				productionExecutionsOnly: true,
 				envManagedFields: [],
@@ -308,6 +310,8 @@ describe('OtelSettingsService', () => {
 			tracesSampleRate: 0.7,
 			startupConnectivityTimeoutMs: 5_000,
 			includeNodeSpans: false,
+			emitWorkflowStartSpan: false,
+			emitNodeStartSpan: false,
 			injectOutbound: true,
 			productionExecutionsOnly: false,
 		};

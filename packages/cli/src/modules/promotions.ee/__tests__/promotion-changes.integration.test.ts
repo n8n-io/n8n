@@ -1,4 +1,4 @@
-import type { PromotionDirection } from '@n8n/api-types';
+import { AgentJsonConfigSchema, type PromotionDirection } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -7,6 +7,7 @@ import {
 	linkUserToProject,
 	mockInstance,
 	testDb,
+	testModules,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -26,6 +27,7 @@ import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -52,6 +54,7 @@ Container.set(
 	new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder: instanceFolder })),
 );
 mockInstance(ActiveWorkflowManager);
+beforeAll(async () => await testModules.loadModules(['agents']));
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
@@ -62,6 +65,7 @@ let remoteFolder: string;
 
 beforeEach(async () => {
 	await Container.get(PromotionConnectionProjectRepository).delete({});
+	await Container.get(AgentRepository).delete({});
 	await Container.get(PromotionConfigRepository).delete({});
 	await Container.get(PromotionConnectionRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
@@ -181,6 +185,17 @@ it('previews against the connection linked to the project, not the instance one'
 it('lists new, changed, moved, archived, restored and deleted workflows through the endpoint', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Preview', owner);
+	await Container.get(AgentRepository).save({
+		id: 'local-agent',
+		name: 'Local Agent',
+		projectId: project.id,
+		schema: AgentJsonConfigSchema.parse({
+			name: 'Local Agent',
+			model: '',
+			instructions: '',
+			subAgents: { agents: [{ agentId: 'external-agent' }] },
+		}),
+	});
 	const otherProject = await createTeamProject('Other', owner);
 	const publishable = await createWorkflowWithHistory(
 		{ name: 'Publication', nodes: [], connections: {} },
