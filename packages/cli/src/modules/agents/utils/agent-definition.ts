@@ -21,6 +21,26 @@ export interface PendingSkillRefs {
 	skillRefs: AgentSkillRefs;
 }
 
+/** Complete authored content, before integrations are split from the configuration. */
+export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools' | 'skills'> {
+	config: AgentJsonConfig | null;
+	tasks: ReadonlyMap<string, AgentTaskConfig>;
+}
+
+/** Omitted metadata stays unchanged on ordinary saves and version restoration. */
+export interface AgentDefinitionMetadata {
+	sourceAgentId?: string | null;
+	/** Keyed by destination task ID. */
+	sourceTaskIds?: ReadonlyMap<string, string>;
+	availableInMCP?: boolean;
+}
+
+/** IDs reserved for new definitions, with their authorized destination projects. */
+export interface PlannedAgentDestinations {
+	agents?: ReadonlyMap<string, string>;
+	workflows?: ReadonlyMap<string, string>;
+}
+
 /** Keep configuration, inline bodies and skill bodies from the same draft or version. */
 export function getAgentDefinitionContent(
 	source: Pick<AgentHistory, 'schema' | 'tools'>,
