@@ -6,14 +6,15 @@ import {
 	createWorkflow,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { SharedWorkflowRepository } from '@n8n/db';
+import { ProjectRelationRepository, RoleRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { License } from '@/license';
-import { ProjectService } from '@/services/project.service.ee';
+import { DataSource } from '@n8n/typeorm';
 import { LicenseMocker } from '@test-integration/license';
 
 import { createUser } from './shared/db/users';
+
+import { License } from '@/license';
+import { ProjectService } from '@/services/project.service.ee';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
@@ -53,7 +54,7 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(project.id, [
+			await projectService.addUsersToProject(user, project.id, [
 				{ userId: user.id, role: 'project:admin' },
 			]);
 
@@ -74,7 +75,7 @@ describe('ProjectService', () => {
 
 			// ACT
 			// add user again
-			await projectService.addUsersToProject(project.id, [
+			await projectService.addUsersToProject(user, project.id, [
 				{ userId: user.id, role: 'project:editor' },
 			]);
 
@@ -186,6 +187,117 @@ describe('ProjectService', () => {
 
 				expect(projectIds).toHaveLength(0);
 			});
+		});
+	});
+
+	describe('getProjectRelationsForUser', () => {
+		type Statement = { sql: string; parameters: unknown[] };
+
+		// Both drivers call `logger.logQuery` for every statement, so swapping the logger
+		// captures what a call runs without reconfiguring the connection.
+		async function captureStatements<T>(run: () => Promise<T>) {
+			const dataSource = Container.get(DataSource);
+			const original = dataSource.logger;
+			const statements: Statement[] = [];
+			const capturing = Object.create(original) as DataSource['logger'];
+			capturing.logQuery = (sql: string, parameters?: unknown[]) => {
+				statements.push({ sql, parameters: parameters ?? [] });
+			};
+			dataSource.logger = capturing;
+			try {
+				return { result: await run(), statements };
+			} finally {
+				dataSource.logger = original;
+			}
+		}
+
+		// Rows the database returns for a statement, before TypeORM collapses them into entities.
+		async function rowsMaterialized({ sql, parameters }: Statement) {
+			const rows = await Container.get(DataSource).query<Array<{ n: number | string }>>(
+				`SELECT COUNT(*) AS n FROM (${sql}) AS materialized`,
+				parameters,
+			);
+			return Number(rows[0].n);
+		}
+
+		const normalize = (
+			relations: Awaited<ReturnType<ProjectService['getProjectRelationsForUser']>>,
+		) =>
+			relations
+				.map((relation) => ({
+					projectId: relation.projectId,
+					project: relation.project.id,
+					role: relation.role.slug,
+					scopes: relation.role.scopes.map((scope) => scope.slug).sort(),
+				}))
+				.sort((a, b) => a.projectId.localeCompare(b.projectId));
+
+		it('returns every relation with its project, role and the scopes of that role', async () => {
+			const user = await createUser();
+			const adminProject = await createTeamProject('Admin project');
+			const editorProject = await createTeamProject('Editor project');
+			await linkUserToProject(user, adminProject, 'project:admin');
+			await linkUserToProject(user, editorProject, 'project:editor');
+
+			const relations = await projectService.getProjectRelationsForUser(user);
+
+			expect(relations).toHaveLength(3);
+			const byRole = new Map(relations.map((relation) => [relation.role.slug, relation]));
+			expect(byRole.get('project:admin')?.project.id).toBe(adminProject.id);
+			expect(byRole.get('project:editor')?.project.id).toBe(editorProject.id);
+			expect(byRole.get('project:personalOwner')?.project.type).toBe('personal');
+
+			const roleRepository = Container.get(RoleRepository);
+			for (const slug of ['project:personalOwner', 'project:admin', 'project:editor']) {
+				const role = await roleRepository.findBySlug(slug);
+				const expectedScopes = role!.scopes.map((scope) => scope.slug).sort();
+				expect(expectedScopes.length).toBeGreaterThan(0);
+				expect(
+					byRole
+						.get(slug)
+						?.role.scopes.map((scope) => scope.slug)
+						.sort(),
+				).toEqual(expectedScopes);
+			}
+		});
+
+		it('matches a find with eager role scopes relation for relation', async () => {
+			const user = await createUser();
+			const projects = await Promise.all(
+				['P1', 'P2', 'P3'].map(async (name) => await createTeamProject(name)),
+			);
+			await linkUserToProject(user, projects[0], 'project:admin');
+			await linkUserToProject(user, projects[1], 'project:editor');
+			await linkUserToProject(user, projects[2], 'project:viewer');
+
+			const eager = await Container.get(ProjectRelationRepository).find({
+				where: { userId: user.id },
+				relations: ['project', 'role'],
+			});
+			const actual = await projectService.getProjectRelationsForUser(user);
+
+			expect(normalize(actual)).toEqual(normalize(eager));
+			expect(actual).toHaveLength(4);
+		});
+
+		it('materializes one row per relation instead of one row per scope', async () => {
+			const user = await createUser();
+			for (const name of ['P1', 'P2', 'P3']) {
+				await linkUserToProject(user, await createTeamProject(name), 'project:admin');
+			}
+
+			const { result, statements } = await captureStatements(
+				async () => await projectService.getProjectRelationsForUser(user),
+			);
+
+			expect(result).toHaveLength(4);
+			// One statement for the relations, one for the distinct roles and their scopes.
+			expect(statements).toHaveLength(2);
+			const [relationStatement, roleStatement] = statements;
+			expect(relationStatement.sql).toMatch(/project_relation"\s+"ProjectRelation"/);
+			expect(relationStatement.sql).not.toMatch(/role_scope/);
+			expect(await rowsMaterialized(relationStatement)).toBe(4);
+			expect(roleStatement.sql).toMatch(/role_scope/);
 		});
 	});
 });

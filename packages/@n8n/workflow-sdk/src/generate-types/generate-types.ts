@@ -18,16 +18,20 @@
  * @generated - This file generates code, but is itself manually maintained.
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
 import * as path from 'path';
 
+// oxlint-disable import/no-cycle -- TODO: Refactor shared types/utils to break cycle
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
 	generateSingleVersionSchemaFile,
 	isPropertyOptional,
 	planSplitVersionSchemaFiles,
 } from './generate-zod-schemas';
+// oxlint-enable import/no-cycle
+import { NODE_DEPRECATION_NOTICE } from '../node-deprecation';
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
@@ -37,7 +41,10 @@ import { checkConditions } from '../validation/display-options';
 /** Indentation string for generated code (2 spaces per level) */
 const INDENT = '  ';
 
-const NODES_BASE_TYPES = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
+export const NODES_BASE_TYPES = path.resolve(
+	__dirname,
+	'../../../../nodes-base/dist/types/nodes.json',
+);
 const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
@@ -134,7 +141,7 @@ ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?
 ${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
 }
 
-function isCustomApiCall(operation: string): boolean {
+export function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
 
@@ -190,6 +197,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
@@ -374,6 +382,14 @@ export interface NodeTypeDescription {
 	schemaPath?: string;
 }
 
+/**
+ * Collection options are nested properties. An options-type choice
+ * (`{ name, value }`) or a fixedCollection group (`{ name, values }`) is not.
+ */
+function isNodeProperty(option: NodePropertyOption | NodeProperty): option is NodeProperty {
+	return typeof option.type === 'string' && typeof option.displayName === 'string';
+}
+
 export interface DiscriminatorCombination {
 	resource?: string;
 	operation?: string;
@@ -550,13 +566,18 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 		return undefined;
 	}
 
+	// Case-insensitive: node names don't round-trip folder casing reliably
+	// (chainLlm -> ChainLLM), and exact matching only appeared to work on
+	// macOS because APFS ignores case.
+	const targetsLower = targetNames.map((n) => n.toLowerCase());
+
 	for (const entry of entries) {
 		if (!entry.isDirectory()) continue;
 
 		const entryPath = path.join(dir, entry.name);
 
 		// Check if this directory matches our target and has __schema__
-		if (targetNames.includes(entry.name)) {
+		if (targetsLower.includes(entry.name.toLowerCase())) {
 			const schemaPath = path.join(entryPath, '__schema__');
 			if (fs.existsSync(schemaPath)) {
 				return schemaPath;
@@ -574,18 +595,130 @@ function findNestedSchemaDir(dir: string, targetNames: string[]): string | undef
 }
 
 /**
+ * Folder name (lowercased) to `__schema__` path for one schema root. It holds the
+ * same answers as the direct search in `findSchemaDirectory`, but it reads each
+ * directory once.
+ */
+interface SchemaRootIndex {
+	/** Direct children of the root. The flat search checks these first. */
+	flat: Map<string, string>;
+	/** First match in the pre-order walk that `findNestedSchemaDir` does. */
+	nested: Map<string, string>;
+}
+
+function buildSchemaRootIndex(root: string): SchemaRootIndex {
+	const index: SchemaRootIndex = { flat: new Map(), nested: new Map() };
+
+	const walk = (dir: string, depth: number) => {
+		let entries: fs.Dirent[];
+		try {
+			entries = fs.readdirSync(dir, { withFileTypes: true });
+		} catch {
+			return;
+		}
+
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+
+			const entryPath = path.join(dir, entry.name);
+			const key = entry.name.toLowerCase();
+			const schemaPath = path.join(entryPath, '__schema__');
+			if (fs.existsSync(schemaPath)) {
+				if (depth === 0 && !index.flat.has(key)) index.flat.set(key, schemaPath);
+				if (!index.nested.has(key)) index.nested.set(key, schemaPath);
+			}
+
+			if (entry.name !== '__schema__' && entry.name !== 'node_modules') {
+				walk(entryPath, depth + 1);
+			}
+		}
+	};
+
+	walk(root, 0);
+	return index;
+}
+
+/**
+ * Schema root indexes for the active generation run. A run looks up hundreds of
+ * node versions, and each miss used to walk the whole `dist/nodes` tree again.
+ * The indexes live only for one run, because other callers (and tests) can add
+ * schema directories between calls.
+ */
+let activeSchemaIndexes: Map<string, SchemaRootIndex> | undefined;
+
+/** Run `fn` with schema directory lookups served from a one-time index of each root. */
+export async function withSchemaDirIndex<T>(fn: () => Promise<T>): Promise<T> {
+	if (activeSchemaIndexes) return await fn();
+
+	activeSchemaIndexes = new Map();
+	try {
+		return await fn();
+	} finally {
+		activeSchemaIndexes = undefined;
+	}
+}
+
+function indexedSchemaDirectory(
+	indexes: Map<string, SchemaRootIndex>,
+	roots: string[],
+	baseName: string,
+): string | undefined {
+	const rootIndexes = roots.map((root) => {
+		let index = indexes.get(root);
+		if (!index) {
+			index = buildSchemaRootIndex(root);
+			indexes.set(root, index);
+		}
+		return index;
+	});
+
+	const key = baseName.toLowerCase();
+	for (const index of rootIndexes) {
+		const found = index.flat.get(key);
+		if (found) return found;
+	}
+	for (const index of rootIndexes) {
+		const found = index.nested.get(key);
+		if (found) return found;
+	}
+	return undefined;
+}
+
+/**
+ * Schema roots to search, in priority order: the package currently being
+ * generated (generate-node-defs-cli runs with CWD = that package, so e.g.
+ * nodes-langchain's own `__schema__` dirs resolve), then nodes-base as the
+ * shared fallback.
+ */
+export function schemaSearchRoots(): string[] {
+	const cwdRoot = path.resolve(process.cwd(), 'dist', 'nodes');
+	if (cwdRoot !== NODES_BASE_DIST && fs.existsSync(cwdRoot)) {
+		return [cwdRoot, NODES_BASE_DIST];
+	}
+	return [NODES_BASE_DIST];
+}
+
+/**
  * Find the schema directory for a node, searching both flat and nested paths
  *
  * @param baseName The base node name (e.g., 'gmail')
  * @returns Path to the __schema__ directory, or undefined if not found
  */
-function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+export function findSchemaDirectory(baseName: string, schemaPath?: string): string | undefined {
+	const roots = schemaSearchRoots();
+
 	// If explicit schemaPath is provided, use it directly
 	if (schemaPath) {
-		const explicitPath = path.join(NODES_BASE_DIST, schemaPath, '__schema__');
-		if (fs.existsSync(explicitPath)) {
-			return explicitPath;
+		for (const root of roots) {
+			const explicitPath = path.join(root, schemaPath, '__schema__');
+			if (fs.existsSync(explicitPath)) {
+				return explicitPath;
+			}
 		}
+	}
+
+	if (activeSchemaIndexes) {
+		return indexedSchemaDirectory(activeSchemaIndexes, roots, baseName);
 	}
 
 	const possibleNames = [
@@ -594,16 +727,32 @@ function findSchemaDirectory(baseName: string, schemaPath?: string): string | un
 		baseName.toUpperCase(), // GMAIL
 	];
 
-	// Try flat paths first (most common case)
-	for (const folderName of possibleNames) {
-		const flatPath = path.join(NODES_BASE_DIST, folderName, '__schema__');
-		if (fs.existsSync(flatPath)) {
-			return flatPath;
+	// Try flat paths first (most common case). Match folder names
+	// case-insensitively — fs.existsSync with a guessed casing only works on
+	// case-insensitive filesystems (macOS), not on Linux CI.
+	const namesLower = possibleNames.map((n) => n.toLowerCase());
+	for (const root of roots) {
+		let entries: fs.Dirent[];
+		try {
+			entries = fs.readdirSync(root, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			if (!entry.isDirectory() || !namesLower.includes(entry.name.toLowerCase())) continue;
+			const flatPath = path.join(root, entry.name, '__schema__');
+			if (fs.existsSync(flatPath)) {
+				return flatPath;
+			}
 		}
 	}
 
 	// Search recursively for nested paths (e.g., Google/Gmail/__schema__)
-	return findNestedSchemaDir(NODES_BASE_DIST, possibleNames);
+	for (const root of roots) {
+		const found = findNestedSchemaDir(root, possibleNames);
+		if (found) return found;
+	}
+	return undefined;
 }
 
 /**
@@ -639,14 +788,24 @@ export function discoverSchemasForNode(
 		return schemas;
 	}
 
-	// Try to find version directory - try exact match first, then closest lower version
-	const versionDir = findVersionDirectory(schemaDir, version);
-	if (!versionDir) {
-		schemaCache.set(cacheKey, schemas);
-		return schemas;
+	// Per-file fallback across version directories: the best-matching dir wins
+	// for every (resource, operation) it covers, and older dirs only fill the
+	// gaps. Without this, a sparse exact-version dir (e.g. Slack v2.7.0 holding
+	// only message/search.json) hides every schema a lower minor already has.
+	const seen = new Set<string>();
+	for (const versionDir of orderedVersionDirectories(schemaDir, version)) {
+		collectSchemasFromVersionDir(versionDir, schemas, seen);
 	}
 
-	// Scan version directory entries
+	schemaCache.set(cacheKey, schemas);
+	return schemas;
+}
+
+function collectSchemasFromVersionDir(
+	versionDir: string,
+	schemas: OutputSchema[],
+	seen: Set<string>,
+): void {
 	try {
 		const entries = fs.readdirSync(versionDir, { withFileTypes: true });
 
@@ -657,6 +816,7 @@ export function discoverSchemasForNode(
 				// `output.<variant>.json` files are context-conditional layout
 				// variants (e.g. with-parser), not operations — skip them here.
 				if (operationName.includes('.')) continue;
+				if (seen.has(`/${operationName}`)) continue;
 				const filePath = path.join(versionDir, entry.name);
 
 				try {
@@ -667,6 +827,7 @@ export function discoverSchemasForNode(
 						operation: operationName,
 						schema,
 					});
+					seen.add(`/${operationName}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -683,6 +844,7 @@ export function discoverSchemasForNode(
 				if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
 
 				const operationName = opEntry.name.replace('.json', '');
+				if (seen.has(`${entry.name}/${operationName}`)) continue;
 				const schemaPath = path.join(resourceDir, opEntry.name);
 
 				try {
@@ -693,6 +855,7 @@ export function discoverSchemasForNode(
 						operation: operationName,
 						schema,
 					});
+					seen.add(`${entry.name}/${operationName}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -701,14 +864,70 @@ export function discoverSchemasForNode(
 	} catch {
 		// Skip if directory can't be read
 	}
-
-	schemaCache.set(cacheKey, schemas);
-	return schemas;
 }
 
 /** Pad "1" / "2.3" to the on-disk "1.0.0" / "2.3.0" directory format. */
-function padVersion(version: number): string {
+export function padVersion(version: number): string {
 	return String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
+}
+
+/**
+ * Hash every `__schema__/**\/*.json` file under the given roots (default: the
+ * same roots schema discovery searches). Schema content isn't part of
+ * `nodes.json`, so the build-time hash-skip in generate-node-defs-cli needs
+ * this to notice schema-only changes (e.g. a newly harvested output schema)
+ * and regenerate.
+ */
+export function computeSchemaCorpusHash(baseDirs: string[] = schemaSearchRoots()): string {
+	const hash = createHash('sha256');
+	for (const baseDir of baseDirs) {
+		const files: string[] = [];
+		collectSchemaDirs(baseDir, files);
+		files.sort();
+
+		for (const file of files) {
+			hash.update(path.relative(baseDir, file));
+			hash.update(fs.readFileSync(file));
+		}
+	}
+	return hash.digest('hex');
+}
+
+function collectSchemaDirs(dir: string, results: string[]): void {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return;
+	}
+
+	for (const entry of entries) {
+		if (!entry.isDirectory()) continue;
+		const entryPath = path.join(dir, entry.name);
+		if (entry.name === '__schema__') {
+			collectJsonFiles(entryPath, results);
+		} else {
+			collectSchemaDirs(entryPath, results);
+		}
+	}
+}
+
+function collectJsonFiles(dir: string, results: string[]): void {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return;
+	}
+
+	for (const entry of entries) {
+		const entryPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			collectJsonFiles(entryPath, results);
+		} else if (entry.name.endsWith('.json')) {
+			results.push(entryPath);
+		}
+	}
 }
 
 /** Parse a `vX.Y.Z` directory name into a comparable [X, Y, Z] tuple. */
@@ -725,26 +944,17 @@ function compareVersionTuplesDesc(a: number[], b: number[]): number {
 }
 
 /**
- * Find the best matching version directory for a given version.
- * Tries an exact full-semver match first (2.3 → v2.3.0), then the nearest
- * same-major dir (closest below, then closest above — a v2.x node must not
- * lose its schemas just because only a higher v2 minor was recorded), then
- * the newest lower-major dir.
+ * Order version directories by how well they match the target version:
+ * exact/nearest same-major below first, then nearest same-major above (a v2.x
+ * node must not lose its schemas just because only a higher v2 minor was
+ * recorded), then lower majors newest-first. Schemas resolve per file across
+ * this list — the first directory covering a (resource, operation) wins.
  *
  * NOTE: unlike n8n-core's runtime resolver this never falls forward to a
  * NEWER major — generated types should not describe a next-generation API
  * shape; converging the two is tracked in the harmonization spec.
- *
- * @param schemaDir Path to the __schema__ directory
- * @param version Target version number
- * @returns Path to version directory, or undefined if not found
  */
-function findVersionDirectory(schemaDir: string, version: number): string | undefined {
-	const exactPath = path.join(schemaDir, `v${padVersion(version)}`);
-	if (fs.existsSync(exactPath)) {
-		return exactPath;
-	}
-
+function orderedVersionDirectories(schemaDir: string, version: number): string[] {
 	const target = padVersion(version).split('.').map(Number);
 	try {
 		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
@@ -753,25 +963,21 @@ function findVersionDirectory(schemaDir: string, version: number): string | unde
 			.map((e) => ({ name: e.name, tuple: parseVersionDir(e.name) }));
 
 		const sameMajor = versionDirs.filter((v) => v.tuple[0] === target[0]);
-		const best =
-			sameMajor
+		const ordered = [
+			...sameMajor
 				.filter((v) => compareVersionTuplesDesc(v.tuple, target) >= 0)
-				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0] ??
-			sameMajor
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple)),
+			...sameMajor
 				.filter((v) => compareVersionTuplesDesc(v.tuple, target) < 0)
-				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple))[0] ??
-			versionDirs
+				.sort((a, b) => compareVersionTuplesDesc(b.tuple, a.tuple)),
+			...versionDirs
 				.filter((v) => v.tuple[0] < target[0])
-				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple))[0];
-
-		if (best) {
-			return path.join(schemaDir, best.name);
-		}
+				.sort((a, b) => compareVersionTuplesDesc(a.tuple, b.tuple)),
+		];
+		return ordered.map((v) => path.join(schemaDir, v.name));
 	} catch {
-		// Ignore read errors
+		return [];
 	}
-
-	return undefined;
 }
 
 /**
@@ -1068,6 +1274,7 @@ function generateNestedPropertyJSDoc(
 	prop: NodeProperty,
 	indent: string,
 	discriminatorContext?: DiscriminatorCombination,
+	displayOptionsVariants?: Array<NodeProperty['displayOptions']>,
 ): string {
 	const lines: string[] = [];
 
@@ -1114,51 +1321,11 @@ function generateNestedPropertyJSDoc(
 		lines.push(`${indent} * @loadOptionsMethod ${prop.typeOptions.loadOptionsMethod}`);
 	}
 
-	// Display options - filter out @version since version is implicit from the file
-	// Also filter out conditions that match the current discriminator context (redundant)
-	if (prop.displayOptions) {
-		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const filteredShow = Object.entries(prop.displayOptions.show).filter(([key, values]) => {
-				// Filter out @version (existing behavior)
-				if (key === '@version') return false;
-				// Filter out conditions that match current discriminator context
-				// Strip leading '/' from key for root-level property references
-				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
-				if (discriminatorContext?.[normalizedKey] !== undefined) {
-					const showValues = values;
-					// If the discriminator value is in the show list, this is redundant
-					if (showValues.includes(discriminatorContext[normalizedKey])) return false;
-				}
-				return true;
-			});
-			if (filteredShow.length > 0) {
-				const showConditions = filteredShow
-					.map(([key, values]) => `${key}: [${values.map((v) => JSON.stringify(v)).join(', ')}]`)
-					.join(', ');
-				lines.push(`${indent} * @displayOptions.show { ${showConditions} }`);
-			}
-		}
-		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const filteredHide = Object.entries(prop.displayOptions.hide).filter(([key, values]) => {
-				// Filter out @version (existing behavior)
-				if (key === '@version') return false;
-				// Filter out conditions that match current discriminator context
-				// Strip leading '/' from key for root-level property references
-				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
-				if (discriminatorContext?.[normalizedKey] !== undefined) {
-					const hideValues = values;
-					// If the discriminator value is in the hide list, this is redundant
-					if (hideValues.includes(discriminatorContext[normalizedKey])) return false;
-				}
-				return true;
-			});
-			if (filteredHide.length > 0) {
-				const hideConditions = filteredHide
-					.map(([key, values]) => `${key}: [${values.map((v) => JSON.stringify(v)).join(', ')}]`)
-					.join(', ');
-				lines.push(`${indent} * @displayOptions.hide { ${hideConditions} }`);
-			}
-		}
+	// Display options. When the same key is declared several times with the
+	// same type, every variant's condition is listed.
+	const variants = displayOptionsVariants ?? [prop.displayOptions];
+	for (const displayOptions of mergeDisplayOptionsVariants(variants, discriminatorContext)) {
+		lines.push(...formatDisplayOptionsJSDocLines(displayOptions, indent, discriminatorContext));
 	}
 
 	// Default value - skip multi-line strings to avoid breaking JSDoc comments
@@ -1177,6 +1344,209 @@ function generateNestedPropertyJSDoc(
 
 	lines.push(`${indent} */`);
 	return lines.join('\n');
+}
+
+type PropertyDisplayOptions = NonNullable<NodeProperty['displayOptions']>;
+
+/**
+ * Remove the conditions that the generated file already implies: `@version`
+ * is implicit from the file path, and every key the current combination
+ * defines is already decided. A property only reaches a combination's file
+ * when its show and hide conditions on those keys hold (see
+ * `getPropertiesForCombination` and `appliesToCombination`), so a remaining
+ * `hide: { operation: ['execute'] }` in the insert file is not a condition.
+ * What remains is the condition the builder still has to meet at run time.
+ */
+function getResidualDisplayOptions(
+	displayOptions: NodeProperty['displayOptions'],
+	discriminatorContext?: DiscriminatorCombination,
+): PropertyDisplayOptions {
+	const residual: PropertyDisplayOptions = {};
+	if (!displayOptions) return residual;
+
+	const keep = ([key]: [string, unknown[]]): boolean => {
+		if (key === '@version') return false;
+		// Strip leading '/' from key for root-level property references
+		const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+		return discriminatorContext?.[normalizedKey] === undefined;
+	};
+
+	const show = Object.entries(displayOptions.show ?? {}).filter(keep);
+	if (show.length > 0) residual.show = Object.fromEntries(show);
+	const hide = Object.entries(displayOptions.hide ?? {}).filter(keep);
+	if (hide.length > 0) residual.hide = Object.fromEntries(hide);
+	return residual;
+}
+
+function hasResidualDisplayOptions(
+	displayOptions: NodeProperty['displayOptions'],
+	discriminatorContext?: DiscriminatorCombination,
+): boolean {
+	const residual = getResidualDisplayOptions(displayOptions, discriminatorContext);
+	return residual.show !== undefined || residual.hide !== undefined;
+}
+
+function formatDisplayOptionsJSDocLines(
+	displayOptions: NodeProperty['displayOptions'],
+	indent: string,
+	discriminatorContext?: DiscriminatorCombination,
+): string[] {
+	const residual = getResidualDisplayOptions(displayOptions, discriminatorContext);
+	const format = (conditions: Record<string, unknown[]>): string =>
+		Object.entries(conditions)
+			.map(([key, values]) => `${key}: [${values.map((v) => JSON.stringify(v)).join(', ')}]`)
+			.join(', ');
+
+	const lines: string[] = [];
+	if (residual.show) lines.push(`${indent} * @displayOptions.show { ${format(residual.show)} }`);
+	if (residual.hide) lines.push(`${indent} * @displayOptions.hide { ${format(residual.hide)} }`);
+	return lines;
+}
+
+/**
+ * Reduce the displayOptions of same-named declarations to the list of
+ * conditions to document. An unconditional variant makes the key
+ * unconditional. A two-variant UX fork collapses into one condition.
+ */
+function mergeDisplayOptionsVariants(
+	variants: Array<NodeProperty['displayOptions']>,
+	discriminatorContext?: DiscriminatorCombination,
+): PropertyDisplayOptions[] {
+	const residuals = new Map<string, PropertyDisplayOptions>();
+	for (const variant of variants) {
+		const residual = getResidualDisplayOptions(variant, discriminatorContext);
+		if (residual.show === undefined && residual.hide === undefined) return [];
+		residuals.set(JSON.stringify(residual), residual);
+	}
+
+	const merged: PropertyDisplayOptions[] = [];
+	for (const residual of residuals.values()) {
+		const last = merged[merged.length - 1];
+		const combined = last
+			? (tryMergeUxForkVariants(last, residual) ?? tryMergeShowValueVariants(last, residual))
+			: null;
+		if (combined) {
+			merged[merged.length - 1] = combined;
+		} else {
+			merged.push(residual);
+		}
+	}
+	return merged;
+}
+
+/**
+ * Merge two show-only conditions that differ in the values of one key, e.g.
+ * `show: { type: ['text'] }` and `show: { type: ['number'] }` become
+ * `show: { type: ['text', 'number'] }`. Returns null for every other shape.
+ */
+function tryMergeShowValueVariants(
+	a: PropertyDisplayOptions,
+	b: PropertyDisplayOptions,
+): PropertyDisplayOptions | null {
+	if (a.hide !== undefined || b.hide !== undefined) return null;
+	if (a.show === undefined || b.show === undefined) return null;
+	const aShow = a.show;
+	const bShow = b.show;
+	const keys = Object.keys(aShow);
+	if (keys.length !== Object.keys(bShow).length || keys.some((key) => !(key in bShow))) {
+		return null;
+	}
+
+	const differing = keys.filter((key) => JSON.stringify(aShow[key]) !== JSON.stringify(bShow[key]));
+	if (differing.length !== 1) return null;
+
+	const [key] = differing;
+	const seen = new Set(aShow[key].map((value) => JSON.stringify(value)));
+	const values = [...aShow[key], ...bShow[key].filter((v) => !seen.has(JSON.stringify(v)))];
+	return { show: { ...aShow, [key]: values } };
+}
+
+/**
+ * Whether a nested property can display in the file of a combination.
+ * `getPropertiesForCombination` applies this rule to top-level properties
+ * only, so nested values need it here. Otherwise a value that the
+ * combination can never show would be documented as available, and
+ * `getResidualDisplayOptions` would then drop its condition. Root references
+ * (`/operation`) and bare keys both resolve against the combination.
+ */
+function appliesToCombination(
+	displayOptions: NodeProperty['displayOptions'],
+	combination?: DiscriminatorCombination,
+): boolean {
+	if (!displayOptions || !combination) return true;
+	const valueFor = (key: string): string | undefined =>
+		combination[key.startsWith('/') ? key.slice(1) : key];
+
+	for (const [key, conditions] of Object.entries(displayOptions.show ?? {})) {
+		const value = valueFor(key);
+		if (value !== undefined && !checkConditions(conditions, [value])) return false;
+	}
+	for (const [key, conditions] of Object.entries(displayOptions.hide ?? {})) {
+		const value = valueFor(key);
+		if (value !== undefined && checkConditions(conditions, [value])) return false;
+	}
+	return true;
+}
+
+/**
+ * Emit one type member per nested property name. Collection options and
+ * fixedCollection values often declare the same name several times with
+ * different displayOptions. One key per name keeps the type valid: identical
+ * types share one member, different types become a union whose members carry
+ * their own JSDoc.
+ */
+function emitNestedPropertyLines(
+	properties: NodeProperty[],
+	indent: string,
+	discriminatorContext?: DiscriminatorCombination,
+): string[] {
+	const variantsByName = new Map<string, Array<{ prop: NodeProperty; type: string }>>();
+	for (const prop of properties) {
+		// Skip notice and other display-only types
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) continue;
+		if (!appliesToCombination(prop.displayOptions, discriminatorContext)) continue;
+		const type = mapNestedPropertyType(prop, discriminatorContext);
+		if (!type) continue;
+		const variants = variantsByName.get(prop.name) ?? [];
+		variants.push({ prop, type });
+		variantsByName.set(prop.name, variants);
+	}
+
+	const lines: string[] = [];
+	for (const [name, variants] of variantsByName) {
+		const quotedName = quotePropertyName(name);
+		const variantsByType = new Map<string, NodeProperty[]>();
+		for (const { prop, type } of variants) {
+			const props = variantsByType.get(type) ?? [];
+			props.push(prop);
+			variantsByType.set(type, props);
+		}
+
+		if (variantsByType.size === 1) {
+			const [type, props] = Array.from(variantsByType.entries())[0];
+			const jsDoc = generateNestedPropertyJSDoc(
+				props[0],
+				indent,
+				discriminatorContext,
+				props.map((p) => p.displayOptions),
+			);
+			lines.push(`${jsDoc}\n${indent}${quotedName}?: ${type}`);
+			continue;
+		}
+
+		const memberIndent = indent + INDENT;
+		const members = Array.from(variantsByType.entries()).map(([type, props]) => {
+			const jsDoc = generateNestedPropertyJSDoc(
+				props[0],
+				memberIndent,
+				discriminatorContext,
+				props.map((p) => p.displayOptions),
+			);
+			return `${jsDoc}\n${memberIndent}| ${type}`;
+		});
+		lines.push(`${indent}${quotedName}?:\n${members.join('\n')}`);
+	}
+	return lines;
 }
 
 /**
@@ -1201,26 +1571,11 @@ function generateFixedCollectionType(
 		}
 
 		const groupName = quotePropertyName(group.name);
-		const nestedProps: string[] = [];
-
-		for (const nestedProp of group.values) {
-			// Skip notice and other display-only types
-			if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedProp.type)) {
-				continue;
-			}
-
-			const nestedType = mapNestedPropertyType(nestedProp, discriminatorContext);
-			if (nestedType) {
-				const quotedName = quotePropertyName(nestedProp.name);
-				// Generate JSDoc for the nested property
-				const jsDoc = generateNestedPropertyJSDoc(
-					nestedProp,
-					INDENT.repeat(3),
-					discriminatorContext,
-				);
-				nestedProps.push(`${jsDoc}\n${INDENT.repeat(3)}${quotedName}?: ${nestedType}`);
-			}
-		}
+		const nestedProps = emitNestedPropertyLines(
+			group.values,
+			INDENT.repeat(3),
+			discriminatorContext,
+		);
 
 		if (nestedProps.length > 0) {
 			const innerType = `{\n${nestedProps.join(';\n')};\n${INDENT.repeat(2)}}`;
@@ -1554,32 +1909,15 @@ function generateCollectionType(
 		return 'Record<string, unknown>';
 	}
 
-	const nestedProps: string[] = [];
-
-	for (const nestedProp of prop.options) {
-		// Skip if this is a group (has values array) - those are for fixedCollection
-		if (nestedProp.values !== undefined) {
-			continue;
-		}
-
-		// Skip notice and other display-only types
-		const nestedType = (nestedProp as NodeProperty).type;
-		if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedType)) {
-			continue;
-		}
-
-		const propType = mapNestedPropertyType(nestedProp as NodeProperty, discriminatorContext);
-		if (propType) {
-			const quotedName = quotePropertyName(nestedProp.name);
-			// Generate JSDoc for the nested property
-			const jsDoc = generateNestedPropertyJSDoc(
-				nestedProp as NodeProperty,
-				INDENT.repeat(2),
-				discriminatorContext,
-			);
-			nestedProps.push(`${jsDoc}\n${INDENT.repeat(2)}${quotedName}?: ${propType}`);
-		}
-	}
+	// Groups (options with a values array) belong to fixedCollection, not here.
+	const nestedProperties = prop.options
+		.filter((option) => option.values === undefined)
+		.filter(isNodeProperty);
+	const nestedProps = emitNestedPropertyLines(
+		nestedProperties,
+		INDENT.repeat(2),
+		discriminatorContext,
+	);
 
 	if (nestedProps.length === 0) {
 		return 'Record<string, unknown>';
@@ -1960,7 +2298,10 @@ function versionMatchesCondition(version: number, condition: number | VersionCon
  * @param version The specific version number to check for
  * @returns true if the property applies to this version
  */
-export function propertyAppliesToVersion(prop: NodeProperty, version: number): boolean {
+export function propertyAppliesToVersion(
+	prop: Pick<NodeProperty, 'displayOptions'>,
+	version: number,
+): boolean {
 	// If no displayOptions, property applies to all versions
 	if (!prop.displayOptions) {
 		return true;
@@ -1992,7 +2333,41 @@ export function propertyAppliesToVersion(prop: NodeProperty, version: number): b
 }
 
 /**
- * Filter node properties to only include those that apply to a specific version
+ * Drop nested collection options and fixedCollection values that do not apply
+ * to the version. Nested `@version` gates are common (Slack's `botProfile`,
+ * the Form node's `fieldName`), and the UI evaluates them at any depth.
+ * Returns the same object when nothing changes.
+ */
+function filterNestedOptionsForVersion<T extends NodePropertyOption | NodeProperty>(
+	prop: T,
+	version: number,
+): T {
+	if (!prop.options) return prop;
+
+	let changed = false;
+	const options: NodePropertyOption[] = [];
+	for (const option of prop.options) {
+		if (!propertyAppliesToVersion(option, version)) {
+			changed = true;
+			continue;
+		}
+		let next = filterNestedOptionsForVersion(option, version);
+		if (next.values) {
+			const values = filterPropertiesForVersion(next.values, version);
+			if (values.length !== next.values.length || values.some((v, i) => v !== next.values?.[i])) {
+				next = { ...next, values };
+			}
+		}
+		if (next !== option) changed = true;
+		options.push(next);
+	}
+
+	return changed ? { ...prop, options } : prop;
+}
+
+/**
+ * Filter node properties to only include those that apply to a specific version.
+ * Nested options and fixedCollection values are filtered too.
  * @param properties The full list of node properties
  * @param version The specific version to filter for
  * @returns Properties that apply to the given version
@@ -2001,7 +2376,9 @@ export function filterPropertiesForVersion(
 	properties: NodeProperty[],
 	version: number,
 ): NodeProperty[] {
-	return properties.filter((prop) => propertyAppliesToVersion(prop, version));
+	return properties
+		.filter((prop) => propertyAppliesToVersion(prop, version))
+		.map((prop) => filterNestedOptionsForVersion(prop, version));
 }
 
 /**
@@ -2103,6 +2480,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 export function generatePropertyJSDoc(
 	prop: NodeProperty,
 	discriminatorContext?: DiscriminatorCombination,
+	options?: { conditionallyRequired?: boolean },
 ): string {
 	const lines: string[] = ['/**'];
 
@@ -2146,52 +2524,14 @@ export function generatePropertyJSDoc(
 		lines.push(` * @loadOptionsMethod ${prop.typeOptions.loadOptionsMethod}`);
 	}
 
-	// Display options - conditions for when this property is shown/hidden
-	// Filter out @version since version is implicit from the file
-	// Filter out conditions that match the current discriminator context (redundant)
-	if (prop.displayOptions) {
-		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const filteredShow = Object.entries(prop.displayOptions.show).filter(([key, values]) => {
-				// Filter out @version (existing behavior)
-				if (key === '@version') return false;
-				// Filter out conditions that match current discriminator context
-				// Strip leading '/' from key for root-level property references
-				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
-				if (discriminatorContext?.[normalizedKey] !== undefined) {
-					const showValues = values;
-					// If the discriminator value is in the show list, this is redundant
-					if (showValues.includes(discriminatorContext[normalizedKey])) return false;
-				}
-				return true;
-			});
-			if (filteredShow.length > 0) {
-				const showConditions = filteredShow
-					.map(([key, values]) => `${key}: [${values.map((v) => JSON.stringify(v)).join(', ')}]`)
-					.join(', ');
-				lines.push(` * @displayOptions.show { ${showConditions} }`);
-			}
-		}
-		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const filteredHide = Object.entries(prop.displayOptions.hide).filter(([key, values]) => {
-				// Filter out @version (existing behavior)
-				if (key === '@version') return false;
-				// Filter out conditions that match current discriminator context
-				// Strip leading '/' from key for root-level property references
-				const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
-				if (discriminatorContext?.[normalizedKey] !== undefined) {
-					const hideValues = values;
-					// If the discriminator value is in the hide list, this is redundant
-					if (hideValues.includes(discriminatorContext[normalizedKey])) return false;
-				}
-				return true;
-			});
-			if (filteredHide.length > 0) {
-				const hideConditions = filteredHide
-					.map(([key, values]) => `${key}: [${values.map((v) => JSON.stringify(v)).join(', ')}]`)
-					.join(', ');
-				lines.push(` * @displayOptions.hide { ${hideConditions} }`);
-			}
-		}
+	// Display options - conditions for when this property is shown/hidden.
+	// @version and satisfied discriminators are implicit from the file.
+	lines.push(...formatDisplayOptionsJSDocLines(prop.displayOptions, '', discriminatorContext));
+
+	// The type marks a conditionally shown property as optional, so state the
+	// requirement here where the condition is visible.
+	if (options?.conditionallyRequired) {
+		lines.push(' * @required when the displayOptions conditions above match');
 	}
 
 	// Default value - skip multi-line strings to avoid breaking JSDoc comments
@@ -2219,6 +2559,15 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 	const lines: string[] = ['/**'];
 	lines.push(` * ${node.displayName} Node Types`);
 	lines.push(' *');
+
+	// A hidden node is retired. On-disk generation skips it, so this only lands
+	// on a definition synthesized at run time — the one path that still hands a
+	// retired built-in to a builder. Keep it above the description: the reader
+	// must see it before it reads the parameters.
+	if (node.hidden) {
+		lines.push(` * @deprecated ${NODE_DEPRECATION_NOTICE}`);
+		lines.push(' *');
+	}
 
 	if (node.description) {
 		lines.push(` * ${node.description}`);
@@ -2255,12 +2604,29 @@ export function generatePropertyLine(
 	optional: boolean,
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
+	// Steer generic-auth selection at the moment the model reads this type: a
+	// bare union invites httpBearerAuth for any provider documenting
+	// `Authorization: Bearer <token>`.
+	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType' && !prop.description) {
+		prop = {
+			...prop,
+			description:
+				'For NEW credentials prefer \'httpTemplatedCustomAuth\' whenever the auth fits header/query/body values — `Authorization: Bearer <token>` becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}; do NOT use httpBearerAuth for it. Plain generic types are only for reusing an existing credential or for what a template cannot express (basic, digest, OAuth).',
+		};
+	}
+
 	const tsType = mapPropertyType(prop, discriminatorContext);
 	if (!tsType) {
 		return ''; // Skip this property
 	}
 
 	const lines: string[] = [];
+
+	// A property that is required only while a displayOptions condition holds
+	// cannot be required in the type: the other branch must omit it. The Zod
+	// schema enforces the condition at run time; the JSDoc documents it.
+	const conditionallyRequired =
+		!optional && hasResidualDisplayOptions(prop.displayOptions, discriminatorContext);
 
 	// JSDoc - generate if description, displayOptions, hint, builderHint, or non-trivial default exists
 	// This ensures LLMs can see dependency information even for properties without descriptions
@@ -2271,7 +2637,7 @@ export function generatePropertyLine(
 			(prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0));
 	/* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 	if (prop.description || hasDisplayOptions || prop.hint || prop.builderHint) {
-		lines.push(generatePropertyJSDoc(prop, discriminatorContext));
+		lines.push(generatePropertyJSDoc(prop, discriminatorContext, { conditionallyRequired }));
 	}
 
 	// Property name (quote if reserved word, has spaces, or other invalid chars)
@@ -2282,7 +2648,7 @@ export function generatePropertyLine(
 		propName = `'${propName.replace(/'/g, "\\'")}'`;
 	}
 
-	const optionalMarker = optional ? '?' : '';
+	const optionalMarker = optional || conditionallyRequired ? '?' : '';
 	lines.push(`${INDENT}${propName}${optionalMarker}: ${tsType};`);
 
 	return lines.join(`\n${INDENT}`);
@@ -4489,6 +4855,10 @@ export interface GenerationResult {
  * @returns Result with count of nodes processed
  */
 export async function orchestrateGeneration(options: GenerationOptions): Promise<GenerationResult> {
+	return await withSchemaDirIndex(async () => await generateAll(options));
+}
+
+async function generateAll(options: GenerationOptions): Promise<GenerationResult> {
 	const { nodes, outputDir } = options;
 
 	// Group nodes by package, filtering hidden

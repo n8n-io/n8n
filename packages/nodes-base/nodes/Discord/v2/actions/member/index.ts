@@ -1,11 +1,15 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as ban from './ban.operation';
 import * as getAll from './getAll.operation';
+import * as kick from './kick.operation';
 import * as roleAdd from './roleAdd.operation';
 import * as roleRemove from './roleRemove.operation';
+import * as timeout from './timeout.operation';
+import * as unban from './unban.operation';
 import { guildRLC } from '../common.description';
 
-export { getAll, roleAdd, roleRemove };
+export { ban, getAll, kick, roleAdd, roleRemove, timeout, unban };
 
 export const description: INodeProperties[] = [
 	{
@@ -21,10 +25,22 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Ban',
+				value: 'ban',
+				description: 'Ban a member from a server, optionally deleting their recent messages',
+				action: 'Ban a member',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve the members of a server',
 				action: 'Get many members',
+			},
+			{
+				name: 'Kick',
+				value: 'kick',
+				description: 'Remove a member from a server',
+				action: 'Kick a member',
 			},
 			{
 				name: 'Role Add',
@@ -38,6 +54,18 @@ export const description: INodeProperties[] = [
 				description: 'Remove a role from a member',
 				action: 'Remove a role from a member',
 			},
+			{
+				name: 'Timeout',
+				value: 'timeout',
+				description: 'Temporarily prevent a member from interacting',
+				action: 'Timeout a member',
+			},
+			{
+				name: 'Unban',
+				value: 'unban',
+				description: 'Remove a ban from a member',
+				action: 'Unban a member',
+			},
 		],
 		default: 'getAll',
 	},
@@ -50,7 +78,11 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	...ban.description,
 	...getAll.description,
+	...kick.description,
 	...roleAdd.description,
 	...roleRemove.description,
+	...timeout.description,
+	...unban.description,
 ];

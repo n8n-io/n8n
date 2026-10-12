@@ -1,6 +1,12 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LockService, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type SsrfProtectionService } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
+import {
+	type CacheService,
+	type EventService,
+	type UrlService,
+	type CredentialsFinderService,
+} from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -8,16 +14,12 @@ import type { Cipher } from 'n8n-core';
 import type { IncomingHttpHeaders } from 'node:http';
 
 import type { AuthService } from '@/auth/auth.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { CredentialsHelper } from '@/credentials-helper';
-import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import type { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
 
 interface Received {
 	method?: string;
@@ -34,11 +36,16 @@ interface Received {
  */
 function buildService() {
 	const ssrf = mock<SsrfProtectionService>();
+	const lockService = mock<LockService>();
 	ssrf.validateUrl.mockResolvedValue({ ok: true, result: undefined });
 	ssrf.validateConnectionHost.mockReturnValue({ ok: true, result: undefined });
+	lockService.withLease.mockImplementation(
+		async (_namespace, _key, operation) => await operation(new AbortController().signal),
+	);
 
 	return new OauthService(
 		mock<Logger>(),
+		lockService,
 		mock<CredentialsHelper>(),
 		mock<CredentialsRepository>(),
 		mock<CredentialsFinderService>(),
@@ -52,7 +59,7 @@ function buildService() {
 		mock<OAuthBrowserBindingService>(),
 		mock<EventService>(),
 		mock<CacheService>(),
-		new OutboundHttp(ssrf, mock<Logger>()),
+		new OutboundHttp(ssrf, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>()),
 		ssrf,
 		mock<SsrfProtectionConfig>({ enabled: true }),
 	);

@@ -32,10 +32,9 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 	});
 
 	if (!['admin', 'write', 'maintain'].includes(perm.permission)) {
-		console.log(
-			`::error::@${commenter} does not have permission to override the PR size limit (requires write access).`,
+		throw new Error(
+			`@${commenter} does not have permission to override the PR size limit (requires write access).`,
 		);
-		process.exit(1);
 	}
 
 	const { data: pr } = await octokit.rest.pulls.get({
@@ -56,10 +55,9 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 	});
 
 	if (check_runs.length === 0) {
-		console.log(
-			`::error::No '${CHECK_NAME}' check run found for ${headSha}. Push a new commit to trigger it.`,
+		throw new Error(
+			`No '${CHECK_NAME}' check run found for ${headSha}. Push a new commit to trigger it.`,
 		);
-		process.exit(1);
 	}
 
 	await octokit.rest.checks.rerequestRun({
@@ -78,7 +76,7 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 	console.log(`Re-requested '${CHECK_NAME}' check run (${check_runs[0].id}) for ${headSha}`);
 }
 
-async function main() {
+export async function main() {
 	const event = getEventFromGithubEventPath();
 	const { octokit, owner, repo } = initGithub();
 

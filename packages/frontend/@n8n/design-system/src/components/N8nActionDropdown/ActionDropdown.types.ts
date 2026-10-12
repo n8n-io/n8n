@@ -7,6 +7,7 @@ export interface ActionDropdownProps<T extends string = string> {
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	activatorIcon?: IconName;
 	activatorSize?: ButtonSize;
+	activatorIconSize?: IconSize;
 	iconSize?: IconSize;
 	trigger?: 'click' | 'hover';
 	teleported?: boolean;
@@ -15,4 +16,6 @@ export interface ActionDropdownProps<T extends string = string> {
 	maxHeight?: string | number;
 	width?: string;
 	modal?: boolean;
+	/** Prevents the menu from returning focus to its trigger when it closes. */
+	suppressCloseAutoFocus?: boolean;
 }

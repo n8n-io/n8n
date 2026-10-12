@@ -7,6 +7,7 @@ import {
 	ApiTags,
 	Body,
 	ControllerRegistryMetadata,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -18,10 +19,13 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	markPublicApiController,
+	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetQueryDto,
 	WidgetResponseDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
+import { JSON_REQUEST_BODY_MEDIA } from '@/public-api/media-types/request-body';
+import { jsonRequestBody } from '@/public-api/media-types/request-body/json.request-body';
 
 import {
 	apiKeyScopesSatisfy,
@@ -59,7 +63,14 @@ describe('public-api-route-resolver', () => {
 				method(@Body _body: WidgetBodyDto) {}
 			}
 
-			expect(resolve(TestController as Controller)).toEqual([{ type: 'body', dto: WidgetBodyDto }]);
+			expect(resolve(TestController as Controller)).toEqual([
+				{
+					type: 'body',
+					dto: WidgetBodyDto,
+					media: JSON_REQUEST_BODY_MEDIA,
+					handler: jsonRequestBody,
+				},
+			]);
 		});
 
 		it('resolves a query arg to its Zod DTO via design:paramtypes reflection', () => {
@@ -69,6 +80,21 @@ describe('public-api-route-resolver', () => {
 
 			expect(resolve(TestController as Controller)).toEqual([
 				{ type: 'query', dto: WidgetQueryDto },
+			]);
+		});
+
+		it('resolves a body arg to an array-rooted Zod DTO via design:paramtypes reflection', () => {
+			class TestController {
+				method(@Body _body: WidgetArrayResponseDto) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual([
+				{
+					type: 'body',
+					dto: WidgetArrayResponseDto,
+					media: JSON_REQUEST_BODY_MEDIA,
+					handler: jsonRequestBody,
+				},
 			]);
 		});
 
@@ -83,7 +109,12 @@ describe('public-api-route-resolver', () => {
 
 			expect(resolve(TestController as Controller)).toEqual([
 				{ type: 'param', key: 'id' },
-				{ type: 'body', dto: WidgetBodyDto },
+				{
+					type: 'body',
+					dto: WidgetBodyDto,
+					media: JSON_REQUEST_BODY_MEDIA,
+					handler: jsonRequestBody,
+				},
 				{ type: 'query', dto: WidgetQueryDto },
 			]);
 		});
@@ -281,6 +312,8 @@ describe('public-api-route-resolver', () => {
 		});
 
 		it('resolves openapi spec decorator metadata', () => {
+			const since = new Date('2026-07-23T00:00:00Z');
+
 			class WidgetsPublicController {
 				@Post('/')
 				@ApiKeyScope({ anyOf: ['tag:create', 'tag:update'] })
@@ -289,6 +322,7 @@ describe('public-api-route-resolver', () => {
 				@ApiTags(['Widgets'])
 				@ApiResponse(201, WidgetResponseDto)
 				@ApiErrorResponse(409)
+				@Deprecated({ since })
 				method(@Body _body: WidgetBodyDto, @Query _query: WidgetQueryDto) {}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
@@ -303,8 +337,22 @@ describe('public-api-route-resolver', () => {
 			expect(route.summary).toBe('Create a widget');
 			expect(route.tags).toEqual(['Widgets']);
 			expect(route.description).toBe('Create a widget.');
-			expect(route.errorResponses).toEqual([409]);
+			expect(route.errorResponses).toEqual([{ status: 409 }]);
 			expect(route.successStatus).toBe(201);
+			expect(route.deprecated).toEqual({ since });
+		});
+
+		it('resolves no deprecation info when @Deprecated is absent', () => {
+			class WidgetsPublicController {
+				@Get('/')
+				@ApiResponse(200)
+				method() {}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const [route] = resolvePublicApiRoutes();
+
+			expect(route.deprecated).toBeUndefined();
 		});
 
 		it('throws for a route whose @ApiResponse is missing', () => {

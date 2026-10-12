@@ -1,4 +1,5 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import { passthroughEgressFilter } from '@n8n/backend-network';
 import type * as _kafkajs from 'kafkajs';
 import type {
 	IDataObject,
@@ -142,6 +143,7 @@ function createExecuteFunctions(
 			returnJsonArray: (data: IDataObject | IDataObject[]) =>
 				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
 			constructExecutionMetaData: (data: INodeExecutionData[]) => data,
+			getSecureEgressFilter: () => passthroughEgressFilter,
 		} as unknown as IExecuteFunctions['helpers'],
 	});
 }
@@ -243,7 +245,9 @@ describe('Kafka Node', () => {
 		await new KafkaV1(baseDescription).execute.call(createExecuteFunctions(params, items));
 
 		// The legacy URL-parameter path stays unauthenticated
-		expect(SchemaRegistry).toHaveBeenCalledWith({ host: 'https://test-kafka-registry.local' });
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({ host: 'https://test-kafka-registry.local/' }),
+		);
 		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
 		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
 
@@ -295,10 +299,12 @@ describe('Kafka Node', () => {
 			createExecuteFunctions(params, items, { schemaRegistryCredential }),
 		);
 
-		expect(SchemaRegistry).toHaveBeenCalledWith({
-			host: 'https://cred-kafka-registry.local',
-			auth: { username: 'registry-user', password: 'registry-password' },
-		});
+		expect(SchemaRegistry).toHaveBeenCalledWith(
+			expect.objectContaining({
+				host: 'https://cred-kafka-registry.local/',
+				auth: { username: 'registry-user', password: 'registry-password' },
+			}),
+		);
 		expect(mockProducerSend).toHaveBeenCalledWith(
 			expect.objectContaining({
 				topicMessages: [

@@ -75,6 +75,9 @@ export const issueFields: INodeProperties[] = [
 		name: 'project',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
+		typeOptions: {
+			loadOptionsDependsOn: ['site.value'],
+		},
 		required: true,
 		modes: [
 			{
@@ -120,6 +123,9 @@ export const issueFields: INodeProperties[] = [
 		name: 'issueType',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
+		typeOptions: {
+			loadOptionsDependsOn: ['site.value'],
+		},
 		required: true,
 		modes: [
 			{
@@ -190,6 +196,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'assignee',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Assignee',
@@ -236,7 +245,7 @@ export const issueFields: INodeProperties[] = [
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getProjectComponents',
-					loadOptionsDependsOn: ['project'],
+					loadOptionsDependsOn: ['site.value', 'project'],
 				},
 				default: [],
 			},
@@ -259,6 +268,9 @@ export const issueFields: INodeProperties[] = [
 								name: 'fieldId',
 								type: 'resourceLocator',
 								default: { mode: 'list', value: '' },
+								typeOptions: {
+									loadOptionsDependsOn: ['site.value'],
+								},
 								modes: [
 									{
 										displayName: 'Field',
@@ -310,11 +322,12 @@ export const issueFields: INodeProperties[] = [
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
+					loadOptionsDependsOn: ['site.value'],
 				},
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': ['cloud', 'cloudOAuth2'],
+						'/jiraVersion': ['cloud', 'cloudOAuth2', 'cloudServiceAccount'],
 					},
 				},
 			},
@@ -343,6 +356,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'priority',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Priority',
@@ -379,6 +395,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'reporter',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Reporter',
@@ -456,6 +475,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'assignee',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Assignee',
@@ -513,6 +535,9 @@ export const issueFields: INodeProperties[] = [
 								name: 'fieldId',
 								type: 'resourceLocator',
 								default: { mode: 'list', value: '' },
+								typeOptions: {
+									loadOptionsDependsOn: ['site.value'],
+								},
 								modes: [
 									{
 										displayName: 'Field',
@@ -571,11 +596,12 @@ export const issueFields: INodeProperties[] = [
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
+					loadOptionsDependsOn: ['site.value'],
 				},
 				default: [],
 				displayOptions: {
 					show: {
-						'/jiraVersion': ['cloud', 'cloudOAuth2'],
+						'/jiraVersion': ['cloud', 'cloudOAuth2', 'cloudServiceAccount'],
 					},
 				},
 			},
@@ -604,6 +630,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'priority',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Priority',
@@ -640,6 +669,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'reporter',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Reporter',
@@ -683,6 +715,9 @@ export const issueFields: INodeProperties[] = [
 				name: 'statusId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
+				typeOptions: {
+					loadOptionsDependsOn: ['site.value'],
+				},
 				modes: [
 					{
 						displayName: 'Status',
@@ -1131,6 +1166,7 @@ export const issueFields: INodeProperties[] = [
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getUsers',
+							loadOptionsDependsOn: ['site.value'],
 						},
 						default: [],
 						description:
@@ -1142,6 +1178,7 @@ export const issueFields: INodeProperties[] = [
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
+							loadOptionsDependsOn: ['site.value'],
 						},
 						default: [],
 						description:
@@ -1196,6 +1233,7 @@ export const issueFields: INodeProperties[] = [
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getUsers',
+							loadOptionsDependsOn: ['site.value'],
 						},
 						default: [],
 						description:
@@ -1207,6 +1245,7 @@ export const issueFields: INodeProperties[] = [
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
+							loadOptionsDependsOn: ['site.value'],
 						},
 						default: [],
 						description:

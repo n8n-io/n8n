@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowTriggers, Span, Tracing } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { UserError, WorkflowDeactivationError } from 'n8n-workflow';
 
 import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type {
@@ -88,6 +89,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 
 	test('deregisters one trigger or poll node id', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+		activeWorkflowTriggers.removeTriggers.mockResolvedValue();
 		const registrar = new NonWebhookTriggerRegistrar(
 			logger,
 			activeWorkflowTriggers,
@@ -196,6 +198,7 @@ describe('NonWebhookTriggerRegistrar', () => {
 
 		test('deregister removes durable jobs alongside in-memory triggers', async () => {
 			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockResolvedValue();
 
 			await registrar.deregister('wf-1', 'trigger-a');
 
@@ -205,6 +208,101 @@ describe('NonWebhookTriggerRegistrar', () => {
 			);
 			expect(scheduleTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
 			expect(pollTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		});
+
+		test('deregister removes durable jobs even when the in-memory teardown fails', async () => {
+			// A close function that can never succeed is abandoned by the caller, and
+			// the publication advances anyway, so the workflow stays an owner. Nothing
+			// would ever retire these rows if this teardown skipped them.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockRejectedValue(
+				new WorkflowDeactivationError('Failed to deactivate trigger', {
+					cause: new UserError('Credential not found'),
+					workflowId: 'wf-1',
+				}),
+			);
+
+			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow(
+				'Failed to deactivate trigger',
+			);
+
+			expect(scheduleTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			expect(pollTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		});
+
+		test('deregister removes durable jobs even when the in-memory teardown never settles', async () => {
+			// A close function that never settles is abandoned by the caller, and the
+			// abandoned promise is parked under the publication lock, so the durable
+			// removals must not wait behind it.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockReturnValue(new Promise(() => {}));
+
+			void registrar.deregister('wf-1', 'trigger-a');
+
+			await vi.waitFor(() => {
+				expect(scheduleTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+				expect(pollTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+			});
+		});
+
+		test('deregister removes the poll jobs even when the schedule job removal fails', async () => {
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockResolvedValue();
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+
+			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
+
+			expect(pollTriggerJobRegistrar.remove).toHaveBeenCalledWith('wf-1', 'trigger-a');
+		});
+
+		test('deregister propagates a durable removal failure over an abandonable in-memory failure', async () => {
+			// The caller abandons an in-memory UserError as permanent, so surfacing it
+			// while a durable removal failed would leave the rows behind with no retry.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockRejectedValue(
+				new WorkflowDeactivationError('Failed to deactivate trigger', {
+					cause: new UserError('Credential not found'),
+					workflowId: 'wf-1',
+				}),
+			);
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+
+			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to deregister a trigger node from memory',
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					nodeId: 'trigger-a',
+					error: expect.any(WorkflowDeactivationError),
+				}),
+			);
+		});
+
+		test('deregister propagates a durable removal failure even when the in-memory teardown never settles', async () => {
+			// The caller abandons a deregistration that never settles, so a durable
+			// failure held back behind the hung in-memory teardown would never retry.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			activeWorkflowTriggers.removeTriggers.mockReturnValue(new Promise(() => {}));
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+
+			await expect(registrar.deregister('wf-1', 'trigger-a')).rejects.toThrow('db down');
+		});
+
+		test('deregister hands a pending in-memory teardown to onDetached when a durable removal fails', async () => {
+			// The rejection escapes deregister while the in-memory teardown still
+			// runs, so the caller's lifecycle lock must be told to outlive it.
+			const { registrar, activeWorkflowTriggers } = makeRegistrar();
+			const pendingInMemory = new Promise<void>(() => {});
+			activeWorkflowTriggers.removeTriggers.mockReturnValue(pendingInMemory);
+			scheduleTriggerJobRegistrar.remove.mockRejectedValue(new Error('db down'));
+			const onDetached = vi.fn();
+
+			await expect(registrar.deregister('wf-1', 'trigger-a', onDetached)).rejects.toThrow(
+				'db down',
+			);
+
+			expect(onDetached).toHaveBeenCalledWith(pendingInMemory);
 		});
 	});
 });

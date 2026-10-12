@@ -5,18 +5,19 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
 	};
 });
 
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = 'list1';
 const ITEM_ID = 'item1';

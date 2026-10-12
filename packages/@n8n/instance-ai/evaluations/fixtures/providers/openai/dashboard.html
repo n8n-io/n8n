@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  Lookalike OpenAI landing page. Exists so the agent has to NAVIGATE to the keys
+  page rather than starting on it — reaching the right page is the step that
+  broke in NODE-5384.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Home - OpenAI Platform</title>
+	</head>
+	<body>
+		<aside aria-label="Main navigation">
+			<button type="button">Default project</button>
+			<ul>
+				<li><a href="/home" aria-current="page">Home</a></li>
+				<li><a href="/chat/edit">Chat</a></li>
+				<li><a href="/audio">Audio</a></li>
+				<li><a href="/playground/images">Images</a></li>
+				<li><a href="/codex">Codex</a></li>
+				<li><a href="/api-keys">API Keys</a></li>
+				<li><a href="/usage">Usage</a></li>
+				<li><a href="/logs">Logs</a></li>
+				<li><a href="/batches">Batches</a></li>
+				<li><a href="/storage">Storage</a></li>
+				<li><a href="/plugins">Plugins</a></li>
+			</ul>
+			<button type="button">P Personal Organization</button>
+		</aside>
+		<main>
+			<h1>Home</h1>
+			<section aria-labelledby="get-started">
+				<h2 id="get-started">Get started</h2>
+				<p>
+					Create an API key to start making requests. Manage keys from
+					<a href="/api-keys">API Keys</a>.
+				</p>
+			</section>
+			<section aria-labelledby="usage">
+				<h2 id="usage">Usage this month</h2>
+				<p>No usage recorded.</p>
+			</section>
+		</main>
+	</body>
+</html>

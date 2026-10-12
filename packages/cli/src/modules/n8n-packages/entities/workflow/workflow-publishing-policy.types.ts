@@ -1,8 +1,15 @@
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowPublishingPolicy = {
-	/** Keeps new workflows inactive; republishes updates only when target and package are both published. */
+	/**
+	 * Keeps new workflows inactive; republishes an update only when the target is published and
+	 * the package carries the version the source publishes.
+	 */
 	PreservePublishedState: 'preserve-published-state',
-	/** Target publish state follows the package workflow's published flag. */
+	/**
+	 * Publishes the version the package carries when the source publishes it, and unpublishes when
+	 * the source publishes nothing. Leaves the target's published version alone when the source
+	 * publishes a version the package does not carry.
+	 */
 	MatchSource: 'match-source',
 	/** Publishes every imported workflow. */
 	PublishAll: 'publish-all',
@@ -42,7 +49,8 @@ export interface WorkflowPublishingOutcome {
 /** Inputs available after content is saved. */
 export interface WorkflowPublishingContext {
 	status: 'created' | 'updated' | 'skipped';
-	sourcePublished: boolean;
+	/** Absent when the source publishes a version the package does not carry; the target keeps its own. */
+	sourcePublished?: boolean;
 	currentlyPublished: boolean;
 	isArchived: boolean;
 }

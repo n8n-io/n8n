@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AgentIconOrEmoji } from '@n8n/api-types';
 import { N8nButton, N8nIconPicker, N8nInput } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { nextTick, ref } from 'vue';
 
@@ -29,9 +29,9 @@ function updateText(index: number, text: string) {
 	prompts.value = prompts.value.map((p, i) => (i === index ? { ...p, text } : p));
 }
 
-function updateIcon(index: number, icon: IconOrEmoji) {
+function updateIcon(index: number, icon: IconOrEmoji | undefined) {
 	prompts.value = prompts.value.map((p, i) =>
-		i === index ? { ...p, icon: icon as AgentIconOrEmoji } : p,
+		i === index ? { ...p, icon: icon as AgentIconOrEmoji | undefined } : p,
 	);
 }
 

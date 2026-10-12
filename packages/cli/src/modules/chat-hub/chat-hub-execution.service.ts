@@ -28,8 +28,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
@@ -660,6 +659,7 @@ export class ChatHubExecutionService {
 
 			on: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
 			once: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
+			off: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
 			emit: (_event: string, ..._args: unknown[]) => true,
 		};
 

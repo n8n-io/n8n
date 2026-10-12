@@ -1,0 +1,174 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "activeVersion": {
+            "type": "null"
+        },
+        "activeVersionId": {
+            "type": "null"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "description": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isArchived": {
+            "type": "boolean"
+        },
+        "meta": {
+            "type": "null"
+        },
+        "name": {
+            "type": "string"
+        },
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "credentials": {
+                        "type": "object",
+                        "properties": {
+                            "googlePalmApi": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "telegramApi": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "systemMessage": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "parentFolder": {
+            "type": "null"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "availableInMCP": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "shared": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "project": {
+                        "type": "object",
+                        "properties": {
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "creatorId": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "null"
+                            },
+                            "icon": {
+                                "type": "null"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "updatedAt": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "workflowId": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "staticData": {
+            "type": "null"
+        },
+        "triggerCount": {
+            "type": "integer"
+        },
+        "updatedAt": {
+            "type": "string"
+        },
+        "versionCounter": {
+            "type": "integer"
+        },
+        "versionId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -17,8 +17,10 @@ import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { packagedModules } from '@/modules/modules.manifest';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LicenseMocker } from '@test-integration/license';
@@ -93,6 +95,19 @@ const publicApiAgent = (
 	return agent;
 };
 
+const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
+	const agent = request.agent(app);
+	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
+	// browser-id is needed for session cookie auth
+	void agent.use(async (req: superagent.SuperAgentRequest) => {
+		req.set('browser-id', browserId);
+		return await req;
+	});
+	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled, browserId);
+	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+	return agent;
+};
+
 export const setupTestServer = ({
 	endpointGroups,
 	enabledFeatures,
@@ -111,7 +126,11 @@ export const setupTestServer = ({
 
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
-	mockInstance(PostHogClient);
+	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
+		featureFlags: {},
+		featureFlagPayloads: {},
+	});
 	mockInstance(Push);
 	mockInstance(Telemetry);
 
@@ -124,12 +143,13 @@ export const setupTestServer = ({
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
 		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
+		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
 		license: new LicenseMocker(),
 	};
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.loadModules(modules);
+		if (modules) await testModules.loadModules(modules, packagedModules);
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
@@ -153,10 +173,14 @@ export const setupTestServer = ({
 		// Register auth strategies in priority order. The registry evaluates them
 		// sequentially — the first strategy that returns a non-null result wins.
 		// API key auth is registered first so existing behavior is preserved.
+		// Session cookie auth is registered last: an explicit but wrong API
+		// key/bearer token fails fast rather than silently falling back to an
+		// ambient browser session cookie.
 		// Additional strategies (e.g. scoped JWT from the token-exchange module)
 		// can be appended later during their own module initialization.
 		const registry = Container.get(AuthStrategyRegistry);
 		registry.register(Container.get(ApiKeyAuthStrategy));
+		registry.register(Container.get(SessionCookieAuthStrategy));
 
 		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
@@ -179,6 +203,10 @@ export const setupTestServer = ({
 		if (endpointGroups.length) {
 			for (const group of endpointGroups) {
 				switch (group) {
+					case 'activeWorkflows':
+						await import('@/controllers/active-workflows.controller.js');
+						break;
+
 					case 'annotationTags':
 						await import('@/controllers/annotation-tags.controller.ee.js');
 						break;
@@ -203,6 +231,14 @@ export const setupTestServer = ({
 						await import('@/environments.ee/variables/variables.controller.ee.js');
 						break;
 
+					case 'ai-preferences':
+						await import('@/controllers/ai-preference.controller.js');
+						break;
+
+					case 'instance-ai':
+						await import('@/modules/instance-ai/instance-ai.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;
@@ -211,7 +247,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
@@ -232,6 +268,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'jwks':
+						await import('@/jwks/jwks.controller.js');
 						break;
 
 					case 'mfa':
@@ -283,6 +323,10 @@ export const setupTestServer = ({
 
 					case 'passwordReset':
 						await import('@/controllers/password-reset.controller.js');
+						break;
+
+					case 'changeEmail':
+						await import('@/controllers/change-email.controller.js');
 						break;
 
 					case 'owner':
@@ -353,7 +397,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'insights':
-						await import('@/modules/insights/insights.module.js');
+						await import('@n8n/backend-module-insights/module');
 						break;
 
 					case 'data-table':
@@ -386,6 +430,12 @@ export const setupTestServer = ({
 
 					case 'test-webhooks':
 						await import('@/webhooks/test-webhooks.controller.js');
+						break;
+
+					case 'type-availability-policies':
+						await import(
+							'@/modules/type-availability-policies/type-availability-policies.module.js'
+						);
 						break;
 				}
 			}

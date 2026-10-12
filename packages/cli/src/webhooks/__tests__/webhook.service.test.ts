@@ -7,13 +7,18 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
+import {
+	Workflow,
+	WebhookPathTakenError,
+	webhookDescriptionFields,
+	fromParameter,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import type { NodeTypes } from '@/node-types';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import { WebhookService } from '@/webhooks/webhook.service';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
@@ -511,6 +516,100 @@ describe('WebhookService', () => {
 		});
 	});
 
+	describe('createWebhook()', () => {
+		it('normalizes the path and adds dynamic path metadata', () => {
+			webhookRepository.create.mockImplementation(
+				(data) => Object.assign(new WebhookEntity(), data) as WebhookEntity,
+			);
+
+			const webhook = webhookService.createWebhook(
+				{
+					workflowId: 'wf-1',
+					webhookPath: ' /:id/team/ ',
+					node: 'Webhook',
+					method: 'GET',
+				},
+				'hook-id',
+			);
+
+			expect(webhook).toEqual(
+				expect.objectContaining({
+					webhookPath: ':id/team',
+					webhookId: 'hook-id',
+					pathLength: 2,
+				}),
+			);
+		});
+	});
+
+	describe('getStaticWebhookKeys()', () => {
+		const webhookNodeType = {
+			description: {
+				properties: [
+					{
+						displayName: 'Path',
+						name: 'path',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Method',
+						name: 'httpMethod',
+						type: 'string',
+						default: 'GET',
+					},
+				],
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: '={{$parameter["httpMethod"]}}',
+						path: '={{$parameter["path"]}}',
+						isFullPath: true,
+					},
+				],
+			},
+		} as INodeType;
+
+		const createWebhookNode = (overrides: Partial<INode> = {}) =>
+			({
+				id: 'webhook-node',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'webhook-id',
+				parameters: { path: '/test/', httpMethod: 'GET' },
+				...overrides,
+			}) as INode;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
+		});
+
+		it('returns the method and normalized static path', () => {
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode()])).toEqual(['GET test']);
+		});
+
+		it.each([
+			['disabled node', { disabled: true }],
+			['node without a webhook id', { webhookId: undefined }],
+			['node without a path', { parameters: { httpMethod: 'GET' } }],
+			['expression path', { parameters: { path: '={{ "/test" }}', httpMethod: 'GET' } }],
+			['empty path', { parameters: { path: '/', httpMethod: 'GET' } }],
+			['dynamic path', { parameters: { path: '/users/:id', httpMethod: 'GET' } }],
+		] satisfies Array<[string, Partial<INode>]>)('skips a %s', (_name, overrides) => {
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode(overrides)])).toEqual([]);
+		});
+
+		it('skips nodes without a full-path webhook', () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { ...webhookNodeType.description, webhooks: [{ isFullPath: false }] },
+			} as INodeType);
+
+			expect(webhookService.getStaticWebhookKeys([createWebhookNode()])).toEqual([]);
+		});
+	});
+
 	describe('getNodeWebhooks()', () => {
 		const workflow = new Workflow({
 			id: 'test-workflow',
@@ -589,6 +688,45 @@ describe('WebhookService', () => {
 			expect(webhooks).toHaveLength(1);
 			expect(webhooks[0].path).not.toMatch(/\s/);
 			expect(webhooks[0].path).toMatch(/\/path$/);
+		});
+
+		test('should resolve declared fields natively, without the expression engine', async () => {
+			const node = {
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				disabled: false,
+				parameters: { path: 'native-path', httpMethod: 'POST' },
+			} as unknown as INode;
+
+			const fields = webhookDescriptionFields({
+				httpMethod: fromParameter('httpMethod', 'GET'),
+				path: fromParameter('path'),
+			});
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							...fields,
+							isFullPath: false,
+							restartWebhook: false,
+						},
+					],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			const engineSpy = vi.spyOn(workflow.expression, 'getSimpleParameterValue');
+
+			const webhooks = webhookService.getNodeWebhooks(workflow, node, additionalData);
+
+			expect(webhooks).toHaveLength(1);
+			expect(webhooks[0]).toMatchObject({ httpMethod: 'POST' });
+			expect(webhooks[0].path).toMatch(/\/native-path$/);
+			// fields with declared resolvers must never engage the expression engine
+			const engineEvaluatedValues = engineSpy.mock.calls.map((call) => call[1]);
+			expect(engineEvaluatedValues).not.toContain(fields.path);
+			expect(engineEvaluatedValues).not.toContain(fields.httpMethod);
 		});
 	});
 
@@ -737,6 +875,56 @@ describe('WebhookService', () => {
 			).rejects.toThrow('webhook failed');
 
 			expect(closeFunction).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('findWebhook() - path equal to a dynamic template', () => {
+		test('does not resolve a path that matches a dynamic template', async () => {
+			const method = 'GET';
+			const template = 'user/:id/posts';
+			const webhookId = uuid();
+			const dynamicWebhook = createWebhook(method, template, webhookId, 3);
+
+			webhookRepository.findOneBy.mockResolvedValue(dynamicWebhook);
+			webhookRepository.findBy.mockResolvedValue([]);
+
+			const returnedWebhook = await webhookService.findWebhook(method, template);
+
+			expect(returnedWebhook).toBeNull();
+		});
+
+		test('resolves the dynamic row for its advertised webhookId path', async () => {
+			const method = 'GET';
+			const template = 'user/:id/posts';
+			const webhookId = uuid();
+			const dynamicWebhook = createWebhook(method, template, webhookId, 3);
+
+			webhookRepository.findOneBy.mockResolvedValue(null);
+			webhookRepository.findBy.mockResolvedValue([dynamicWebhook]);
+
+			const returnedWebhook = await webhookService.findWebhook(
+				method,
+				[webhookId, 'user/123/posts'].join('/'),
+			);
+
+			expect(returnedWebhook).toBe(dynamicWebhook);
+		});
+
+		test('does not serve a dynamic row cached under its bare template', async () => {
+			const method = 'GET';
+			const template = 'user/:id/posts';
+			const webhookId = uuid();
+			const dynamicWebhook = createWebhook(method, template, webhookId, 3);
+
+			cacheService.get.mockResolvedValueOnce(dynamicWebhook);
+			webhookRepository.create.mockImplementationOnce(
+				(data) => Object.assign(new WebhookEntity(), data) as WebhookEntity,
+			);
+			webhookRepository.findBy.mockResolvedValue([]);
+
+			const returnedWebhook = await webhookService.findWebhook(method, template);
+
+			expect(returnedWebhook).toBeNull();
 		});
 	});
 

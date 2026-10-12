@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
-import type { Thread } from 'chat';
+import type { Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import {
 	createTelegramBridgeExecutionContext,
 	createTelegramResumeExecutionContext,
+	getTelegramPlatformMessageContext,
 	startTelegramTypingIndicator,
 } from '../../telegram-bridge-behavior';
 
@@ -25,6 +26,44 @@ describe('telegram-bridge-behavior', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	describe('getTelegramPlatformMessageContext', () => {
+		it('returns only the Telegram identifiers that tools can use', () => {
+			const message = mock<Message<unknown>>({
+				raw: {
+					message_id: 42,
+					message_thread_id: 7,
+					chat: { id: -100123, title: 'Private group' },
+					from: { id: 99, username: 'alice' },
+				},
+				attachments: [
+					{
+						type: 'image',
+						fetchMetadata: { fileId: 'photo-large', fileUniqueId: 'photo-stable' },
+					},
+					{ type: 'file' },
+				],
+			});
+
+			expect(getTelegramPlatformMessageContext(message)).toEqual({
+				type: 'telegram',
+				chat_id: '-100123',
+				message_id: '42',
+				message_thread_id: '7',
+				attachments: [
+					{
+						type: 'image',
+						file_id: 'photo-large',
+						file_unique_id: 'photo-stable',
+					},
+				],
+			});
+		});
+
+		it('returns no context for an invalid Telegram message', () => {
+			expect(getTelegramPlatformMessageContext(mock<Message<unknown>>())).toBeUndefined();
+		});
 	});
 
 	describe('startTelegramTypingIndicator', () => {
@@ -131,6 +170,11 @@ describe('telegram-bridge-behavior', () => {
 				chat: mock(),
 				thread,
 				message: mock(),
+				integration: {
+					type: 'telegram',
+					credentialId: 'cred-1',
+					settings: { accessMode: 'public', allowedUsers: [] },
+				},
 				logger,
 				agentId: 'agent-1',
 				isNewMention: false,

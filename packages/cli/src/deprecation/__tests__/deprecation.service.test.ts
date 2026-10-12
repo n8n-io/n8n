@@ -12,6 +12,7 @@ describe('DeprecationService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		nodes: { exclude: [] },
 		executions: { mode: 'regular' },
+		taskRunners: { mode: 'internal' },
 	});
 	const instanceSettings = mockInstance(InstanceSettings, {
 		instanceType: 'main',
@@ -64,11 +65,43 @@ describe('DeprecationService', () => {
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
 		['N8N_RUNNERS_ENABLED', '1', true],
+		['N8N_DB_PING_TIMEOUT', '1', true],
 		['WEBHOOK_URL', 'https://example.com/', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'default', true],
 		['N8N_DEFAULT_BINARY_DATA_MODE', 'filesystem', false],
+		['N8N_EXPRESSION_ENGINE', 'legacy', true],
+		['N8N_EXPRESSION_ENGINE', 'vm', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'true', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', '1', true],
+		['N8N_WORKFLOW_TAGS_DISABLED', 'false', false],
+		['N8N_WORKFLOW_TAGS_DISABLED', undefined, false],
+		['N8N_OUTBOUND_PROXY_MODE', 'main-only', true],
+		['N8N_OUTBOUND_PROXY_MODE', 'all', false],
+		['N8N_OUTBOUND_PROXY_MODE', undefined, false],
+		['N8N_RUNNERS_MODE', 'internal', true],
+		['N8N_RUNNERS_MODE', 'external', false],
+		['N8N_RUNNERS_MODE', undefined, true],
+		['N8N_SSRF_PROTECTION_ENABLED', 'true', true],
+		['N8N_SSRF_PROTECTION_ENABLED', '1', true],
+		['N8N_SSRF_PROTECTION_ENABLED', 'false', false],
+		['N8N_SSRF_PROTECTION_ENABLED', undefined, false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'false', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'FALSE', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', '0', true],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'true', false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', 'invalid', false],
+		['N8N_AI_ALLOW_SENDING_PARAMETER_VALUES', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
+	});
+
+	// `toTest` treats a blank value as unset, so set it here directly.
+	test('should not warn when N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is blank', () => {
+		process.env.N8N_AI_ALLOW_SENDING_PARAMETER_VALUES = '';
+		deprecationService.warn();
+		expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(
+			'N8N_AI_ALLOW_SENDING_PARAMETER_VALUES',
+		);
 	});
 
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
@@ -187,6 +220,28 @@ describe('DeprecationService', () => {
 			process.env[envVar] = value;
 			deprecationService.warn();
 			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
+		});
+	});
+
+	describe('N8N_SSRF_PROTECTION_ENABLED', () => {
+		beforeEach(() => {
+			process.env.N8N_SSRF_PROTECTION_ENABLED = 'true';
+		});
+
+		test.each([undefined, 'default', 'DEFAULT , 100.64.0.0/10'])(
+			'should warn when N8N_SSRF_BLOCKED_IP_RANGES is `%s`',
+			(ranges) => {
+				if (ranges === undefined) delete process.env.N8N_SSRF_BLOCKED_IP_RANGES;
+				else process.env.N8N_SSRF_BLOCKED_IP_RANGES = ranges;
+				deprecationService.warn();
+				expect(logger.warn.mock.lastCall?.[0] ?? '').toContain('N8N_SSRF_PROTECTION_ENABLED');
+			},
+		);
+
+		test('should not warn when N8N_SSRF_BLOCKED_IP_RANGES lists literal ranges only', () => {
+			process.env.N8N_SSRF_BLOCKED_IP_RANGES = '10.0.0.0/8,192.168.0.0/16';
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain('N8N_SSRF_PROTECTION_ENABLED');
 		});
 	});
 

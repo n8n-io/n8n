@@ -47,15 +47,54 @@ function toolCallEvent(overrides: Partial<Extract<TimelineEvent, { type: 'tool-c
 }
 
 describe('formatPreviewSessionContext', () => {
+	it('formats the background signal as an event instead of a tool call', () => {
+		const block = formatPreviewSessionContext(makeThread(), [
+			makeExecution({
+				userMessage: null,
+				timeline: [
+					{
+						type: 'background-task-signal',
+						timestamp: 100,
+						signal: {
+							tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+						},
+					},
+				],
+			}),
+		]);
+		expect(block).toContain('Background task results received:');
+		expect(block).toContain('Research');
+		expect(block).not.toContain('Tool call:');
+	});
+
 	it('formats a whole session with user messages, tool calls, and delimiter tags', () => {
 		const executions = [
 			makeExecution({
 				id: 'exec-1',
 				userMessage: 'First question',
+				inputMessages: [
+					{
+						id: 'initial-input',
+						role: 'user',
+						content: [{ type: 'text', text: 'First question' }],
+					},
+					{
+						id: 'steered-input',
+						role: 'user',
+						content: [
+							{ type: 'file', fileId: 'file-1', fileName: 'orders.csv', mimeType: 'text/csv' },
+						],
+					},
+				],
 				timeline: [
 					{ type: 'reasoning', content: 'I should search the orders.', timestamp: 0, endTime: 1 },
 					toolCallEvent(),
 					{ type: 'text', content: 'Here are your orders.', timestamp: 1, endTime: 2 },
+					{
+						type: 'input',
+						timestamp: 3,
+						messageId: 'steered-input',
+					},
 				],
 			}),
 			makeExecution({ id: 'exec-2', userMessage: 'Second question' }),
@@ -75,6 +114,11 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('Input: {"query":"open orders"}');
 		expect(block).toContain('Output: {"count":2}');
 		expect(block).toContain('Assistant: Here are your orders.');
+		expect(block!.match(/User: First question/g)).toHaveLength(1);
+		expect(block!.match(/User: \[Attachment: orders\.csv\]/g)).toHaveLength(1);
+		expect(block!.indexOf('User: [Attachment: orders.csv]')).toBeGreaterThan(
+			block!.indexOf('Assistant: Here are your orders.'),
+		);
 	});
 
 	it('scopes a single turn to the anchor plus trailing resume continuations', () => {
@@ -91,6 +135,29 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).not.toContain('Turn two');
 	});
 
+	it('groups shared input references and stops at a hidden input with its own ID', () => {
+		const executions = [
+			makeExecution({ id: 'start', userMessage: 'Question', inputMessageIds: ['input-1'] }),
+			makeExecution({
+				id: 'resume',
+				userMessage: null,
+				inputMessageIds: ['input-1'],
+				timeline: [{ type: 'text', content: 'Approved answer', timestamp: 1 }],
+			}),
+			makeExecution({
+				id: 'wake',
+				userMessage: null,
+				inputMessageIds: ['hidden-input'],
+				timeline: [{ type: 'text', content: 'Background result', timestamp: 2 }],
+			}),
+		];
+		const block = formatPreviewSessionContext(makeThread(), executions, 'resume');
+		expect(block).toContain('scope: single turn, turns: 2');
+		expect(block).toContain('User: Question');
+		expect(block).toContain('Approved answer');
+		expect(block).not.toContain('Background result');
+	});
+
 	it('walks back from a resumed HITL execution to include the user message and pre-suspension events', () => {
 		const executions = [
 			makeExecution({
@@ -105,7 +172,15 @@ describe('formatPreviewSessionContext', () => {
 				id: 'exec-2',
 				userMessage: null,
 				hitlStatus: 'resumed',
-				timeline: [{ type: 'text', content: 'After resume.', timestamp: 4, endTime: 5 }],
+				timeline: [
+					{
+						type: 'hitl-response',
+						toolCallId: 'tc-1',
+						response: { approved: true },
+						timestamp: 4,
+					},
+					{ type: 'text', content: 'After resume.', timestamp: 4, endTime: 5 },
+				],
 			}),
 			makeExecution({ id: 'exec-3', userMessage: 'Turn two' }),
 		];
@@ -116,6 +191,7 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('User: Turn one');
 		expect(block).toContain('Before suspension.');
 		expect(block).toContain('[suspended waiting on ask_question]');
+		expect(block).toContain('Human response: {"approved":true}');
 		expect(block).toContain('After resume.');
 		expect(block).not.toContain('Turn two');
 	});

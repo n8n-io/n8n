@@ -103,6 +103,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
 
+	const isE2ETestMode = computed(() => settings.value.inE2ETests);
+
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
 	const isCrdtCollaborationEnabled = computed(
@@ -139,6 +141,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isAgentsEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
+	);
+
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
 	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
@@ -148,9 +154,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
 	 */
 	const isAgentModuleActive = (name: string): boolean => {
-		return (
-			isModuleActive('agents') && moduleSettings.value.agents?.modules?.includes(name) === true
-		);
+		return isAgentsEnabled.value && moduleSettings.value.agents?.modules?.includes(name) === true;
 	};
 
 	const isAiCreditsEnabled = computed(
@@ -164,6 +168,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	);
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const isAiGatewayCloudUbbEnabled = computed(
+		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
+	const isAiAssistantCloudUbbEnabled = computed(
+		() => settings.value.aiAssistant?.cloudUbbEnabled ?? false,
+	);
 
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
@@ -202,11 +214,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
-	// Opt-in flag: enabled when the backend's Daytona sandbox env vars
-	// (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` + `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`)
-	// are set, OR the AI Assistant proxy is available.
+	const isWorkerPoolsEnabled = computed(() => settings.value.workerPools?.enabled ?? false);
+
+	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
-		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -363,6 +375,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setPublicApiPath(
+			`${fetchedSettings.publicApi.path}/v${fetchedSettings.publicApi.latestVersion}`,
+		);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata ?? {});
@@ -452,6 +467,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isE2ETestMode,
 		isCanvasOnly,
 		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
@@ -495,6 +511,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
+		isAiGatewayCloudUbbEnabled,
+		isAiAssistantCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,
@@ -512,10 +530,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
+		isWorkerPoolsEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 		isWorkflowPublicationServiceEnabled,

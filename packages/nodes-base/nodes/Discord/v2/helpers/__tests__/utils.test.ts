@@ -1,7 +1,7 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
-import { prepareMultiPartForm } from '../utils';
+import { getAuditLogReasonHeaders, prepareMultiPartForm } from '../utils';
 
 describe('Discord V2 Utils', () => {
 	describe('prepareMultiPartForm', () => {
@@ -359,6 +359,55 @@ describe('Discord V2 Utils', () => {
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(2, 'file1');
 			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(2, 'file1');
 			expect(result).toBeDefined();
+		});
+	});
+
+	describe('getAuditLogReasonHeaders', () => {
+		let mockExecuteFunctions: IExecuteFunctions;
+
+		// Returns getNodeParameter values keyed by parameter name for a single item.
+		const mockParams = (params: Record<string, string>) => {
+			mockExecuteFunctions.getNodeParameter = vi
+				.fn()
+				.mockImplementation((name: string, _i: number, fallback: string) =>
+					name in params ? params[name] : fallback,
+				);
+		};
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('maps a preset reason to its label and URL-encodes it', () => {
+			mockParams({ reason: 'suspicious_spam' });
+
+			const headers = getAuditLogReasonHeaders.call(mockExecuteFunctions, 0);
+
+			expect(headers).toEqual({ 'X-Audit-Log-Reason': 'Suspicious%20or%20spam%20account' });
+		});
+
+		it('uses the custom text when the reason is "other"', () => {
+			mockParams({ reason: 'other', reasonCustom: 'Posting phishing links' });
+
+			const headers = getAuditLogReasonHeaders.call(mockExecuteFunctions, 0);
+
+			expect(headers).toEqual({ 'X-Audit-Log-Reason': 'Posting%20phishing%20links' });
+		});
+
+		it('returns no header when the reason is "other" but the custom text is empty', () => {
+			mockParams({ reason: 'other', reasonCustom: '' });
+
+			expect(getAuditLogReasonHeaders.call(mockExecuteFunctions, 0)).toEqual({});
+		});
+
+		it('returns no header when no reason is set', () => {
+			mockParams({});
+
+			expect(getAuditLogReasonHeaders.call(mockExecuteFunctions, 0)).toEqual({});
 		});
 	});
 });

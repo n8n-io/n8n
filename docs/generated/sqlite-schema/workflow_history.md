@@ -53,6 +53,7 @@ erDiagram
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (baselineVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request_workflow" }o--o| "workflow_history" : "FOREIGN KEY (workflowVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -116,6 +117,7 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "workflow_review_request_workflow" {
+  varchar_36_ baselineVersionId FK
   varchar_36_ id PK
   varchar_36_ workflowId FK
   varchar_36_ workflowReviewRequestId FK

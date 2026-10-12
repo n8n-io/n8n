@@ -1,5 +1,5 @@
 import type { ModelConfig } from '../../../types/sdk/agent';
-import { getModelIdString } from '../runtime-context';
+import { getModelIdString } from '../../../utils/model';
 
 describe('getModelIdString', () => {
 	it('returns a plain string model id unchanged', () => {

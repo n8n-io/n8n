@@ -1,0 +1,94 @@
+{
+	"name": "Teams channelMessage softDeleteMessage (Service Principal)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6666-9999-77777",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 380]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"resource": "channelMessage",
+				"operation": "softDeleteMessage",
+				"teamId": {
+					"__rl": true,
+					"value": "1111-2222-3333",
+					"mode": "id"
+				},
+				"channelId": {
+					"__rl": true,
+					"value": "42:aaabbbccc.tacv2",
+					"mode": "id"
+				},
+				"messageId": "1698324478896"
+			},
+			"id": "6666-5555-77777",
+			"name": "Microsoft Teams",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 2,
+			"position": [1100, 380],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "spCredId",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"parameters": {},
+			"id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1400, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"error": "Deleting and restoring channel messages is not available with the Service Principal credential"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Teams",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Teams": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9b3e4c10-5d6f-4e70-ab82-3c4d5e6f7081",
+	"id": "teamsChannelMsgSoftDeleteSp",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

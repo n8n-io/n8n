@@ -1,7 +1,11 @@
-import { BaseError } from '../../../src/errors/base/base.error';
-import { OperationalError } from '../../../src/errors/base/operational.error';
+import { BaseError, OperationalError as SharedOperationalError } from '@n8n/errors';
+import { OperationalError } from '../../../src/errors';
 
 describe('OperationalError', () => {
+	it('should re-export the shared class', () => {
+		expect(OperationalError).toBe(SharedOperationalError);
+	});
+
 	it('should be an instance of OperationalError', () => {
 		const error = new OperationalError('test');
 		expect(error).toBeInstanceOf(OperationalError);

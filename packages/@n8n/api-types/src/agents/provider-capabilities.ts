@@ -78,6 +78,16 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: ['anthropic.web_search'],
 		attachments: { image: true, pdf: true, audio: false },
 	},
+	// Claude on Vertex — same Messages capabilities as Anthropic; providerTools
+	// stay empty because Vertex only exposes a subset and Instance AI does not
+	// wire Vertex-specific Anthropic provider tools yet.
+	'google-vertex-anthropic': {
+		thinking: 'budgetTokens',
+		promptCaching: 'ttl',
+		webSearch: false,
+		providerTools: [],
+		attachments: { image: true, pdf: true, audio: false },
+	},
 	openai: {
 		thinking: 'reasoningEffort',
 		promptCaching: true,
@@ -93,7 +103,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		attachments: { image: true, pdf: true, audio: true },
 	},
 	xai: {
-		thinking: false,
+		thinking: 'reasoningEffort',
 		promptCaching: false,
 		webSearch: false,
 		providerTools: [],
@@ -127,6 +137,35 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	// OpenAI-compatible custom endpoints (N8N_INSTANCE_AI_MODEL_URL / custom/*).
+	custom: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	moonshotai: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	alibaba: {
+		thinking: false,
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
+	minimax: {
+		thinking: false,
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+		attachments: NO_ATTACHMENTS,
+	},
 	cohere: {
 		thinking: false,
 		promptCaching: false,
@@ -143,6 +182,13 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	},
 };
 
+/** Attachment support of a provider. Unknown providers support none. */
+export function getProviderAttachmentCapabilities(
+	provider: string | undefined,
+): ProviderAttachmentCapabilities {
+	return (provider && PROVIDER_CAPABILITIES[provider]?.attachments) || NO_ATTACHMENTS;
+}
+
 /**
  * Whether a media type is accepted as an inline file part by the given
  * provider's models, per the static capability map. Unknown providers and
@@ -152,13 +198,25 @@ export function isAttachmentMediaTypeSupported(
 	provider: string | undefined,
 	mediaType: string | undefined,
 ): boolean {
-	if (!provider || !mediaType) return false;
-	const attachments = PROVIDER_CAPABILITIES[provider]?.attachments;
-	if (!attachments) return false;
+	if (!mediaType) return false;
+	const attachments = getProviderAttachmentCapabilities(provider);
 	if (mediaType.startsWith('image/')) return attachments.image;
 	if (mediaType === 'application/pdf') return attachments.pdf;
 	if (mediaType.startsWith('audio/')) return attachments.audio;
 	return false;
+}
+
+/** Build a file-input `accept` string from a provider's attachment capabilities. */
+export function acceptedMimeTypesFromCapabilities(
+	capabilities: ProviderAttachmentCapabilities,
+): string {
+	return [
+		capabilities.image ? 'image/*' : null,
+		capabilities.pdf ? 'application/pdf' : null,
+		capabilities.audio ? 'audio/*' : null,
+	]
+		.filter((entry): entry is string => entry !== null)
+		.join(',');
 }
 
 export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;

@@ -21,7 +21,7 @@ export class TaskRunnerDockerImageRule implements IBreakingChangeInstanceRule {
 			description:
 				'Task runners are no longer included in the n8nio/n8n docker image and must use the separate n8nio/runners image',
 			category: BreakingChangeCategory.infrastructure,
-			severity: 'medium',
+			impact: 'executionsFail',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#remove-task-runner-from-n8nion8n-docker-image',
 		};

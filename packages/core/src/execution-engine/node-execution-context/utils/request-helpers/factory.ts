@@ -1,4 +1,5 @@
-import { httpRequest } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAllExecuteFunctions,
 	IExecuteData,
@@ -84,9 +85,10 @@ export const getRequestHelperFunctions = (
 					requestOptions.headers as Record<string, string>,
 				);
 			}
-			return await httpRequest(requestOptions, additionalData.ssrfBridge);
+			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
-		getSecureEgressFilter: () => additionalData.ssrfBridge,
+		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
+			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions,
@@ -126,7 +128,6 @@ export const getRequestHelperFunctions = (
 				additionalCredentialOptions,
 			);
 		},
-
 		async refreshOAuth2Token(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -162,7 +163,7 @@ export const getRequestHelperFunctions = (
 					target.headers as Record<string, string>,
 				);
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
 
@@ -174,6 +175,7 @@ export const getRequestHelperFunctions = (
 			itemIndex,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestWithAuthentication.call(
 				this,
 				credentialsType,
@@ -189,6 +191,7 @@ export const getRequestHelperFunctions = (
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
+			// oxlint-disable-next-line typescript/no-deprecated
 			requestOptions: IRequestOptions,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
@@ -202,12 +205,14 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
+			// oxlint-disable-next-line typescript/no-deprecated
 			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -222,6 +227,7 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,

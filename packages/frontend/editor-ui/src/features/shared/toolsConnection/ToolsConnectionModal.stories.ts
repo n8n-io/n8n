@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { provide, ref } from 'vue';
 import { N8nButton } from '@n8n/design-system';
+import SuggestionFooter from '@/app/components/SuggestionFooter.vue';
 
 import ToolsConnectionModal from './ToolsConnectionModal.vue';
 import McpToolSettingsContent from './McpToolSettingsContent.vue';
@@ -11,6 +12,7 @@ import {
 	sampleCredentials,
 } from './fixtures';
 import {
+	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type ToolConnectionCredentialAdapter,
 	type NodeConnectionItem,
@@ -96,6 +98,7 @@ function renderWithTrigger(
 			McpToolSettingsContent,
 			PlaceholderSettingsBody,
 			N8nButton,
+			SuggestionFooter,
 		},
 		setup() {
 			const isOpen = ref(false);
@@ -120,7 +123,7 @@ function renderWithTrigger(
 
 			function onOpenDetail(item: ToolConnectionItem) {
 				console.log('[story] open-detail', item);
-				detailMode.value = item.isConnected ? 'settings' : 'detail';
+				detailMode.value = hasToolConnection(item.status) ? 'settings' : 'detail';
 			}
 
 			function onConnect(item: ToolConnectionItem) {
@@ -143,6 +146,13 @@ function renderWithTrigger(
 					@save="(item, settings) => console.log('[story] save', item, settings)"
 					@select-credential="(item, authType, credentialId) => console.log('[story] select-credential', item, authType, credentialId)"
 				>
+					<template #suggestion-footer>
+						<SuggestionFooter
+							prompt="Need another capability?"
+							action="Suggest a tool"
+							url="https://example.com/suggest-tool"
+						/>
+					</template>
 					<template #settings-body="{ item, onSave, onDisconnect }">
 						<McpToolSettingsContent
 							v-if="item.kind === 'mcp-server'"
@@ -206,7 +216,7 @@ export const Empty: Story = {
 export const McpDetail: Story = {
 	render: renderWithTrigger({
 		...connectedMcpFixture,
-		isConnected: false,
+		status: 'none',
 		settings: undefined,
 	}),
 	args: {
@@ -247,7 +257,7 @@ export const NodeToolInlineSettings: Story = {
 			id: 'node-openai',
 			kind: 'node',
 			title: 'OpenAI',
-			isConnected: true,
+			status: 'connected',
 			nodeTypeName: '@n8n/n8n-nodes-langchain.openAi',
 			iconSource: {
 				type: 'file',
@@ -282,7 +292,7 @@ export const MultiCredentialHeader: Story = {
 			kind: 'node',
 			title: 'HTTP Request',
 			description: 'Make HTTP requests with OAuth2 or a bearer token.',
-			isConnected: true,
+			status: 'connected',
 			nodeTypeName: 'n8n-nodes-base.httpRequestTool',
 			credentials: [
 				{ authType: 'oAuth2Api', required: false },
@@ -308,7 +318,7 @@ export const NoCredentialsHeader: Story = {
 			kind: 'workflow',
 			title: 'Summariser',
 			description: 'Summarises long-form content into bullet points.',
-			isConnected: true,
+			status: 'connected',
 			workflowId: 'wf-summariser-1',
 		} satisfies WorkflowConnectionItem,
 		'settings',

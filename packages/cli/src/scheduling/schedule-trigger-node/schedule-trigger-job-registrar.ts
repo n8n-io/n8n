@@ -4,11 +4,14 @@ import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/scheduler';
+import { computeFirstRunAt, validateSchedule } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
-import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { nameDesiredJobs } from '../desired-job-name';
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { seededCron } from '../seeded-cron';
+import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task';
 
@@ -23,6 +26,12 @@ interface CollectedSchedule {
 	 * `null` for a degenerate rule the legacy engine would never fire (see {@link isDegenerateRecurrence}).
 	 */
 	firstRunAt: Date | null;
+}
+
+interface PendingNodeRegistration {
+	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds: number | undefined;
+	rules: CollectedSchedule[];
 }
 
 /**
@@ -67,7 +76,7 @@ export interface ScheduleTriggerCollectionSession {
 }
 
 /**
- * Registers a Schedule Trigger node's rules as durable `scheduled_job` rows.
+ * Registers a Schedule Trigger or legacy Cron node's rules as durable `scheduled_job` rows.
  * The publication activation path's counterpart to the in-memory `ScheduledTaskManager`.
  *
  * Each activation attempt works through its own {@link ScheduleTriggerCollectionSession}:
@@ -87,12 +96,13 @@ export interface ScheduleTriggerCollectionSession {
  *
  * Durable jobs track the *published* state of a workflow, not this instance's leadership:
  * rows are written on activation and deleted on deactivation ({@link remove})
- * or by FK cascade when the published version goes away;
- * never on leader stepdown or shutdown, which tear down only in-memory state.
+ * or when the published version goes away; never on leader stepdown or
+ * shutdown, which tear down only in-memory state. Nothing in the database
+ * removes them, so each of those paths deletes them explicitly.
  */
 @Service()
 export class ScheduleTriggerJobRegistrar {
-	/** Whether this instance diverts schedule trigger registrations to durable jobs. */
+	/** Whether this instance diverts Schedule Trigger and Cron node registrations to durable jobs. */
 	private readonly intercepting: boolean;
 
 	/** Instance-default timezone, used to resolve a null cron timezone for the first-run math only. */
@@ -109,6 +119,7 @@ export class ScheduleTriggerJobRegistrar {
 		globalConfig: GlobalConfig,
 		workflowsConfig: WorkflowsConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
+		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		this.intercepting =
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
@@ -119,19 +130,22 @@ export class ScheduleTriggerJobRegistrar {
 
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
 			this.logger.warn(
-				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule triggers, which keep using the legacy in-memory engine.',
+				'N8N_SCHEDULER_ENABLED is set but the workflow publication service is disabled. The durable scheduler cannot take over schedule and cron triggers, which keep using the legacy in-memory engine.',
 			);
 		}
 	}
 
 	/**
+	 * Only Schedule Trigger and legacy Cron nodes are diverted; their rules are
+	 * plain crons the durable engine can hold.
+	 *
 	 * @param node The trigger node about to register its cron rules.
 	 * @returns `true` to hand the node a durable collector, `false` to leave it on the legacy path.
 	 */
 	interceptsNode(node: INode): boolean {
 		if (
 			!this.intercepting ||
-			node.type !== SCHEDULE_TRIGGER_NODE_TYPE ||
+			(node.type !== SCHEDULE_TRIGGER_NODE_TYPE && node.type !== CRON_NODE_TYPE) ||
 			(this.allowSkipDurableScheduler && node.parameters?.skipDurableScheduler === true)
 		) {
 			return false;
@@ -153,17 +167,32 @@ export class ScheduleTriggerJobRegistrar {
 		 * {@link pendingKey}. An entry exists only between `createCollector` and
 		 * the `commit`/`discard` that consumes it.
 		 */
-		const pending = new Map<string, CollectedSchedule[]>();
+		const pending = new Map<string, PendingNodeRegistration>();
 
 		return {
 			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
 				const timezone = explicitTimezone(workflow);
 				const collected: CollectedSchedule[] = [];
-				pending.set(pendingKey(workflow.id, node.id), collected);
+				const customCronExpressions = new Set<Cron['expression']>();
+				pending.set(pendingKey(workflow.id, node.id), {
+					misfirePolicy: resolveMisfirePolicy(node),
+					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
+					rules: collected,
+				});
 
 				return {
-					registerCron: ({ expression, recurrence, source }: Cron) => {
-						const schedule = this.toSchedule(expression, timezone, recurrence, source);
+					registerCron: ({ expression, recurrence, source, triggerTime }: Cron) => {
+						const isCustomCron = node.type === CRON_NODE_TYPE && triggerTime?.mode === 'custom';
+						// The legacy engine compares expressions before presets and five-field crons are normalized.
+						if (isCustomCron && customCronExpressions.has(expression)) {
+							return;
+						}
+
+						const cronExpression =
+							node.type === CRON_NODE_TYPE && triggerTime
+								? seededCron(triggerTime, `${workflow.id}:${node.id}`)
+								: expression;
+						const schedule = this.toSchedule(cronExpression, timezone, recurrence, source);
 
 						if (isDegenerateRecurrence(recurrence)) {
 							// The legacy engine never fires such a rule (its recurrence check
@@ -186,7 +215,7 @@ export class ScheduleTriggerJobRegistrar {
 							// cron tick, not activation + interval — seed from the cron.
 							const seedSchedule: Schedule =
 								this.triggerNodeMode === 'legacy' && schedule.kind === 'interval'
-									? { kind: 'cron', cronExpression: expression, timezone }
+									? { kind: 'cron', cronExpression, timezone }
 									: schedule;
 
 							// Validates the expression/timezone and returns the first instant.
@@ -197,16 +226,25 @@ export class ScheduleTriggerJobRegistrar {
 
 							collected.push({ schedule, firstRunAt: computed });
 						}
+						if (isCustomCron) {
+							customCronExpressions.add(expression);
+						}
 					},
 				};
 			},
 
 			commit: async (workflowId: string, nodeId: string): Promise<void> => {
 				const key = pendingKey(workflowId, nodeId);
-				const collected = pending.get(key);
-				if (collected !== undefined) {
+				const entry = pending.get(key);
+				if (entry !== undefined) {
 					pending.delete(key);
-					await this.provisionCollected(workflowId, nodeId, collected);
+					await this.provisionCollected(
+						workflowId,
+						nodeId,
+						entry.rules,
+						entry.misfirePolicy,
+						entry.misfireGraceSeconds,
+					);
 				}
 			},
 
@@ -288,28 +326,22 @@ export class ScheduleTriggerJobRegistrar {
 		workflowId: string,
 		nodeId: string,
 		collected: CollectedSchedule[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds: number | undefined,
 	): Promise<void> {
-		const seen = new Map<string, number>();
-		const desired = collected.map(({ schedule, firstRunAt }) => {
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
-		});
+		const desired = nameDesiredJobs(workflowId, nodeId, collected);
 
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			nodeId,
-			SCHEDULE_TRIGGER_TASK_TYPE,
-			{ ...payload },
+		// `skip` matches the legacy engine, which never runs a missed occurrence
+		// late. Running late is a per-node opt-in (see `resolveMisfirePolicy`).
+		const summary = await this.jobProvisioner.provision({
+			owner: this.owner.member(workflowId, nodeId),
+			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+			payload: { ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Coalesce,
-		);
+			misfirePolicy,
+			misfireGraceSeconds,
+		});
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
 			workflowId,
@@ -332,7 +364,7 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param nodeId The Schedule Trigger node those jobs belong to.
 	 */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		await this.jobProvisioner.deprovision(workflowId, nodeId);
+		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
 	}
 
 	/**
@@ -347,7 +379,10 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflow(workflowId, SCHEDULE_TRIGGER_TASK_TYPE);
+		await this.jobProvisioner.deprovisionOwnerTaskType(
+			this.owner.ref(workflowId),
+			SCHEDULE_TRIGGER_TASK_TYPE,
+		);
 	}
 
 	/**
@@ -363,9 +398,9 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
 			manager,
-			workflowId,
+			this.owner.ref(workflowId),
 			SCHEDULE_TRIGGER_TASK_TYPE,
 		);
 	}
@@ -399,4 +434,48 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 		return { ...schedule, timezone: schedule.timezone ?? defaultTimezone };
 	}
 	return schedule;
+}
+
+/**
+ * Any value other than an explicit policy resolves to skipping, so an
+ * unrecognised value does not fail the activation. No `typeVersion` check is
+ * needed: `Workflow`'s constructor drops a parameter its `displayOptions` hide,
+ * so a node older than the option cannot arrive carrying it.
+ */
+function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
+	switch (node.parameters?.misfirePolicy) {
+		case 'coalesce':
+			return ScheduledJobMisfirePolicy.Coalesce;
+		case 'coalesce_owner':
+			return ScheduledJobMisfirePolicy.CoalesceOwner;
+		default:
+			return ScheduledJobMisfirePolicy.Skip;
+	}
+}
+
+function resolveMisfireGraceSeconds(
+	node: INode,
+	workflowId: string,
+	logger: Logger,
+): number | undefined {
+	const requested = node.parameters?.misfireGraceSeconds;
+	const isNumberLike = typeof requested === 'number' || typeof requested === 'string';
+	const numeric = isNumberLike ? Number(requested) : Number.NaN;
+	const stated = Number.isFinite(numeric) && numeric >= 1 ? numeric : undefined;
+
+	const isBlank = typeof requested === 'string' && requested.trim() === '';
+	const inherits =
+		requested === undefined ||
+		requested === null ||
+		requested === false ||
+		(numeric === 0 && !isBlank);
+
+	if (stated === undefined && !inherits) {
+		logger.warn(
+			'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
+			{ workflowId, nodeId: node.id },
+		);
+	}
+
+	return stated;
 }

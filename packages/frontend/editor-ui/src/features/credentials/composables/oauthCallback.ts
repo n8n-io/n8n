@@ -1,4 +1,6 @@
+import { getResourcePermissions } from '@n8n/permissions';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
 
 export const OAUTH_CALLBACK_SUCCESS = 'success';
 export const OAUTH_CALLBACK_ERROR = 'error';
@@ -71,6 +73,29 @@ export function hasOAuthTokenData(credential: unknown): boolean {
 	return isOAuthTokenDataSet(credential.data);
 }
 
+/**
+ * Whether a saved OAuth credential can authenticate now. `fetched` is the
+ * credential read with its data. Without data, fall back to the listing: a
+ * user who can read but not edit a shared credential counts as connected.
+ */
+export function isOAuthCredentialConnected(
+	stored: Pick<ICredentialsResponse, 'isResolvable' | 'connectedByMe' | 'scopes'> | undefined,
+	fetched?: ICredentialsDecryptedResponse | ICredentialsResponse,
+): boolean | undefined {
+	if (fetched?.isResolvable) return fetched.connectedByMe;
+	const data = fetched?.data;
+	if (data && typeof data === 'object') {
+		// Only the authorization code and PKCE grants need the user to sign in.
+		return (
+			Boolean(data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType))) ||
+			isOAuthTokenDataSet(data)
+		);
+	}
+	if (stored?.isResolvable) return stored.connectedByMe;
+	const permissions = getResourcePermissions(stored?.scopes).credential;
+	return permissions.read === true && !permissions.update;
+}
+
 export interface WaitForOAuthCallbackOptions {
 	popup: Window;
 	trustedOrigins: string[];
@@ -82,6 +107,14 @@ export interface WaitForOAuthCallbackOptions {
 	 */
 	verifyConnected?: () => Promise<boolean>;
 	timeoutMs?: number;
+	/**
+	 * Resolve as aborted when `popup.closed` becomes true and a final
+	 * `verifyConnected` check does not confirm success. Enable this only for
+	 * flows where prompt cancellation is more important than COOP compatibility:
+	 * browsers also report COOP-severed popups as closed while they remain open.
+	 *
+	 */
+	abortOnPopupClose?: boolean;
 }
 
 /**
@@ -93,7 +126,9 @@ export interface WaitForOAuthCallbackOptions {
  * window is still open and the user is still authorizing. When the popup
  * reads as closed we instead start polling `verifyConnected` (when given) and
  * keep listening for callback messages until `timeoutMs` elapses or `signal`
- * aborts.
+ * aborts. Callers can opt into treating this signal as cancellation with
+ * `abortOnPopupClose`, accepting that COOP-severed popups are indistinguishable
+ * from popups the user actually closed.
  */
 export async function waitForOAuthCallback({
 	popup,
@@ -101,6 +136,7 @@ export async function waitForOAuthCallback({
 	signal,
 	verifyConnected,
 	timeoutMs = OAUTH_FLOW_TIMEOUT,
+	abortOnPopupClose = false,
 }: WaitForOAuthCallbackOptions): Promise<OAuthFlowOutcome> {
 	return await new Promise((resolve) => {
 		const oauthChannel = new BroadcastChannel('oauth-callback');
@@ -140,7 +176,12 @@ export async function waitForOAuthCallback({
 			if (verifyInFlight || settled || !verifyConnected) return;
 			verifyInFlight = true;
 			try {
-				if (await verifyConnected()) settle(OAUTH_CALLBACK_SUCCESS);
+				const connected = await verifyConnected();
+				if (connected) {
+					settle(OAUTH_CALLBACK_SUCCESS);
+				} else {
+					if (abortOnPopupClose && popup.closed) settle('aborted');
+				}
 			} catch {
 				// Treat verification errors as "not connected yet" and keep waiting.
 			} finally {
@@ -153,7 +194,11 @@ export async function waitForOAuthCallback({
 			clearInterval(popupClosedPoll);
 			if (verifyConnected) {
 				void verify();
-				verifyTimer = setInterval(() => void verify(), VERIFY_CONNECTED_INTERVAL);
+				verifyTimer = setInterval(() => {
+					void verify();
+				}, VERIFY_CONNECTED_INTERVAL);
+			} else if (abortOnPopupClose) {
+				settle('aborted');
 			}
 		}, POPUP_CLOSED_POLL_INTERVAL);
 

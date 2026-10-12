@@ -3,9 +3,15 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	collectSubWorkflowOutput,
+	getLastExecutedNodeData,
+	Workflow,
+	UnexpectedError,
+	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
@@ -13,25 +19,28 @@ import {
 	summarizeDynamicCredentialsUsage,
 	validateWorkflowGroups,
 	type IDataObject,
-	type INode,
 	type INodeCredentialsDetails,
-	type INodeTypeDescription,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type RelatedExecution,
-	type WorkflowGroupViolation,
+	type GetNodeTypeForGrouping,
+	type NodeGroupRuleOptions,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { NodeTypes } from '@/node-types';
 
 import { OwnershipService } from './services/ownership.service';
+
+export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
+export { getLastExecutedNodeData, getLastExecutedNodeRuns } from 'n8n-workflow';
 
 /**
  * Validates that pinned data does not exceed size limits.
@@ -61,56 +70,6 @@ export function validatePinDataSize(workflow: IWorkflowBase): void {
 			`Workflow with pinned data exceeds the maximum allowed size of ${limitMB} MB`,
 		);
 	}
-}
-
-/**
- * All runs of the last executed node, ordered by `executionIndex` (raw, no pinData substitution).
- */
-export function getLastExecutedNodeRuns(inputData: IRun): ITaskData[] {
-	const { runData, lastNodeExecuted } = inputData.data.resultData;
-	if (lastNodeExecuted === undefined) {
-		return [];
-	}
-	const runs = runData[lastNodeExecuted];
-	return runs?.toSorted((a, b) => (a.executionIndex ?? 0) - (b.executionIndex ?? 0)) ?? [];
-}
-
-/**
- * Final-run output of the last executed node, with pinData substituted in manual mode.
- */
-export function getLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData, lastNodeExecuted } = inputData.data.resultData;
-	const pinData = inputData.data.resultData.pinData ?? {};
-
-	if (lastNodeExecuted === undefined) {
-		return undefined;
-	}
-
-	if (runData[lastNodeExecuted] === undefined) {
-		return undefined;
-	}
-
-	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
-
-	let lastNodePinData = pinData[lastNodeExecuted];
-
-	if (lastNodePinData && inputData.mode === 'manual') {
-		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
-
-		const itemsPerRun = lastNodePinData.map((item, index) => {
-			return { json: item, pairedItem: { item: index } };
-		});
-
-		return {
-			startTime: 0,
-			executionIndex: 0,
-			executionTime: 0,
-			data: { main: [itemsPerRun] },
-			source: lastNodeRunData.source,
-		};
-	}
-
-	return lastNodeRunData;
 }
 
 /**
@@ -147,27 +106,6 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
- * Resolves a node to its type description, or `null` for unknown node types.
- * Used by the grouping validator to detect trigger nodes.
- */
-type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
-
-/**
- * Builds the `getNodeType` callback that the grouping validator needs to resolve
- * a node to its type description (used to detect trigger nodes). Returns `null`
- * for unknown node types so validation degrades gracefully rather than throwing.
- */
-export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
-	return (node: INode) => {
-		try {
-			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-		} catch {
-			return null;
-		}
-	};
-}
-
-/**
  * Validates nodeGroups on the save path, rejecting with a `BadRequestError`.
  *
  * The rules and messages live in `validateWorkflowGroups` (n8n-workflow), the
@@ -185,58 +123,19 @@ export function validateWorkflowNodeGroups(
 		connections?: IWorkflowBase['connections'];
 	},
 	getNodeType: GetNodeTypeForGrouping | null,
+	rules: NodeGroupRuleOptions = {},
 ) {
 	const result = validateWorkflowGroups({
 		nodes: workflow.nodes,
 		connectionsBySourceNode: workflow.connections,
 		nodeGroups: workflow.nodeGroups,
 		getNodeType,
+		...rules,
 	});
+
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
-}
-
-/**
- * Non-fatal counterpart of `validateWorkflowNodeGroups`: drops every offending
- * group instead of throwing, returning the violations of those it dropped.
- * Mutates `nodeGroups`. Groups are cosmetic, so the MCP builder tools drop them
- * to keep the rest of the change; the save path still throws.
- *
- * `shouldDrop` filters which violating groups are removed, letting a caller
- * drop the groups it can blame first and re-check the rest afterwards.
- */
-export function dropInvalidNodeGroups(
-	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
-		connections?: IWorkflowBase['connections'];
-	},
-	getNodeType: GetNodeTypeForGrouping | null,
-	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
-): WorkflowGroupViolation[] {
-	if (!workflow.nodeGroups?.length) {
-		return [];
-	}
-
-	const result = validateWorkflowGroups({
-		nodes: workflow.nodes,
-		connectionsBySourceNode: workflow.connections,
-		nodeGroups: workflow.nodeGroups,
-		getNodeType,
-	});
-
-	if (result.valid) {
-		return [];
-	}
-
-	const dropped = result.violations.filter(shouldDrop);
-	if (dropped.length === 0) {
-		return [];
-	}
-
-	const droppedGroupIds = new Set(dropped.map((violation) => violation.groupId));
-	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroupIds.has(group.id));
-
-	return dropped;
 }
 
 /**
@@ -358,17 +257,20 @@ export function removeDefaultValues(
 	return cleanedSettings;
 }
 
+export type ReplaceInvalidCredentialsCache = Map<string, INodeCredentialsDetails>;
+
+function credentialCacheKey(parts: readonly string[]): string {
+	return JSON.stringify(parts) ?? '';
+}
+
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
 export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	workflow: T,
 	projectId: string,
+	cache: ReplaceInvalidCredentialsCache = new Map(),
 ): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
-
-	// caching
-	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
-	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
@@ -395,11 +297,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
-				// init cache for type
-				if (!credentialsByName[nodeCredentialType]) {
-					credentialsByName[nodeCredentialType] = {};
-				}
-				if (credentialsByName[nodeCredentialType][name] === undefined) {
+				const cacheKey = credentialCacheKey(['name', nodeCredentialType, name]);
+				const cachedCredential = cache.get(cacheKey);
+				if (cachedCredential === undefined) {
 					const credentials = await Container.get(CredentialsRepository).findByNameAndTypeInProject(
 						name,
 						nodeCredentialType,
@@ -407,47 +307,57 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 					);
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
-						credentialsByName[nodeCredentialType][name] = {
+						const resolvedCredential = {
 							id: credentials[0].id,
 							name: credentials[0].name,
 						};
-						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+						cache.set(cacheKey, resolvedCredential);
+						node.credentials[nodeCredentialType] = { ...resolvedCredential };
 						continue;
 					}
 
 					// nothing found - add invalid credentials to cache to prevent further DB checks
-					credentialsByName[nodeCredentialType][name] = {
+					cache.set(cacheKey, {
 						id: null,
 						name,
-					};
+					});
 				} else {
 					// get credentials from cache
-					node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+					node.credentials[nodeCredentialType] = { ...cachedCredential };
 				}
 				continue;
 			}
 
 			// Node has credentials with an ID
 
-			// init cache for type
-			if (!credentialsById[nodeCredentialType]) {
-				credentialsById[nodeCredentialType] = {};
+			const idCacheKey = credentialCacheKey(['id', nodeCredentialType, nodeCredentials.id]);
+			const idAndNameCacheKey = credentialCacheKey([
+				'idAndName',
+				nodeCredentialType,
+				nodeCredentials.id,
+				nodeCredentials.name,
+			]);
+			const cachedFallback = cache.get(idAndNameCacheKey);
+			if (cachedFallback !== undefined) {
+				node.credentials[nodeCredentialType] = { ...cachedFallback };
+				continue;
 			}
 
 			// check if credentials for ID-type are not yet cached
-			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
+			const cachedById = cache.get(idCacheKey);
+			if (cachedById === undefined) {
 				// check first if ID-type combination exists
 				const credentials = await Container.get(CredentialsRepository).findOneBy({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
 				if (credentials) {
-					credentialsById[nodeCredentialType][nodeCredentials.id] = {
+					const resolvedCredential = {
 						id: credentials.id,
 						name: credentials.name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][nodeCredentials.id];
+					cache.set(idCacheKey, resolvedCredential);
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
@@ -459,23 +369,26 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 				// if credential name-type combination is unique, take it
 				if (credsByName?.length === 1) {
 					// add found credential to cache
-					credentialsById[nodeCredentialType][credsByName[0].id] = {
+					const resolvedCredential = {
 						id: credsByName[0].id,
 						name: credsByName[0].name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][credsByName[0].id];
+					cache.set(idAndNameCacheKey, resolvedCredential);
+					cache.set(
+						credentialCacheKey(['id', nodeCredentialType, credsByName[0].id]),
+						resolvedCredential,
+					);
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 
 				// nothing found - add invalid credentials to cache to prevent further DB checks
-				credentialsById[nodeCredentialType][nodeCredentials.id] = nodeCredentials;
+				cache.set(idAndNameCacheKey, { ...nodeCredentials });
 				continue;
 			}
 
 			// get credentials from cache
-			node.credentials[nodeCredentialType] =
-				credentialsById[nodeCredentialType][nodeCredentials.id];
+			node.credentials[nodeCredentialType] = { ...cachedById };
 		}
 	}
 
@@ -529,16 +442,18 @@ export function shouldRestartParentExecution(
  *
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
- * @returns Promise that resolves when the parent execution has been updated
+ * @returns whether the parent's stack was patched: `false` when the child carried no usable
+ * result, or the parent was not in a state that can take one
  */
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
 	childExecution?: RelatedExecution,
-): Promise<void> {
+	childWorkflowData?: IWorkflowBase,
+): Promise<boolean> {
 	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return false;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -546,14 +461,27 @@ export async function updateParentExecutionWithChildResults(
 	});
 
 	if (parent?.status !== 'waiting') {
-		return;
+		return false;
 	}
 
 	const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 	const nodeExecutionStack = parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack;
 	if (!nodeExecutionStack || nodeExecutionStack?.length === 0) {
-		return;
+		return false;
+	}
+
+	// The parent may have moved on to a later wait since this child was spawned, and that wait
+	// belongs to whichever children it parked on. A child left over from an earlier wait would
+	// otherwise overwrite the node's input and resume the parent past the wait it is sitting in.
+	// A parent parked by an older build carries no ids, so an untagged stack entry takes any child.
+	const waitingChildExecutionIds = nodeExecutionStack[0].metadata?.waitingChildExecutionIds;
+	if (
+		childExecution &&
+		waitingChildExecutionIds?.length &&
+		!waitingChildExecutionIds.includes(childExecution.executionId)
+	) {
+		return false;
 	}
 
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
@@ -609,13 +537,30 @@ export async function updateParentExecutionWithChildResults(
 		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 		// so that the Execute Workflow node returns the correct data when parent execution is resumed
 		// and the Execute Workflow node is executed again in disabled mode.
-		nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		const policy = subworkflowResults.data.subWorkflowOutput;
+		if (policy) {
+			if (!childWorkflowData) {
+				throw new UnexpectedError('The saved child workflow is required to collect its output.');
+			}
+			const workflow = new Workflow({
+				...childWorkflowData,
+				nodeTypes: Container.get(NodeTypes),
+			});
+			nodeExecutionStack[0].data = {
+				main: await collectSubWorkflowOutput(subworkflowResults, workflow, policy),
+			};
+		} else {
+			// Executions saved without a policy keep the legacy resume behavior.
+			nodeExecutionStack[0].data = lastExecutedNodeData.data;
+		}
 	}
 
 	await executionPersistence.updateExistingExecution(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);
+
+	return true;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
@@ -26,6 +26,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -101,6 +102,10 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
+	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
@@ -192,6 +197,11 @@ export function useNodeExecution(
 
 		if (codeGenerationInProgress.value) {
 			return i18n.baseText('ndv.execute.generatingCode');
+		}
+
+		// An unusable credential blocks the whole run, so it outranks per-node reasons.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
 		}
 
 		if (nodeRef.value?.disabled) {
@@ -439,9 +449,10 @@ export function useNodeExecution(
 	}
 
 	async function stopExecution(): Promise<void> {
-		if (isListening.value) {
+		// While the run waits for a test webhook there is no execution to stop.
+		if (workflowExecutionStateStore.value.executionWaitingForWebhook) {
 			await stopWaitingForWebhook();
-		} else if (isListeningForWorkflowEvents.value) {
+		} else {
 			await stopCurrentExecution();
 		}
 	}

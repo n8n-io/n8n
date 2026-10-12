@@ -54,6 +54,26 @@ The bypass is queried per test rather than snapshotted into the adapter: the
 harness registers ids mid-run, when the simulated user creates a credential on
 a card, long after the run's context was built.
 
+## Agents a workflow calls
+
+A Message an Agent node, or its tool version, runs another agent in-process, so
+no HTTP mock reaches it by itself. In an eval run the workflow eval gives that
+agent the Agent eval's seams (`prepareCalledAgent` in `execution.service.ts`):
+its node and workflow tools, streamable-HTTP MCP servers and fallback web search
+are mocked, and each mocked call is recorded under the calling node. The agent's
+own model call stays real, so its model needs a credential with a real key. The
+eval runs the agent's draft and turns off its memory, vector stores, SSE MCP
+servers and chat integrations. A sub-agent keeps only the MCP servers its calling
+agent also has; the eval turns off the others and adds a warning.
+
+## Agent model catalogs
+
+The eval credential allowlist also marks Agent Builder sessions as evaluations.
+Model catalog requests return one deterministic fake model for each provider.
+The lookup still checks that the user can use the stored credential in the project.
+It does not decrypt the placeholder credential or contact the model provider.
+Production sessions continue to use live model catalogs.
+
 ## The rule
 
 `__schema__` describes a node's **output**, not the service's wire format —

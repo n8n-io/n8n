@@ -1,15 +1,21 @@
-import type {
-	ObservationLogEntry,
-	ObservationLogMarker,
-	TokenCounter,
+import {
+	getStoredObservationTokenCount,
+	type ObservationLogEntry,
+	type ObservationLogMarker,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 
 const MARKER_LABELS: Record<ObservationLogMarker, string> = {
 	critical: 'CRITICAL',
 	important: 'IMPORTANT',
 	info: 'INFO',
 	completion: 'COMPLETION',
+};
+
+const MARKER_PRIORITY: Record<ObservationLogMarker, number> = {
+	critical: 0,
+	important: 1,
+	completion: 2,
+	info: 3,
 };
 
 const MEMORY_INTRO =
@@ -19,7 +25,11 @@ const MARKER_LEGEND =
 
 export interface RenderObservationLogOptions {
 	renderTokenBudget?: number;
-	tokenCounter?: TokenCounter;
+}
+
+interface ObservationAncestry {
+	ancestors: ObservationLogEntry[];
+	tokenCount: number;
 }
 
 function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number {
@@ -34,11 +44,6 @@ function formatObservationTime(date: Date): string {
 	return `${hours}:${minutes}`;
 }
 
-function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCounter): number {
-	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
-	return tokenCounter(entry.text);
-}
-
 function renderBullet(entry: ObservationLogEntry, indent = ''): string {
 	return `${indent}* ${MARKER_LABELS[entry.marker]} (${formatObservationTime(entry.createdAt)}) ${entry.text}`;
 }
@@ -48,43 +53,98 @@ export function renderObservationLog(
 	options: RenderObservationLogOptions = {},
 ): string | null {
 	const activeEntries = entries.filter((entry) => entry.status === 'active').sort(compareEntries);
-	const tokenCounter = options.tokenCounter ?? estimateObservationTokens;
-	const renderTokenBudget = options.renderTokenBudget;
-	let remainingTokens = renderTokenBudget ?? Number.POSITIVE_INFINITY;
+	const activeById = new Map(activeEntries.map((entry) => [entry.id, entry]));
+	const childrenByParent = new Map<string, ObservationLogEntry[]>();
+	const roots: ObservationLogEntry[] = [];
+	for (const entry of activeEntries) {
+		if (entry.parentId) {
+			const children = childrenByParent.get(entry.parentId) ?? [];
+			children.push(entry);
+			childrenByParent.set(entry.parentId, children);
+		} else {
+			roots.push(entry);
+		}
+	}
+
+	// Cache binary ancestors so rejected chains do not repeat linear parent walks.
+	const ancestryById = new Map<string, ObservationAncestry>();
+	const ancestryQueue = [...roots];
+	for (const root of roots) {
+		ancestryById.set(root.id, {
+			ancestors: [],
+			tokenCount: getStoredObservationTokenCount(root),
+		});
+	}
+	for (let index = 0; index < ancestryQueue.length; index++) {
+		const parent = ancestryQueue[index];
+		const parentAncestry = ancestryById.get(parent.id);
+		if (!parentAncestry) continue;
+		for (const child of childrenByParent.get(parent.id) ?? []) {
+			const ancestors = [parent];
+			for (let level = 1; ; level++) {
+				const halfway = ancestors[level - 1];
+				const ancestor = ancestryById.get(halfway.id)?.ancestors[level - 1];
+				if (!ancestor) break;
+				ancestors.push(ancestor);
+			}
+			ancestryById.set(child.id, {
+				ancestors,
+				tokenCount: parentAncestry.tokenCount + getStoredObservationTokenCount(child),
+			});
+			ancestryQueue.push(child);
+		}
+	}
+
+	const candidates = [...activeEntries].sort(
+		(a, b) =>
+			MARKER_PRIORITY[a.marker] - MARKER_PRIORITY[b.marker] ||
+			b.createdAt.getTime() - a.createdAt.getTime() ||
+			a.id.localeCompare(b.id),
+	);
+	let remainingTokens = options.renderTokenBudget ?? Number.POSITIVE_INFINITY;
 
 	const included = new Set<string>();
-	for (const entry of activeEntries) {
-		const tokenCount = observationTokenCount(entry, tokenCounter);
+	for (const entry of candidates) {
+		if (included.has(entry.id)) continue;
+		const ancestry = ancestryById.get(entry.id);
+		if (!ancestry) continue;
+
+		let firstRequiredAncestry = ancestry;
+		for (let level = ancestry.ancestors.length - 1; level >= 0; level--) {
+			const ancestor = firstRequiredAncestry.ancestors[level];
+			if (ancestor && !included.has(ancestor.id)) {
+				firstRequiredAncestry = ancestryById.get(ancestor.id) ?? firstRequiredAncestry;
+			}
+		}
+		const includedAncestor = firstRequiredAncestry.ancestors[0];
+		const includedAncestorAncestry =
+			includedAncestor && included.has(includedAncestor.id)
+				? ancestryById.get(includedAncestor.id)
+				: undefined;
+		const tokenCount = ancestry.tokenCount - (includedAncestorAncestry?.tokenCount ?? 0);
 		if (tokenCount > remainingTokens) continue;
-		included.add(entry.id);
+
+		let required: ObservationLogEntry | undefined = entry;
+		while (required && !included.has(required.id)) {
+			included.add(required.id);
+			required = required.parentId ? activeById.get(required.parentId) : undefined;
+		}
 		remainingTokens -= tokenCount;
 	}
 
 	if (included.size === 0) return null;
 
-	const childrenByParent = new Map<string, ObservationLogEntry[]>();
-	const roots: ObservationLogEntry[] = [];
-
-	for (const entry of activeEntries) {
-		if (!included.has(entry.id)) continue;
-		if (entry.parentId && included.has(entry.parentId)) {
-			const children = childrenByParent.get(entry.parentId) ?? [];
-			children.push(entry);
-			childrenByParent.set(entry.parentId, children);
-		} else if (!entry.parentId) {
-			roots.push(entry);
-		}
-	}
-
-	if (roots.length === 0) return null;
+	const includedRoots = roots.filter((entry) => included.has(entry.id));
+	if (includedRoots.length === 0) return null;
 
 	const lines: string[] = ['<observations>', MEMORY_INTRO, MARKER_LEGEND, ''];
-	for (const root of roots) {
-		lines.push(renderBullet(root));
-		for (const child of childrenByParent.get(root.id) ?? []) {
-			lines.push(renderBullet(child, '  '));
+	const renderTree = (entry: ObservationLogEntry, indent = '') => {
+		lines.push(renderBullet(entry, indent));
+		for (const child of childrenByParent.get(entry.id) ?? []) {
+			if (included.has(child.id)) renderTree(child, `${indent}  `);
 		}
-	}
+	};
+	for (const root of includedRoots) renderTree(root);
 	lines.push('</observations>');
 
 	return lines.join('\n');

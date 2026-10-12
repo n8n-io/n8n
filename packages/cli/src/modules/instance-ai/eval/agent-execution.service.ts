@@ -28,8 +28,12 @@ import { CredentialsService } from '@/credentials/credentials.service';
 // Static agents-module imports are safe here: the ModuleRegistry gate decides
 // availability at runtime.
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
+import { fromAgentDocument, toAgentDocument } from '@/modules/agents/json-config/agent-document';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
@@ -92,6 +96,55 @@ export function mcpUrlsMatch(configUrl: string, remoteUrl: string): boolean {
 	return longer === shorter || longer === base || longer.startsWith(`${base}/`);
 }
 
+/**
+ * Resolve canonical tool catalogs for configured MCP servers, so the mock
+ * exposes the tools the real server would: registry entries carry the
+ * server's declared catalog (matched by remote URL), and an allow-mode
+ * toolFilter pins names even without a registry match. Best-effort —
+ * without a match the mock's LLM-designed catalog applies.
+ */
+export async function resolveCanonicalMcpCatalogs(
+	mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
+	moduleRegistry: ModuleRegistry,
+	logger: Logger,
+): Promise<Record<string, McpMockCanonicalTool[]> | undefined> {
+	if (mcpServers.length === 0) return undefined;
+	const result: Record<string, McpMockCanonicalTool[]> = {};
+
+	if (moduleRegistry.isActive('mcp-registry')) {
+		try {
+			const entries = await Container.get(McpRegistryService).getAll();
+			for (const server of mcpServers) {
+				const entry = entries.find((candidate) =>
+					candidate.remotes.some((remote) => mcpUrlsMatch(server.url, remote.url)),
+				);
+				if (entry && entry.tools.length > 0) {
+					result[server.name] = entry.tools.map((tool) => ({
+						name: tool.name,
+						description: tool.title ?? tool.name,
+					}));
+				}
+			}
+		} catch (error) {
+			logger.debug(
+				`[EvalAgentMock] MCP registry catalog lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	for (const server of mcpServers) {
+		if (result[server.name]) continue;
+		if (server.toolFilter?.mode === 'allow' && server.toolFilter.tools.length > 0) {
+			result[server.name] = server.toolFilter.tools.map((name) => ({
+				name,
+				description: name,
+			}));
+		}
+	}
+
+	return Object.keys(result).length > 0 ? result : undefined;
+}
+
 @Service()
 export class EvalAgentExecutionService {
 	constructor(
@@ -124,6 +177,11 @@ export class EvalAgentExecutionService {
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
+		if (!(await Container.get(AgentsSettingsService).getEnabled())) {
+			return this.errorResult(
+				'Agents are disabled. Ask an instance admin to enable them in Settings > Agents.',
+			);
+		}
 
 		const { projectId } = options;
 		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
@@ -141,7 +199,11 @@ export class EvalAgentExecutionService {
 			return this.errorResult(`Agent ${agentId} has no JSON config to run.`);
 		}
 
-		const { config, skippedFeatures } = pruneConfigForEval(agentEntity.schema);
+		const skillRefs = await Container.get(AgentSkillRefsService).refsForDraft(agentEntity, {});
+		const { config, skippedFeatures } = pruneConfigForEval(
+			toAgentDocument(agentEntity.schema, skillRefs),
+		);
+		const pruned = fromAgentDocument(config);
 		if ((agentEntity.integrations ?? []).length > 0) {
 			skippedFeatures.push({
 				feature: 'integrations',
@@ -151,7 +213,7 @@ export class EvalAgentExecutionService {
 		}
 		// The entity is detached (never saved back); mutate the copy the
 		// runtime is built from so pruning applies to reconstruction too.
-		agentEntity.schema = config;
+		agentEntity.schema = pruned.config;
 		agentEntity.integrations = [];
 
 		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
@@ -209,7 +271,11 @@ export class EvalAgentExecutionService {
 
 		// Always created — delegated sub-agents may bring their own servers.
 		const mcpServers = config.mcpServers ?? [];
-		const knownToolsByServer = await this.resolveCanonicalMcpCatalogs(mcpServers);
+		const knownToolsByServer = await resolveCanonicalMcpCatalogs(
+			mcpServers,
+			this.moduleRegistry,
+			this.logger,
+		);
 		const mcpFetch = createMcpMockFetch({
 			servers: mcpServers.map((server) => ({
 				name: server.name,
@@ -282,12 +348,13 @@ export class EvalAgentExecutionService {
 			this.credentialsService,
 			projectId,
 			user,
+			agentId,
 		);
 
 		let agent: RuntimeAgent;
 		try {
 			({ agent } = await reconstruction.reconstructFromAgentEntity(
-				agentEntity,
+				{ agent: agentEntity, skillRefs: pruned.skillRefs },
 				credentialProvider,
 				'test',
 				undefined,
@@ -326,6 +393,8 @@ export class EvalAgentExecutionService {
 						);
 					},
 				},
+				'manual',
+				hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
 			));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -351,9 +420,12 @@ export class EvalAgentExecutionService {
 				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
 			}
 		};
+		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		try {
-			const abortSignal = AbortSignal.timeout(timeoutMs);
-			result = await agent.generate(seed.openingMessage, { abortSignal, maxIterations });
+			result = await agent.generate(seed.openingMessage, {
+				abortSignal: budgetSignal,
+				maxIterations,
+			});
 			collectToolCalls(result);
 
 			// Approval-gated tools suspend the run. In real usage the user
@@ -368,7 +440,7 @@ export class EvalAgentExecutionService {
 				result = await agent.approve('generate', {
 					runId: pending.runId,
 					toolCallId: pending.toolCallId,
-					abortSignal,
+					abortSignal: budgetSignal,
 					maxIterations,
 				});
 				collectToolCalls(result);
@@ -380,6 +452,20 @@ export class EvalAgentExecutionService {
 			const message = error instanceof Error ? error.message : String(error);
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
+			// A budget abort is the harness killing the run for time, NOT the builder
+			// failing. Say so in the words the WORKFLOW path already uses, so the one
+			// classifier (`isServerBudgetStop`) covers both — wrapping it as a plain
+			// `Agent run failed:` let a timed-out agent run score as a builder verdict,
+			// which is the misattribution this whole path exists to prevent.
+			if (budgetSignal.aborted) {
+				const seconds = Math.round(timeoutMs / 1000);
+				return this.errorResult(
+					`Agent run exceeded its ${seconds}s eval budget and was stopped`,
+					seed,
+					skippedFeatures,
+					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+				);
+			}
 			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
 				modelTurns: recorder.turns,
 				toolLedger,
@@ -464,53 +550,6 @@ export class EvalAgentExecutionService {
 			skippedFeatures,
 			mockedCredentials: credentialHelpers.flatMap((helper) => helper.mockedCredentials),
 		};
-	}
-
-	/**
-	 * Resolve canonical tool catalogs for configured MCP servers, so the mock
-	 * exposes the tools the real server would: registry entries carry the
-	 * server's declared catalog (matched by remote URL), and an allow-mode
-	 * toolFilter pins names even without a registry match. Best-effort —
-	 * without a match the mock's LLM-designed catalog applies.
-	 */
-	private async resolveCanonicalMcpCatalogs(
-		mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
-	): Promise<Record<string, McpMockCanonicalTool[]> | undefined> {
-		if (mcpServers.length === 0) return undefined;
-		const result: Record<string, McpMockCanonicalTool[]> = {};
-
-		if (this.moduleRegistry.isActive('mcp-registry')) {
-			try {
-				const entries = await Container.get(McpRegistryService).getAll();
-				for (const server of mcpServers) {
-					const entry = entries.find((candidate) =>
-						candidate.remotes.some((remote) => mcpUrlsMatch(server.url, remote.url)),
-					);
-					if (entry && entry.tools.length > 0) {
-						result[server.name] = entry.tools.map((tool) => ({
-							name: tool.name,
-							description: tool.title ?? tool.name,
-						}));
-					}
-				}
-			} catch (error) {
-				this.logger.debug(
-					`[EvalAgentMock] MCP registry catalog lookup failed: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-
-		for (const server of mcpServers) {
-			if (result[server.name]) continue;
-			if (server.toolFilter?.mode === 'allow' && server.toolFilter.tools.length > 0) {
-				result[server.name] = server.toolFilter.tools.map((name) => ({
-					name,
-					description: name,
-				}));
-			}
-		}
-
-		return Object.keys(result).length > 0 ? result : undefined;
 	}
 
 	/**

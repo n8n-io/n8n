@@ -11,6 +11,7 @@ import {
 	type WorkflowBuildOutcome,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -31,6 +32,7 @@ const DETAIL = {
 	verifying: 'Verifying workflow',
 	needsSetup: 'Needs setup',
 	couldNotVerify: 'Could not verify automatically',
+	verificationOptional: 'Verification optional - one-off run',
 	noWorkflow: 'No workflow to verify',
 	submitted: 'Submitted',
 	blocked: 'Blocked',
@@ -39,10 +41,6 @@ const DETAIL = {
 
 type TaskItem = TaskList['tasks'][number];
 type TaskStatus = TaskItem['status'];
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /** Stable id for the synthetic "Verify workflow" row attached to a build task. */
 function verifyRowId(buildTaskId: string): string {
@@ -75,7 +73,13 @@ function obligationDetail(obligation: WorkflowVerificationObligation): string {
 		case 'needs_setup':
 			return DETAIL.needsSetup;
 		case 'not_verifiable':
-			return DETAIL.couldNotVerify;
+			// A one-off build settles as not_verifiable by design — verification is
+			// a choice there, not a failure. But evidence outranks the label: if a
+			// pre-flight verify actually ran and did not fully succeed, surface
+			// that instead of the benign one-off wording.
+			return obligation.executionIntent === 'one-off' && obligation.evidence?.attempted !== true
+				? DETAIL.verificationOptional
+				: DETAIL.couldNotVerify;
 		case 'blocked':
 			return obligation.blockingReason ?? DETAIL.blocked;
 	}

@@ -1,0 +1,94 @@
+{
+	"name": "Teams channelMessage undoSoftDeleteMessage",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6666-9999-77777",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [880, 380]
+		},
+		{
+			"parameters": {
+				"resource": "channelMessage",
+				"operation": "undoSoftDeleteMessage",
+				"teamId": {
+					"__rl": true,
+					"value": "1111-2222-3333",
+					"mode": "list",
+					"cachedResultName": "U.S. Sales"
+				},
+				"channelId": {
+					"__rl": true,
+					"value": "42:aaabbbccc.tacv2",
+					"mode": "list",
+					"cachedResultName": "Sales West"
+				},
+				"messageId": "1698324478896"
+			},
+			"id": "6666-5555-77777",
+			"name": "Microsoft Teams",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 2,
+			"position": [1100, 380],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "6isd5ytvA0qV78eK",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1400, 380]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Teams",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Microsoft Teams": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c4d5e6f7-0a1b-4c2d-8e3f-4a5b6c7d8e91",
+	"id": "teamsChannelMsgUndoSoftDelete01",
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

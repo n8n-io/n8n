@@ -29,6 +29,7 @@ describe('DataTable Get Operation - Sort Feature', () => {
 
 		mockExecuteFunctions = {
 			getNode: vi.fn().mockReturnValue(node),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(undefined),
 			getNodeParameter: vi.fn(),
 			helpers: {
 				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),

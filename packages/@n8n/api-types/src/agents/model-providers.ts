@@ -12,6 +12,9 @@ export const AGENT_MODEL_PROVIDERS = [
 	'mistral',
 	'vercel',
 	'nvidia',
+	'moonshotai',
+	'alibaba',
+	'minimax',
 ] as const;
 
 /** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
@@ -46,6 +49,9 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	mistral: ['mistralCloudApi'],
 	vercel: ['vercelAiGatewayApi'],
 	nvidia: ['nvidiaApi'],
+	moonshotai: ['moonshotApi'],
+	alibaba: ['alibabaCloudApi'],
+	minimax: ['minimaxApi'],
 } as const satisfies Record<AgentModelProvider, readonly [string, ...string[]]>;
 
 /** Credential types for a provider prefix, or `[]` when it is not a model provider. */
@@ -67,6 +73,8 @@ export interface AgentCatalogModel {
 /** Response of `GET /agents/v2/catalog/models/:provider`. */
 export interface AgentProviderModelsResponse {
 	provider: string;
+	/** The provider default verified for the selected credential, when available. */
+	defaultModelId?: string;
 	/**
 	 * True when the list was confirmed against the provider's own model API
 	 * (only models the credential can actually call). False means the static

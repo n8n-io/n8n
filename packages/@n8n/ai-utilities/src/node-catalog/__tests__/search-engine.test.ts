@@ -11,11 +11,11 @@ import {
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
-import { CodeBuilderNodeSearchEngine, SCORE_WEIGHTS } from '../search-engine';
+import { NodeSearchEngine, SCORE_WEIGHTS } from '../search-engine';
 import { createNodeType } from './helpers';
 
-describe('CodeBuilderNodeSearchEngine', () => {
-	let searchEngine: CodeBuilderNodeSearchEngine;
+describe('NodeSearchEngine', () => {
+	let searchEngine: NodeSearchEngine;
 	let nodeTypes: INodeTypeDescription[];
 
 	beforeEach(() => {
@@ -76,7 +76,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 			}),
 		];
 
-		searchEngine = new CodeBuilderNodeSearchEngine(nodeTypes);
+		searchEngine = new NodeSearchEngine(nodeTypes);
 	});
 
 	describe('searchByName', () => {
@@ -150,7 +150,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				inputs: [],
 				outputs: ['ai_tool'],
 			});
-			const engine = new CodeBuilderNodeSearchEngine([...nodeTypes, httpToolNode]);
+			const engine = new NodeSearchEngine([...nodeTypes, httpToolNode]);
 
 			const results = engine.searchByName('http', 1, (nodeId) => nodeId.endsWith('Tool'));
 
@@ -172,7 +172,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: 'Test Node',
 				description: undefined,
 			});
-			const engine = new CodeBuilderNodeSearchEngine([nodeWithoutDesc]);
+			const engine = new NodeSearchEngine([nodeWithoutDesc]);
 
 			const results = engine.searchByName('test');
 
@@ -187,7 +187,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: undefined as unknown as string,
 			} as INodeTypeDescription;
 
-			const engineWithMalformed = new CodeBuilderNodeSearchEngine([...nodeTypes, malformedNode]);
+			const engineWithMalformed = new NodeSearchEngine([...nodeTypes, malformedNode]);
 
 			// Should not throw and should return valid results
 			expect(() => engineWithMalformed.searchByName('http')).not.toThrow();
@@ -216,12 +216,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				description: 'Work with datasets',
 				group: ['transform'],
 			});
-			const engine = new CodeBuilderNodeSearchEngine([
-				...nodeTypes,
-				setNode,
-				settingsNode,
-				datasetNode,
-			]);
+			const engine = new NodeSearchEngine([...nodeTypes, setNode, settingsNode, datasetNode]);
 
 			const results = engine.searchByName('set', 5);
 
@@ -245,7 +240,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					group: ['transform'],
 				}),
 			);
-			const engine = new CodeBuilderNodeSearchEngine([...competitors, setNode]);
+			const engine = new NodeSearchEngine([...competitors, setNode]);
 
 			const results = engine.searchByName('set', 3);
 
@@ -315,10 +310,10 @@ describe('CodeBuilderNodeSearchEngine', () => {
 			}),
 		];
 
-		let engine: CodeBuilderNodeSearchEngine;
+		let engine: NodeSearchEngine;
 
 		beforeEach(() => {
-			engine = new CodeBuilderNodeSearchEngine(multiWordNodes);
+			engine = new NodeSearchEngine(multiWordNodes);
 		});
 
 		it.each([
@@ -377,7 +372,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: 'Code Tool',
 				outputs: ['ai_tool'],
 			});
-			const engine = new CodeBuilderNodeSearchEngine([...nodeTypes, anotherTool]);
+			const engine = new NodeSearchEngine([...nodeTypes, anotherTool]);
 
 			const results = engine.searchByConnectionType(NodeConnectionTypes.AiTool);
 
@@ -413,7 +408,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: 'Expression Node',
 				outputs: '={{ $parameter.mode === "tool" ? "ai_tool" : "main" }}',
 			});
-			const engine = new CodeBuilderNodeSearchEngine([...nodeTypes, expressionNode]);
+			const engine = new NodeSearchEngine([...nodeTypes, expressionNode]);
 
 			const results = engine.searchByConnectionType(NodeConnectionTypes.AiTool);
 
@@ -435,7 +430,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: 'Something Else',
 				outputs: '={{ "ai_tool" }}',
 			});
-			const engine = new CodeBuilderNodeSearchEngine([...nodeTypes, exactMatch, expressionMatch]);
+			const engine = new NodeSearchEngine([...nodeTypes, exactMatch, expressionMatch]);
 
 			const results = engine.searchByConnectionType(NodeConnectionTypes.AiTool, 20, 'calculator');
 
@@ -472,7 +467,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					outputs: ['ai_tool'],
 				}),
 			);
-			const engine = new CodeBuilderNodeSearchEngine([...nodeTypes, ...manyNodes]);
+			const engine = new NodeSearchEngine([...nodeTypes, ...manyNodes]);
 
 			const results = engine.searchByConnectionType(NodeConnectionTypes.AiTool, 5);
 
@@ -559,14 +554,14 @@ describe('CodeBuilderNodeSearchEngine', () => {
 
 	describe('static methods', () => {
 		it('should identify AI connection types', () => {
-			expect(CodeBuilderNodeSearchEngine.isAiConnectionType('ai_tool')).toBe(true);
-			expect(CodeBuilderNodeSearchEngine.isAiConnectionType('ai_languageModel')).toBe(true);
-			expect(CodeBuilderNodeSearchEngine.isAiConnectionType('main')).toBe(false);
-			expect(CodeBuilderNodeSearchEngine.isAiConnectionType('Main')).toBe(false);
+			expect(NodeSearchEngine.isAiConnectionType('ai_tool')).toBe(true);
+			expect(NodeSearchEngine.isAiConnectionType('ai_languageModel')).toBe(true);
+			expect(NodeSearchEngine.isAiConnectionType('main')).toBe(false);
+			expect(NodeSearchEngine.isAiConnectionType('Main')).toBe(false);
 		});
 
 		it('should get all AI connection types', () => {
-			const aiTypes = CodeBuilderNodeSearchEngine.getAiConnectionTypes();
+			const aiTypes = NodeSearchEngine.getAiConnectionTypes();
 
 			expect(aiTypes).toContain(NodeConnectionTypes.AiTool);
 			expect(aiTypes).toContain(NodeConnectionTypes.AiLanguageModel);
@@ -582,7 +577,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 
 	describe('edge cases and error handling', () => {
 		it('should handle empty node types array', () => {
-			const emptyEngine = new CodeBuilderNodeSearchEngine([]);
+			const emptyEngine = new NodeSearchEngine([]);
 
 			expect(emptyEngine.searchByName('test')).toEqual([]);
 			expect(emptyEngine.searchByConnectionType(NodeConnectionTypes.AiTool)).toEqual([]);
@@ -597,7 +592,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					alias: null as unknown as string[],
 				},
 			});
-			const engine = new CodeBuilderNodeSearchEngine([nodeWithNulls]);
+			const engine = new NodeSearchEngine([nodeWithNulls]);
 
 			expect(() => engine.searchByName('null')).not.toThrow();
 			const results = engine.searchByName('null');
@@ -640,7 +635,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				version: 3,
 			});
 
-			const engine = new CodeBuilderNodeSearchEngine([nodeV1, nodeV2, nodeV3]);
+			const engine = new NodeSearchEngine([nodeV1, nodeV2, nodeV3]);
 			const results = engine.searchByName('http');
 
 			// Should only return one node (the latest version)
@@ -661,7 +656,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				version: [2, 3],
 			});
 
-			const engine = new CodeBuilderNodeSearchEngine([nodeV1, nodeV2V3]);
+			const engine = new NodeSearchEngine([nodeV1, nodeV2V3]);
 			const results = engine.searchByName('code');
 
 			// Should return the node with array version [2, 3] as latest
@@ -682,7 +677,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				version: 3,
 			});
 
-			const engine = new CodeBuilderNodeSearchEngine([nodeV1V2, nodeV3]);
+			const engine = new NodeSearchEngine([nodeV1V2, nodeV3]);
 			const results = engine.searchByName('webhook');
 
 			expect(results).toHaveLength(1);
@@ -738,7 +733,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					searchHint: 'Use with output parser for structured output',
 				},
 			});
-			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
+			const engine = new NodeSearchEngine([agentNode]);
 
 			const results = engine.searchByName('agent');
 
@@ -784,7 +779,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					} as unknown as NonNullable<INodeTypeDescription['builderHint']>['inputs'],
 				},
 			});
-			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
+			const engine = new NodeSearchEngine([agentNode]);
 
 			const results = engine.searchByName('agent');
 
@@ -799,7 +794,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				name: 'n8n-nodes-base.httpRequest',
 				displayName: 'HTTP Request',
 			});
-			const engine = new CodeBuilderNodeSearchEngine([basicNode]);
+			const engine = new NodeSearchEngine([basicNode]);
 
 			const results = engine.searchByName('http');
 
@@ -818,7 +813,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					},
 				},
 			});
-			const engine = new CodeBuilderNodeSearchEngine([openAiModel]);
+			const engine = new NodeSearchEngine([openAiModel]);
 
 			const results = engine.searchByConnectionType(NodeConnectionTypes.AiLanguageModel);
 
@@ -843,7 +838,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 					searchHint: 'Test hint message',
 				},
 			});
-			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
+			const engine = new NodeSearchEngine([agentNode]);
 
 			const results = engine.searchByName('agent');
 			const formatted = engine.formatResult(results[0]);
@@ -867,7 +862,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				name: 'n8n-nodes-base.code',
 				displayName: 'Code',
 			});
-			const engine = new CodeBuilderNodeSearchEngine([basicNode]);
+			const engine = new NodeSearchEngine([basicNode]);
 
 			const results = engine.searchByName('code');
 			const formatted = engine.formatResult(results[0]);
@@ -879,7 +874,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 
 	describe('getSubnodesForConnectionType', () => {
 		it('should return default subnodes for ai_languageModel', () => {
-			const engine = new CodeBuilderNodeSearchEngine([]);
+			const engine = new NodeSearchEngine([]);
 
 			const subnodes = engine.getSubnodesForConnectionType('ai_languageModel');
 
@@ -887,7 +882,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 		});
 
 		it('should return default subnodes for ai_memory', () => {
-			const engine = new CodeBuilderNodeSearchEngine([]);
+			const engine = new NodeSearchEngine([]);
 
 			const subnodes = engine.getSubnodesForConnectionType('ai_memory');
 
@@ -895,7 +890,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 		});
 
 		it('should return default subnodes for ai_embedding', () => {
-			const engine = new CodeBuilderNodeSearchEngine([]);
+			const engine = new NodeSearchEngine([]);
 
 			const subnodes = engine.getSubnodesForConnectionType('ai_embedding');
 
@@ -903,7 +898,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 		});
 
 		it('should return empty array for ai_tool (varies by use case)', () => {
-			const engine = new CodeBuilderNodeSearchEngine([]);
+			const engine = new NodeSearchEngine([]);
 
 			const subnodes = engine.getSubnodesForConnectionType('ai_tool');
 
@@ -911,7 +906,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 		});
 
 		it('should return empty array for unknown connection type', () => {
-			const engine = new CodeBuilderNodeSearchEngine([]);
+			const engine = new NodeSearchEngine([]);
 
 			const subnodes = engine.getSubnodesForConnectionType('unknown_type');
 
@@ -941,7 +936,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: 'Window Buffer Memory',
 				outputs: ['ai_memory'],
 			});
-			const engine = new CodeBuilderNodeSearchEngine([agentNode, openAiModel, bufferMemory]);
+			const engine = new NodeSearchEngine([agentNode, openAiModel, bufferMemory]);
 
 			const relatedIds = engine.getRelatedSubnodeIds(['@n8n/n8n-nodes-langchain.agent'], new Set());
 
@@ -977,11 +972,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				outputs: ['ai_embedding'],
 			});
 
-			const engine = new CodeBuilderNodeSearchEngine([
-				vectorMemory,
-				inMemoryVectorStore,
-				openAiEmbeddings,
-			]);
+			const engine = new NodeSearchEngine([vectorMemory, inMemoryVectorStore, openAiEmbeddings]);
 
 			const relatedIds = engine.getRelatedSubnodeIds(
 				['@n8n/n8n-nodes-langchain.memoryVectorStore'],
@@ -1009,7 +1000,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				displayName: 'OpenAI Chat Model',
 				outputs: ['ai_languageModel'],
 			});
-			const engine = new CodeBuilderNodeSearchEngine([agentNode, openAiModel]);
+			const engine = new NodeSearchEngine([agentNode, openAiModel]);
 
 			// Exclude OpenAI model from results
 			const relatedIds = engine.getRelatedSubnodeIds(
@@ -1025,7 +1016,7 @@ describe('CodeBuilderNodeSearchEngine', () => {
 				name: 'n8n-nodes-base.httpRequest',
 				displayName: 'HTTP Request',
 			});
-			const engine = new CodeBuilderNodeSearchEngine([basicNode]);
+			const engine = new NodeSearchEngine([basicNode]);
 
 			const relatedIds = engine.getRelatedSubnodeIds(['n8n-nodes-base.httpRequest'], new Set());
 

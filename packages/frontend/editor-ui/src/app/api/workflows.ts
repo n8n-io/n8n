@@ -70,16 +70,25 @@ export async function workflowExists(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest<{ exists: boolean }>(context, 'GET', `/workflows/${id}/exists`);
 }
 
+export type GetWorkflowsOptions = {
+	take?: number;
+	skip?: number;
+	sortBy?: string;
+	includeScopes?: boolean;
+};
+
 export async function getWorkflows(
 	context: IRestApiContext,
 	filter?: object,
-	options?: object,
+	options?: GetWorkflowsOptions,
 	select?: string[],
 ) {
+	const { includeScopes = true, ...listOptions } = options ?? {};
+
 	return await getFullApiResponse<IWorkflowDb[]>(context, 'GET', '/workflows', {
-		includeScopes: true,
+		...(includeScopes ? { includeScopes: true } : {}),
 		...(filter ? { filter } : {}),
-		...(options ? options : {}),
+		...listOptions,
 		...(select ? { select: JSON.stringify(select) } : {}),
 	});
 }

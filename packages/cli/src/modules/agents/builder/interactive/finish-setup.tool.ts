@@ -1,9 +1,4 @@
-import type {
-	BuiltTool,
-	CredentialListItem,
-	CredentialProvider,
-	InterruptibleToolContext,
-} from '@n8n/agents';
+import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	channelSuspendPayloadSchema,
@@ -11,33 +6,45 @@ import {
 	interactionQuestionSchema,
 	questionAnswerSchema,
 	questionsSuspendPayloadSchema,
+	shouldAutoResolveCredential,
 	type InteractionQuestion,
 } from '@n8n/api-types';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { BuilderTrackFn } from '../builder-config-telemetry';
 import { BUILDER_TOOLS } from '../builder-tool-names';
+import type { ChannelSetupDeps, CredentialSetupDeps } from './setup-tool.types';
 
-/** Filters an already-fetched credential list down to one type, in the shape the setup cards need. */
+/** Filter an already-fetched credential list down to one type, in the shape setup cards need. */
 function credentialsOfType(
 	all: CredentialListItem[],
 	credentialType: string,
-): Array<{ id: string; name: string }> {
+): Array<Pick<CredentialListItem, 'id' | 'name'>> {
 	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
 }
 
-export interface FinishSetupToolDeps {
-	credentialProvider: CredentialProvider;
-	agentId: string;
-	projectId: string;
-	track: BuilderTrackFn;
-	isCredentialTypeKnown?: (credentialType: string) => boolean;
-	/** Credential ids of the agent's configured chat channel integrations — reused for a matching credential slot. */
-	listIntegrationCredentialIds?: () => Promise<string[]>;
-	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
-	listChatIntegrationTypes: () => string[];
+/** Resolve a credential's display name by id via `get`, falling back to the id if it was deleted between suspend and resume. */
+async function credentialNameById(
+	credentialService: InstanceAiCredentialService,
+	credentialId: string,
+): Promise<string> {
+	try {
+		const credential = await credentialService.get(credentialId);
+		return credential.name;
+	} catch {
+		return credentialId;
+	}
+}
+
+export interface FinishSetupToolDeps extends CredentialSetupDeps, ChannelSetupDeps {
+	/**
+	 * Credential types whose every required node-tool slot is already served by an
+	 * n8n Connect managed credential — a card for these is redundant. A type still
+	 * empty on any tool is excluded, so an uncovered node/operation keeps prompting.
+	 */
+	listAiGatewayManagedCredentialTypes?: () => Promise<string[]>;
 }
 
 const finishSetupCredentialRequestInputSchema = z.object({
@@ -177,7 +184,7 @@ function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps
 				? ` Available: ${availableChannelTypes.join(', ')}.`
 				: ' No chat channels are currently available.';
 			throw new Error(
-				`Unsupported chat channel "${channel.integrationType}". Call list_integration_types ` +
+				`Unsupported chat channel "${channel.integrationType}". Call agent-context with type "integrations" ` +
 					'and choose a returned type.' +
 					availableMessage,
 			);
@@ -203,20 +210,29 @@ async function computeInitialPlan(
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];
 
-	if (input.credentialRequests?.length) {
+	// Drop requests for slots the server already covers with an n8n Connect
+	// managed credential — they need no user setup, so never show a card.
+	const aiGatewayManagedTypes = new Set((await deps.listAiGatewayManagedCredentialTypes?.()) ?? []);
+	const credentialRequests = (input.credentialRequests ?? []).filter(
+		(slot) => !aiGatewayManagedTypes.has(slot.credentialType),
+	);
+
+	if (credentialRequests.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
-		const all = await deps.credentialProvider.list();
+		const all = await deps.credentialService.list({ projectId: deps.projectId });
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
-		for (const slot of input.credentialRequests) {
+		for (const slot of credentialRequests) {
 			const key = slot.credentialSlot ?? slot.credentialType;
 			const existingCredentials = credentialsOfType(all, slot.credentialType);
 			const channelMatch = existingCredentials.find((credential) =>
 				integrationCredentialIds.includes(credential.id),
 			);
 			const autoResolved =
-				channelMatch ?? (existingCredentials.length === 1 ? existingCredentials[0] : undefined);
-
+				channelMatch ??
+				(shouldAutoResolveCredential(slot.credentialType, existingCredentials.length)
+					? existingCredentials[0]
+					: undefined);
 			if (autoResolved) {
 				credentials[key] = autoResolved;
 			} else {
@@ -268,7 +284,6 @@ async function mergeResumeIntoCollected(
 		return { ...previous, channels };
 	}
 
-	const all = await deps.credentialProvider.list();
 	const credentials = { ...(previous.credentials ?? {}) };
 	for (const slot of phase.slots) {
 		const key = slot.credentialSlot ?? slot.credentialType;
@@ -280,9 +295,7 @@ async function mergeResumeIntoCollected(
 		credentials[key] = credentialId
 			? {
 					id: credentialId,
-					name:
-						credentialsOfType(all, slot.credentialType).find((c) => c.id === credentialId)?.name ??
-						credentialId,
+					name: await credentialNameById(deps.credentialService, credentialId),
 				}
 			: 'skipped';
 	}
@@ -336,12 +349,12 @@ async function suspendForPhase(params: {
 		});
 	}
 
-	const all = await deps.credentialProvider.list();
+	const all = await deps.credentialService.list({ projectId: deps.projectId });
 	const seenTypes = new Set<string>();
 	const credentialRequests: Array<{
 		credentialType: string;
 		reason: string;
-		existingCredentials: Array<{ id: string; name: string }>;
+		existingCredentials: Array<Pick<CredentialListItem, 'id' | 'name'>>;
 	}> = [];
 	for (const slot of phase.slots) {
 		if (seenTypes.has(slot.credentialType)) continue;
@@ -361,6 +374,7 @@ async function suspendForPhase(params: {
 		severity: 'info' as const,
 		credentialRequests,
 		credentialFlow: { stage: 'generic' as const },
+		projectId: deps.projectId,
 		finishSetupChain,
 	});
 }
@@ -429,7 +443,7 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 				'It shows setup cards back-to-back without returning control between them: questions, ' +
 				'then credentials, then one card per requested channel. Channel cards always run last ' +
 				'after every credential phase, including when earlier setup was skipped or dismissed. Pass ' +
-				'`channels` with a returned `type` from list_integration_types, one entry per channel ' +
+				'`channels` with a returned `type` from agent-context integrations, one entry per channel ' +
 				'to configure; do not infer channel names. Each channel card persists the configuration ' +
 				'or skips it, so channel outcomes are `"configured"` or `"skipped"`. Do not call ' +
 				'configure_channel again for a channel handled by ' +

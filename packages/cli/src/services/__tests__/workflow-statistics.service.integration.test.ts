@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
@@ -16,6 +17,7 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { mock } from 'vitest-mock-extended';
 import {
@@ -27,7 +29,7 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
+import { INSTANCE_ACTIVATED_SETTINGS_KEY } from '@/services/instance-activation.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -95,9 +97,11 @@ describe('WorkflowStatisticsService', () => {
 		beforeEach(async () => {
 			vi.restoreAllMocks();
 			await testDb.truncate(['WorkflowStatistics', 'WorkflowStatisticsDelta']);
-			// Clear first production failure setting
+			// Clear the instance-level milestone settings; without this the first test to reach a
+			// milestone leaves the row behind and every later test silently skips emitting it.
 			const settingsRepository = Container.get(SettingsRepository);
 			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
+			await settingsRepository.delete({ key: INSTANCE_ACTIVATED_SETTINGS_KEY });
 		});
 
 		test.each<WorkflowExecuteMode>(['cli', 'retry', 'trigger', 'webhook', 'evaluation'])(
@@ -376,6 +380,15 @@ describe('WorkflowStatisticsService', () => {
 				workflowId: workflow.id,
 				userId: user.id,
 			});
+			const activationRow = await Container.get(SettingsRepository).findByKey(
+				INSTANCE_ACTIVATED_SETTINGS_KEY,
+			);
+			expect(JSON.parse(activationRow!.value)).toEqual({
+				projectId: personalProject.id,
+				workflowId: workflow.id,
+				userId: user.id,
+				timestamp: isPostgres ? expect.any(Number) : runData.startedAt.getTime(),
+			});
 		});
 
 		test('does not update user settings and does not emit first-production-workflow-succeeded for failing executions', async () => {
@@ -621,6 +634,43 @@ describe('WorkflowStatisticsService', () => {
 				workflowId: teamWorkflow.id,
 				userId: null,
 			});
+			// The activation row is the only signal here — `userActivated` skips team projects.
+			const activationRow = await Container.get(SettingsRepository).findByKey(
+				INSTANCE_ACTIVATED_SETTINGS_KEY,
+			);
+			expect(JSON.parse(activationRow!.value)).toEqual({
+				projectId: teamProject.id,
+				workflowId: teamWorkflow.id,
+				userId: null,
+				timestamp: expect.any(Number),
+			});
+		});
+
+		test('records the instance activation exactly once, whatever runs next', async () => {
+			// ARRANGE
+			const settingsRepository = Container.get(SettingsRepository);
+			const secondWorkflow = await createWorkflow({}, user);
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'internal',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+
+			// ACT
+			await completeAndFlush(workflowStatisticsService, workflow, runData);
+			const afterFirst = await settingsRepository.findByKey(INSTANCE_ACTIVATED_SETTINGS_KEY);
+
+			await completeAndFlush(workflowStatisticsService, secondWorkflow, runData);
+
+			// ASSERT — the row still names the *first* workflow, so the second run left it alone
+			expect(afterFirst).not.toBeNull();
+			expect(JSON.parse(afterFirst!.value)).toMatchObject({ workflowId: workflow.id });
+
+			const afterSecond = await settingsRepository.findByKey(INSTANCE_ACTIVATED_SETTINGS_KEY);
+			expect(JSON.parse(afterSecond!.value)).toMatchObject({ workflowId: workflow.id });
 		});
 
 		test('emits instance-first-production-workflow-failed with instance owner for team project', async () => {
@@ -670,6 +720,81 @@ describe('WorkflowStatisticsService', () => {
 				workflowId: teamWorkflow.id,
 				workflowName: teamWorkflow.name,
 				userId: instanceOwner.id,
+			});
+		});
+
+		describe('concurrent first occurrences', () => {
+			const makeService = () => {
+				const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
+				(
+					workflowRepositoryNoErrorWorkflows as unknown as {
+						hasAnyWorkflowsWithErrorWorkflow: Mock;
+					}
+				).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
+				return new WorkflowStatisticsService(
+					mock(),
+					workflowStatisticsRepository,
+					Container.get(OwnershipService),
+					userService,
+					Container.get(EventService),
+					Container.get(SettingsRepository),
+					workflowRepositoryNoErrorWorkflows,
+					Container.get(DatabaseConfig),
+				);
+			};
+
+			test('emits instance-first-production-workflow-failed once for concurrent first failures', async () => {
+				const service = makeService();
+				const otherWorkflow = await createWorkflow({}, user);
+				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+				const settingsRepository = Container.get(SettingsRepository);
+				const findByKey = settingsRepository.findByKey.bind(settingsRepository);
+				const bothReadsCompleted = createDeferredPromise();
+				let completedReads = 0;
+
+				// Both calls must read the missing setting before either call can write it.
+				const readBeforeWrite: SettingsRepository['findByKey'] = async (...args) => {
+					const setting = await findByKey(...args);
+					if (++completedReads === 2) {
+						bothReadsCompleted.resolve();
+					}
+					await bothReadsCompleted.promise;
+					return setting;
+				};
+				vi.spyOn(settingsRepository, 'findByKey')
+					.mockImplementationOnce(readBeforeWrite)
+					.mockImplementationOnce(readBeforeWrite);
+
+				await Promise.all(
+					[workflow, otherWorkflow].map(
+						async (wf) =>
+							await service.emitFirstOccurrenceEvent(
+								StatisticsNames.productionError,
+								wf.id,
+								wf.name,
+								Date.now(),
+							),
+					),
+				);
+
+				const failureEvents = emitSpy.mock.calls.filter(
+					([eventName]) => eventName === 'instance-first-production-workflow-failed',
+				);
+				expect(failureEvents).toHaveLength(1);
+			});
+
+			test('keeps the first value when the instance activation key is inserted twice', async () => {
+				const settingsRepository = Container.get(SettingsRepository);
+
+				await expect(
+					settingsRepository.insertIfAbsent(INSTANCE_ACTIVATED_SETTINGS_KEY, 'a'),
+				).resolves.toBe(true);
+				await expect(
+					settingsRepository.insertIfAbsent(INSTANCE_ACTIVATED_SETTINGS_KEY, 'b'),
+				).resolves.toBe(false);
+
+				const row = await settingsRepository.findByKey(INSTANCE_ACTIVATED_SETTINGS_KEY);
+				expect(row?.value).toBe('a');
 			});
 		});
 

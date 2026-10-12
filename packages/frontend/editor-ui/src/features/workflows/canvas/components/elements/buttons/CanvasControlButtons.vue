@@ -20,7 +20,6 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'reset-zoom': [];
 	'zoom-in': [];
 	'zoom-out': [];
 	'zoom-to-fit': [];
@@ -37,12 +36,6 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(props.zoom));
 
 const isToggleZoomVisible = computed(() => experimentalNdvStore.isZoomedViewEnabled);
-
-const isResetZoomVisible = computed(() => !isToggleZoomVisible.value && props.zoom !== 1);
-
-function onResetZoom() {
-	emit('reset-zoom');
-}
 
 function onZoomIn() {
 	emit('zoom-in');
@@ -66,13 +59,13 @@ function handleClickCollapseAll() {
 </script>
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
-		<N8nButtonList>
+		<N8nButtonList variant="toolbar">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.zoomToFit')"
 				:shortcut="{ keys: ['1'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="maximize"
 					:aria-label="i18n.baseText('nodeView.zoomToFit')"
@@ -85,7 +78,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['+'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="zoom-in"
 					:aria-label="i18n.baseText('nodeView.zoomIn')"
@@ -98,7 +91,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['-'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="zoom-out"
 					:aria-label="i18n.baseText('nodeView.zoomOut')"
@@ -116,7 +109,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['Z'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					iconOnly
 					size="large"
 					:class="$style.iconButton"
@@ -130,26 +123,12 @@ function handleClickCollapseAll() {
 				/>
 			</KeyboardShortcutTooltip>
 			<KeyboardShortcutTooltip
-				v-if="isResetZoomVisible"
-				:label="i18n.baseText('nodeView.resetZoom')"
-				:shortcut="{ keys: ['0'] }"
-			>
-				<N8nIconButton
-					variant="subtle"
-					size="large"
-					icon="undo-2"
-					:aria-label="i18n.baseText('nodeView.resetZoom')"
-					data-test-id="reset-zoom-button"
-					@click="onResetZoom"
-				/>
-			</KeyboardShortcutTooltip>
-			<KeyboardShortcutTooltip
 				v-if="!readOnly"
 				:label="i18n.baseText('nodeView.tidyUp')"
 				:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="ghost"
 					iconOnly
 					size="large"
 					:aria-label="i18n.baseText('nodeView.tidyUp')"
@@ -166,7 +145,7 @@ function handleClickCollapseAll() {
 				:content="i18n.baseText('nodeView.expandAllNodes')"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="maximize-2"
 					:aria-label="i18n.baseText('nodeView.expandAllNodes')"
@@ -179,7 +158,7 @@ function handleClickCollapseAll() {
 				:content="i18n.baseText('nodeView.collapseAllNodes')"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="minimize-2"
 					:aria-label="i18n.baseText('nodeView.collapseAllNodes')"

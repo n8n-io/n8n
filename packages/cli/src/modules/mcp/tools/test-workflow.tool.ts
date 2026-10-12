@@ -3,7 +3,6 @@ import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	type INode,
 	type IPinData,
 	type INodeExecutionData,
 	type IWorkflowExecutionDataProcess,
@@ -23,6 +22,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { findEnabledEligibleTrigger } from '../mcp.utils';
 import {
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
@@ -190,7 +190,18 @@ export async function testWorkflow(
 	const connections = workflow.connections ?? {};
 
 	// Find the trigger node — support any trigger type
-	const triggerNode = findTriggerNode(nodes, nodeTypes, triggerNodeName);
+	const triggerNode = findEnabledEligibleTrigger(
+		nodes,
+		(node) => {
+			try {
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return isTriggerNode(nodeType.description);
+			} catch {
+				return false;
+			}
+		},
+		triggerNodeName,
+	);
 	if (!triggerNode) {
 		throw new WorkflowAccessError(
 			triggerNodeName
@@ -270,29 +281,4 @@ export async function testWorkflow(
 			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
 			: undefined,
 	};
-}
-
-/**
- * Find a trigger node in the workflow.
- * When triggerNodeName is provided, returns that specific node if it is a trigger.
- * Otherwise returns the first trigger node found.
- */
-function findTriggerNode(
-	nodes: INode[],
-	nodeTypes: NodeTypes,
-	triggerNodeName?: string,
-): INode | undefined {
-	for (const node of nodes) {
-		if (node.disabled) continue;
-		if (triggerNodeName && node.name !== triggerNodeName) continue;
-		try {
-			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (isTriggerNode(nodeType.description)) {
-				return node;
-			}
-		} catch {
-			// Node type not found — skip
-		}
-	}
-	return undefined;
 }

@@ -70,6 +70,37 @@ describe('createWorkItem', () => {
 // ── handleBuildOutcome ──────────────────────────────────────────────────────
 
 describe('handleBuildOutcome', () => {
+	it('carries a user-skipped setup requirement onto the state', () => {
+		const { state: next } = handleBuildOutcome(
+			makeState(),
+			[],
+			makeOutcome({
+				workflowId: 'wf_123',
+				setupRequirement: { status: 'not_required', reason: 'skipped-by-user' },
+			}),
+		);
+
+		expect(next.setupSkippedByUser).toBe(true);
+	});
+
+	it("clears a previous build's skipped-setup flag when setup is required again", () => {
+		// A credential added after the skip must still route setup, so the flag can't be sticky.
+		const { state: next } = handleBuildOutcome(
+			{ ...makeState(), setupSkippedByUser: true },
+			[],
+			makeOutcome({
+				workflowId: 'wf_123',
+				setupRequirement: {
+					status: 'required',
+					reason: 'mocked-credentials',
+					guidance: 'Route the workflow through setup so the user can add real credentials.',
+				},
+			}),
+		);
+
+		expect(next.setupSkippedByUser).toBe(false);
+	});
+
 	it('transitions to verifying when submitted and testable', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
@@ -420,6 +451,64 @@ describe('handleBuildOutcome', () => {
 // ── handleVerificationVerdict ───────────────────────────────────────────────
 
 describe('handleVerificationVerdict', () => {
+	describe('deterministic claim', () => {
+		it('carries a downgraded claim onto the done action instead of blocking the loop', () => {
+			const state = makeState({ phase: 'verifying' });
+			const { state: next, action } = handleVerificationVerdict(
+				state,
+				[],
+				makeVerdict({
+					verdict: 'verified',
+					claim: {
+						level: 'partial',
+						plannedNodeCount: 12,
+						reachedNodeCount: 5,
+						nodesNotReached: ['Send Email'],
+						simulatedNodes: [],
+						pinnedNodes: [],
+						unprovenTargets: [],
+						publishReady: false,
+						liveTestRecommended: true,
+					},
+				}),
+			);
+
+			// The loop must still settle — re-verifying replays the same coverage.
+			expect(next.phase).toBe('done');
+			expect(next.status).toBe('completed');
+			expect(action.type).toBe('done');
+			if (action.type !== 'done') throw new Error('expected done');
+			expect(action.claim?.level).toBe('partial');
+			expect(action.claim?.publishReady).toBe(false);
+		});
+
+		it('records the repair target so a later run can tell whether it was proven', () => {
+			const state = makeState({ phase: 'verifying' });
+			const { state: next } = handleVerificationVerdict(
+				state,
+				[],
+				makeVerdict({
+					verdict: 'needs_patch',
+					failedNodeName: 'Send Email',
+					diagnosis: 'Wrong channel',
+				}),
+			);
+
+			expect(next.lastFailedNodeName).toBe('Send Email');
+		});
+
+		it('keeps a known repair target when a later rebuild names no node', () => {
+			const state = makeState({ phase: 'verifying', lastFailedNodeName: 'Send Email' });
+			const { state: next } = handleVerificationVerdict(
+				state,
+				[],
+				makeVerdict({ verdict: 'needs_rebuild', diagnosis: 'Structural repair' }),
+			);
+
+			expect(next.lastFailedNodeName).toBe('Send Email');
+		});
+	});
+
 	it('ignores stale verification verdicts from a different run without resetting state', () => {
 		const state = makeState({
 			runId: 'run_current',

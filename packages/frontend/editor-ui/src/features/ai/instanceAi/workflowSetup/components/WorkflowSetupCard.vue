@@ -40,10 +40,17 @@ const displayName = computed(() => {
 			interpolate: { name: props.section.node.name },
 		});
 	}
-	const raw =
-		credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ?? credentialTypeName;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+	// An agent-supplied recipe names the credential after the service ("fal.ai
+	// API Key") — a friendlier title than the generic type ("Header Auth"). It's
+	// already human-authored, so it skips the type-name keyword filtering.
+	const hintName = props.section.setupHint?.suggestedName;
+	const name =
+		hintName ??
+		getAppNameFromCredType(
+			credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ??
+				credentialTypeName,
+		);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 });
 </script>
 
@@ -95,9 +102,9 @@ const displayName = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--sm);
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

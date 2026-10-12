@@ -1,8 +1,10 @@
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
+import { reportSideCallUsage } from './forward-usage';
 import { redactText } from '../../sdk/guardrails';
-import type { AgentExecutionCounter } from '../../types/sdk/agent';
+import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
@@ -12,10 +14,10 @@ import type {
 	ObservationLogMerge,
 	ObservationLogReflection,
 	ObservationLogReflectionResult,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import { getStoredObservationTokenCount } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
@@ -48,6 +50,13 @@ export interface RunObservationLogReflectorOpts {
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/**
+	 * Receives the reflector model call's usage the moment it resolves, before
+	 * any parsing or persistence. Forwarding it here (rather than only on the
+	 * success return) keeps a billed reflector call priced even when later
+	 * post-processing throws. Fire-and-forget from the caller's perspective.
+	 */
+	onUsage?: (model: string | undefined, usage: TokenUsage | undefined) => void | Promise<void>;
 }
 
 export type RunObservationLogReflectorResult =
@@ -59,12 +68,16 @@ export type RunObservationLogReflectorResult =
 			overBudgetAfterReflection: boolean;
 			reflection: ObservationLogReflection;
 			result: ObservationLogReflectionResult;
+			/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+			usage?: TokenUsage;
+			/** Stable model id string of the model that produced the reflection. */
+			model?: string;
 	  };
 
 export function parseObservationLogReflectionJson(output: string): ObservationLogReflection {
 	let parsed: unknown;
 	try {
-		parsed = JSON.parse(extractJsonObject(output));
+		parsed = JSON.parse(extractJsonCandidate(output));
 	} catch {
 		throw new Error('Reflector output must be valid JSON');
 	}
@@ -172,14 +185,14 @@ export async function runObservationLogReflector(
 		observationScopeId,
 		order: 'asc',
 	});
-	const tokenCount = countObservationTokens(activeObservationLog, tokenCounter);
+	const tokenCount = countObservationTokens(activeObservationLog);
 	if (tokenCount <= reflectorThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
 
 	const now = opts.now ?? new Date();
 	const renderedObservationLog = renderObservationLogForReflection(activeObservationLog);
-	const output = await opts.reflect({
+	const reflectResult = await opts.reflect({
 		observationScopeId,
 		now,
 		activeObservationLog,
@@ -189,19 +202,31 @@ export async function runObservationLogReflector(
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
 	});
+	const output = typeof reflectResult === 'string' ? reflectResult : reflectResult.text;
+	const reflectUsage = typeof reflectResult === 'string' ? undefined : reflectResult.usage;
+	const reflectModel = typeof reflectResult === 'string' ? undefined : reflectResult.model;
+	// Forward usage immediately after the model call, before parsing or
+	// persistence, so a billed reflector turn is priced even when the
+	// post-processing below throws. Fire-and-forget: never block on pricing,
+	// and never let a callback throw or rejection abort reflection.
+	reportSideCallUsage(opts.onUsage, reflectModel, reflectUsage);
 	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
 	);
-	const reflection = {
+	const reflection: ObservationLogReflection = {
 		...normalized,
-		merge: normalized.merge.map((merge) => ({ ...merge, text: redactText(merge.text).text })),
+		merge: await Promise.all(
+			normalized.merge.map(async (merge) => {
+				const text = redactText(merge.text).text;
+				return { ...merge, text, tokenCount: await tokenCounter(text) };
+			}),
+		),
 	};
 	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(
 		await memory.getActiveObservationLog({ observationScopeId }),
-		tokenCounter,
 	);
 	const overBudgetAfterReflection = remainingTokenCount > reflectorThresholdTokens;
 	if (overBudgetAfterReflection) {
@@ -220,6 +245,8 @@ export async function runObservationLogReflector(
 		overBudgetAfterReflection,
 		reflection,
 		result,
+		usage: reflectUsage,
+		model: reflectModel,
 	};
 }
 
@@ -269,15 +296,6 @@ function normalizeReplacementParentId(
 ): string | null | undefined {
 	if (parentId === undefined || parentId === null) return parentId;
 	return activeById.has(parentId) && !removedIds.has(parentId) ? parentId : null;
-}
-
-function extractJsonObject(output: string): string {
-	const start = output.indexOf('{');
-	const end = output.lastIndexOf('}');
-	if (start === -1 || end === -1 || end < start) {
-		throw new Error('Reflector output did not contain a JSON object');
-	}
-	return output.slice(start, end + 1);
 }
 
 function readStringArray(value: unknown, fieldName: string): string[] {
@@ -349,16 +367,8 @@ function withCreatedAt(reflection: ObservationLogReflection, now: Date): Observa
 	};
 }
 
-function countObservationTokens(
-	entries: ObservationLogEntry[],
-	tokenCounter: TokenCounter,
-): number {
-	return entries.reduce((total, entry) => total + observationTokenCount(entry, tokenCounter), 0);
-}
-
-function observationTokenCount(entry: ObservationLogEntry, tokenCounter: TokenCounter): number {
-	if (Number.isFinite(entry.tokenCount) && entry.tokenCount > 0) return entry.tokenCount;
-	return tokenCounter(entry.text);
+function countObservationTokens(entries: ObservationLogEntry[]): number {
+	return entries.reduce((total, entry) => total + getStoredObservationTokenCount(entry), 0);
 }
 
 function compareEntries(a: ObservationLogEntry, b: ObservationLogEntry): number {

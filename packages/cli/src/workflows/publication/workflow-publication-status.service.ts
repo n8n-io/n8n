@@ -1,6 +1,7 @@
-import type { WorkflowPublicationStatus } from '@n8n/api-types';
+import type { WorkflowPublicationStatus, WorkflowListPublicationStatus } from '@n8n/api-types';
 import {
 	WorkflowPublicationOutboxRepository,
+	type OperationContext,
 	type WorkflowPublicationTriggerStatus,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
@@ -23,10 +24,13 @@ export class WorkflowPublicationStatusService {
 	 * NOTE: we only update the trigger statuses when a publication is completed,
 	 * so if there is a publication in progress, the trigger statuses may not reflect the latest state.
 	 */
-	async getStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
+	async getStatus(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationStatus> {
 		const [inFlightPublication, currentTriggerStatuses] = await Promise.all([
-			this.outboxRepository.findInFlightByWorkflowId(workflowId),
-			this.triggerStatusRepository.findByWorkflowId(workflowId),
+			this.outboxRepository.findInFlightByWorkflowId(workflowId, ctx),
+			this.triggerStatusRepository.findByWorkflowId(workflowId, ctx),
 		]);
 
 		const triggers = currentTriggerStatuses.map((r) => ({
@@ -46,6 +50,26 @@ export class WorkflowPublicationStatusService {
 		return { status, liveVersionId, pendingVersionId, triggers };
 	}
 
+	/**
+	 * Batch-derive the terminal publication status for many workflows, for the list view.
+	 *
+	 * Unlike getStatus, this does NOT consult the outbox: the list surfaces only settled
+	 * states (published/partial/failed) and deliberately never shows in_progress. Workflows
+	 * with no trigger rows are omitted (the card falls back to its legacy indicator).
+	 */
+	async getListStatusesByWorkflowIds(
+		workflowIds: string[],
+	): Promise<Map<string, WorkflowListPublicationStatus>> {
+		const counts = await this.triggerStatusRepository.getStatusCountsByWorkflowIds(workflowIds);
+
+		const statuses = new Map<string, WorkflowListPublicationStatus>();
+		// getStatusCountsByWorkflowIds only returns workflows with ≥1 settled row, so total is always ≥1.
+		for (const [workflowId, { total, failed }] of counts) {
+			statuses.set(workflowId, this.deriveSettledStatus(total, failed));
+		}
+		return statuses;
+	}
+
 	private deriveStatus(
 		isPublishing: boolean,
 		currentTriggerStatuses: WorkflowPublicationTriggerStatus[],
@@ -53,7 +77,15 @@ export class WorkflowPublicationStatusService {
 		if (isPublishing) return 'in_progress';
 		if (currentTriggerStatuses.length === 0) return 'not_published';
 		const failed = currentTriggerStatuses.filter((r) => r.status === 'failed').length;
+		return this.deriveSettledStatus(currentTriggerStatuses.length, failed);
+	}
+
+	/**
+	 * The one settled-state ladder, shared by the detail and list derivations so
+	 * the two endpoints can never disagree about the same trigger rows.
+	 */
+	private deriveSettledStatus(total: number, failed: number): WorkflowListPublicationStatus {
 		if (failed === 0) return 'published';
-		return failed < currentTriggerStatuses.length ? 'partial' : 'failed';
+		return failed < total ? 'partial' : 'failed';
 	}
 }

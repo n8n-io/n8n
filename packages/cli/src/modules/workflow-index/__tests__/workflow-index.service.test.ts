@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
@@ -8,8 +9,6 @@ import type { Span } from 'n8n-core';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import { EventService } from '@/events/event.service';
 
 import { WorkflowIndexService } from '../workflow-index.service';
 
@@ -222,6 +221,114 @@ describe('WorkflowIndexService', () => {
 					id: 'node-1',
 					type: 'n8n-nodes-base.executeWorkflow',
 					parameters: {}, // No workflowId — node was just added to canvas
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should create workflowCall dependencies for sub-workflow tool and retriever nodes', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					typeVersion: 2.2,
+					parameters: { source: 'database', workflowId: { mode: 'list', value: 'sub-workflow-1' } },
+				}),
+				// toolWorkflow <= 1.1 stores the workflowId as a plain string.
+				createNode({
+					id: 'node-2',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					typeVersion: 1,
+					parameters: { source: 'database', workflowId: 'sub-workflow-2' },
+				}),
+				createNode({
+					id: 'node-3',
+					type: '@n8n/n8n-nodes-langchain.retrieverWorkflow',
+					parameters: { source: 'database', workflowId: 'sub-workflow-3' },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+							dependencyKey: 'sub-workflow-1',
+							dependencyInfo: { nodeId: 'node-1', nodeVersion: 2.2 },
+						}),
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+							dependencyKey: 'sub-workflow-2',
+							dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 },
+						}),
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+							dependencyKey: 'sub-workflow-3',
+							dependencyInfo: { nodeId: 'node-3', nodeVersion: 1 },
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should not create workflowCall dependencies for sub-workflow tool nodes with an inline workflow', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					parameters: { source: 'parameter', workflowJson: '{}' },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should not create workflowCall dependencies for expression-based workflow IDs', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.executeWorkflow',
+					parameters: { workflowId: '={{ $json.workflowId }}' },
+				}),
+				createNode({
+					id: 'node-2',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					parameters: {
+						source: 'database',
+						workflowId: { mode: 'id', value: '={{ $json.workflowId }}' },
+					},
 				}),
 			]);
 

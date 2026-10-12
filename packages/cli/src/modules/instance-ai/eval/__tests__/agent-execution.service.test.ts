@@ -11,8 +11,11 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
@@ -35,6 +38,9 @@ vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 vi.mock('@/modules/agents/agent-runtime-reconstruction.service', () => ({
 	AgentRuntimeReconstructionService: class AgentRuntimeReconstructionService {},
 }));
+vi.mock('@/modules/agents/agents-settings.service', () => ({
+	AgentsSettingsService: class AgentsSettingsService {},
+}));
 vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
 	createAgentCredentialProvider: vi.fn(() => ({ resolve: vi.fn() })),
 }));
@@ -48,7 +54,8 @@ vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 
 const logger = mock<Logger>();
-const user = mock<User>();
+const settingsService = mock<AgentsSettingsService>();
+const user = mock<User>({ id: 'user/123:raw' });
 
 const findByIdAndProjectId = vi.fn();
 const reconstructFromAgentEntity = vi.fn();
@@ -120,6 +127,8 @@ function buildService(overrides: { queueMode?: boolean; agentsActive?: boolean }
 describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		settingsService.getEnabled.mockResolvedValue(true);
+		Container.set(AgentsSettingsService, settingsService);
 		Container.set(AgentRepository, { findByIdAndProjectId } as unknown as AgentRepository);
 		Container.set(AgentRuntimeReconstructionService, {
 			reconstructFromAgentEntity,
@@ -164,6 +173,23 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/not found or not accessible/);
+	});
+
+	it('refuses when Agents is disabled before making model calls', async () => {
+		settingsService.getEnabled.mockResolvedValue(false);
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toContain('Agents are disabled');
+		expect(generateAgentScenarioSeed).not.toHaveBeenCalled();
+		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+		expect(generate).not.toHaveBeenCalled();
 	});
 
 	it('reports not-found when the agent does not exist in the project', async () => {
@@ -263,20 +289,30 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(close).toHaveBeenCalledTimes(1);
 
 		// The runtime was built with the eval instrumentation, uncached.
-		const [entityArg, , runType, integrationType, userArg, instrumentation] =
-			reconstructFromAgentEntity.mock.calls[0] as [
-				AgentEntity,
-				unknown,
-				string,
-				string | undefined,
-				User,
-				{ modelFetch?: unknown },
-			];
-		expect(entityArg.id).toBe('agent-1');
+		const call = reconstructFromAgentEntity.mock.calls[0] as [
+			AgentRunSource,
+			unknown,
+			string,
+			string | undefined,
+			User,
+			{ modelFetch?: unknown },
+			...unknown[],
+		];
+		const [entityArg, , runType, integrationType, userArg, instrumentation] = call;
+		expect(entityArg.agent.id).toBe('agent-1');
 		expect(runType).toBe('test');
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
 		expect(instrumentation.modelFetch).toBeDefined();
+		expect(call[7]).toBe('Gt4H3q6RzhJe9cTxQm6be0AdIZQlifuy3w9OPSykmYo');
+
+		// The provider carries the agent id so managed Gateway eval traffic is tagged.
+		expect(createAgentCredentialProvider).toHaveBeenCalledWith(
+			expect.anything(),
+			'proj-1',
+			user,
+			'agent-1',
+		);
 	});
 
 	it('attributes MCP calls when the server name requires normalization', async () => {
@@ -446,12 +482,29 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			'memory',
 			'vectorStores',
 		]);
-		const rebuiltEntity = reconstructFromAgentEntity.mock.calls[0][0] as AgentEntity;
+		const rebuiltEntity = (reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource).agent;
 		expect(rebuiltEntity.schema?.memory).toBeUndefined();
 		expect(rebuiltEntity.schema?.mcpServers).toBeUndefined();
 		// Configured sub-agents are kept — the delegated child inherits the
 		// instrumentation and its config is pruned via the transform hook.
 		expect(rebuiltEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'child-1' }] });
+	});
+
+	it('keeps the draft skill refs through pruning', async () => {
+		const skillRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+		];
+		findByIdAndProjectId.mockResolvedValue(makeEntity({ ...baseConfig, skills: skillRefs }));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const runSource = reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource;
+		expect(runSource.skillRefs).toEqual(skillRefs);
 	});
 
 	it('serves fallback web search and configured sub-agents through the instrumentation', async () => {
@@ -621,6 +674,38 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/Agent run failed: aborted/);
 		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	// Killed for TIME, not by the builder. The harness classifies this off the wording
+	// ("exceeded its …s eval budget", `isServerBudgetStop`) and routes it to the timeout
+	// path; reported as a plain `Agent run failed:` it scored as a builder verdict —
+	// exactly the misattribution the budget plumbing exists to prevent.
+	it('reports a budget abort in the words the harness classifies as a timeout', async () => {
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate: vi
+					.fn()
+					.mockImplementation(async (_message, opts: { abortSignal: AbortSignal }) => {
+						// What AbortSignal.timeout does once the budget elapses.
+						await new Promise((resolve) => setTimeout(resolve, 5));
+						throw Object.assign(new Error('The operation was aborted due to timeout'), {
+							name: 'TimeoutError',
+							signalAborted: opts.abortSignal.aborted,
+						});
+					}),
+				close: vi.fn().mockResolvedValue(undefined),
+			},
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, {
+			...request,
+			timeoutMs: 1,
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toMatch(/exceeded its \d+s eval budget/);
+		expect(result.errors[0]).not.toMatch(/Agent run failed/);
 	});
 
 	it('flips success off when the run finishes with a model error', async () => {

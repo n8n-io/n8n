@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-test-utils",
-  "version": "1.34.0",
+  "version": "1.43.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -9,8 +9,8 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "node -e \"process.exit(0)\"",
     "test:dev": "echo \"WARNING: no test specified\" && exit 0"
@@ -30,13 +30,16 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "reflect-metadata": "catalog:",
     "uuid": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
   "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript"
   },
   "license": "LicenseRef-n8n-sustainable-use"

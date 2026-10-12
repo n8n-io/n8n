@@ -716,6 +716,23 @@ describe('dataTable.store', () => {
 		});
 	});
 
+	describe('insertRow', () => {
+		it('should insert a row with the given data', async () => {
+			const mockRow = { id: 1, name: 'Given' };
+			vi.spyOn(dataTableApi, 'insertDataTableRowApi').mockResolvedValue([mockRow]);
+
+			const result = await dataTableStore.insertRow('dt-1', 'p1', { name: 'Given' });
+
+			expect(dataTableApi.insertDataTableRowApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'dt-1',
+				{ name: 'Given' },
+				'p1',
+			);
+			expect(result).toBe(mockRow);
+		});
+	});
+
 	describe('updateRow', () => {
 		it('should update row data', async () => {
 			vi.spyOn(dataTableApi, 'updateDataTableRowsApi').mockResolvedValue(true);

@@ -1,4 +1,9 @@
-import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../dialect-time';
+import {
+	dbNowLiteral,
+	dbNowPlusMsLiteral,
+	laterOfColumnAndNowPlusMsLiteral,
+	parseDbTime,
+} from '../dialect-time';
 
 describe('dbNowLiteral', () => {
 	it('uses millisecond precision on both dialects', () => {
@@ -43,6 +48,31 @@ describe('dbNowPlusMsLiteral', () => {
 	it('treats a negative offset that rounds to zero as now on sqlite', () => {
 		expect(dbNowPlusMsLiteral(false, -0.4)).toBe(
 			"STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+0 seconds')",
+		);
+	});
+});
+
+describe('laterOfColumnAndNowPlusMsLiteral', () => {
+	it('takes the later of the column and the offset on postgres', () => {
+		expect(laterOfColumnAndNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toBe(
+			'GREATEST(COALESCE("backoffUntil", CURRENT_TIMESTAMP(3)), CURRENT_TIMESTAMP(3) + (5000 || \' milliseconds\')::interval)',
+		);
+	});
+
+	it('takes the later of the column and the offset on sqlite', () => {
+		expect(laterOfColumnAndNowPlusMsLiteral(false, '"backoffUntil"', 5000)).toBe(
+			"MAX(COALESCE(\"backoffUntil\", STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+5 seconds'))",
+		);
+	});
+
+	// SQLite's scalar MAX returns NULL as soon as one argument is NULL, so without
+	// the COALESCE a first failure would clear the deadline instead of setting it.
+	it('coalesces the column on both dialects, so a null one cannot swallow the offset', () => {
+		expect(laterOfColumnAndNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toContain(
+			'COALESCE("backoffUntil"',
+		);
+		expect(laterOfColumnAndNowPlusMsLiteral(false, '"backoffUntil"', 5000)).toContain(
+			'COALESCE("backoffUntil"',
 		);
 	});
 });

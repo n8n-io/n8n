@@ -2,7 +2,7 @@
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { N8nIcon, N8nScrollArea, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ComboboxAnchor,

@@ -1,5 +1,8 @@
 import type { KafkaJS as KafkaJSNamespace } from '@confluentinc/kafka-javascript';
 
+import { toKafkaJSConfig } from './config';
+import type { KafkaCredentials } from '../../utils';
+
 let _kafkaJS: typeof KafkaJSNamespace | null = null;
 
 /**
@@ -16,4 +19,20 @@ export async function getKafkaLibrary(): Promise<typeof KafkaJSNamespace> {
 	const mod = await import('@confluentinc/kafka-javascript');
 	_kafkaJS = mod.KafkaJS;
 	return _kafkaJS;
+}
+
+/**
+ * Builds the library client for a credential. Shared by the producer and consumer
+ * factories so the credential conversion and the log-level pin stay in one place
+ * rather than being copied per factory.
+ * @param credentials - The decrypted Kafka credential
+ */
+export async function createKafkaClient(
+	credentials: KafkaCredentials,
+): Promise<KafkaJSNamespace.Kafka> {
+	const { Kafka, logLevel } = await getKafkaLibrary();
+	const config = toKafkaJSConfig(credentials);
+	// Without an explicit level the library's own logger writes broker host:port to
+	// process stdout on every execution, outside n8n's logger.
+	return new Kafka({ ...config, kafkaJS: { ...config.kafkaJS, logLevel: logLevel.ERROR } });
 }

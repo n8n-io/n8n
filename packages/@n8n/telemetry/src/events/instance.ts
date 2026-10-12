@@ -48,6 +48,12 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				compaction_trimming_time_window_days: z.number(),
 			}),
 			n8n_deployment_type: z.string(),
+			n8n_deployment_artifact: z
+				.string()
+				.optional()
+				.describe(
+					'Official artifact that installed n8n, as `<artifact>[/<version>]`, e.g. `helm-chart/1.14.0`',
+				),
 			n8n_binary_data_mode: z.enum(['default', 'filesystem', 's3', 'azure', 'database']),
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),
@@ -64,8 +70,20 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					sandbox_provider: z.string(),
 					search_brave_set: z.boolean(),
 					search_searxng_set: z.boolean(),
+					model_env_set: z
+						.boolean()
+						.describe(
+							'Model connection env vars are set (API key or base URL). UI-credential model state is on the "AI Assistant setup completed" and "User viewed AI Assistant setup page" events instead',
+						),
+					model_id: z
+						.string()
+						.describe(
+							"Configured model identifier incl. provider, e.g. 'anthropic/claude-sonnet-4'",
+						),
 				})
-				.describe('Which sandbox and search providers are configured, never key values'),
+				.describe(
+					'Which model, sandbox and search providers are configured via env vars, never key values',
+				),
 			metrics: z.object({
 				metrics_enabled: z.boolean(),
 				metrics_category_default: z.boolean(),

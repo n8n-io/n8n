@@ -17,8 +17,10 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { extractSharedFields } from './shared-fields';
+import { carriesN8nIdentity } from '../credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialStorageError } from '../errors/credential-storage.error';
+import { N8nIdentityNotSupportedError } from '../errors/n8n-identity-not-supported.error';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {
@@ -37,6 +39,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		credentialContext: ICredentialContext,
 		staticData?: ICredentialDataDecryptedObject,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<void> {
 		try {
 			if (!credentialStoreMetadata.isResolvable) {
@@ -71,6 +74,10 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				return this.handleMissingResolver(credentialStoreMetadata, resolverId);
 			}
 
+			if (carriesN8nIdentity(credentialContext) && !resolver.resolveOwningUserId) {
+				throw new N8nIdentityNotSupportedError(credentialStoreMetadata.name);
+			}
+
 			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
@@ -92,11 +99,17 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				}
 			}
 
-			await resolver.setSecret(credentialStoreMetadata.id, credentialContext, mergedDynamicData, {
-				configuration: resolverConfig,
-				resolverName: resolverEntity.name,
-				resolverId: resolverEntity.id,
-			});
+			await resolver.setSecret(
+				credentialStoreMetadata.id,
+				credentialContext,
+				mergedDynamicData,
+				{
+					configuration: resolverConfig,
+					resolverName: resolverEntity.name,
+					resolverId: resolverEntity.id,
+				},
+				executionId,
+			);
 
 			this.logger.debug('Successfully stored dynamic credentials', {
 				credentialId: credentialStoreMetadata.id,

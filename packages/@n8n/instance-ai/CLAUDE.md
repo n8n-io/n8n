@@ -29,12 +29,12 @@ Read these docs before starting any implementation:
 
 ## E2E Testing
 
-Tests live in `packages/testing/playwright/tests/e2e/instance-ai/`.
+Tests live in `packages/quality/testing/playwright/tests/e2e/instance-ai/`.
 
 ### Local-build mode (no docker, no recording — hits real Anthropic API)
 
 ```bash
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm test:local:instance-ai                  # full suite
 pnpm test:local:instance-ai --grep "preview" # single test
@@ -52,7 +52,7 @@ mode with a real key. This captures LLM traffic + tool traces into
 
 ```bash
 pnpm build:docker   # from repo root — build the local n8n image first
-cd packages/testing/playwright
+cd packages/quality/testing/playwright
 ANTHROPIC_API_KEY=sk-ant-... pnpm test:container:sqlite tests/e2e/instance-ai --workers 1
 ```
 
@@ -62,10 +62,10 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 
 ## Key Conventions
 
-- **Event schema**: `{ type, runId, agentId, payload? }` — defined in `streaming-protocol.md`
+- **Event schema**: `{ type, runId, agentId, payload }` — defined in `streaming-protocol.md`
 - **POST `/chat/:threadId`** returns `{ runId }` — not a stream
 - **SSE `/events/:threadId`** delivers all events — replay via `Last-Event-ID` header or `?lastEventId` query param
-- **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
-- **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
-- **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
-- **Memory**: observational memory = thread-scoped, working memory is disabled
+- **Run lifecycle**: `run-start` is first; `run-finish` ends orchestrator processing and carries its status. Detached background-agent events for the same `runId` can follow.
+- **Planned tasks**: the `planning` skill and deferred `create-tasks` tool define multi-step work. Build and checkpoint tasks run as orchestrator follow-ups.
+- **Specialized background agents**: the eval-setup agent receives native domain tools only, no MCP, and no recursive delegation. It uses dedicated persistence for checkpoint and suspension state. The embedded Agent Builder inherits the orchestrator's safe MCP tools.
+- **Memory**: observational memory is thread-scoped and working memory is disabled

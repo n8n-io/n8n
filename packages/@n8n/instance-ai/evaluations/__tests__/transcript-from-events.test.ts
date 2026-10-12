@@ -42,6 +42,30 @@ describe('buildTranscriptFromEvents', () => {
 		]);
 	});
 
+	describe('run-id tracking', () => {
+		it('collects every run-id (main run + any resumes) that fall inside one user turn', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					evt(USER_TURN_EVENT, { payload: { text: 'build it' } }),
+					evt('run-start', { runId: 'run-1' }),
+					evt('text-delta', { runId: 'run-1', text: 'Working on it.' }),
+					evt('run-start', { runId: 'run-2' }),
+					evt('text-delta', { runId: 'run-2', text: 'Done.' }),
+				],
+			});
+			expect(turns).toHaveLength(1);
+			expect(turns[0].runIds).toEqual(['run-1', 'run-2']);
+		});
+
+		it('omits runIds when no event carries one', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [RUN_START, evt('text-delta', { text: 'hi' })],
+				openingMessage: 'hi',
+			});
+			expect(turns[0].runIds).toBeUndefined();
+		});
+	});
+
 	describe('secret redaction', () => {
 		it('redacts secret-shaped keys in tool-call args', () => {
 			const turns = buildTranscriptFromEvents({
@@ -206,7 +230,9 @@ describe('buildTranscriptFromEvents', () => {
 	});
 
 	describe('ask-user routing', () => {
-		const questions = [{ id: 'q1', question: 'Which channels?' }];
+		const questions = [
+			{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
+		];
 
 		it('renders ask-user from confirmation-request and skips the tool-call twin', () => {
 			const turns = buildTranscriptFromEvents({
@@ -222,7 +248,7 @@ describe('buildTranscriptFromEvents', () => {
 						'r1',
 						{
 							kind: 'questions' as const,
-							answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+							answers: [{ questionId: 'q1', selectedOptions: ['Teams'] }],
 						},
 					],
 				]),
@@ -231,8 +257,10 @@ describe('buildTranscriptFromEvents', () => {
 			expect(interactions).toHaveLength(1);
 			expect(interactions[0]).toMatchObject({
 				kind: 'ask-user',
-				questions: [{ id: 'q1', question: 'Which channels?' }],
-				answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+				questions: [
+					{ id: 'q1', question: 'Which channel?', type: 'single', options: ['Slack', 'Teams'] },
+				],
+				answers: [{ questionId: 'q1', selectedOptions: ['Teams'] }],
 			});
 		});
 
@@ -313,7 +341,8 @@ describe('buildTranscriptFromEvents', () => {
 			expect(interactions[1]).toMatchObject({
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
-				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+				// Recorded before the split, so the pre-split `skippedNodes` key still parses.
+				nodesStillNeedingSetup: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
 			});
 		});
 

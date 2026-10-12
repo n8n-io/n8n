@@ -285,7 +285,7 @@ describe('jsonSizeExceeds', () => {
 		expect(jsonSizeExceeds(node, 2 * ONE_MIB)).toBe(true);
 	});
 
-	it('answers on a value nested deeper than serialization can go', () => {
+	it('answers on a value nested 100,000 levels deep', () => {
 		const root: Record<string, unknown> = {};
 		let leaf = root;
 		for (let depth = 0; depth < 100_000; depth++) {
@@ -295,7 +295,6 @@ describe('jsonSizeExceeds', () => {
 		}
 
 		expect(jsonSizeExceeds(root, 2 * ONE_MIB)).toBe(false);
-		expect(() => JSON.stringify(root)).toThrow(RangeError);
 	});
 
 	it('answers on a cyclic value instead of throwing', () => {

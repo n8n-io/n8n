@@ -101,6 +101,9 @@ export const credentialSuspendPayloadSchema = z.object({
 	severity: z.literal('info'),
 	credentialRequests: z.array(credentialRequestSchema).min(1),
 	credentialFlow: z.object({ stage: z.literal('generic') }),
+	// Scopes the FE credential picker to the builder's project — without it the
+	// picker falls back to the user's personal project.
+	projectId: z.string().optional(),
 });
 export type CredentialSuspendPayload = z.infer<typeof credentialSuspendPayloadSchema>;
 

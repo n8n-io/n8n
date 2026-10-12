@@ -1,13 +1,18 @@
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../../entities/data-table/data-table.types';
 import type { PersistedWorkflowOutcome } from '../../entities/workflow/workflow-import.types';
-import type { ImportContext, ImportPackageRequest } from '../../n8n-packages.types';
+import type {
+	ImportContext,
+	RemovedFolderSummary,
+	RemovedWorkflowSummary,
+	ResolvedImportPackageRequest,
+} from '../../n8n-packages.types';
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import type { ImportContentResult } from '../import-orchestrator';
@@ -28,16 +33,18 @@ const requirement = (id: string): PackageCredentialRequirement => ({
 	id,
 	name: id,
 	type: 'githubApi',
-	usedByWorkflows: ['ignored'],
+	usedBy: [{ kind: 'workflow', id: 'ignored' }],
 });
 
 const scope = (input: {
 	projectId: string;
 	folderId?: string | null;
 	outcomes: PersistedWorkflowOutcome[];
+	removedWorkflows?: RemovedWorkflowSummary[];
+	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
-	dataTable?: { matched: number; created: number; requirements: number };
+	dataTable?: { matched: number; created: number; updated?: number; requirements: number };
 	variables?: {
 		matched: number;
 		missing: number;
@@ -83,25 +90,31 @@ const scope = (input: {
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
 		workflowOutcomes: input.outcomes,
+		removedWorkflows: input.removedWorkflows ?? [],
+		removedFolders: input.removedFolders ?? [],
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
-		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
+		dataTablePlan: {
+			creations: new Array(dt.created),
+			updates: new Array(dt.updated ?? 0),
+			failures: [],
+			matchedCount: dt.matched,
+		},
 		variablePlan: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
 			],
-			missing: missingVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
-				(name) => ({ name, usedByWorkflows: [] }),
+				(name) => ({ name }),
 			),
-			conflicts: overwrittenVariableNames.map((name) => ({ name, usedByWorkflows: [] })),
+			conflicts: overwrittenVariableNames.map((name) => ({ name })),
 			overwrites: overwrittenVariableNames.map((name) => ({
 				variableId: `id-of-${name}`,
 				name,
 				value: 'from-package',
-				usedByWorkflows: [],
 			})),
 		},
 		variableResult: {
@@ -144,7 +157,7 @@ const scope = (input: {
 			requirements: (tags.requirementIds ?? []).map((id) => ({
 				id,
 				name: `name-of-${id}`,
-				usedByWorkflows: ['ignored'],
+				usedBy: [{ kind: 'workflow', id: 'ignored' }],
 			})),
 			missingMode: 'create',
 			conflictPolicy: 'skip',
@@ -152,13 +165,14 @@ const scope = (input: {
 	};
 };
 
-const request = mock<ImportPackageRequest>({
+const request = mock<ResolvedImportPackageRequest>({
 	user: mock(),
 	workflowConflictPolicy: 'new-version',
 	workflowIdPolicy: 'new',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	folderConflictPolicy: 'overwrite',
 	variableMissingMode: 'create-stub',
 	variableConflictPolicy: 'overwrite',
 	variableParentPolicy: 'global',
@@ -196,7 +210,7 @@ describe('emitPackageImportedEvent', () => {
 						stubbed: [],
 					},
 					requirements: [requirement('credA')],
-					dataTable: { matched: 1, created: 0, requirements: 1 },
+					dataTable: { matched: 1, created: 0, updated: 1, requirements: 2 },
 					variables: { matched: 1, missing: 0, requirements: 1 },
 					tags: { matched: ['T1'], created: ['T2'], requirementIds: ['T1', 'T2'] },
 				}),
@@ -243,9 +257,10 @@ describe('emitPackageImportedEvent', () => {
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
-			workflows: { created: 1, updated: 1, skipped: 1 },
+			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
+			folders: { removed: 0 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
-			dataTables: { matched: 1, created: 2, requirements: 3 },
+			dataTables: { matched: 1, created: 2, updated: 1, requirements: 4 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, updated: 1, requirements: 4 },
@@ -321,6 +336,46 @@ describe('emitPackageImportedEvent', () => {
 			updated: 0,
 			requirements: 2,
 		});
+	});
+
+	it('counts reconciliation removals by what actually happened', () => {
+		const eventService = mock<EventService>();
+		const removed = (workflowId: string, deletion: 'archived' | 'deleted') => ({
+			workflowId,
+			name: workflowId,
+			projectId: 'P1',
+			parentFolderId: null,
+			deletion,
+		});
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({
+					projectId: 'P1',
+					outcomes: [outcome('wf1', 'WF1', 'created')],
+					// A hard-delete whose row could not be dropped yet reports archived, and counts so.
+					removedWorkflows: [removed('stale-1', 'archived'), removed('stale-2', 'deleted')],
+					removedFolders: [
+						{ folderId: 'F-stale', name: 'stale', projectId: 'P1', parentFolderId: null },
+					],
+					credentialResult: { bindings: new Map(), matched: [], stubbed: [] },
+				}),
+			],
+		});
+
+		const payload = lastImportedPayload(eventService);
+		expect(payload.counts.workflows).toEqual({
+			created: 1,
+			updated: 0,
+			skipped: 0,
+			archived: 1,
+			deleted: 1,
+		});
+		expect(payload.counts.folders).toEqual({ removed: 1 });
+		// The settled policy is reported as-is; the dispatcher resolved it before any importer ran.
+		expect(payload.options.folderConflictPolicy).toBe('overwrite');
 	});
 
 	it('preserves the folder id for a single-scope import', () => {

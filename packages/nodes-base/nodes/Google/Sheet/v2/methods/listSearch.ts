@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { escapeBackslashQuotedValue } from '@utils/query-escaping';
+
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import { apiRequest } from '../transport';
@@ -17,7 +19,7 @@ export async function spreadSheetsSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = [];
 	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		query.push(`name contains '${escapeBackslashQuotedValue(filter)}'`);
 	}
 	query.push("mimeType = 'application/vnd.google-apps.spreadsheet'");
 

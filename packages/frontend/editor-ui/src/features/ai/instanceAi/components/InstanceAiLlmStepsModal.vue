@@ -11,7 +11,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
-import { parseStepSummary } from '@n8n/api-types';
+import { parseStepCacheBreaks, parseStepSummary } from '@n8n/api-types';
+import { describeCacheBreak } from '../utils/cache-break';
 import InstanceAiLlmStepDetail from './InstanceAiLlmStepDetail.vue';
 import InstanceAiRunWorkflowCodeSection from './InstanceAiRunWorkflowCodeSection.vue';
 
@@ -37,12 +38,24 @@ const selectedStep = computed(() => {
 	return steps.value.find((step) => step.stepNumber === selectedStepNumber.value);
 });
 
+const cacheBreaks = computed(() => parseStepCacheBreaks(steps.value));
+
 const stepSummaries = computed(() =>
-	steps.value.map((step) => ({
-		stepNumber: step.stepNumber,
-		summary: parseStepSummary(step.input, step.output),
-	})),
+	steps.value.map((step, index) => {
+		const cacheBreak = cacheBreaks.value[index];
+		return {
+			stepNumber: step.stepNumber,
+			summary: parseStepSummary(step.input, step.output),
+			cacheBreak,
+			cacheBreakDescription: cacheBreak ? describeCacheBreak(i18n, cacheBreak) : undefined,
+		};
+	}),
 );
+
+const selectedCacheBreak = computed(() => {
+	const index = steps.value.findIndex((step) => step.stepNumber === selectedStepNumber.value);
+	return index >= 0 ? cacheBreaks.value[index] : undefined;
+});
 
 watch(
 	() => props.open,
@@ -102,6 +115,10 @@ function formatTimestamp(ms: number): string {
 	} catch {
 		return String(ms);
 	}
+}
+
+function formatCompactTokens(tokens: number): string {
+	return tokens < 1000 ? tokens.toString() : `${(tokens / 1000).toFixed(1)}k`;
 }
 
 function formatStepCount(count: number): string {
@@ -181,19 +198,38 @@ function formatStepCount(count: number): string {
 					</div>
 					<div v-else :class="$style.stepList">
 						<button
-							v-for="{ stepNumber, summary } in stepSummaries"
+							v-for="{ stepNumber, summary, cacheBreak, cacheBreakDescription } in stepSummaries"
 							:key="stepNumber"
 							type="button"
 							:class="[
 								$style.stepButton,
+								cacheBreak && $style.stepButtonCacheBreak,
 								selectedStepNumber === stepNumber && $style.stepButtonSelected,
 							]"
 							@click="selectStep(stepNumber)"
 						>
 							<div :class="$style.stepTopRow">
-								<span :class="$style.stepNumber">{{ stepNumber + 1 }}</span>
+								<span :class="[$style.stepNumber, cacheBreak && $style.stepNumberCacheBreak]">
+									{{ stepNumber + 1 }}
+								</span>
 								<span v-if="summary.finishReason" :class="$style.finishReason">
 									{{ summary.finishReason }}
+								</span>
+								<span
+									v-if="cacheBreak"
+									:class="$style.cacheBreakBadge"
+									:title="cacheBreakDescription"
+									data-test-id="instance-ai-llm-step-cache-break"
+								>
+									<N8nIcon icon="triangle-alert" />
+									{{ i18n.baseText('instanceAi.debug.runDebug.cacheBreak') }}
+									<span :class="$style.cacheBreakTokens">
+										{{
+											i18n.baseText('instanceAi.debug.runDebug.cacheBreakLostTokens', {
+												interpolate: { count: formatCompactTokens(cacheBreak.lostTokens) },
+											})
+										}}
+									</span>
 								</span>
 							</div>
 							<span v-if="summary.toolNames.length > 0" :class="$style.stepTools">
@@ -221,6 +257,7 @@ function formatStepCount(count: number): string {
 							:output="selectedStep.output"
 							:run-steps="steps"
 							:workflow-code="runWorkflowCode"
+							:cache-break="selectedCacheBreak"
 						/>
 						<InstanceAiRunWorkflowCodeSection
 							v-if="runWorkflowCode.length > 0"
@@ -404,6 +441,41 @@ function formatStepCount(count: number): string {
 .runButtonSelected .runNumber,
 .stepButtonSelected .stepNumber {
 	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
+}
+
+.stepButtonCacheBreak:not(.stepButtonSelected) {
+	border-left: 2px solid var(--color--danger);
+	background: color-mix(in srgb, var(--color--danger) 6%, transparent);
+
+	&:hover {
+		background: color-mix(in srgb, var(--color--danger) 10%, var(--background--surface));
+	}
+}
+
+.cacheBreakBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	flex-shrink: 0;
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border: 1px solid color-mix(in srgb, var(--color--danger) 30%, transparent);
+	border-radius: var(--radius--xl);
+	background: color-mix(in srgb, var(--color--danger) 12%, transparent);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--color--danger);
+}
+
+.cacheBreakTokens {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.8;
+}
+
+.stepNumber.stepNumberCacheBreak {
+	background: var(--color--danger);
+	color: var(--color--neutral-white);
 }
 
 .currentBadge {

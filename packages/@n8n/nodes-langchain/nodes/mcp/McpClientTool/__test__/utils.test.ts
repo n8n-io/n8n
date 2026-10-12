@@ -120,3 +120,21 @@ describe('mcpToolToDynamicTool', () => {
 		expect(onCallTool.mock.calls[0][0]).toEqual({ url: 'https://example.com' });
 	});
 });
+
+describe('mcpToolToDynamicTool - attribution', () => {
+	const tool: McpTool = {
+		name: 'genie_ask',
+		description: 'Ask Genie',
+		inputSchema: { type: 'object', properties: {} } as JSONSchema7,
+	};
+
+	it('exposes the registry attribution in the tool metadata', () => {
+		vi.mocked(convertJsonSchemaToZod).mockReturnValue(z.object({}));
+
+		expect(mcpToolToDynamicTool(tool, vi.fn(), '(Powered by Genie)').metadata).toEqual({
+			isFromToolkit: true,
+			attribution: '(Powered by Genie)',
+		});
+		expect(mcpToolToDynamicTool(tool, vi.fn()).metadata).toEqual({ isFromToolkit: true });
+	});
+});

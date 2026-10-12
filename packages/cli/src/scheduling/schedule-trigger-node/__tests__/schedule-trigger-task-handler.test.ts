@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/naming-convention -- item keys are pinned to the legacy ScheduleTrigger emit shape */
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionEntity, ExecutionRepository, Project } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-task';
 import { ScheduleTriggerTaskHandler } from '../schedule-trigger-task-handler';
@@ -26,6 +27,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const workflowExecutionService = mock<WorkflowExecutionService>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: 'America/New_York' } });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
@@ -41,6 +43,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		triggerExecutionContextFactory,
 		workflowExecutionService,
 		ownershipService,
+		workflowPublisherService,
 	);
 
 	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
@@ -48,7 +51,12 @@ describe('ScheduleTriggerTaskHandler', () => {
 	// The reporter the executor hands to `execute`; `dispatched()` fires the spy above.
 	const report = createDispatchReporter(onDispatch);
 
-	const triggerNode = mock<INode>({ id: 'node-1', name: 'Schedule Trigger', disabled: false });
+	const triggerNode = mock<INode>({
+		id: 'node-1',
+		name: 'Schedule Trigger',
+		type: SCHEDULE_TRIGGER_NODE_TYPE,
+		disabled: false,
+	});
 
 	// Plain data objects, not mock proxies: the handler reads them as values.
 	const buildWorkflowData = (overrides: Partial<IWorkflowBase> = {}): IWorkflowBase =>
@@ -84,11 +92,34 @@ describe('ScheduleTriggerTaskHandler', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
-		triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(buildWorkflowData());
+		triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(buildWorkflowData());
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-1');
+		workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'My Project' }),
 		);
+	});
+
+	describe('run attribution', () => {
+		// Publication writes `workflow.activeVersionId` first and swaps the
+		// published-version mapping after, so mid-publication the row already names
+		// a version whose nodes are not the ones this occurrence runs.
+		test('attributes the run to the publisher of the version it runs, not the row pointer', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ versionId: 'version-running', activeVersionId: 'version-publishing' }),
+			);
+			workflowPublisherService.findPublisherUserId.mockResolvedValue('publisher-of-running');
+
+			await handler.execute(buildTask(), report);
+
+			expect(workflowPublisherService.findPublisherUserId).toHaveBeenCalledWith(
+				'wf-1',
+				'version-running',
+			);
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'publisher-of-running' }),
+			);
+		});
 	});
 
 	describe('task type', () => {
@@ -98,10 +129,36 @@ describe('ScheduleTriggerTaskHandler', () => {
 	});
 
 	describe('handoff', () => {
+		test('dispatches a Cron occurrence with an empty item and the existing dedup key', async () => {
+			const cronNode = mock<INode>({
+				id: 'node-1',
+				name: 'Cron',
+				type: CRON_NODE_TYPE,
+				disabled: false,
+			});
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
+				buildWorkflowData({ nodes: [cronNode] }),
+			);
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				cronNode,
+				[[{ json: {} }]],
+				additionalData,
+				'trigger',
+				undefined,
+				'7:2026-07-06T07:30:00.000Z',
+			);
+			expect(decision).toBe(createDispatchReporter(vi.fn()).dispatched());
+			expect(onDispatch).toHaveBeenCalledTimes(1);
+		});
+
 		test('creates a trigger execution with the occurrence-derived dedup key', async () => {
 			await handler.execute(buildTask(), report);
 
-			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
+			expect(triggerExecutionContextFactory.findPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
 			expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				triggerNode,
@@ -125,7 +182,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('falls back to the instance timezone when the workflow sets none', async () => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({ settings: {} }),
 			);
 
@@ -139,7 +196,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test("resolves the 'DEFAULT' timezone sentinel to the instance timezone", async () => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({ settings: { timezone: 'DEFAULT' } }),
 			);
 
@@ -232,16 +289,24 @@ describe('ScheduleTriggerTaskHandler', () => {
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
 
-		test('propagates a missing published workflow so the executor records the failure', async () => {
-			const error = new UnexpectedError('Published version not found for workflow');
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockRejectedValue(error);
+		test('reports no dispatch when the published workflow is gone', async () => {
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(null);
 
-			await expect(handler.execute(buildTask(), report)).rejects.toThrow(error);
+			const decision = await handler.execute(buildTask(), report);
+
+			// The workflow was unpublished after the claim: the occurrence completes as a
+			// no-op instead of retrying to dead-letter while the owner retires the job.
+			expect(decision).toBe(report.notDispatched());
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(scopedLogger.debug).toHaveBeenCalledWith(
+				expect.stringContaining('no published version'),
+				expect.objectContaining({ taskId: 'task-1', jobId: 7, workflowId: 'wf-1' }),
+			);
 		});
 
 		test('rejects a task whose trigger node is gone from the published workflow', async () => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({ nodes: [] }),
 			);
 
@@ -252,7 +317,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		});
 
 		test('rejects a task whose trigger node is disabled', async () => {
-			triggerExecutionContextFactory.loadPublishedWorkflowData.mockResolvedValue(
+			triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(
 				buildWorkflowData({ nodes: [mock<INode>({ id: 'node-1', disabled: true })] }),
 			);
 

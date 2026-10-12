@@ -7,6 +7,8 @@ export type {
 	DropdownMenuSlots,
 	DropdownMenuItemSlots,
 	DropdownMenuEmits,
+	DropdownMenuExposed,
+	DropdownMenuSearchMode,
 	DropdownMenuTrigger,
 	DropdownMenuPlacement,
 } from './DropdownMenu.types';

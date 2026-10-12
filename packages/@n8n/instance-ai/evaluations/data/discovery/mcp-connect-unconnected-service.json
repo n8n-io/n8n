@@ -1,0 +1,18 @@
+{
+	"id": "mcp-connect-unconnected-service",
+	"userMessage": "Pull up the notes from my last product review in Notion and give me a short summary.",
+	"instanceState": {
+		"mcp": { "registry": ["notion", "linear"], "connected": [] }
+	},
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{ "toolName": "mcp-servers", "args": { "action": "search" } },
+			{ "toolName": "mcp-servers", "args": { "action": "connect", "serverSlugs": ["notion"] } }
+		],
+		"noneOfToolCalls": [
+			{ "toolName": "mcp-servers", "args": { "action": "connect", "serverSlugs": ["linear"] } }
+		]
+	},
+	"rationale": "Nothing is connected: the agent must find Notion in the registry and offer it, not declare it unreachable or recite manual setup steps. Linear is a decoy.",
+	"maxSteps": 12
+}

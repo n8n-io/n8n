@@ -54,8 +54,8 @@ const SingleFieldTemplate: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const SingleField = SingleFieldTemplate.bind({});
-SingleField.args = {
+export const Default = SingleFieldTemplate.bind({});
+Default.args = {
 	label: 'Label',
 	placeholder: 'placeholder',
 };

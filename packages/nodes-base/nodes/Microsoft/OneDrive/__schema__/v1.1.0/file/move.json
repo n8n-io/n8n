@@ -1,0 +1,22 @@
+{
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"driveId": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

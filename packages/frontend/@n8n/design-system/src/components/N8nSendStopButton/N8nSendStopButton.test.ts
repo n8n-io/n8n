@@ -1,8 +1,7 @@
 import { fireEvent } from '@testing-library/vue';
 
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
-
 import N8nSendStopButton from './N8nSendStopButton.vue';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nSendStopButton);
 

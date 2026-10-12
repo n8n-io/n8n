@@ -604,3 +604,108 @@ export default workflow('test-id', 'EWS Raw SOAP')
 		});
 	});
 });
+
+describe('Per-resource operation defaults (Salesforce)', () => {
+	beforeAll(setupTestSchemas, 120_000);
+	afterAll(teardownTestSchemas);
+
+	// Salesforce declares one `operation` property per resource. The `search`
+	// resource defaults to `query`, so the editor omits it on save.
+	it('accepts the search resource when operation is omitted', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'search', query: 'SELECT Id FROM CampaignMember' },
+		});
+
+		expect(result.errors).toEqual([]);
+		expect(result.valid).toBe(true);
+	});
+
+	it('accepts the search resource when operation is explicit', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: {
+				resource: 'search',
+				operation: 'query',
+				query: 'SELECT Id FROM CampaignMember',
+			},
+		});
+
+		expect(result.valid).toBe(true);
+	});
+
+	it('still rejects the search resource when a required field is missing', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'search' },
+		});
+
+		expect(result.valid).toBe(false);
+	});
+});
+
+describe('Union discriminator error messages (Salesforce)', () => {
+	beforeAll(setupTestSchemas, 120_000);
+	afterAll(teardownTestSchemas);
+
+	it('lists all valid resources when the resource value is invalid', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'bogus', operation: 'create' },
+		});
+
+		expect(result.valid).toBe(false);
+		const message = result.errors.map((e) => e.message).join('\n');
+		expect(message).toContain('"account"');
+		expect(message).toContain('"lead"');
+		expect(message).toContain('"search"');
+	});
+
+	it('lists all valid operations when the operation value is invalid', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'lead', operation: 'bogus' },
+		});
+
+		expect(result.valid).toBe(false);
+		const message = result.errors.map((e) => e.message).join('\n');
+		expect(message).toContain('"create"');
+		expect(message).toContain('"delete"');
+		expect(message).toContain('"upsert"');
+	});
+});
+
+describe('Union discriminator error messages scoped to the selected resource', () => {
+	beforeAll(setupTestSchemas, 120_000);
+	afterAll(teardownTestSchemas);
+
+	it('omits operations belonging to other resources', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'lead', operation: 'bogus' },
+		});
+
+		const message = result.errors.map((e) => e.message).join('\n');
+		// "invoke" belongs to flow, "query" to search, "addComment" to case
+		expect(message).not.toContain('"invoke"');
+		expect(message).not.toContain('"query"');
+		expect(message).not.toContain('"addComment"');
+	});
+
+	it('lists only the single valid operation for a one-operation resource', () => {
+		requireSchema('n8n-nodes-base.salesforce', 1);
+
+		const result = validateNodeConfig('n8n-nodes-base.salesforce', 1, {
+			parameters: { resource: 'search', operation: 'bogus' },
+		});
+
+		const message = result.errors.map((e) => e.message).join('\n');
+		expect(message).toContain('expected one of: "query".');
+	});
+});

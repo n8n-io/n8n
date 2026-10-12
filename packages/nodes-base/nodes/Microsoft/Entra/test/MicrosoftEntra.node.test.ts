@@ -14,7 +14,11 @@ import type { MockInstance } from 'vitest';
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 import { ignoreHttpStatusErrorsConfig } from '../descriptions/common';
-import { handleErrorPostReceive } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	validateGroupPreSend,
+	validateUserPreSend,
+} from '../GenericFunctions';
 
 describe('Microsoft Entra Node', () => {
 	const testHarness = new NodeTestHarness();
@@ -109,6 +113,83 @@ describe('Microsoft Entra Node', () => {
 		for (const testData of tests) {
 			testHarness.setupTest(testData, { credentials });
 		}
+	});
+
+	describe('Path ID wiring', () => {
+		const { properties } = new MicrosoftEntra().description;
+		const resourceLocators = properties.filter((property) => property.type === 'resourceLocator');
+
+		const routingUrls = properties
+			.flatMap((property) => property.options ?? [])
+			.flatMap((option) =>
+				'routing' in option && typeof option.routing?.request?.url === 'string'
+					? [option.routing.request.url]
+					: [],
+			);
+
+		// Derived from the sinks rather than hardcoded, so a new ID in a URL template fails here
+		// until it is guarded too.
+		const interpolatedIds = new Set(
+			routingUrls.flatMap((url) =>
+				[...url.matchAll(/\$parameter\["([^"]+)"\]/g)].map(([, name]) => name),
+			),
+		);
+
+		it('interpolates only the user and group IDs into request URLs', () => {
+			expect([...interpolatedIds].sort()).toEqual(['group', 'user']);
+		});
+
+		it('has a resource locator for every parameter interpolated into a request URL', () => {
+			for (const name of interpolatedIds) {
+				expect(
+					resourceLocators.filter((property) => property.name === name).length,
+					name,
+				).toBeGreaterThan(0);
+			}
+		});
+
+		it('guards every resource locator', () => {
+			for (const property of resourceLocators) {
+				expect(property.routing?.send?.preSend, property.displayName).toContain(
+					property.name === 'user' ? validateUserPreSend : validateGroupPreSend,
+				);
+			}
+		});
+
+		it('encodes every parameter interpolated into a request URL', () => {
+			for (const url of routingUrls) {
+				const unwrapped = url.replace(/encodeURIComponent\(\s*\$parameter\["[^"]+"\]\s*\)/g, '');
+				expect(unwrapped, url).not.toContain('$parameter[');
+			}
+		});
+
+		// The guard reads the ID with `extractValue`, while the URL template reads it through
+		// `$parameter`, which additionally applies a stored `__regex`. Declaring `extractValue` on a
+		// mode would split the two readings apart.
+		it('declares no extractValue on any resource locator mode', () => {
+			for (const property of resourceLocators) {
+				for (const mode of property.modes ?? []) {
+					expect(
+						mode.extractValue,
+						`${property.displayName} / ${mode.displayName}`,
+					).toBeUndefined();
+				}
+			}
+		});
+
+		it('still composes the @odata.id body when adding a user to a group', () => {
+			const addGroupUser = properties.find(
+				(property) =>
+					property.name === 'user' &&
+					property.displayOptions?.show?.operation?.includes('addGroup'),
+			);
+
+			expect(addGroupUser?.routing?.send?.property).toBe('@odata.id');
+			expect(addGroupUser?.routing?.send?.value).toContain(
+				'directoryObjects/{{ encodeURIComponent($value) }}',
+			);
+			expect(addGroupUser?.routing?.send?.preSend).toContain(validateUserPreSend);
+		});
 	});
 
 	describe('HTTP status handling', () => {

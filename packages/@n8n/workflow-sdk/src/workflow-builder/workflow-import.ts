@@ -18,7 +18,10 @@ import {
 	type IDataObject,
 	type CredentialReference,
 	type NewCredentialValue,
+	type DeclaredConnection,
+	type InputTarget,
 } from '../types/base';
+import { assertSingleErrorHandler, isInputTarget } from './node-builders/node-builder';
 
 /**
  * Result of parsing a workflow JSON
@@ -64,6 +67,10 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 
 		// For nodes without a name (like sticky notes), use the id as the internal name
 		const nodeName = n8nNode.name ?? n8nNode.id;
+		// An imported handle builds no connections of its own — the builder wires the graph.
+		// An error route is the exception: recording it like an authored node does is what
+		// gives the handler's chain or composite the usual expansion.
+		const declaredConnections: DeclaredConnection[] = [];
 		const instance: NodeInstance<string, string, unknown> = {
 			type: n8nNode.type,
 			version,
@@ -71,7 +78,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 			name: nodeName,
 			config: {
 				name: nodeName,
-				parameters: n8nNode.parameters as IDataObject,
+				parameters: n8nNode.parameters,
 				credentials,
 				...({ _originalName: n8nNode.name } as Record<string, unknown>),
 				position: n8nNode.position,
@@ -86,6 +93,7 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 				alwaysOutputData: n8nNode.alwaysOutputData,
 				onError: n8nNode.onError,
 				extendsCredential: n8nNode.extendsCredential,
+				customTelemetryTags: n8nNode.customTelemetryTags,
 			},
 			update(config) {
 				return { ...this, config: { ...this.config, ...config } };
@@ -99,11 +107,26 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 			output() {
 				throw new Error('Nodes from fromJSON() do not support output()');
 			},
-			onError() {
-				throw new Error('Nodes from fromJSON() do not support onError()');
+			onError(handler: NodeInstance<string, string, unknown> | InputTarget) {
+				assertSingleErrorHandler(handler);
+				// The route wins over the saved value, the same way it does on an authored
+				// node: a node that continues on its regular output has no error pin to
+				// route from. A node the builder never routes from keeps what it imported.
+				this.config.onError = 'continueErrorOutput';
+				declaredConnections.push(
+					isInputTarget(handler)
+						? {
+								target: handler.node,
+								outputIndex: 0,
+								targetInputIndex: handler.inputIndex,
+								connectionType: 'error',
+							}
+						: { target: handler, outputIndex: 0, connectionType: 'error' },
+				);
+				return this;
 			},
 			getConnections() {
-				return [];
+				return [...declaredConnections];
 			},
 		};
 

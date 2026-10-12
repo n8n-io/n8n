@@ -1,17 +1,22 @@
 import type {
 	BuiltTelemetry,
+	BuiltTool,
 	CredentialProvider,
 	SerializableAgentState,
 	StreamChunk,
 } from '@n8n/agents';
-import type { User } from '@n8n/db';
+import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
+import type { Settings, SettingsRepository, User } from '@n8n/db';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { Like } from '@n8n/typeorm';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentsService } from '../agents.service';
+import { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { AgentThreadEntity } from '../entities/agent-thread.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -19,25 +24,52 @@ import {
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
+import type { AgentConfigService } from '../agent-config.service';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
+import type { AgentSkillsService } from '../agent-skills.service';
 import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
 import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
-function setup() {
+function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentsService = mock<AgentsService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const n8nMemory = mock<N8nMemory>();
 	const agentThreadRepository = mock<AgentThreadRepository>();
+	const agentConfig = mock<AgentConfigService>();
+	const agentSkills = mock<AgentSkillsService>();
+	const credentialService = mock<InstanceAiCredentialService>();
+	const settingsRepository = mock<SettingsRepository>();
+	const agentsSettingsService = new AgentsSettingsService(
+		settingsRepository,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
 		agentsBuilderService,
 		n8nMemory,
 		agentThreadRepository,
+		agentConfig,
+		agentSkills,
+		agentsSettingsService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
-	const delegate = service.createDelegate(user, 'project-1', credentialProvider);
+	const credentialProviderFor = vi.fn().mockReturnValue(credentialProvider);
+	const delegate = service.createDelegate(
+		user,
+		'project-1',
+		credentialProviderFor,
+		credentialService,
+		options,
+	);
 
 	return {
 		service,
@@ -47,7 +79,12 @@ function setup() {
 		agentsBuilderService,
 		n8nMemory,
 		agentThreadRepository,
+		agentConfig,
+		agentSkills,
 		credentialProvider,
+		credentialProviderFor,
+		credentialService,
+		settingsRepository,
 	};
 }
 
@@ -56,6 +93,14 @@ async function* asAsyncGenerator<T>(values: T[]): AsyncGenerator<T> {
 }
 
 const abortSignal = new AbortController().signal;
+
+function fakeMcpTools(): Map<string, BuiltTool> {
+	const notionSearch: BuiltTool = {
+		name: 'notion_search',
+		description: 'Search connected Notion content',
+	};
+	return new Map([[notionSearch.name, notionSearch]]);
+}
 
 describe('InstanceAiBuilderDelegateAdapterService', () => {
 	afterEach(() => {
@@ -69,7 +114,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const chunks: StreamChunk[] = [
 				{ type: 'text-delta', id: '1', delta: 'Hello ' },
-				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'read_config', input: {} },
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'agent-context', input: {} },
 				{ type: 'text-delta', id: '2', delta: 'world' },
 			];
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator(chunks));
@@ -90,10 +135,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 
 		it('builds the sub-agent session from the delegate session: thread ids, run id, model config, and addendum', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
+			const { delegate, agentsBuilderService, user, credentialProvider, credentialService } =
+				setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 			const sentinel = { functionId: 'host' } as unknown as BuiltTelemetry;
+			const mcpTools = fakeMcpTools();
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
@@ -102,6 +149,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				abortSignal,
 				telemetry: sentinel,
+				mcpTools,
 			});
 
 			expect(agentsBuilderService.buildAgent).toHaveBeenCalledWith(
@@ -109,6 +157,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				'project-1',
 				'hi',
 				credentialProvider,
+				credentialService,
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
@@ -118,7 +167,33 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
+					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
+			);
+		});
+
+		it('enables deterministic model catalogs for eval builder sessions', async () => {
+			const { delegate, agentsBuilderService } = setup({ useEvalModelCatalog: true });
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
+			});
+
+			expect(agentsBuilderService.buildAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				'hi',
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ useEvalModelCatalog: true }),
 			);
 		});
 
@@ -135,39 +210,123 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				abortSignal,
 			});
 
-			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
+			const [, , , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
 		});
 
-		it('rejects when the user lacks agent:update scope', async () => {
-			const { delegate, agentsBuilderService } = setup();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+		it.each([
+			{ hasScope: false, enabled: true },
+			{ hasScope: true, enabled: false },
+		])(
+			'rejects a new build with scope $hasScope and Agents enabled $enabled',
+			async ({ hasScope, enabled }) => {
+				const { delegate, agentsBuilderService, settingsRepository } = setup();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(hasScope);
+				settingsRepository.findByKeyInContext.mockResolvedValue(
+					mock<Settings>({ value: String(enabled) }),
+				);
 
-			await expect(
-				delegate.streamBuild('agent-1', 'hi', {
-					threadId: 'ia-builder:t:agent-1',
-					hostThreadId: 'thread-1',
-					runId: 'run-1',
-					modelConfig: 'anthropic/claude-sonnet-host-resolved',
-					abortSignal,
-				}),
-			).rejects.toThrow(ForbiddenError);
-			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
+				await expect(
+					delegate.streamBuild('agent-1', 'hi', {
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+					}),
+				).rejects.toThrow(ForbiddenError);
+				expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
+			},
+		);
+
+		it('builds the credential provider from the concrete target agent id', async () => {
+			const { delegate, agentsBuilderService, credentialProviderFor } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
+
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				abortSignal,
+			});
+
+			expect(credentialProviderFor).toHaveBeenCalledWith('agent-1');
 		});
 	});
 
 	describe('resumeBuild', () => {
-		it('forwards to agentsBuilderService.resumeBuild and accumulates text-delta chunks', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
+		it.each([true, false])(
+			'resumes the saved builder call with Agents enabled %s',
+			async (enabled) => {
+				const {
+					delegate,
+					agentsBuilderService,
+					user,
+					credentialProvider,
+					credentialService,
+					settingsRepository,
+				} = setup();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				settingsRepository.findByKeyInContext.mockResolvedValue(
+					mock<Settings>({ value: String(enabled) }),
+				);
+				const mcpTools = fakeMcpTools();
+
+				const chunks: StreamChunk[] = [
+					{ type: 'text-delta', id: '1', delta: 'Using ' },
+					{ type: 'text-delta', id: '2', delta: 'Slack.' },
+				];
+				agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator(chunks));
+
+				const turn = await delegate.resumeBuild(
+					'agent-1',
+					{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+						mcpTools,
+					},
+				);
+
+				const seen: unknown[] = [];
+				for await (const chunk of turn.fullStream) seen.push(chunk);
+
+				expect(seen).toHaveLength(2);
+				await expect(turn.text).resolves.toBe('Using Slack.');
+				expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
+					'agent-1',
+					'project-1',
+					'run-1',
+					'call-1',
+					{ approved: true },
+					credentialProvider,
+					credentialService,
+					user,
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+						instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+						mcpTools,
+						onRequiredArtifact: expect.any(Function),
+					},
+				);
+			},
+		);
+
+		it('enables deterministic model catalogs when an eval session resumes', async () => {
+			const { delegate, agentsBuilderService } = setup({ useEvalModelCatalog: true });
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 
-			const chunks: StreamChunk[] = [
-				{ type: 'text-delta', id: '1', delta: 'Using ' },
-				{ type: 'text-delta', id: '2', delta: 'Slack.' },
-			];
-			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator(chunks));
-
-			const turn = await delegate.resumeBuild(
+			await delegate.resumeBuild(
 				'agent-1',
 				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
 				{
@@ -179,27 +338,16 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				},
 			);
 
-			const seen: unknown[] = [];
-			for await (const chunk of turn.fullStream) seen.push(chunk);
-
-			expect(seen).toHaveLength(2);
-			await expect(turn.text).resolves.toBe('Using Slack.');
 			expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
 				'run-1',
 				'call-1',
 				{ approved: true },
-				credentialProvider,
-				user,
-				{
-					threadId: 'ia-builder:t:agent-1',
-					hostThreadId: 'thread-1',
-					runId: 'run-1',
-					modelConfig: 'anthropic/claude-sonnet-host-resolved',
-					abortSignal,
-					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
-				},
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ useEvalModelCatalog: true }),
 			);
 		});
 
@@ -300,7 +448,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(
 				checkpointWith({
-					'call-1': { toolCallId: 'call-1', toolName: 'read_config', input: {}, suspended: false },
+					'call-1': {
+						toolCallId: 'call-1',
+						toolName: 'agent-context',
+						input: {},
+						suspended: false,
+					},
 				}),
 			);
 
@@ -353,33 +506,93 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('readAgentArtifact', () => {
+		const CONFIG = { name: 'Support Triage' } as unknown as AgentJsonConfig;
+
+		it('returns the config, the skill bodies, and the builder-s own config hash', async () => {
+			const { delegate, agentConfig, agentSkills } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentConfig.getConfig.mockResolvedValue(CONFIG);
+			const skills = { skill_triage_rules: mock<AgentSkill>({ name: 'Triage rules' }) };
+			agentSkills.listSkills.mockResolvedValue(skills);
+
+			const result = await delegate.readAgentArtifact!('agent-1');
+
+			expect(agentConfig.getConfig).toHaveBeenCalledWith('agent-1', 'project-1');
+			expect(agentSkills.listSkills).toHaveBeenCalledWith('agent-1', 'project-1');
+			// The same value agent-context hands the model, so a consumer can dedupe on it.
+			expect(result).toEqual({ config: CONFIG, skills, configHash: getAgentConfigHash(CONFIG) });
+		});
+
+		it('returns null for an agent with no config yet, rather than throwing', async () => {
+			// A freshly created agent the builder has not written to: nothing to
+			// snapshot, and not a failure worth surfacing on a build.
+			const { delegate, agentConfig, agentSkills } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentConfig.getConfig.mockRejectedValue(new UserError('Agent has no JSON config yet.'));
+
+			await expect(delegate.readAgentArtifact!('agent-1')).resolves.toBeNull();
+			expect(agentSkills.listSkills).not.toHaveBeenCalled();
+		});
+
+		it('propagates a read failure instead of reporting it as no config', async () => {
+			// A missing agent or a dead DB is not "nothing to snapshot" — the callers
+			// treat a throw as no snapshot and log it, so it stays diagnosable.
+			const { delegate, agentConfig } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentConfig.getConfig.mockRejectedValue(new NotFoundError('Agent not found'));
+
+			await expect(delegate.readAgentArtifact!('agent-1')).rejects.toThrow('Agent not found');
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentConfig } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.readAgentArtifact!('agent-1')).rejects.toThrow(ForbiddenError);
+			expect(agentConfig.getConfig).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('createAgent', () => {
 		it('enforces agent:create scope and delegates to AgentsService', async () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.create.mockResolvedValue(mock<Agent>({ id: 'agent-9', name: 'New agent' }));
+			agentsService.createOrAdopt.mockResolvedValue({
+				agent: mock<Agent>({ id: 'agent-9', name: 'New agent' }),
+				adopted: false,
+			});
 
 			const result = await delegate.createAgent('New agent');
 
-			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent', {
-				id: undefined,
-				adoptUnconfiguredOnCollision: true,
+			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {
+				actor: { kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 			});
-			expect(result).toEqual({ agentId: 'agent-9', projectId: 'project-1' });
+			expect(result).toEqual({
+				agentId: 'agent-9',
+				projectId: 'project-1',
+				name: 'New agent',
+				adopted: false,
+			});
 		});
 
 		it('creates under the id the caller minted for its unsaved artifact', async () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.create.mockResolvedValue(
-				mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'New agent' }),
-			);
+			agentsService.createOrAdopt.mockResolvedValue({
+				agent: mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'New agent' }),
+				adopted: false,
+			});
 
-			await delegate.createAgent('New agent', 'aBcDeFgHiJkLmNoP');
-
-			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'New agent', {
+			await delegate.createAgent('New agent', {
 				id: 'aBcDeFgHiJkLmNoP',
-				adoptUnconfiguredOnCollision: true,
+				adoptOnCollision: true,
+			});
+
+			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'New agent', {
+				actor: { kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
+				id: 'aBcDeFgHiJkLmNoP',
+				adoptOnCollision: true,
 			});
 		});
 
@@ -388,66 +601,43 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 
 			await expect(delegate.createAgent('New agent')).rejects.toThrow(ForbiddenError);
-			expect(agentsService.create).not.toHaveBeenCalled();
+			expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
 		});
-	});
 
-	describe('listAgents', () => {
-		it('maps agent entities to listing rows, most recently updated first', async () => {
+		it('reports the persisted name and adoption when the id collided', async () => {
 			const { delegate, agentsService } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			agentsService.findByProjectId.mockResolvedValue([
-				mock<Agent>({
-					id: 'agent-1',
-					name: 'Published Agent',
-					activeVersionId: 'v1',
-					updatedAt: new Date('2026-07-14T00:00:00.000Z'),
-				}),
-				mock<Agent>({
-					id: 'agent-2',
-					name: 'Draft Agent',
-					activeVersionId: null,
-					updatedAt: new Date('2026-07-10T00:00:00.000Z'),
-				}),
-			]);
+			agentsService.createOrAdopt.mockResolvedValue({
+				agent: mock<Agent>({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }),
+				adopted: true,
+			});
 
-			const result = await delegate.listAgents();
-
-			expect(agentsService.findByProjectId).toHaveBeenCalledWith('project-1');
-			expect(result).toEqual([
-				{
-					agentId: 'agent-1',
-					name: 'Published Agent',
-					published: true,
-					updatedAt: '2026-07-14T00:00:00.000Z',
-				},
-				{
-					agentId: 'agent-2',
-					name: 'Draft Agent',
-					published: false,
-					updatedAt: '2026-07-10T00:00:00.000Z',
-				},
-			]);
-		});
-
-		it('rejects when the user lacks agent:read scope', async () => {
-			const { delegate, agentsService, user } = setup();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
-
-			await expect(delegate.listAgents()).rejects.toThrow(ForbiddenError);
-			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
-			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+			await expect(
+				delegate.createAgent('New agent', { id: 'aBcDeFgHiJkLmNoP', adoptOnCollision: true }),
+			).resolves.toEqual({
+				agentId: 'aBcDeFgHiJkLmNoP',
 				projectId: 'project-1',
+				name: 'Support Triage',
+				adopted: true,
 			});
 		});
-	});
 
-	describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
-		it('requires Preview markdown links instead of forbidding them', () => {
-			expect(INSTANCE_AI_BUILDER_ADDENDUM).not.toContain('not visible in this chat');
-			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('[Preview]');
-			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('relative path');
-			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('Do not invent absolute URLs');
+		it('additionally requires agent:update to adopt on a collision', async () => {
+			const { delegate, agentsService } = setup();
+			const userHasScopes = vi
+				.spyOn(checkAccess, 'userHasScopes')
+				.mockImplementation(async (_user, scopes) => !scopes.includes('agent:update'));
+
+			await expect(
+				delegate.createAgent('New agent', { id: 'aBcDeFgHiJkLmNoP', adoptOnCollision: true }),
+			).rejects.toThrow(ForbiddenError);
+			expect(agentsService.createOrAdopt).not.toHaveBeenCalled();
+			expect(userHasScopes).toHaveBeenCalledWith(
+				expect.anything(),
+				['agent:create', 'agent:update'],
+				false,
+				expect.objectContaining({ projectId: 'project-1' }),
+			);
 		});
 	});
 
@@ -499,9 +689,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			});
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
 			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-2');
-			expect(impls[0].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
 			expect(impls[0].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
-			expect(impls[1].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
 			expect(impls[1].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
 		});
 
@@ -524,6 +712,13 @@ describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
 		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('never ask the user to create them manually');
 		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
 			'the orchestrator will provision them and call you again',
+		);
+	});
+
+	it('tells the builder to use Sessions tab for agent history', () => {
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('say Sessions tab for history');
+		expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain(
+			'Never say Runs, Executions, or Activity History for agents.',
 		);
 	});
 });

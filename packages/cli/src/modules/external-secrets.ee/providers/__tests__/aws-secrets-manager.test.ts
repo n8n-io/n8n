@@ -103,7 +103,12 @@ describe('AwsSecretsManager', () => {
 				}),
 			);
 
-			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
+
+			// Request connection reuse from our agents. Smithy treats a supplied agent as
+			// external and skips its own keep-alive defaults, so we pass them explicitly to
+			// restore the AWS SDK-equivalent behavior (Smithy NodeHttpHandler defaults).
+			expect(transport.getNodeAgent).toHaveBeenCalledWith({ keepAlive: true, maxSockets: 50 });
 
 			// The SDK client is built with our agents as its requestHandler, while the
 			// region and credentials it was already given are left untouched.

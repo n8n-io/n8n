@@ -28,7 +28,7 @@ import {
 	N8nText,
 	N8nCallout,
 } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
@@ -44,7 +44,7 @@ import AgentEditorModalFileRow, {
 } from '@/features/ai/chatHub/components/AgentEditorModalFileRow.vue';
 import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -667,7 +667,6 @@ watch(documentVisibility, (visibility) => {
 							/>
 						</div>
 						<N8nButton
-							type="tertiary"
 							icon="plus"
 							variant="subtle"
 							:class="$style.addFileButton"

@@ -165,22 +165,6 @@
 	opacity: 0.8;
 }
 
-// Pagination
-.el-pager li,
-.el-pagination .btn-prev,
-.el-pagination .btn-next {
-	background: none;
-	color: var(--color--text--shade-1);
-}
-.el-pagination button:disabled {
-	background: none;
-	color: var(--color--text--tint-2);
-}
-.el-pager li.btn-quicknext,
-.el-pager li.btn-quickprev {
-	color: var(--color--text--shade-1);
-}
-
 // Notification
 .el-notification {
 	border-radius: 4px;

@@ -32,6 +32,21 @@ describe('InstanceAiThreadGrantRepository', () => {
 		});
 	});
 
+	describe('revoke', () => {
+		it('deletes the exact grant row', async () => {
+			const repo = buildRepo();
+			repo.delete = vi.fn().mockResolvedValue({ affected: 1 });
+
+			await repo.revoke('thread-1', 'user-1', 'workflows:setup-skip:slackApi');
+
+			expect(repo.delete).toHaveBeenCalledWith({
+				threadId: 'thread-1',
+				userId: 'user-1',
+				grantKey: 'workflows:setup-skip:slackApi',
+			});
+		});
+	});
+
 	describe('findKeys', () => {
 		it('returns the grant keys for the thread/user as a set', async () => {
 			const repo = buildRepo();

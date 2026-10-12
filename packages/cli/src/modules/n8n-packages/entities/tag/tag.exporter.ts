@@ -1,11 +1,29 @@
+import type { TagEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageTagRequirement } from '../../spec/requirements.schema';
-import { serializedTagSchema } from '../../spec/serialized/tag.schema';
+import { serializedTagSchema, type SerializedTag } from '../../spec/serialized/tag.schema';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName, type WorkflowTagUsage } from './tag.types';
+
+type TagPackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	workflows: 'exclude';
+	workflowMappings: 'exclude';
+	folderMappings: 'exclude';
+};
+
+const serializePayload = definePackageSerializationPayload<
+	TagEntity,
+	SerializedTag,
+	TagPackageKeyHandling
+>();
 
 export interface TagExportRequest {
 	usages: WorkflowTagUsage[];
@@ -19,35 +37,31 @@ export interface TagExportResult {
 
 @Service()
 export class TagExporter {
-	export(request: TagExportRequest): TagExportResult {
+	async export(request: TagExportRequest): Promise<TagExportResult> {
 		const requirementsByTagId = new Map<string, PackageTagRequirement>();
 
 		for (const { workflowId, tag } of request.usages) {
-			const requirement = requirementsByTagId.get(tag.id) ?? {
+			const requirement: PackageTagRequirement = requirementsByTagId.get(tag.id) ?? {
 				id: tag.id,
 				name: tag.name,
-				usedByWorkflows: [],
+				usedBy: [],
 			};
-			if (!requirement.usedByWorkflows.includes(workflowId)) {
-				requirement.usedByWorkflows.push(workflowId);
+			if (!requirement.usedBy.some(({ id }) => id === workflowId)) {
+				requirement.usedBy.push({ kind: 'workflow', id: workflowId });
 			}
 			requirementsByTagId.set(tag.id, requirement);
 		}
 
 		const requirements = [...requirementsByTagId.values()].sort(compareTagsByName);
 
-		const allocator = new UniqueFilenameAllocator('tags', 'tag');
+		const tagsDir = packageDirectory('tags');
 		const entries: ManifestEntry[] = [];
 
 		for (const { id, name } of requirements) {
-			const tagDirectory = allocator.allocate(name);
-			const serializedTag = serializedTagSchema.parse({ id, name });
-			request.writer.writeDirectory(tagDirectory);
-			request.writer.writeFile(
-				`${tagDirectory}/tag.json`,
-				JSON.stringify(serializedTag, null, '\t'),
+			const serializedTag = serializedTagSchema.parse(serializePayload({ id, name }));
+			entries.push(
+				await writeManifestEntry(request.writer, 'tags', tagsDir, { id, name }, serializedTag),
 			);
-			entries.push({ id, name, target: tagDirectory });
 		}
 
 		return { entries, requirements };

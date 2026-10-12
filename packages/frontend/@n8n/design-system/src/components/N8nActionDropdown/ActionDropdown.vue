@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	disabled: false,
 	maxHeight: '',
 	modal: true,
+	suppressCloseAutoFocus: false,
 });
 
 const $style = useCssModule();
@@ -48,17 +49,22 @@ const getItemTestId = (id: T): string => {
 	return `action-${id}`;
 };
 
+const toMenuItem = (
+	item: ActionDropdownItem<T>,
+): DropdownMenuItemProps<T, ActionDropdownItem<T>> => ({
+	id: item.id,
+	testId: item.testId ?? getItemTestId(item.id),
+	label: item.label,
+	icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+	disabled: item.disabled,
+	divided: item.divided,
+	class: getItemClasses(item),
+	data: item,
+	children: item.children?.map(toMenuItem),
+});
+
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
-	return props.items.map((item) => ({
-		id: item.id,
-		testId: item.testId ?? getItemTestId(item.id),
-		label: item.label,
-		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
-		disabled: item.disabled,
-		divided: item.divided,
-		class: getItemClasses(item),
-		data: item,
-	}));
+	return props.items.map(toMenuItem);
 });
 
 const emit = defineEmits<{
@@ -105,6 +111,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
+			:suppress-close-auto-focus="suppressCloseAutoFocus"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			:width="width"
@@ -118,6 +125,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					variant="ghost"
 					:class="$style.activator"
 					:size="activatorSize"
+					:icon-size="activatorIconSize"
 					:icon="activatorIcon"
 					:disabled="disabled"
 					:aria-label="t('actionDropdown.activator')"
@@ -152,7 +160,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
 						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
 					>
-						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
+						<N8nBadge variant="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>

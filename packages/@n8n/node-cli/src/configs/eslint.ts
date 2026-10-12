@@ -1,17 +1,20 @@
 import eslint from '@eslint/js';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
-import { globalIgnores } from 'eslint/config';
+import type { Linter } from 'eslint';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import importPlugin from 'eslint-plugin-import-x';
 import n8nNodesPlugin from 'eslint-plugin-n8n-nodes-base';
-import tseslint, { type ConfigArray } from 'typescript-eslint';
+import tseslint from 'typescript-eslint';
+
+type ConfigArray = ReturnType<typeof defineConfig>;
 
 function createConfig(supportCloud = true): ConfigArray {
 	const communityNodesRecommended = supportCloud
 		? n8nCommunityNodesPlugin.configs.recommended
 		: n8nCommunityNodesPlugin.configs.recommendedWithoutN8nCloudSupport;
 
-	return tseslint.config(
+	return defineConfig(
 		globalIgnores(['dist']),
 		{
 			files: ['**/*.ts'],
@@ -19,7 +22,8 @@ function createConfig(supportCloud = true): ConfigArray {
 				eslint.configs.recommended,
 				tseslint.configs.recommended,
 				communityNodesRecommended,
-				importPlugin.configs['flat/recommended'],
+				// import-x uses typescript-eslint's ESLint types for its preset.
+				importPlugin.configs['flat/recommended'] as Linter.Config,
 			],
 			rules: {
 				'prefer-spread': 'off',
@@ -33,19 +37,18 @@ function createConfig(supportCloud = true): ConfigArray {
 			},
 		},
 		{
-			files: ['package.json'],
+			files: ['package.json', '**/*.node.json'],
 			// Apply the community-nodes recommended config here as well so that
-			// rules gating on `package.json` (e.g. no-overrides-field,
-			// valid-peer-dependencies, no-forbidden-lifecycle-scripts) actually
-			// fire. The `**/*.ts` block above scopes its `extends:` to TypeScript
-			// only, which means ESLint never lints package.json under that block —
+			// rules for JSON files fire. The `**/*.ts` block above scopes its
+			// `extends:` to TypeScript only, so ESLint does not lint JSON there —
 			// see CE-1023 for the analogous issue in @n8n/scan-community-package.
 			extends: [communityNodesRecommended],
 			rules: {
 				...n8nNodesPlugin.configs.community.rules,
 			},
 			languageOptions: {
-				parser: tseslint.parser,
+				// typescript-eslint bundles a parser type that differs from ESLint's parser type.
+				parser: tseslint.parser as Linter.Parser,
 				parserOptions: {
 					extraFileExtensions: ['.json'],
 				},

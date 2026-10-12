@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
@@ -163,6 +163,7 @@ export class MfaService {
 	}
 
 	private async disableMfaForUser(userId: string) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await this.userRepository.update(userId, {
 			mfaEnabled: false,
 			mfaSecret: null,

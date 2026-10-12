@@ -2,6 +2,7 @@ import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
+	McpOAuth2CredentialTypeSchema,
 } from '../agent-json-config.schema';
 
 const minimalConfig = {
@@ -9,6 +10,42 @@ const minimalConfig = {
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help the user.',
 };
+
+describe('AgentJsonConfigSchema — capability activation', () => {
+	it.each([undefined, true, false])('preserves enabled=%s on capability references', (enabled) => {
+		const activation = enabled === undefined ? {} : { enabled };
+		const config = {
+			...minimalConfig,
+			skills: [{ type: 'skill', id: 'notes', ...activation }],
+			tools: [
+				{ type: 'custom', id: 'search', requireApproval: true, ...activation },
+				{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', ...activation },
+				{
+					type: 'node',
+					name: 'read_file',
+					...activation,
+					node: {
+						nodeType: 'n8n-nodes-base.readBinaryFile',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+					},
+				},
+			],
+			subAgents: { agents: [{ agentId: 'agent-2', useWhen: 'Review notes', ...activation }] },
+		};
+
+		expect(AgentJsonConfigSchema.parse(config)).toMatchObject(config);
+	});
+
+	it('rejects a non-boolean activation flag', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				skills: [{ type: 'skill', id: 'notes', enabled: 'false' }],
+			}).success,
+		).toBe(false);
+	});
+});
 
 describe('AgentJsonConfigSchema — model', () => {
 	it('accepts AWS Bedrock model names containing a version colon', () => {
@@ -43,6 +80,19 @@ describe('AgentJsonConfigSchema — reasoning', () => {
 		});
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('McpOAuth2CredentialTypeSchema', () => {
+	it.each(['oAuth2Api', 'githubOAuth2Api', 'gmailOAuth2'])(
+		'accepts the OAuth2 credential type %s',
+		(credentialType) => {
+			expect(McpOAuth2CredentialTypeSchema.safeParse(credentialType).success).toBe(true);
+		},
+	);
+
+	it('rejects a non-OAuth2 credential type', () => {
+		expect(McpOAuth2CredentialTypeSchema.safeParse('httpBearerAuth').success).toBe(false);
 	});
 });
 
@@ -487,13 +537,16 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 			collectionName: 'product-docs',
 		};
 
-		it('flags a collision with a custom tool id', () => {
-			const collisions = findVectorStoreToolNameCollisions({
-				tools: [{ type: 'custom', id: 'search_product_docs' }],
-				vectorStores: [vectorStore],
-			});
-			expect(collisions).toEqual(['search_product_docs']);
-		});
+		it.each([undefined, true, false])(
+			'checks active custom tool collisions with enabled=%s',
+			(enabled) => {
+				const collisions = findVectorStoreToolNameCollisions({
+					tools: [{ type: 'custom', id: 'search_product_docs', enabled }],
+					vectorStores: [vectorStore],
+				});
+				expect(collisions).toEqual(enabled === false ? [] : ['search_product_docs']);
+			},
+		);
 
 		it('flags a collision with an explicit workflow tool name', () => {
 			const collisions = findVectorStoreToolNameCollisions({
@@ -602,5 +655,174 @@ describe('formatAgentConfigZodError', () => {
 		expect(formatted).toContain('MCP server name cannot be blank');
 		expect(formatted).not.toContain('"validation": "regex"');
 		expect(result.error.issues[0]?.message).toBe('MCP server name cannot be blank');
+	});
+});
+
+describe('WorkflowToolJsonConfigSchema — inputs', () => {
+	it('round-trips workflow input bindings', () => {
+		const inputs = {
+			chatId: { mode: 'ai' },
+			query: { mode: 'ai', description: 'Input guidance' },
+			shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+			label: { mode: 'fixed', value: '={{ literal }}' },
+			count: { mode: 'expression', value: '={{ 1 + 2 }}' },
+		};
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs,
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools?.[0]).toMatchObject({
+				type: 'workflow',
+				inputs,
+			});
+		}
+	});
+
+	it.each([
+		{ mode: 'fixed' },
+		{ mode: 'expression' },
+		{ mode: 'expression', value: '{{ 1 }}' },
+		{ mode: 'expression', value: '=   ' },
+	])('rejects an invalid binding: %j', (binding) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						botName: binding,
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts nested JSON arrays and objects as fixed values', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			tools: [
+				{
+					type: 'workflow',
+					workflow: 'Show Shopping List',
+					inputs: {
+						tags: { mode: 'fixed', value: ['a', 'b', { nested: [1, 2, null] }] },
+						meta: { mode: 'fixed', value: { count: 3, flag: true, items: ['x'] } },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.tools?.[0]).toMatchObject({
+				inputs: {
+					tags: { mode: 'fixed', value: ['a', 'b', { nested: [1, 2, null] }] },
+					meta: { mode: 'fixed', value: { count: 3, flag: true, items: ['x'] } },
+				},
+			});
+		}
+	});
+
+	it('rejects non-JSON values inside fixed arrays and objects', () => {
+		const cases: Array<[string, unknown]> = [
+			['array with undefined', { mode: 'fixed', value: ['a', undefined, 'b'] }],
+			['object with undefined', { mode: 'fixed', value: { ok: undefined } }],
+			['array with function', { mode: 'fixed', value: [() => 1] }],
+			['object with Date', { mode: 'fixed', value: { when: new Date() } }],
+		];
+
+		for (const [, value] of cases) {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				tools: [
+					{
+						type: 'workflow',
+						workflow: 'Show Shopping List',
+						inputs: { field: value },
+					},
+				],
+			});
+
+			expect(result.success).toBe(false);
+		}
+	});
+});
+
+describe('AgentJsonConfigSchema — config.guardrails.budget', () => {
+	it('keeps the saved amounts when the guardrail is off', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: {
+				guardrails: {
+					budget: {
+						enabled: false,
+						monthlyBudgetUsd: 20,
+						alertThresholdPercent: 80,
+						sessionCostCapUsd: 2,
+					},
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.config?.guardrails?.budget).toEqual({
+			enabled: false,
+			monthlyBudgetUsd: 20,
+			alertThresholdPercent: 80,
+			sessionCostCapUsd: 2,
+		});
+	});
+
+	it.each(['sessionCostCapUsd', 'monthlyBudgetUsd'] as const)('rejects a %s of 0', (field) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, [field]: 0 } } },
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a negative amount', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: -1 } } },
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a percent outside 1–100', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: {
+				guardrails: {
+					budget: { enabled: true, monthlyBudgetUsd: 10, alertThresholdPercent: 0 },
+				},
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a percent without a monthly budget', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, alertThresholdPercent: 80 } } },
+		});
+
+		expect(result.success).toBe(false);
 	});
 });

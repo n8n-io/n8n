@@ -36,10 +36,12 @@ function toProducerOptions(options: IDataObject): KafkaProducerOptions {
 		// `true` to 1 (leader only) — a bug not worth carrying into a new version.
 		acks: options.acks === true ? -1 : 0,
 		// Unlike v1 (kafkajs tolerates `undefined`), confluent's native library
-		// crashes if `timeout` reaches the producer config as `undefined` — which
-		// it would be here if the user never added the option, since a `collection`
-		// param only carries keys the user explicitly set, ignoring its declared
-		// UI default. Fall back to that same default explicitly.
+		// crashes if either of these reaches the producer config as `undefined` —
+		// which they would be if the user never added the option, since a
+		// `collection` param only carries the keys the user explicitly set,
+		// ignoring its declared UI default. Fall back to those defaults here.
+		// 'none' is a codec of its own, so it reaches the config explicitly.
+		compression: (options.compression ?? 'none') as KafkaJS.CompressionTypes,
 		timeout: (options.timeout as number | undefined) ?? DEFAULT_TIMEOUT_MS,
 	};
 }
@@ -279,6 +281,22 @@ const versionDescription: INodeTypeDescription = {
 					type: 'boolean',
 					default: false,
 					description: 'Whether or not producer must wait for acknowledgement from all replicas',
+				},
+				{
+					displayName: 'Compression',
+					name: 'compression',
+					type: 'options',
+					default: 'none',
+					description:
+						'Codec used to compress messages. Version 1 of the Kafka Trigger cannot read Snappy, LZ4 or Zstd — use GZIP or None while version 1 triggers consume this topic.',
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items -- 'None' (no compression) reads better last than between LZ4 and Snappy
+					options: [
+						{ name: 'GZIP', value: 'gzip' },
+						{ name: 'LZ4', value: 'lz4' },
+						{ name: 'Snappy', value: 'snappy' },
+						{ name: 'Zstd', value: 'zstd' },
+						{ name: 'None', value: 'none' },
+					],
 				},
 				{
 					displayName: 'Timeout',

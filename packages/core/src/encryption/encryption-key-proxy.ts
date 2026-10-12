@@ -1,11 +1,20 @@
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-export type KeyInfo = { id: string; value: string; algorithm: string };
+/** Whether ciphertext produced with this key carries a `keyId:` prefix. */
+export type KeyFormat = 'prefixed' | 'no-prefix';
+
+export type KeyInfo = { id: string; value: string; algorithm: string; format: KeyFormat };
 
 export interface IEncryptionKeyProvider {
 	getActiveKey(): Promise<KeyInfo>;
 	getKeyById(id: string): Promise<KeyInfo | null>;
+	/**
+	 * The seeded legacy CBC row. Resolves the no-prefix decrypt path: ciphertext
+	 * without a key-id prefix is legacy data, and this key unwraps to the
+	 * instance key it was encrypted with. The provider falls back to the
+	 * instance key when the row is absent, so old data stays readable.
+	 */
 	getLegacyKey(): Promise<KeyInfo>;
 }
 
@@ -24,10 +33,6 @@ export class EncryptionKeyProxy {
 
 	setProvider(provider: IEncryptionKeyProvider | undefined): void {
 		this.provider = provider;
-	}
-
-	isConfigured(): boolean {
-		return this.provider !== undefined;
 	}
 
 	async getActiveKey(): Promise<KeyInfo> {

@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nText } from '@n8n/design-system';
-import { useSpeechSynthesis } from '@vueuse/core';
-import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import {
-	buildDisplayGroups,
-	type DisplayGroup,
-} from '@/features/ai/shared/agentsChat/displayGroups';
+import { useSessionStorage } from '@vueuse/core';
+import { TIME } from '@/app/constants/durations';
+import { isAssistantGroup, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	getMessageThinkingSegments,
@@ -22,12 +20,20 @@ import type {
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
+import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
+import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
+import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
+import { isRetryableChatError } from '../utils/errors';
+import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
@@ -37,11 +43,23 @@ const props = defineProps<{
 	agentId?: string;
 	sessionId?: string;
 	canSendToAssistant?: boolean;
+	dismissedFixToolCallIds?: string[];
+	canIncreaseBudget?: boolean;
+	budgetIncreasePending?: boolean;
+	retryMessageId?: string;
+	retryDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
+	retry: [messageId: string];
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [executionId?: string];
+	sendToAssistant: [event?: AgentSendToAssistantEvent];
+	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
+}>();
+
+defineSlots<{
+	/** Host actions for a finished agent reply, next to the default copy action. */
+	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 }>();
 
 const i18n = useI18n();
@@ -49,9 +67,11 @@ const canSendToAssistant = computed(() =>
 	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
 );
 
-function onFixWithAssistant(group: DisplayGroup) {
+function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistantFailure[]) {
+	if (group.kind === 'backgroundJobSignal') return;
 	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
-	emit('sendToAssistant', executionId);
+	if (!executionId || failures.length === 0) return;
+	emit('sendToAssistant', { executionId, failures });
 }
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
@@ -81,12 +101,11 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 }
 
 /**
- * Open cards always render. Once resolved, answered interactive cards clear
- * from the chat (both approval and n8n chat cards collapse into their
- * tool-step summary) — but display-only n8n chat cards persist: they are
- * content, and being born resolved they would otherwise never render at all.
+ * Tool approvals replace the composer. Answered chat cards collapse into
+ * their tool-step summary. Display-only cards remain in the conversation.
  */
 function shouldRenderInteractive(payload: InteractivePayload): boolean {
+	if (payload.toolName === APPROVAL_TOOL_NAME) return false;
 	if (!payload.resolvedAt) return !!payload.runId;
 	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
@@ -140,7 +159,76 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildDisplayGroups(props.messages));
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+const retryErrorMessageId = computed(() => {
+	const message = props.messages.at(-1);
+	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
+});
+const streamingGroupId = computed(() =>
+	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
+
+const formatChatDividerTimestamp = useChatDividerTimestamp();
+
+/**
+ * Divider label by group id: the first user message gets one, and so does any
+ * later user message whose gap since the previous one exceeds the window above.
+ * Messages without a `createdAt` (older history) are skipped and never become
+ * the "previous" reference.
+ */
+const dividerLabels = computed(() => {
+	const labels = new Map<string, string>();
+	let previousUserCreatedAt: number | undefined;
+	for (const group of displayGroups.value) {
+		if (group.kind !== 'message' || group.message.role !== 'user') continue;
+		const createdAt = group.message.createdAt;
+		if (createdAt === undefined) continue;
+		// A new local day always earns a divider, even inside the window: without
+		// it a chat that crosses midnight files today's messages under a
+		// "Yesterday at ..." heading.
+		if (
+			previousUserCreatedAt === undefined ||
+			createdAt - previousUserCreatedAt > TIME.HOUR ||
+			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
+		) {
+			labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		}
+		previousUserCreatedAt = createdAt;
+	}
+	return labels;
+});
+
+/**
+ * Dismissing the note silences it for the rest of this preview chat, so a user
+ * who does not want the hand-off is not asked again on every request in the
+ * conversation. A new chat asks again.
+ */
+const changeNoteDismissedKey = computed(function getChangeNoteDismissedKey() {
+	return `N8N_AGENT_PREVIEW_CHANGE_NOTE_DISMISSED:${props.sessionId ?? ''}`;
+});
+const changeNoteDismissed = useSessionStorage(changeNoteDismissedKey, false);
+
+/**
+ * Newest user message that reads as a request to change the agent itself. Only
+ * the newest one carries the hand-off note, so a chat full of such asks doesn't
+ * repeat the same banner.
+ */
+const changeRequestGroupId = computed(() =>
+	canSendToAssistant.value && !changeNoteDismissed.value
+		? displayGroups.value.findLast(
+				(group) =>
+					group.kind === 'message' &&
+					group.message.role === 'user' &&
+					looksLikeAgentChangeRequest(group.message.content),
+			)?.id
+		: undefined,
+);
+
+function onEditWithAssistant(changeRequest: string) {
+	emit('sendToAssistant', { changeRequest });
+}
 
 function isThinkingActive(message: ChatMessage): boolean {
 	return (
@@ -150,15 +238,12 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getAssistantGroupContent(group: DisplayGroup): string {
+	if (group.kind === 'backgroundJobSignal') return '';
 	if (group.kind === 'toolRun') {
 		return group.finalMessage?.content ?? '';
 	}
 
 	return group.message.role === 'assistant' ? group.message.content : '';
-}
-
-function isAssistantGroup(group: DisplayGroup): boolean {
-	return group.kind === 'toolRun' || group.message.role === 'assistant';
 }
 
 function getAssistantRunContent(groupId: string): string {
@@ -221,6 +306,7 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 }
 
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
+	if (group.kind === 'backgroundJobSignal') return false;
 	if (group.kind === 'toolRun') {
 		return (
 			group.finalMessage !== undefined &&
@@ -285,18 +371,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			: openMemoryFooterGroupId.value;
 }
 
-const spokenMessageId = ref<string | null>(null);
-const spokenText = computed(() => {
-	if (!spokenMessageId.value) return '';
-	return getAssistantRunContent(spokenMessageId.value);
-});
-const speech = useSpeechSynthesis(spokenText, {
-	pitch: 1,
-	rate: 1,
-	volume: 1,
-});
-const isSpeechSynthesisAvailable = computed(() => speech.isSupported.value);
-
 // How close to the bottom the user has to be for incoming chunks to keep
 // following them. Small enough that a deliberate scroll-up breaks the lock,
 // large enough that sub-pixel DOM growth during markdown rendering doesn't
@@ -338,24 +412,6 @@ function scrollToBottom(): void {
 
 function autoScrollIfSticky(): void {
 	if (isStickToBottom.value) scrollToBottom();
-}
-
-function isSpeakingMessage(messageId: string): boolean {
-	return spokenMessageId.value === messageId && speech.status.value === 'play';
-}
-
-function toggleReadAloud(messageId: string): void {
-	if (!isSpeechSynthesisAvailable.value) return;
-
-	if (spokenMessageId.value === messageId && speech.status.value === 'play') {
-		speech.stop();
-		spokenMessageId.value = null;
-		return;
-	}
-
-	speech.stop();
-	spokenMessageId.value = messageId;
-	speech.speak();
 }
 
 // Snap to the bottom on initial render with a preloaded history. Two hooks on
@@ -403,40 +459,31 @@ watch(
 	autoScrollIfSticky,
 	{ flush: 'post' },
 );
-
-watch(
-	() => speech.status.value,
-	(status) => {
-		if (status === 'end') {
-			spokenMessageId.value = null;
-		}
-	},
-);
-
-watch(spokenText, (value) => {
-	if (!value && spokenMessageId.value) {
-		speech.stop();
-		spokenMessageId.value = null;
-	}
-});
-
-onBeforeUnmount(() => {
-	speech.stop();
-});
 </script>
 
 <template>
 	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
-			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
+			<div
+				v-if="dividerLabels.has(group.id)"
+				:class="$style.timestampDivider"
+				data-testid="agent-chat-timestamp-divider"
+			>
+				<N8nText size="small" color="text-light">{{ dividerLabels.get(group.id) }}</N8nText>
+			</div>
+			<div v-if="group.kind === 'backgroundJobSignal'" :class="[$style.message, $style.assistant]">
+				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+			</div>
+			<div v-else-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
 					<AgentChatToolSteps
 						v-if="group.toolCalls.length"
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
-						@fix-with-assistant="onFixWithAssistant(group)"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -460,8 +507,17 @@ onBeforeUnmount(() => {
 							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
+					<AgentChatRetryError
+						v-if="group.finalMessage && isRetryableChatError(group.finalMessage)"
+						:message="group.finalMessage.content"
+						:retry-message-id="
+							group.finalMessage.id === retryErrorMessageId ? retryMessageId : undefined
+						"
+						:retry-disabled="retryDisabled"
+						@retry="emit('retry', $event)"
+					/>
 					<div
-						v-if="group.finalMessage?.content"
+						v-else-if="group.finalMessage?.content"
 						:class="[
 							$style.chatMessage,
 							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
@@ -471,6 +527,14 @@ onBeforeUnmount(() => {
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.budgetNotices"
+						:key="notice.id"
+						:code="notice.code"
+						:can-increase="canIncreaseBudget"
+						:pending="budgetIncreasePending"
+						@increase="emit('increase-budget', $event)"
+					/>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -500,17 +564,22 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
-						/>
+						>
+							<template v-if="group.finalMessage" #extra-actions>
+								<slot
+									name="message-actions"
+									:message="group.finalMessage"
+									:execution-id="group.executionId ?? group.finalMessage.executionId"
+								/>
+							</template>
+						</AgentChatMessageActions>
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
-							!group.finalMessage.content &&
+							group.id === streamingGroupId &&
+							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length
 						"
@@ -528,8 +597,9 @@ onBeforeUnmount(() => {
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
 						:can-fix-with-assistant="canSendToAssistant"
+						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
-						@fix-with-assistant="onFixWithAssistant(group)"
+						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -552,6 +622,15 @@ onBeforeUnmount(() => {
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
+					<N8nText
+						v-if="group.message.role === 'user' && group.message.author"
+						size="xsmall"
+						color="text-light"
+						:class="$style.author"
+						data-testid="agent-chat-message-author"
+					>
+						{{ group.message.author.name }}
+					</N8nText>
 					<div
 						v-if="group.message.role === 'user' && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -559,7 +638,16 @@ onBeforeUnmount(() => {
 						{{ group.message.content }}
 					</div>
 					<template v-else>
-						<template v-for="item in getMessageRenderItems(group.message)" :key="item.key">
+						<AgentChatRetryError
+							v-if="isRetryableChatError(group.message)"
+							:message="group.message.content"
+							:retry-message-id="
+								group.message.id === retryErrorMessageId ? retryMessageId : undefined
+							"
+							:retry-disabled="retryDisabled"
+							@retry="emit('retry', $event)"
+						/>
+						<template v-for="item in getMessageRenderItems(group.message)" v-else :key="item.key">
 							<div
 								v-if="item.type === 'text'"
 								:class="[
@@ -578,7 +666,49 @@ onBeforeUnmount(() => {
 								/>
 							</div>
 						</template>
+						<AgentBudgetNoticeCard
+							v-for="notice in group.message.budgetNotices ?? []"
+							:key="notice.id"
+							:code="notice.code"
+							:can-increase="canIncreaseBudget"
+							:pending="budgetIncreasePending"
+							@increase="emit('increase-budget', $event)"
+						/>
 					</template>
+					<N8nCallout
+						v-if="group.id === changeRequestGroupId"
+						theme="info"
+						icon="wand-sparkles"
+						slim
+						:class="$style.changeRequestNote"
+						data-testid="agent-preview-change-request-note"
+					>
+						{{ i18n.baseText('agents.builder.preview.editRequest.note') }}
+						<template #actions>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="xsmall"
+								:class="$style.changeRequestDismiss"
+								:aria-label="i18n.baseText('generic.dismiss')"
+								:title="i18n.baseText('generic.dismiss')"
+								data-testid="agent-preview-change-request-dismiss"
+								@click="changeNoteDismissed = true"
+							/>
+						</template>
+						<template #trailingContent>
+							<N8nButton
+								size="small"
+								variant="subtle"
+								:class="$style.changeRequestAction"
+								data-testid="agent-preview-change-request-link"
+								@click="onEditWithAssistant(group.message.content)"
+							>
+								<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+								{{ i18n.baseText('agents.builder.preview.editRequest.action') }}
+							</N8nButton>
+						</template>
+					</N8nCallout>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -607,12 +737,17 @@ onBeforeUnmount(() => {
 						<AgentChatMessageActions
 							v-if="getAssistantRunContent(group.id)"
 							:content="getAssistantRunContent(group.id)"
-							:is-speech-synthesis-available="isSpeechSynthesisAvailable"
-							:is-speaking="isSpeakingMessage(group.id)"
 							:can-send-to-assistant="canSendToAssistant"
-							@read-aloud="toggleReadAloud(group.id)"
 							@send-to-assistant="emit('sendToAssistant')"
-						/>
+						>
+							<template #extra-actions>
+								<slot
+									name="message-actions"
+									:message="group.message"
+									:execution-id="group.message.executionId"
+								/>
+							</template>
+						</AgentChatMessageActions>
 						<AgentChatMemoryUsed
 							:memories="getMemoriesUsedInAssistantRun(group.id)"
 							@update:open="setMemoryFooterOpen(group.id, $event)"
@@ -643,6 +778,7 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .messages {
 	flex: 1;
+	width: 100%;
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
@@ -651,8 +787,10 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	scrollbar-width: none;
+	max-width: 800px;
+	margin: 0 auto;
 
-	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
 
 	&::-webkit-scrollbar {
 		display: none;
@@ -661,6 +799,11 @@ onBeforeUnmount(() => {
 
 .message {
 	padding-top: var(--spacing--4xs);
+}
+
+.timestampDivider {
+	align-self: center;
+	padding: var(--spacing--sm) 0 var(--spacing--xs);
 }
 
 .content {
@@ -704,19 +847,49 @@ onBeforeUnmount(() => {
 	margin-bottom: var(--spacing--2xs);
 }
 
+/* Stretches past the right-aligned user bubble it follows, and stacks the
+   hand-off button under the note instead of squeezing it in beside the text.
+   `stretch` gives the text row the full width the dismiss button needs to sit
+   at its right edge, as the panel's error and warning banners do. */
+.changeRequestNote {
+	align-self: stretch;
+	margin-top: var(--spacing--2xs);
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--2xs);
+}
+
+.changeRequestDismiss {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Hugs its label instead of stretching with the row above it. */
+.changeRequestAction {
+	align-self: flex-start;
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
+
+	& + .chatMessage {
+		margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	}
 }
 
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--background--subtle);
+	background: var(--assistant--color--background--user-bubble);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
+}
+
+.author {
+	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
 .chatMessageError {

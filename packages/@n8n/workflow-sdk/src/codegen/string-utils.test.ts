@@ -1,4 +1,12 @@
-import { escapeString, needsQuoting, formatKey, escapeRegexChars } from './string-utils';
+import {
+	escapeString,
+	needsQuoting,
+	formatKey,
+	escapeRegexChars,
+	escapeTemplateLiteral,
+	formatStringLiteral,
+	indentContinuationLines,
+} from './string-utils';
 
 describe('string-utils', () => {
 	describe('escapeString', () => {
@@ -162,6 +170,47 @@ describe('string-utils', () => {
 
 		it('returns string without special chars unchanged', () => {
 			expect(escapeRegexChars('simple')).toBe('simple');
+		});
+	});
+
+	describe('formatStringLiteral', () => {
+		it('keeps single-line strings single-quoted', () => {
+			expect(formatStringLiteral("it's fine")).toBe("'it\\'s fine'");
+		});
+
+		it('uses a template literal when the value has line breaks', () => {
+			expect(formatStringLiteral('line1\nline2')).toBe('`line1\nline2`');
+		});
+
+		it('escapes backticks, interpolations and backslashes inside template literals', () => {
+			expect(escapeTemplateLiteral('a `b` ${c} d\\e\n')).toBe('a \\`b\\` \\${c} d\\\\e\n');
+		});
+
+		it('escapes carriage returns, which a template literal would otherwise normalize away', () => {
+			expect(formatStringLiteral('a\r\nb')).toBe('`a\\r\nb`');
+		});
+
+		it('keeps a value with only a carriage return single-quoted', () => {
+			expect(formatStringLiteral('a\rb')).toBe("'a\\rb'");
+		});
+	});
+
+	describe('indentContinuationLines', () => {
+		it('indents continuation lines outside template literals only', () => {
+			const text = '{\n  a: `x\ny`,\n  b: 1\n}';
+			expect(indentContinuationLines(text, '    ')).toBe('{\n      a: `x\ny`,\n      b: 1\n    }');
+		});
+
+		it('treats an escaped backtick as content, not a boundary', () => {
+			const text = 'a: `x \\` y\nz`,\nb: 1';
+			expect(indentContinuationLines(text, '  ')).toBe('a: `x \\` y\nz`,\n  b: 1');
+		});
+
+		it('ignores backticks inside quoted strings and comments', () => {
+			const text = "{\n  a: 'tick ` here',\n  /** @example `x` */\n  b: `line1\nline2`,\n  c: 1\n}";
+			expect(indentContinuationLines(text, '  ')).toBe(
+				"{\n    a: 'tick ` here',\n    /** @example `x` */\n    b: `line1\nline2`,\n    c: 1\n  }",
+			);
 		});
 	});
 });

@@ -149,7 +149,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if user is not found', async () => {
-		const token = jwtService.sign({ sub: uuid() });
+		const token = jwtService.sign('passwordReset', { sub: uuid() });
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')

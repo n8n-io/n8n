@@ -1,8 +1,8 @@
 import { Meta } from '@storybook/addon-docs/blocks';
 
-<Meta title="Style guide/CSS Tokens" />
+<Meta title="Style Guide/Tokens" />
 
-# CSS Tokens
+# Tokens
 
 Our CSS variables are layered so we can keep the design system consistent and themeable.
 
@@ -17,7 +17,7 @@ There are two main token layers
 
 Raw design decisions: color scales, spacing, typography, radius, heights, durations, easing, and shadows.
 
-```scss
+```css
 --color--orange-500: oklch(...);
 --spacing--sm: 1rem;
 --font-size--md: 1rem;
@@ -46,7 +46,7 @@ Naming is validated by `@n8n/css-var-naming` in `packages/@n8n/stylelint-config/
 - Use lowercase alphanumerics; single dashes are allowed only within a group.
 - Keep values after properties (for example `--color--primary`, not `--primary--color`).
 
-```scss
+```css
 /* valid */
 --background--surface
 --button--color--background--primary--hover
@@ -72,7 +72,7 @@ Variable names must include a recognized property group such as `color`, `backgr
 
 When replacing older tokens, preserve compatibility by chaining fallbacks:
 
-```scss
+```css
 --color--secondary: var(--color-secondary, var(--color--purple-600));
 ```
 

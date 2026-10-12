@@ -266,6 +266,89 @@ export const roleMultiOptions: INodeProperties = {
 	default: [],
 };
 
+// moderation --------------------------------------------------------------------------------
+
+// Maps the reason option value to the text written to Discord's audit log
+export const moderationReasonLabels: Record<string, string> = {
+	suspicious_spam: 'Suspicious or spam account',
+	compromised: 'Compromised or hacked account',
+	rule_break: 'Breaking server rules',
+};
+
+export const moderationReason: INodeProperties = {
+	displayName: 'Reason',
+	name: 'reason',
+	type: 'options',
+	description: 'The reason recorded in the server audit log',
+	options: [
+		{
+			name: 'Suspicious or Spam Account',
+			value: 'suspicious_spam',
+		},
+		{
+			name: 'Compromised or Hacked Account',
+			value: 'compromised',
+		},
+		{
+			name: 'Breaking Server Rules',
+			value: 'rule_break',
+		},
+		{
+			name: 'Other',
+			value: 'other',
+		},
+	],
+	default: 'suspicious_spam',
+};
+
+export const moderationReasonCustom: INodeProperties = {
+	displayName: 'Custom Reason',
+	name: 'reasonCustom',
+	type: 'string',
+	default: '',
+	description: 'The custom reason recorded in the server audit log',
+	placeholder: 'e.g. Posting phishing links',
+	displayOptions: {
+		show: {
+			reason: ['other'],
+		},
+	},
+};
+
+export const banDeleteHistory: INodeProperties = {
+	displayName: 'Delete Message History',
+	name: 'deleteMessageSeconds',
+	type: 'options',
+	description: "How much of the user's recent message history to delete on ban",
+	options: [
+		{ name: 'No Cleanup', value: 0 },
+		{ name: 'Previous Hour', value: 3600 },
+		{ name: 'Previous 6 Hours', value: 21600 },
+		{ name: 'Previous 12 Hours', value: 43200 },
+		{ name: 'Previous 24 Hours', value: 86400 },
+		{ name: 'Previous 3 Days', value: 259200 },
+		{ name: 'Previous 7 Days', value: 604800 },
+	],
+	default: 0,
+};
+
+export const timeoutDuration: INodeProperties = {
+	displayName: 'Duration',
+	name: 'duration',
+	type: 'options',
+	description: 'How long the member is prevented from interacting (Discord max is 28 days)',
+	options: [
+		{ name: '60 Seconds', value: 60 },
+		{ name: '5 Minutes', value: 300 },
+		{ name: '1 Hour', value: 3600 },
+		{ name: '1 Day', value: 86400 },
+		{ name: '1 Week', value: 604800 },
+		{ name: '28 Days (Max)', value: 2419200 },
+		{ name: 'Remove Timeout', value: 'remove' },
+	],
+	default: 3600,
+};
+
 export const maxResultsNumber: INodeProperties = {
 	displayName: 'Max Results',
 	name: 'maxResults',

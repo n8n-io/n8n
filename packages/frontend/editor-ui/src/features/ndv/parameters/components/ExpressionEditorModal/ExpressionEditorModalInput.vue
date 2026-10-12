@@ -16,17 +16,20 @@ import { mappingDropCursor } from '@/features/shared/editors/plugins/codemirror/
 import { editorKeymap } from '@/features/shared/editors/plugins/codemirror/keymap';
 import { expressionCloseBrackets } from '@/features/shared/editors/plugins/codemirror/expressionCloseBrackets';
 import type { TargetNodeParameterContext } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 
 type Props = {
 	modelValue: string;
 	path: string;
 	targetNodeParameterContext?: TargetNodeParameterContext;
 	isReadOnly?: boolean;
+	additionalData?: IDataObject;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 	targetNodeParameterContext: undefined,
+	additionalData: () => ({}),
 });
 
 const emit = defineEmits<{
@@ -60,6 +63,7 @@ const { segments, readEditorValue, editor, hasFocus, focus } = useExpressionEdit
 		parameterPath: props.path,
 	},
 	targetNodeParameterContext: props.targetNodeParameterContext,
+	additionalData: () => props.additionalData,
 });
 
 watch(

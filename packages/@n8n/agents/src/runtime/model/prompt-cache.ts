@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
@@ -40,7 +41,7 @@ export function getEffectiveAnthropicCacheTtl(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): '5m' | '1h' | undefined {
-	if (getModelProvider(modelId) !== 'anthropic' || !isEnabledForProvider(config, 'anthropic')) {
+	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
 		return undefined;
 	}
 	return getAnthropicCacheTtl(config);
@@ -54,9 +55,10 @@ function isEnabledForProvider(
 	return config[provider] !== false;
 }
 
-/** Provider prefix of a `provider/model` id (e.g. `anthropic` from `anthropic/claude-...`). */
-export function getModelProvider(modelId: string): string {
-	return modelId.split('/')[0];
+/** Providers that speak the Anthropic Messages API (including Vertex Claude). */
+export function isAnthropicMessagesProvider(modelId: string): boolean {
+	const provider = getProviderPrefix(modelId);
+	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
 }
 
 /**
@@ -144,11 +146,29 @@ export function buildInstructionPromptCacheOptions(
 	config: PromptCachingConfig | undefined,
 	modelId: string,
 ): ProviderOptions | undefined {
-	if (getModelProvider(modelId) !== 'anthropic' || !isEnabledForProvider(config, 'anthropic')) {
+	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(config, 'anthropic')) {
 		return undefined;
 	}
 
 	return buildAnthropicCacheControl(config);
+}
+
+/**
+ * Cache options for the recovered-skills system message. It reuses the
+ * instruction breakpoint, so it is cached only when the instructions are.
+ * Undefined when the extra breakpoint would leave no slot for the
+ * conversation breakpoint next to the caller's tool and message breakpoints.
+ */
+export function buildSkillInstructionCacheOptions(
+	instructionProviderOptions: ProviderOptions | undefined,
+	aiTools: ToolSet,
+	messages: ModelMessage[],
+): ProviderOptions | undefined {
+	if (!hasAnthropicCacheControl(instructionProviderOptions)) return undefined;
+	const callerBreakpoints = countAnthropicBreakpoints([], aiTools, messages);
+	// Instructions + skills + conversation breakpoint.
+	if (callerBreakpoints + 3 > MAX_ANTHROPIC_CACHE_BREAKPOINTS) return undefined;
+	return instructionProviderOptions;
 }
 
 /** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */
@@ -157,7 +177,7 @@ export function buildCallPromptCacheOptions(
 	modelId: string,
 	context: { agentName: string; instructions: string },
 ): ProviderOptions | undefined {
-	if (getModelProvider(modelId) !== 'openai' || !isEnabledForProvider(config, 'openai')) {
+	if (getProviderPrefix(modelId) !== 'openai' || !isEnabledForProvider(config, 'openai')) {
 		return undefined;
 	}
 
@@ -201,10 +221,7 @@ export function applyRuntimeCacheBreakpoints(params: {
 	staticToolCacheName: string | undefined;
 }): { messages: ModelMessage[]; aiTools: ToolSet } {
 	const { system, messages, aiTools, promptCaching, modelId, staticToolCacheName } = params;
-	if (
-		getModelProvider(modelId) !== 'anthropic' ||
-		!isEnabledForProvider(promptCaching, 'anthropic')
-	) {
+	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(promptCaching, 'anthropic')) {
 		return { messages, aiTools };
 	}
 

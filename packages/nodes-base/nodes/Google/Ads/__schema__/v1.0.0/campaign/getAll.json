@@ -43,9 +43,12 @@
         "status": {
             "type": "string"
         },
+        "videoTrueviewViews": {
+            "type": "string"
+        },
         "videoViews": {
             "type": "string"
         }
     },
-    "version": 7
+    "version": 8
 }

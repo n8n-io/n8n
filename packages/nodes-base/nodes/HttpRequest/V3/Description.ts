@@ -1,6 +1,34 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
+
+const webdavMethodOptions: INodePropertyOptions[] = [
+	'COPY',
+	'MKCOL',
+	'MOVE',
+	'PROPFIND',
+	'REPORT',
+].flatMap((method) => [
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			show: {
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			hide: {
+				method: [{ _cnd: { not: method } }],
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+]);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -42,6 +70,7 @@ export const mainProperties: INodeProperties[] = [
 				name: 'PUT',
 				value: 'PUT',
 			},
+			...webdavMethodOptions,
 		],
 		default: 'GET',
 		description: 'The request method to use',
@@ -122,12 +151,12 @@ export const mainProperties: INodeProperties[] = [
 			},
 		},
 		builderHint: {
-			propertyHint: `Pick by how the API authenticates, not by what the user calls it:
-- "Authorization: Bearer <token>" → httpBearerAuth (single token field, best UX). Use this for OpenAI, Anthropic, GitHub PATs, Stripe, Notion, and any service whose docs say "Bearer".
-- Custom header like X-API-Key, apikey, X-Auth-Token, or non-Bearer Authorization schemes → httpHeaderAuth (user must enter the header name and/or full value).
+			propertyHint: `For a NEW credential default to httpTemplatedCustomAuth whenever the auth fits header/query/body values — API keys and bearer tokens alike ("Authorization: Bearer <token>" becomes the template {"headers":{"Authorization":"Bearer {{api_key}}"}}). Setup rejects new plain generic credentials on this node UNLESS the user explicitly asked for that type — an explicit user choice always wins, don't argue with it.
+Pick a plain generic type when reusing an existing credential of that type, or when the user explicitly asks for one, matching how the API authenticates:
+- "Authorization: Bearer <token>" → httpBearerAuth.
+- Custom header like X-API-Key, apikey, X-Auth-Token, or non-Bearer Authorization schemes → httpHeaderAuth.
 - API key in the query string (?api_key=...) → httpQueryAuth.
-- username + password → httpBasicAuth.
-A user saying "API key" or "header auth" usually means httpBearerAuth only when the docs use the Authorization: Bearer <token> scheme. Use httpHeaderAuth for custom header names or non-Bearer Authorization schemes where the full header value/prefix must be user-controlled.`,
+For what a template cannot express, use the matching type for new and existing credentials alike: username + password → httpBasicAuth, digest → httpDigestAuth, OAuth → oAuth2Api/oAuth1Api.`,
 		},
 	},
 	{
@@ -992,7 +1021,7 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 							},
 							{
 								displayName:
-									'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httprequest" target="_blank">docs</a> for more info about pagination/',
+									'Use the $response variables to access the data of the previous response. Refer to the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httprequest#pagination" target="_blank">docs</a> for more info about pagination/',
 								name: 'webhookNotice',
 								displayOptions: {
 									hide: {
@@ -1114,6 +1143,10 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 								],
 								default: 'responseIsEmpty',
 								description: 'When should no further requests be made?',
+								builderHint: {
+									propertyHint:
+										"Use \"responseIsEmpty\" only when you know the API returns a bare JSON array or no body on its last page. It never stops on a JSON object, and most JSON APIs return one: a last page like `{ \"items\": [] }` makes the node request pages until n8n stops it with \"The returned response was identical 5x\". In every other case, including an API whose response shape you do not know, use \"other\" with a completeExpression: on the API's end marker when you know it (e.g. `expr('{{ $response.body.has_more === false }}')`, `expr('{{ !$response.body.next }}')`), or on the list the next nodes read (e.g. `expr('{{ $response.body.items.length === 0 }}')`). For an unknown shape, `expr('{{ !$response.body || (Array.isArray($response.body) ? $response.body.length === 0 : Object.values($response.body).some(Array.isArray) && Object.values($response.body).filter(Array.isArray).every(list => list.length === 0)) }}')` stops when the body is empty, or when it has top-level lists and all of them are empty. It never stops on a list nested deeper, so name that list instead.",
+								},
 							},
 							{
 								displayName: 'Status Code(s) when Complete',
@@ -1221,6 +1254,14 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 				default: false,
 				description:
 					'Whether to send credentials, like the "Authorization" header, on redirects to a different origin',
+			},
+			{
+				displayName: 'Enable WebDAV Methods',
+				name: 'webdavMethods',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add the WebDAV request methods PROPFIND, MKCOL, MOVE, COPY and REPORT to the Method list',
 			},
 		],
 	},

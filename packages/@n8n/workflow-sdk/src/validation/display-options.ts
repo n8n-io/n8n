@@ -101,7 +101,7 @@ function getAllPaths(obj: unknown, prefix = ''): string[] {
 	}
 	const paths: string[] = [];
 	if (prefix) paths.push(prefix);
-	for (const key of Object.keys(obj as Record<string, unknown>)) {
+	for (const key of Object.keys(obj)) {
 		const newPrefix = prefix ? `${prefix}.${key}` : key;
 		paths.push(...getAllPaths((obj as Record<string, unknown>)[key], newPrefix));
 	}

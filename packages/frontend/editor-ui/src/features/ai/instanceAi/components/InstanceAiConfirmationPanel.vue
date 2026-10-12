@@ -1,14 +1,25 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	N8nApprovalCard,
+	N8nButton,
+	N8nCard,
+	N8nInput,
+	N8nText,
+	type ApprovalOption,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { InstanceAiConfirmation } from '@n8n/api-types';
+import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { redactTelemetryProperties } from '@n8n/telemetry';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { isPendingItemFloating } from '../confirmationKinds';
+import { formatApprovalDetails } from '../approvalDetails';
 import { useToolLabel } from '../toolLabels';
-import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -16,19 +27,17 @@ import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 interface Props {
 	/**
 	 * Where this panel is mounted. The component renders different subsets of
 	 * `pendingConfirmations` depending on this:
-	 * - `inline`: full-form confirmations rendered in the chat flow (questions,
-	 *   plan review, text, setup, credential, gateway resource-decision,
-	 *   continue).
-	 * - `floating`: single-click approvals and domain/web-search access, which
-	 *   replace the chat input slot. Only the oldest pending item is rendered
-	 *   at a time — no stacking.
+	 * - `inline`: full-form confirmations rendered in the chat flow (text, setup,
+	 *   credential, gateway resource-decision, continue). Plan review is filtered
+	 *   out of `pendingConfirmations` and renders in the timeline instead.
+	 * - `floating`: questions, single-click approvals, and domain/web-search
+	 *   access, which replace the chat input slot. Only the oldest pending item
+	 *   is rendered at a time — no stacking.
 	 */
 	kind: 'inline' | 'floating';
 }
@@ -37,11 +46,15 @@ const props = defineProps<Props>();
 
 const thread = useThread();
 const i18n = useI18n();
+const approvalLabels = useApprovalCardLabels();
 const rootStore = useRootStore();
+const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
 const { getToolLabel } = useToolLabel();
 
 function getConfirmationType(conf: InstanceAiConfirmation): string {
+	if (conf.testListener) return 'test-listener';
+	if (conf.credentialDestination) return 'credential-destination';
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
@@ -70,12 +83,17 @@ function trackInputCompleted(
 		thread_id: thread.id,
 		input_thread_id: conf.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
+		action_source: thread.resolveActionSource(),
 		type: getConfirmationType(conf),
 		provided_inputs: providedInputs,
 		skipped_inputs: skippedInputs,
 		...extra,
 	};
-	telemetry.track('User finished providing input', eventProps);
+	// The inputs carry free text — what the user typed into a question card, and
+	// the agent's own description of the action it wants to take. This event
+	// reaches RudderStack *and* PostHog from the browser, so the backend
+	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
+	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
 }
 
 interface StandaloneChunk {
@@ -93,9 +111,8 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 /**
  * Filter pending confirmations to those that belong in this panel mount.
  *
- * - `inline`: every non-floating item (questions/plan/text/setup/etc.) in
- *   chronological order — these forms coexist comfortably in the chat
- *   flow.
+ * - `inline`: every non-floating item (plan/text/setup/etc.) in chronological
+ *   order — these forms coexist comfortably in the chat flow.
  * - `floating`: only the **oldest** floating item. We intentionally do not
  *   stack: the floating panel replaces the chat input, and stacking would
  *   shove the input far up the screen. The user must resolve the visible
@@ -118,6 +135,53 @@ const chunks = computed((): ConfirmationChunk[] => {
 	return [];
 });
 
+const approvalTitleKeys = new Map<string, BaseTextKey>(
+	(
+		[
+			'instanceAi.tools.workflows.delete.imperative',
+			'instanceAi.tools.workflows.delete.imperativeWithResource',
+			'instanceAi.tools.workflows.unarchive.imperative',
+			'instanceAi.tools.workflows.unarchive.imperativeWithResource',
+			'instanceAi.tools.workflows.publish.imperative',
+			'instanceAi.tools.workflows.publish.imperativeWithResource',
+			'instanceAi.tools.workflows.unpublish.imperative',
+			'instanceAi.tools.workflows.unpublish.imperativeWithResource',
+			'instanceAi.tools.workflows.update-version.imperative',
+			'instanceAi.tools.workflows.update-version.imperativeWithResource',
+			'instanceAi.tools.workflows.restore-version.imperative',
+			'instanceAi.tools.workflows.restore-version.imperativeWithResource',
+			'instanceAi.tools.nodes.execute.imperativeWithResource',
+			'instanceAi.tools.executions.run.imperative',
+			'instanceAi.tools.executions.run.imperativeWithResource',
+			'instanceAi.tools.credentials.delete.imperative',
+			'instanceAi.tools.data-tables.create.imperative',
+			'instanceAi.tools.data-tables.create.imperativeWithResource',
+			'instanceAi.tools.data-tables.delete.imperative',
+			'instanceAi.tools.data-tables.delete.imperativeWithResource',
+			'instanceAi.tools.data-tables.add-column.imperative',
+			'instanceAi.tools.data-tables.add-column.imperativeWithResource',
+			'instanceAi.tools.data-tables.delete-column.imperative',
+			'instanceAi.tools.data-tables.delete-column.imperativeWithResource',
+			'instanceAi.tools.data-tables.rename-column.imperative',
+			'instanceAi.tools.data-tables.rename-column.imperativeWithResource',
+			'instanceAi.tools.data-tables.insert-rows.imperative',
+			'instanceAi.tools.data-tables.insert-rows.imperativeWithResource',
+			'instanceAi.tools.data-tables.update-rows.imperative',
+			'instanceAi.tools.data-tables.update-rows.imperativeWithResource',
+			'instanceAi.tools.data-tables.delete-rows.imperative',
+			'instanceAi.tools.data-tables.delete-rows.imperativeWithResource',
+			'instanceAi.tools.workspace.tag-workflow.imperative',
+			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
+			'instanceAi.tools.workspace.create-folder.imperative',
+			'instanceAi.tools.workspace.delete-folder.imperative',
+			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
+			'instanceAi.tools.build-workflow.imperative',
+			'instanceAi.tools.build-workflow.imperativeWithResource',
+			'instanceAi.tools.build-workflow-with-agent.imperative',
+		] satisfies BaseTextKey[]
+	).map((key) => [key, key]),
+);
+
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
 }
@@ -126,21 +190,43 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * Title for the floating approval. We resolve a short imperative phrase
  * (e.g. "archive workflow") via i18n keyed by the tool name and optional
  * action — `instanceAi.tools.{tool}.{action}.imperative`. When that key
- * exists we render the unified "Allow AI Assistant to {action}?" prompt;
+ * exists we render the unified "Allow n8n Assistant to {action}?" prompt;
  * otherwise we fall back to the tool's display label. Doing the lookup on
  * the frontend keeps the action phrase translatable without sending
  * English strings over the wire.
+ *
+ * When the tool names the resource it acts on, the title carries that name
+ * ("Assistant wants to edit CRM Lead enrichment") and the phrase comes from
+ * the `.imperativeWithResource` key, which is written to precede a name.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
+	const credentialDestination = item.toolCall.confirmation.credentialDestination;
+	if (credentialDestination) {
+		return i18n.baseText('instanceAi.confirmation.credentialDestination.title', {
+			interpolate: { origin: credentialDestination.origin },
+		});
+	}
+	if (item.toolCall.confirmation.targetApproval) {
+		return i18n.baseText('agents.chat.approval.title');
+	}
 	const { toolName, args } = item.toolCall;
 	const action = typeof args?.action === 'string' ? args.action : undefined;
-	const imperativeKey = (
-		action
-			? `instanceAi.tools.${toolName}.${action}.imperative`
-			: `instanceAi.tools.${toolName}.imperative`
-	) as BaseTextKey;
-	const phrase = i18n.baseText(imperativeKey);
-	if (phrase !== imperativeKey) {
+	const keyBase = action
+		? `instanceAi.tools.${toolName}.${action}`
+		: `instanceAi.tools.${toolName}`;
+	const resourceName = item.toolCall.confirmation.resourceName;
+	if (resourceName) {
+		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
+		if (namedKey) {
+			const namedPhrase = i18n.baseText(namedKey);
+			return i18n.baseText('instanceAi.confirmation.resourcePrompt', {
+				interpolate: { action: namedPhrase, name: resourceName },
+			});
+		}
+	}
+	const imperativeKey = approvalTitleKeys.get(`${keyBase}.imperative`);
+	if (imperativeKey) {
+		const phrase = i18n.baseText(imperativeKey);
 		return i18n.baseText('instanceAi.confirmation.allowPrompt', {
 			interpolate: { action: phrase },
 		});
@@ -148,48 +234,56 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 	return getToolLabel(toolName, args);
 }
 
-/**
- * Subtitle for the floating approval. Tools send a short resource line;
- * we still defensively trim at the first `?` so any legacy tool whose
- * message includes a trailing explanation doesn't bloat the card.
- */
+/** Show the full change summary. Resource names and values can contain question marks, so never trim at one. */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
-	const message = item.toolCall.confirmation.message ?? '';
-	const idx = message.indexOf('?');
-	return idx === -1 ? message : message.slice(0, idx + 1);
-}
-
-/**
- * Build the floating-approval option list. Destructive confirmations hide
- * "Always allow" — by design, irreversible actions must be opted into one
- * at a time.
- */
-function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
-	const destructive = isDestructive(item);
-	const options: ApprovalOption[] = [];
-	if (!destructive) {
-		options.push({
-			key: 'always-allow',
-			icon: 'check-check',
-			label: i18n.baseText('instanceAi.confirmation.alwaysAllow'),
-			suffix: i18n.baseText('instanceAi.confirmation.alwaysAllowSuffix'),
-			testId: 'instance-ai-panel-confirm-always-allow',
+	const credentialDestination = item.toolCall.confirmation.credentialDestination;
+	if (credentialDestination) {
+		const [nodeName] = credentialDestination.nodeNames;
+		if (credentialDestination.nodeNames.length === 1 && nodeName) {
+			return i18n.baseText('instanceAi.confirmation.credentialDestination.description', {
+				interpolate: { nodeName },
+			});
+		}
+		return i18n.baseText('instanceAi.confirmation.credentialDestination.descriptionMultiple', {
+			interpolate: { nodeNames: credentialDestination.nodeNames.join(', ') },
 		});
 	}
-	options.push({
-		key: 'allow-once',
-		icon: 'check',
-		label: i18n.baseText('instanceAi.confirmation.approve'),
-		destructive,
-		testId: 'instance-ai-panel-confirm-approve',
-	});
-	options.push({
-		key: 'deny',
-		icon: 'ban',
-		label: i18n.baseText('instanceAi.confirmation.deny'),
-		testId: 'instance-ai-panel-confirm-deny',
-	});
-	return options;
+	const targetApproval = item.toolCall.confirmation.targetApproval;
+	if (targetApproval) {
+		return i18n.baseText('agents.chat.approval.description', {
+			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
+		});
+	}
+	const details = item.toolCall.confirmation.approvalDetails;
+	return details ? formatApprovalDetails(details) : (item.toolCall.confirmation.message ?? '');
+}
+
+function canAlwaysAllow(item: PendingConfirmationItem): boolean {
+	const conf = item.toolCall.confirmation;
+	// Workflow edits must be scoped to a workflow ID — never offer a session grant
+	// that would collapse to a blanket tool key.
+	return (
+		!isDestructive(item) &&
+		!conf.targetApproval &&
+		!conf.credentialDestination &&
+		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId)
+	);
+}
+
+function credentialDestinationOptions(item: PendingConfirmationItem): ApprovalOption[] | undefined {
+	if (!item.toolCall.confirmation.credentialDestination) return undefined;
+	return [
+		{
+			key: 'allow-once',
+			icon: 'check',
+			label: i18n.baseText('instanceAi.confirmation.credentialDestination.approve'),
+		},
+		{
+			key: 'deny',
+			icon: 'ban',
+			label: i18n.baseText('instanceAi.confirmation.credentialDestination.deny'),
+		},
+	];
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -223,12 +317,17 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// Await the POST first so a network failure leaves the card visible and
 		// the backend's wait state intact — matches the auto-approve watcher
 		// behaviour. `confirmAction` already surfaces a toast on failure.
-		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
+		const credentialDestination = conf.credentialDestination;
+		const payload: InstanceAiConfirmRequest = credentialDestination
+			? {
+					kind: 'credentialDestination',
+					approved,
+					origin: credentialDestination.origin,
+				}
+			: { kind: 'approval', approved };
+		const ok = await thread.confirmAction(conf.requestId, payload);
 		if (!ok) return;
-		// "Always allow" is offered alongside Approve/Deny for non-destructive
-		// generic approvals; include it in the option set so telemetry reflects
-		// what the user actually chose between.
-		const alwaysAllowAvailable = !isDestructive(item);
+		const alwaysAllowAvailable = canAlwaysAllow(item);
 		trackInputCompleted(
 			conf,
 			[
@@ -264,7 +363,7 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 			scope: 'session',
 		});
 		if (!ok) return;
-		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -310,6 +409,66 @@ function handleTextSkip(conf: InstanceAiConfirmation) {
 	);
 	thread.resolveConfirmation(conf.requestId, 'deferred');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
+}
+
+async function settleTestListener(
+	conf: InstanceAiConfirmation,
+	outcome: { approved: boolean; executionId?: string; fromPush?: boolean },
+) {
+	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
+	if (inFlightConfirmations.has(conf.requestId)) return;
+	inFlightConfirmations.add(conf.requestId);
+	try {
+		const { approved, executionId } = outcome;
+		// Await the POST first: a failed request keeps the card visible so the user can
+		// retry or cancel while the tool waits. `confirmAction` shows a toast on failure.
+		const ok = await thread.confirmAction(conf.requestId, {
+			kind: 'approval',
+			approved,
+			...(executionId ? { userInput: executionId } : {}),
+		});
+		if (!ok) return;
+		// A push event settles the card without a user choice, so it records no input.
+		if (!outcome.fromPush) {
+			trackInputCompleted(
+				conf,
+				[
+					{
+						label: conf.message,
+						options: ['sent', 'cancel'],
+						option_chosen: approved ? 'sent' : 'cancel',
+					},
+				],
+				[],
+			);
+		}
+		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
+	} finally {
+		inFlightConfirmations.delete(conf.requestId);
+	}
+}
+
+// The backend pushes `testWebhookReceived` / `testWebhookDeleted` for the armed
+// workflow. Settle the card from them so the assistant reads the outcome without
+// a click. `approved: true` only means "not cancelled by the user": the tool reads
+// received / timed out from durable state (executions, registration), so a
+// deletion push at the deadline still resolves as timed out.
+const removePushListener = usePushConnectionStore().addEventListener((event) => {
+	if (event.type !== 'testWebhookReceived' && event.type !== 'testWebhookDeleted') return;
+	for (const item of thread.pendingConfirmations) {
+		const conf = item.toolCall.confirmation;
+		if (conf?.testListener?.workflowId !== event.data.workflowId) continue;
+		void settleTestListener(conf, {
+			approved: true,
+			executionId: event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
+			fromPush: true,
+		});
+	}
+});
+onBeforeUnmount(removePushListener);
+
+function formatDeadline(iso: string): string {
+	return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 function handleContinue(conf: InstanceAiConfirmation) {
@@ -364,52 +523,35 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
-
-const PLAN_REVIEW_OPTIONS = ['approve', 'ask-for-edits', 'deny'] as const;
-
-function handlePlanApprove(conf: InstanceAiConfirmation, numTasks: number) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'approve' }],
-		[],
-		{ num_tasks: numTasks, plan_feedback_type: 'accept' },
-	);
-	thread.resolveConfirmation(conf.requestId, 'approved');
-	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
-}
-
-function handlePlanAskForEdits(conf: InstanceAiConfirmation, numTasks: number) {
-	thread.startPlanEdit({
-		requestId: conf.requestId,
-		inputThreadId: conf.inputThreadId,
-		taskCount: numTasks,
-	});
-}
-
-function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
-	trackInputCompleted(
-		conf,
-		[{ label: 'plan', options: [...PLAN_REVIEW_OPTIONS], option_chosen: 'deny' }],
-		[],
-		{ num_tasks: numTasks, plan_feedback_type: 'deny' },
-	);
-	thread.resolveConfirmation(conf.requestId, 'denied');
-	void thread.confirmAction(conf.requestId, { kind: 'planDeny' });
-}
 </script>
 
 <template>
 	<TransitionGroup name="confirmation-slide">
 		<template v-for="chunk in chunks" :key="chunk.item.toolCall.confirmation.requestId">
+			<!-- Structured questions replace the chat input like other floating confirmations. -->
+			<InstanceAiQuestions
+				v-if="
+					chunk.type === 'floating' &&
+					chunk.item.toolCall.confirmation.inputType === 'questions' &&
+					chunk.item.toolCall.confirmation.questions
+				"
+				:key="'q-' + chunk.item.toolCall.confirmation.requestId"
+				:questions="chunk.item.toolCall.confirmation.questions!"
+				:intro-message="chunk.item.toolCall.confirmation.introMessage"
+				@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
+			/>
+
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
-			<template v-if="chunk.type === 'standalone'">
+			<template v-else-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
+				<!-- Threads are project-bound: fall back to the thread's project so a
+				     payload without projectId never degrades to the personal project. -->
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -421,50 +563,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
-				/>
-
-				<!-- Structured questions -->
-				<InstanceAiQuestions
-					v-else-if="
-						chunk.item.toolCall.confirmation.inputType === 'questions' &&
-						chunk.item.toolCall.confirmation.questions
-					"
-					:key="'q-' + chunk.item.toolCall.confirmation.requestId"
-					:questions="chunk.item.toolCall.confirmation.questions!"
-					:intro-message="chunk.item.toolCall.confirmation.introMessage"
-					@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
-				/>
-
-				<!-- Plan review -->
-				<PlanReviewPanel
-					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
-					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
-					:planned-tasks="
-						chunk.item.toolCall.confirmation?.planItems ??
-						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
-						[]
-					"
-					:message="chunk.item.toolCall.confirmation.message"
-					@approve="
-						handlePlanApprove(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
-					@ask-for-edits="
-						handlePlanAskForEdits(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
-					@deny="
-						handlePlanDeny(
-							chunk.item.toolCall.confirmation,
-							((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
-						)
-					"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Text input (ask-user) -->
@@ -522,6 +623,53 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						</div>
 					</N8nCard>
 				</div>
+				<!-- Test listener: the trigger's test URL is armed; settles on the push event or a click -->
+				<div
+					v-else-if="chunk.item.toolCall.confirmation.testListener"
+					:key="'test-listener-' + chunk.item.toolCall.confirmation.requestId"
+					data-test-id="instance-ai-test-listener"
+				>
+					<N8nCard :class="$style.textCard">
+						<N8nText tag="div">{{ chunk.item.toolCall.confirmation.message }}</N8nText>
+						<div
+							v-for="trigger in chunk.item.toolCall.confirmation.testListener.triggers"
+							:key="trigger.nodeName"
+							:class="$style.testListenerUrl"
+						>
+							<N8nText tag="span" size="small" bold>{{ trigger.method }}</N8nText>
+							<N8nText tag="code" size="small" data-test-id="instance-ai-test-listener-url">
+								{{ trigger.url }}
+							</N8nText>
+						</div>
+						<N8nText tag="div" size="small" color="text-light">
+							{{
+								i18n.baseText('instanceAi.testListener.deadline', {
+									interpolate: {
+										time: formatDeadline(chunk.item.toolCall.confirmation.testListener.deadlineAt),
+									},
+								})
+							}}
+						</N8nText>
+						<div :class="$style.continueRow">
+							<N8nButton
+								data-test-id="instance-ai-test-listener-cancel"
+								size="medium"
+								variant="outline"
+								@click="settleTestListener(chunk.item.toolCall.confirmation, { approved: false })"
+							>
+								{{ i18n.baseText('instanceAi.testListener.cancel') }}
+							</N8nButton>
+							<N8nButton
+								data-test-id="instance-ai-test-listener-sent"
+								size="medium"
+								variant="solid"
+								@click="settleTestListener(chunk.item.toolCall.confirmation, { approved: true })"
+							>
+								{{ i18n.baseText('instanceAi.testListener.sent') }}
+							</N8nButton>
+						</div>
+					</N8nCard>
+				</div>
 				<!-- Resource-access decision (gateway permission mode) -->
 				<GatewayResourceDecision
 					v-else-if="
@@ -547,92 +695,60 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				/>
 			</template>
 
-			<!-- ============ Floating approval ============ -->
-			<div
+			<DomainAccessApproval
+				v-else-if="chunk.item.toolCall.confirmation.domainAccess"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				data-test-id="instance-ai-confirmation-panel"
+				:request-id="chunk.item.toolCall.confirmation.requestId"
+				:url="chunk.item.toolCall.confirmation.domainAccess.url"
+				:host="chunk.item.toolCall.confirmation.domainAccess.host"
+				:severity="chunk.item.toolCall.confirmation.severity"
+			/>
+
+			<DomainAccessApproval
+				v-else-if="chunk.item.toolCall.confirmation.webSearch"
+				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
+				data-test-id="instance-ai-confirmation-panel"
+				:request-id="chunk.item.toolCall.confirmation.requestId"
+				:query="chunk.item.toolCall.confirmation.webSearch.query"
+				:severity="chunk.item.toolCall.confirmation.severity"
+			/>
+
+			<N8nApprovalCard
 				v-else
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
-				:class="[$style.root, $style.floatingRoot]"
 				data-test-id="instance-ai-confirmation-panel"
+				:title="buildApprovalTitle(chunk.item)"
+				:labels="approvalLabels"
+				:description="buildApprovalSubtitle(chunk.item)"
+				:args="chunk.item.toolCall.confirmation.targetApproval?.args"
+				:description-label="i18n.baseText('instanceAi.confirmation.details')"
+				:options="credentialDestinationOptions(chunk.item)"
+				:supports-session-approval="canAlwaysAllow(chunk.item)"
+				:destructive="isDestructive(chunk.item)"
+				@select="(key) => handleApprovalSelect(chunk.item, key)"
 			>
-				<div :class="$style.items">
-					<div :class="$style.item">
-						<!-- Domain access -->
-						<DomainAccessApproval
-							v-if="chunk.item.toolCall.confirmation.domainAccess"
-							:request-id="chunk.item.toolCall.confirmation.requestId"
-							:url="chunk.item.toolCall.confirmation.domainAccess!.url"
-							:host="chunk.item.toolCall.confirmation.domainAccess!.host"
-							:severity="chunk.item.toolCall.confirmation.severity"
-						/>
-
-						<!-- Web search -->
-						<DomainAccessApproval
-							v-else-if="chunk.item.toolCall.confirmation.webSearch"
-							:request-id="chunk.item.toolCall.confirmation.requestId"
-							:query="chunk.item.toolCall.confirmation.webSearch!.query"
-							:severity="chunk.item.toolCall.confirmation.severity"
-						/>
-
-						<!-- Generic approval -->
-						<div v-else>
-							<div :class="$style.approvalRow">
-								<div :class="$style.approvalRowBody">
-									<N8nText size="large" bold>
-										{{ buildApprovalTitle(chunk.item) }}
-									</N8nText>
-									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
-								</div>
-
-								<ApprovalOptionList
-									:options="buildApprovalOptions(chunk.item)"
-									@select="(key) => handleApprovalSelect(chunk.item, key)"
-								/>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+				<template
+					v-if="
+						settingsStore.isInstanceAiSetupPanelEnabled &&
+						chunk.item.toolCall.confirmation.credentialDestination
+					"
+					#description
+				>
+					<N8nText tag="p" size="small" :class="$style.credentialDescription">
+						{{ buildApprovalSubtitle(chunk.item) }}
+					</N8nText>
+				</template>
+			</N8nApprovalCard>
 		</template>
 	</TransitionGroup>
 </template>
 
 <style lang="scss" module>
-.root {
-	border: 2px solid var(--color--primary);
-	border-radius: var(--radius--lg);
-	box-shadow: var(--shadow--sm);
-	background-color: var(--background--surface);
-}
-
-.floatingRoot {
-	// Fills the input-slot constraint width; no 90% reduction the inline
-	// `.confirmation` class applies inside the message list.
-	width: 100%;
-	max-width: none;
-}
-
-.items {
-	display: flex;
-	flex-direction: column;
-}
-
-.item {
-	& + & {
-		border-top: var(--border);
-	}
-}
-
-.approvalRow {
-	display: flex;
-	flex-direction: column;
-	font-size: var(--font-size--2xs);
-}
-
-.approvalRowBody {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
+.credentialDescription {
+	margin: 0;
+	overflow-wrap: anywhere;
+	word-break: normal;
 }
 
 .textInputRow {
@@ -645,12 +761,23 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 .continueRow {
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
 }
 
+.testListenerUrl {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+	word-break: break-all;
+	user-select: all;
+}
+
 .textCard {
-	border: 2px solid var(--color--primary);
+	border: 0;
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 </style>
 

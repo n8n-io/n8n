@@ -1,5 +1,9 @@
 import { useI18n } from '@n8n/i18n';
-import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 import type { EvaluationConfigDto, UpsertEvaluationConfigDto } from '@n8n/api-types';
 
 import { useToast } from '@n8n/composables/useToast';
@@ -26,6 +30,7 @@ import {
 	updateEvaluationConfig,
 } from '../evaluation.api';
 import { useEvaluationsWizardSidepanelStore } from '../wizardSidepanel.store';
+import { resolveSingleUpstream } from './resolveSingleUpstream';
 
 // A single data-table row change, tracked so a failed persist can undo it.
 export type RowMutation =
@@ -259,6 +264,14 @@ export function useEvaluationPersistenceHelpers() {
 		const allNodes = wf?.allNodes ?? [];
 		const byDest = mapConnectionsByDestination(connections);
 
+		// A pre-existing Evaluation Trigger can converge on the same node as the
+		// workflow's real trigger (added to enable evaluation without disturbing
+		// production) — it shouldn't count towards "which node feeds this point"
+		// ambiguity below. See `resolveSingleUpstream`.
+		const evaluationTriggerNames = new Set(
+			allNodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
+		);
+
 		if (!wizardStore.isSliceMode) {
 			const aiNode = wizardStore.aiNodeName;
 			if (!aiNode) return { ok: false, reason: 'Pick an AI node to evaluate' };
@@ -278,9 +291,10 @@ export function useEvaluationPersistenceHelpers() {
 			for (const candidate of chain) {
 				if (triggerNames.has(candidate)) continue;
 				const parents = getParentNodes(byDest, candidate, 'main', 1);
-				if (parents.length === 1 && triggerNames.has(parents[0])) {
+				const resolved = resolveSingleUpstream(parents, evaluationTriggerNames);
+				if (resolved && triggerNames.has(resolved)) {
 					startNodeName = candidate;
-					upstreamNodeName = parents[0];
+					upstreamNodeName = resolved;
 					break;
 				}
 			}
@@ -303,17 +317,25 @@ export function useEvaluationPersistenceHelpers() {
 		if (!start || !end) return { ok: false, reason: 'Pick a start and end node for the slice' };
 
 		const parents = getParentNodes(byDest, start, 'main', 1);
-		if (parents.length !== 1) {
+		const resolved = resolveSingleUpstream(parents, evaluationTriggerNames);
+		if (!resolved) {
+			// A converging Evaluation Trigger doesn't count towards ambiguity (see
+			// `resolveSingleUpstream`), so the count shown here shouldn't include it
+			// either — unless excluding it would leave nothing to report (e.g. two
+			// pre-existing Evaluation Triggers with no real trigger among them), in
+			// which case the raw total is more accurate than claiming "found 0".
+			const nonEvalParentCount =
+				parents.filter((p) => !evaluationTriggerNames.has(p)).length || parents.length;
 			return {
 				ok: false,
-				reason: `Start node "${start}" must have exactly one upstream node (found ${parents.length})`,
+				reason: `Start node "${start}" must have exactly one upstream node (found ${nonEvalParentCount})`,
 			};
 		}
-		return { ok: true, upstreamNodeName: parents[0], startNodeName: start, endNodeName: end };
+		return { ok: true, upstreamNodeName: resolved, startNodeName: start, endNodeName: end };
 	}
 
 	function showPersistError(error: unknown) {
-		toast.showError(error, locale.baseText('evaluations.wizardSidepanel.step2.persistError'));
+		toast.showError(error, locale.baseText('evaluations.tests.persistError'));
 	}
 
 	return { ensureConfig, ensureDataTable, rollback, resolveSlice, showPersistError };

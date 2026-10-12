@@ -1,10 +1,12 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick, reactive, ref } from 'vue';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useCollaborationStore } from './collaboration.store';
 
 const mockFetchWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
+const mockGetWorkflowWriteLock = vi.fn();
 const mockUiStore = reactive({ stateIsDirty: false });
 
 const mockPushStore = {
@@ -76,7 +78,7 @@ vi.mock('@/features/ai/assistant/builder.store', () => ({
 }));
 
 vi.mock('@/app/api/workflows', () => ({
-	getWorkflowWriteLock: vi.fn().mockResolvedValue(null),
+	getWorkflowWriteLock: (...args: unknown[]) => mockGetWorkflowWriteLock(...args),
 }));
 
 vi.mock('vue-router', () => ({
@@ -99,6 +101,7 @@ describe('useCollaborationStore', () => {
 		mockIsWorkflowSaved.value = { 'workflow-1': true, 'workflow-2': true };
 		mockUiStore.stateIsDirty = false;
 		mockShowMessage.mockImplementation(() => ({ close: vi.fn() }));
+		mockGetWorkflowWriteLock.mockResolvedValue(null);
 	});
 
 	afterEach(() => {
@@ -177,6 +180,107 @@ describe('useCollaborationStore', () => {
 			await nextTick();
 
 			expect(close).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('write-lock state polling', () => {
+		type PushHandler = (event: {
+			type: string;
+			data: { workflowId: string; clientId: string; userId: string };
+		}) => void;
+
+		const otherWriterLock = { clientId: 'other-client', userId: 'other-user' };
+
+		const initializeAsReader = async () => {
+			const store = useCollaborationStore();
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as PushHandler;
+			handler({
+				type: 'writeAccessAcquired',
+				data: { workflowId: 'workflow-1', ...otherWriterLock },
+			});
+			return { store, handler };
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('should stop polling after a poll fails and clear the stale lock', async () => {
+			const { store } = await initializeAsReader();
+			expect(store.isAnyoneWriting).toBe(true);
+
+			mockGetWorkflowWriteLock.mockRejectedValue(new Error('network error'));
+			mockGetWorkflowWriteLock.mockClear();
+
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			expect(mockGetWorkflowWriteLock).toHaveBeenCalledTimes(1);
+			expect(store.isAnyoneWriting).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(mockGetWorkflowWriteLock).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not re-arm polling from push events after a poll fails with 401', async () => {
+			const { store, handler } = await initializeAsReader();
+			expect(store.isAnyoneWriting).toBe(true);
+
+			// Session expires: every write-lock fetch now fails with 401
+			mockGetWorkflowWriteLock.mockRejectedValue(
+				new ResponseError('Unauthorized', { httpStatusCode: 401 }),
+			);
+			mockGetWorkflowWriteLock.mockClear();
+
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(mockGetWorkflowWriteLock).toHaveBeenCalledTimes(1);
+
+			// Push events keep arriving over the still-open websocket, but must
+			// not restart polling against the expired session
+			for (let i = 0; i < 5; i++) {
+				handler({
+					type: 'writeAccessAcquired',
+					data: { workflowId: 'workflow-1', ...otherWriterLock },
+				});
+				await vi.advanceTimersByTimeAsync(20_000);
+			}
+
+			expect(mockGetWorkflowWriteLock).toHaveBeenCalledTimes(1);
+		});
+
+		test('should resume polling after re-initialization following a 401', async () => {
+			const { store } = await initializeAsReader();
+
+			mockGetWorkflowWriteLock.mockRejectedValue(
+				new ResponseError('Unauthorized', { httpStatusCode: 401 }),
+			);
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			store.terminate();
+
+			// Fresh session: initialize again and become a reader
+			mockGetWorkflowWriteLock.mockResolvedValue(otherWriterLock);
+			mockPushStore.addEventListener.mockClear();
+			await store.initialize('workflow-1');
+
+			mockGetWorkflowWriteLock.mockClear();
+			await vi.advanceTimersByTimeAsync(20_000);
+			expect(mockGetWorkflowWriteLock).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not continue polling after terminate', async () => {
+			await initializeAsReader();
+			const store = useCollaborationStore();
+
+			store.terminate();
+			mockGetWorkflowWriteLock.mockClear();
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(mockGetWorkflowWriteLock).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { OutboundHttp } from '@n8n/backend-network';
@@ -22,11 +23,7 @@ export async function proxyRequestToAxios(
 	const configObject: IRequestOptions =
 		typeof uriOrObject === 'string' ? { uri: uriOrObject, ...options } : (uriOrObject ?? {});
 
-	// The legacy path only enforces SSRF when the execution provides a bridge;
-	// otherwise it connects directly (no protection), so default to `'disabled'`.
-	const client = Container.get(OutboundHttp).requests({
-		ssrf: additionalData?.ssrfBridge ?? 'disabled',
-	});
+	const client = Container.get(OutboundHttp).requests();
 
 	return await client.requestLegacy(configObject, {
 		onFetched: async () => {

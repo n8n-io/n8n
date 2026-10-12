@@ -20,7 +20,7 @@ import {
 	N8nText,
 	N8nDataTableServer,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader } from '@n8n/design-system';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 
@@ -344,7 +344,6 @@ defineExpose({
 						:placeholder="i18n.baseText('projects.settings.externalSecrets.search.placeholder')"
 						clearable
 						data-test-id="secrets-providers-search"
-						size="small"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -354,7 +353,7 @@ defineExpose({
 				<N8nButton
 					v-if="hasProjectExternalSecretsCreatePermission"
 					variant="outline"
-					size="small"
+					size="large"
 					data-test-id="external-secrets-add-button"
 					@click="onAddSecretsStore"
 				>
