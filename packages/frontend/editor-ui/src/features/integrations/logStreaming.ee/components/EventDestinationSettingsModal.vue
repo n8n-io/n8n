@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
@@ -351,20 +352,26 @@ async function saveDestination() {
 	if (modalClosed || isSaving.value || unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
+	const submittedParameters = deepCopy(nodeParameters.value);
+	const submittedEvents = logStreamingStore.getSelectedEvents(destination.id);
 	isSaving.value = true;
 	try {
-		const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
-		if (!saveResult || modalClosed) return;
+		const saveResult = await logStreamingStore.saveDestination(submittedParameters);
+		if (!saveResult) return;
 
-		hasOnceBeenSaved.value = true;
-		testMessageSent.value = false;
-		unchanged.value = true;
-		callEventBus('destinationWasSaved', destination.id);
-		uiStore.markStateClean();
+		if (!modalClosed) {
+			hasOnceBeenSaved.value = true;
+			testMessageSent.value = false;
+			unchanged.value =
+				isEqual(nodeParameters.value, submittedParameters) &&
+				isEqual(logStreamingStore.getSelectedEvents(destination.id), submittedEvents);
+			callEventBus('destinationWasSaved', destination.id);
+			if (unchanged.value) uiStore.markStateClean();
+		}
 
 		const destinationType = (
-			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'
-				? `${nodeParameters.value.__type}`
+			submittedParameters.__type && typeof submittedParameters.__type !== 'object'
+				? `${submittedParameters.__type}`
 				: 'unknown'
 		)
 			.replace('$MessageEventBusDestination', '')
@@ -373,8 +380,8 @@ async function saveDestination() {
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isDestinationComplete(nodeParameters.value),
-			is_active: destination.enabled,
+			is_complete: isDestinationComplete(submittedParameters),
+			is_active: submittedParameters.enabled,
 		});
 	} catch (error) {
 		if (!modalClosed) {
