@@ -484,7 +484,7 @@ const sortedWorkflows = computed(() => {
 		:back-label="i18n.baseText('generic.back')"
 		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"
 	>
-		<header :class="$style.pageHeader">
+		<header>
 			<template v-if="isLoading">
 				<div class="mb-2xs">
 					<N8nLoading variant="h1" />
@@ -747,14 +747,6 @@ const sortedWorkflows = computed(() => {
 </template>
 
 <style module>
-/* Mirrors N8nSettingsPageHeader's self-capping so the header column stays centered
-   while the table below spans the full-width layout. */
-.pageHeader {
-	width: 100%;
-	max-width: var(--settings-content--max-width, 45rem);
-	margin-inline: auto;
-}
-
 .cellStack {
 	display: flex;
 	flex-direction: column;
