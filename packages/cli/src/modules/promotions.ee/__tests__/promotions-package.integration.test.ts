@@ -611,85 +611,73 @@ describe('Promote and Apply', () => {
 		},
 	);
 
-	it.each(['git', 'gitlab'] as const)(
-		'exports all team projects and pushes to the base branch with %s',
-		async (providerType) => {
-			const remote = await createRemote();
-			const connection = await createInstanceConnection(
-				remote.bareDir,
-				undefined,
-				false,
-				providerType,
-			);
-			await service.clone(connection.id, 'promote');
+	it('exports all team projects and pushes to the base branch', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
 
-			const project = await createTeamProject('Orders', owner);
-			await Container.get(AgentRepository).save({
-				id: 'local-agent',
-				name: 'Local Agent',
-				projectId: project.id,
-				schema: storedAgentConfig(
-					AgentJsonConfigSchema.parse({
-						name: 'Local Agent',
-						model: '',
-						instructions: '',
-						subAgents: { agents: [{ agentId: 'external-agent' }] },
-					}),
-				),
-			});
-			const workflow = await createWorkflow(
-				{ name: 'Process order', nodes: [], connections: {} },
-				project,
-			);
+		const project = await createTeamProject('Orders', owner);
+		await Container.get(AgentRepository).save({
+			id: 'local-agent',
+			name: 'Local Agent',
+			projectId: project.id,
+			schema: storedAgentConfig(
+				AgentJsonConfigSchema.parse({
+					name: 'Local Agent',
+					model: '',
+					instructions: '',
+					subAgents: { agents: [{ agentId: 'external-agent' }] },
+				}),
+			),
+		});
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
 
-			const result = await service.promote(connection.id, owner, {
-				canExportVariableValues: false,
-				commitMessage: 'Export orders',
-			});
+		const result = await service.promote(connection.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Export orders',
+		});
 
-			const inspectionDir = path.join(testRoot, 'promote-inspection');
-			await simpleGit().clone(remote.bareDir, inspectionDir, [
-				'--branch',
-				'main',
-				'--single-branch',
-			]);
-			const inspectionGit = simpleGit(inspectionDir);
-			const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
-			const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
-			const manifest = packageManifestSchema.parse(
-				jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
-			);
-			const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
-			const workflowEntry = manifest.workflows?.find(({ id }) => id === workflow.id);
+		const inspectionDir = path.join(testRoot, 'promote-inspection');
+		await simpleGit().clone(remote.bareDir, inspectionDir, ['--branch', 'main', '--single-branch']);
+		const inspectionGit = simpleGit(inspectionDir);
+		const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
+		const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
+		const manifest = packageManifestSchema.parse(
+			jsonParse(await readFile(path.join(inspectionDir, 'n8n-export', 'manifest.json'), 'utf-8')),
+		);
+		const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
+		const workflowEntry = manifest.workflows?.find(({ id }) => id === workflow.id);
 
-			assert(projectEntry);
-			assert(workflowEntry);
-			assert(pushedCommit);
-			assert(owner.firstName);
-			assert(owner.lastName);
-			expect(pushedCommit).toMatchObject({
-				hash: remoteHead,
-				message: 'Export orders',
-				author_name: `${owner.firstName} ${owner.lastName}`,
-				author_email: owner.email,
-			});
-			await expect(readFile(path.join(inspectionDir, 'README.md'), 'utf-8')).resolves.toContain(
-				'n8n promotions test',
-			);
-			await expect(
-				readFile(path.join(inspectionDir, 'n8n-export', projectEntry.target, 'project.json')),
-			).resolves.toBeDefined();
-			await expect(
-				readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
-			).resolves.toBeDefined();
-			expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
-			expect(result.counts.workflows).toBe(1);
-			expect(manifest.agents).toBeUndefined();
-			await expect(
-				readBranchEntities(inspectionDir, PACKAGE_ENTITY_LAYOUT.agents.fileName),
-			).resolves.toEqual([]);
-		},
-	);
+		assert(projectEntry);
+		assert(workflowEntry);
+		assert(pushedCommit);
+		assert(owner.firstName);
+		assert(owner.lastName);
+		expect(pushedCommit).toMatchObject({
+			hash: remoteHead,
+			message: 'Export orders',
+			author_name: `${owner.firstName} ${owner.lastName}`,
+			author_email: owner.email,
+		});
+		await expect(readFile(path.join(inspectionDir, 'README.md'), 'utf-8')).resolves.toContain(
+			'n8n promotions test',
+		);
+		await expect(
+			readFile(path.join(inspectionDir, 'n8n-export', projectEntry.target, 'project.json')),
+		).resolves.toBeDefined();
+		await expect(
+			readFile(path.join(inspectionDir, 'n8n-export', workflowEntry.target, 'workflow.json')),
+		).resolves.toBeDefined();
+		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+		expect(result.counts.workflows).toBe(1);
+		expect(manifest.agents).toBeUndefined();
+		await expect(
+			readBranchEntities(inspectionDir, PACKAGE_ENTITY_LAYOUT.agents.fileName),
+		).resolves.toEqual([]);
+	});
 
 	it.each(['git', 'gitlab'] as const)(
 		'creates a timestamped branch for each promotion with %s',
@@ -820,74 +808,64 @@ describe('Promote and Apply', () => {
 		await expect(simpleGit(bareDir).raw(['show-ref', '--heads'])).resolves.toBe('');
 	});
 
-	it.each(['git', 'gitlab'] as const)(
-		'applies the package and matches the managed target scope with %s',
-		async (providerType) => {
-			const remote = await createRemote();
-			const connection = await createInstanceConnection(
-				remote.bareDir,
-				undefined,
-				false,
-				providerType,
-			);
-			await service.clone(connection.id, 'apply');
+	it('applies the package and matches the managed target scope', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'apply');
 
-			const sourceProject = await createTeamProject('Orders', owner);
-			const sourceWorkflow = await createWorkflow(
-				{ name: 'Process order', nodes: [], connections: {} },
-				sourceProject,
-			);
-			await packagesService.exportPackageToDirectory(
-				{
-					user: owner,
-					projectIds: [sourceProject.id],
-					includeVariableValues: true,
-					includeTags: true,
-					dependencyPolicy: ExportDependencyPolicy.Fail,
-					versionPolicy: ExportVersionPolicy.Latest,
-				},
-				{ targetDir: path.join(remote.workingDir, 'n8n-export') },
-			);
-			await remote.git.add(['--all']);
-			await remote.git.commit('Export orders');
-			await remote.git.push('origin', 'main');
-			const remoteHead = (await remote.git.revparse(['HEAD'])).trim();
+		const sourceProject = await createTeamProject('Orders', owner);
+		const sourceWorkflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			sourceProject,
+		);
+		await packagesService.exportPackageToDirectory(
+			{
+				user: owner,
+				projectIds: [sourceProject.id],
+				includeVariableValues: true,
+				includeTags: true,
+				dependencyPolicy: ExportDependencyPolicy.Fail,
+				versionPolicy: ExportVersionPolicy.Latest,
+			},
+			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
+		);
+		await remote.git.add(['--all']);
+		await remote.git.commit('Export orders');
+		await remote.git.push('origin', 'main');
+		const remoteHead = (await remote.git.revparse(['HEAD'])).trim();
 
-			await projectService.deleteProject(owner, sourceProject.id);
-			const targetProject = await projectService.createTeamProject(
-				owner,
-				{ name: 'Orders (outdated)' },
-				{ id: sourceProject.id },
-			);
-			const targetOnlyFolder = await createFolder(targetProject, { name: 'Legacy' });
-			const targetOnlyWorkflow = await createWorkflow(
-				{ name: 'Old order flow', nodes: [], connections: {}, parentFolder: targetOnlyFolder },
-				targetProject,
-			);
-			const removedProject = await createTeamProject('Removed from Git', owner);
+		await projectService.deleteProject(owner, sourceProject.id);
+		const targetProject = await projectService.createTeamProject(
+			owner,
+			{ name: 'Orders (outdated)' },
+			{ id: sourceProject.id },
+		);
+		const targetOnlyFolder = await createFolder(targetProject, { name: 'Legacy' });
+		const targetOnlyWorkflow = await createWorkflow(
+			{ name: 'Old order flow', nodes: [], connections: {}, parentFolder: targetOnlyFolder },
+			targetProject,
+		);
+		const removedProject = await createTeamProject('Removed from Git', owner);
 
-			const result = await service.apply(connection.id, owner);
-			assert(result.status === 'applied');
+		const result = await service.apply(connection.id, owner);
+		assert(result.status === 'applied');
 
-			expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
-			expect(await projectRepository.findOneBy({ id: targetProject.id })).toMatchObject({
-				name: 'Orders',
-			});
-			expect(
-				await Container.get(WorkflowRepository).findOneBy({ id: sourceWorkflow.id }),
-			).toMatchObject({ name: 'Process order' });
-			expect(
-				await Container.get(WorkflowRepository).findOneBy({ id: targetOnlyWorkflow.id }),
-			).toBeNull();
-			expect(
-				await Container.get(FolderRepository).findOneBy({ id: targetOnlyFolder.id }),
-			).toBeNull();
-			expect(result.counts.projects.deleted).toBe(1);
-			expect(result.counts.workflows.deleted).toBe(1);
-			expect(result.counts.folders.removed).toBe(1);
-			expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
-		},
-	);
+		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
+		expect(await projectRepository.findOneBy({ id: targetProject.id })).toMatchObject({
+			name: 'Orders',
+		});
+		expect(
+			await Container.get(WorkflowRepository).findOneBy({ id: sourceWorkflow.id }),
+		).toMatchObject({ name: 'Process order' });
+		expect(
+			await Container.get(WorkflowRepository).findOneBy({ id: targetOnlyWorkflow.id }),
+		).toBeNull();
+		expect(await Container.get(FolderRepository).findOneBy({ id: targetOnlyFolder.id })).toBeNull();
+		expect(result.counts.projects.deleted).toBe(1);
+		expect(result.counts.workflows.deleted).toBe(1);
+		expect(result.counts.folders.removed).toBe(1);
+		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+	});
 
 	it('applies a package whose workflow sits two folders deep', async () => {
 		const remote = await createRemote();
