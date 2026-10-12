@@ -224,6 +224,12 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			disableFollowRedirect: true,
 		});
 
+		// A failure of the engine is not a refusal of the request, so the route
+		// must not answer it as one. 501 is a refusal: the engine has no secret.
+		if (response.statusCode >= 500 && response.statusCode !== 501) {
+			throw this.toError(response.statusCode, response.body);
+		}
+
 		if (response.statusCode >= 300) {
 			const { error } = this.parseErrorResponse(response.body);
 			return { ok: false, status: response.statusCode, error: error ?? 'engine_error' };
