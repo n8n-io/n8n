@@ -1,4 +1,4 @@
-import { computed, type ComputedRef, type Ref } from 'vue';
+import { computed, nextTick, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -451,6 +451,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				onRemove: (skillId: string) => {
 					if (!isCurrentTarget()) return;
 					onRemoveSkill(skillId);
+				},
+				onEdit: (skillId: string) => {
+					if (!isCurrentTarget()) return;
+					void nextTick(() => onOpenSkillFromList(skillId));
 				},
 				onAttach: (librarySkill: SkillListItem) => {
 					void attachHubSkill(

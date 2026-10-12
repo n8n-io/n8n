@@ -47,6 +47,7 @@ export type AgentSkillModalData = {
 	canCreateInstanceSkills?: boolean;
 	onConfirm: (payload: { id?: string; skill: AgentSkill; scope: AgentSkillCreateScope }) => void;
 	onAttach?: (skill: SkillListItem) => void;
+	onEdit?: (id: string) => void;
 	onRemove?: (id: string) => void;
 };
 
@@ -156,11 +157,16 @@ const footerHint = computed(() => {
 			? i18n.baseText('agents.builder.skills.hint.readOnly.instance')
 			: i18n.baseText('agents.builder.skills.hint.readOnly.project');
 	}
-	if (step.value !== 'preview') return '';
-	return previewIsAdded.value
-		? i18n.baseText('agents.builder.skills.hint.openToEdit')
-		: i18n.baseText('agents.builder.skills.hint.addToEdit');
+	if (step.value !== 'preview' || previewIsAdded.value) return '';
+	return i18n.baseText('agents.builder.skills.hint.addToEdit');
 });
+const showPreviewEdit = computed(
+	() =>
+		step.value === 'preview' &&
+		previewIsAdded.value &&
+		!!previewSkill.value?.canEdit &&
+		!!props.data.onEdit,
+);
 
 const canAddReference = computed(
 	() => (skill.value.references ?? []).length < AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -393,6 +399,13 @@ function onSave() {
 	closeModal();
 }
 
+function onEditPreview() {
+	if (!previewSkill.value) return;
+	const skillId = previewSkill.value.id;
+	closeModal();
+	props.data.onEdit?.(skillId);
+}
+
 function onRemove() {
 	const skillId = step.value === 'preview' ? previewSkill.value?.id : props.data.skillId;
 	if (!skillId) return;
@@ -545,8 +558,17 @@ function onRemove() {
 				</N8nSelect>
 			</label>
 		</template>
-		<template v-if="footerHint" #footerBeforeCancel>
+		<template v-if="showPreviewEdit || footerHint" #footerBeforeCancel>
+			<N8nButton
+				v-if="showPreviewEdit"
+				variant="outline"
+				data-testid="agent-skill-preview-edit"
+				@click="onEditPreview"
+			>
+				{{ i18n.baseText('agents.builder.skills.edit') }}
+			</N8nButton>
 			<N8nText
+				v-else
 				size="small"
 				color="text-light"
 				:class="$style.footerHint"

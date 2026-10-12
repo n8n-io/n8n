@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { computed, ref, type Ref } from 'vue';
+import { computed, nextTick, ref, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -164,6 +164,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 type SkillModalData = {
 	skillId?: string;
+	skill?: AgentSkill;
 	existingSkillNames?: string[];
 	hubSkillsEnabled?: boolean;
 	attachedSkillIds?: string[];
@@ -174,6 +175,7 @@ type SkillModalData = {
 		scope?: 'project' | 'instance';
 	}) => void;
 	onAttach?: (skill: SkillListItem) => void;
+	onEdit?: (skillId: string) => void;
 	onRemove?: (skillId: string) => void;
 };
 
@@ -775,6 +777,17 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
 		expect(createHubSkill).not.toHaveBeenCalled();
+	});
+
+	it('opens an attached skill in the edit modal after the picker closes', async () => {
+		const { modalData, uiStore } = setupHub();
+
+		modalData.onEdit?.('tone');
+		await nextTick();
+
+		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(editData.skillId).toBe('tone');
+		expect(editData.skill).toEqual(supportTone);
 	});
 
 	it('passes the flag to the edit modal so it can check the edit permission', () => {

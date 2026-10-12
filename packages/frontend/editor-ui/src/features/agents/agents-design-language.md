@@ -229,8 +229,10 @@ skills. Show the scope next to the skill name. Show `Added` for an attached
 skill. Disable a skill whose name is hard to tell apart from an attached skill,
 and give the reason in its tooltip. The row action adds the skill. A row click
 opens a read-only preview with Back, Cancel, and `Add skill`. The preview of an
-attached skill shows `Remove skill` instead of `Add skill`. Do not edit a skill
-from the picker. `Create skill` opens the upload screen, and
+attached skill shows `Remove skill` instead of `Add skill`. If the user can
+edit it, the preview also shows an outline `Edit skill` button before Cancel.
+That button closes the picker and opens the skill in the editor, as a click on
+its chip does. Do not edit a skill inside the picker. `Create skill` opens the upload screen, and
 Back returns to the picker. A user who can create instance skills selects the
 scope with `Save to` at the bottom left of the editor.
 

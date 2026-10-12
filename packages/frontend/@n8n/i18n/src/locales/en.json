@@ -8916,7 +8916,6 @@
 	"agents.builder.skills.scope.label": "Save to",
 	"agents.builder.skills.scope.instance": "Instance",
 	"agents.builder.skills.hint.addToEdit": "Add this skill to the agent to edit it.",
-	"agents.builder.skills.hint.openToEdit": "To edit this skill, open it from the agent's skills.",
 	"agents.builder.skills.hint.readOnly.instance": "You can't edit this skill. Ask an instance admin to change it.",
 	"agents.builder.skills.hint.readOnly.project": "You can't edit this skill. Ask a project admin to change it.",
 	"agents.builder.tasks.title": "Schedules",

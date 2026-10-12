@@ -91,6 +91,7 @@ function renderModal({
 	| 'projectLabel'
 	| 'canCreateInstanceSkills'
 	| 'onAttach'
+	| 'onEdit'
 	| 'onRemove'
 > = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
@@ -552,13 +553,54 @@ describe('AgentSkillModal', () => {
 			await findByTestId('agent-skill-preview');
 
 			expect(queryByTestId('agent-skill-preview-add')).not.toBeInTheDocument();
-			expect(getByTestId('agent-skill-footer-hint')).toHaveTextContent(
-				'agents.builder.skills.hint.openToEdit',
-			);
 			await fireEvent.click(getByTestId('agent-skill-remove'));
 
 			expect(onRemove).toHaveBeenCalledWith('tone');
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('opens an attached skill in the editor from its preview', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			getHubSkill.mockResolvedValue(
+				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
+			);
+			const onEdit = vi.fn();
+			const { findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				attachedSkillIds: ['tone'],
+				onAttach: vi.fn(),
+				onEdit,
+			});
+
+			await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+			await findByTestId('agent-skill-preview');
+
+			expect(queryByTestId('agent-skill-footer-hint')).not.toBeInTheDocument();
+			await fireEvent.click(getByTestId('agent-skill-preview-edit'));
+
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			expect(onEdit).toHaveBeenCalledWith('tone');
+		});
+
+		it('offers no edit for an attached skill that the user cannot edit', async () => {
+			listAttachableSkills.mockResolvedValue([instanceSkill]);
+			getHubSkill.mockResolvedValue(
+				makeDetail({ id: 'sql', name: 'SQL helper', scope: 'instance', canEdit: false }),
+			);
+			const { findByTestId, getByTestId, queryByTestId } = renderModal({
+				hubSkillsEnabled: true,
+				attachedSkillIds: ['sql'],
+				onAttach: vi.fn(),
+				onEdit: vi.fn(),
+			});
+
+			await fireEvent.click(await findByTestId('agent-skill-picker-row-open'));
+			await findByTestId('agent-skill-preview');
+
+			expect(queryByTestId('agent-skill-preview-edit')).not.toBeInTheDocument();
+			expect(getByTestId('agent-skill-footer-hint')).toHaveTextContent(
+				'agents.builder.skills.hint.readOnly.instance',
+			);
 		});
 
 		it('returns from the preview to the picker', async () => {
