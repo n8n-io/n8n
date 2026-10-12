@@ -394,6 +394,10 @@ export class AgentRuntimeReconstructionService {
 		unavailable: UnavailableTool[];
 	}> {
 		const canExecute = await userHasScopes(user, ['workflow:execute'], false, { projectId });
+		// Load once per pass, and only when a node tool uses credentials.
+		let usableIdsLoad: Promise<Set<string> | undefined> | undefined;
+		const loadUsableIds = async () =>
+			await (usableIdsLoad ??= this.loadAgentUsableCredentialIds(projectId, user));
 		const filtered: AgentJsonToolConfig[] = [];
 		const unavailable: UnavailableTool[] = [];
 		const grantedCredentialIds = new Set<string>();
@@ -406,7 +410,7 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const access = await this.checkToolAccess(ref, projectId, user, canExecute);
+			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
 			if (access && 'reason' in access) {
 				unavailable.push(access);
 				continue;
@@ -432,19 +436,18 @@ export class AgentRuntimeReconstructionService {
 		};
 	}
 
-	private async areCredentialsAvailableToAgents(
-		credentialIds: string[],
+	/** Returns the credential IDs agents can use, or `undefined` when no restriction applies. */
+	private async loadAgentUsableCredentialIds(
 		projectId: string,
 		user: User,
-	): Promise<boolean> {
-		if (!isCredSharingEnabled() || credentialIds.length === 0) return true;
+	): Promise<Set<string> | undefined> {
+		if (!isCredSharingEnabled()) return undefined;
 
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 			projectId,
 			excludePersonalRoute: true,
 		});
-		const usableIds = new Set(usable.map((credential) => credential.id));
-		return credentialIds.every((id) => usableIds.has(id));
+		return new Set(usable.map((credential) => credential.id));
 	}
 
 	private async checkToolAccess(
@@ -452,6 +455,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 		canExecute: boolean,
+		loadUsableIds: () => Promise<Set<string> | undefined>,
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -476,7 +480,8 @@ export class AgentRuntimeReconstructionService {
 			if (credentials.some((credential) => credential === null)) {
 				return denied('The user cannot read a credential the tool uses');
 			}
-			if (!(await this.areCredentialsAvailableToAgents(credentialIds, projectId, user))) {
+			const usableIds = credentialIds.length > 0 ? await loadUsableIds() : undefined;
+			if (usableIds && !credentialIds.every((id) => usableIds.has(id))) {
 				return denied('The tool uses a personal credential that agents cannot use yet');
 			}
 			return { credentialIds, workflowIds: [] };
@@ -516,8 +521,9 @@ export class AgentRuntimeReconstructionService {
 			),
 		);
 		if (credentials.some((credential) => credential === null)) return false;
-		if (!(await this.areCredentialsAvailableToAgents(snapshot.credentialIds, projectId, user))) {
-			return false;
+		if (snapshot.credentialIds.length > 0) {
+			const usableIds = await this.loadAgentUsableCredentialIds(projectId, user);
+			if (usableIds && !snapshot.credentialIds.every((id) => usableIds.has(id))) return false;
 		}
 
 		const workflows = await Promise.all(

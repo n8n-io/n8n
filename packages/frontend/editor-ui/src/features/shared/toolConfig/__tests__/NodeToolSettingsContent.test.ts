@@ -535,6 +535,31 @@ describe('NodeToolSettingsContent', () => {
 			});
 		});
 
+		it('emits valid=false when an agent tool keeps a credential the agent scope excludes', async () => {
+			const simpleNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [],
+				credentials: undefined,
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(simpleNodeType);
+			credentialsStore.getUsableCredentialById = vi.fn().mockReturnValue(undefined);
+
+			const { emitted } = renderComponent({
+				props: {
+					forAgent: true,
+					initialNode: createMockNode({
+						parameters: {},
+						credentials: { testApi: { id: 'personal-cred', name: 'Personal' } },
+					}),
+				},
+			});
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions[validEmissions.length - 1][0]).toBe(false);
+			});
+		});
+
 		it('should emit valid=false when node has parameter issues', async () => {
 			vi.spyOn(NodeHelpers, 'getNodeParametersIssues').mockReturnValue({
 				parameters: { nameField: ['Parameter "nameField" is required'] },
