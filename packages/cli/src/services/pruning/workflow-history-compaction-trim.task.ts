@@ -27,6 +27,9 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 
 	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
+	// Runs the same pass as the optimize task, over a window many times wider.
+	readonly timeoutSeconds = Time.hours.toSeconds;
+
 	constructor(private readonly compactionService: WorkflowHistoryCompactionService) {}
 
 	async run(signal: AbortSignal): Promise<void> {

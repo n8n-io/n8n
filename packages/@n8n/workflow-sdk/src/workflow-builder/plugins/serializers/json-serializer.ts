@@ -244,7 +244,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 		// Calculate positions for nodes without explicit positions
 		const nodePositions = ctx.tidyUp
-			? calculateNodePositionsDagre(ctx.nodes, ctx.nodeGroups)
+			? calculateNodePositionsDagre(ctx.nodes, ctx.nodeGroups, ctx.nodePorts)
 			: calculateNodePositions(ctx.nodes);
 
 		// Sticky notes are placed last: their box depends on where their anchors landed

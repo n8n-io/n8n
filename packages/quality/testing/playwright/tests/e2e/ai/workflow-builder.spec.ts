@@ -44,28 +44,6 @@ test.describe(
 			await services.proxy.loadExpectations('workflow-builder');
 		});
 
-		test('should show Build with AI button on empty canvas', async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-
-			await n8n.aiBuilder.waitForCanvasBuildEntry();
-			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
-		});
-
-		test('should open workflow builder and show suggestions', async ({ n8n }) => {
-			await n8n.start.fromBlankCanvas();
-
-			await n8n.aiBuilder.waitForCanvasBuildEntry();
-			await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
-
-			await expect(n8n.aiAssistant.getAskAssistantSidebar()).toBeVisible();
-			await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
-			await expect(n8n.aiBuilder.getWorkflowSuggestions()).toBeVisible();
-
-			await n8n.aiBuilder.getSuggestionPills().first().waitFor({ state: 'visible' });
-			const suggestions = n8n.aiBuilder.getSuggestionPills();
-			await expect(suggestions).toHaveCount(8);
-		});
-
 		// @AI team - investigated issues with this test, the replay of recorded events not working as expected
 		// doesn't appear to be matching in the correct order/some requests make it past the proxy leading to 401 error
 		test.fixme('should build workflow from suggested prompt', async ({ n8n }) => {

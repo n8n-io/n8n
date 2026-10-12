@@ -5,7 +5,7 @@ import { Time } from '@n8n/constants';
 import type { ScheduledJobRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ClaimedTask } from '@n8n/scheduler';
+import type { ClaimedTask, TaskRun } from '@n8n/scheduler';
 import { createDispatchReporter } from '@n8n/scheduler';
 import { Tracing, type ErrorReporter, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -19,6 +19,8 @@ import { DummySystemTask, OtherDummySystemTask, PerInstanceDummySystemTask } fro
 
 const START = new Date('2026-01-01T00:00:00.000Z');
 const ONE_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
+
+const runOf = (signal: AbortSignal): TaskRun => ({ signal, remainingMs: () => 60_000 });
 
 async function initRunner(runner: SystemTaskRunner): Promise<void> {
 	await runner.init();
@@ -790,7 +792,7 @@ describe('SystemTaskRunner', () => {
 				handler.execute(
 					mock<ClaimedTask>(),
 					createDispatchReporter(vi.fn()),
-					new AbortController().signal,
+					runOf(new AbortController().signal),
 				),
 			).rejects.toThrow(error);
 
@@ -819,7 +821,7 @@ describe('SystemTaskRunner', () => {
 			const executing = handler.execute(
 				mock<ClaimedTask>(),
 				createDispatchReporter(vi.fn()),
-				new AbortController().signal,
+				runOf(new AbortController().signal),
 			);
 			expect(runSignal?.aborted).toBe(false);
 
@@ -1342,7 +1344,7 @@ describe('SystemTaskRunner', () => {
 			await handler.execute(
 				mock<ClaimedTask>(),
 				createDispatchReporter(vi.fn()),
-				new AbortController().signal,
+				runOf(new AbortController().signal),
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {

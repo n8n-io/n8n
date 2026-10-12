@@ -30,6 +30,13 @@ import type { AgentHistoryRepository } from '../repositories/agent-history.repos
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentPolicyService } from '../agent-policy.service';
+import {
+	type AgentFixtureOverrides,
+	AgentHistoryFixtureOverrides,
+	createAgentSkillRefsService,
+	storedSkillRefs,
+} from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -45,7 +52,7 @@ const schema: AgentJsonConfig = {
 	instructions: 'Help users',
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: agentId,
 		projectId,
@@ -63,7 +70,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	} as unknown as Agent;
 }
 
-function makeHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
+function makeHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHistory {
 	return {
 		versionId,
 		agentId,
@@ -109,6 +116,7 @@ function makeService() {
 	taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
@@ -156,11 +164,15 @@ function makeService() {
 			taskSnapshotRepository,
 			agentRepository,
 			transactionRunner,
+			createAgentSkillRefsService(agentRepository),
 		),
+		agentPolicyService,
+		createAgentSkillRefsService(agentRepository),
 	);
 
 	return {
 		service,
+		agentPolicyService,
 		agentUpdateBroadcaster,
 		agentRepository,
 		agentHistoryRepository,
@@ -175,6 +187,7 @@ function makeService() {
 		telemetry,
 		eventService,
 		ctx,
+		transactionRunner,
 	};
 }
 
@@ -209,6 +222,7 @@ describe('AgentPublishService', () => {
 
 		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
 			agent,
+			storedSkillRefs(agent),
 			projectId,
 			expect.anything(),
 			expect.anything(),
@@ -251,6 +265,107 @@ describe('AgentPublishService', () => {
 		);
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
+	});
+
+	describe('policy', () => {
+		it('polices the draft it publishes before validating it', async () => {
+			const { service, agentRepository, agentPolicyService, agentValidationService } =
+				makeService();
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPolicyService.enforcePublish.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+				'Blocked by policy',
+			);
+
+			expect(agentPolicyService.enforcePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				agent.schema,
+				{ kind: 'user', user },
+			);
+			expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
+			expect(agent.activeVersionId).toBeNull();
+		});
+
+		it('polices the snapshot, not the draft, when republishing a version', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentPolicyService } =
+				makeService();
+			const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
+			const target = makeHistory({ versionId: 'v1', schema: { ...schema, name: 'Older' } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+			agentPolicyService.enforcePublish.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser, 'v1')).rejects.toThrow(
+				'Blocked by policy',
+			);
+
+			expect(agentPolicyService.enforcePublish).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				target.schema,
+				{ kind: 'user', user },
+			);
+			expect(agent.activeVersionId).toBe('v0');
+		});
+
+		it('polices a revert as a save of the restored schema over the current draft', async () => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				agentPolicyService,
+				transactionRunner,
+			} = makeService();
+			const draft = { ...schema, name: 'Draft Agent' };
+			const agent = makeAgent({ schema: draft });
+			const target = makeHistory({ versionId: 'older', schema: { ...schema, name: 'Older' } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.revertToVersion(agentId, projectId, 'older', user, 'user'),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				target.schema,
+				draft,
+				{ kind: 'user', user },
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(agent.schema).toBe(draft);
+		});
+
+		it('polices a revert to the published version the same way', async () => {
+			const { service, agentRepository, agentPolicyService, transactionRunner } = makeService();
+			const draft = { ...schema, name: 'Draft Agent' };
+			const activeVersion = makeHistory({ versionId: 'published-v1', schema });
+			const agent = makeAgent({
+				schema: draft,
+				activeVersionId: 'published-v1',
+				activeVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.revertToPublishedAgent(agentId, projectId, user, 'user'),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				schema,
+				draft,
+				{ kind: 'user', user },
+			);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('channel startup preflight', () => {
@@ -433,6 +548,7 @@ describe('AgentPublishService', () => {
 		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledTimes(1);
 		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
 			agent,
+			storedSkillRefs(agent),
 			projectId,
 			new Map([['task-1', task]]),
 			expect.anything(),
@@ -928,6 +1044,89 @@ describe('AgentPublishService', () => {
 			{ type: 'slack', credentialId: 'current-credential' },
 		]);
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+	});
+
+	describe('skill refs round trip', () => {
+		const skillRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+			{ type: 'skill' as const, id: 'mid', enabled: true },
+		];
+		const skillBodies = {
+			zeta: { name: 'Zeta', description: 'desc', instructions: 'Use zeta' },
+			mid: { name: 'Mid', description: 'desc', instructions: 'Use mid' },
+		};
+
+		it('publishes the draft skill refs into the version', async () => {
+			const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+				makeService();
+			const agent = makeAgent({
+				schema: { ...schema, skills: skillRefs },
+				skills: skillBodies,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+			});
+
+			await service.publishAgent(agentId, projectId, user, byBuilder);
+
+			const [[saved]] = agentHistoryRepository.saveVersion.mock.calls;
+			const version = makeHistory({ versionId: saved.versionId });
+			version.schema = saved.schema;
+			await expect(createAgentSkillRefsService().refsForVersion(version, {})).resolves.toEqual(
+				skillRefs,
+			);
+			expect(saved.skills).toEqual(skillBodies);
+		});
+
+		it('reverts the draft skill refs to the refs of the version', async () => {
+			const { service, agentRepository, taskSnapshotRepository, agentTaskRepository } =
+				makeService();
+			const activeVersion = makeHistory({
+				versionId: 'published-v1',
+				schema: { ...schema, skills: skillRefs },
+				skills: skillBodies,
+			});
+			const agent = makeAgent({
+				versionId: 'draft-v2',
+				activeVersionId: 'published-v1',
+				activeVersion,
+				schema: { ...schema, skills: [{ type: 'skill', id: 'draft_only' }] },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
+			agentTaskRepository.replaceForAgent.mockResolvedValue(false);
+
+			await service.revertToPublishedAgent(agentId, projectId, user, 'user');
+
+			await expect(createAgentSkillRefsService().refsForDraft(agent, {})).resolves.toEqual(
+				skillRefs,
+			);
+			const [[, saveCtx]] = agentRepository.saveDraftFenced.mock.calls;
+			const [[written, refsCtx]] = agentRepository.updateDraftSchema.mock.calls;
+			expect(refsCtx).toBe(saveCtx);
+			expect(storedSkillRefs(written)).toEqual(skillRefs);
+		});
+
+		it('shows the skill refs of a version in its document', async () => {
+			const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository } =
+				makeService();
+			const version = makeHistory({
+				versionId: 'old-version',
+				schema: { ...schema, skills: skillRefs },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ schema: { ...schema, skills: [] } }),
+			);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(version);
+			taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
+
+			const { definition } = await service.getVersion(agentId, projectId, 'old-version');
+
+			expect(definition.schema?.skills).toEqual(skillRefs);
+		});
 	});
 
 	it('throws when the requested version does not exist for the agent', async () => {

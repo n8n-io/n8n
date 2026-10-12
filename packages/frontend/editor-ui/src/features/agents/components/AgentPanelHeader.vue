@@ -34,6 +34,8 @@ withDefaults(
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .headingOnly {
 	display: contents;
 }
@@ -45,6 +47,10 @@ withDefaults(
 }
 
 .copy {
+	opacity: var(--agent-panel-header-opacity, 1);
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
+
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);

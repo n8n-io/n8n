@@ -8,7 +8,7 @@ import PreferenceContentCell from './PreferenceContentCell.vue';
 import PreferenceScopeBadge from './PreferenceScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import type { Preference } from '../context.types';
-import { preferenceScope, preferenceSourceLabel, toPreferencePermissions } from '../context.utils';
+import { preferenceCreatorLabel, preferenceScope, toPreferencePermissions } from '../context.utils';
 
 const props = defineProps<{
 	preferences: Preference[];
@@ -62,8 +62,8 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 	{
 		// Names the surface that wrote the row, so a person can recognise what a connected AI
 		// tool saved on their behalf and take it back.
-		title: i18n.baseText('settings.context.preferences.columns.source'),
-		key: 'source',
+		title: i18n.baseText('settings.context.preferences.columns.createdBy'),
+		key: 'createdBy',
 		width: 180,
 		disableSort: true,
 		resize: false,
@@ -108,9 +108,9 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 				<PreferenceScopeBadge :preference="item" />
 			</template>
 
-			<template #[`item.source`]="{ item }">
-				<N8nText size="small" color="text-base" data-test-id="preference-source">
-					{{ preferenceSourceLabel(i18n, item.source) }}
+			<template #[`item.createdBy`]="{ item }">
+				<N8nText size="small" color="text-base" data-test-id="preference-created-by">
+					{{ preferenceCreatorLabel(i18n, item) }}
 				</N8nText>
 			</template>
 

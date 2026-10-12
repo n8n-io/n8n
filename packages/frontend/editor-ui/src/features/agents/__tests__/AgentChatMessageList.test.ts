@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
@@ -51,6 +52,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['theme', 'icon', 'iconless', 'slim'],
 	},
 	N8nButton: {
+		name: 'N8nButton',
 		template:
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 		emits: ['click'],
@@ -132,6 +134,82 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	const emptyAnswerError =
+		'The model finished without returning an answer. Try again or use another model.';
+	const streamStallError =
+		'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+
+	it.each([
+		{ content: emptyAnswerError, withTools: false },
+		{ content: emptyAnswerError, withTools: true },
+		{ content: streamStallError, withTools: false },
+		{ content: streamStallError, withTools: true },
+	])('puts resend inside the retry error callout: %j', async ({ content, withTools }) => {
+		const toolMessage: ChatMessage = {
+			id: 'tools',
+			role: 'assistant',
+			content: '',
+			toolCalls: [{ tool: 'lookup', toolCallId: 'lookup-1', state: 'done' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					...(withTools ? [toolMessage] : []),
+					{ id: 'failed', role: 'assistant', content, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+				retryDisabled: true,
+			},
+		});
+		const callout = wrapper.get('[data-testid="agent-chat-retry-error"]');
+		const retry = callout.get('[data-testid="agent-chat-retry"]');
+		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('subtle');
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toBeUndefined();
+		await wrapper.setProps({ retryDisabled: false });
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toEqual([['user-message']]);
+		expect(callout.text()).toContain(content);
+		wrapper.unmount();
+	});
+
+	it.each([
+		{ content: 'Invalid API key. Check the credential and try again.', status: 'error' },
+		{ content: 'Try again', status: 'error' },
+		{ content: emptyAnswerError, status: 'success' },
+	] as const)('does not show resend for other errors or model replies: %j', async (message) => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'assistant', role: 'assistant', ...message }],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+			},
+		});
+		expect(wrapper.find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain(message.content);
+		wrapper.unmount();
+	});
+
+	it('keeps earlier retry errors visible without a resend button', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'old-error', role: 'assistant', content: emptyAnswerError, status: 'error' },
+					{ id: 'new-user', role: 'user', content: 'New request' },
+					{ id: 'new-error', role: 'assistant', content: streamStallError, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'new-user',
+			},
+		});
+		const callouts = wrapper.findAll('[data-testid="agent-chat-retry-error"]');
+		expect(callouts).toHaveLength(2);
+		expect(callouts[0].find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(callouts[1].find('[data-testid="agent-chat-retry"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
 	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
 		const initial = planView();
 		const previous = { ...planMessage(initial), content: 'Starting research.' };
@@ -649,6 +727,91 @@ describe('AgentChatMessageList', () => {
 				},
 			],
 		]);
+	});
+
+	describe('message-actions slot', () => {
+		const messageActionsSlot = (props: { message: ChatMessage; executionId?: string }) =>
+			h('button', {
+				'data-test-id': 'host-message-action',
+				'data-message-id': props.message.id,
+				'data-execution-id': props.executionId,
+			});
+
+		it('renders nothing extra without the slot', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'a-1', role: 'assistant', content: 'Reply', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.find('[data-test-id="host-message-action"]').exists()).toBe(false);
+		});
+
+		it('passes the reply and its execution id for a text reply', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a-1',
+							role: 'assistant',
+							content: 'Reply',
+							status: 'success',
+							executionId: 'exec-1',
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+				slots: { 'message-actions': messageActionsSlot },
+			});
+
+			const action = wrapper.find(
+				'[data-test-id="agent-chat-message-actions"] [data-test-id="host-message-action"]',
+			);
+			expect(action.attributes('data-message-id')).toBe('a-1');
+			expect(action.attributes('data-execution-id')).toBe('exec-1');
+		});
+
+		it('passes the final reply and the turn execution id for a tool run', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a-tools',
+							role: 'assistant',
+							content: '',
+							status: 'success',
+							executionId: 'exec-2',
+							toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done', output: {} }],
+						},
+						{ id: 'a-final', role: 'assistant', content: 'Done', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+				slots: { 'message-actions': messageActionsSlot },
+			});
+
+			const actions = wrapper.findAll('[data-test-id="host-message-action"]');
+			expect(actions).toHaveLength(1);
+			expect(actions[0].attributes('data-message-id')).toBe('a-final');
+			expect(actions[0].attributes('data-execution-id')).toBe('exec-2');
+		});
+
+		it('does not render the slot while the reply streams', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'a-1', role: 'assistant', content: 'Repl', status: 'streaming' },
+					] satisfies ChatMessage[],
+					messagingState: 'receiving',
+				},
+				slots: { 'message-actions': messageActionsSlot },
+			});
+
+			expect(wrapper.find('[data-test-id="host-message-action"]').exists()).toBe(false);
+		});
 	});
 
 	it('does not render actions for user text messages', () => {

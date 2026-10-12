@@ -1,5 +1,5 @@
 import type { CredentialProvider, ModelConfig, ResolvedCredential } from '@n8n/agents';
-import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
@@ -27,7 +27,15 @@ export async function resolveCredentialAwareModelConfig(
 	 */
 	deploymentName?: string,
 ): Promise<ModelConfig> {
-	const provider = getProviderPrefix(model);
+	const { provider, model: modelName } = splitModelId(model);
+	if (provider === 'google-vertex') {
+		const selected = (await credentialProvider.list()).find((entry) => entry.id === credential);
+		if (selected?.type !== 'googleVertexAiApi') {
+			throw new UserError(
+				'This model requires a Google Vertex AI credential. Select a compatible credential.',
+			);
+		}
+	}
 
 	if (credential === AI_GATEWAY_MANAGED_TAG) {
 		if (!credentialProvider.resolveAiGatewayModelCredential) {
@@ -49,6 +57,12 @@ export async function resolveCredentialAwareModelConfig(
 
 	const raw = await credentialProvider.resolve(credential);
 	const mapped = mapCredentialForProvider(provider, raw);
+	if (provider === 'google-vertex') {
+		const { getCachedCatalog } = await import('@n8n/agents/catalog');
+		const catalog = await getCachedCatalog();
+		const sdk = catalog?.[provider]?.models[modelName]?.sdk;
+		return { id: model, ...mapped, ...(sdk !== undefined && { sdk }) };
+	}
 	return {
 		id: model,
 		...mapped,

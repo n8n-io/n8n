@@ -14,7 +14,10 @@ import type {
 } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+import {
+	type PublishHistoryScope,
+	WorkflowPublishHistoryRepository,
+} from './workflow-publish-history.repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -263,6 +266,17 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
+	/** Find the IDs of the team projects a workflow is in, as home or shared with. */
+	async findTeamProjectIds(workflowId: string) {
+		const rows = await this.find({
+			where: { workflowId, project: { type: 'team' } },
+			relations: { project: true },
+			select: { projectId: true, project: { id: true } },
+		});
+
+		return [...new Set(rows.map((row) => row.projectId))];
+	}
+
 	/**
 	 * Find the IDs of all the projects where a workflow is shared with one of
 	 * the given sharing roles.
@@ -338,15 +352,17 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			em?: EntityManager;
-		} = {},
+			publishHistory?: PublishHistoryScope;
+		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
 		const {
 			where = {},
 			includeTags = false,
 			includeParentFolder = false,
 			includeActiveVersion = false,
-			em = this.manager,
+			publishHistory = 'all',
+			ctx = {},
+			em = this.managerFor(ctx),
 		} = options;
 
 		const sharedWorkflow = await em.findOne(SharedWorkflow, {
@@ -365,11 +381,12 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		});
 
 		const activeVersion = sharedWorkflow?.workflow.activeVersion;
-		if (activeVersion) {
+		if (activeVersion && publishHistory !== 'none') {
 			activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
 					workflowId,
 					activeVersion.versionId,
+					publishHistory,
 					em,
 				);
 		}

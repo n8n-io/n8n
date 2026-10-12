@@ -515,10 +515,12 @@ export class WorkflowValidationService {
 	async validatePublisherCredentialAccess(
 		user: User,
 		nodes: INode[],
+		workflowId: string,
 	): Promise<WorkflowValidationResult> {
 		const inaccessible = await this.credentialsPermissionChecker.findInaccessibleForUser(
 			user.id,
 			nodes,
+			workflowId,
 		);
 		if (inaccessible.length === 0) return { isValid: true };
 

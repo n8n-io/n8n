@@ -1,5 +1,5 @@
 import type { ToolDescriptor } from '@n8n/agents';
-import type { AgentIntegrationConfig, AgentJsonConfig, AgentSkill } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
 import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
@@ -18,7 +18,7 @@ export class Agent extends WithTimestampsAndStringId {
 	projectId: string;
 
 	@JsonColumn({ nullable: true, default: null })
-	schema: AgentJsonConfig | null;
+	schema: StoredAgentConfig | null;
 
 	@JsonColumn({ default: '[]' })
 	integrations: AgentIntegrationConfig[];

@@ -430,12 +430,50 @@ describe('AgentTriggersSection', () => {
 			expect(findChip(wrapper, 'agents.channels.n8nChat.label')).toBeUndefined();
 		});
 
-		it('opens the modal on n8n_chat_edit when clicked', async () => {
+		it.each([
+			{ connectedTriggers: ['n8n_chat'], view: 'n8n_chat_edit' },
+			{ connectedTriggers: [], view: 'n8n_chat_setup' },
+		])('opens the modal on $view when clicked', async ({ connectedTriggers, view }) => {
 			n8nChatFlag.value = true;
-			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat'] });
+			const wrapper = mountSection(undefined, false, { connectedTriggers });
 			await flushPromises();
 
 			await findChip(wrapper, 'agents.channels.n8nChat.label')?.trigger('click');
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
+				view,
+			);
+			expect(wrapper.emitted('update:connected-triggers')).toBeUndefined();
+		});
+
+		it('shows the chip when n8n Chat is not a connected channel', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection();
+			await flushPromises();
+
+			const chip = findChip(wrapper, 'agents.channels.n8nChat.label');
+			expect(chip).toBeTruthy();
+			expect(chip?.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		});
+
+		it('puts n8n Chat first, before connected channels', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['slack', 'n8n_chat'] });
+			await flushPromises();
+
+			expect(wrapper.findAll('button')[0].text()).toContain('agents.channels.n8nChat.label');
+		});
+
+		it('treats n8n Chat as connected when its status is configured', async () => {
+			n8nChatFlag.value = true;
+			configured.value = { n8n_chat: true };
+			const wrapper = mountSection();
+			await flushPromises();
+
+			const chip = findChip(wrapper, 'agents.channels.n8nChat.label');
+			expect(chip?.attributes('aria-description')).toBeUndefined();
+			await chip?.trigger('click');
 			await flushPromises();
 
 			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(

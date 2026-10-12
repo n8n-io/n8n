@@ -350,6 +350,7 @@ function hasActiveToolCall(): boolean {
 			<N8nCallout
 				v-if="fixableErrorTexts.length > 0"
 				theme="danger"
+				:class="$style.fixCallout"
 				data-test-id="agent-chat-tool-fix-with-assistant-callout"
 			>
 				<template v-if="fixableErrorTexts.length === 1">
@@ -362,6 +363,7 @@ function hasActiveToolCall(): boolean {
 					<N8nButton
 						size="small"
 						variant="subtle"
+						:class="$style.fixCalloutButton"
 						data-test-id="agent-chat-tool-fix-with-assistant"
 						@click="emitFixWithAssistant"
 					>
@@ -377,6 +379,26 @@ function hasActiveToolCall(): boolean {
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
+}
+
+.fixCallout {
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.fixCallout > :first-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.fixCallout :global(.n8n-text) {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.fixCalloutButton {
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .errorList {

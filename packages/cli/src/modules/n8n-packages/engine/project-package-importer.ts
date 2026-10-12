@@ -182,6 +182,7 @@ export class ProjectPackageImporter {
 		const stubbed: string[] = [];
 		let dataTablesMatched = 0;
 		let dataTablesCreated = 0;
+		let dataTablesUpdated = 0;
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -203,6 +204,7 @@ export class ProjectPackageImporter {
 			stubbed.push(...content.credentialResult.stubbed);
 			dataTablesMatched += content.dataTablePlan.matchedCount;
 			dataTablesCreated += content.dataTablePlan.creations.length;
+			dataTablesUpdated += content.dataTablePlan.updates.length;
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -229,7 +231,11 @@ export class ProjectPackageImporter {
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
-			dataTables: { matched: dataTablesMatched, created: dataTablesCreated },
+			dataTables: {
+				matched: dataTablesMatched,
+				created: dataTablesCreated,
+				updated: dataTablesUpdated,
+			},
 			variables: reconcileVariableSummary({
 				matched: variablesMatched,
 				missing: variablesMissing,

@@ -12,7 +12,7 @@ import type {
 	StreamChunk,
 	TokenUsage,
 } from '../sdk/agent';
-import type { BuiltProviderTool } from '../sdk/tool';
+import type { BuiltProviderTool, ToolContext } from '../sdk/tool';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
 
@@ -64,6 +64,15 @@ export const delegateSubAgentInputSchema = z.object({
 	),
 });
 
+export const delegateSubAgentModeInputSchema = delegateSubAgentInputSchema.extend({
+	mode: z
+		.enum(['foreground', 'background'])
+		.optional()
+		.describe(
+			'Foreground waits for the child result (default). Background returns a job receipt and lets the child continue after this turn.',
+		),
+});
+
 // Documents the tool result shape for typing/introspection. Note: the handler's
 // returned object (not this schema) is what is actually sent back to the model,
 // so this is kept in sync with DelegateSubAgentToolOutput by hand.
@@ -100,6 +109,19 @@ export const delegateSubAgentOutputSchema = z.object({
 		.optional(),
 });
 
+export const delegateSubAgentBackgroundOutputSchema = z.discriminatedUnion('status', [
+	z.object({
+		status: z.literal('started'),
+		jobId: z.string(),
+		note: z.string().optional(),
+	}),
+	z.object({
+		status: z.enum(['limit-reached', 'rejected']),
+		jobId: z.string().optional(),
+		note: z.string().optional(),
+	}),
+]);
+
 const delegateSubAgentContinuationSchema = z.object({
 	runId: z.string(),
 	toolCallId: z.string(),
@@ -123,7 +145,7 @@ export function parseDelegateSubAgentContinuation(
 }
 
 /** The arguments the LLM provides when calling delegate_subagent. */
-export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
+export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentModeInputSchema>;
 
 /**
  * Limits the delegate tool enforces structurally for a delegation: fan-out
@@ -288,6 +310,11 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * `helpers.runInlineSubAgent` for inline work.
 	 */
 	runSubAgent?: DelegateSubAgentRunner;
+	/** Dispatch a detached child and return its receipt. Enables background mode when provided. */
+	runBackgroundSubAgent?: (
+		input: DelegateSubAgentInput,
+		ctx: ToolContext,
+	) => Promise<z.infer<typeof delegateSubAgentBackgroundOutputSchema>>;
 	/** Resume a child checkpoint previously cascaded through this delegate tool. */
 	resumeSubAgent?: DelegateSubAgentResumeRunner;
 	/** Return true only when a thrown child-resume error is safe to retry. */

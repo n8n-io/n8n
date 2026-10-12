@@ -139,7 +139,7 @@ const globalStubs = {
 			'configValidationStatus',
 			'beforePublish',
 		],
-		emits: ['published', 'unpublished', 'reverted'],
+		emits: ['publish-ready', 'published', 'unpublished', 'reverted'],
 	},
 };
 
@@ -313,6 +313,16 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('published')).toBeTruthy();
 		expect(wrapper.emitted('unpublished')).toBeTruthy();
 		expect(wrapper.emitted('reverted')).toBeTruthy();
+	});
+
+	it('forwards publish readiness changes', () => {
+		const wrapper = mountHeader();
+		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
+
+		publish.vm.$emit('publish-ready', false);
+		publish.vm.$emit('publish-ready', true);
+
+		expect(wrapper.emitted('publish-ready')).toEqual([[false], [true]]);
 	});
 
 	it('forwards header-action from the action menu', () => {

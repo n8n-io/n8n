@@ -6,7 +6,6 @@ import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
 import { NoSkippedTestsRule } from './no-skipped-tests.js';
 import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
-import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
 import { NoGuardrailDisableRule } from './no-guardrail-disable.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
 import { NoUntypedConfigClassFieldRule } from './no-untyped-config-class-field.js';
@@ -44,7 +43,6 @@ export const rules = {
 	'no-skipped-tests': NoSkippedTestsRule,
 	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
-	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
 	'no-guardrail-disable': NoGuardrailDisableRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
 	'no-untyped-config-class-field': NoUntypedConfigClassFieldRule,

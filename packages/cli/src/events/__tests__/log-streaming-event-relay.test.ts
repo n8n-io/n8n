@@ -113,6 +113,7 @@ describe('LogStreamingEventRelay', () => {
 					dataTables: {
 						matched: 0,
 						created: 1,
+						updated: 0,
 						requirements: 1,
 					},
 					variables: {
@@ -186,11 +187,13 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: 'global:admin' },
 				},
+				agentIds: ['agent1'],
 				workflowIds: ['wf-cheddar', 'wf-brie'],
 				folderIds: ['folder-gouda'],
 				projectIds: ['proj-stilton'],
 				// Telemetry-only; must not appear in the audit payload below.
 				counts: {
+					agents: 1,
 					workflows: 2,
 					folders: 1,
 					credentials: 1,
@@ -213,6 +216,7 @@ describe('LogStreamingEventRelay', () => {
 					_firstName: 'Export',
 					_lastName: 'User',
 					globalRole: 'global:admin',
+					agentIds: ['agent1'],
 					workflowIds: ['wf-cheddar', 'wf-brie'],
 					folderIds: ['folder-gouda'],
 					projectIds: ['proj-stilton'],
@@ -230,6 +234,7 @@ describe('LogStreamingEventRelay', () => {
 					role: { slug: 'global:admin' },
 				},
 				reason: 'access-denied',
+				agentIds: ['agent1'],
 				workflowIds: ['wf-stilton'],
 			};
 
@@ -245,6 +250,7 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:admin',
 					operation: 'export',
 					reason: 'access-denied',
+					agentIds: ['agent1'],
 					workflowIds: ['wf-stilton'],
 				},
 			});

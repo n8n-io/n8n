@@ -1,0 +1,51 @@
+{
+    "type": "object",
+    "properties": {
+        "annotations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "url_citation": {
+                        "type": "object",
+                        "properties": {
+                            "dateTime": {
+                                "type": "string"
+                            },
+                            "exactQuote": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "content": {
+            "type": "string"
+        },
+        "usage": {
+            "type": "object",
+            "properties": {
+                "completion_tokens": {
+                    "type": "integer"
+                },
+                "prompt_tokens": {
+                    "type": "integer"
+                },
+                "total_tokens": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
+}

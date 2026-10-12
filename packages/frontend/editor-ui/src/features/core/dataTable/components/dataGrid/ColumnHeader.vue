@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IHeaderParams, SortDirection } from 'ag-grid-community';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
-import { ref, computed, onMounted, onUnmounted, useTemplateRef } from 'vue';
+import { ref, computed, onMounted, onUnmounted, useTemplateRef, toValue, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
@@ -12,7 +12,7 @@ export type HeaderParamsWithDelete = IHeaderParams & {
 	onRename?: (columnId: string, newName: string) => void;
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;
-	readOnly: boolean;
+	readOnly: boolean | (() => boolean);
 };
 
 const props = defineProps<{
@@ -23,11 +23,21 @@ const { getIconForType, mapToDataTableColumnType } = useDataTableTypes();
 const i18n = useI18n();
 
 const renameInput = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('renameInput');
+const actionDropdown = useTemplateRef<{ close: () => void }>('actionDropdown');
+const isReadOnly = computed(() => toValue(props.params.readOnly));
 const isHovered = ref(false);
 const isDropdownOpen = ref(false);
 const isFilterOpen = ref(false);
 const hasActiveFilter = ref(false);
 const currentSort = ref<SortDirection>(null);
+
+watch(isReadOnly, (readOnly) => {
+	if (readOnly) {
+		actionDropdown.value?.close();
+		renameInput.value?.forceCancel();
+	}
+});
+
 const shouldShowTypeIcon = computed(() => props.params.showTypeIcon !== false);
 const isFilterable = computed(() => props.params.column.getColDef().filter !== false);
 
@@ -37,6 +47,7 @@ const enum ItemAction {
 }
 
 const onNameSubmit = (newName: string) => {
+	if (isReadOnly.value) return;
 	const trimmed = newName.trim();
 	if (!trimmed || trimmed === props.params.displayName) {
 		renameInput.value?.forceCancel();
@@ -47,12 +58,14 @@ const onNameSubmit = (newName: string) => {
 
 const onNameToggle = (e?: Event) => {
 	e?.stopPropagation();
+	if (isReadOnly.value) return;
 	if (renameInput.value?.forceFocus && !isSystemColumn.value) {
 		renameInput.value.forceFocus();
 	}
 };
 
 const onItemClick = (action: string) => {
+	if (isReadOnly.value) return;
 	const actionEnum = action as ItemAction;
 	if (actionEnum === ItemAction.Delete) {
 		props.params.onDelete?.(props.params.column.getColId());
@@ -89,6 +102,7 @@ const checkSortStatus = () => {
 
 const isMenuButtonVisible = computed(() => {
 	return (
+		!isReadOnly.value &&
 		props.params.allowMenuActions &&
 		(isHovered.value || isDropdownOpen.value || isFilterOpen.value || hasActiveFilter.value)
 	);
@@ -214,8 +228,8 @@ onUnmounted(() => {
 				ref="renameInput"
 				:model-value="props.params.displayName"
 				:max-width="columnWidth"
-				:read-only="props.params.readOnly"
-				:disabled="props.params.readOnly"
+				:read-only="isReadOnly"
+				:disabled="isReadOnly"
 				class="ag-header-cell-text"
 				data-test-id="data-table-column-header-text"
 				@update:model-value="onNameSubmit"
@@ -243,6 +257,7 @@ onUnmounted(() => {
 		/>
 
 		<N8nActionDropdown
+			ref="actionDropdown"
 			v-show="isMenuButtonVisible"
 			data-test-id="data-table-column-header-actions"
 			:items="columnActionItems"

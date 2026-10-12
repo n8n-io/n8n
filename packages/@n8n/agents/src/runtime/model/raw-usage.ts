@@ -1,6 +1,7 @@
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { isGoogleVertexAnthropicModel } from './google-vertex';
 import { type ProviderId } from './provider-credentials';
 import type { TokenUsage } from '../../types';
 
@@ -79,10 +80,10 @@ const RAW_USAGE_READERS: Partial<Record<ProviderId, () => RawUsageReader>> = {
 
 /**
  * Create a fresh raw-usage reader for the run's model, or undefined when the
- * provider has no reader. The provider is the prefix of the `provider/model` id
- * (same convention as `createModel`).
+ * provider has no reader. Vertex Claude uses the Anthropic event format.
  */
 export function createRawUsageReader(modelId: string): RawUsageReader | undefined {
+	if (isGoogleVertexAnthropicModel(modelId)) return new AnthropicRawUsageReader();
 	const provider = getProviderPrefix(modelId) as ProviderId;
 	return RAW_USAGE_READERS[provider]?.();
 }

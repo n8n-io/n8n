@@ -11,18 +11,26 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import type { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
+import { toAgentDocument } from '@/modules/agents/json-config/agent-document';
+import {
+	composeStoredJsonConfig,
+	storedAgentConfig,
+	storedSkillRefs,
+	type AgentFixtureOverrides,
+} from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 describe('AgentRepository', () => {
 	let agentRepo: AgentRepository;
@@ -32,7 +40,7 @@ describe('AgentRepository', () => {
 	let definitionService: AgentDefinitionService;
 	let projectId: string;
 
-	async function createAgent(overrides: Partial<Agent> = {}): Promise<Agent> {
+	async function createAgent(overrides: AgentFixtureOverrides = {}): Promise<Agent> {
 		const agent = agentRepo.create({
 			id: uuid(),
 			name: 'Test Agent',
@@ -80,6 +88,69 @@ describe('AgentRepository', () => {
 		await agentRepo.delete({});
 	});
 
+	describe('package export reads', () => {
+		it.each([
+			{ access: 'global', includeActiveVersion: false },
+			{ access: 'project', includeActiveVersion: true },
+		])(
+			'reads large Agent selections with $access access',
+			async ({ access, includeActiveVersion }) => {
+				const first = await createAgent();
+				const last = await createAgent();
+				const otherProject = await createTeamProject();
+				const other = await createAgent({ projectId: otherProject.id });
+				const versionId = uuid();
+				await createHistory(last.id, versionId);
+				await agentRepo.update(last.id, { activeVersionId: versionId });
+				const ids = [
+					first.id,
+					...Array.from({ length: 32_768 }, (_, index) => `missing-agent-${index}`),
+					last.id,
+					other.id,
+					first.id,
+				];
+				const projects = access === 'global' ? null : [projectId];
+				const expectedIds =
+					access === 'global' ? [first.id, last.id, other.id] : [first.id, last.id];
+
+				const agents = await agentRepo.findForExport(ids, projects, { includeActiveVersion });
+
+				expect(agents.map(({ id }) => id)).toEqual(expectedIds.sort());
+				const exportedLast = agents.find(({ id }) => id === last.id);
+				expect(exportedLast?.activeVersionId).toBe(versionId);
+				expect(exportedLast?.activeVersion?.versionId).toBe(
+					includeActiveVersion ? versionId : undefined,
+				);
+				expect(await agentRepo.findExistingIds(ids)).toEqual(
+					new Set([first.id, last.id, other.id]),
+				);
+			},
+		);
+
+		it('reads large project selections and preserves project filters', async () => {
+			const first = await createAgent();
+			const otherProject = await createTeamProject();
+			const last = await createAgent({ projectId: otherProject.id });
+			const hiddenProject = await createTeamProject();
+			const hidden = await createAgent({ projectId: hiddenProject.id });
+			const projectIds = [
+				projectId,
+				...Array.from({ length: 32_768 }, (_, index) => `missing-project-${index}`),
+				otherProject.id,
+				projectId,
+			];
+
+			const agents = await agentRepo.findForExport([first.id, last.id, hidden.id], projectIds, {
+				includeActiveVersion: false,
+			});
+
+			expect(agents.map(({ id }) => id)).toEqual([first.id, last.id].sort());
+			expect(await agentRepo.findIdsInProjectsForExport(projectIds)).toEqual(
+				[first.id, last.id].sort(),
+			);
+		});
+	});
+
 	describe('draft definition writes', () => {
 		const taskBody = {
 			name: 'Daily task',
@@ -117,6 +188,8 @@ describe('AgentRepository', () => {
 				setup,
 				transactionRunner,
 				completion,
+				mock<AgentPolicyService>(),
+				Container.get(AgentSkillRefsService),
 			);
 			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
 			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
@@ -125,7 +198,7 @@ describe('AgentRepository', () => {
 			});
 			const config = { ...schema, name: 'Updated agent', tasks: [] };
 			const options = {
-				baseConfigHash: getAgentConfigHash(composeJsonConfig(agent)),
+				baseConfigHash: getAgentConfigHash(composeStoredJsonConfig(agent)),
 				modifiedBy: 'user',
 			} as const;
 			await expect(
@@ -201,6 +274,8 @@ describe('AgentRepository', () => {
 				tools: definition.tools,
 				skills: definition.skills,
 				revision: 1,
+				// The skill refs write keeps the time of the fenced save.
+				updatedAt: agent.updatedAt,
 			});
 			const tasks = await taskRepo.findByAgentId(agent.id);
 			expect(tasks).toHaveLength(2);
@@ -232,12 +307,13 @@ describe('AgentRepository', () => {
 				completion,
 				mock(),
 				transactionRunner,
+				Container.get(AgentSkillRefsService),
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
 			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {
 				const task = await readTask(id, agentId);
 				await definitionService.replaceDraft(agent, {
-					schema: agent.schema,
+					schema: agent.schema ? toAgentDocument(agent.schema, storedSkillRefs(agent)) : null,
 					tools: agent.tools,
 					skills: agent.skills,
 					tasks: new Map([['task-1', { ...taskBody, objective: 'Restored objective' }]]),
@@ -725,6 +801,37 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findByProjectIdsPaginated - ids filter', () => {
+		it('returns only the requested agents', async () => {
+			const first = await createAgent();
+			const second = await createAgent();
+			await createAgent();
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [first.id, second.id] },
+			});
+
+			expect(count).toBe(2);
+			expect(data.map((agent) => agent.id).sort()).toEqual([first.id, second.id].sort());
+		});
+
+		it('excludes a requested agent in another project', async () => {
+			const otherProject = await createTeamProject();
+			const outside = await createAgent({ projectId: otherProject.id });
+
+			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { ids: [outside.id] },
+			});
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+	});
+
 	describe('findByProjectIdsPaginated - availableInChat filter', () => {
 		// Reachability lives in the **published** snapshot, not the draft column:
 		// AGENT-963 writes the channel into `agent_history.schema.integrations` on
@@ -744,7 +851,7 @@ describe('AgentRepository', () => {
 		/** Publishes `snapshotIntegrations`, while the draft column keeps `overrides`. */
 		async function createPublishedAgent(
 			snapshotIntegrations: AgentIntegrationConfig[],
-			overrides: Partial<Agent> = {},
+			overrides: AgentFixtureOverrides = {},
 		): Promise<Agent> {
 			const versionId = uuid();
 			const agent = await createAgent(overrides);
@@ -752,7 +859,7 @@ describe('AgentRepository', () => {
 				versionId,
 				agentId: agent.id,
 				author: 'test',
-				schema: publishedSchema(snapshotIntegrations),
+				schema: storedAgentConfig(publishedSchema(snapshotIntegrations)),
 				tools: null,
 				skills: null,
 			});
@@ -912,7 +1019,7 @@ describe('AgentRepository', () => {
 		/** Publishes `snapshotIntegrations`, while the draft column keeps `overrides`. */
 		async function createPublishedAgent(
 			snapshotIntegrations: AgentIntegrationConfig[],
-			overrides: Partial<Agent> = {},
+			overrides: AgentFixtureOverrides = {},
 		): Promise<Agent> {
 			const versionId = uuid();
 			const agent = await createAgent(overrides);
@@ -995,11 +1102,11 @@ describe('AgentRepository', () => {
 			const older = await createAgent({
 				name: 'Older',
 				createdAt: new Date('2024-01-01T00:00:00Z'),
-			} as Partial<Agent>);
+			});
 			const newer = await createAgent({
 				name: 'Newer',
 				createdAt: new Date('2024-02-01T00:00:00Z'),
-			} as Partial<Agent>);
+			});
 
 			const { data, count } = await listByUsage();
 

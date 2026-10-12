@@ -61,6 +61,7 @@ import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useEditorContext } from './useEditorContext';
@@ -95,6 +96,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		useRunWorkflowOpts.workflowDocumentStore ?? injectWorkflowDocumentStore();
 	const workflowExecutionState = computed(() =>
 		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+	);
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
 	);
 	const nodeHelpers = useNodeHelpers();
 
@@ -139,6 +144,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
 		if (workflowExecutionState.value.activeExecutionId) {
+			return;
+		}
+
+		if (unusableCredentialReason.value) {
+			toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
 			return;
 		}
 

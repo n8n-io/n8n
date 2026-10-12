@@ -1,6 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import type { SystemTaskClass } from '@n8n/decorators';
 
+import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { isTrimmingEnabled } from '@/services/pruning/workflow-history-compaction.utils';
 
@@ -9,7 +10,6 @@ import { isTrimmingEnabled } from '@/services/pruning/workflow-history-compactio
  * A task whose feature is off is left out, so the runner only logs tasks that will run.
  */
 export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<SystemTaskClass[]> {
-	const { LicenseRenewalTask } = await import('@/license/license-renewal.task.js');
 	const { WorkflowHistoryCompactionOptimizeTask } = await import(
 		'@/services/pruning/workflow-history-compaction-optimize.task.js'
 	);
@@ -22,10 +22,10 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 
 	const tasks: SystemTaskClass[] = [
 		ActivityPruningTask,
-		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
+		IdempotencyKeyCleanupTask,
 	];
 
 	if (isTrimmingEnabled(globalConfig.workflowHistory, globalConfig.workflowHistoryCompaction)) {
@@ -33,6 +33,11 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 			'@/services/pruning/workflow-history-compaction-trim.task.js'
 		);
 		tasks.push(WorkflowHistoryCompactionTrimTask);
+	}
+
+	if (globalConfig.license.autoRenewalEnabled) {
+		const { LicenseRenewalTask } = await import('@/license/license-renewal.task.js');
+		tasks.push(LicenseRenewalTask);
 	}
 
 	if (globalConfig.executions.pruneData) {

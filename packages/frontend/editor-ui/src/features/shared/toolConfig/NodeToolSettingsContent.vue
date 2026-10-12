@@ -24,6 +24,7 @@ import {
 	collectParametersByTab,
 	createCommonNodeSettings,
 	removeMismatchedOptionValues,
+	resetValuesOfChangedShape,
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
@@ -64,6 +65,7 @@ const props = defineProps<{
 	fromAiDisabledParameters?: string[];
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
 	syncNodeToNdv?: boolean;
+	readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -232,7 +234,8 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 
 	// Re-derive parameters the same way the NDV does (see
 	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
-	// apply the change, drop options that no longer match, then refill defaults.
+	// apply the change, drop options and same-named values that no longer match,
+	// then refill defaults.
 	// This resets a dependent param (e.g. `operation`) to the new resource's
 	// default when `resource` changes, instead of keeping a stale selection.
 	let parameters =
@@ -255,6 +258,8 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 			value: null,
 		});
 	}
+
+	parameters = resetValuesOfChangedShape(nodeType, node.value, parameters, [updateData.name]);
 
 	const newParameters =
 		NodeHelpers.getNodeParameters(
@@ -484,7 +489,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="node.parameters"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:node="node"
 					:parameter-issues="props.parameterIssues"
 					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
@@ -492,7 +497,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 				>
 					<NodeCredentials
 						:node="node"
-						:readonly="false"
+						:readonly="props.readOnly"
 						:show-all="true"
 						:project-id="credentialProjectId"
 						:hide-issues="false"
@@ -518,7 +523,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					v-if="node && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:hide-delete="true"
 					path="parameters"
 					:node="node"
@@ -529,7 +534,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="nodeSettings"
 					:hide-delete="true"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					path=""
 					:node="node"
 					@value-changed="handleChangeSettingsValue"

@@ -153,11 +153,7 @@ describe('PromotionBanners', () => {
 		await userEvent.click(await findByTestId('promotion-incoming-banner-link'));
 		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
 			name: 'promotionSelect',
-			data: {
-				projectId: 'project-1',
-				direction: 'apply',
-				apply: { connectionId: 'connection-1', configId: 'config-1', branchName: 'main' },
-			},
+			data: { projectId: 'project-1', direction: 'apply' },
 		});
 
 		usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:list'] });

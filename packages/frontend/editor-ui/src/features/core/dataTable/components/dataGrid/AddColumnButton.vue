@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, toValue, watch } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTableColumnCreatePayload,
@@ -33,7 +33,7 @@ const props = withDefaults(
 		// the params key is needed so that we can pass this directly to ag-grid as column
 		params: {
 			onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
-			disabled?: boolean;
+			disabled?: boolean | (() => boolean);
 		};
 		popoverId?: string;
 		useTextTrigger?: boolean;
@@ -45,7 +45,7 @@ const props = withDefaults(
 );
 
 // Use disabled from params if available (when used as AG Grid header), otherwise use prop
-const isDisabled = computed(() => props.params?.disabled ?? props.disabled);
+const isDisabled = computed(() => toValue(props.params?.disabled ?? props.disabled));
 
 const i18n = useI18n();
 const { getIconForType } = useDataTableTypes();
@@ -64,6 +64,13 @@ const error = ref<FormError | null>(null);
 const popoverOpen = ref(false);
 const isSelectOpen = ref(false);
 
+watch(isDisabled, (disabled) => {
+	if (disabled) {
+		isSelectOpen.value = false;
+		popoverOpen.value = false;
+	}
+});
+
 const popoverId = computed(() => props.popoverId ?? 'add-column-popover');
 
 const columnTypeOptions = computed(() => {
@@ -76,6 +83,7 @@ const columnTypeOptions = computed(() => {
 });
 
 const onAddButtonClicked = async () => {
+	if (isDisabled.value) return;
 	validateName();
 	if (!columnName.value || !columnType.value || error.value) {
 		return;

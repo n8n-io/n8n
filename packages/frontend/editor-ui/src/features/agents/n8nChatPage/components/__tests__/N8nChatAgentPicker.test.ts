@@ -34,7 +34,13 @@ vi.mock('vue-router', () => ({
 }));
 
 function agent(id: string, name: string, description?: string): AgentChatListItem {
-	return { id, name, description, project: { id: 'project-1', name: 'Project' } };
+	return {
+		id,
+		name,
+		description,
+		project: { id: 'project-1', name: 'Project' },
+		attachments: { image: false, pdf: false, audio: false },
+	};
 }
 
 function setup(

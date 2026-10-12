@@ -53,6 +53,20 @@ function normalizeContentItem(item: unknown): McpContentItem | null {
 		return { type: 'text', text: item.text };
 	}
 	if (
+		item.type === 'file' &&
+		typeof item.mediaType === 'string' &&
+		isRecord(item.data) &&
+		item.data.type === 'data' &&
+		typeof item.data.data === 'string'
+	) {
+		return item.mediaType.startsWith('image/')
+			? { type: 'image', data: item.data.data, mimeType: item.mediaType }
+			: {
+					type: 'resource',
+					resource: { uri: '', blob: item.data.data, mimeType: item.mediaType },
+				};
+	}
+	if (
 		item.type === 'file-data' &&
 		typeof item.mediaType === 'string' &&
 		typeof item.data === 'string' &&

@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PendingAuthorizationCleanupTask } from '@/credentials/pending-authorization-cleanup.task';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
+import { IdempotencyKeyCleanupTask } from '@/public-api/idempotency-key-cleanup.task';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { ExecutionPruningSoftDeleteTask } from '@/services/pruning/execution-pruning-soft-delete.task';
 import { WorkflowHistoryCompactionOptimizeTask } from '@/services/pruning/workflow-history-compaction-optimize.task';
@@ -17,6 +18,7 @@ import { mainSystemTasks } from '../main-system-tasks';
 const configWith = ({
 	pruneData = true,
 	useWorkflowPublicationService = true,
+	autoRenewalEnabled = true,
 	diagnosticsEnabled = true,
 	historyPruneTimeHours = -1,
 	dbType = 'postgresdb',
@@ -24,6 +26,7 @@ const configWith = ({
 	mock<GlobalConfig>({
 		executions: { pruneData },
 		workflows: { useWorkflowPublicationService },
+		license: { autoRenewalEnabled },
 		diagnostics: { enabled: diagnosticsEnabled },
 		workflowHistory: { pruneTime: historyPruneTimeHours },
 		workflowHistoryCompaction: { trimmingMinimumAgeDays: 6 },
@@ -35,11 +38,12 @@ it('should return every main task when all features are on', async () => {
 
 	expect(tasks).toEqual([
 		ActivityPruningTask,
-		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
+		IdempotencyKeyCleanupTask,
 		WorkflowHistoryCompactionTrimTask,
+		LicenseRenewalTask,
 		ExecutionPruningSoftDeleteTask,
 		TelemetryPulseTask,
 		WorkflowPublicationOutboxCleanupTask,
@@ -71,6 +75,13 @@ it('should leave out outbox cleanup when the publication service is off', async 
 	const tasks = await mainSystemTasks(configWith({ useWorkflowPublicationService: false }));
 
 	expect(tasks).not.toContain(WorkflowPublicationOutboxCleanupTask);
+	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
+});
+
+it('should leave out license renewal when auto-renewal is off', async () => {
+	const tasks = await mainSystemTasks(configWith({ autoRenewalEnabled: false }));
+
+	expect(tasks).not.toContain(LicenseRenewalTask);
 	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
 });
 
