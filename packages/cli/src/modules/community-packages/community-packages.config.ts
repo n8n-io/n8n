@@ -40,7 +40,7 @@ export class CommunityPackagesConfig {
 	readonly aiNodeSdkVersion: number = AI_NODE_SDK_VERSION;
 
 	/** Highest community node API version this instance supports, sent to Strapi API */
-	readonly nodesApiVersion: number = N8N_NODES_API_VERSION;
+	readonly nodesApiVersion: string = N8N_NODES_API_VERSION;
 
 	@Env('N8N_DISABLED_MODULES')
 	private disabledModules: CommaSeparatedStringArray<string> = [];

@@ -12,7 +12,7 @@ parameters:
       type: string
     required: true
     description: The id of the log streaming destination.
-    name: id
+    name: destinationId
     in: path
 responses:
   '200':

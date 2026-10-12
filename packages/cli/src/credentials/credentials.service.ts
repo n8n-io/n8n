@@ -1047,7 +1047,7 @@ export class CredentialsService {
 		return await this.decrypt(credential, true);
 	}
 
-	private async enforceCredentialUse(
+	async enforceCredentialUse(
 		credential: Pick<ICredentialsDecrypted, 'id' | 'type'>,
 		actor: PolicyActor,
 		projectId: string | null,
@@ -1412,13 +1412,13 @@ export class CredentialsService {
 	 * Deletes a credential.
 	 *
 	 * If the user does not have permission to delete the credential this does
-	 * nothing and returns void.
+	 * nothing and returns `false`. Returns `true` when the credential was deleted.
 	 */
 	async delete(
 		user: User,
 		credentialId: string,
 		options: { includeInstanceCredentials?: boolean } = {},
-	) {
+	): Promise<boolean> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
@@ -1427,7 +1427,7 @@ export class CredentialsService {
 		);
 
 		if (!credential) {
-			return;
+			return false;
 		}
 
 		// Read before the delete cascades away the `shared_credentials` rows that name it. An
@@ -1467,11 +1467,31 @@ export class CredentialsService {
 			if (result.status === 'deleted') {
 				this.emitCredentialDeleted(user, credential, owningProject?.id);
 			}
-			return;
+			return result.status === 'deleted';
 		}
 
 		await this.credentialsRepository.remove(credential);
 		this.emitCredentialDeleted(user, credential, owningProject?.id);
+		return true;
+	}
+
+	/**
+	 * Deletes a project credential that belongs to no project, which `delete()` cannot find.
+	 * Does nothing if any project still owns it or has it shared.
+	 */
+	async deleteUnowned(user: User, credentialId: string) {
+		if (!hasGlobalScope(user, 'credential:delete')) {
+			throw new ForbiddenError('You do not have permission to delete credentials without an owner');
+		}
+
+		const credential =
+			await this.credentialsRepository.findProjectCredentialWithoutOwner(credentialId);
+		if (!credential) return;
+
+		await this.externalHooks.run('credentials.delete', [credentialId]);
+		// `delete()` rather than `remove()`: `remove()` clears the entity id, which the event needs.
+		await this.credentialsRepository.delete({ id: credential.id });
+		this.emitCredentialDeleted(user, credential, undefined);
 	}
 
 	private emitCredentialDeleted(
@@ -1518,7 +1538,7 @@ export class CredentialsService {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
-		const credentials = await this.prepareCredentialsForTest({ storedCredential, user });
+		const { credentials } = await this.prepareCredentialsForUse({ storedCredential, user });
 		return await this.test(user.id, credentials);
 	}
 
@@ -1540,10 +1560,10 @@ export class CredentialsService {
 			throw new CredentialNotFoundError(credentials.id);
 		}
 
-		const mergedCredentials = await this.prepareCredentialsForTest({
+		const { credentials: mergedCredentials } = await this.prepareCredentialsForUse({
 			storedCredential,
 			user,
-			credentialsToTest: storedCredential.isManaged ? undefined : credentials,
+			credentialsToUse: storedCredential.isManaged ? undefined : credentials,
 		});
 
 		return await this.test(user.id, mergedCredentials);
@@ -2418,24 +2438,24 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Build credentials payload ready to pass to credential testing.
+	 * Prepare stored credentials for a provider request.
 	 *
-	 * - If `credentialsToTest` is not provided, uses stored decrypted credential data.
-	 * - If `credentialsToTest` is provided, normalizes it for testing:
+	 * - If `credentialsToUse` is not provided, uses stored decrypted credential data.
+	 * - If `credentialsToUse` is provided, normalizes the draft:
 	 *   - fills payload data for sharees when needed
 	 *   - restores redacted values from stored decrypted data
 	 */
-	private async prepareCredentialsForTest({
+	async prepareCredentialsForUse({
 		storedCredential,
 		user,
-		credentialsToTest,
+		credentialsToUse,
 	}: {
 		storedCredential: CredentialsEntity;
 		user: User;
-		credentialsToTest?: ICredentialsDecrypted;
-	}): Promise<ICredentialsDecrypted> {
-		// The tester picks its test from the posted type, so it must match the stored secrets.
-		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
+		credentialsToUse?: ICredentialsDecrypted;
+	}): Promise<{ credentials: ICredentialsDecrypted; storedData: ICredentialDataDecryptedObject }> {
+		// Provider callbacks must use the type that owns the stored secrets.
+		if (credentialsToUse && credentialsToUse.type !== storedCredential.type) {
 			throw new BadRequestError('The credential type does not match the stored credential');
 		}
 
@@ -2446,8 +2466,8 @@ export class CredentialsService {
 			{ kind: 'user', user },
 			owningProject?.id ?? null,
 		);
-		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
-			? deepCopy(credentialsToTest)
+		const mergedCredentials: ICredentialsDecrypted = credentialsToUse
+			? deepCopy(credentialsToUse)
 			: {
 					id: storedCredential.id,
 					name: storedCredential.name,
@@ -2468,7 +2488,7 @@ export class CredentialsService {
 			};
 		}
 
-		if (credentialsToTest) {
+		if (credentialsToUse) {
 			await this.replaceCredentialContentsForSharee(
 				user,
 				storedCredential,
@@ -2485,6 +2505,6 @@ export class CredentialsService {
 			}
 		}
 
-		return mergedCredentials;
+		return { credentials: mergedCredentials, storedData: decryptedData };
 	}
 }

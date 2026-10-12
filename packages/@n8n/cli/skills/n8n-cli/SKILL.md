@@ -234,6 +234,7 @@ n8n-cli promotion-connection apply <id> \
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-connection apply-continue <id> \
   --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# To also apply destructive data table changes, add --confirm-destructive-changes.
 ```
 
 Connection JSON for step 2:

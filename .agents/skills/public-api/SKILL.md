@@ -109,7 +109,7 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 | `@Get/@Post/@Put/@Patch/@Delete('/path')` | Route method. |
 | `@ApiKeyScope('res:action')` | API-key grant check. |
 | `@ProjectScope/@GlobalScope('res:action')` | User RBAC check. |
-| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO — throws. |
+| `@ApiResponse(status)` / `@ApiResponse(status, Dto)` | Success status + (optional) output DTO; registry `.parse()`s + strips the return value. Exactly one per route — a second `@ApiResponse` throws. `204` can't carry a DTO or a binary body — throws. For a binary response body (returned as `{ body, headers? }`), use `@ApiResponse(status, { mediaType, description?, headers? })` — see [Binary response bodies](reference.md#binary-response-bodies). |
 | `@ApiErrorResponse(status)` | Declares an additional documented non-2xx status (e.g. `404`, `409`). Stack multiple for more than one. `400`/`401`/`403` are added automatically (body/query present, always, and `@ApiKeyScope` present, respectively) — don't declare those yourself. |
 | `@ApiSummary(text)` / `@ApiDescription(text)` / `@ApiTags([...])` | OpenAPI summary/description/tags. `@ApiTags` sorts alphabetically regardless of the order you pass. All optional but expected on every real route. |
 | `@Query` / `@Body` / `@Param('name')` | Bind + validate via a `Z.class` DTO / path param. `@Body` is JSON by default; `@Body({ mediaType: 'multipart/form-data', uploadLimits })` takes a `multipart/form-data` body instead — see [Request body media types](reference.md#request-body-media-types). |

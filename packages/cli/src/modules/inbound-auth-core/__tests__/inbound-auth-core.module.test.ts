@@ -19,6 +19,7 @@ import { mock } from 'vitest-mock-extended';
 import { OAuth2AuthenticationService } from '../authentication.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
+import { TrustedSourceDbGate } from '../trusted-source.gate';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
 describe('InboundAuthCoreModule', () => {
@@ -32,14 +33,20 @@ describe('InboundAuthCoreModule', () => {
 		} satisfies Extracted;
 
 		const dbStore = mock<TrustedSourceDbStore>();
+		const dbGate = mock<TrustedSourceDbGate>();
 
 		beforeAll(async () => {
 			Container.set(TrustedSourceDbStore, dbStore);
+			Container.set(TrustedSourceDbGate, dbGate);
 			await new InboundAuthCoreModule().init();
 		});
 
 		it('binds the TrustedSourceStore contract to the database store', () => {
 			expect(Container.get(TrustedSourceStore)).toBe(dbStore);
+		});
+
+		it('binds the TrustedSourceGate contract to the database gate', () => {
+			expect(Container.get(TrustedSourceGate)).toBe(dbGate);
 		});
 
 		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
@@ -91,15 +98,6 @@ describe('InboundAuthCoreModule', () => {
 			const result = await Container.get(IdentityService).identify(verified);
 
 			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
-		});
-
-		it('binds a TrustedSourceGate that denies until an implementation is registered', async () => {
-			const allowed = await Container.get(TrustedSourceGate).authorizeSealed({
-				userId: 'user-1',
-				grant: { audiences: ['https://n8n.example/mcp'] },
-			});
-
-			expect(allowed).toBe(false);
 		});
 	});
 

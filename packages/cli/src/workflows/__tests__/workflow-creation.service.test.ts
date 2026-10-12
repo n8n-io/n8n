@@ -122,6 +122,7 @@ describe('WorkflowCreationService', () => {
 			policyEnforcementServiceMock,
 			workflowRepositoryMock,
 			nodeGroupRulesFlagGateMock,
+			mock(),
 		);
 	});
 

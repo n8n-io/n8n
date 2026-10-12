@@ -329,6 +329,9 @@ export type {
 	BreakingChangeRuleImpact,
 	BreakingChangeRecommendation,
 	BreakingChangeAffectedWorkflow,
+	BreakingChangeWorkflowOwner,
+	MigrationWorkflowOwnerResponse,
+	MigrationOwnerSource,
 	BreakingChangeInstanceIssue,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeInstanceRuleResult,
@@ -345,8 +348,11 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeRuleImpactSchema,
+	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
+	migrationOwnerSourceSchema,
 } from './schemas/breaking-changes.schema';
 
 export type {
@@ -708,6 +714,7 @@ export type {
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalAgentToolCallRecord,
 	InstanceAiEvalAgentModelTurnRecord,
@@ -833,6 +840,9 @@ export {
 	agentEvalColumnMappingSchema,
 	agentEvalRunStatusSchema,
 	agentEvalResultStatusSchema,
+	agentEvalVerdictStatusSchema,
+	agentEvalVerdictOutcomeSchema,
+	agentEvalVerdictSchema,
 	agentEvalVoteSchema,
 	createAgentEvalDatasetSchema,
 	updateAgentEvalDatasetSchema,
@@ -849,11 +859,25 @@ export {
 	agentEvalDraftCaseSchema,
 	generateDraftCasesOptionsSchema,
 	GenerateDraftCasesOptionsDto,
+	createDraftDatasetOptionsSchema,
+	CreateDraftDatasetOptionsDto,
+	previewRunOptionsSchema,
+	PreviewRunOptionsDto,
+	rerunResultOptionsSchema,
+	RerunResultOptionsDto,
+	ApplyAgentEvalSuggestionsDto,
+	ApplyPreviewSuggestionDto,
+	applyPreviewSuggestionSchema,
+	applyAgentEvalSuggestionsSchema,
+	MAX_APPLY_SUGGESTIONS,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
 	AgentEvalRunStatus,
 	AgentEvalResultStatus,
+	AgentEvalVerdictStatus,
+	AgentEvalVerdictOutcome,
+	AgentEvalVerdict,
 	AgentEvalVote,
 	AgentEvalCorrection,
 	CreateAgentEvalDatasetDto,
@@ -871,6 +895,15 @@ export type {
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
+	PreviewRunOptions,
+	PreviewRunResult,
+	RerunResultOptions,
+	ApplyAgentEvalSuggestionsOptions,
+	ApplyAgentEvalSuggestionsResult,
+	ApplyPreviewSuggestionOptions,
+	ApplyPreviewSuggestionResult,
 } from './schemas/agent-evals.schema';
 
 export {
@@ -932,3 +965,4 @@ export type {
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';
+export * from './self-healing-results';

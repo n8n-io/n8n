@@ -48,6 +48,12 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				compaction_trimming_time_window_days: z.number(),
 			}),
 			n8n_deployment_type: z.string(),
+			n8n_deployment_artifact: z
+				.string()
+				.optional()
+				.describe(
+					'Official artifact that installed n8n, as `<artifact>[/<version>]`, e.g. `helm-chart/1.14.0`',
+				),
 			n8n_binary_data_mode: z.enum(['default', 'filesystem', 's3', 'azure', 'database']),
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),

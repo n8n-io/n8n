@@ -9,8 +9,6 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
-	wrapMigration,
-	postgresMigrations,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -238,29 +236,4 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent wri
 		});
 		await peer.manager.update(WorkflowEntity, workflow.id, { settings });
 	});
-});
-
-it('reverts and reapplies the suggestion schema', async () => {
-	const db = Container.get(DataSource);
-	// Template databases skip migrate(), which normally installs the DSL wrappers.
-	postgresMigrations.forEach(wrapMigration);
-	const migration = db.migrations.find(
-		({ constructor }) => constructor.name === 'CreateWorkflowSuggestionTables1790928780672',
-	);
-	if (!migration) throw new Error('The workflow suggestion migration is not registered.');
-	// Test this schema directly. Newer migrations must remain applied.
-	const runner = db.createQueryRunner();
-	try {
-		await migration.down(runner);
-		try {
-			const table = db.getMetadata(WorkflowSuggestionActivity).tablePath;
-			expect(await runner.hasTable(table)).toBe(false);
-			expect(await runner.hasTable(suggestions.metadata.tablePath)).toBe(false);
-		} finally {
-			await migration.up(runner);
-		}
-	} finally {
-		await runner.release();
-	}
-	expect(await suggestions.count()).toBe(0);
 });

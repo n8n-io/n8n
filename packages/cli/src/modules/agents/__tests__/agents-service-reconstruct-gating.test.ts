@@ -958,7 +958,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
 	const BACKGROUND_TOOL_NAMES = [
-		'spawn_background_subagent',
+		'resume_background_jobs',
 		'check_background_jobs',
 		'cancel_background_job',
 	];
@@ -998,6 +998,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 
 		const toolNames = getInjectedToolNames();
 		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
+		const delegate = getInjectedDelegateTool();
+		await expect(
+			delegate?.handler?.(
+				{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+				{},
+			),
+		).rejects.toThrow('Background delegation is unavailable');
+		expect(Container.get(SubAgentBackgroundRunner).spawn).not.toHaveBeenCalled();
 	});
 
 	it('injects all three background tools when the flag is on and sub-agents are configured', async () => {
@@ -1011,6 +1019,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		);
 
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
+		expect(getInjectedToolNames()).not.toContain('spawn_background_subagent');
+		expect(
+			getInjectedToolNames().filter((name) => name === DELEGATE_SUB_AGENT_TOOL_NAME),
+		).toHaveLength(1);
 	});
 
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
@@ -1030,8 +1042,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			Array.isArray(tool) ? tool : [tool],
 		) as BuiltTool[];
 		const delegate = tools.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
-		const background = tools.find((tool) => tool.name === 'spawn_background_subagent');
-		if (!delegate?.handler || !background?.handler) throw new Error('Expected delegation tools');
+		if (!delegate?.handler) throw new Error('Expected delegation tool');
 		expect(getInlineDelegateSubAgentToolOptions(delegate)?.availableSubAgents).toEqual([]);
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		const request = { subAgentId: 'disabled-agent', taskName: 'Review', goal: 'Review notes' };
@@ -1047,7 +1058,9 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			},
 		};
 		await expect(delegate.handler(request, context)).resolves.toMatchObject({ status: 'failed' });
-		await expect(background.handler(request, context)).resolves.toMatchObject({
+		await expect(
+			delegate.handler({ ...request, mode: 'background' }, context),
+		).resolves.toMatchObject({
 			status: 'rejected',
 		});
 		expect(Container.get(SubAgentRunner).run).not.toHaveBeenCalled();
@@ -1067,11 +1080,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
 	});
 
-	function getInjectedSpawnBackgroundTool() {
+	function getInjectedDelegateTool() {
 		for (const call of builtAgent.tool.mock.calls) {
 			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
 				const tool = item as BuiltTool;
-				if (tool.name === 'spawn_background_subagent') return tool;
+				if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) return tool;
 			}
 		}
 		return undefined;
@@ -1105,10 +1118,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			principalHash,
 		);
 
-		const spawnTool = getInjectedSpawnBackgroundTool();
-		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		const spawnTool = getInjectedDelegateTool();
+		if (!spawnTool?.handler) throw new Error('Expected delegate_subagent handler');
 		await spawnTool.handler(
-			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'inline', taskName: 'research', goal: 'find things' },
 			{
 				persistence: {
 					threadId: 'thread-1',
@@ -1156,10 +1169,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			'production',
 		);
 
-		const spawnTool = getInjectedSpawnBackgroundTool();
-		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		const spawnTool = getInjectedDelegateTool();
+		if (!spawnTool?.handler) throw new Error('Expected delegate_subagent handler');
 		await spawnTool.handler(
-			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'inline', taskName: 'research', goal: 'find things' },
 			{
 				persistence: {
 					threadId: 'thread-1',
@@ -1190,5 +1203,13 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 
 		const toolNames = getInjectedToolNames();
 		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
+		const delegate = getInjectedDelegateTool();
+		await expect(
+			delegate?.handler?.(
+				{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+				{},
+			),
+		).rejects.toThrow('Background delegation is unavailable');
+		expect(Container.get(SubAgentBackgroundRunner).spawn).not.toHaveBeenCalled();
 	});
 });

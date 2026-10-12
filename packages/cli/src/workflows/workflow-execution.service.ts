@@ -89,6 +89,7 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
+		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -120,6 +121,7 @@ export class WorkflowExecutionService {
 			deduplicationKey,
 			projectId,
 			projectName,
+			callerAwaitsOutcome,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
@@ -138,6 +140,7 @@ export class WorkflowExecutionService {
 		cursor: PollCursor,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		fence?: PollLeaseFence,
+		callerAwaitsOutcome: IWorkflowExecutionDataProcess['callerAwaitsOutcome'] = 'none',
 	): Promise<string | undefined> {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -167,6 +170,7 @@ export class WorkflowExecutionService {
 			workflowData,
 			projectId,
 			projectName,
+			callerAwaitsOutcome,
 		};
 
 		// Mask the trigger items before the payload is committed, so the persisted row

@@ -107,6 +107,9 @@ const isRowNavigable = computed(() => props.item.kind !== 'service');
 const restriction = computed(() =>
 	props.item.kind === 'node' ? props.item.restriction : undefined,
 );
+const isActivationBlocked = computed(
+	() => Boolean(restriction.value) && !hasToolConnection(props.item.status),
+);
 
 const rowRef = ref<HTMLElement | null>(null);
 
@@ -125,7 +128,7 @@ const hasDirectAction = computed(
 
 function handleRowClick() {
 	if (props.item.disabled) return;
-	if (restriction.value) return;
+	if (isActivationBlocked.value) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -144,7 +147,11 @@ function handleConnect() {
 		:class="[
 			$style.row,
 			$style[`row--${item.kind}`],
-			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: !!restriction },
+			{
+				[$style.rowDisabled]: isDisabled,
+				[$style.rowRestricted]: !!restriction,
+				[$style.rowBlocked]: isActivationBlocked,
+			},
 		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
@@ -154,7 +161,7 @@ function handleConnect() {
 			:type="isRowNavigable ? 'button' : undefined"
 			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
 			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
-			:aria-disabled="!!restriction || undefined"
+			:aria-disabled="isActivationBlocked || undefined"
 			data-test-id="tools-connection-row-main"
 			@click="isRowNavigable && handleRowClick()"
 		>
@@ -221,6 +228,7 @@ function handleConnect() {
 				:node-type-name="item.title"
 				:scope="restriction.scope"
 				:anchor="rowRef"
+				:side-offset="48"
 			/>
 			<N8nTooltip
 				v-else-if="isDisabled"
@@ -356,12 +364,14 @@ function handleConnect() {
 }
 
 .rowRestricted {
+	.mainAction > * {
+		opacity: 0.45;
+	}
+}
+
+.rowBlocked {
 	.mainAction {
 		cursor: not-allowed;
-
-		> * {
-			opacity: 0.45;
-		}
 	}
 
 	&:hover {

@@ -1,4 +1,5 @@
 export { correctness } from './correctness';
+export { criteria } from './criteria';
 export { helpfulness } from './helpfulness';
 export { stringSimilarity } from './string-similarity';
 export { categorization } from './categorization';

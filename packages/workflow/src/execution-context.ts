@@ -75,6 +75,11 @@ export interface OAuthResourceGrant {
 	executeAccessWorkflowId?: string;
 }
 
+export const OAuthResourceGrantSchema = z.object({
+	audiences: z.array(z.string()).min(1),
+	executeAccessWorkflowId: z.string().optional(),
+}) satisfies ZodType<OAuthResourceGrant>;
+
 const CredentialContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
@@ -314,24 +319,53 @@ export function toErrorWorkflowContext(
  * re-verifying the stored token. Absent `subject` = the legacy token-verify carrier;
  * `establishedAt`/`executionPath` are optional so those legacy carriers still parse.
  *
- * `grant` (see {@link OAuthResourceGrant}) is carried by grant-based triggers so a run
- * can re-verify its token after the protected resource stops resolving. It is listed
- * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
- * the identifier validates it against its own local schema.
+ * `grant` (see {@link OAuthResourceGrant}) is the gate that admitted the caller. A run
+ * uses it to re-take that decision after the protected resource stops resolving.
+ *
+ * `version: 2` marks a seal made at admission. Such a seal always carries `grant`.
+ * An absent `version` marks a legacy seal, where `grant` can be absent. Any other
+ * `version`, or a `version: 2` seal without a grant, fails to parse.
+ *
+ * `binding` names the `trusted_source_identity` row (`sourceId`, `subject`) the caller
+ * was admitted through, so every resolve re-checks that the binding is still active.
+ *
+ * This is the only schema for this shape: `maybeBindExecutionId` parses with it before
+ * it re-encrypts, and `N8NIdentifier` parses with it before it resolves.
  */
-export const N8NOAuthMetadataSchema = z.object({
+const N8NOAuthMetadataBaseSchema = z.object({
 	source: z.literal('n8n-oauth'),
-	subject: z.string().optional(),
 	resource: z.string(),
+	/**
+	 * The resolved n8n user, sealed at establishment. When present, resolution trusts it
+	 * (bound to `executionPath`, principal re-checked) instead of re-verifying the token.
+	 * Absent on legacy / grant-only carriers, which fall back to token verification.
+	 */
+	subject: z.string().optional(),
 	establishedAt: z.number().optional(),
 	executionPath: z.array(z.string()).optional(),
-	grant: z
-		.object({
-			audiences: z.array(z.string()).min(1),
-			executeAccessWorkflowId: z.string().optional(),
-		})
-		.optional(),
+	/** The `trusted_source_identity` row the caller came through; re-checked on every resolve. */
+	binding: z.object({ sourceId: z.string(), subject: z.string() }).optional(),
 });
+
+/** A seal made at admission. It always carries the grant that admitted the caller. */
+const N8NOAuthMetadataV2Schema = N8NOAuthMetadataBaseSchema.extend({
+	version: z.literal(2),
+	grant: OAuthResourceGrantSchema,
+});
+
+/**
+ * A seal made before grants were required, so `grant` can be absent. Remove this schema,
+ * and the legacy path in `N8NIdentifier`, when no legacy seals remain.
+ */
+const LegacyN8NOAuthMetadataSchema = N8NOAuthMetadataBaseSchema.extend({
+	version: z.undefined(),
+	grant: OAuthResourceGrantSchema.optional(),
+});
+
+export const N8NOAuthMetadataSchema = z.discriminatedUnion('version', [
+	N8NOAuthMetadataV2Schema,
+	LegacyN8NOAuthMetadataSchema,
+]);
 
 export type IN8NOAuthMetadata = z.output<typeof N8NOAuthMetadataSchema>;
 

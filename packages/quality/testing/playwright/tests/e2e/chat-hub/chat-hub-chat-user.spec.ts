@@ -6,7 +6,7 @@ test.use(chatHubTestConfig);
 test.describe(
 	'Chat user role',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('use chat as chat user @auth:chat', async ({ n8n, anthropicApiKey }) => {

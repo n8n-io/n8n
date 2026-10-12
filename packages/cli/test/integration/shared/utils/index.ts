@@ -112,6 +112,15 @@ function minimalNodeType(name: string, properties: INodeProperties[] = []): INod
 	};
 }
 
+// Test-only definitions keep deprecation coverage after 3.x removes the legacy nodes.
+export function createDeprecatedNodeType(name: string): INodeType {
+	const { type } = minimalNodeType(name, [
+		{ displayName: 'Code', name: 'functionCode', type: 'string', default: '' },
+	]);
+	type.description.deprecated = true;
+	return type as INodeType;
+}
+
 function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
@@ -135,6 +144,14 @@ function buildDefaultNodes(): INodeTypeData {
 			// The real node: publishing resolves a webhook node's parameters against its
 			// description, which a mock-wrapped description does not survive.
 			type: new WebhookNode() as unknown as INodeType,
+			sourcePath: '',
+		},
+		'n8n-nodes-base.function': {
+			type: createDeprecatedNodeType('n8n-nodes-base.function'),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.functionItem': {
+			type: createDeprecatedNodeType('n8n-nodes-base.functionItem'),
 			sourcePath: '',
 		},
 		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.

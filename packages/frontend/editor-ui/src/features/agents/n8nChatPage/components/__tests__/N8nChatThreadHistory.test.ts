@@ -1,9 +1,12 @@
 import { reactive } from 'vue';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
+import { useAgentN8nChatThreadsStore } from '../../n8nChatThreads.store';
 import { AGENT_N8N_CHAT_VIEW } from '../../../constants';
 import N8nChatThreadHistory from '../N8nChatThreadHistory.vue';
 
@@ -15,6 +18,14 @@ vi.mock('../../../composables/useAgentApi', async (importOriginal) => {
 		listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
 	};
 });
+
+const actionDropdownStub = {
+	name: 'ActionDropdown',
+	template:
+		'<div><slot name="activator" /><button data-test-id="thread-delete" @click.stop="$emit(\'select\', \'delete\')">Delete</button></div>',
+	props: ['items', 'disabled', 'placement'],
+	emits: ['select'],
+};
 
 const pushMock = vi.fn();
 const route = reactive<{ params: Record<string, string | undefined> }>({ params: {} });
@@ -34,7 +45,9 @@ function thread(id: string, overrides: Partial<AgentN8nChatThreadSummary> = {}) 
 	} satisfies AgentN8nChatThreadSummary;
 }
 
-const renderHistory = createComponentRenderer(N8nChatThreadHistory);
+const renderHistory = createComponentRenderer(N8nChatThreadHistory, {
+	global: { stubs: { ActionDropdown: actionDropdownStub, N8nActionDropdown: actionDropdownStub } },
+});
 
 async function renderAndOpen(props: { agentId?: string } = {}) {
 	const pinia = createTestingPinia();
@@ -154,6 +167,23 @@ describe('N8nChatThreadHistory', () => {
 		expect(getAllByTestId('agent-n8n-chat-history-item')[0].textContent).toContain('fresh');
 	});
 
+	it('searches threads on the server, scoped to agentId', async () => {
+		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: null });
+		const { getByPlaceholderText } = await renderAndOpen();
+		await waitFor(() => expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1));
+		listN8nChatThreadsMock.mockClear();
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t2')], nextCursor: null });
+
+		await userEvent.type(getByPlaceholderText('Search'), 'refund');
+
+		await waitFor(() =>
+			expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ agentId: 'agent-1', search: 'refund' }),
+			),
+		);
+	});
+
 	it('shows an error with retry', async () => {
 		listN8nChatThreadsMock.mockRejectedValueOnce(new Error('network down'));
 
@@ -164,5 +194,79 @@ describe('N8nChatThreadHistory', () => {
 		await fireEvent.click(getByTestId('agent-n8n-chat-history-retry'));
 
 		await waitFor(() => expect(getByTestId('agent-n8n-chat-history-item')).toBeTruthy());
+	});
+
+	it('deletes a thread through the store and drops it from the list', async () => {
+		const t1 = thread('t1');
+		listN8nChatThreadsMock.mockResolvedValue({ data: [t1], nextCursor: null });
+		const { getByTestId, queryByTestId } = await renderAndOpen();
+		await waitFor(() => expect(getByTestId('agent-n8n-chat-history-item')).toBeTruthy());
+		const threadsStore = mockedStore(useAgentN8nChatThreadsStore);
+		// The pager drops a row by watching `deletedThreadIds`, so the mock must fill it in,
+		// same as the real action does.
+		threadsStore.deleteThread.mockImplementation(async (deleted) => {
+			threadsStore.deletedThreadIds.add(deleted.id);
+			return true;
+		});
+
+		await userEvent.click(
+			within(getByTestId('agent-n8n-chat-history-item')).getByTestId('thread-delete'),
+		);
+
+		expect(threadsStore.deleteThread).toHaveBeenCalledWith(t1);
+		await waitFor(() =>
+			expect(queryByTestId('agent-n8n-chat-history-item')).not.toBeInTheDocument(),
+		);
+	});
+
+	it('does not navigate when the user moved to another thread while the delete ran', async () => {
+		route.params = { agentThreadId: 't1' };
+		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: null });
+		const { getByTestId } = await renderAndOpen();
+		await waitFor(() => expect(getByTestId('agent-n8n-chat-history-item')).toBeTruthy());
+		const threadsStore = mockedStore(useAgentN8nChatThreadsStore);
+		threadsStore.deleteThread.mockImplementation(async () => {
+			route.params = { agentThreadId: 't2' };
+			return true;
+		});
+
+		await userEvent.click(
+			within(getByTestId('agent-n8n-chat-history-item')).getByTestId('thread-delete'),
+		);
+
+		await waitFor(() => expect(threadsStore.deleteThread).toHaveBeenCalled());
+		expect(pushMock).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			name: 'navigates to a new chat for the same agent when the open thread is deleted',
+			openThreadId: 't1',
+			expectPush: true,
+		},
+		{
+			name: 'does not navigate away when a thread other than the open one is deleted',
+			openThreadId: 't2',
+			expectPush: false,
+		},
+	])('$name', async ({ openThreadId, expectPush }) => {
+		route.params = { agentThreadId: openThreadId };
+		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: null });
+		const { getByTestId } = await renderAndOpen();
+		await waitFor(() => expect(getByTestId('agent-n8n-chat-history-item')).toBeTruthy());
+		const threadsStore = mockedStore(useAgentN8nChatThreadsStore);
+		threadsStore.deleteThread.mockResolvedValue(true);
+
+		await userEvent.click(
+			within(getByTestId('agent-n8n-chat-history-item')).getByTestId('thread-delete'),
+		);
+
+		await waitFor(() => expect(threadsStore.deleteThread).toHaveBeenCalled());
+		const push = { name: AGENT_N8N_CHAT_VIEW, params: { agentId: 'agent-1' } };
+		if (expectPush) {
+			await waitFor(() => expect(pushMock).toHaveBeenCalledWith(push));
+		} else {
+			expect(pushMock).not.toHaveBeenCalledWith(push);
+		}
 	});
 });

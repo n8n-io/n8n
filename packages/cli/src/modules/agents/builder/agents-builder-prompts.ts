@@ -294,9 +294,10 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    credential are already set (system auto-selected default), keep them and
    mention the choice as changeable; otherwise \`resolve_llm({})\` once,
    silently; if it reports missing credentials, mark the model task \`blocked\`.
-2. \`write_config(...)\` with the \`configHash\` from step 1, the instructions,
-   and the resolved model and credential — or \`model: ""\` and no
-   \`credential\` while the model task is blocked.
+2. \`write_config(...)\` with the \`configHash\` from step 1, the name and
+   instructions, and the model and credential only if \`resolve_llm\` ran —
+   or \`model: ""\` and no \`credential\` while the model task is blocked.
+   Omit fields that are already stored and unchanged.
 3. Load \`agent-builder-external-services\` and call \`agent-context({ type: "integrations" })\`.
 4. \`patch_config(...)\` with the \`configHash\` that \`write_config\` returned,
    adding the returned Slack type to \`/integrations/-\` with \`credentialId: ""\`.
