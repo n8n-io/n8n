@@ -36,7 +36,17 @@ Each job clears installed dependencies before installation. Nested setup retains
 Native Turbo caching shares build outputs across jobs.
 
 The profiles separate the full build, checks, E2E, and partial tooling installs into different cache volumes.
-E2E profiles also cache container image pulls. CI image tarballs use GitHub's keyed cache for transfer between jobs.
+E2E profiles also cache container image pulls.
+On Namespace, the prep job pushes the CI images to the workspace registry (`n8n-ci/n8n` and `n8n-ci/runners`). E2E shards pull them.
+Set a short expiry on those repositories once per workspace:
+
+```bash
+for repo in n8n-ci/n8n n8n-ci/runners; do
+  nsc registry policy set --repository "$repo" --default_expiration 72h
+done
+```
+
+Other providers keep the tarball in GitHub's keyed cache.
 
 To use preloaded tools, attach the optional Dockerfile to each profile after custom-image optimization is available:
 
