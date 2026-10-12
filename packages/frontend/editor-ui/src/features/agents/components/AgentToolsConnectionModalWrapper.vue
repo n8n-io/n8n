@@ -67,6 +67,7 @@ import {
 } from '../composables/useAgentToolCatalog';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 import {
+	isGatewayMcpNodeType,
 	isMcpRelatedNodeType,
 	mcpServerToNode,
 	nodeTypeToNewMcpServer,
@@ -711,6 +712,8 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
 		restriction: getNodeItemRestriction(nodeType.name),
+		// Gateway MCP servers have no BYOK variant, so the pill sits on the MCP row itself.
+		freeCredits: isGatewayMcpNodeType(nodeType),
 	};
 }
 

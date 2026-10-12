@@ -1057,6 +1057,32 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
 		});
+
+		it('shows the credits pill only on MCP servers that run on Gateway credits', async () => {
+			const gatewayMcp: INodeTypeDescription = {
+				...MCP_TOOL,
+				displayName: 'Firecrawl MCP',
+				name: '@n8n/mcp-registry.firecrawl',
+				credentials: [{ name: 'firecrawlMcpGatewayApi', required: true }],
+			};
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockImplementation((name: string) =>
+					[MCP_TOOL, gatewayMcp].find((nodeType) => nodeType.name === name),
+				);
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [MCP_TOOL.name, gatewayMcp.name],
+			};
+			render();
+			await flushPromises();
+
+			expect(getItems().find((item) => item.id === `nodeType:${gatewayMcp.name}`)).toMatchObject({
+				freeCredits: true,
+			});
+			expect(getItems().find((item) => item.id === `nodeType:${MCP_TOOL.name}`)?.freeCredits).toBe(
+				false,
+			);
+		});
 	});
 
 	describe('n8n Connect section', () => {

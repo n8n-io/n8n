@@ -254,6 +254,11 @@ function resolveGatewayCredentialType(nodeType: INodeTypeDescription): string | 
 		: undefined;
 }
 
+/** Whether the MCP server node runs on Gateway credits rather than a user credential. */
+export function isGatewayMcpNodeType(nodeType: INodeTypeDescription): boolean {
+	return resolveGatewayCredentialType(nodeType) !== undefined;
+}
+
 export function mcpServerToNode(
 	server: AgentJsonMcpServerConfig,
 	nodeTypeDescription: INodeTypeDescription,
