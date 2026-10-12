@@ -79,6 +79,8 @@ beforeAll(async () => {
 		getExecution,
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 		cancelExecution: vi.fn(),
+		locateResumeTarget: vi.fn(),
+		resolveStep: vi.fn(),
 	});
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
