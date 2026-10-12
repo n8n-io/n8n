@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUpdate, ref, useCssModule, useId, useSlots, useTemplateRef } from 'vue';
+import { computed, ref, useCssModule, useId, useSlots, useTemplateRef } from 'vue';
 import N8nText from '../N8nText';
 
 import type { SliderEmits, SliderProps, SliderValue } from './Slider.types';
@@ -26,7 +26,6 @@ defineSlots<{
 	label?: () => unknown;
 }>();
 
-/** Read slots on each render because slot presence is not reactive. */
 function hasLabel() {
 	return Boolean(props.label?.trim() || slots.label);
 }
@@ -37,14 +36,6 @@ function getAccessibleLabelledBy() {
 	);
 }
 
-function requireAccessibleName() {
-	if (!hasLabel() && !props.ariaLabel?.trim() && !props.ariaLabelledby?.trim()) {
-		throw new Error('N8nSlider requires a label, a label slot, ariaLabel, or ariaLabelledby.');
-	}
-}
-
-requireAccessibleName();
-onBeforeUpdate(requireAccessibleName);
 const isDragging = ref(false);
 const animateFill = ref(false);
 const control = useTemplateRef<HTMLDivElement>('control');
@@ -128,21 +119,6 @@ function handleKeyDown(event: KeyboardEvent) {
 	emit('valueCommit', [clampedValue]);
 }
 
-function handleDragStart(event: PointerEvent) {
-	if (props.disabled || isDragging.value || event.button !== 0 || !control.value) {
-		return;
-	}
-
-	dragPointerId = event.pointerId;
-	dragValue = value.value;
-	control.value.setPointerCapture(event.pointerId);
-	isDragging.value = true;
-	animateFill.value = true;
-	control.value.focus();
-	handleDrag(event);
-	event.preventDefault();
-}
-
 function handleDrag(event: PointerEvent) {
 	if (props.disabled || !isDragging.value || event.pointerId !== dragPointerId) {
 		return;
@@ -175,6 +151,21 @@ function handleDrag(event: PointerEvent) {
 	localValue.value = clampedValue;
 	const nextModelValue: SliderValue = [clampedValue];
 	emit('update:modelValue', nextModelValue);
+}
+
+function handleDragStart(event: PointerEvent) {
+	if (props.disabled || isDragging.value || event.button !== 0 || !control.value) {
+		return;
+	}
+
+	dragPointerId = event.pointerId;
+	dragValue = value.value;
+	control.value.setPointerCapture(event.pointerId);
+	isDragging.value = true;
+	animateFill.value = true;
+	control.value.focus();
+	handleDrag(event);
+	event.preventDefault();
 }
 
 function handleDragEnd(event: PointerEvent) {
@@ -235,7 +226,6 @@ function handleDragEnd(event: PointerEvent) {
 				ref="control"
 				:class="$style.control"
 				role="slider"
-				@keydown="handleKeyDown"
 				:tabindex="disabled ? -1 : 0"
 				:aria-disabled="disabled"
 				:aria-valuenow="value"
@@ -244,6 +234,7 @@ function handleDragEnd(event: PointerEvent) {
 				:aria-labelledby="getAccessibleLabelledBy()"
 				:aria-valuemin="minValue"
 				:aria-valuemax="maxValue"
+				@keydown="handleKeyDown"
 			>
 				<div
 					:class="[$style.fill, { [$style.animateFill]: animateFill }]"
