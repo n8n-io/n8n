@@ -282,6 +282,20 @@ describe('createDelegateSubAgentTool', () => {
 		).toBe(false);
 	});
 
+	it('rejects background mode when no background runner is configured', async () => {
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>();
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		if (!isZodSchema(tool.inputSchema)) throw new Error('Expected a Zod input schema');
+		const backgroundInput = { ...input, mode: 'background' };
+
+		expect(tool.inputSchema.safeParse(input).success).toBe(true);
+		expect(tool.inputSchema.safeParse(backgroundInput).success).toBe(false);
+		await expect(tool.handler?.(backgroundInput, {})).rejects.toThrow(
+			'Background delegation is unavailable',
+		);
+		expect(runSubAgent).not.toHaveBeenCalled();
+	});
+
 	it('preserves inlineSubAgentModelsByDifficulty in delegate tool metadata', () => {
 		const tool = createDelegateSubAgentTool({
 			inlineSubAgentModelsByDifficulty: {

@@ -376,17 +376,22 @@ watch(
 							>
 								{{ staticRole.displayName }}
 							</N8nText>
-							<N8nButton
+							<N8nTooltip
 								v-if="canRemoveProject(entry.project)"
-								variant="subtle"
-								icon-only
-								native-type="button"
-								icon="trash-2"
-								:aria-label="locale.baseText('generic.delete')"
-								:disabled="props.readonly"
-								data-test-id="project-sharing-remove"
-								@click="onRoleAction(entry.project, 'remove')"
-							/>
+								:content="locale.baseText('projects.sharing.removeAccess')"
+								placement="top"
+							>
+								<N8nButton
+									variant="subtle"
+									icon-only
+									native-type="button"
+									icon="trash-2"
+									:aria-label="locale.baseText('projects.sharing.removeAccess')"
+									:disabled="props.readonly"
+									data-test-id="project-sharing-remove"
+									@click="onRoleAction(entry.project, 'remove')"
+								/>
+							</N8nTooltip>
 						</span>
 					</ProjectSharingInfo>
 					<N8nSelect
@@ -410,17 +415,22 @@ watch(
 							:label="role.displayName"
 						/>
 					</N8nSelect>
-					<N8nButton
+					<N8nTooltip
 						v-if="!props.static && !showStaticRole && canRemoveProject(entry.project)"
-						variant="subtle"
-						icon-only
-						native-type="button"
-						icon="trash-2"
-						:aria-label="locale.baseText('generic.delete')"
-						:disabled="props.readonly"
-						data-test-id="project-sharing-remove"
-						@click="onRoleAction(entry.project, 'remove')"
-					/>
+						:content="locale.baseText('projects.sharing.removeAccess')"
+						placement="top"
+					>
+						<N8nButton
+							variant="subtle"
+							icon-only
+							native-type="button"
+							icon="trash-2"
+							:aria-label="locale.baseText('projects.sharing.removeAccess')"
+							:disabled="props.readonly"
+							data-test-id="project-sharing-remove"
+							@click="onRoleAction(entry.project, 'remove')"
+						/>
+					</N8nTooltip>
 				</li>
 			</template>
 		</ul>

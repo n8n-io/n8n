@@ -20,7 +20,7 @@ import type {
 	DataTableSchemaOperation,
 	DataTableUpdate,
 } from './data-table.types';
-import { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
+import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
@@ -46,8 +46,9 @@ export class DataTableImporter {
 	/**
 	 * Resolves the package's data table references against the target project.
 	 * Read-only: matched tables are compat-checked, then planned as updates under
-	 * `overwrite` or used as-is otherwise; absent tables become planned creations,
-	 * failures, or skips per missing mode. Mirrors the credential side's `plan`.
+	 * `overwrite` or `overwrite-non-destructive` or used as-is otherwise; absent
+	 * tables become planned creations, failures, or skips per missing mode.
+	 * Mirrors the credential side's `plan`.
 	 */
 	async plan(
 		context: ImportContext,
@@ -62,7 +63,7 @@ export class DataTableImporter {
 			return {
 				creations: [],
 				updates: [],
-				failures: [{ kind: 'module-disabled', usedByWorkflows: workflowsUsing(requirements) }],
+				failures: [{ kind: 'module-disabled' }],
 				matchedCount: 0,
 			};
 		}
@@ -117,6 +118,46 @@ export class DataTableImporter {
 	}
 
 	/**
+	 * Matched tables that `overwrite-non-destructive` blocks, with every change
+	 * `overwrite` would make. A table has one project, so each id yields at most
+	 * one result.
+	 */
+	async findDestructiveChanges<T extends { id: string; projectId: string }>(
+		references: T[],
+		packageDataTables: SerializedDataTable[],
+	): Promise<Array<DataTableUpdate & { reference: T }>> {
+		if (!this.moduleRegistry.isActive('data-table')) return [];
+
+		const packageTablesById = new Map(
+			packageDataTables.map((table) => [table.id, normalizeColumnIndexes(table)]),
+		);
+		const targets = await this.dataTableService.findDataTablesByIds(references.map(({ id }) => id));
+		const targetsById = new Map(targets.map((table) => [table.id, table]));
+
+		return references.flatMap((reference) => {
+			const packageTable = packageTablesById.get(reference.id);
+			const target = matchTargetTable(DataTableMatchingMode.ById, reference, {
+				projectId: reference.projectId,
+				targetsById,
+			});
+			if (
+				!packageTable ||
+				!target ||
+				!findSchemaConflict(
+					DataTableSchemaConflictPolicy.OverwriteNonDestructive,
+					packageTable.columns,
+					target.columns,
+				)
+			) {
+				return [];
+			}
+			return [
+				{ table: packageTable, operations: diffDataTableSchema(packageTable, target), reference },
+			];
+		});
+	}
+
+	/**
 	 * Creates the planned tables with their package (source) ids, and changes
 	 * the planned updates to the package schema. Ids are preserved, so node
 	 * references already resolve.
@@ -159,7 +200,6 @@ export class DataTableImporter {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:create',
-				usedByWorkflows: workflowsUsing(creations.map(({ requirement }) => requirement)),
 			});
 		}
 
@@ -167,7 +207,6 @@ export class DataTableImporter {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
-				usedByWorkflows: workflowsUsing(updates.map(({ requirement }) => requirement)),
 			});
 		}
 
@@ -214,8 +253,9 @@ export class DataTableImporter {
 /**
  * Decides the fate of one package table reference, independent of how the
  * target was matched: matched tables are compat-checked, then diffed against
- * the package under `overwrite` or used as-is otherwise; absent tables follow
- * the missing mode, with globally unique ids guarding planned creations.
+ * the package under `overwrite` or `overwrite-non-destructive` or used as-is
+ * otherwise; absent tables follow the missing mode, with globally unique ids
+ * guarding planned creations.
  * `existingWithSameId` is the instance-wide (any project) occupant of the
  * requirement's id, only consulted for creations.
  */
@@ -242,7 +282,10 @@ function resolveRequirement(
 				}),
 			};
 		}
-		if (schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite) {
+		if (
+			schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite ||
+			schemaConflictPolicy === DataTableSchemaConflictPolicy.OverwriteNonDestructive
+		) {
 			const operations = diffDataTableSchema(packageTable, matchedTargetTable);
 			if (operations.length > 0) return { action: 'update', operations };
 		}
@@ -278,9 +321,4 @@ async function hasProjectScope(
 	scope: 'dataTable:create' | 'dataTable:update',
 ): Promise<boolean> {
 	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
-}
-
-/** Sorted unique workflow ids referencing the given requirements. */
-function workflowsUsing(requirements: PackageDataTableRequirement[]): string[] {
-	return [...new Set(requirements.flatMap(({ usedByWorkflows }) => usedByWorkflows))].sort();
 }

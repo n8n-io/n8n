@@ -22,6 +22,10 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	messageId?: string;
 }
 
+/** One rule for steering eligibility: the allow-list of kinds. Integrations never steer. */
+export const acceptsSteering = (kind: AgentQueuedMessage['kind']): boolean =>
+	kind === 'preview' || kind === 'n8n_chat';
+
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	kind: 'integration';
 	credentialId: string;

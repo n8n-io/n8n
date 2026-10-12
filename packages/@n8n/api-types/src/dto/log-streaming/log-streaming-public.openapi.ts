@@ -39,6 +39,10 @@ export const logStreamingDestinationCommonFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+export const logStreamingDestinationRequestReadOnlyFieldDocs = {
+	id: { type: 'string', readOnly: true, ...logStreamingDestinationCommonFieldDocs.id },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
 export const logStreamingCircuitBreakerFieldDocs = {
 	maxFailures: {
 		description: 'Maximum failures within the sliding window before the breaker opens.',
@@ -122,5 +126,12 @@ export const logStreamingSentryFieldDocs = {
 	dsn: {
 		description: 'Sentry DSN the events are sent to.',
 		example: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const logStreamingTestResultFieldDocs = {
+	success: {
+		description: 'Whether the test message was delivered to the destination successfully.',
+		example: true,
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;

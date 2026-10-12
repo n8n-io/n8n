@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -29,10 +29,12 @@ import type {
 	INodeType,
 	IDataObject,
 	IWebhookResponseData,
+	WebhookResponseMode,
 	IN8nHttpFullResponse,
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
+	ITaskData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	CredentialCheckResult,
@@ -54,6 +56,7 @@ import {
 	createRunExecutionData,
 	ExpressionError,
 	OperationalError,
+	UnexpectedError,
 	UserError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -1256,6 +1259,7 @@ describe('invokeWebhook', () => {
 		expect(result).toEqual({
 			webhookResultData,
 			runExecutionDataChanges: {},
+			failed: false,
 		});
 		expect(responseCallback).not.toHaveBeenCalled();
 		expect(responder.hasResponded).toBe(false);
@@ -1297,6 +1301,7 @@ describe('invokeWebhook', () => {
 			{},
 		);
 		expect(responder.hasResponded).toBe(true);
+		expect(result.failed).toBe(true);
 		expect(result.webhookResultData).toEqual({
 			noWebhookResponse: true,
 			workflowData: [[{ json: {} }]],
@@ -1632,6 +1637,8 @@ describe('executeWebhook credential-status gate', () => {
 		authentication: string;
 		gateResult?: CredentialCheckResult;
 		webhookResult?: IWebhookResponseData;
+		responseMode?: WebhookResponseMode;
+		startNodeType?: string;
 	}) => {
 		const checkCredentialStatus = vi.fn().mockResolvedValue(options.gateResult);
 
@@ -1649,7 +1656,7 @@ describe('executeWebhook credential-status gate', () => {
 
 		const workflowStartNode = mock<INode>({
 			name: 'Webhook',
-			type: WEBHOOK_NODE_TYPE,
+			type: options.startNodeType ?? WEBHOOK_NODE_TYPE,
 			typeVersion: 2,
 			parameters: { authentication: options.authentication },
 		});
@@ -1669,7 +1676,7 @@ describe('executeWebhook credential-status gate', () => {
 					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
 			},
 			expression: {
-				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+				getSimpleParameterValue: vi.fn().mockReturnValue(options.responseMode ?? 'onReceived'),
 				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
 			},
 		});
@@ -1745,6 +1752,54 @@ describe('executeWebhook credential-status gate', () => {
 		);
 		// Execution continued past the gate into the workflow runner.
 		expect(workflowRunner.run).toHaveBeenCalled();
+	});
+
+	it.each(['onReceived', 'hostedChat'] as const)(
+		'marks a %s run as owing no webhook response, since main answers at enqueue',
+		async (responseMode) => {
+			// Not awaited: non-onReceived modes then wait on a post-execute promise that never settles here.
+			void runGate({ authentication: 'none', gateResult: missingGateResult, responseMode });
+			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+			const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
+			expect(runData.callerAwaitsOutcome).toBe('none');
+		},
+	);
+
+	describe('in queue mode', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+
+		beforeEach(() => {
+			executionsConfig.mode = 'queue';
+		});
+
+		afterEach(() => {
+			executionsConfig.mode = 'regular';
+		});
+
+		it('marks an MCP Trigger run as awaited to completion, since the worker relays the MCP response', async () => {
+			void runGate({
+				authentication: 'none',
+				gateResult: missingGateResult,
+				startNodeType: MCP_TRIGGER_NODE_TYPE,
+			});
+			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+			const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
+			expect(runData.callerAwaitsOutcome).toBe('completion');
+		});
+	});
+
+	it('marks a lastNode run as owing a webhook response', async () => {
+		void runGate({
+			authentication: 'none',
+			gateResult: missingGateResult,
+			responseMode: 'lastNode',
+		});
+		await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+		const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
+		expect(runData.callerAwaitsOutcome).toBe('response');
 	});
 
 	it('does not gate webhooks that do not establish a triggering identity', async () => {
@@ -1828,6 +1883,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		options: { registrationIdentity?: string; establishesIdentity?: boolean } = {},
 	) => {
 		const { registrationIdentity, establishesIdentity = true } = options;
+		let establishError: unknown;
 
 		resourceRegistry.getByResourceUrl.mockResolvedValue(resource);
 
@@ -1839,7 +1895,12 @@ describe('executeWebhook establishTriggerIdentity', () => {
 
 		webhookService.runWebhook.mockImplementation(async (_workflow, _webhookData, _node, data) => {
 			if (establishesIdentity) {
-				await data.establishTriggerIdentity!('caller-token', RESOURCE_URL);
+				try {
+					await data.establishTriggerIdentity!('caller-token', RESOURCE_URL);
+				} catch (error) {
+					establishError = error;
+					throw error;
+				}
 			}
 			return { workflowData: [[{ json: {} }]] };
 		});
@@ -1886,11 +1947,11 @@ describe('executeWebhook establishTriggerIdentity', () => {
 			{ encryptedRunnerIdentity: registrationIdentity },
 		);
 
-		return additionalData;
+		return { additionalData, establishError };
 	};
 
 	it('seals the resource grant, so the run can still verify itself once the trigger is gone', async () => {
-		const additionalData = await runWithTriggerIdentity(resourceWithGrant);
+		const { additionalData } = await runWithTriggerIdentity(resourceWithGrant);
 
 		expect(resourceRegistry.getByResourceUrl).toHaveBeenCalledWith(RESOURCE_URL);
 		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
@@ -1913,25 +1974,18 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		expect(runData.executionData?.resultData.error).toBeUndefined();
 	});
 
-	it('seals no grant for a resource whose gate cannot be expressed as one', async () => {
-		await runWithTriggerIdentity(resourceWithoutGrant);
+	it.each([
+		['the resource has no grant', resourceWithoutGrant],
+		['the resource has already stopped resolving', undefined],
+	])('refuses to establish an identity when %s', async (_label, resource) => {
+		const { additionalData, establishError } = await runWithTriggerIdentity(resource);
 
-		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
-			'caller-token',
-			RESOURCE_URL,
-			undefined,
-			undefined,
-		);
-	});
-
-	it('seals no grant when the resource has already stopped resolving', async () => {
-		await runWithTriggerIdentity(undefined);
-
-		expect(executionContextService.buildTriggerIdentityCredentials).toHaveBeenCalledWith(
-			'caller-token',
-			RESOURCE_URL,
-			undefined,
-			undefined,
+		expect(establishError).toBeInstanceOf(UnexpectedError);
+		expect(executionContextService.buildTriggerIdentityCredentials).not.toHaveBeenCalled();
+		expect(additionalData.encryptedRunnerIdentity).toBeUndefined();
+		expect(Container.get(Logger).error).toHaveBeenCalledWith(
+			'Cannot establish a trigger identity without a resource grant',
+			{ workflowId: WORKFLOW_ID, resource: RESOURCE_URL },
 		);
 	});
 
@@ -1948,7 +2002,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 	});
 
 	it('carries the test-webhook registration identity when no node establishes one', async () => {
-		const additionalData = await runWithTriggerIdentity(resourceWithGrant, {
+		const { additionalData } = await runWithTriggerIdentity(resourceWithGrant, {
 			registrationIdentity: 'registration-context',
 			establishesIdentity: false,
 		});
@@ -3100,5 +3154,206 @@ describe('executeWebhook on engine v2', () => {
 			});
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('executeWebhook when the node webhook throws', () => {
+	const startNode = mock<INode>({
+		name: 'Form Ending',
+		type: FORM_NODE_TYPE,
+		typeVersion: 2,
+		parameters: { operation: 'completion' },
+	});
+
+	const runRequest = async ({
+		runExecutionData,
+		executionId,
+		method = 'GET',
+		onResume,
+		webhookResult,
+	}: {
+		runExecutionData?: IRunExecutionData;
+		executionId?: string;
+		method?: 'GET' | 'POST';
+		onResume?: () => void;
+		webhookResult?: IWebhookResponseData;
+	}) => {
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Project 1' }),
+		);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
+		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
+		if (webhookResult !== undefined) {
+			webhookService.runWebhook.mockResolvedValue(webhookResult);
+		} else {
+			webhookService.runWebhook.mockRejectedValue(
+				new Error('No binary data with field data found.'),
+			);
+		}
+		workflowRunner.run.mockResolvedValue(EXECUTION_ID);
+
+		const workflow = mock<Workflow>({
+			id: WORKFLOW_ID,
+			name: 'Test Workflow',
+			nodes: { [startNode.name]: startNode },
+			getChildNodes: vi.fn().mockReturnValue([]),
+			nodeTypes: {
+				getByNameAndVersion: vi
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'form' } })),
+			},
+			expression: {
+				getSimpleParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getSimpleParameterValue']>) =>
+						args[1] ?? args[5],
+				),
+				getComplexParameterValue: vi.fn(
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+				),
+			},
+		});
+		const responseCallback = vi.fn();
+
+		await executeWebhook(
+			workflow,
+			{
+				webhookDescription: { name: 'default', responseMode: 'onReceived' },
+				workflowId: WORKFLOW_ID,
+			} as unknown as IWebhookData,
+			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
+			startNode,
+			'webhook',
+			undefined,
+			runExecutionData,
+			executionId,
+			mock<WebhookRequest>({ method, headers: {}, contentType: undefined, body: {} }),
+			mock<express.Response>({ headersSent: false }),
+			responseCallback,
+			undefined,
+			{ onResume },
+		);
+
+		return { responseCallback };
+	};
+
+	const expectErrorResponse = (responseCallback: ReturnType<typeof vi.fn>) => {
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+		expect(responseCallback).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Workflow Form Error: Workflow could not be started!' }),
+			{},
+		);
+	};
+
+	beforeEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	it('should leave a finished execution as it was', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: { nodeExecutionStack: [] },
+		});
+
+		const { responseCallback } = await runRequest({ runExecutionData, executionId: EXECUTION_ID });
+
+		expectErrorResponse(responseCallback);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(runExecutionData.executionData?.nodeExecutionStack).toEqual([]);
+		expect(Container.get(ErrorReporter).error).toHaveBeenCalledTimes(1);
+	});
+
+	// On a POST resume, `disableNode` has already disabled the waiting node.
+	it.each([
+		{ method: 'GET' as const, disabled: false },
+		{ method: 'POST' as const, disabled: true },
+	])('should leave a waiting execution as it was on $method', async ({ method, disabled }) => {
+		const runData = { Trigger: [mock<ITaskData>()] };
+		const savedRunData = { Trigger: [...runData.Trigger] };
+		const waitingNode = { ...startNode, disabled };
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [
+					{ node: waitingNode, data: { main: [[{ json: { submitted: true } }]] }, source: null },
+				],
+			},
+			resultData: { runData, lastNodeExecuted: 'Form Ending' },
+		});
+
+		const onResume = vi.fn();
+		const { responseCallback } = await runRequest({
+			runExecutionData,
+			executionId: EXECUTION_ID,
+			method,
+			onResume,
+		});
+
+		expect(onResume).not.toHaveBeenCalled();
+
+		expectErrorResponse(responseCallback);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(runExecutionData.resultData.runData).toBe(runData);
+		expect(runExecutionData.resultData.runData).toEqual(savedRunData);
+		expect(runExecutionData.resultData.error).toBeUndefined();
+		expect(runExecutionData.executionData?.nodeExecutionStack[0].data.main).toEqual([
+			[{ json: { submitted: true } }],
+		]);
+	});
+
+	it('should call onResume once before a waiting execution resumes', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: startNode, data: { main: [[]] }, source: null }],
+			},
+			resultData: { runData: {}, lastNodeExecuted: 'Form Ending' },
+		});
+		const onResume = vi.fn();
+
+		await runRequest({
+			runExecutionData,
+			executionId: EXECUTION_ID,
+			method: 'POST',
+			onResume,
+			webhookResult: { workflowData: [[{ json: { ok: true } }]] },
+		});
+
+		expect(onResume).toHaveBeenCalledTimes(1);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		expect(onResume.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowRunner.run.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('should not resume when the node returns no workflow data', async () => {
+		const runExecutionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [{ node: startNode, data: { main: [[]] }, source: null }],
+			},
+		});
+		const onResume = vi.fn();
+
+		await runRequest({
+			runExecutionData,
+			executionId: EXECUTION_ID,
+			onResume,
+			webhookResult: {},
+		});
+
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(onResume).not.toHaveBeenCalled();
+	});
+
+	it('should still record a new execution as failed', async () => {
+		const { responseCallback } = await runRequest({});
+
+		expectErrorResponse(responseCallback);
+		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		expect(workflowRunner.run.mock.calls[0][0].executionData?.resultData).toEqual(
+			expect.objectContaining({
+				lastNodeExecuted: 'Form Ending',
+				error: expect.objectContaining({ message: 'No binary data with field data found.' }),
+			}),
+		);
 	});
 });

@@ -741,6 +741,109 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.has('agent-1')).toBe(false);
 		});
 
+		test('registers an Agent at spawn while the builder is creating it', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder:agent-1',
+								activity: 'creating',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								isLoading: true,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+		});
+
+		test('registers an Agent at spawn while the builder is editing it', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder:agent-1',
+								activity: 'editing',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								isLoading: true,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+		});
+
+		test('keeps a spawn-registered Agent when the build settles with no change', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder:agent-1',
+								activity: 'creating',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1', name: 'Support Bot' },
+							}),
+						],
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								isLoading: true,
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.has('agent-1')).toBe(true);
+
+			const buildAgentCall = messages.value[0].agentTree!.toolCalls[0];
+			buildAgentCall.isLoading = false;
+			buildAgentCall.result = { ok: true, agentId: 'agent-1', agentChange: 'none' };
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+			});
+		});
+
 		test('keeps a pending Agent unconfirmed until a build changes it', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 			const builder = makeAgentNode({
@@ -916,11 +1019,11 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test('event-derived names win over metadata: unnamed spawn, then named tool result, then metadata enrichment', async () => {
+		test('event-derived names win over a metadata name that an earlier event carried', async () => {
 			const { messages, producedArtifacts } = setup(undefined, () => ({
 				agentId: 'agent-1',
 				projectId: 'project-1',
-				name: 'Stale Metadata Name',
+				name: 'Support Agent',
 			}));
 
 			messages.value = [
@@ -929,6 +1032,12 @@ describe('useResourceRegistry', () => {
 						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 						toolCalls: [
 							makeToolCall({
+								toolCallId: 'tc-1',
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Agent' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-2',
 								toolName: 'build-agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
@@ -944,6 +1053,32 @@ describe('useResourceRegistry', () => {
 				name: 'Support Bot',
 				projectId: 'project-1',
 			});
+		});
+
+		test('a name the user saved in the agent builder wins over the event-derived name', async () => {
+			const target = ref({ agentId: 'agent-1', projectId: 'project-1', name: 'Support Bot' });
+			const { messages, producedArtifacts } = setup(undefined, () => target.value);
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+						toolCalls: [
+							makeToolCall({
+								toolName: 'build-agent',
+								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Support Bot');
+
+			target.value = { ...target.value, name: 'Helpdesk Bot' };
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')?.name).toBe('Helpdesk Bot');
 		});
 	});
 

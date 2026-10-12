@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -235,6 +236,12 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabs.text()).toContain('Sessions');
 		expect(tabs.text()).toContain('Settings');
 		expect(tabs.text()).not.toContain('Raw');
+	});
+
+	it('loads the type availability policies for the project', async () => {
+		await mountColumn();
+
+		expect(useTypeAvailabilityPoliciesStore().fetchForProject).toHaveBeenCalledWith('project-1');
 	});
 
 	it('does not render per-tab headings or descriptions for Sessions and Settings', async () => {

@@ -664,7 +664,9 @@ watchEffect(async () => {
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
 			/>
+			<!-- Keep pagination state scoped to one workflow. -->
 			<WorkflowPublishTimelineContent
+				:key="workflowId"
 				v-if="canRender && activeTab === 'publishTimeline'"
 				:workflow-id="workflowId"
 				:selected-version-id="versionId"

@@ -1,4 +1,7 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { NodeApiError } from 'n8n-workflow';
 import type {
+	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -17,6 +20,14 @@ import {
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
+import {
+	assertLakebaseOAuth,
+	collectPages,
+	lakebaseApiRequest,
+	resolveLakebaseRestBase,
+	toPage,
+	type Page,
+} from '../transport';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
@@ -441,12 +452,12 @@ async function fetchListPage<T>(
 	credentialType: DatabricksCredentialType,
 	host: string,
 	path: string,
-	limit: number,
+	qs: IDataObject,
 	pageToken?: string,
 	permissionHint?: string,
 ): Promise<T> {
 	try {
-		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, qs, pageToken);
 	} catch (error) {
 		makePermissionErrorLegible(error, permissionHint);
 		throw error;
@@ -472,7 +483,7 @@ export async function getJobs(
 			credentialType,
 			host,
 			'/api/2.2/jobs/list',
-			JOBS_PAGE_SIZE,
+			{ limit: JOBS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
 		);
@@ -534,7 +545,7 @@ export async function getRuns(
 			credentialType,
 			host,
 			'/api/2.2/jobs/runs/list',
-			RUNS_PAGE_SIZE,
+			{ limit: RUNS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
 		);
@@ -559,4 +570,196 @@ export async function getRuns(
 	}
 
 	return { results, paginationToken: pageToken };
+}
+
+const LAKEBASE_SEARCH_PAGE_SIZE = 100;
+const LAKEBASE_SEARCH_MAX_PAGES = 10;
+// Internal tables the Data API lists under Ignore privileges; a user table named databricks_* is still reachable By ID
+const INTERNAL_TABLE_PREFIX = /^databricks_/;
+
+function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
+	const read = (name: string) =>
+		extractResourceLocatorValue(context.getCurrentNodeParameter(name)) || undefined;
+	return {
+		project: read('lakebaseProject'),
+		branch: read('lakebaseBranch'),
+		database: read('lakebaseDatabase'),
+		schema: read('lakebaseSchema'),
+	};
+}
+
+const byText = (filter: string | undefined) => {
+	const needle = filter?.toLowerCase();
+	return (item: { name: string; value: string }) =>
+		!needle ||
+		item.name.toLowerCase().includes(needle) ||
+		item.value.toLowerCase().includes(needle);
+};
+
+// The management API has no name filter, so a search scans pages the way getJobs does
+async function listLakebase<P, T>(
+	context: ILoadOptionsFunctions,
+	path: string,
+	entries: (page: P) => T[] | undefined,
+	filter: string | undefined,
+	paginationToken: string | undefined,
+): Promise<Page<T>> {
+	const credentialType = getActiveCredentialType(context);
+	const host = await getHost(context, credentialType);
+	const fetchPage = async (pageToken?: string) => {
+		const page = await fetchListPage<P & { next_page_token?: string }>(
+			context,
+			credentialType,
+			host,
+			path,
+			{ page_size: LAKEBASE_SEARCH_PAGE_SIZE },
+			pageToken,
+		);
+		return toPage(entries(page), page.next_page_token);
+	};
+	return await collectPages(
+		fetchPage,
+		{ deadlineEpochMs: Infinity, maxPages: filter ? LAKEBASE_SEARCH_MAX_PAGES : 1 },
+		paginationToken,
+	);
+}
+
+type LakebaseProject = { project_id: string; status?: { display_name?: string } };
+type LakebaseBranch = { branch_id: string; status?: { default?: boolean } };
+type LakebaseDatabase = { database_id: string; status?: { postgres_database?: string } };
+
+export async function getLakebaseProjects(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		'/api/2.0/postgres/projects',
+		(page: { projects?: LakebaseProject[] }) => page.projects,
+		filter,
+		paginationToken,
+	);
+	const results = items
+		.map((p) => ({ name: p.status?.display_name || p.project_id, value: p.project_id }))
+		.filter(byText(filter));
+	return { results, paginationToken: nextPageToken };
+}
+
+export async function getLakebaseBranches(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { project } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches`,
+		(page: { branches?: LakebaseBranch[] }) => page.branches,
+		filter,
+		paginationToken,
+	);
+	// A locator cannot preselect a single branch: `default` is a static literal and the
+	// editor never writes a value from a search response. Leading with the default branch is the fallback.
+	const results = items
+		.sort((a, b) => (b.status?.default ? 1 : 0) - (a.status?.default ? 1 : 0))
+		.map((b) => ({
+			name: b.branch_id,
+			value: b.branch_id,
+			description: b.status?.default ? 'Default branch' : undefined,
+		}))
+		.filter(byText(filter));
+	return { results, paginationToken: nextPageToken };
+}
+
+export async function getLakebaseDatabases(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+
+	const { items, nextPageToken } = await listLakebase(
+		this,
+		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}/databases`,
+		(page: { databases?: LakebaseDatabase[] }) => page.databases,
+		filter,
+		paginationToken,
+	);
+	// The Data API path uses the Postgres database name, which can differ from the resource id
+	const results = items
+		.map((d) => ({ name: d.database_id, value: d.status?.postgres_database || d.database_id }))
+		.filter(byText(filter));
+	return { results, paginationToken: nextPageToken };
+}
+
+// No management endpoint lists Postgres schemas; other schemas go through By ID
+export async function getLakebaseSchemas(
+	this: ILoadOptionsFunctions,
+): Promise<INodeListSearchResult> {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	return { results: [{ name: 'public', value: 'public' }] };
+}
+
+export async function getLakebaseTables(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+	if (!database) {
+		return { results: [{ name: 'Please Select a Database First', value: '' }] };
+	}
+	if (!schema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
+	}
+	// A PAT can read the endpoints, so check before the lookup to name the real cause
+	assertLakebaseOAuth(this);
+	try {
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const doc: { components?: { schemas?: Record<string, unknown> } } = await lakebaseApiRequest(
+			this,
+			{
+				method: 'GET',
+				url: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}/openapi.json`,
+				headers: { Accept: 'application/openapi+json, application/json' },
+				json: true,
+			},
+		);
+		const results = Object.keys(doc.components?.schemas ?? {})
+			.filter((name) => !INTERNAL_TABLE_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
+			.filter(byText(filter));
+		return { results };
+	} catch (error) {
+		if (
+			error instanceof NodeApiError &&
+			isRecord(error.context.data) &&
+			error.context.data.code === 'PGRST205'
+		) {
+			// Only a NodeApiError keeps its description on the way to the dropdown, so mutate like makePermissionErrorLegible does
+			error.message =
+				'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID';
+			error.description =
+				'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.';
+			throw error;
+		}
+		makePermissionErrorLegible(error);
+		throw error;
+	}
 }

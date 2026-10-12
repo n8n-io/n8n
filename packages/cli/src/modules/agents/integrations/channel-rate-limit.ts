@@ -62,9 +62,28 @@ export function isHttp429(error: unknown): boolean {
 	return httpStatusFromError(error) === 429;
 }
 
+// Capitalize-first-letter can't produce WhatsApp's internal capital; every
+// other platform this runs for (slack, telegram, discord, linear) needs no
+// exception.
+const PLATFORM_DISPLAY_LABEL_OVERRIDES: Record<string, string> = {
+	whatsapp: 'WhatsApp',
+};
+
 export function channelRateLimitMessage(platform: string): string {
-	const label = `${platform.charAt(0).toUpperCase()}${platform.slice(1)}`;
+	const label =
+		PLATFORM_DISPLAY_LABEL_OVERRIDES[platform] ??
+		`${platform.charAt(0).toUpperCase()}${platform.slice(1)}`;
 	return `The ${label} integration has exceeded its rate limit. Please wait a few minutes before trying again.`;
+}
+
+/** A 429 for one recipient only. Don't block the whole connection for it. */
+export interface RecipientScopedRateLimitError {
+	response: { status: 429 };
+	rateLimitScope: 'recipient';
+}
+
+function isRecipientScopedRateLimit(error: unknown): boolean {
+	return isRecord(error) && error.rateLimitScope === 'recipient';
 }
 
 export function caughtIntegrationError(
@@ -79,6 +98,9 @@ export function caughtIntegrationError(
 	},
 ): IntegrationErrorResponse {
 	if (isHttp429(error)) {
+		if (isRecipientScopedRateLimit(error) && error instanceof Error) {
+			return rateLimitExceeded(error.message);
+		}
 		params.guard?.record(params.connectionId);
 		return rateLimitExceeded(channelRateLimitMessage(params.platform));
 	}

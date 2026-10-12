@@ -41,13 +41,15 @@
   },
   "dependencies": {
     "@n8n/constants": "workspace:*",
-    "nanoid": "catalog:"
+    "nanoid": "catalog:",
+    "semver": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
+    "@types/semver": "catalog:",
     "fast-check": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",

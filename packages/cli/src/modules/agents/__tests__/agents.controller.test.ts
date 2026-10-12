@@ -110,6 +110,7 @@ describe('AgentsController create', () => {
 		} as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: 'aBcDeFgHiJkLmNoP',
 		});
 	});
@@ -120,6 +121,7 @@ describe('AgentsController create', () => {
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: undefined,
 		});
 	});
@@ -135,6 +137,7 @@ describe('AgentsController create', () => {
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: undefined,
 			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
 		});

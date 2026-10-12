@@ -4,8 +4,11 @@ import {
 	MANAGED_CREDENTIAL_TOKEN,
 	type AgentEvalDraftCase,
 	type AgentJsonConfig,
+	type CreateDraftDatasetResult,
 	type GenerateDraftCasesOptions,
 	type GenerateDraftCasesResult,
+	type PreviewRunOptions,
+	type PreviewRunResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -17,14 +20,19 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
+import { generateFixSuggestion } from './agent-eval-fix-suggestion';
+import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
+import { AgentTestRunService } from '../agents/agent-test-run.service';
 import {
 	buildAgentSummary,
 	buildCaseGenerationUserPrompt,
 	CASE_GENERATION_SYSTEM_PROMPT,
 	deriveCapabilities,
 	generatedCasesSchema,
+	type CaseExampleContext,
+	type CaseRevisionContext,
 } from './case-generation/case-generation-prompt';
 import { sampleDimensionTuples } from './case-generation/dimensions';
 import { isSupportedAgentProvider } from '../agents/json-config/credential-field-mapping';
@@ -39,6 +47,10 @@ const MAX_CASE_COUNT = 20;
 // Upper bound per generated field. The model output is untrusted (the prompt
 // embeds the agent's own instructions), so persisted text can't balloon.
 const MAX_CASE_TEXT_CHARS = 2_000;
+
+// `scenario` is meant to be one or two words — a much tighter cap than the
+// other fields, so a runaway model can't turn it into a second `whatToCheck`.
+const MAX_SCENARIO_CHARS = 40;
 
 // Bound a single generation so a hung provider can't pin the request.
 const GENERATE_TIMEOUT_MS = 60_000;
@@ -83,6 +95,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly agentTestRunService: AgentTestRunService,
 	) {}
 
 	/**
@@ -103,20 +116,37 @@ export class AgentEvalCaseGenerationService {
 		const config = await this.agentConfigService.getConfig(agentId, projectId);
 		const modelConfig = await this.resolveAgentModel(config, projectId, user);
 
-		const count = clampCount(options.count);
+		const revision = toRevisionContext(options);
+		const rule = options.rule?.trim() || undefined;
+		// A revision, or a rule to test, always asks for exactly one case — ignore
+		// any requested count so the prompt (one case) and the validation/
+		// persistence limit it's checked against never disagree.
+		const count = revision || rule ? 1 : clampCount(options.count);
 		const capabilities = deriveCapabilities(config);
 		const tuples = sampleDimensionTuples(capabilities, count);
+		const example = toExampleContext(options);
 
 		const summary = buildAgentSummary(config);
 		const generated = await this.invokeModel(
 			modelConfig,
-			buildCaseGenerationUserPrompt(summary, tuples),
+			buildCaseGenerationUserPrompt(summary, tuples, revision, example, rule),
 			tuples.length,
 		);
 		// Cap to the requested count and bound each field: the model output is
 		// untrusted, so a runaway or prompt-injected response can't balloon the
 		// persisted dataset.
 		const cases = boundCases(generated, tuples.length);
+
+		// `save: false` is a preview — the caller gets the drafts back without
+		// anything persisted, so showing them (and letting the user trim/extend
+		// the batch) never leaves a dataset behind if nothing is committed.
+		if (options.save === false) {
+			this.logger.debug('Generated draft eval cases (preview, not persisted)', {
+				agentId,
+				caseCount: cases.length,
+			});
+			return { cases };
+		}
 
 		// Blank/whitespace names fall back to the agent-derived default.
 		const trimmedName = options.datasetName?.trim();
@@ -138,6 +168,130 @@ export class AgentEvalCaseGenerationService {
 		});
 
 		return { datasetId, dataTableId, cases };
+	}
+
+	/**
+	 * Create an empty draft dataset — the same Data Table (input/criteria
+	 * columns) and dataset pointer `generateDraftCases` would create, but with no
+	 * rows and no LLM call. For committing a `save: false` preview: once the user
+	 * picks which previewed (and self-written) cases to keep, this gives them a
+	 * real dataset to insert those rows into via the existing case-creation route,
+	 * without the frontend needing to know or guess the column names.
+	 */
+	async createEmptyDataset(
+		user: User,
+		projectId: string,
+		agentId: string,
+		datasetName?: string,
+	): Promise<CreateDraftDatasetResult> {
+		await this.flagGate.assertEnabled(user);
+		this.assertInstanceWriteAccess();
+
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		const trimmedName = datasetName?.trim();
+		const baseName =
+			trimmedName && trimmedName.length > 0 ? trimmedName : defaultDatasetName(config.name);
+
+		return await this.persistDataset(projectId, agentId, user.id, baseName, []);
+	}
+
+	/**
+	 * Draft exactly one case (`count: 1, save: false` — nothing persisted) and
+	 * immediately run it against the agent through the same path Preview Chat
+	 * and the builder's own `call_agent` tool use ({@link AgentTestRunService}) —
+	 * no Data Table, no dataset, no eval-run row. Backs "try it once" and its
+	 * "needs work" retries, which would otherwise litter a fresh dataset+row on
+	 * every attempt the user doesn't keep.
+	 */
+	async previewRun(
+		user: User,
+		projectId: string,
+		agentId: string,
+		options: PreviewRunOptions = {},
+	): Promise<PreviewRunResult> {
+		const drafted = await this.generateDraftCases(user, projectId, agentId, {
+			...options,
+			count: 1,
+			save: false,
+		});
+		const draftCase = drafted.cases[0];
+		if (!draftCase) return { status: 'failed' };
+
+		return await this.runPreviewCase(user, projectId, agentId, draftCase);
+	}
+
+	/**
+	 * Runs one case against the agent and grades it against its rule, without
+	 * persisting anything. A failed rule also gets one suggested fix on its
+	 * verdict. Split from {@link previewRun} so a case can be run again after the
+	 * agent's instructions changed.
+	 */
+	async runPreviewCase(
+		user: User,
+		projectId: string,
+		agentId: string,
+		draftCase: Pick<AgentEvalDraftCase, 'input' | 'whatToCheck' | 'scenario'>,
+	): Promise<PreviewRunResult> {
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+			agentId,
+		);
+		const result = await this.agentTestRunService.executeDraftRun({
+			agentId,
+			projectId,
+			user,
+			message: draftCase.input,
+			credentialProvider,
+			source: 'agent-eval-preview',
+		});
+
+		// `maxIterations` means the agent was cut off before finishing, not that it
+		// produced a real answer — treat it the same as a non-completed run rather
+		// than showing an incomplete response as an approved example.
+		if (result.status !== 'completed' || result.maxIterations) return { status: 'failed' };
+
+		// Graded against the rule it was drafted with, so the preview can say whether
+		// the first check passed. A judge failure comes back as an `error` verdict;
+		// it must not turn a real, finished run into a failed preview.
+		const verdict = await judgeAgentAnswer(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{
+				input: draftCase.input,
+				output: result.response,
+				criteria: draftCase.whatToCheck.trim() || null,
+				expectedOutput: null,
+			},
+			{ agentId, projectId, user },
+		);
+
+		const rule = draftCase.whatToCheck.trim();
+		const suggestion =
+			verdict.status === 'completed' && verdict.outcome === 'fail' && rule
+				? await generateFixSuggestion(
+						{
+							agentConfigService: this.agentConfigService,
+							credentialsService: this.credentialsService,
+							logger: this.logger,
+						},
+						{ input: draftCase.input, output: result.response, rule, reasoning: verdict.reasoning },
+						{ agentId, projectId, user },
+					)
+				: null;
+
+		return {
+			status: 'completed',
+			input: draftCase.input,
+			whatToCheck: draftCase.whatToCheck,
+			scenario: draftCase.scenario,
+			response: result.response,
+			verdict: suggestion ? { ...verdict, suggestion } : verdict,
+		};
 	}
 
 	// ---- internals ----
@@ -179,7 +333,12 @@ export class AgentEvalCaseGenerationService {
 			projectId,
 			user,
 		);
-		return await resolveCredentialAwareModelConfig(model, credential, credentialProvider);
+		return await resolveCredentialAwareModelConfig(
+			model,
+			credential,
+			credentialProvider,
+			config.modelDeploymentName,
+		);
 	}
 
 	/**
@@ -210,11 +369,15 @@ export class AgentEvalCaseGenerationService {
 			});
 			const parsed = generatedCasesSchema.safeParse(result.structuredOutput);
 			if (!parsed.success) return null;
-			// Trim and drop cases with a blank input or check — a whitespace-only
-			// field would persist an unusable draft row.
+			// Trim and drop cases with a blank input, check, or scenario — a
+			// whitespace-only field would persist an unusable draft row.
 			const cases = parsed.data.cases
-				.map((c) => ({ input: c.input.trim(), whatToCheck: c.whatToCheck.trim() }))
-				.filter((c) => c.input.length > 0 && c.whatToCheck.length > 0);
+				.map((c) => ({
+					input: c.input.trim(),
+					whatToCheck: c.whatToCheck.trim(),
+					scenario: c.scenario.trim(),
+				}))
+				.filter((c) => c.input.length > 0 && c.whatToCheck.length > 0 && c.scenario.length > 0);
 			// Require the full requested count so a partial dataset is never persisted.
 			return cases.length >= expectedCount ? cases : null;
 		};
@@ -246,7 +409,7 @@ export class AgentEvalCaseGenerationService {
 		createdById: string,
 		baseName: string,
 		cases: AgentEvalDraftCase[],
-	): Promise<{ datasetId: string; dataTableId: string }> {
+	): Promise<CreateDraftDatasetResult> {
 		const columns = [
 			{ name: INPUT_COLUMN, type: 'string' as const },
 			{ name: CRITERIA_COLUMN, type: 'string' as const },
@@ -267,25 +430,42 @@ export class AgentEvalCaseGenerationService {
 		}
 
 		try {
-			const rows = cases.map((c) => ({
-				[INPUT_COLUMN]: c.input,
-				[CRITERIA_COLUMN]: c.whatToCheck,
-			}));
-			await this.dataTableService.insertRows(table.id, projectId, rows);
+			// Empty for `createEmptyDataset` — nothing to insert yet.
+			if (cases.length > 0) {
+				const rows = cases.map((c) => ({
+					[INPUT_COLUMN]: c.input,
+					[CRITERIA_COLUMN]: c.whatToCheck,
+				}));
+				await this.dataTableService.insertRows(table.id, projectId, rows);
+			}
 
+			const columnMapping = { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN };
 			const dataset = await this.datasetRepository.createDataset({
 				name,
 				agentId,
 				datasetSource: 'data_table',
 				datasetRef: { dataTableId: table.id },
-				columnMapping: { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN },
+				columnMapping,
 				createdById,
 			});
-			return { datasetId: dataset.id, dataTableId: table.id };
+			// Returned alongside the ids so a caller can resolve a writable
+			// `CaseSource` straight from this result — a refetch-based lookup can
+			// fail transiently after the dataset is already persisted, and a retry
+			// off that failure would create another empty dataset.
+			return { datasetId: dataset.id, dataTableId: table.id, columnMapping };
 		} catch (error) {
 			await this.rollBackDataTable(table.id, projectId);
 			throw error;
 		}
+	}
+
+	/**
+	 * Removes the backing table of a draft dataset that is being discarded. Unlike
+	 * `rollBackDataTable`, a failure propagates: the caller is the cleanup itself,
+	 * so it has to be able to report that the table is still there.
+	 */
+	async deleteDraftTable(dataTableId: string, projectId: string): Promise<void> {
+		await this.dataTableService.deleteDataTable(dataTableId, projectId);
 	}
 
 	/** Delete a just-created table after a failed persist; never mask the cause. */
@@ -306,11 +486,35 @@ function boundCases(cases: AgentEvalDraftCase[], limit: number): AgentEvalDraftC
 	return cases.slice(0, limit).map((c) => ({
 		input: truncateText(c.input, MAX_CASE_TEXT_CHARS),
 		whatToCheck: truncateText(c.whatToCheck, MAX_CASE_TEXT_CHARS),
+		scenario: truncateText(c.scenario, MAX_SCENARIO_CHARS),
 	}));
 }
 
 function truncateText(text: string, max: number): string {
 	return text.length > max ? text.slice(0, max) : text;
+}
+
+/**
+ * Only a revision when the caller sent all three fields — a suggestion alone,
+ * with no case to revise, has nothing to replace.
+ */
+function toRevisionContext(options: GenerateDraftCasesOptions): CaseRevisionContext | undefined {
+	const suggestion = options.suggestion?.trim();
+	const previousInput = options.previousInput?.trim();
+	if (!suggestion || !previousInput) return undefined;
+	// A case that errored or never finished has no output to show — that's
+	// exactly the case this feature exists to fix, so an empty one still counts
+	// as a revision rather than falling back to an unrelated fresh batch.
+	const previousOutput = options.previousOutput?.trim() ?? '';
+	return { suggestion, previousInput, previousOutput };
+}
+
+/** Only an example when the caller sent both fields — one without the other is unusable. */
+function toExampleContext(options: GenerateDraftCasesOptions): CaseExampleContext | undefined {
+	const input = options.exampleInput?.trim();
+	const output = options.exampleOutput?.trim();
+	if (!input || !output) return undefined;
+	return { input, output };
 }
 
 function clampCount(count: number | undefined): number {

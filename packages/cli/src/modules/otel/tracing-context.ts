@@ -2,7 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-export type TracingContext = { traceparent: string; tracestate?: string };
+export type TracingContext = {
+	traceparent: string;
+	tracestate?: string;
+	identity?: Record<string, string>;
+};
 
 @Service()
 export class TraceContextService {
