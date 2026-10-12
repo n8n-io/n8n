@@ -332,7 +332,7 @@ describe('AgentRepository', () => {
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
 			setSkillsHubFlag(true);
-			const agent = await createAgent();
+			const agent = await createAgent({ sourceAgentId: 'source-agent', availableInMCP: true });
 			await Container.get(SkillRepository).createSkill(
 				{
 					id: 'writing',
@@ -350,7 +350,7 @@ describe('AgentRepository', () => {
 			);
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
-				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
+				{ id: 'task-keep', sourceTaskId: 'source-task', agentId: agent.id, ...taskBody, createdAt },
 				{ id: 'task-remove', agentId: agent.id, ...taskBody },
 			]);
 			const definitions = new Map([
@@ -402,6 +402,8 @@ describe('AgentRepository', () => {
 				tools: definition.tools,
 				revision: 1,
 				updatedAt: agent.updatedAt,
+				sourceAgentId: 'source-agent',
+				availableInMCP: true,
 			});
 			expect(stored?.schema).not.toHaveProperty('skills');
 			// The skill refs live in the dependency rows. The skill body stays in the hub.
@@ -411,7 +413,12 @@ describe('AgentRepository', () => {
 			expect(tasks).toHaveLength(2);
 			expect(tasks).toEqual(
 				expect.arrayContaining([
-					expect.objectContaining({ id: 'task-keep', objective: 'Restored objective', createdAt }),
+					expect.objectContaining({
+						id: 'task-keep',
+						sourceTaskId: 'source-task',
+						objective: 'Restored objective',
+						createdAt,
+					}),
 					expect.objectContaining({ id: 'task-new', objective: taskBody.objective }),
 				]),
 			);

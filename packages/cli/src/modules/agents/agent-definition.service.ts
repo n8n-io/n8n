@@ -15,6 +15,7 @@ import {
 	getAgentTaskBody,
 	type AgentDefinition,
 	type PendingSkillRefs,
+	type AgentDefinitionMetadata,
 } from './utils/agent-definition';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -58,16 +59,16 @@ export class AgentDefinitionService {
 
 	/**
 	 * Replace the draft atomically. Return whether task bodies changed.
-	 * The caller sets the version and integrations. The skill bodies of the
-	 * definition are not written: skills live in the skills hub. With
-	 * `skillPinsFrom`, each skill ref is pinned to the version that this
-	 * published version ran (revert).
+	 * The caller sets the version and integrations. Write inline skill bodies
+	 * only when the Skills Hub is disabled. With `skillPinsFrom`, restore the
+	 * skill versions from the published version.
 	 */
 	async replaceDraft(
 		agent: Agent,
 		definition: AgentDefinition,
 		ctx: OperationContext = {},
 		skillPinsFrom?: Pick<AgentHistory, 'versionId' | 'skills'>,
+		metadata?: AgentDefinitionMetadata,
 	): Promise<boolean> {
 		// Preserve workflow input names in the JSON configuration.
 		const document = structuredClone(definition.schema);
@@ -77,14 +78,20 @@ export class AgentDefinitionService {
 		return await this.transactionRunner.run(ctx, async (txCtx) => {
 			agent.schema = config;
 			agent.tools = deepCopy(definition.tools);
+			if (!this.agentSkillRefs.usesSkillsHub) agent.skills = deepCopy(definition.skills);
 			if (agent.schema) agent.name = agent.schema.name;
-			await saveAgentDraftFenced(this.agentRepository, agent, txCtx);
+			await saveAgentDraftFenced(this.agentRepository, agent, txCtx, metadata);
 			if (skillPinsFrom) {
 				await this.agentSkillRefs.restoreDraftRefs(agent, skillPinsFrom, skillRefs, txCtx);
 			} else {
 				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, txCtx);
 			}
-			return await this.taskRepository.replaceForAgent(agent.id, definition.tasks, txCtx);
+			return await this.taskRepository.replaceForAgent(
+				agent.id,
+				definition.tasks,
+				txCtx,
+				metadata?.sourceTaskIds,
+			);
 		});
 	}
 }

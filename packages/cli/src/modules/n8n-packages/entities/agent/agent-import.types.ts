@@ -3,6 +3,7 @@ import type { Scope } from '@n8n/permissions';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentImportIdentity } from '@/modules/agents/repositories/agent.repository';
+import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-definition';
 
 import type { ImportContext } from '../../n8n-packages.types';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
@@ -18,8 +19,18 @@ export interface AgentPlanItem extends PreparedAgent {
 
 export interface AgentImportPlan {
 	items: AgentPlanItem[];
+	plannedDestinations?: PlannedAgentDestinations;
 	issues: AgentImportIssue[];
 }
+
+export type PersistedAgentOutcome =
+	| { status: 'skipped'; agent: Agent; sourceAgentId: string }
+	| {
+			status: 'created' | 'updated';
+			agent: Agent;
+			sourceAgentId: string;
+			item: AgentPlanItem;
+	  };
 
 export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${string}` }>;
 

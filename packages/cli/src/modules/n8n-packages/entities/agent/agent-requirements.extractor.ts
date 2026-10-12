@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { extractAgentWorkflowRefs } from '@/modules/agents/utils/extract-agent-workflow-refs';
 
@@ -7,7 +8,6 @@ import { CredentialRequirementsExtractor } from '../credential/credential-requir
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import { PackageExportBlockedError } from '../package-export.errors';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
-import { getStaticSubworkflowId } from '../workflow/references/sub-workflow-node.reference';
 import type { AgentWorkflowRequirement } from '../workflow/workflow.types';
 
 @Service()

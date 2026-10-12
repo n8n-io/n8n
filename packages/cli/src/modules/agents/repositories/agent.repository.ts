@@ -20,6 +20,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
 	count: number;
@@ -787,7 +788,11 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
+	async saveDraftFenced(
+		agent: Agent,
+		ctx: OperationContext = {},
+		metadata: Pick<AgentDefinitionMetadata, 'sourceAgentId' | 'availableInMCP'> = {},
+	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
@@ -802,6 +807,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 				tools: agent.tools,
 				skills: agent.skills,
 				versionId: agent.versionId,
+				...(metadata.sourceAgentId !== undefined ? { sourceAgentId: metadata.sourceAgentId } : {}),
+				...(metadata.availableInMCP !== undefined
+					? { availableInMCP: metadata.availableInMCP }
+					: {}),
 				updatedAt,
 				revision: () => 'revision + 1',
 			})
@@ -810,6 +819,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			if (metadata.sourceAgentId !== undefined) agent.sourceAgentId = metadata.sourceAgentId;
+			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
