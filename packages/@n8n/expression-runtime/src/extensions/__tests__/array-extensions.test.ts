@@ -17,6 +17,11 @@ const unique = arrayExtensions.functions.unique as (
 	extraArgs: string[],
 ) => unknown[];
 
+const chunk = arrayExtensions.functions.chunk as (
+	value: unknown[],
+	extraArgs: unknown[],
+) => unknown[][];
+
 const merge = arrayExtensions.functions.merge as (
 	value: unknown[],
 	extraArgs: unknown[][],
@@ -130,5 +135,17 @@ describe.each([
 		expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
 		expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
 		expect(({} as Record<string, unknown>).marker).toBeUndefined();
+	});
+});
+
+describe('chunk', () => {
+	it('should split by a positive size', () => {
+		expect(chunk([1, 2, 3, 4, 5], [2])).toEqual([[1, 2], [3, 4], [5]]);
+	});
+
+	it('should reject a size that is not a positive number', () => {
+		for (const size of [-1, 0, NaN, '5', undefined]) {
+			expect(() => chunk([1, 2, 3], [size])).toThrow('positive numeric arg');
+		}
 	});
 });
