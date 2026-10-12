@@ -6,23 +6,12 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { createFolder } from '@test-integration/db/folders';
-import type request from 'supertest';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
-
-// supertest buffers only text and JSON bodies by default
-const readBinaryBody = (
-	res: request.Response,
-	callback: (error: Error | null, body: Buffer) => void,
-) => {
-	const chunks: Buffer[] = [];
-	res.on('data', (chunk: Buffer) => chunks.push(chunk));
-	res.on('end', () => callback(null, Buffer.concat(chunks)));
-};
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -204,7 +193,12 @@ describe('POST /n8n-packages/export', () => {
 		const response = await authOwnerAgent
 			.post('/n8n-packages/export')
 			.buffer(true)
-			.parse(readBinaryBody)
+			// supertest buffers only text and JSON bodies by default
+			.parse((res, callback) => {
+				const chunks: Buffer[] = [];
+				res.on('data', (chunk: Buffer) => chunks.push(chunk));
+				res.on('end', () => callback(null, Buffer.concat(chunks)));
+			})
 			.send({ folderIds: [folder.id] });
 
 		expect(response.statusCode).toBe(200);

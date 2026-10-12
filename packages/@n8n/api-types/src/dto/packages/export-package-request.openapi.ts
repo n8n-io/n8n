@@ -1,6 +1,5 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
 
-// Field wording is copied from the legacy `exportPackageRequest.yml`, so the generated spec matches it.
 export const exportPackageRequestFieldDocs = {
 	agentIds: {
 		description: 'IDs of the agents to include. Requires the agents module.',

@@ -2,7 +2,6 @@ export const PACKAGE_TAGS = ['N8nPackage'];
 
 export const EXPORT_SUMMARY =
 	'Beta: Export agents, workflows, folders, or projects as an n8n package';
-// Line breaks match the legacy YAML literal block, so the generated text is identical.
 export const EXPORT_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
 	'Export agents, workflows, and folders, or whole projects, as a gzipped tar\n' +

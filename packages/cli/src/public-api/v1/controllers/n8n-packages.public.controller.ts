@@ -54,7 +54,6 @@ import {
 	PACKAGE_TAGS,
 } from './openapi/n8n-packages.openapi';
 
-/** Header carrying the JSON-serialized true per-entity counts of the exported package. */
 const EXPORT_COUNTS_HEADER = 'X-N8n-Export-Counts';
 
 function uploadLimits(maxParts: number) {
@@ -225,7 +224,6 @@ export class N8nPackagesPublicController {
 		let exportResult: ExportPackageResult;
 
 		try {
-			// A package is either a set of loose selections or a set of whole projects, not both.
 			const hasLooseSelection = [agentIds, workflowIds, folderIds].some((ids) => ids.length > 0);
 			if (projectIds.length > 0 && hasLooseSelection) {
 				throw new BadRequestError(
