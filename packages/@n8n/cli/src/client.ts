@@ -1,3 +1,10 @@
+import type {
+	ExportPackageRequestDto,
+	ImportPackageRequestDto,
+	ImportPackageSelectionRequestDto,
+	ImportResultDto,
+} from '@n8n/api-types';
+
 export interface PaginatedResponse<T> {
 	data: T[];
 	nextCursor?: string;
@@ -9,55 +16,27 @@ export interface ClientOptions {
 	debug?: (message: string) => void;
 }
 
-export interface ImportPackageFields {
-	projectId?: string;
-	folderId?: string;
-	credentialMatchingMode?: string;
-	credentialMissingMode?: string;
-	bindings?: string;
-	conflictPolicy: string;
-	workflowPublishingPolicy?: string;
-	workflowIdPolicy?: string;
-	missingNodeTypeMode?: string;
-	projectConflictPolicy?: string;
-	folderConflictPolicy?: string;
-	overwriteDeletionPolicy?: string;
-	dataTableMatchingMode?: string;
-	dataTableMissingMode?: string;
-	dataTableSchemaConflictPolicy?: string;
-	variableMissingMode?: string;
-	variableConflictPolicy?: string;
-	variableParentPolicy?: string;
-	tagMissingMode?: string;
-	tagConflictPolicy?: string;
-}
+export type ImportPackageFields = Pick<ImportPackageRequestDto, 'conflictPolicy'> &
+	Partial<Omit<ImportPackageRequestDto, 'package' | 'conflictPolicy' | 'bindings'>> & {
+		/** Multipart bindings remain JSON text until the API validates them. */
+		bindings?: string;
+	};
 
-export interface ImportPackageSelectionFields {
-	/** Source project ID from the package. */
-	selectedProjectId: string;
-	/** Source workflow IDs from the selected project. */
-	selectedWorkflowIds: string[];
-	/** Destination workflow IDs to remove. */
-	deletedWorkflowIds?: string[];
-	conflictPolicy?: string;
-	workflowIdPolicy?: string;
-	overwriteDeletionPolicy?: string;
-}
+export type ImportPackageSelectionFields = Pick<
+	ImportPackageSelectionRequestDto,
+	'selectedProjectId' | 'selectedWorkflowIds'
+> &
+	Partial<
+		Omit<ImportPackageSelectionRequestDto, 'package' | 'selectedProjectId' | 'selectedWorkflowIds'>
+	>;
 
-export interface ExportPackageFields {
-	workflowIds?: string[];
-	folderIds?: string[];
-	projectIds?: string[];
-	includeVariableValues?: boolean;
-	includeTags?: boolean;
-	dependencyPolicy?: string;
-	versionPolicy?: string;
-	credentialExportPolicy?: string;
-	includeArchivedWorkflows?: boolean;
-}
+export type ExportPackageFields = Partial<ExportPackageRequestDto>;
 
 /** True per-entity counts of what ended up in an exported package. */
 export interface ExportPackageCounts {
+	/** Older servers can omit Agent and project counts. */
+	agents?: number;
+	projects?: number;
 	workflows: number;
 	folders: number;
 	credentials: number;
@@ -735,17 +714,8 @@ export class N8nClient {
 
 	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
-		const body: {
-			workflowIds?: string[];
-			folderIds?: string[];
-			projectIds?: string[];
-			includeVariableValues?: boolean;
-			includeTags?: boolean;
-			dependencyPolicy?: string;
-			versionPolicy?: string;
-			credentialExportPolicy?: string;
-			includeArchivedWorkflows?: boolean;
-		} = {};
+		const body: ExportPackageFields = {};
+		if (fields.agentIds?.length) body.agentIds = fields.agentIds;
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
@@ -783,13 +753,13 @@ export class N8nClient {
 	async importPackage(
 		file: { buffer: Buffer; filename: string },
 		fields: ImportPackageFields,
-	): Promise<Record<string, unknown>> {
+	): Promise<ImportResultDto> {
 		const form = new FormData();
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		for (const [key, value] of Object.entries(fields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
-		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+		return await this.request<ImportResultDto>('POST', '/n8n-packages/import', {
 			formData: form,
 		});
 	}
@@ -797,13 +767,13 @@ export class N8nClient {
 	async importPackageSelection(
 		file: { buffer: Buffer; filename: string },
 		fields: ImportPackageSelectionFields,
-	): Promise<Record<string, unknown>> {
+	): Promise<ImportResultDto> {
 		const form = new FormData();
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		const stringFields: Record<string, string | undefined> = {
 			selectedProjectId: fields.selectedProjectId,
 			conflictPolicy: fields.conflictPolicy,
-			workflowIdPolicy: fields.workflowIdPolicy,
+			idPolicy: fields.idPolicy,
 			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
 		};
 		for (const [key, value] of Object.entries(stringFields)) {
@@ -814,7 +784,7 @@ export class N8nClient {
 		if (fields.deletedWorkflowIds !== undefined) {
 			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
 		}
-		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import-selection', {
+		return await this.request<ImportResultDto>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}

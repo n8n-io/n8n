@@ -516,8 +516,7 @@ it('applies and publishes a project package after authorized project creation', 
 		request({
 			user,
 			projectId: undefined,
-			agentPublishingPolicy: 'match-source',
-			workflowPublishingPolicy: 'match-source',
+			publishingPolicy: 'match-source',
 		}),
 		await readerFor(input),
 		input.manifest,
@@ -562,8 +561,7 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 		);
 	});
 	const imported = await importSelected(input, {
-		agentPublishingPolicy: 'publish-all',
-		workflowPublishingPolicy: 'publish-all',
+		publishingPolicy: 'publish-all',
 	});
 	expect(imported.result.workflows[0].publishing).toEqual({ state: 'published' });
 	for (const [index, outcome] of imported.agentOutcomes.entries()) {
@@ -601,8 +599,7 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 		new Error('Workflow publication failed'),
 	);
 	const updated = await importSelected(input, {
-		agentPublishingPolicy: 'publish-all',
-		workflowPublishingPolicy: 'publish-all',
+		publishingPolicy: 'publish-all',
 	});
 	expect(updated.result.workflows[0].publishing.state).toBe('failed');
 	expect(updated.agentOutcomes.map(({ publishing }) => publishing)).toEqual([
@@ -617,8 +614,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	const initial = await importSelected(input);
 	expect(initial.agentOutcomes[0].publishing).toEqual({ state: 'unchanged' });
 	const matched = await importSelected(input, {
-		agentPublishingPolicy: 'match-source',
-		workflowPublishingPolicy: 'match-source',
+		publishingPolicy: 'match-source',
 	});
 	expect(matched.agentOutcomes[0].publishing).toEqual({ state: 'published' });
 	const republished = await importSelected(input);
@@ -630,8 +626,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	};
 	for (const policy of ['preserve-published-state', 'match-source'] as const) {
 		const result = await importSelected(input, {
-			agentPublishingPolicy: policy,
-			workflowPublishingPolicy: policy,
+			publishingPolicy: policy,
 		});
 		expect(result.agentOutcomes[0]).toMatchObject({
 			status: 'updated',
@@ -642,8 +637,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	const before = await agents.findById(published.id);
 	const skipped = await importSelected(input, {
 		conflictPolicy: 'skip',
-		agentPublishingPolicy: 'unpublish-all',
-		workflowPublishingPolicy: 'unpublish-all',
+		publishingPolicy: 'unpublish-all',
 	});
 	expect(skipped.agentOutcomes[0]).toMatchObject({
 		status: 'skipped',
@@ -657,8 +651,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 		publishedVersionId: null,
 	};
 	const unpublished = await importSelected(input, {
-		agentPublishingPolicy: 'match-source',
-		workflowPublishingPolicy: 'match-source',
+		publishingPolicy: 'match-source',
 	});
 	expect(unpublished.agentOutcomes[0]).toMatchObject({
 		agent: { activeVersionId: null },
@@ -679,8 +672,7 @@ it.each([
 		let activeVersionId: string | null = null;
 		if (published) {
 			const initial = await importSelected(input, {
-				agentPublishingPolicy: 'publish-all',
-				workflowPublishingPolicy: 'publish-all',
+				publishingPolicy: 'publish-all',
 			});
 			activeVersionId = initial.agentOutcomes[0].agent.activeVersionId;
 			expect(activeVersionId).not.toBeNull();
@@ -709,8 +701,7 @@ it.each([
 		} as const;
 		const imported = await importSelected(input, {
 			...options,
-			agentPublishingPolicy: 'publish-all',
-			workflowPublishingPolicy: 'publish-all',
+			publishingPolicy: 'publish-all',
 		});
 		expect(imported.agentOutcomes[0].publishing).toEqual(
 			published
@@ -726,8 +717,7 @@ it.each([
 			input.manifest.requirements.credentials![0].id = 'unpublish-model';
 			const unpublished = await importSelected(input, {
 				...options,
-				agentPublishingPolicy: 'unpublish-all',
-				workflowPublishingPolicy: 'unpublish-all',
+				publishingPolicy: 'unpublish-all',
 			});
 			expect(unpublished.scopes[0].imported.agentOutcomes[0]).toMatchObject({
 				blockedFromPublish: reason,
@@ -746,8 +736,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const input = publishableFixture();
 		if (action === 'unpublish')
 			await importSelected(input, {
-				agentPublishingPolicy: 'publish-all',
-				workflowPublishingPolicy: 'publish-all',
+				publishingPolicy: 'publish-all',
 			});
 		const member = await createMember();
 		const allowed = await createCustomRoleWithScopeSlugs(
@@ -766,8 +755,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const content = await orchestrator.apply(
 			await planFor(input, {
 				user: member,
-				agentPublishingPolicy: policy,
-				workflowPublishingPolicy: policy,
+				publishingPolicy: policy,
 			}),
 		);
 		const denied = await createCustomRoleWithScopeSlugs(['agent:read'], { roleType: 'project' });
@@ -793,13 +781,10 @@ it.each(['publish', 'unpublish'] as const)(
 		const input = publishableFixture();
 		if (action === 'unpublish')
 			await importSelected(input, {
-				agentPublishingPolicy: 'publish-all',
-				workflowPublishingPolicy: 'publish-all',
+				publishingPolicy: 'publish-all',
 			});
 		const policy = action === 'publish' ? 'publish-all' : 'unpublish-all';
-		const content = await orchestrator.apply(
-			await planFor(input, { agentPublishingPolicy: policy, workflowPublishingPolicy: policy }),
-		);
+		const content = await orchestrator.apply(await planFor(input, { publishingPolicy: policy }));
 		const current = (await agents.findById(content.agentOutcomes[0].agent.id))!;
 		current.name = 'Concurrent edit';
 		await agents.saveDraftFenced(current);
@@ -833,8 +818,7 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 		if (failure === 'validation') source(input).config!.instructions = '';
 		const content = await orchestrator.apply(
 			await planFor(input, {
-				agentPublishingPolicy: 'publish-all',
-				workflowPublishingPolicy: 'publish-all',
+				publishingPolicy: 'publish-all',
 			}),
 		);
 		const saved = content.agentOutcomes[0].agent;
@@ -871,7 +855,7 @@ it.each(['create', 'update'] as const)(
 	'rolls back the current %s after a task write fails, and keeps earlier saves',
 	async (action) => {
 		const input = fixture();
-		const options = { agentIdPolicy: 'source' } as const;
+		const options = { idPolicy: 'source' } as const;
 		if (action === 'update') await importSelected(input, options);
 		const first = source(input);
 		const second = source(input, 1);

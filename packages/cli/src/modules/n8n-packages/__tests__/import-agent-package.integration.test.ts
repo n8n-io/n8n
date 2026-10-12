@@ -89,7 +89,7 @@ describe('Agent package import boundary', () => {
 			packageBuffer: await streamToBuffer(writer.finalize()),
 			projectConflictPolicy: 'overwrite',
 			conflictPolicy: 'new-version',
-			workflowIdPolicy: 'source',
+			idPolicy: 'source',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
 		switch (entryPoint) {

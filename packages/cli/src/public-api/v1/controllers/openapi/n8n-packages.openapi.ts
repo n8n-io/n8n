@@ -43,7 +43,8 @@ export const IMPORT_DESCRIPTION =
 	'when omitted; the one non-fixed default is `folderConflictPolicy`, which follows ' +
 	'`projectConflictPolicy` on a project package. The required `conflictPolicy` ' +
 	'field controls matches for both Agents and workflows. It replaces `workflowConflictPolicy`; ' +
-	'the old field is rejected. Agent and workflow ID and publication policies are independent. ' +
+	'the old field is rejected. `idPolicy` and `publishingPolicy` also apply to both kinds. ' +
+	'They replace the workflow-specific and Agent-specific fields, which are rejected. ' +
 	'Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` ' +
 	'MB (default 16).\n\n' +
 	'The package must declare its manifest at `manifest.json` and include every file the ' +
@@ -61,8 +62,8 @@ export const IMPORT_DESCRIPTION =
 	'returns HTTP 200.\n\n' +
 	'Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, ' +
 	'directory imports, and Promotions before writes.\n\n' +
-	'Example multipart fields: `conflictPolicy=new-version`, `agentIdPolicy=source`, ' +
-	'`agentPublishingPolicy=match-source`, `workflowPublishingPolicy=unpublish-all`, ' +
+	'Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, ' +
+	'`publishingPolicy=match-source`, ' +
 	'and `bindings={"credentials":{"source-credential":"target-credential"}}`.';
 
 export const IMPORT_409_DESCRIPTION =
@@ -98,11 +99,13 @@ export const IMPORT_SELECTION_DESCRIPTION =
 	'409 before any writes.\n\n' +
 	'The package must be a project package (a workflow package is rejected with a 400). The ' +
 	'cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted ' +
-	'here; only `conflictPolicy`, `workflowIdPolicy`, and `overwriteDeletionPolicy` ' +
+	'here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` ' +
 	'are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default ' +
 	'16). The caller is authorised through the `workflow:import` scope. ' +
 	'Packages that contain Agents are rejected before writes. Use the ordinary import endpoint ' +
-	'for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`; the old field is rejected.';
+	'for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and ' +
+	'`idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. ' +
+	'Publication remains fixed to `match-source`.';
 
 export const IMPORT_SELECTION_409_DESCRIPTION =
 	'Import blocked by at least one conflict among the issues — for example a workflow ' +
