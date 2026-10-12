@@ -36,6 +36,7 @@ CREATE TABLE "agent_version_skill_dependency" ("agentVersionId" varchar(36) NOT 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_c494292243a7e510acd0331c3d | CREATE INDEX "IDX_c494292243a7e510acd0331c3d" ON "agent_version_skill_dependency" ("skillId")  |
+| IDX_df63badfd7d3f2aa622ece471c | CREATE INDEX "IDX_df63badfd7d3f2aa622ece471c" ON "agent_version_skill_dependency" ("skillVersionId")  |
 | sqlite_autoindex_agent_version_skill_dependency_1 | PRIMARY KEY (agentVersionId, skillId) |
 
 ## Relations

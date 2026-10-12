@@ -167,6 +167,8 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 				column('skillVersionId').uuid.notNull,
 			)
 			.withCreatedAt.withIndexOn(['skillId'])
+			// This table grows with every publish, and "used by" reads it by version.
+			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentVersionId', {
 				tableName: 'agent_history',
 				columnName: 'versionId',
