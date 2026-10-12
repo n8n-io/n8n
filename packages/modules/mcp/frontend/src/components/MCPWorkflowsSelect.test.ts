@@ -171,6 +171,37 @@ describe('MCPWorkflowsSelect', () => {
 				expect(emptyText).toBeInTheDocument();
 			});
 		});
+
+		it('should find the built-in empty state when opened after loading completes', async () => {
+			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
+
+			const { getAllByRole, findByRole, emitted } = createComponent({ pinia });
+
+			// CONTEXT-245: Finish loading before the click to reproduce the CI failure consistently.
+			await waitFor(() => {
+				expect(emitted('ready')).toHaveLength(1);
+			});
+
+			const [input] = getAllByRole('combobox').filter(
+				(combobox) => !combobox.hasAttribute('readonly'),
+			);
+			expect(input).toHaveAttribute('aria-expanded', 'false');
+			await userEvent.click(input);
+
+			await waitFor(() => {
+				expect(input).toHaveAttribute('aria-expanded', 'true');
+			});
+
+			const emptyOption = await findByRole('option', { name: 'No available workflows' });
+			expect(emptyOption).toBeVisible();
+			expect(emptyOption).toHaveAttribute('aria-disabled', 'true');
+
+			// Replay the existing assertion after the custom empty option is visible.
+			await waitFor(() => {
+				const emptyText = document.querySelector('.el-select-dropdown__empty');
+				expect(emptyText).toBeInTheDocument();
+			});
+		});
 	});
 
 	describe('Remote search', () => {
