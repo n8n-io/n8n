@@ -38,6 +38,7 @@ Native Turbo caching shares build outputs across jobs.
 The profiles separate the full build, checks, E2E, and partial tooling installs into different cache volumes.
 E2E profiles also cache container image pulls.
 On Namespace, the prep job pushes the CI images to the workspace registry (`n8n-ci/n8n` and `n8n-ci/runners`). E2E shards pull them.
+Each image tag is `ci-<variant>-<sha>`. A re-run of the same commit reuses the pushed images.
 Set a short expiry on those repositories once per workspace:
 
 ```bash
