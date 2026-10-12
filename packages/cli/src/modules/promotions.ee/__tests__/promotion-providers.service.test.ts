@@ -63,6 +63,7 @@ describe('PromotionProvidersService', () => {
 		cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
 		connectionRepository.countByProviderId.mockResolvedValue(0);
+		providerRepository.updateProviderIfUnchanged.mockResolvedValue(true);
 	});
 
 	describe('create', () => {
@@ -133,6 +134,7 @@ describe('PromotionProvidersService', () => {
 			expect(providerRepository.updateProvider).toHaveBeenCalledWith('prov1', {
 				name: 'renamed',
 			});
+			expect(providerRepository.updateProviderIfUnchanged).not.toHaveBeenCalled();
 		});
 
 		it('rotates a key without changing its algorithm', async () => {
@@ -143,7 +145,8 @@ describe('PromotionProvidersService', () => {
 			} as UpdatePromotionProviderDto);
 
 			expect(gitService.generateSshKeyPair).toHaveBeenCalledWith('rsa');
-			const changes = providerRepository.updateProvider.mock.calls[0][1];
+			const [, expected, changes] = providerRepository.updateProviderIfUnchanged.mock.calls[0];
+			expect(expected).toEqual({ config: sshProvider().config, auth: sshProvider().auth });
 			expect(changes.config).toEqual({ schemaVersion: 1, publicKey: 'PUB', keyType: 'rsa' });
 			expect(changes.auth).toBe('enc:{"schemaVersion":1,"privateKey":"PRIV"}');
 		});

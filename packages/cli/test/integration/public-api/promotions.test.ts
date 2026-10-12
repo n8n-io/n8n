@@ -698,6 +698,85 @@ describe('Promotions in Public API', () => {
 			api.done();
 		});
 
+		it.each([
+			{
+				change: 'host and token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.internal' },
+				auth: { authType: 'token', password: 'winning-token' },
+			},
+			{
+				change: 'token only',
+				config: undefined,
+				auth: { authType: 'token', password: 'winning-token' },
+			},
+			{
+				change: 'equivalent URL only',
+				config: { schemaVersion: 1, baseUrl: `${payload.config.baseUrl}/` },
+				auth: undefined,
+			},
+		])(
+			'keeps the winning $change update when another validated update resumes',
+			async (winning) => {
+				validAccess();
+				const agent = testServer.publicApiAgentFor(owner);
+				const id = await createProvider(agent, payload);
+				const validated = createDeferredPromise();
+				const resume = createDeferredPromise();
+				const pendingToken = 'pending-token';
+				const pendingApi = validAccess(payload.config.baseUrl, pendingToken);
+				const winningApi = validAccess(
+					winning.config?.baseUrl ?? payload.config.baseUrl,
+					winning.auth?.password ?? payload.auth.password,
+				);
+				const client = Container.get(GitLabHostClient);
+				const validateAccess = client.validateAccess.bind(client);
+				const validation = vi.spyOn(client, 'validateAccess').mockImplementation(async (access) => {
+					await validateAccess(access);
+					if (access.accessToken === pendingToken) {
+						validated.resolve();
+						await resume.promise;
+					}
+				});
+				const pending = agent
+					.put(`/promotions/providers/${id}`)
+					.send({
+						name: 'Pending settings',
+						auth: { authType: 'token', password: pendingToken },
+					})
+					.then((response) => response);
+				try {
+					await Promise.race([
+						validated.promise,
+						pending.then(({ status }) => {
+							throw new Error(
+								`The pending update returned ${status} before validation was released.`,
+							);
+						}),
+					]);
+					const result = await agent.put(`/promotions/providers/${id}`).send({
+						name: 'Winning settings',
+						config: winning.config,
+						auth: winning.auth,
+					});
+					expect(result.status, JSON.stringify(result.body)).toBe(200);
+					const repository = Container.get(PromotionProviderRepository);
+					const stored = await repository.findOneByOrFail({ id });
+					resume.resolve();
+					const conflict = await pending;
+					expect(conflict.status, JSON.stringify(conflict.body)).toBe(409);
+					expect(conflict.body.message).toContain('Reload');
+					expect(JSON.stringify(conflict.body)).not.toContain(pendingToken);
+					expect(await repository.findOneByOrFail({ id })).toEqual(stored);
+					pendingApi.done();
+					winningApi.done();
+				} finally {
+					resume.resolve();
+					await pending;
+					validation.mockRestore();
+				}
+			},
+		);
+
 		it('does not change any persisted fields when a replacement fails validation', async () => {
 			validAccess();
 			const agent = testServer.publicApiAgentFor(owner);

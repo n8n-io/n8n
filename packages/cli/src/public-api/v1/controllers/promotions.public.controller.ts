@@ -152,11 +152,12 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion provider')
 	@ApiDescription(
-		'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
+		'Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. A different API destination requires `auth` in the same request. Changed credentials and host settings are validated before they save. If another request changes the credentials or configuration before this update saves, the update returns 409. Reload the provider and try again. For GitLab, the service uses n8n as the Git transport username. Its auth.username is optional. The service ignores any supplied username. Plain Git token authentication requires auth.username. New credentials apply to every connection that uses this provider. The authentication method cannot change.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionProviderPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionProvider(
 		_req: AuthenticatedRequest,

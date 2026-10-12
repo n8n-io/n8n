@@ -86,8 +86,9 @@ export class PromotionProvidersService {
 		}
 		const current = await this.getEntity(id);
 		const { changes, config, credentials } = await this.prepareUpdate(current, input);
+		const updatesAuthentication = input.auth !== undefined || input.config !== undefined;
 
-		if (input.auth || input.config) {
+		if (updatesAuthentication) {
 			await this.validateHostAccess(
 				current.type,
 				config,
@@ -96,7 +97,18 @@ export class PromotionProvidersService {
 		}
 		if (credentials) changes.auth = await this.encryptCredentials(credentials);
 
-		await this.providerRepository.updateProvider(id, changes);
+		if (updatesAuthentication) {
+			const updated = await this.providerRepository.updateProviderIfUnchanged(
+				id,
+				{ config: current.config, auth: current.auth },
+				changes,
+			);
+			if (!updated) {
+				throw new ConflictError('The provider changed during the update. Reload it and try again.');
+			}
+		} else {
+			await this.providerRepository.updateProvider(id, changes);
+		}
 		return this.toPublic(await this.getEntity(id));
 	}
 

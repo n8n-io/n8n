@@ -53,3 +53,8 @@ installation path do.
 
 Certificate verification stays enabled. Configure the Node trust store for an
 internal certificate authority. Git uses `GIT_SSL_CAINFO` or `GIT_SSL_CAPATH`.
+
+Provider credential and host edits use one conditional database update. It saves
+only while the stored configuration and encrypted credentials match the original
+snapshot. A concurrent change returns HTTP 409. Reload the provider before a retry.
+Name-only edits do not use this condition.
