@@ -126,6 +126,7 @@ describe('AgentChannelTeamsEditView', () => {
 			deployToAzureUrl: null,
 			credentialClaimedBy: null,
 			provisionedByN8n: true,
+			fileAccessConsentUrl: null,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'Chat with Support Bot, an agent powered by n8n.',
 		});
@@ -273,6 +274,7 @@ describe('AgentChannelTeamsEditView', () => {
 				deployToAzureUrl: null,
 				credentialClaimedBy: null,
 				provisionedByN8n: false,
+				fileAccessConsentUrl: null,
 				defaultDisplayName: 'Support Bot',
 				defaultDescription: 'An agent built with n8n.',
 			});
@@ -303,6 +305,7 @@ describe('AgentChannelTeamsEditView', () => {
 			deployToAzureUrl: null,
 			credentialClaimedBy: null,
 			provisionedByN8n: false,
+			fileAccessConsentUrl: null,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'An agent built with n8n.',
 		});

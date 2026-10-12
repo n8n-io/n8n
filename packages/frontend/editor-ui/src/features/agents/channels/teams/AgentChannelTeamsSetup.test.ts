@@ -68,6 +68,7 @@ const withBot = () =>
 		deployToAzureUrl: DEPLOY_URL,
 		credentialClaimedBy: null,
 		provisionedByN8n: true,
+		fileAccessConsentUrl: null,
 		defaultDisplayName: DEFAULT_NAME,
 		defaultDescription: DEFAULT_DESCRIPTION,
 	});
@@ -117,6 +118,7 @@ describe('AgentChannelTeamsSetup', () => {
 			deployToAzureUrl: DEPLOY_URL,
 			credentialClaimedBy: null,
 			provisionedByN8n: true,
+			fileAccessConsentUrl: null,
 			defaultDisplayName: DEFAULT_NAME,
 			defaultDescription: DEFAULT_DESCRIPTION,
 		});
@@ -275,6 +277,7 @@ describe('AgentChannelTeamsSetup', () => {
 				deployToAzureUrl: null,
 				credentialClaimedBy: null,
 				provisionedByN8n: true,
+				fileAccessConsentUrl: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
@@ -1281,6 +1284,7 @@ describe('AgentChannelTeamsSetup', () => {
 				deployToAzureUrl: null,
 				credentialClaimedBy: 'Sales Bot',
 				provisionedByN8n: true,
+				fileAccessConsentUrl: null,
 				defaultDisplayName: DEFAULT_NAME,
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});

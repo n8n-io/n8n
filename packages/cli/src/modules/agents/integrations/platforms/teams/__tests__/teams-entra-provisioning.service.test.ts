@@ -2,7 +2,7 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, UrlService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 
@@ -35,6 +35,7 @@ describe('TeamsEntraProvisioningService', () => {
 	let tokens: ReturnType<typeof mock<TeamsManagerTokenService>>;
 	let credentialsService: ReturnType<typeof mock<CredentialsService>>;
 	let credentialsFinderService: ReturnType<typeof mock<CredentialsFinderService>>;
+	let urlService: ReturnType<typeof mock<UrlService>>;
 	let service: TeamsEntraProvisioningService;
 
 	/** Routes each Graph call by method and path, so tests state only what differs. */
@@ -54,6 +55,7 @@ describe('TeamsEntraProvisioningService', () => {
 			}),
 			'POST /servicePrincipals': ok({ id: 'sp-1' }),
 			[`GET /applications/${OBJECT_ID}`]: ok({ appId: APP_ID, displayName: 'Support Bot (n8n)' }),
+			[`PATCH /applications/${OBJECT_ID}`]: ok({}),
 			...overrides,
 		};
 		graph.request.mockImplementation(
@@ -72,11 +74,14 @@ describe('TeamsEntraProvisioningService', () => {
 		tokens = mock<TeamsManagerTokenService>();
 		credentialsService = mock<CredentialsService>();
 		credentialsFinderService = mock<CredentialsFinderService>();
+		urlService = mock<UrlService>();
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		service = new TeamsEntraProvisioningService(
 			graph,
 			tokens,
 			credentialsService,
 			credentialsFinderService,
+			urlService,
 		);
 
 		tokens.acquire.mockResolvedValue('graph-token');
@@ -113,23 +118,51 @@ describe('TeamsEntraProvisioningService', () => {
 		expect(result.organizationName).toBe('Acme Corp');
 	});
 
-	it('declares the Graph file permission, so an administrator can grant it later', async () => {
-		await service.provision(options);
+	it('declares the Graph file permission and the address the consent screen returns to', async () => {
+		const result = await service.provision(options);
 
+		const redirectUri = 'https://n8n.example.com/projects/project-1/agents/agent-1';
 		expect(graph.request).toHaveBeenCalledWith(
 			'graph-token',
 			'PATCH',
-			"/applications(uniqueName='n8n-agent-agent-1')",
-			expect.objectContaining({
+			`/applications/${OBJECT_ID}`,
+			{
 				requiredResourceAccess: [
 					{
 						resourceAppId: '00000003-0000-0000-c000-000000000000',
 						resourceAccess: [{ id: '01d4889c-1287-42c6-ac1f-5d1e02578ef6', type: 'Role' }],
 					},
 				],
-			}),
-			{ Prefer: 'create-if-missing' },
+				web: { redirectUris: [redirectUri] },
+			},
 		);
+		const consent = new URL(result.fileAccessConsentUrl!);
+		expect(consent.pathname).toBe(`/${TENANT_ID}/adminconsent`);
+		expect(consent.searchParams.get('client_id')).toBe(APP_ID);
+		expect(consent.searchParams.get('redirect_uri')).toBe(redirectUri);
+	});
+
+	it('registers no return address on plain HTTP, which Entra refuses outside localhost', async () => {
+		urlService.getInstanceBaseUrl.mockReturnValue('http://n8n.internal:5678');
+
+		const result = await service.provision(options);
+
+		expect(graph.request).toHaveBeenCalledWith(
+			'graph-token',
+			'PATCH',
+			`/applications/${OBJECT_ID}`,
+			expect.not.objectContaining({ web: expect.anything() }),
+		);
+		expect(result.fileAccessConsentUrl).toBeNull();
+	});
+
+	it('still finishes the setup when Microsoft refuses the declaration', async () => {
+		routeGraph({ [`PATCH /applications/${OBJECT_ID}`]: failed(403) });
+
+		const result = await service.provision(options);
+
+		expect(result.credentialId).toBe('bot-cred-1');
+		expect(result.fileAccessConsentUrl).toBeNull();
 	});
 
 	it('writes the channel credential itself, so the user never handles a secret', async () => {

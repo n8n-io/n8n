@@ -219,6 +219,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					appName: 'Support Bot (n8n)',
 					organizationName: 'Acme Corp',
 					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
 					secretExpiresAt: '2028-09-17T00:00:00Z',
 				}),
 			}),
@@ -324,6 +325,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -356,6 +358,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -443,6 +446,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					appName: 'Support Bot (n8n)',
 					organizationName: 'Acme Corp',
 					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
 					secretExpiresAt: '2028-09-17T00:00:00Z',
 				}),
 			});
@@ -514,6 +518,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
@@ -533,6 +538,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					subscriptions: ref([
@@ -566,6 +572,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					subscriptions: ref([]),
@@ -602,6 +609,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					subscriptions: ref([]),
@@ -629,6 +637,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					subscriptions: ref([]),
@@ -638,6 +647,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						deployToAzureUrl: 'https://portal.azure.com/template',
 						credentialClaimedBy: null,
 						provisionedByN8n: true,
+						fileAccessConsentUrl: null,
 						defaultDisplayName: 'Support Bot',
 						defaultDescription: 'An agent',
 					}),
@@ -668,6 +678,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -702,6 +713,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -739,6 +751,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -768,6 +781,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					subscriptions: ref([{ id: 'sub-1', name: 'Production' }]),
@@ -790,6 +804,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -817,6 +832,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 				}),
@@ -844,6 +860,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -868,6 +885,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -906,6 +924,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					appName: 'Support Bot (n8n)',
 					organizationName: 'Acme Corp',
 					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl: null,
 					secretExpiresAt: '2028-09-17T00:00:00Z',
 				}),
 				subscriptions: ref([]),
@@ -959,6 +978,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -999,6 +1019,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -1054,6 +1075,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -1083,6 +1105,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -1121,6 +1144,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({
@@ -1149,6 +1173,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						appName: 'Support Bot (n8n)',
 						organizationName: 'Acme Corp',
 						entraAppUrl: 'https://entra.microsoft.com/app-1',
+						fileAccessConsentUrl: null,
 						secretExpiresAt: '2028-09-17T00:00:00Z',
 					}),
 					provisionedBot: ref({

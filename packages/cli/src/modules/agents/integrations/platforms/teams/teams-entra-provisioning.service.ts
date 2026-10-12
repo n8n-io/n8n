@@ -5,10 +5,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { withTeamsFailure } from './teams-setup-telemetry.service';
 
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, UrlService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@n8n/errors';
 
+import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { graphErrorCode, TeamsGraphService } from './teams-graph.service';
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { GRAPH_RESOURCE, TeamsManagerTokenService } from './teams-manager-token.service';
@@ -80,6 +81,7 @@ export class TeamsEntraProvisioningService {
 		private readonly tokens: TeamsManagerTokenService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -114,6 +116,9 @@ export class TeamsEntraProvisioningService {
 		// run may have lost its principal.
 		await this.createServicePrincipal(token, app.appId);
 
+		const redirectUri = adminConsentRedirectUri(this.urlService.getInstanceBaseUrl(), options);
+		const fileAccessDeclared = await this.declareFileAccess(token, app.objectId, redirectUri);
+
 		const credentialId = await this.writeBotCredential({
 			options,
 			app,
@@ -128,6 +133,10 @@ export class TeamsEntraProvisioningService {
 			appName: app.displayName,
 			organizationName: tenant.organizationName,
 			entraAppUrl: `${ENTRA_APP_URL}/${app.appId}`,
+			fileAccessConsentUrl:
+				fileAccessDeclared && redirectUri
+					? adminConsentUrl(tenant.tenantId, app.appId, redirectUri)
+					: null,
 			secretExpiresAt: secret.expiresAt,
 		};
 	}
@@ -243,9 +252,6 @@ export class TeamsEntraProvisioningService {
 				// Not how the app is found — that is `uniqueName` — but it is what
 				// someone sees in the Entra portal when they ask what made this.
 				tags: [uniqueName],
-				// Declared only. An administrator grants it from the setup's file
-				// access callout; the sign-in here cannot grant app permissions.
-				requiredResourceAccess: [GRAPH_FILES_READ_ALL],
 			},
 			{ Prefer: 'create-if-missing' },
 		);
@@ -288,6 +294,25 @@ export class TeamsEntraProvisioningService {
 			throw new OperationalError('Microsoft updated the app but would not say which one.');
 		}
 		return { objectId, appId, displayName: stringProperty(first, 'displayName') ?? displayName };
+	}
+
+	/**
+	 * Declares the file permission, and where Microsoft returns the administrator
+	 * who approves it. Only declared: this sign-in cannot grant app permissions,
+	 * so the setup links an administrator to the consent screen. Runs for an
+	 * existing app too, which may predate either. A failure leaves the setup
+	 * working; the link then falls back to the app in Entra.
+	 */
+	private async declareFileAccess(
+		token: string,
+		objectId: string,
+		redirectUri: string | undefined,
+	): Promise<boolean> {
+		const response = await this.graph.request(token, 'PATCH', `/applications/${objectId}`, {
+			requiredResourceAccess: [GRAPH_FILES_READ_ALL],
+			...(redirectUri ? { web: { redirectUris: [redirectUri] } } : {}),
+		});
+		return response.ok;
 	}
 
 	/** `undefined` when the app is gone from the tenant, so the caller remakes it. */

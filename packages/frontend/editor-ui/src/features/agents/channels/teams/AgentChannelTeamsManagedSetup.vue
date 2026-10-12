@@ -858,6 +858,7 @@ const downloadPackage = async () =>
 						v-model="availability"
 						start-collapsed
 						:app-id="provisionedApp?.appId"
+						:file-access-consent-url="provisionedApp?.fileAccessConsentUrl"
 					/>
 				</div>
 

@@ -80,6 +80,12 @@ export interface TeamsAgentSetupState {
 	 * where the recommended one could have run.
 	 */
 	provisionedByN8n: boolean;
+	/**
+	 * Where an administrator approves the app's file access in one step. Only
+	 * for an app the recommended setup made, which registers the return address
+	 * the consent screen needs.
+	 */
+	fileAccessConsentUrl: string | null;
 }
 
 /**
@@ -146,6 +152,8 @@ export interface TeamsProvisionedAppSummary {
 	appName: string;
 	organizationName: string | null;
 	entraAppUrl: string;
+	/** Where an administrator approves the app's file access, if n8n could set it up. */
+	fileAccessConsentUrl: string | null;
 	/**
 	 * When the client secret stops working. n8n created it, so the user cannot
 	 * replace it by hand — the channel settings offer a renew instead.

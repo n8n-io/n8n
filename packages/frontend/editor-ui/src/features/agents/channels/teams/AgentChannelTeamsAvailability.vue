@@ -6,8 +6,11 @@
  * manifest fields: changing one produces a new app package either way.
  */
 import { computed, ref } from 'vue';
+import { useClipboard } from '@n8n/composables/useClipboard';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nCallout,
+	N8nIconButton,
 	N8nLink,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
@@ -27,10 +30,12 @@ const value = defineModel<TeamsAvailability>({ required: true });
 const props = withDefaults(
 	defineProps<{
 		startCollapsed?: boolean;
-		/** The Entra app n8n created, if any. Without it the user registered their own. */
-		appId?: string;
+		/** Client ID of the app the channel runs on, once a credential is picked. */
+		appId?: string | null;
+		/** One-step approval, only for an app the recommended setup made. */
+		fileAccessConsentUrl?: string | null;
 	}>(),
-	{ startCollapsed: false, appId: undefined },
+	{ startCollapsed: false, appId: null, fileAccessConsentUrl: null },
 );
 
 const i18n = useI18n();
@@ -94,18 +99,36 @@ const rows = computed(() => [
  */
 const fileAccess = computed(() => {
 	if (!value.value.teamChannels && !value.value.groupChats) return null;
-	return props.appId
-		? {
-				text: 'agents.channels.teams.setup.availability.fileAccess' as const,
-				link: 'agents.channels.teams.setup.availability.fileAccessLink' as const,
-				url: entraApiPermissionsUrl(props.appId),
-			}
-		: {
-				text: 'agents.channels.teams.setup.availability.fileAccessManual' as const,
-				link: 'agents.channels.teams.setup.availability.fileAccessManualLink' as const,
-				url: ENTRA_APP_REGISTRATIONS_URL,
-			};
+	if (props.fileAccessConsentUrl) {
+		return {
+			text: 'agents.channels.teams.setup.availability.fileAccessConsent' as const,
+			link: 'agents.channels.teams.setup.availability.fileAccessConsentLink' as const,
+			url: props.fileAccessConsentUrl,
+		};
+	}
+	return {
+		text: 'agents.channels.teams.setup.availability.fileAccessPermission' as const,
+		...(props.appId
+			? {
+					link: 'agents.channels.teams.setup.availability.fileAccessPermissionLink' as const,
+					url: entraApiPermissionsUrl(props.appId),
+				}
+			: {
+					link: 'agents.channels.teams.setup.availability.fileAccessRegistrationsLink' as const,
+					url: ENTRA_APP_REGISTRATIONS_URL,
+				}),
+	};
 });
+
+const clipboard = useClipboard();
+const toast = useToast();
+
+/** The person setting this up is often not the administrator who approves it. */
+async function copyFileAccessLink() {
+	if (!fileAccess.value) return;
+	await clipboard.copy(fileAccess.value.url);
+	toast.showMessage({ type: 'success', title: i18n.baseText('generic.copiedToClipboard') });
+}
 
 /** A collapsed panel still has to say what it is set to. */
 const summary = computed(() => {
@@ -165,9 +188,25 @@ const summary = computed(() => {
 		<N8nCallout v-if="fileAccess" theme="info" data-testid="teams-file-access">
 			{{ i18n.baseText(fileAccess.text) }}
 			<template #trailingContent>
-				<N8nLink :to="fileAccess.url" new-window size="small" data-testid="teams-file-access-link">
-					{{ i18n.baseText(fileAccess.link) }}
-				</N8nLink>
+				<div :class="$style.fileAccessActions">
+					<N8nLink
+						:to="fileAccess.url"
+						new-window
+						size="small"
+						data-testid="teams-file-access-link"
+					>
+						{{ i18n.baseText(fileAccess.link) }}
+					</N8nLink>
+					<N8nIconButton
+						icon="copy"
+						variant="ghost"
+						size="small"
+						:title="i18n.baseText('agents.channels.teams.setup.availability.fileAccessCopy')"
+						:aria-label="i18n.baseText('agents.channels.teams.setup.availability.fileAccessCopy')"
+						data-testid="teams-file-access-copy"
+						@click="copyFileAccessLink"
+					/>
+				</div>
 			</template>
 		</N8nCallout>
 	</div>
@@ -178,6 +217,12 @@ const summary = computed(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.fileAccessActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 /*

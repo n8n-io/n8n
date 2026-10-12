@@ -708,6 +708,8 @@ defineExpose({
 						<AgentChannelTeamsAvailability
 							:model-value="availability"
 							start-collapsed
+							:app-id="setupState?.botId"
+							:file-access-consent-url="setupState?.fileAccessConsentUrl"
 							@update:model-value="editAvailability"
 						/>
 					</div>
@@ -808,6 +810,8 @@ defineExpose({
 				<AgentChannelTeamsAvailability
 					:model-value="availability"
 					start-collapsed
+					:app-id="setupState?.botId"
+					:file-access-consent-url="setupState?.fileAccessConsentUrl"
 					@update:model-value="editAvailability"
 				/>
 				<N8nText
