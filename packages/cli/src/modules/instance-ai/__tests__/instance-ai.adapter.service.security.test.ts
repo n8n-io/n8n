@@ -36,6 +36,7 @@ import {
 import type { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { LessThan } from '@n8n/typeorm';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	CredentialsEntity,
@@ -393,7 +394,7 @@ describe('stop execution — workflow:execute scope', () => {
 // ---------------------------------------------------------------------------
 
 describe('cleanupTestExecutions — scope and deletion pipeline', () => {
-	it('rejects when user lacks workflow:execute scope', async () => {
+	it('rejects when user lacks execution:delete scope', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
 		const ctx = service.createContext(user);
@@ -402,26 +403,60 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		);
 
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
-			'workflow:execute',
+			'execution:delete',
 		]);
 	});
 
-	it('calls hardDeleteBy instead of deleteByIds', async () => {
+	it('deletes only the counted manual executions by ID', async () => {
 		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
 		executionRepository.find.mockResolvedValue([{ id: 'exec-1' }, { id: 'exec-2' }] as never);
+		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
+
+		const now = new Date('2026-10-07T12:00:00.000Z');
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(now);
+
+		try {
+			const ctx = service.createContext(user);
+			const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
+
+			expect(result.deletedCount).toBe(2);
+		} finally {
+			vi.useRealTimers();
+		}
+
+		expect(executionRepository.find).toHaveBeenCalledWith({
+			select: ['id'],
+			where: {
+				workflowId: 'wf-1',
+				mode: 'manual',
+				startedAt: LessThan(new Date(now.getTime() - 60 * 60 * 1000)),
+			},
+		});
+		expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith({
+			filters: undefined,
+			accessibleWorkflowIds: ['wf-1'],
+			deleteConditions: { ids: ['exec-1', 'exec-2'] },
+		});
+		// Verify deleteByIds is NOT called
+		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+	});
+
+	it('deletes a large set of executions in chunks', async () => {
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
+		const ids = Array.from({ length: 1201 }, (_, i) => `exec-${i}`);
+		executionRepository.find.mockResolvedValue(ids.map((id) => ({ id })) as never);
 		executionPersistence.hardDeleteBy.mockResolvedValue(undefined);
 
 		const ctx = service.createContext(user);
 		const result = await ctx.workspaceService!.cleanupTestExecutions('wf-1');
 
-		expect(result.deletedCount).toBe(2);
-		expect(executionPersistence.hardDeleteBy).toHaveBeenCalledWith({
-			filters: { workflowId: 'wf-1', mode: 'manual' },
-			accessibleWorkflowIds: ['wf-1'],
-			deleteConditions: { deleteBefore: expect.any(Date) },
-		});
-		// Verify deleteByIds is NOT called
-		expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		expect(result.deletedCount).toBe(1201);
+		const chunks = executionPersistence.hardDeleteBy.mock.calls.map(
+			([criteria]) => criteria.deleteConditions.ids,
+		);
+		expect(chunks.map((chunk) => chunk?.length)).toEqual([500, 500, 201]);
+		expect(chunks.flat()).toEqual(ids);
 	});
 
 	it('emits execution-deleted audit event', async () => {

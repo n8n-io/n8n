@@ -21,6 +21,8 @@ const validSettings = {
 	tracesSampleRate: 0.5,
 	startupConnectivityTimeoutMs: 3_000,
 	includeNodeSpans: false,
+	emitWorkflowStartSpan: true,
+	emitNodeStartSpan: true,
 	injectOutbound: false,
 	productionExecutionsOnly: false,
 };
@@ -101,6 +103,8 @@ describe('OpenTelemetry settings in Public API', () => {
 					'tracesSampleRate',
 					'startupConnectivityTimeoutMs',
 					'includeNodeSpans',
+					'emitWorkflowStartSpan',
+					'emitNodeStartSpan',
 					'injectOutbound',
 					'productionExecutionsOnly',
 				].sort(),
@@ -246,6 +250,24 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			expect(replaced.status).toBe(200);
 			expect(replaced.body.exporterProtocol).toBe('http/protobuf');
+		});
+
+		it('resets omitted start span flags to false (PUT is a full replacement)', async () => {
+			await testServer.publicApiAgentFor(owner).put('/settings/otel').send(validSettings);
+
+			const {
+				emitWorkflowStartSpan: _workflow,
+				emitNodeStartSpan: _node,
+				...bodyWithoutFlags
+			} = validSettings;
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/otel')
+				.send(bodyWithoutFlags);
+
+			expect(response.status).toBe(200);
+			expect(response.body.emitWorkflowStartSpan).toBe(false);
+			expect(response.body.emitNodeStartSpan).toBe(false);
 		});
 
 		it('stores the exporter endpoint without surrounding whitespace', async () => {

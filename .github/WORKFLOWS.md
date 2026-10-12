@@ -236,14 +236,6 @@ parallelism). See the `--build-via-mcp` section in
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
-### Manual Triggers (PR Comments)
-
-| Command            | Workflow                     | Permissions         |
-|--------------------|------------------------------|---------------------|
-| `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
-
-**Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
-
 ### Label Triggers
 
 | Label                 | Workflow                     | Effect                                             |
@@ -453,10 +445,6 @@ test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
-    └──────────────────────────▶  test-workflows-callable.yml
-
-PR Comment Dispatchers (triggered by /command in PR comments):
-test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
 
@@ -1266,12 +1254,6 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 ---
 
 ## Future Vision
-
-### Redundancy Review
-
-Comment trigger (`/test-workflows`) is a workaround.
-
-Long-term: Main CI should be reliable enough to not need these.
 
 ### Workflow Testability
 

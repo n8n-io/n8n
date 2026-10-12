@@ -30,9 +30,10 @@ import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
+	ExportDependencyPolicy,
+	ExportVersionPolicy,
 	FolderConflictPolicy,
 	MissingNodeTypeMode,
-	MissingWorkflowDependencyPolicy,
 	OverwriteDeletionPolicy,
 	ProjectConflictPolicy,
 	TagConflictPolicy,
@@ -42,7 +43,6 @@ import {
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
-	WorkflowVersionPolicy,
 	type ImportRequest,
 	type ImportResult,
 	type ImportSelection,
@@ -77,7 +77,8 @@ import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-up
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
 
-// Apply treats the package as source of truth; callers cannot override this policy.
+// Apply treats the package as source of truth. Callers cannot override this policy,
+// but a confirmed Continue uses `overwrite` for data tables.
 const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
@@ -90,7 +91,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: DataTableMissingMode.Create,
-	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.Fail,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.OverwriteNonDestructive,
 	variableMissingMode: VariableMissingMode.MustPreexist,
 	variableConflictPolicy: VariableConflictPolicy.KeepExisting,
 	tagMissingMode: TagMissingMode.Create,
@@ -196,6 +197,7 @@ export class PromotionsService {
 				{
 					user: actor,
 					projectIds,
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
@@ -203,8 +205,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// personal projects are excluded, so a team workflow calling a personal
 					// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.Fail,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -248,9 +250,9 @@ export class PromotionsService {
 
 	/**
 	 * Selective promote against an already-resolved connection. Unselected workflows
-	 * stay as-is, and so do the projects and folders the branch already holds: a
-	 * selection creates a container, never renames one, so nothing moves that the
-	 * user did not select. A promotion branch is always new, so force never applies.
+	 * keep their content. A renamed project or folder moves its branch directory,
+	 * so the unselected workflows inside it move with it. A promotion branch is
+	 * always new, so force never applies.
 	 */
 	private async promoteSelectionResolved(
 		input: PromotionOperationInput,
@@ -304,8 +306,8 @@ export class PromotionsService {
 					includeArchivedWorkflows: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
 					// block a promote whose sub-workflow the branch already holds.
-					missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.ReferenceOnly,
-					workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
+					versionPolicy: ExportVersionPolicy.Latest,
 				},
 				{ targetDir: stagingFolder },
 			);
@@ -457,7 +459,12 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplyPackageDto,
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(connectionId, actor, request.expectedSource);
+		return await this.applyFromSource(
+			connectionId,
+			actor,
+			request.expectedSource,
+			request.confirmDestructiveChanges === true,
+		);
 	}
 
 	async applyProjectSelection(
@@ -483,6 +490,7 @@ export class PromotionsService {
 			actor,
 			request.workflowIds,
 			request.expectedSource,
+			request.confirmDestructiveChanges === true,
 		);
 	}
 
@@ -542,6 +550,7 @@ export class PromotionsService {
 		actor: User,
 		workflowIds: string[],
 		expectedSource?: ApplySelectionDto['expectedSource'],
+		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -591,10 +600,13 @@ export class PromotionsService {
 				selectedWorkflowIds: selection.selectedWorkflowIds,
 			},
 		});
+		const blockingConflicts = confirmDestructiveChanges
+			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
 			preflight.accessRequirements.length > 0 ||
-			preflight.conflicts.length > 0
+			blockingConflicts.length > 0
 		) {
 			this.logger.info('Apply blocked by unresolved bindings', {
 				status: 'blocked',
@@ -614,10 +626,17 @@ export class PromotionsService {
 			projectId,
 			selectedCount: selection.selectedWorkflowIds.length,
 			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
+			confirmDestructiveChanges,
 		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
-			{ user: actor, overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete },
+			{
+				user: actor,
+				overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
+				dataTableSchemaConflictPolicy: confirmDestructiveChanges
+					? DataTableSchemaConflictPolicy.Overwrite
+					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+			},
 			{ sourceDir: packageFolder },
 			selection,
 		);
@@ -637,6 +656,7 @@ export class PromotionsService {
 		connectionId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForConnection(connectionId, 'apply');
 		this.assertInstanceScope(input, 'Apply');
@@ -681,10 +701,13 @@ export class PromotionsService {
 		const preflight = await this.bindingPreflight.checkDirectory({
 			sourceDir: packageFolder,
 		});
+		const blockingConflicts = confirmDestructiveChanges
+			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
 			preflight.accessRequirements.length > 0 ||
-			preflight.conflicts.length > 0
+			blockingConflicts.length > 0
 		) {
 			this.logger.info('Apply blocked by unresolved bindings', {
 				status: 'blocked',
@@ -699,10 +722,20 @@ export class PromotionsService {
 			return { status: 'blocked', ...identity, preflight };
 		}
 
-		this.logger.info('Importing a package', { connectionId, configId: input.configId });
+		this.logger.info('Importing a package', {
+			connectionId,
+			configId: input.configId,
+			confirmDestructiveChanges,
+		});
 
 		const result = await this.n8nPackagesService.importPackageFromDirectory(
-			{ user: actor, ...IMPORT_POLICY },
+			{
+				user: actor,
+				...IMPORT_POLICY,
+				dataTableSchemaConflictPolicy: confirmDestructiveChanges
+					? DataTableSchemaConflictPolicy.Overwrite
+					: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+			},
 			{ sourceDir: packageFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);
@@ -735,6 +768,8 @@ export class PromotionsService {
 		});
 
 		return {
+			configId: input.configId,
+			branchName,
 			commitSha,
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
 			readFiles: async (filePaths) => {
@@ -913,6 +948,7 @@ export class PromotionsService {
 			dataTables: {
 				matched: importResult.dataTables.matched,
 				created: importResult.dataTables.created,
+				updated: importResult.dataTables.updated,
 			},
 			variables: {
 				matched: importResult.variables.matched.length,

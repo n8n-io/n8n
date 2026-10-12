@@ -177,6 +177,7 @@ function decodeCompressedJsonResponse(
 if (IS_REPLAY_MODE) {
 	process.env.OPENAI_API_KEY = 'sk-proj-1234567890';
 	process.env.ANTHROPIC_API_KEY = 'sk-proj-1234567890';
+	process.env.VERCEL_AI_GATEWAY_API_KEY = 'vercel-test-replay';
 }
 
 if (IS_RECORD_MODE || IS_REPLAY_MODE) {

@@ -4,6 +4,8 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
+import type { DataTableImporter } from '@/modules/n8n-packages/entities/data-table/data-table-importer';
+import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import type {
 	InventoryCredential,
@@ -21,11 +23,14 @@ const credentialTypes = mock<CredentialTypes>();
 const credentialsRepository = mock<CredentialsRepository>();
 const variablesRepository = mock<VariablesRepository>();
 const projectRepository = mock<ProjectRepository>();
+const dataTableImporter = mock<DataTableImporter>();
 
 const service = new PromotionBindingPreflightService(
 	mock<PackageImportConfig>(),
 	inventoryReader,
 	new VariableRequirementsExtractor(),
+	new DataTableRequirementsExtractor(),
+	dataTableImporter,
 	credentialTypes,
 	credentialsRepository,
 	variablesRepository,
@@ -117,6 +122,7 @@ function useInventory(inventory: Partial<PackageDirectoryInventory>) {
 		workflows: [],
 		credentials: [],
 		variables: [],
+		dataTables: [],
 		...inventory,
 	});
 }
@@ -160,6 +166,7 @@ describe('PromotionBindingPreflightService', () => {
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
+		dataTableImporter.findDestructiveChanges.mockResolvedValue([]);
 		projectRepository.findTypesByIds.mockResolvedValue(
 			[PROJECT_A, PROJECT_B, PROJECT_C].map(({ id }) => ({ id, type: 'team' })),
 		);
@@ -251,6 +258,7 @@ describe('PromotionBindingPreflightService', () => {
 				inventoryCredential('cred-2', PROJECT_A.id),
 			],
 			variables: [],
+			dataTables: [],
 		};
 		const selection = { selectedProjectId: PROJECT_A.id, selectedWorkflowIds: ['wf-1'] };
 		inventoryReader.read.mockResolvedValue(inventory);

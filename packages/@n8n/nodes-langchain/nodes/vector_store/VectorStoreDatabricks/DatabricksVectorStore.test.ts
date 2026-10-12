@@ -264,6 +264,24 @@ describe('DatabricksVectorStore', () => {
 			expect(embeddings.embedQuery).not.toHaveBeenCalled();
 		});
 
+		// The retriever calls similaritySearch without a filter, so the configured one must apply
+		it('applies the configured search mode and filter to a retriever search', async () => {
+			const store = await managedStore({ queryType: 'HYBRID', filter: { source: 'hr' } });
+			fetchMock.mockResolvedValue(json(queryReply));
+
+			const docs = await store.similaritySearch('hello', 3);
+
+			expect(bodyOf(0)).toEqual({
+				columns: ['id', 'text', 'source'],
+				num_results: 3,
+				query_type: 'HYBRID',
+				query_text: 'hello',
+				filters_json: '{"source":"hr"}',
+			});
+			expect(docs.map((doc) => doc.pageContent)).toEqual(['hello', 'world']);
+			expect(embeddings.embedQuery).not.toHaveBeenCalled();
+		});
+
 		it('rejects a vector query without a request', async () => {
 			const store = await managedStore();
 

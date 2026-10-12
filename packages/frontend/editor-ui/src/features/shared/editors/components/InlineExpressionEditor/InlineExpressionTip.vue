@@ -10,18 +10,26 @@ import { watchDebounced } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { N8nText } from '@n8n/design-system';
-type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
+type TipId =
+	| 'executePrevious'
+	| 'drag'
+	| 'default'
+	| 'dotObject'
+	| 'dotPrimitive'
+	| 'pairedItemNotOnBranch';
 
 type Props = {
 	editorState?: EditorState;
 	unresolvedExpression?: string;
 	selection?: SelectionRange;
+	pairedItemNotOnBranch?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	editorState: undefined,
 	unresolvedExpression: '',
 	selection: () => EditorSelection.cursor(0),
+	pairedItemNotOnBranch: false,
 });
 
 const i18n = useI18n();
@@ -37,6 +45,9 @@ const canDragToFocusedInput = computed(
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
 const tip = computed<TipId>(() => {
+	// The expression already fails, so the fix is more useful than a general tip.
+	if (props.pairedItemNotOnBranch) return 'pairedItemNotOnBranch';
+
 	if (
 		!ndvStore.value.hasInputData &&
 		ndvStore.value.isInputParentOfActiveNode &&
@@ -123,6 +134,10 @@ watchDebounced(
 
 		<div v-else-if="tip === 'executePrevious'" :class="$style.content">
 			<span> {{ i18n.baseText('expressionTip.noExecutionData') }} </span>
+		</div>
+
+		<div v-else-if="tip === 'pairedItemNotOnBranch'" :class="$style.content">
+			<span v-n8n-html="i18n.baseText('expressionTip.pairedItemNotOnBranch')" />
 		</div>
 
 		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">

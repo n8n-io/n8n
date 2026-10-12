@@ -11,7 +11,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { AgentSessionMode } from './utils/agent-thread-access';
+import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
@@ -56,9 +56,11 @@ interface ExecuteTurnConfig {
 	context: RecordingContext;
 	prepare: () => Promise<AgentTurnRequest>;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
-	previewChat?: boolean;
-	productionN8nChat?: boolean;
+	/** The chat surface this turn runs under. Undefined for integrations and tasks. */
+	chatSurface?: AgentChatSurface;
 	automaticPreviewContinuation?: boolean;
+	/** The abort signal is a wake lease, not a chat request. */
+	isWakeRun?: boolean;
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	onExecutionRecorded?: (executionId: string) => void;
 	onSettled?: (suspended: boolean) => Promise<void>;
@@ -73,10 +75,12 @@ interface TurnExecutionState {
 	suspendedRunId?: string;
 }
 
-interface PreviewExecutionControl {
+/** Preview and n8n Chat both run under one of these — a steerable, cancellable chat turn. */
+interface ChatExecutionControl {
 	controller: AbortController;
 	detachRequest: () => void;
 	userId: string;
+	surface: AgentChatSurface;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -109,7 +113,7 @@ export class AgentTurnExecutionService {
 
 	async *execute(config: ExecuteTurnConfig): AsyncGenerator<AgentExecutionStreamChunk> {
 		let turn: AgentTurnRequest | undefined;
-		let previewControl: PreviewExecutionControl | undefined;
+		let chatControl: ChatExecutionControl | undefined;
 		const state: TurnExecutionState = {
 			steeredMessages: new Map(),
 			executionStarted: false,
@@ -127,11 +131,11 @@ export class AgentTurnExecutionService {
 		try {
 			turn = await config.prepare();
 			const preparedTurn = turn;
-			if (config.previewChat || config.productionN8nChat) {
-				previewControl = this.createPreviewExecutionControl(preparedTurn);
-				preparedTurn.options.abortSignal = previewControl.controller.signal;
+			if (config.chatSurface !== undefined) {
+				chatControl = this.createChatExecutionControl(preparedTurn, config.chatSurface);
+				preparedTurn.options.abortSignal = chatControl.controller.signal;
 			}
-			const stream = await this.admitTurn(preparedTurn, config, recorder, state, previewControl);
+			const stream = await this.admitTurn(preparedTurn, config, recorder, state, chatControl);
 			yield* this.streamTurn(stream, preparedTurn, config, recorder, state);
 		} catch (error) {
 			state.executionError = error;
@@ -139,10 +143,10 @@ export class AgentTurnExecutionService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			previewControl?.detachRequest();
+			chatControl?.detachRequest();
 			if (turn && state.executionId) {
 				try {
-					await this.settleTurn(turn, config, recorder, state.executionId, state);
+					await this.settleTurn(turn, config, recorder, state.executionId, state, chatControl);
 					await config.onSettled?.(recorder.suspended);
 				} finally {
 					await this.messageQueue.settle(config.context.threadId, state.executionId);
@@ -151,7 +155,10 @@ export class AgentTurnExecutionService {
 		}
 	}
 
-	private createPreviewExecutionControl(turn: AgentTurnRequest): PreviewExecutionControl {
+	private createChatExecutionControl(
+		turn: AgentTurnRequest,
+		surface: AgentChatSurface,
+	): ChatExecutionControl {
 		const userId = turn.recording.access.ownerId;
 		if (turn.recording.access.accessScope !== 'user' || !userId) {
 			throw new UnexpectedError('A preview execution must have an owning user.');
@@ -164,6 +171,7 @@ export class AgentTurnExecutionService {
 		return {
 			controller,
 			userId,
+			surface,
 			detachRequest: () => requestSignal?.removeEventListener('abort', abort),
 		};
 	}
@@ -242,10 +250,11 @@ export class AgentTurnExecutionService {
 		recorder: ExecutionRecorder,
 		executionId: string,
 		state: TurnExecutionState,
+		chatControl?: ChatExecutionControl,
 	): Promise<void> {
 		const finalize = async () =>
 			await this.finalizeTurn(turn, config, recorder, executionId, state);
-		if (config.previewChat || config.productionN8nChat) {
+		if (chatControl) {
 			await this.chatExecutionService.settle(executionId, finalize, state.suspendedRunId);
 		} else {
 			await finalize();
@@ -406,12 +415,13 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-		previewControl?: PreviewExecutionControl,
+		chatControl?: ChatExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
 		const admission =
-			config.admittedExecution ?? (await this.recordTurnStart(turn, config, recorder, state));
+			config.admittedExecution ??
+			(await this.recordTurnStart(turn, config, recorder, state, chatControl));
 		state.executionId = admission.executionId;
-		return await this.startAcceptedTurn(admission, turn, config, recorder, state, previewControl);
+		return await this.startAcceptedTurn(admission, turn, config, recorder, state, chatControl);
 	}
 
 	private async recordTurnStart(
@@ -419,12 +429,14 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
+		chatControl?: ChatExecutionControl,
 	): Promise<AgentExecutionAdmission> {
 		turn.options.abortSignal?.throwIfAborted();
 		const admission = await this.startExecution(
 			{
 				...turn.recording,
-				previewChat: config.previewChat,
+				previewChat: config.chatSurface === 'preview' ? true : undefined,
+				acceptsSteering: chatControl !== undefined,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
 				allowSuspendedPredecessor: config.automaticPreviewContinuation,
 				...(config.backgroundJobSignal
@@ -444,7 +456,7 @@ export class AgentTurnExecutionService {
 		config: ExecuteTurnConfig,
 		recorder: ExecutionRecorder,
 		state: TurnExecutionState,
-		previewControl?: PreviewExecutionControl,
+		chatControl?: ChatExecutionControl,
 	): Promise<ReadableStream<StreamChunk>> {
 		const { executionId, inputMessageIds } = admission;
 		if (turn.type === 'start') turn.input = bindExecutionInput(turn.input, inputMessageIds);
@@ -463,30 +475,30 @@ export class AgentTurnExecutionService {
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
 		}
-		if (config.previewChat && previewControl) {
+		if (chatControl) {
 			turn.options.onInputBoundary = async (boundary) => {
 				const result = await this.steering.consume(
-					{ ...config.context, executionId, userId: previewControl.userId },
+					{ ...config.context, executionId, resourceId: turn.recording.resourceId },
 					boundary,
 					recorder,
 					turn.options.abortSignal!,
 				);
-				if (result.stopped) previewControl.controller.abort();
+				if (result.stopped) chatControl.controller.abort();
 				for (const event of result.events) state.steeredMessages.set(event.message.id, event);
 				return result.messages;
 			};
-		}
-		if (previewControl) {
 			this.chatExecutionService.register(
 				{
 					...config.context,
-					userId: previewControl.userId,
+					userId: chatControl.userId,
 					executionId,
-					...(config.productionN8nChat ? { productionN8nChat: true } : {}),
+					surface: chatControl.surface,
 				},
-				previewControl.controller,
+				chatControl.controller,
 			);
-			previewControl.detachRequest();
+			// A closed chat request must not stop an admitted turn. A lost wake lease must,
+			// because the wake leaves its job results unconsumed and another wake retries them.
+			if (!config.isWakeRun) chatControl.detachRequest();
 		}
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();

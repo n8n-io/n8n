@@ -10,6 +10,7 @@ import type { BudgetGuardrailConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
+import { AgentBudgetAlertService } from './agent-budget-alert.service';
 import {
 	AgentBudgetSpendRepository,
 	previousTotalUsd,
@@ -115,6 +116,12 @@ export interface BudgetAttachInput {
 	budget?: BudgetGuardrailConfig;
 	sessionId?: string;
 	agentId?: string;
+	/**
+	 * Saved agent to email when the month total crosses the alert.
+	 * A workflow run sets this to the agent the node targets. Inline workflow
+	 * runs have no saved agent, so they leave it unset.
+	 */
+	alertAgentId?: string;
 	/** Session cap from the root agent. Used only when `useRootSessionCap` is set. */
 	rootSessionCapUsd?: number;
 	/**
@@ -122,7 +129,7 @@ export interface BudgetAttachInput {
 	 * budget from `budget` when that guardrail is on.
 	 */
 	useRootSessionCap?: boolean;
-	/** Preview chat shows the approaching card. Nothing else subscribes. */
+	/** Preview chat shows the approaching card. Cloud also emails the project owner. */
 	onNotice?: (notice: { code: 'budget.alert' }) => void;
 }
 
@@ -169,6 +176,58 @@ function resolveBudgetLimits(input: BudgetAttachInput): ResolvedBudgetLimits | u
 	};
 }
 
+/**
+ * Builds the notice callback.
+ * The guardrail calls it once, when the month total crosses the alert line.
+ * A later request in the same month does not cross that line again.
+ */
+function monthlyAlertNotice(
+	input: BudgetAttachInput,
+	alertThresholdPercent: number | undefined,
+): BudgetAttachInput['onNotice'] | undefined {
+	const previewNotice = input.onNotice;
+	const emailAgentId = alertEmailAgentId(input);
+	if (alertThresholdPercent === undefined || emailAgentId === undefined) return previewNotice;
+	const alertService = resolveAlertService();
+	if (!alertService) return previewNotice;
+	return (notice) => {
+		previewNotice?.(notice);
+		alertService.notifyMonthlyThreshold({
+			agentId: emailAgentId,
+			alertThresholdPercent,
+		});
+	};
+}
+
+/**
+ * The saved agent the email names. A workflow run of a saved agent passes that
+ * id in `alertAgentId`. An inline workflow run only has a telemetry id, so it
+ * sends no email.
+ */
+function alertEmailAgentId(input: BudgetAttachInput): string | undefined {
+	if (hasId(input.alertAgentId)) return input.alertAgentId;
+	if (!hasId(input.agentId) || input.agentId.startsWith('inline:')) return undefined;
+	return input.agentId;
+}
+
+function resolveAlertService(): AgentBudgetAlertService | undefined {
+	try {
+		return Container.get(AgentBudgetAlertService);
+	} catch {
+		try {
+			Container.get(Logger).debug(
+				'Agent budget alert emails are unavailable: the service is not registered',
+			);
+		} catch {
+			// No logger either. Stay quiet.
+		}
+		return undefined;
+	}
+}
+function hasId(value: string | undefined): value is string {
+	return value !== undefined && value.length > 0;
+}
+
 /** Appends the budget hook when a bucket is on. Leaves the options unchanged otherwise. */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
@@ -178,10 +237,11 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	if (!limits) return options;
 
 	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
+	const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
 	const hook = createBudgetGuardrail({
 		ledger,
 		...limits,
-		...(input.onNotice ? { onNotice: input.onNotice } : {}),
+		...(onNotice ? { onNotice } : {}),
 	});
 	const existing = options.guardrails;
 	return {

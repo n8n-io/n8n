@@ -1,18 +1,28 @@
 import {
 	AgentEvalRunDetailQueryDto,
+	ApplyAgentEvalSuggestionsDto,
+	ApplyPreviewSuggestionDto,
 	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
+	CreateDraftDatasetOptionsDto,
 	GenerateDraftCasesOptionsDto,
 	PaginationDto,
+	PreviewRunOptionsDto,
+	RerunResultOptionsDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
 	type AgentEvalRatingRecord,
+	type AgentEvalResultRecord,
 	type AgentEvalRunDetail,
 	type AgentEvalRunList,
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
+	type ApplyAgentEvalSuggestionsResult,
+	type ApplyPreviewSuggestionResult,
+	type CreateDraftDatasetResult,
 	type GenerateDraftCasesResult,
+	type PreviewRunResult,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -27,6 +37,8 @@ import {
 } from '@n8n/decorators';
 
 import { BadRequestError } from '@n8n/errors';
+
+import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentEvalRatingService } from './agent-eval-rating.service';
 import { AgentEvalService } from './agent-eval.service';
@@ -59,6 +71,7 @@ export class AgentEvalsController {
 		private readonly service: AgentEvalService,
 		private readonly ratingService: AgentEvalRatingService,
 		private readonly flagGate: AgentEvalsFlagGate,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	// ---- datasets ----
@@ -69,6 +82,22 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.service.listDatasets(agentId, projectId);
+	}
+
+	// A dataset with no rows and no run yet — the Data Table + columns
+	// `generateDraftCases` would create, with nothing drafted into it. Backs the
+	// "commit this preview" step: once previewed (`save: false`) or self-written
+	// cases are picked, they're inserted here via the existing case-creation route.
+	@Post('/:agentId/evals/datasets/draft')
+	@ProjectScope('agent:update')
+	async createDraftDataset(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: CreateDraftDatasetOptionsDto,
+	): Promise<CreateDraftDatasetResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.service.createDraftDataset(req.user, agentId, projectId, payload.datasetName);
 	}
 
 	@Post('/:agentId/evals/datasets')
@@ -105,6 +134,18 @@ export class AgentEvalsController {
 		return await this.service.updateDataset(agentId, projectId, datasetId, payload);
 	}
 
+	// Discards a draft dataset and, when the caller may delete it and nothing else
+	// reads it, its backing table, which plain deletion leaves alone. For rolling
+	// back a commit that failed before anything ran.
+	@Delete('/:agentId/evals/datasets/:datasetId/draft')
+	@ProjectScope('agent:update')
+	async deleteDraftDataset(req: AuthenticatedRequest<DatasetParam>): Promise<{ success: true }> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, datasetId } = req.params;
+		await this.service.deleteDraftDataset(req.user, agentId, projectId, datasetId);
+		return { success: true };
+	}
+
 	@Delete('/:agentId/evals/datasets/:datasetId')
 	@ProjectScope('agent:update')
 	async deleteDataset(req: AuthenticatedRequest<DatasetParam>): Promise<{ success: true }> {
@@ -128,6 +169,52 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.service.generateDraftCases(req.user, agentId, projectId, payload);
+	}
+
+	// Drafts one case and runs it against the agent directly (Preview Chat's own
+	// execution path) — no Data Table, no dataset, no eval-run row. Backs "try it
+	// once" and its "needs work" retries, which would otherwise spend a model
+	// call AND leave a throwaway dataset behind on every attempt.
+	@Post('/:agentId/evals/preview-run')
+	@ProjectScope('agent:update')
+	async previewRun(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: PreviewRunOptionsDto,
+	): Promise<PreviewRunResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.service.previewRun(req.user, agentId, projectId, payload);
+	}
+
+	// Rewrites the agent's instructions from the suggestion on a preview run's
+	// failed first check, then runs that case again. `agent:update`, because it
+	// edits the agent config, and, like `putConfig`, it honours the collaboration
+	// write lock. The service additionally requires `agent:execute` for the rerun.
+	@Post('/:agentId/evals/preview-run/apply-suggestion')
+	@ProjectScope('agent:update')
+	async applyPreviewSuggestion(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: ApplyPreviewSuggestionDto,
+	): Promise<ApplyPreviewSuggestionResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'update',
+		);
+		return await this.service.applyPreviewSuggestion(
+			req.user,
+			agentId,
+			projectId,
+			payload,
+			pushRef,
+		);
 	}
 
 	// ---- runs ----
@@ -188,6 +275,78 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
 		return await this.service.cancelRun(agentId, projectId, runId);
+	}
+
+	// ---- results ----
+
+	// Re-executes one already-settled case in place — no new run, and no effect
+	// on any other row in the run. `agent:execute`, same as `startRun`: running a
+	// case is the same action, just scoped to one of them. A rerun that also edits
+	// the rule (`whatToCheck`) writes eval data, so the runner additionally
+	// requires `agent:update` for that case.
+	@Post('/:agentId/evals/results/:resultId/rerun')
+	@ProjectScope('agent:execute')
+	async rerunResult(
+		req: AuthenticatedRequest<ResultParam>,
+		_res: unknown,
+		@Body payload: RerunResultOptionsDto,
+	): Promise<AgentEvalResultRecord> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.service.rerunResult(req.user, agentId, projectId, resultId, payload);
+	}
+
+	// Rewrites the agent's instructions from the stored fix suggestions of these
+	// results, then reruns only them. `agent:update`, because it edits the agent
+	// config — and, like `putConfig`, it honours the agent's collaboration write
+	// lock. The service additionally requires `agent:execute` for the reruns.
+	@Post('/:agentId/evals/apply-suggestions')
+	@ProjectScope('agent:update')
+	async applySuggestions(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: ApplyAgentEvalSuggestionsDto,
+	): Promise<ApplyAgentEvalSuggestionsResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'update',
+		);
+		return await this.service.applySuggestions(
+			req.user,
+			agentId,
+			projectId,
+			payload.resultIds,
+			pushRef,
+		);
+	}
+
+	// Marks a finished case as passing, overriding the judge or an execution error.
+	// `agent:update`: it
+	// edits the eval outcome, which a chat-only `agent:execute` member must not.
+	@Post('/:agentId/evals/results/:resultId/accept')
+	@ProjectScope('agent:update')
+	async acceptResult(req: AuthenticatedRequest<ResultParam>): Promise<AgentEvalResultRecord> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.service.acceptResult(agentId, projectId, resultId);
+	}
+
+	// Drops one case's result from its run — paired on the frontend with deleting
+	// the Data Table row it came from. `agent:update`: removing a check edits the
+	// eval suite, not something a chat-only `agent:execute` member should do.
+	@Delete('/:agentId/evals/results/:resultId')
+	@ProjectScope('agent:update')
+	async deleteResult(req: AuthenticatedRequest<ResultParam>): Promise<{ success: true }> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		await this.service.deleteResult(agentId, projectId, resultId);
+		return { success: true };
 	}
 
 	// ---- ratings ----
