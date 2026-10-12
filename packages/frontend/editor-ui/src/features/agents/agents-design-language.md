@@ -234,8 +234,11 @@ from the picker. `Create skill` opens the upload screen, and
 Back returns to the picker. A user who can create instance skills selects the
 scope with `Save to` at the bottom left of the editor.
 
-Open a skill that the user can use but not edit in a read-only editor. Show an
-info callout with the scope. Hide Save and keep `Remove skill`.
+Show a read-only skill as a document, not as a disabled form. Show each label
+without the required mark, the description as text, and the instructions and
+references as rendered markdown. Put a muted hint before Cancel that tells the
+user how to edit the skill, or whom to ask. A skill that the user can use but
+not edit opens this way. Hide Save and keep `Remove skill`.
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`

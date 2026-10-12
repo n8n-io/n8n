@@ -6,7 +6,13 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
-import { N8nFormInput, N8nInputLabel, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
+import {
+	N8nFormInput,
+	N8nInputLabel,
+	N8nMarkdown,
+	N8nMarkdownEditor,
+	N8nText,
+} from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -19,12 +25,14 @@ const props = withDefaults(
 	defineProps<{
 		skill: AgentSkill;
 		disabled?: boolean;
+		readOnly?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
 	}>(),
 	{
 		disabled: false,
+		readOnly: false,
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
 	},
@@ -257,7 +265,36 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <template>
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
-		<template v-if="isSkillFileSelected">
+		<template v-if="props.readOnly">
+			<template v-if="isSkillFileSelected">
+				<div :class="$style.field">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.skills.description.label') }}
+					</N8nText>
+					<N8nText data-testid="agent-skill-description-text">{{
+						props.skill.description
+					}}</N8nText>
+				</div>
+				<div :class="$style.field">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.skills.instructions.label') }}
+					</N8nText>
+					<N8nMarkdown
+						:content="props.skill.instructions"
+						data-testid="agent-skill-instructions-text"
+					/>
+				</div>
+			</template>
+			<div v-else-if="selectedReference" :class="$style.field">
+				<N8nText size="small" bold>{{ selectedReference.path }}</N8nText>
+				<N8nMarkdown
+					:content="selectedReference.content"
+					data-testid="agent-skill-reference-text"
+				/>
+			</div>
+		</template>
+
+		<template v-else-if="isSkillFileSelected">
 			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references

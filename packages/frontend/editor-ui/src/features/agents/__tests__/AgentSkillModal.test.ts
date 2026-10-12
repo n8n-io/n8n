@@ -518,7 +518,11 @@ describe('AgentSkillModal', () => {
 
 			expect(await findByTestId('agent-skill-preview')).toBeInTheDocument();
 			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
-			expect(getByTestId('agent-skill-instructions-editor')).toHaveValue('Instructions');
+			expect(getByTestId('agent-skill-instructions-text')).toHaveTextContent('Instructions');
+			expect(queryByTestId('agent-skill-instructions-editor')).not.toBeInTheDocument();
+			expect(getByTestId('agent-skill-footer-hint')).toHaveTextContent(
+				'agents.builder.skills.hint.addToEdit',
+			);
 			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
@@ -548,6 +552,9 @@ describe('AgentSkillModal', () => {
 			await findByTestId('agent-skill-preview');
 
 			expect(queryByTestId('agent-skill-preview-add')).not.toBeInTheDocument();
+			expect(getByTestId('agent-skill-footer-hint')).toHaveTextContent(
+				'agents.builder.skills.hint.openToEdit',
+			);
 			await fireEvent.click(getByTestId('agent-skill-remove'));
 
 			expect(onRemove).toHaveBeenCalledWith('tone');
@@ -647,9 +654,11 @@ describe('AgentSkillModal', () => {
 				onRemove,
 			});
 
-			expect(await findByTestId('agent-skill-read-only-callout')).toHaveTextContent(
-				'agents.builder.skills.readOnly.instance',
+			expect(await findByTestId('agent-skill-footer-hint')).toHaveTextContent(
+				'agents.builder.skills.hint.readOnly.instance',
 			);
+			expect(getByTestId('agent-skill-description-text')).toHaveTextContent('Use for SQL');
+			expect(queryByTestId('agent-skill-description-input')).not.toBeInTheDocument();
 			expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
 			expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
@@ -671,7 +680,8 @@ describe('AgentSkillModal', () => {
 
 			await waitFor(() => expect(getHubSkill).toHaveBeenCalled());
 			expect(await findByTestId('agent-modal-title-input')).toBeInTheDocument();
-			expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-footer-hint')).not.toBeInTheDocument();
+			expect(queryByTestId('agent-skill-description-input')).toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).toBeInTheDocument();
 		});
 	});

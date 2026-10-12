@@ -8,7 +8,7 @@ import {
 	type SkillListItem,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nCallout, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -147,14 +147,19 @@ const modalTitle = computed(() => {
 const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
 const isReadOnly = computed(() => skillAccessLoading.value || skillAccess.value?.canEdit === false);
-const readOnlyMessage = computed(() => {
-	if (skillAccess.value?.canEdit !== false) return '';
-	if (skillAccess.value.scope === 'instance') {
-		return i18n.baseText('agents.builder.skills.readOnly.instance');
+const cannotEdit = computed(() => skillAccess.value?.canEdit === false);
+const footerHint = computed(() => {
+	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
+	if (!shownSkill || (step.value !== 'preview' && step.value !== 'edit')) return '';
+	if (!shownSkill.canEdit) {
+		return shownSkill.scope === 'instance'
+			? i18n.baseText('agents.builder.skills.hint.readOnly.instance')
+			: i18n.baseText('agents.builder.skills.hint.readOnly.project');
 	}
-	return i18n.baseText('agents.builder.skills.readOnly.project', {
-		interpolate: { project: skillAccess.value.projectName ?? '' },
-	});
+	if (step.value !== 'preview') return '';
+	return previewIsAdded.value
+		? i18n.baseText('agents.builder.skills.hint.openToEdit')
+		: i18n.baseText('agents.builder.skills.hint.addToEdit');
 });
 
 const canAddReference = computed(
@@ -465,7 +470,7 @@ function onRemove() {
 			<AgentSkillViewer
 				:skill="previewSkill.skill"
 				:selected-path="previewPath"
-				disabled
+				read-only
 				@select:path="previewPath = $event"
 			/>
 		</div>
@@ -477,14 +482,6 @@ function onRemove() {
 				data-testid="agent-skill-missing-content-callout"
 			>
 				{{ i18n.baseText('agents.builder.skills.missingContent.callout' as BaseTextKey) }}
-			</N8nCallout>
-			<N8nCallout
-				v-if="readOnlyMessage"
-				theme="info"
-				:class="$style.callout"
-				data-testid="agent-skill-read-only-callout"
-			>
-				{{ readOnlyMessage }}
 			</N8nCallout>
 			<div :class="$style.content">
 				<AgentSkillUpload
@@ -508,6 +505,7 @@ function onRemove() {
 						:skill="skill"
 						:selected-path="selectedPath"
 						:disabled="isReadOnly"
+						:read-only="cannotEdit"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
 						@select:path="selectedPath = $event"
@@ -547,6 +545,16 @@ function onRemove() {
 				</N8nSelect>
 			</label>
 		</template>
+		<template v-if="footerHint" #footerBeforeCancel>
+			<N8nText
+				size="small"
+				color="text-light"
+				:class="$style.footerHint"
+				data-testid="agent-skill-footer-hint"
+			>
+				{{ footerHint }}
+			</N8nText>
+		</template>
 		<template v-if="footerPrimaryAction" #footerActions>
 			<N8nButton
 				v-if="footerPrimaryAction === 'add'"
@@ -581,6 +589,10 @@ function onRemove() {
 
 .callout {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+.footerHint {
+	text-align: right;
 }
 
 .scopeField {
