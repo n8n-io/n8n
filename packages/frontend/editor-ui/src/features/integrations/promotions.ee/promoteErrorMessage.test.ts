@@ -18,6 +18,8 @@ const changes: PromotableResource[] = [
 		updatedAt: null,
 		updatedBy: null,
 		dependencyCount: 0,
+		changedDependencies: [],
+		parentId: null,
 	},
 ];
 

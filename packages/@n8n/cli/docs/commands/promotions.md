@@ -227,8 +227,8 @@ command works on the `instance` connection only. The API key also needs
 
 ## `promotion-connection list-changes`
 
-List the workflows that differ between a project and the branch of its
-promotion configuration, in one direction.
+List the changes between a project and the branch of its promotion
+configuration, in one direction. A renamed project or folder is included.
 
 ```bash
 n8n-cli promotion-connection list-changes proj-abc promote
@@ -237,7 +237,7 @@ n8n-cli promotion-connection list-changes proj-abc apply
 
 | Flag | Description |
 |------|-------------|
-| `--search` | List only the workflows whose name matches this text. |
+| `--search` | List only the changes whose name matches this text. |
 | `--sort` | Sort by `name`, `updatedAt`, or `status`. The default is `name`. |
 | `--order` | Sort order: `asc` or `desc`. The default is `asc`. |
 

@@ -35,6 +35,8 @@ const CHANGES: ProjectPromotionChanges = {
 			updatedAt: '2026-01-01T00:00:00.000Z',
 			updatedBy: 'user-1',
 			dependencyCount: 0,
+			changedDependencies: [],
+			parentId: null,
 		},
 	],
 };

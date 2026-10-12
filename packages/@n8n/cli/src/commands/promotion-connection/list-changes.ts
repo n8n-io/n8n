@@ -13,7 +13,7 @@ const SORT_ORDERS: ReadonlyArray<NonNullable<PromotionChangesQuery['order']>> = 
 
 export default class PromotionConnectionListChanges extends BaseCommand {
 	static override description =
-		"List the workflows that differ between a project and its promotion configuration's branch, in one direction.";
+		"List the changes between a project and its promotion configuration's branch, in one direction. A renamed project or folder is included.";
 
 	static override examples = [
 		'<%= config.bin %> promotion-connection list-changes proj-abc promote',
@@ -27,7 +27,7 @@ export default class PromotionConnectionListChanges extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
-		search: Flags.string({ description: 'Only list workflows whose name matches this text' }),
+		search: Flags.string({ description: 'Only list changes whose name matches this text' }),
 		sort: Flags.string({
 			description: 'Field to sort by (server default: name)',
 			options: [...SORT_FIELDS],

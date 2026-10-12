@@ -2,7 +2,7 @@ operationId: getPromotionChanges
 tags:
   - Promotions
 summary: List the changes of a project in one direction
-description: Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.
+description: Compares a team project on this instance with the branch of its promotion configuration and lists the workflows that differ. A renamed project or folder is listed with the workflows inside it. Selecting any of those workflows includes the rename. For `promote` the rows are what a promotion sends to the branch, and the key needs the gitConnection:push scope. For `apply` the rows are what applying the branch changes on this instance, and the key needs the gitConnection:pull scope. `commitSha` is the commit the rows were read from. Requires the direction to be cloned first.
 x-required-scope: gitConnection:push,gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -85,6 +85,8 @@ responses:
                     type: string
                     enum:
                       - workflow
+                      - folder
+                      - project
                   status:
                     type: string
                     enum:
@@ -107,6 +109,30 @@ responses:
                   dependencyCount:
                     type: integer
                     minimum: 0
+                  changedDependencies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - credential
+                            - dataTable
+                            - variable
+                            - tag
+                        name:
+                          type: string
+                      required:
+                        - type
+                        - name
+                    description: Dependencies of this workflow that differ between the source and the destination.
+                  parentId:
+                    type: string
+                    nullable: true
+                    minLength: 1
+                    maxLength: 36
+                    description: Nearest renamed project or folder that contains this change. Null when the row is not inside a renamed container.
                 required:
                   - id
                   - name
@@ -116,6 +142,8 @@ responses:
                   - updatedAt
                   - updatedBy
                   - dependencyCount
+                  - changedDependencies
+                  - parentId
           required:
             - commitSha
             - source

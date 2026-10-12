@@ -303,20 +303,39 @@ it('preserves workflow moves and changes across workflow files', async () => {
 	const workflows = Container.get(WorkflowRepository);
 	const folders = Container.get(FolderRepository);
 
+	const expectRenamedFolderGroup = (rows: unknown[]) => {
+		expect(rows).toHaveLength(2);
+		expect(rows).toContainEqual(
+			expect.objectContaining({
+				id: folder.id,
+				name: 'Renamed',
+				type: 'folder',
+				parentId: null,
+			}),
+		);
+		expect(rows).toContainEqual(
+			expect.objectContaining({
+				id: workflow.id,
+				status: 'renamed',
+				parentId: folder.id,
+			}),
+		);
+	};
+
 	await folders.update(folder.id, { name: 'Renamed' });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
-	]);
+	expectRenamedFolderGroup((await agent.get(endpoint).expect(200)).body.data.changes);
 
 	// Publishing does not turn the move into a modification.
 	await workflows.update(workflow.id, { activeVersionId: workflow.versionId });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed' }),
-	]);
+	expectRenamedFolderGroup((await agent.get(endpoint).expect(200)).body.data.changes);
 
 	await workflows.update(workflow.id, { activeVersionId: null, parentFolder: null });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: workflow.id, status: 'renamed-and-modified' }),
+		expect.objectContaining({
+			id: workflow.id,
+			status: 'renamed-and-modified',
+			parentId: null,
+		}),
 	]);
 
 	await workflows.update(workflow.id, { parentFolder: folder });
@@ -476,8 +495,18 @@ it('detects variable and data table changes without reporting shadowed or unrela
 	await Container.get(VariablesService).updateCache();
 	await tables.addColumn(table.id, project.id, { name: 'total', type: 'number' });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: withTable.id, status: 'modified', dependencyCount: 1 }),
-		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
+		expect.objectContaining({
+			id: withTable.id,
+			status: 'modified',
+			dependencyCount: 1,
+			changedDependencies: [{ type: 'dataTable', name: 'Orders' }],
+		}),
+		expect.objectContaining({
+			id: withVariable.id,
+			status: 'modified',
+			dependencyCount: 1,
+			changedDependencies: [{ type: 'variable', name: 'API_URL' }],
+		}),
 	]);
 	await Container.get(PromotionsService).promote(connection.id, owner, {
 		commitMessage: 'Dependencies',
@@ -486,7 +515,12 @@ it('detects variable and data table changes without reporting shadowed or unrela
 	await variables.delete(global.id);
 	await Container.get(VariablesService).updateCache();
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
-		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
+		expect.objectContaining({
+			id: withVariable.id,
+			status: 'modified',
+			dependencyCount: 1,
+			changedDependencies: [{ type: 'variable', name: 'API_URL' }],
+		}),
 	]);
 }, 30_000);
 

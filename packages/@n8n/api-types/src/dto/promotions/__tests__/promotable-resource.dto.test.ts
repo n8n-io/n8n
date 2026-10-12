@@ -23,4 +23,39 @@ describe('PromotionChangesDto', () => {
 	it('requires the source the rows were read from', () => {
 		expect(PromotionChangesDto.safeParse({ commitSha: null, changes: [] }).success).toBe(false);
 	});
+
+	it('accepts a renamed folder above the workflows inside it', () => {
+		const parsed = PromotionChangesDto.safeParse({
+			commitSha: null,
+			source,
+			changes: [
+				{
+					id: 'folder-1',
+					name: 'Revenue',
+					type: 'folder',
+					status: 'renamed',
+					version: null,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: null,
+				},
+				{
+					id: 'wf-1',
+					name: 'Alpha',
+					type: 'workflow',
+					status: 'renamed',
+					version: 2,
+					updatedAt: null,
+					updatedBy: null,
+					dependencyCount: 0,
+					changedDependencies: [],
+					parentId: 'folder-1',
+				},
+			],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
 });

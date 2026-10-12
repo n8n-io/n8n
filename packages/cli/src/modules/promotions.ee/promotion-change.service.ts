@@ -1,4 +1,5 @@
 import type {
+	PromotableChangedDependency,
 	PromotableResource,
 	PromotionChanges,
 	PromotionChangesQueryDto,
@@ -48,6 +49,13 @@ import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
 import { PromotionsService } from './promotions.service';
+import {
+	applyStructuralRenames,
+	collectStructuralDiff,
+	retainStructuralMatches,
+	type ContainerRename,
+	type WorkflowPlacement,
+} from './structural-promotion-rows';
 import type { BranchPackage } from './promotions.types';
 
 const DEPENDENCY_COLLECTIONS = {
@@ -79,9 +87,12 @@ type PackageDiff = {
 	renamedIds: Set<string>;
 	modifiedIds: Set<string>;
 	dependencyCounts: Map<string, number>;
+	changedDependencies: Map<string, PromotableChangedDependency[]>;
 	desiredWorkflows: Map<string, ManifestEntry>;
 	desiredWorkflowPaths: Map<string, string>;
 	archiveCheckPaths: string[];
+	containerRenames: ContainerRename[];
+	workflowPlacements: Map<string, WorkflowPlacement>;
 };
 
 @Service()
@@ -98,7 +109,8 @@ export class PromotionChangeService {
 
 	/**
 	 * Lists the workflows that differ between the project on this instance and the
-	 * branch of its config for `direction`. The rows describe the receiving side.
+	 * branch of its config for `direction`. A renamed project or folder is included
+	 * when a changed workflow sits inside it. The rows describe the receiving side.
 	 * Promote compares the branch (base) with the instance (desired). Apply swaps the
 	 * sides: the instance is the base, and the branch is what the instance becomes.
 	 */
@@ -137,7 +149,11 @@ export class PromotionChangeService {
 			[...diff.changedIds].filter((id) => direction === 'apply' || diff.desiredWorkflows.has(id)),
 			{ fields: ['name', 'updatedAt', 'versionCounter'] },
 		);
-		const rows = buildPromotableResources({ ...diff, base, archiveState, metadata });
+		const rows = applyStructuralRenames(
+			buildPromotableResources({ ...diff, base, archiveState, metadata }),
+			diff.containerRenames,
+			diff.workflowPlacements,
+		);
 
 		return {
 			commitSha: branch.commitSha,
@@ -176,6 +192,10 @@ export class PromotionChangeService {
 		const renamedIds = new Set<string>();
 		const modifiedIds = new Set<string>();
 		const changedPaths = new Set<string>();
+		const containerNames = new Map<string, string>();
+		for (const entry of manifest.projects ?? []) containerNames.set(entry.id, entry.name);
+		for (const entry of manifest.folders ?? []) containerNames.set(entry.id, entry.name);
+		const { containerRenames, workflowPlacements } = collectStructuralDiff(changes, containerNames);
 		for (const fileChange of changes) {
 			if (fileChange.change !== 'added') changedPaths.add(fileChange.base.path);
 			if (fileChange.change !== 'deleted') changedPaths.add(fileChange.desired.path);
@@ -194,13 +214,14 @@ export class PromotionChangeService {
 				...fileChange,
 			});
 		}
-		const { affectedWorkflowIds, dependencyCounts } = calculateDependencyImpact({
-			base,
-			manifest,
-			changedPaths,
-			projectId,
-			destinationVariables,
-		});
+		const { affectedWorkflowIds, dependencyCounts, changedDependencies } =
+			calculateDependencyImpact({
+				base,
+				manifest,
+				changedPaths,
+				projectId,
+				destinationVariables,
+			});
 		for (const workflowId of affectedWorkflowIds) {
 			changedIds.add(workflowId);
 			modifiedIds.add(workflowId);
@@ -234,9 +255,12 @@ export class PromotionChangeService {
 			renamedIds,
 			modifiedIds,
 			dependencyCounts,
+			changedDependencies,
 			desiredWorkflows,
 			desiredWorkflowPaths,
 			archiveCheckPaths,
+			containerRenames,
+			workflowPlacements,
 		};
 	}
 
@@ -362,13 +386,10 @@ function applyQuery(
 	changes: PromotableResource[],
 	query: Pick<PromotionChangesQueryDto, 'search' | 'sort' | 'order'>,
 ): PromotableResource[] {
-	const search = query.search?.toLowerCase();
-	return changes
-		.filter(({ name }) => !search || name.toLowerCase().includes(search))
-		.sort((a, b) => {
-			const comparison = (a[query.sort] ?? '').localeCompare(b[query.sort] ?? '');
-			return (query.order === 'desc' ? -comparison : comparison) || a.id.localeCompare(b.id);
-		});
+	return retainStructuralMatches(changes, query.search).sort((a, b) => {
+		const comparison = (a[query.sort] ?? '').localeCompare(b[query.sort] ?? '');
+		return (query.order === 'desc' ? -comparison : comparison) || a.id.localeCompare(b.id);
+	});
 }
 
 function calculateDependencyImpact({
@@ -403,6 +424,7 @@ function calculateDependencyImpact({
 	}
 	const affectedWorkflowIds = new Set<string>();
 	const dependencyCounts = new Map<string, number>();
+	const changedDependencies = new Map<string, PromotableChangedDependency[]>();
 	for (const collection of Object.values(DEPENDENCY_COLLECTIONS)) {
 		if (collection === null) continue;
 		const entries = new Map(
@@ -440,13 +462,23 @@ function calculateDependencyImpact({
 					previous.some(({ path }) => changedPaths.has(path)) ||
 					(currentPath !== undefined && changedPaths.has(currentPath));
 			}
+			const changedDependency = dependencyChanged
+				? toChangedDependency(collection, key, requirement, entry)
+				: undefined;
 			for (const workflowId of getWorkflowConsumerIds(requirement)) {
 				dependencyCounts.set(workflowId, (dependencyCounts.get(workflowId) ?? 0) + 1);
-				if (dependencyChanged) affectedWorkflowIds.add(workflowId);
+				if (!dependencyChanged) continue;
+				affectedWorkflowIds.add(workflowId);
+				if (changedDependency) {
+					changedDependencies.set(workflowId, [
+						...(changedDependencies.get(workflowId) ?? []),
+						changedDependency,
+					]);
+				}
 			}
 		}
 	}
-	return { affectedWorkflowIds, dependencyCounts };
+	return { affectedWorkflowIds, dependencyCounts, changedDependencies };
 }
 
 function variableChanged({
@@ -486,6 +518,26 @@ function filesScope(
 	return undefined;
 }
 
+const CHANGED_DEPENDENCY_TYPES: Partial<
+	Record<ManifestEntityCollection, PromotableChangedDependency['type']>
+> = {
+	credentials: 'credential',
+	dataTables: 'dataTable',
+	variables: 'variable',
+	tags: 'tag',
+};
+
+function toChangedDependency(
+	collection: ManifestEntityCollection,
+	key: string,
+	requirement: { name?: string },
+	entry: ManifestEntry | undefined,
+): PromotableChangedDependency | undefined {
+	const type = CHANGED_DEPENDENCY_TYPES[collection];
+	if (!type) return undefined;
+	return { type, name: requirement.name ?? entry?.name ?? key };
+}
+
 function variableKey(name: string, scope: PromotionVariableScope['kind']): string {
 	return JSON.stringify([scope, name]);
 }
@@ -500,6 +552,7 @@ function buildPromotableResources({
 	modifiedIds,
 	metadata,
 	dependencyCounts,
+	changedDependencies,
 }: {
 	base: readonly PackageFile[];
 	desiredWorkflows: ReadonlyMap<string, ManifestEntry>;
@@ -510,6 +563,7 @@ function buildPromotableResources({
 	modifiedIds: ReadonlySet<string>;
 	metadata: ReadonlyArray<Pick<WorkflowEntity, 'id' | 'name' | 'updatedAt' | 'versionCounter'>>;
 	dependencyCounts: ReadonlyMap<string, number>;
+	changedDependencies: ReadonlyMap<string, readonly PromotableChangedDependency[]>;
 }): PromotableResource[] {
 	const metadataById = new Map(metadata.map((workflow) => [workflow.id, workflow]));
 	const baseWorkflowSlugs = new Map(
@@ -535,6 +589,8 @@ function buildPromotableResources({
 			updatedAt: workflow?.updatedAt.toISOString() ?? null,
 			updatedBy: null,
 			dependencyCount: dependencyCounts.get(id) ?? 0,
+			changedDependencies: [...(changedDependencies.get(id) ?? [])],
+			parentId: null,
 		};
 	});
 }

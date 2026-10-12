@@ -158,16 +158,21 @@ export interface PromotionChangesQuery {
 	order?: 'asc' | 'desc';
 }
 
-/** One workflow that differs between a project and its configured branch. */
+/** One workflow, or a renamed project or folder, that differs from the configured branch. */
 export interface PromotableResourceSummary {
 	id: string;
 	name: string;
-	type: 'workflow';
+	type: 'workflow' | 'folder' | 'project';
 	status: 'new' | 'modified' | 'renamed' | 'renamed-and-modified' | 'archived' | 'deleted';
 	version: number | null;
 	updatedAt: string | null;
 	updatedBy: string | null;
 	dependencyCount: number;
+	changedDependencies: Array<{
+		type: 'credential' | 'dataTable' | 'variable' | 'tag';
+		name: string;
+	}>;
+	parentId: string | null;
 }
 
 /** The changes of a project in one direction, with the commit they were read from. */
