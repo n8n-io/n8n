@@ -15,7 +15,10 @@ defineOptions({ name: 'DialogBody' });
 	flex-direction: column;
 	min-height: 0;
 	overflow: auto;
-	padding-block: 0 var(--n8n-dialog-region--padding, var(--spacing--md));
+	/* The header supplies the gap above the body, so this edge has no region padding.
+	   Reserve the focus outline inside the scrollport without moving the fields. */
+	padding-block: var(--focus--border-width) var(--n8n-dialog-region--padding, var(--spacing--md));
+	margin-block-start: calc(var(--focus--border-width) * -1);
 	padding-inline: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 </style>

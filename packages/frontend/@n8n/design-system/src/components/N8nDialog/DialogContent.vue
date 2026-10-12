@@ -201,6 +201,7 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	/* The header's bottom padding is the space above the body. Without a header, the body supplies it. */
 	&:not(:has([data-slot='dialog-header'])) :global([data-slot='dialog-body']) {
 		padding-block-start: var(--n8n-dialog-region--padding);
+		margin-block-start: 0;
 	}
 
 	/* Start the body below the corner close button. */
@@ -208,9 +209,11 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 		padding-block-start: calc(var(--n8n-dialog-close--size) + var(--spacing--xs));
 	}
 
-	/* The footer's top padding is the space below the body. */
+	/* The footer's top padding is the space below the body.
+	   Keep a gutter so the last control's focus outline stays inside the scrollport. */
 	&:has([data-slot='dialog-footer']) :global([data-slot='dialog-body']) {
-		padding-block-end: 0;
+		padding-block-end: var(--focus--border-width);
+		margin-block-end: calc(var(--focus--border-width) * -1);
 	}
 
 	&:not(:has([data-slot='dialog-header'])) .dismiss {
