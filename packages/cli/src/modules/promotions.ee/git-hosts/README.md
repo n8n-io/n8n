@@ -31,10 +31,14 @@ API-key grant and global user scope:
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories`
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories/{repositoryId}/branches`
 
-Both routes accept `search`, `limit`, and an opaque `cursor`. Pages contain at
-most 50 items. Resend the search when you use a cursor. A cursor keeps its page
-size. It does not create a snapshot of GitLab data. Repository IDs and clone URLs
-come from GitLab. Branch names include the default-branch flag.
+Both routes accept `search`, `limit`, and an opaque `cursor`. The public query
+uses the standard default of 100 and maximum of 250. The limit is an upper bound,
+not a fixed page length. GitLab requests contain at most 100 items. A continuation
+cursor advances by that effective page size. Follow it even when a page contains
+fewer items than the requested limit. Resend the search when you use a cursor.
+A cursor keeps its page size. It does not create a snapshot of GitLab data.
+Repository IDs and clone URLs come from GitLab. Branch names include the
+default-branch flag.
 
 GitLab repository discovery lists all projects accessible to the token. It does
 not require membership. Search matches repository names and

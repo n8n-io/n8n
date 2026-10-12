@@ -1,15 +1,15 @@
+import '../../openapi-extend';
+
 import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
-/** GitLab branch pages include full commit details, so keep discovery pages small. */
-export const MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE = 50;
+/** GitLab accepts at most 100 items per request. */
+export const MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE = 100;
 
 const discoveryQueryShape = {
-	limit: publicApiPaginationSchema.limit.transform((limit) =>
-		Math.min(limit, MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE),
-	),
+	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().max(2048).optional(),
 	search: z.string().trim().max(255).optional(),
 };
@@ -26,7 +26,8 @@ export const promotionRepositoryIdParamSchema = z
 	.string()
 	.min(1)
 	.max(256)
-	.refine((id) => id !== '.' && id !== '..', { message: 'Invalid repository ID' });
+	.refine((id) => id !== '.' && id !== '..', { message: 'Invalid repository ID' })
+	.openapi({ param: { description: 'The ID of the repository.' } });
 
 export const promotionRepositorySchema = z.object({
 	id: z.string(),

@@ -201,7 +201,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:read')
 	@ApiSummary('List repositories of a promotion provider')
 	@ApiDescription(
-		'Lists repositories accessible to the GitLab token, including repositories where its identity is not a member. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination, with at most 50 items per page. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+		'Lists repositories accessible to the GitLab token, including repositories where its identity is not a member. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionRepositoryListPublicDto)
@@ -232,7 +232,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:read')
 	@ApiSummary('List branches of a promotion repository')
 	@ApiDescription(
-		'Lists branches of the selected GitLab repository and identifies its default branch. Use the repository ID from repository discovery. Supports branch search and cursor pagination, with at most 50 items per page. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
+		'Lists branches of the selected GitLab repository and identifies its default branch. Use the repository ID from repository discovery. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionBranchListPublicDto)
@@ -835,15 +835,16 @@ export class PromotionsPublicController {
 
 	private resolveDiscoveryPage(query: { cursor?: string; limit: number }) {
 		const page = this.resolvePage(query);
+		const limit = Math.min(page.limit, MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE);
 		// GitLab uses page numbers, so the offset must start a complete page.
 		if (
 			!Number.isSafeInteger(page.offset) ||
-			page.limit > MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE ||
-			page.offset % page.limit !== 0
+			(query.cursor && page.limit > MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE) ||
+			page.offset % limit !== 0
 		) {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
-		return page;
+		return { offset: page.offset, limit };
 	}
 }
 

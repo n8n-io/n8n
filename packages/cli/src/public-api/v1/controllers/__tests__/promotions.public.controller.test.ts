@@ -36,7 +36,7 @@ describe('Promotion discovery cursor validation', () => {
 		for (const cursor of [
 			{ offset: -1, limit: 2 },
 			{ offset: 1, limit: 2 },
-			{ offset: 0, limit: 51 },
+			{ offset: 0, limit: 101 },
 			{ offset: 0, limit: -2 },
 			{ offset: 0, limit: '2' },
 			{ offset: 1.5, limit: 2 },

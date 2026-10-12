@@ -7,13 +7,13 @@ import {
 } from '../promotion-repository.dto';
 
 describe.each([ListPromotionRepositoriesQueryDto, ListPromotionBranchesQueryDto])('%s', (Dto) => {
-	it('defaults and caps page size at 50 and trims search', () => {
-		expect(Dto.parse({})).toEqual({ limit: 50 });
+	it('uses standard pagination defaults and bounds and trims search', () => {
+		expect(Dto.parse({})).toEqual({ limit: 100 });
 		expect(Dto.parse({ limit: '250', search: ' platform ' })).toEqual({
-			limit: 50,
+			limit: 250,
 			search: 'platform',
 		});
-		expect(Dto.parse({ limit: '100' })).toEqual({ limit: 50 });
+		expect(Dto.parse({ limit: '1000' })).toEqual({ limit: 250 });
 		expect(Dto.parse({ limit: '2', cursor: 'cursor' })).toEqual({
 			limit: 2,
 			cursor: 'cursor',

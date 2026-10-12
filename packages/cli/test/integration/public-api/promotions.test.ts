@@ -852,7 +852,7 @@ describe('Promotions in Public API', () => {
 			simple: 'true',
 			order_by: 'id',
 			sort: 'asc',
-			per_page: '50',
+			per_page: '100',
 			page: '1',
 		};
 		const routes = ['repositories', 'repositories/42/branches'];
@@ -886,6 +886,46 @@ describe('Promotions in Public API', () => {
 		}
 
 		afterEach(() => nock.cleanAll());
+
+		it('applies configured network rules to both discovery routes', async () => {
+			const id = await savedProvider();
+			const dnsResolver = mock<DnsResolver>();
+			dnsResolver.lookup.mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+			const logger = Container.get(Logger);
+			const clientFor = vi.spyOn(Container.get(GitHostClients), 'clientFor');
+			const api = discoveryApi().reply(200, []);
+			const branchApi = discoveryApi('/api/v4/projects/42/repository/branches', {
+				per_page: '100',
+				page: '1',
+			}).reply(200, []);
+			try {
+				for (const allowed of [false, true]) {
+					const config = new SsrfProtectionConfig();
+					config.enabled = true;
+					if (allowed) config.allowedIpRanges.push('127.0.0.1/32');
+					const policy = new SsrfProtectionService(config, dnsResolver, logger);
+					clientFor.mockReturnValue(
+						new GitLabHostClient(new OutboundHttp(policy, config, logger), logger),
+					);
+					for (const route of routes) {
+						const response = await testServer
+							.publicApiAgentFor(owner)
+							.get(`/promotions/providers/${id}/${route}`);
+						expect(response.status, JSON.stringify(response.body)).toBe(allowed ? 200 : 400);
+						if (!allowed) {
+							expect(response.body.message).toContain('instance network policy');
+							expect(JSON.stringify(response.body)).not.toContain(payload.auth.password);
+							expect(api.isDone()).toBe(false);
+							expect(branchApi.isDone()).toBe(false);
+						}
+					}
+				}
+				api.done();
+				branchApi.done();
+			} finally {
+				clientFor.mockRestore();
+			}
+		});
 
 		it('discovers accessible repositories without membership or a connection and preserves credentials', async () => {
 			const id = await savedProvider();
@@ -943,7 +983,7 @@ describe('Promotions in Public API', () => {
 		it('lists branch names and identifies the default without returning commit details', async () => {
 			const id = await savedProvider();
 			const api = discoveryApi('/api/v4/projects/42/repository/branches', {
-				per_page: '50',
+				per_page: '100',
 				page: '1',
 			}).reply(
 				200,
@@ -973,7 +1013,7 @@ describe('Promotions in Public API', () => {
 				const id = await savedProvider();
 				const stored = await Container.get(PromotionProviderRepository).findById(id);
 				const path = '/api/v4/projects/42/repository/branches';
-				const query = { per_page: '50', page: '1' };
+				const query = { per_page: '100', page: '1' };
 				const branches = Array.from({ length: 50 }, (_, index) => ({
 					name: `release/${index}`,
 					default: index === 0,
@@ -1060,18 +1100,59 @@ describe('Promotions in Public API', () => {
 			nextApi.done();
 		});
 
-		it('keeps the self-hosted installation path and caps the GitLab page size', async () => {
-			const id = await savedProvider(`${payload.config.baseUrl}/gitlab/`);
-			const api = discoveryApi('/gitlab/api/v4/projects').reply(200, [
-				{ ...project, default_branch: null },
-			]);
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.get(`/promotions/providers/${id}/repositories?limit=250`);
-			expect(response.status, JSON.stringify(response.body)).toBe(200);
-			expect(response.body.data[0].defaultBranch).toBeNull();
-			api.done();
-		});
+		it.each(routes)(
+			'keeps the installation path and pages through %s when the requested limit is 250',
+			async (route) => {
+				const id = await savedProvider(`${payload.config.baseUrl}/gitlab/`);
+				const repositories = route === 'repositories';
+				const path = repositories
+					? '/gitlab/api/v4/projects'
+					: '/gitlab/api/v4/projects/42/repository/branches';
+				const query = repositories ? repositoryQuery : { per_page: '100', page: '1' };
+				const items = Array.from({ length: 101 }, (_, index) =>
+					repositories
+						? {
+								...project,
+								id: index + 1,
+								path_with_namespace: `platform/workflows-${index + 1}`,
+								http_url_to_repo: `https://gitlab.example.com/platform/workflows-${index + 1}.git`,
+								default_branch: index === 100 ? null : 'main',
+							}
+						: { name: `branch-${String(index + 1).padStart(3, '0')}`, default: index === 0 },
+				);
+				const firstApi = discoveryApi(path, query).reply(200, items.slice(0, 100), {
+					'X-Next-Page': '2',
+				});
+				const nextApi = discoveryApi(path, { ...query, page: '2' }).reply(200, items.slice(100), {
+					'X-Next-Page': '',
+				});
+				const agent = testServer.publicApiAgentFor(owner);
+				const first = await agent.get(`/promotions/providers/${id}/${route}`).query({ limit: 250 });
+				expect(first.status, JSON.stringify(first.body)).toBe(200);
+				expect(first.body.data).toHaveLength(100);
+				expect(JSON.parse(Buffer.from(first.body.nextCursor, 'base64').toString())).toEqual({
+					offset: 100,
+					limit: 100,
+				});
+				const next = await agent
+					.get(`/promotions/providers/${id}/${route}`)
+					.query({ cursor: first.body.nextCursor, limit: 250 });
+				expect(next.status, JSON.stringify(next.body)).toBe(200);
+				expect(next.body.data).toHaveLength(1);
+				expect(next.body.nextCursor).toBeNull();
+				const expectedKeys = Array.from({ length: 101 }, (_, index) =>
+					repositories ? String(index + 1) : `branch-${String(index + 1).padStart(3, '0')}`,
+				);
+				expect([...first.body.data, ...next.body.data]).toEqual(
+					expectedKeys.map((key) =>
+						expect.objectContaining(repositories ? { id: key } : { name: key }),
+					),
+				);
+				if (repositories) expect(next.body.data[0].defaultBranch).toBeNull();
+				firstApi.done();
+				nextApi.done();
+			},
+		);
 
 		it.each(routes)('returns an empty %s list for valid credentials', async (route) => {
 			const id = await savedProvider();
@@ -1079,7 +1160,7 @@ describe('Promotions in Public API', () => {
 				route === 'repositories' ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches';
 			const api = discoveryApi(
 				path,
-				route === 'repositories' ? repositoryQuery : { per_page: '50', page: '1' },
+				route === 'repositories' ? repositoryQuery : { per_page: '100', page: '1' },
 			).reply(200, []);
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -1102,7 +1183,7 @@ describe('Promotions in Public API', () => {
 				const repositories = route === 'repositories';
 				const api = discoveryApi(
 					repositories ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches',
-					repositories ? repositoryQuery : { per_page: '50', page: '1' },
+					repositories ? repositoryQuery : { per_page: '100', page: '1' },
 				)
 					.times(status === 503 ? 2 : 1)
 					.reply(status, { message: payload.auth.password });
@@ -1121,7 +1202,7 @@ describe('Promotions in Public API', () => {
 		it('reports an inaccessible repository instead of an empty branch list', async () => {
 			const id = await savedProvider();
 			const api = discoveryApi('/api/v4/projects/42/repository/branches', {
-				per_page: '50',
+				per_page: '100',
 				page: '1',
 			}).reply(404);
 			const response = await testServer
@@ -1135,7 +1216,7 @@ describe('Promotions in Public API', () => {
 		it('encodes a repository path as one GitLab project identifier', async () => {
 			const id = await savedProvider();
 			const api = discoveryApi('/api/v4/projects/platform%2Fworkflows/repository/branches', {
-				per_page: '50',
+				per_page: '100',
 				page: '1',
 			}).reply(200, [{ name: 'main', default: true }]);
 			const response = await testServer
@@ -1173,7 +1254,7 @@ describe('Promotions in Public API', () => {
 			const repositories = route === 'repositories';
 			const api = discoveryApi(
 				repositories ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches',
-				repositories ? repositoryQuery : { per_page: '50', page: '1' },
+				repositories ? repositoryQuery : { per_page: '100', page: '1' },
 			).reply(
 				200,
 				repositories

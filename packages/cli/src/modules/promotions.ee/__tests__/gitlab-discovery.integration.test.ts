@@ -1,3 +1,4 @@
+import { PromotionRepositoryListPublicDto, type PromotionRepository } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { readFile } from 'node:fs/promises';
@@ -40,20 +41,26 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		expect(created.status, JSON.stringify(created.body)).toBe(201);
 		const root = `/promotions/providers/${created.body.provider.id}`;
 		try {
-			const repositories = await agent
-				.get(`${root}/repositories`)
-				.query({ search: fixture.projectPath, limit: 1 });
-			expect(repositories.status, JSON.stringify(repositories.body)).toBe(200);
-			expect(repositories.body.data).toHaveLength(1);
-			const repository = repositories.body.data[0];
-			expect(repository.fullPath).toBe(fixture.projectPath);
+			let repository: PromotionRepository | undefined;
+			let cursor: string | undefined;
+			do {
+				const repositories = await agent
+					.get(`${root}/repositories`)
+					.query({ search: fixture.projectPath, ...(cursor && { cursor }) });
+				expect(repositories.status, JSON.stringify(repositories.body)).toBe(200);
+				expect(JSON.stringify(repositories.body)).not.toContain(fixture.accessToken);
+				const page = PromotionRepositoryListPublicDto.parse(repositories.body);
+				repository = page.data.find((item) => item.fullPath === fixture.projectPath);
+				cursor = page.nextCursor ?? undefined;
+			} while (!repository && cursor);
+			expect(repository, 'The fixture repository must appear in discovery.').toBeDefined();
+			if (!repository) throw new Error('Fixture repository not found.');
 			expect(repository.defaultBranch).toBeTruthy();
 			expect(repository.remoteUrl).toMatch(/^https?:\/\//);
-			expect(JSON.stringify(repositories.body)).not.toContain(fixture.accessToken);
 
 			const branches = await agent
 				.get(`${root}/repositories/${repository.id}/branches`)
-				.query({ search: repository.defaultBranch, limit: 50 });
+				.query({ search: repository.defaultBranch });
 			expect(branches.status, JSON.stringify(branches.body)).toBe(200);
 			expect(branches.body.data).toContainEqual({
 				name: repository.defaultBranch,
