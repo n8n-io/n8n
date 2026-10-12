@@ -156,7 +156,9 @@ describe('AgentCheckpointPruningTask', () => {
 
 		// Act: four prune runs at once. The pool may serialize them, so this is
 		// the idempotency check; the two-connection tests below cover the race.
-		await Promise.all(Array.from({ length: 4 }, async () => await task.run()));
+		await Promise.all(
+			Array.from({ length: 4 }, async () => await task.run(new AbortController().signal)),
+		);
 
 		// Assert: the stale rows are expired, the fresh rows are untouched, and the
 		// logged counts sum to the stale rows, so no run expired a row twice.
@@ -206,7 +208,7 @@ describe('AgentCheckpointPruningTask', () => {
 				Container.get(DatabaseConfig),
 				otherStorage,
 				Container.get(AgentBackgroundJobService),
-			).run();
+			).run(new AbortController().signal);
 
 			// Expiry rejects the claim before it needs the pruning lock.
 			const claim = storage.claimForResume(runId, suspendedState, agentId);

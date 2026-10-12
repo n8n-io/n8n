@@ -40,8 +40,11 @@ describe('AgentCheckpointPruningTask', () => {
 	);
 
 	it('should prune stale suspensions on run', async () => {
-		await task.run();
+		const { signal } = new AbortController();
+
+		await task.run(signal);
 
 		expect(checkpointStorage.pruneStaleSuspensions).toHaveBeenCalledTimes(1);
+		expect(backgroundJobs.pruneExpiredPausedJobs).toHaveBeenCalledWith(undefined, signal);
 	});
 });
