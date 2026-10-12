@@ -102,6 +102,12 @@ describe('ResumeRequestService.locate', () => {
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(2);
 	});
 
+	it('answers null for an execution that ended before its wait was cancelled', async () => {
+		const { service } = setup({ waiting: [[accepting('s1')]], status: 'failed' });
+
+		await expect(service.locate(executionId, token)).resolves.toBeNull();
+	});
+
 	it.each(['queued', 'waiting'] as const)(
 		'holds a request for a %s execution as for a running one',
 		async (status) => {
@@ -185,6 +191,20 @@ describe('ResumeRequestService.resolve', () => {
 		await expect(service.resolve('deadline', token, outputs)).rejects.toEqual(
 			rejection('not_waiting'),
 		);
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+	});
+
+	it('refuses a step of an execution that holds two such waits', async () => {
+		const { service, stepStore } = setup({ waiting: [[accepting('s1'), accepting('s2')]] });
+
+		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('ambiguous'));
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+	});
+
+	it('refuses a step of an execution that ended', async () => {
+		const { service, stepStore } = setup({ status: 'completed' });
+
+		await expect(service.resolve('s1', token, outputs)).rejects.toEqual(rejection('not_waiting'));
 		expect(stepStore.resumeStep).not.toHaveBeenCalled();
 	});
 
