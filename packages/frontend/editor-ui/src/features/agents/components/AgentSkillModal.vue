@@ -250,7 +250,6 @@ function onRemove() {
 		:show-footer="step !== 'upload'"
 		:busy="isImporting"
 		size="fit"
-		body-flush
 		data-testid="agent-skill-modal"
 		@update:open="!$event && closeModal()"
 		@update:title="onSkillUpdate({ name: $event })"
@@ -313,10 +312,11 @@ function onRemove() {
 	/* The Design System has no width preset between 2xlarge and full. */
 	width: min(52rem, calc(100dvw - var(--spacing--lg) * 3));
 	display: flex;
+	gap: var(--spacing--lg);
 }
 
 .missingContentCallout {
-	margin: var(--spacing--md) var(--spacing--lg) 0;
+	margin-bottom: var(--spacing--md);
 }
 
 @media (max-width: 480px) {
