@@ -5929,38 +5929,6 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
 	});
 
-	it.each([false, true])(
-		'keeps the Assistant verification marker in execution data (queue: %s)',
-		async (queueMode) => {
-			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
-				{
-					id: 'verification',
-					isArchived: true,
-					meta: { instanceAiVerification: true },
-					nodes: [
-						{
-							id: 'trigger',
-							name: 'Schedule Trigger',
-							type: 'n8n-nodes-base.scheduleTrigger',
-							typeVersion: 1,
-							parameters: {},
-							position: [0, 0],
-						},
-					],
-				},
-				{ queueMode },
-			);
-			await adapter.run('verification', undefined, { isVerificationRun: true });
-			const run = mockWorkflowRunner.run.mock.calls[0][0];
-			expect(run.workflowData.meta).toEqual({ instanceAiVerification: true });
-			expect(run.source).toBe('instance_ai');
-			expect(run.executionData.manualData).toMatchObject({
-				source: 'instance_ai',
-				suppressErrorWorkflow: true,
-			});
-		},
-	);
-
 	it('leaves the error workflow enabled for a run the user asked for', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

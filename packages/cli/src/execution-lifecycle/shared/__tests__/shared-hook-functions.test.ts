@@ -1,34 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
-import type { IRun, IWorkflowBase } from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { toWorkflowSnapshot } from '@/executions/execution-data/types';
 
-import {
-	determineFinalExecutionStatus,
-	prepareExecutionDataForDbUpdate,
-	updateExistingExecution,
-} from '../shared-hook-functions';
-
-it('retains the Assistant verification marker when saving completed execution data', () => {
-	const result = prepareExecutionDataForDbUpdate({
-		runData: mock<IRun>({ data: { resultData: {} }, status: 'success' }),
-		workflowData: mock<IWorkflowBase>({
-			id: 'temporary',
-			meta: { instanceAiVerification: true, templateId: 'private-template' },
-		}),
-		workflowStatusFinal: 'success',
-	});
-	expect(result.workflowData?.meta).toEqual({ instanceAiVerification: true });
-	expect(toWorkflowSnapshot(result.workflowData!).meta).toEqual({ instanceAiVerification: true });
-});
-
-it('does not add other workflow metadata to persisted execution snapshots', () => {
-	const workflow = { meta: { templateId: 'private-template' } } as IWorkflowBase;
-	expect(toWorkflowSnapshot(workflow)).not.toHaveProperty('meta');
-});
+import { determineFinalExecutionStatus, updateExistingExecution } from '../shared-hook-functions';
 
 describe('determineFinalExecutionStatus', () => {
 	describe('When waitTill is not set', () => {

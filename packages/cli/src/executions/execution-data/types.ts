@@ -16,7 +16,7 @@ export function createExecutionRef(workflowId: string, executionId: string): Exe
 
 export type WorkflowSnapshot = Pick<
 	IWorkflowBase,
-	'id' | 'name' | 'nodes' | 'connections' | 'settings' | 'nodeGroups' | 'meta'
+	'id' | 'name' | 'nodes' | 'connections' | 'settings' | 'nodeGroups'
 >;
 
 /**
@@ -26,11 +26,7 @@ export type WorkflowSnapshot = Pick<
  */
 export function toWorkflowSnapshot(workflow: WorkflowSnapshot): WorkflowSnapshot {
 	const { id, name, nodes, connections, settings, nodeGroups } = workflow;
-	const snapshot: WorkflowSnapshot = { id, name, nodes, connections, settings, nodeGroups };
-	if (workflow.meta?.instanceAiVerification === true) {
-		snapshot.meta = { instanceAiVerification: true };
-	}
-	return snapshot;
+	return { id, name, nodes, connections, settings, nodeGroups };
 }
 
 /**

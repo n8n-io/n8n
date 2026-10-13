@@ -65,8 +65,6 @@ Some nodes execute against external services under the existing simulation rules
 Full verification creates an archived, unpublished temporary workflow with a backend-assigned ID.
 It copies the candidate graph and the original runtime state. Execution writes affect this copy.
 The saved workflow, its history, and its published version remain unchanged.
-`workflowData.meta.instanceAiVerification` identifies these Assistant verification executions.
-Failure consumers must exclude them from production failure detection.
 
 The service copies findings into the tool response before cleanup. It stops unfinished executions
 and deletes terminal executions and their temporary workflow. Canceled executions remain for
