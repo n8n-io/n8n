@@ -50,7 +50,7 @@ So write `run()` to tolerate a second run at the same time:
    not "delete the rows I read before".
 2. Work in small batches and check `signal` between them.
 3. Set `maxAttempts: 1` when a repeat sends something twice, such as an email or
-   a report. This stops retries, but it does not stop an overlap with a stalled run.
+   a report. This stops scheduler retries, but it does not stop an overlap with a stalled run.
 
 See [Aiming for exactly-once across a cluster](../../../../@n8n/scheduler/README.md#aiming-for-exactly-once-across-a-cluster)
 for how the scheduler gets there.
