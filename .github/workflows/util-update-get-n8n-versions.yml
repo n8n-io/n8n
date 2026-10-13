@@ -2,8 +2,8 @@ name: 'Util: Update get-n8n Versions'
 
 on:
   schedule:
-    # Run every Monday at 04:00 UTC.
-    - cron: '0 4 * * 1'
+    # Run every Wednesday at 04:00 UTC.
+    - cron: '0 4 * * 3'
   workflow_dispatch:
 
 permissions: {}
