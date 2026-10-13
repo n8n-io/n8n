@@ -1,3 +1,5 @@
+import { getFeaturedModelName, pinFeaturedModels } from '@n8n/api-types';
+
 import { baseUrl, byName, getJson } from '../request';
 import type { ListModelsFn } from '../types';
 
@@ -40,7 +42,7 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 		'google',
 	)) as { models?: Array<{ name?: unknown; supportedGenerationMethods?: unknown }> };
 
-	return (data.models ?? [])
+	const models = (data.models ?? [])
 		.filter(
 			(model): model is { name: string; supportedGenerationMethods?: unknown } =>
 				typeof model.name === 'string' &&
@@ -49,6 +51,17 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 					supportedGenerationMethods: model.supportedGenerationMethods,
 				}),
 		)
-		.map((model) => ({ id: model.name, name: model.name }))
+		.map((model) => ({ id: model.name, name: getGoogleModelLabel(model.name) }))
 		.sort(byName);
+	return pinGoogleModels(models, (model) => model.id);
 };
+
+/** Dropdown label of a Google model id: the product name of a featured model, else the id. */
+export function getGoogleModelLabel(modelId: string): string {
+	return getFeaturedModelName('google', modelId) ?? modelId;
+}
+
+/** Moves featured Google models to the top of a model list. */
+export function pinGoogleModels<T>(models: T[], getModelId: (model: T) => string): T[] {
+	return pinFeaturedModels('google', models, getModelId);
+}

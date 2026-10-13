@@ -135,6 +135,36 @@ describe('useModelCatalog', () => {
 		);
 	});
 
+	it('lists featured models first and the rest by name', async () => {
+		const { FEATURED_MODELS } = await import('@n8n/api-types');
+		FEATURED_MODELS.google = { 'gemini-featured': 'Gemini Featured' };
+		mocks.getModelCatalog.mockResolvedValue({});
+		mocks.getProviderModels.mockResolvedValue({
+			provider: 'google',
+			verified: true,
+			models: [
+				model('gemini-2.5-pro', 'Gemini 2.5 Pro'),
+				model('gemini-featured', 'Gemini Featured'),
+				model('gemini-2.5-flash', 'Gemini 2.5 Flash'),
+			],
+		});
+
+		const { useModelCatalog } = await import('../composables/useModelCatalog');
+		const { ensureLoaded, getModelsForPicker } = useModelCatalog();
+		await ensureLoaded('project-1');
+		const credentials = { google: 'google-credential-id' };
+
+		getModelsForPicker(credentials);
+		await flushAsync();
+
+		expect(modelIds(getModelsForPicker(credentials).google?.models ?? [])).toEqual([
+			'gemini-featured',
+			'gemini-2.5-flash',
+			'gemini-2.5-pro',
+		]);
+		delete FEATURED_MODELS.google;
+	});
+
 	it('returns a verified provider default only when it remains in the picker list', async () => {
 		mocks.getModelCatalog.mockResolvedValue({
 			anthropic: provider('anthropic', {

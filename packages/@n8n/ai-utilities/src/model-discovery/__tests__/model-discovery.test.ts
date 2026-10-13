@@ -1,3 +1,4 @@
+import { FEATURED_MODELS } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { isOpenAiCustomEndpoint, listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
@@ -152,6 +153,27 @@ describe('model-discovery', () => {
 				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
 				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
 			]);
+		});
+
+		it('lists featured models first, under their product name', async () => {
+			FEATURED_MODELS.google = { 'gemini-featured': 'Gemini Featured' };
+			const fetch = mockFetch({
+				models: [
+					{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
+					{ name: 'models/gemini-featured', supportedGenerationMethods: ['generateContent'] },
+				],
+			});
+
+			try {
+				const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+
+				expect(models).toEqual([
+					{ id: 'models/gemini-featured', name: 'Gemini Featured' },
+					{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+				]);
+			} finally {
+				delete FEATURED_MODELS.google;
+			}
 		});
 	});
 

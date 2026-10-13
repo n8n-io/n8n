@@ -11,6 +11,19 @@ import {
 } from './listSearch';
 import * as transport from '../transport';
 
+// Stands in for an entry in the shared FEATURED_MODELS map.
+vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => {
+	const featured = 'models/gemini-featured';
+	return {
+		...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
+		getGoogleModelLabel: (modelId: string) => (modelId === featured ? 'Gemini Featured' : modelId),
+		pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
+			...models.filter((model) => getModelId(model) === featured),
+			...models.filter((model) => getModelId(model) !== featured),
+		],
+	};
+});
+
 const mockResponse = {
 	models: [
 		{
@@ -98,6 +111,21 @@ describe('GoogleGemini -> listSearch', () => {
 						name: 'models/gemma-3-1b-it',
 						value: 'models/gemma-3-1b-it',
 					},
+				],
+			});
+		});
+
+		it('should list featured models first, under their product name', async () => {
+			apiRequestMock.mockResolvedValue({
+				models: [{ name: 'models/gemini-2.5-flash' }, { name: 'models/gemini-featured' }],
+			});
+
+			const result = await modelSearch.call(mockExecuteFunctions);
+
+			expect(result).toEqual({
+				results: [
+					{ name: 'Gemini Featured', value: 'models/gemini-featured' },
+					{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
 				],
 			});
 		});

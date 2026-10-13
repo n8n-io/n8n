@@ -18,7 +18,11 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
+import {
+	getGoogleModelLabel,
+	pinGoogleModels,
+	shouldIncludeGoogleModel,
+} from '@n8n/ai-utilities/model-discovery';
 
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
@@ -35,6 +39,19 @@ async function filterChatModels(
 				supportedGenerationMethods: item.json.supportedGenerationMethods,
 			}),
 	);
+}
+
+/** List featured models (e.g. a model at launch) first, under their product name. */
+async function featureModels(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const labelled: INodeExecutionData[] = items.map((item) =>
+		typeof item.json.value === 'string'
+			? { ...item, json: { ...item.json, name: getGoogleModelLabel(item.json.value) } }
+			: item,
+	);
+	return pinGoogleModels(labelled, (item) => String(item.json.value));
 }
 
 function errorDescriptionMapper(error: NodeError) {
@@ -86,6 +103,7 @@ const modelRLC: INodeProperties = {
 								key: 'name',
 							},
 						},
+						featureModels,
 					],
 				},
 			},
@@ -141,6 +159,7 @@ const modelRLCV2: INodeProperties = {
 								key: 'name',
 							},
 						},
+						featureModels,
 					],
 				},
 			},

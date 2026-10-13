@@ -1,3 +1,4 @@
+import { getGoogleModelLabel, pinGoogleModels } from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
@@ -25,9 +26,11 @@ async function baseModelSearch(
 		models = models.filter((model) => model.name.toLowerCase().includes(filter.toLowerCase()));
 	}
 
-	return {
-		results: models.map((model) => ({ name: model.name, value: model.name })),
-	};
+	const results = models.map((model) => ({
+		name: getGoogleModelLabel(model.name),
+		value: model.name,
+	}));
+	return { results: pinGoogleModels(results, (result) => result.value) };
 }
 
 export async function modelSearch(

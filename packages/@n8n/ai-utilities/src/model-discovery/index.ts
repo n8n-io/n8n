@@ -70,7 +70,12 @@ export {
 } from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
-export { listGoogleModels, shouldIncludeGoogleModel } from './providers/google';
+export {
+	getGoogleModelLabel,
+	listGoogleModels,
+	pinGoogleModels,
+	shouldIncludeGoogleModel,
+} from './providers/google';
 export { listGroqModels } from './providers/groq';
 export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';

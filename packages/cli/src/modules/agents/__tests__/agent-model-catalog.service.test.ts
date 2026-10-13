@@ -300,6 +300,26 @@ describe('AgentModelCatalogService', () => {
 		expect(result.models.map((m) => m.id)).toEqual(['claude-sonnet-4-6']);
 	});
 
+	it('keeps the gateway label of a google model missing from the catalog', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Gemini Brand New', value: 'models/gemini-brand-new' }],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-brand-new', name: 'Gemini Brand New' }),
+		]);
+	});
+
 	it('strips the "models/" prefix from google model ids before matching', async () => {
 		const { service, lookupService } = makeService();
 		lookupService.lookup.mockResolvedValue({
