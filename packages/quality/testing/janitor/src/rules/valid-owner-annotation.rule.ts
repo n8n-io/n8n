@@ -22,6 +22,7 @@ const CANONICAL_OWNERS = new Set([
 	'Payday',
 	'Adore',
 	'Context',
+	'Knowledge',
 	'AI',
 	'Cloud Growth',
 	'Cloud Platform',
