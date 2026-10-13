@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { McpRegistryService } from './registry/mcp-registry.service';
 
@@ -18,11 +18,10 @@ export class McpRegistryRefreshTask implements SystemTask {
 		REFRESH_INTERVAL_HOURS * Time.hours.toSeconds,
 	);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: { maxAttempts: 3 },
 		leaderTimer: { runOnTakeover: true },
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(private readonly mcpRegistryService: McpRegistryService) {}
 

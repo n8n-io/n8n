@@ -1,7 +1,7 @@
 import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsPruningService } from './insights-pruning.service';
 import { InsightsConfig } from './insights.config';
@@ -18,8 +18,7 @@ export class InsightsPruningTask implements SystemTask {
 		this.insightsConfig.pruneCheckIntervalHours * Time.hours.toSeconds,
 	);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// One DELETE that ignores the signal. A timeout that stops the run before the
@@ -31,7 +30,7 @@ export class InsightsPruningTask implements SystemTask {
 			),
 		},
 		leaderTimer: { retryDelaySeconds: 1 },
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(
 		private readonly insightsConfig: InsightsConfig,

@@ -1,7 +1,12 @@
 import { DatabaseConfig, InstanceAiConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromMilliseconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import {
+	clusterTarget,
+	intervalFromMilliseconds,
+	SystemTask,
+	timeoutAfterLimit,
+} from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceAiService } from './instance-ai.service';
 
@@ -18,8 +23,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 		this.instanceAiConfig.pruneInterval,
 	);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// The pass runs three statements in a row that ignore the signal, so it can
@@ -34,7 +38,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 			runOnTakeover: true,
 			retryDelaySeconds: 30,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(
 		private readonly instanceAiConfig: InstanceAiConfig,

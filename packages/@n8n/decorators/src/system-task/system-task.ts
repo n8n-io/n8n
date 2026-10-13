@@ -10,6 +10,10 @@ import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type {
+	ClusterTarget,
+	InstanceTarget,
+	LeaderTimerOptions,
+	LeaderTimerTarget,
 	SchedulerSystemTask,
 	SystemTask as SystemTaskContract,
 	SystemTaskSchedule,
@@ -34,6 +38,24 @@ export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
 /** Whether the task runs on the durable scheduler while the scheduler is enabled. */
 export function runsOnScheduler(task: SystemTask): task is SchedulerSystemTask {
 	return task.target.scheduler !== undefined;
+}
+
+/** A target that runs the task once for the cluster, on the durable scheduler. */
+export function clusterTarget(options: Omit<ClusterTarget, 'scope'>): ClusterTarget {
+	return { scope: 'cluster', ...options };
+}
+
+/** @deprecated Move the task to `clusterTarget`. */
+export function leaderTimerTarget(leaderTimer: LeaderTimerOptions): LeaderTimerTarget {
+	return { scope: 'cluster', leaderTimer };
+}
+
+/** A target that runs the task in every instance of `instanceTypes`. */
+export function instanceTarget(
+	instanceTypes: InstanceTarget['instanceTypes'],
+	options: Omit<InstanceTarget, 'scope' | 'instanceTypes'> = {},
+): InstanceTarget {
+	return { scope: 'instance', instanceTypes, ...options };
 }
 
 /**

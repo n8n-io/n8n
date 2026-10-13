@@ -1,7 +1,7 @@
 import { SchedulerConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskRunContext, SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskRunContext, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.service';
 
@@ -20,14 +20,13 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(ROLLUP_INTERVAL_SECONDS);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: { maxAttempts: 3 },
 		leaderTimer: {
 			/** Increments pile up while no instance is the leader, so a backlog is waiting. */
 			runOnTakeover: true,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	private readonly durableRunBudgetMs: number;
 

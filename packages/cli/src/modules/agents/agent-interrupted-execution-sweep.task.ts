@@ -1,5 +1,5 @@
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { AgentInterruptedExecutionSweeper } from './agent-interrupted-execution-sweeper';
 
@@ -15,11 +15,10 @@ export class AgentInterruptedExecutionSweepTask implements SystemTask {
 		AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS,
 	);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: { maxAttempts: 3 },
 		leaderTimer: { runOnTakeover: true },
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(private readonly sweeper: AgentInterruptedExecutionSweeper) {}
 

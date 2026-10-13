@@ -1,7 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { ExecutionsPruningService } from './executions-pruning.service';
 
@@ -18,8 +18,7 @@ export class ExecutionPruningHardDeleteTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(this.intervalSeconds);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// A run that is behind ends before the next occurrence is due. The drain stops
@@ -30,7 +29,7 @@ export class ExecutionPruningHardDeleteTask implements SystemTask {
 			// A failed run retries after one second, as the old timer did.
 			retryDelaySeconds: 1,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(
 		private readonly executionsConfig: ExecutionsConfig,

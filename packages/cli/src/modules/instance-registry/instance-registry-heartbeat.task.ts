@@ -1,5 +1,5 @@
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { instanceTarget, intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceRegistryService } from './instance-registry.service';
 import { REGISTRY_CONSTANTS } from './instance-registry.types';
@@ -16,10 +16,7 @@ export class InstanceRegistryHeartbeatTask implements SystemTask {
 	);
 
 	/** Only the owning process can refresh its own entry. */
-	readonly target = {
-		scope: 'instance',
-		instanceTypes: ['main', 'worker', 'webhook'],
-	} satisfies SystemTaskTarget;
+	readonly target = instanceTarget(['main', 'worker', 'webhook']);
 
 	constructor(private readonly instanceRegistryService: InstanceRegistryService) {}
 

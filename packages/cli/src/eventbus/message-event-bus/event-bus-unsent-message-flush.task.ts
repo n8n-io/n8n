@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { instanceTarget, intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { MessageEventBus } from './message-event-bus';
 
@@ -17,10 +17,7 @@ export class EventBusUnsentMessageFlushTask implements SystemTask {
 	);
 
 	/** The unsent messages are in the event log files of this process, so no other instance can send them. */
-	readonly target = {
-		scope: 'instance',
-		instanceTypes: ['main', 'worker', 'webhook'],
-	} satisfies SystemTaskTarget;
+	readonly target = instanceTarget(['main', 'worker', 'webhook']);
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,

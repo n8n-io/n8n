@@ -1,7 +1,7 @@
 import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
@@ -16,8 +16,7 @@ export class AgentCheckpointPruningTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// The checkpoint step is one UPDATE that ignores the signal. A timeout that
@@ -32,7 +31,7 @@ export class AgentCheckpointPruningTask implements SystemTask {
 			runOnTakeover: true,
 			retryDelaySeconds: 30,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(
 		private readonly databaseConfig: DatabaseConfig,

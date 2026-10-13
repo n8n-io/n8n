@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { Telemetry } from '@/telemetry';
 
@@ -13,8 +13,7 @@ export class TelemetryPulseTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(6 * Time.hours.toSeconds);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			/** The packet carries instance-wide counters, so a repeat over-reports them. */
 			maxAttempts: 1,
@@ -27,7 +26,7 @@ export class TelemetryPulseTask implements SystemTask {
 			/** An outage past the grace still sends one catch-up packet, not none. */
 			catchUp: true,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(private readonly telemetry: Telemetry) {}
 

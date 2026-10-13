@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryCompactionService } from './workflow-history-compaction.service';
 
@@ -19,8 +19,7 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 		timezone: null,
 	};
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// A late run on the same day reads the same window, so an hour carries the
@@ -29,7 +28,7 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 			// Runs the same pass as the optimize task, over a window many times wider.
 			timeoutSeconds: Time.hours.toSeconds,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(private readonly compactionService: WorkflowHistoryCompactionService) {}
 

@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { instanceTarget, intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
 
@@ -16,7 +16,7 @@ export class DataTableFileCleanupTask implements SystemTask {
 	);
 
 	/** The upload directory is on the local disk of each main. */
-	readonly target = { scope: 'instance', instanceTypes: ['main'] } satisfies SystemTaskTarget;
+	readonly target = instanceTarget(['main']);
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,

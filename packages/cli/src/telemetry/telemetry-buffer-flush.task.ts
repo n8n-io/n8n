@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { instanceTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { Telemetry } from '@/telemetry';
 
@@ -14,10 +14,7 @@ export class TelemetryBufferFlushTask implements SystemTask {
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(6 * Time.hours.toSeconds);
 
 	/** The buffer belongs to this process, so no other instance can drain it. */
-	readonly target = {
-		scope: 'instance',
-		instanceTypes: ['main', 'worker', 'webhook'],
-	} satisfies SystemTaskTarget;
+	readonly target = instanceTarget(['main', 'worker', 'webhook']);
 
 	constructor(private readonly telemetry: Telemetry) {}
 

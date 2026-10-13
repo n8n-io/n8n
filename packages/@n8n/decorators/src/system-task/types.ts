@@ -36,37 +36,42 @@ export interface SystemTask {
  * otherwise. An instance task runs in every instance of the types it names,
  * on a timer, with no coordination.
  */
-export type SystemTaskTarget =
-	| {
-			readonly scope: 'cluster';
-			readonly scheduler: SchedulerOptions;
-			/**
-			 * @deprecated Applies only while the durable scheduler is disabled.
-			 * Removed when the durable scheduler is the only runner.
-			 */
-			readonly leaderTimer?: LeaderTimerOptions;
-			readonly instanceTypes?: never;
-			readonly retryDelaySeconds?: never;
-	  }
-	| {
-			readonly scope: 'cluster';
-			readonly scheduler?: never;
-			/** @deprecated Move the task to `scheduler`. */
-			readonly leaderTimer: LeaderTimerOptions;
-			readonly instanceTypes?: never;
-			readonly retryDelaySeconds?: never;
-	  }
-	| {
-			readonly scope: 'instance';
-			readonly instanceTypes: readonly [InstanceType, ...InstanceType[]];
-			/**
-			 * How long after a failed run the task runs again, instead of at its
-			 * next occurrence. An integer from 1 to about 24 days.
-			 */
-			readonly retryDelaySeconds?: number;
-			readonly scheduler?: never;
-			readonly leaderTimer?: never;
-	  };
+export type SystemTaskTarget = ClusterTarget | LeaderTimerTarget | InstanceTarget;
+
+/** A cluster task that runs on the durable scheduler. */
+export interface ClusterTarget {
+	readonly scope: 'cluster';
+	readonly scheduler: SchedulerOptions;
+	/**
+	 * @deprecated Applies only while the durable scheduler is disabled.
+	 * Removed when the durable scheduler is the only runner.
+	 */
+	readonly leaderTimer?: LeaderTimerOptions;
+	readonly instanceTypes?: never;
+	readonly retryDelaySeconds?: never;
+}
+
+/** A cluster task that runs on the leader timer only. */
+export interface LeaderTimerTarget {
+	readonly scope: 'cluster';
+	readonly scheduler?: never;
+	readonly leaderTimer: LeaderTimerOptions;
+	readonly instanceTypes?: never;
+	readonly retryDelaySeconds?: never;
+}
+
+/** A task that runs in every instance of the types it names. */
+export interface InstanceTarget {
+	readonly scope: 'instance';
+	readonly instanceTypes: readonly [InstanceType, ...InstanceType[]];
+	/**
+	 * How long after a failed run the task runs again, instead of at its
+	 * next occurrence. An integer from 1 to about 24 days.
+	 */
+	readonly retryDelaySeconds?: number;
+	readonly scheduler?: never;
+	readonly leaderTimer?: never;
+}
 
 /** What the durable scheduler stores for a task and honors on every occurrence. */
 export interface SchedulerOptions {
@@ -117,6 +122,4 @@ export interface SystemTaskRunContext {
 }
 
 /** A task that runs on the durable scheduler while the scheduler is enabled. */
-export type SchedulerSystemTask = SystemTask & {
-	readonly target: Extract<SystemTaskTarget, { readonly scheduler: SchedulerOptions }>;
-};
+export type SchedulerSystemTask = SystemTask & { readonly target: ClusterTarget };

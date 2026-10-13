@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 import { AUTORENEWAL_INTERVAL } from '@n8n_io/license-sdk';
 
 import { License } from '@/license';
@@ -15,8 +15,7 @@ export class LicenseRenewalTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(AUTORENEWAL_INTERVAL);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			/** A retry after a failed renewal resends a token the server may have rotated already. */
 			maxAttempts: 1,
@@ -29,7 +28,7 @@ export class LicenseRenewalTask implements SystemTask {
 			/** A new leader may inherit a due renewal whose window closes before the next interval. */
 			runOnTakeover: true,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(private readonly license: License) {}
 

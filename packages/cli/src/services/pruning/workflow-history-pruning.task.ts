@@ -1,7 +1,7 @@
 import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
@@ -12,8 +12,7 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// One DELETE that ignores the signal. A timeout that stops the run before the
@@ -28,7 +27,7 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 			// Only the leader prunes, so a new leader runs once at takeover instead of waiting an hour.
 			runOnTakeover: true,
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(
 		private readonly databaseConfig: DatabaseConfig,

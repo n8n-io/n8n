@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceRegistryService } from './instance-registry.service';
 import { REGISTRY_CONSTANTS } from './instance-registry.types';
@@ -17,7 +17,7 @@ export class StaleMemberCleanupTask implements SystemTask {
 		REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_SECONDS,
 	);
 
-	readonly target = { scope: 'cluster', scheduler: { maxAttempts: 3 } } satisfies SystemTaskTarget;
+	readonly target = clusterTarget({ scheduler: { maxAttempts: 3 } });
 
 	private readonly logger: Logger;
 

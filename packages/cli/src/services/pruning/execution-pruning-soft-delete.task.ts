@@ -1,7 +1,7 @@
 import { DatabaseConfig, ExecutionsConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
-import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { ExecutionsPruningService } from './executions-pruning.service';
 
@@ -17,8 +17,7 @@ export class ExecutionPruningSoftDeleteTask implements SystemTask {
 		this.executionsConfig.pruneDataIntervals.softDelete * Time.minutes.toSeconds,
 	);
 
-	readonly target = {
-		scope: 'cluster',
+	readonly target = clusterTarget({
 		scheduler: {
 			maxAttempts: 3,
 			// One UPDATE that ignores the signal. A timeout that stops the run before the
@@ -29,7 +28,7 @@ export class ExecutionPruningSoftDeleteTask implements SystemTask {
 				5 * Time.minutes.toSeconds,
 			),
 		},
-	} satisfies SystemTaskTarget;
+	});
 
 	constructor(
 		private readonly executionsConfig: ExecutionsConfig,
