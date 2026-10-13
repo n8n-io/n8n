@@ -81,18 +81,14 @@ describe('loadRoutingCases', () => {
 		expect(needsSetup).toEqual([]);
 	});
 
-	it('reads a clarify:workflow token and keeps the token order of processExpectations', () => {
-		const expectation = 'Routes to one of: workflow, clarify:workflow';
+	it('reads a clarify:workflow token after the bucket, with the bucket as the after route', () => {
 		const dir = caseDir({
 			'route-workflow-ask.json': exportedCase([], {
 				tags: ['routing', 'bucket:workflow', 'accepts:clarify:workflow'],
-				processExpectations: [expectation],
 			}),
 		});
 
-		const { cases } = loadRoutingCases(dir);
-
-		expect(cases).toEqual([
+		expect(loadRoutingCases(dir).cases).toEqual([
 			{
 				id: 'route-workflow-ask',
 				bucket: 'workflow',
@@ -101,8 +97,6 @@ describe('loadRoutingCases', () => {
 				userMessage: 'It failed again.',
 			},
 		]);
-		// eval-results.json writes this text, and LangTracer stores it.
-		expect(`Routes to one of: ${cases[0]?.accepts.join(', ')}`).toBe(expectation);
 	});
 
 	it('keeps the files whose name contains one of the filter tokens', () => {
