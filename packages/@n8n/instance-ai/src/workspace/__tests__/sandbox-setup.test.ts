@@ -403,7 +403,7 @@ describe('setupSandboxWorkspace', () => {
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
 	});
 
-	it('reads only the knowledge base manifest when the sandbox trusts prebaked bundles', async () => {
+	it('reads only the knowledge base manifest when the prebaked bundle matches', async () => {
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -433,12 +433,12 @@ describe('setupSandboxWorkspace', () => {
 			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
 			return await Promise.resolve(content);
 		});
-		const bundleState = { trustManifest: true, verifiedBundles: new Map<string, string>() };
+		const verifiedBundles = new Map<string, string>();
 
 		const initialized = await setupSandboxWorkspace(
 			createLocalWorkspace(writeFile, undefined, readFile),
 			context,
-			{ bundleState },
+			{ verifiedBundles },
 		);
 
 		expect(initialized).toBe(false);
@@ -447,9 +447,7 @@ describe('setupSandboxWorkspace', () => {
 			knowledgeBase.manifestPath,
 		]);
 		expect(writeFile).not.toHaveBeenCalled();
-		expect(bundleState.verifiedBundles.get(knowledgeBase.manifestPath)).toBe(
-			knowledgeBase.contentHash,
-		);
+		expect(verifiedBundles.get(knowledgeBase.manifestPath)).toBe(knowledgeBase.contentHash);
 	});
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {

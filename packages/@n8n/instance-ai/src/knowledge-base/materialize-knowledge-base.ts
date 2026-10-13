@@ -25,7 +25,7 @@ import { computeWorkspaceContentHash } from '../workspace/compute-workspace-cont
 import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
-	type WorkspaceBundleState,
+	type VerifiedWorkspaceBundles,
 } from '../workspace/prebaked-workspace-bundle';
 import type { SandboxWorkspace } from '../workspace/sandbox-fs';
 import { stringifyWorkspaceJson, withTrailingNewline } from '../workspace/workspace-file-content';
@@ -101,7 +101,7 @@ export interface BuildKnowledgeBaseWorkspaceBundleOptions {
 
 interface MaterializeKnowledgeBaseOptions extends BuildKnowledgeBaseWorkspaceBundleOptions {
 	workspace: SandboxWorkspace;
-	bundleState?: WorkspaceBundleState;
+	verifiedBundles?: VerifiedWorkspaceBundles;
 }
 
 function addTemplatesToKnowledgeBaseFiles(
@@ -309,7 +309,7 @@ export async function loadPrebakedKnowledgeBaseBundle(
 
 	return await loadPrebakedWorkspaceBundle({
 		workspace: options.workspace,
-		bundleState: options.bundleState,
+		verifiedBundles: options.verifiedBundles,
 		manifestPath: bundle.manifestPath,
 		expectedHash: bundle.contentHash,
 		hashField: 'contentHash',
@@ -346,7 +346,7 @@ export async function materializeKnowledgeBaseIntoWorkspace(
 		async () => {
 			return await materializeWorkspaceBundle({
 				workspace: options.workspace,
-				bundleState: options.bundleState,
+				verifiedBundles: options.verifiedBundles,
 				resourceLabel: KNOWLEDGE_BASE_FILE_LABEL,
 				logger: options.logger,
 				loadPrebaked: async () => await loadPrebakedKnowledgeBaseBundle(options),
