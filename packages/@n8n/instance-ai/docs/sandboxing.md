@@ -135,6 +135,12 @@ last. A matching manifest is trusted, and setup reads no other bundle file.
 Each cached sandbox entry keeps the result, so later runs do not read the
 manifest again.
 
+The runtime skills bundle contains every bundled skill, whatever the prompt
+profile, skill flags or enabled modules. The image, the snapshot and the
+setup write the same set, so a sandbox from an image or snapshot reuses it.
+`load_skill` serves only the skills that the profile, the flags and the
+enabled modules allow.
+
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 
 | Message                             | Content                                                                 |
