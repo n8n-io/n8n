@@ -18,7 +18,7 @@ export class InstanceRegistryReconciliationTask implements SystemTask {
 	);
 
 	readonly target = clusterTarget({
-		scheduler: { maxAttempts: 1 },
+		scheduler: { retryOnFailure: false },
 		leaderTimer: { runOnTakeover: true },
 	});
 

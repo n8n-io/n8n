@@ -25,7 +25,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// The pass runs three statements in a row that ignore the signal, so it can
 			// take three statement timeouts. A timeout that stops the run before they end
 			// lets the next run start them again, so it waits for all three first.

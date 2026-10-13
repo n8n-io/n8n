@@ -20,7 +20,7 @@ export class ExecutionPruningHardDeleteTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// A run that is behind ends before the next occurrence is due. The drain stops
 			// at the pause and returns, so the occurrence completes with result `timed_out`.
 			timeoutSeconds: this.intervalSeconds,

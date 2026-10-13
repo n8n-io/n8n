@@ -16,7 +16,7 @@ export class TelemetryPulseTask implements SystemTask {
 	readonly target = clusterTarget({
 		scheduler: {
 			/** The packet carries instance-wide counters, so a repeat over-reports them. */
-			maxAttempts: 1,
+			retryOnFailure: false,
 			/**
 			 * A late packet still describes the instance correctly. An hour carries the
 			 * occurrence across a restart or a failover, rather than losing the six-hour

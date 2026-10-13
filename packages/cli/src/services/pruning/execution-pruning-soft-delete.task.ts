@@ -19,7 +19,7 @@ export class ExecutionPruningSoftDeleteTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// One UPDATE that ignores the signal. A timeout that stops the run before the
 			// UPDATE ends lets the next run start a second one, so it waits for the
 			// statement timeout first.

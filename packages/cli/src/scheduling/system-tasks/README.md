@@ -17,7 +17,7 @@ export class ExpiredTokenCleanupTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(60);
 
-	readonly target = { scope: 'cluster', scheduler: { maxAttempts: 3 } } satisfies SystemTaskTarget;
+	readonly target = { scope: 'cluster', scheduler: { retryOnFailure: true } } satisfies SystemTaskTarget;
 
 	constructor(private readonly tokens: TokenRepository) {}
 
@@ -49,8 +49,9 @@ So write `run()` to tolerate a second run at the same time:
 1. Change rows with a condition, for example "delete the rows that expired",
    not "delete the rows I read before".
 2. Work in small batches and check `signal` between them.
-3. Set `maxAttempts: 1` when a repeat sends something twice, such as an email or
-   a report. This stops scheduler retries, but it does not stop an overlap with a stalled run.
+3. Set `retryOnFailure: false` when a repeat sends something twice, such as an
+   email or a report. This stops scheduler retries, but it does not stop an
+   overlap with a stalled run.
 
 See [Aiming for exactly-once across a cluster](../../../../@n8n/scheduler/README.md#aiming-for-exactly-once-across-a-cluster)
 for how the scheduler gets there.
@@ -71,7 +72,7 @@ scheduler is the only runner.
 
 | Option | Default | Set it when |
 |---|---|---|
-| `maxAttempts` | required | Always. Set `1` if running twice for one occurrence is not safe. |
+| `retryOnFailure` | required | Always. `true` runs a failed occurrence up to three times. Set `false` if running twice for one occurrence is not safe. |
 | `missedAfterSeconds` | 60 | A late run is still useful for longer than a minute. |
 | `catchUp` | `true` | A late run has no value after downtime. Set `false`. |
 | `concurrencyLimit` | 1 | Occurrences may overlap. Use a number or `'unlimited'`. |

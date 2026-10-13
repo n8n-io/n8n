@@ -19,7 +19,7 @@ describe('PendingAuthorizationCleanupTask', () => {
 	it('runs durably, on any main, and on the fallback timer as soon as a leader takes over', () => {
 		expect(task().target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
+			scheduler: { retryOnFailure: true },
 			leaderTimer: { runOnTakeover: true },
 		});
 	});

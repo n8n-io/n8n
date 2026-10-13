@@ -40,7 +40,7 @@ describe('system task provisioning', () => {
 	const task = ({ schedule, scheduler }: TaskOverrides = {}): SchedulerSystemTask => ({
 		name: TASK_NAME,
 		schedule: schedule ?? { kind: 'interval', intervalSeconds: 60 },
-		target: { scope: 'cluster', scheduler: { maxAttempts: 3, ...scheduler } },
+		target: { scope: 'cluster', scheduler: { retryOnFailure: true, ...scheduler } },
 		run: async () => {},
 	});
 
@@ -198,7 +198,7 @@ describe('system task provisioning', () => {
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
 		expect(inserted.maxAttempts).toBe(3);
 
-		const summary = await provision({ scheduler: { maxAttempts: 1 } });
+		const summary = await provision({ scheduler: { retryOnFailure: false } });
 
 		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
 		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });

@@ -16,7 +16,7 @@ export class AgentInterruptedExecutionSweepTask implements SystemTask {
 	);
 
 	readonly target = clusterTarget({
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 		leaderTimer: { runOnTakeover: true },
 	});
 

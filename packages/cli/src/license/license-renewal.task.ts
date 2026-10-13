@@ -18,7 +18,7 @@ export class LicenseRenewalTask implements SystemTask {
 	readonly target = clusterTarget({
 		scheduler: {
 			/** A retry after a failed renewal resends a token the server may have rotated already. */
-			maxAttempts: 1,
+			retryOnFailure: false,
 			/** Kept well under one interval, so two checks are never claimable at once. */
 			missedAfterSeconds: 5 * Time.minutes.toSeconds,
 			/** A check that missed its grace window still runs once, late. */

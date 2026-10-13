@@ -18,7 +18,7 @@ describe('InstanceRegistryReconciliationTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 180 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 1 },
+			scheduler: { retryOnFailure: false },
 			leaderTimer: { runOnTakeover: true },
 		});
 	});

@@ -29,7 +29,7 @@ type TaskOverrides = { schedule?: SystemTaskSchedule; scheduler?: Partial<Schedu
 const task = ({ schedule, scheduler }: TaskOverrides = {}): SchedulerSystemTask => ({
 	name: 'prune-executions',
 	schedule: schedule ?? { kind: 'interval', intervalSeconds: 60 },
-	target: { scope: 'cluster', scheduler: { maxAttempts: 3, ...scheduler } },
+	target: { scope: 'cluster', scheduler: { retryOnFailure: true, ...scheduler } },
 	run: async () => {},
 });
 
@@ -99,7 +99,7 @@ describe('systemTaskProvisionRequest', () => {
 		expect(desired[0]?.schedule).toEqual({ kind: 'interval', intervalSeconds: 90 });
 	});
 
-	it('catches up and keeps the default grace when the task states only its attempts', () => {
+	it('catches up, keeps the default grace and retries when the task states only its retry', () => {
 		expect(request()).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: DEFAULT_MISFIRE_GRACE_SECONDS,
@@ -108,7 +108,7 @@ describe('systemTaskProvisionRequest', () => {
 	});
 
 	it('stores no catch-up and a single attempt when the task asks for them', () => {
-		expect(request({ scheduler: { maxAttempts: 1, catchUp: false } })).toMatchObject({
+		expect(request({ scheduler: { retryOnFailure: false, catchUp: false } })).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			maxAttempts: 1,
 		});
@@ -133,13 +133,10 @@ describe('systemTaskProvisionRequest', () => {
 		expect(request({ scheduler: { timeoutSeconds: 600 } }).timeoutSeconds).toBe(600);
 	});
 
-	it("honours a task's own catch-up, missed delay and attempts", () => {
-		expect(
-			request({ scheduler: { catchUp: false, missedAfterSeconds: 300, maxAttempts: 7 } }),
-		).toMatchObject({
+	it("honours a task's own catch-up and missed delay", () => {
+		expect(request({ scheduler: { catchUp: false, missedAfterSeconds: 300 } })).toMatchObject({
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			misfireGraceSeconds: 300,
-			maxAttempts: 7,
 		});
 	});
 });

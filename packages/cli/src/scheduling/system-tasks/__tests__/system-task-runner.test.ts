@@ -394,7 +394,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata, jobRegistrar, logger } = setup();
 			dummy.target = {
 				scope: 'cluster',
-				scheduler: { maxAttempts: 3 },
+				scheduler: { retryOnFailure: true },
 				leaderTimer: { retryDelaySeconds: 1 },
 			};
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
@@ -415,7 +415,7 @@ describe('SystemTaskRunner', () => {
 			const { runner, metadata, jobRegistrar } = setup();
 			dummy.target = {
 				scope: 'cluster',
-				scheduler: { maxAttempts: 3 },
+				scheduler: { retryOnFailure: true },
 				leaderTimer: { runOnTakeover: true },
 			};
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
@@ -428,7 +428,7 @@ describe('SystemTaskRunner', () => {
 
 		it('runs when no durable job is stored for the task', async () => {
 			const { runner, metadata, jobRegistrar } = setup();
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			jobRegistrar.isProvisioned.mockResolvedValue(false);
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
@@ -440,7 +440,7 @@ describe('SystemTaskRunner', () => {
 
 		it('does not run a task whose store check settles after stepdown', async () => {
 			const { runner, metadata, jobRegistrar } = setup();
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			let settleCheck!: (exists: boolean) => void;
 			jobRegistrar.isProvisioned.mockReturnValue(
 				new Promise<boolean>((resolve) => {
@@ -460,7 +460,7 @@ describe('SystemTaskRunner', () => {
 
 		it('does not run a task whose store check settles after stepdown and takeover', async () => {
 			const { runner, metadata, jobRegistrar, eventService } = setup();
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			let settleCheck!: (exists: boolean) => void;
 			jobRegistrar.isProvisioned.mockReturnValueOnce(
 				new Promise<boolean>((resolve) => {
@@ -510,7 +510,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('does not touch the durable jobs on a worker', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, jobRegistrar } = setup({
 				isLeader: false,
 				instanceRole: 'unset',
@@ -658,9 +658,9 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		it('hands each durable task to the job registrar', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const other = new OtherDummySystemTask();
-			other.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			other.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			Container.set(OtherDummySystemTask, other);
 			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
@@ -690,7 +690,7 @@ describe('SystemTaskRunner', () => {
 		])(
 			'leaves a durable task unprovisioned while $case',
 			async ({ schedulerActive, enabledForSystemTasks }) => {
-				dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+				dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 				const { runner, metadata, jobRegistrar } = setup({
 					schedulerActive,
 					enabledForSystemTasks,
@@ -708,7 +708,7 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		it('removes stale jobs once, after provisioning the wanted ones', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, jobRegistrar } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -740,7 +740,7 @@ describe('SystemTaskRunner', () => {
 		const durably = { schedulerActive: true, enabledForSystemTasks: true };
 
 		it('hands a durable task to the durable scheduler', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, durableScheduler } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -755,7 +755,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('hands a durable task registered after it took over the registry to the scheduler', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, durableScheduler } = setup(durably);
 			await initRunner(runner);
 
@@ -770,7 +770,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('reports a failing durable run, which the executor would not', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const error = new Error('failed');
 			dummy.onRun = async () => {
 				throw error;
@@ -796,7 +796,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('aborts the signal of a durable run on shutdown', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, durableScheduler } = setup(durably);
 			let runSignal: AbortSignal | undefined;
 			let releaseRun = () => {};
@@ -834,7 +834,7 @@ describe('SystemTaskRunner', () => {
 		])(
 			'keeps a durable task on its timer while $case',
 			async ({ schedulerActive, enabledForSystemTasks }) => {
-				dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+				dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 				const { runner, metadata, durableScheduler } = setup({
 					schedulerActive,
 					enabledForSystemTasks,
@@ -861,7 +861,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('runs a durable cron task on its timer, in the instance timezone, while the scheduler is inactive', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			dummy.schedule = { kind: 'cron', cronExpression: '0 3 * * *', timezone: null };
 			const { runner, metadata, durableScheduler } = setup({ timezone: 'Europe/Berlin' });
 			metadata.register(DummySystemTask);
@@ -877,7 +877,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('declares a task it hands to the durable scheduler to the job owner', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, systemTaskOwner } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -887,7 +887,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('does not declare a task it keeps on a timer to the job owner', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, systemTaskOwner } = setup({ enabledForSystemTasks: false });
 			metadata.register(DummySystemTask);
 
@@ -922,8 +922,8 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it.each([
-			{ field: 'maxAttempts', scheduler: { maxAttempts: 0 } },
-			{ field: 'missedAfterSeconds', scheduler: { maxAttempts: 3, missedAfterSeconds: 0 } },
+			{ field: 'concurrencyLimit', scheduler: { retryOnFailure: true, concurrencyLimit: 0 } },
+			{ field: 'missedAfterSeconds', scheduler: { retryOnFailure: true, missedAfterSeconds: 0 } },
 		])('rejects a task declaring $field out of range', async ({ field, scheduler }) => {
 			dummy.target = { scope: 'cluster', scheduler };
 			const { runner, metadata } = setup();
@@ -1033,7 +1033,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('emits a durable task as routed', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, eventService } = setup(durably);
 			metadata.register(DummySystemTask);
 
@@ -1264,7 +1264,7 @@ describe('SystemTaskRunner', () => {
 
 		it('emits a run skipped for a durable job provisioned elsewhere, without starting it', async () => {
 			const { runner, metadata, jobRegistrar, eventService } = setup();
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			jobRegistrar.isProvisioned.mockResolvedValue(true);
 			metadata.register(DummySystemTask);
 			await initRunner(runner);
@@ -1280,7 +1280,7 @@ describe('SystemTaskRunner', () => {
 
 		it('emits a run skipped when its store check settles after stepdown', async () => {
 			const { runner, metadata, jobRegistrar, eventService } = setup();
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			let settleCheck!: (exists: boolean) => void;
 			jobRegistrar.isProvisioned.mockReturnValue(
 				new Promise<boolean>((resolve) => {
@@ -1327,7 +1327,7 @@ describe('SystemTaskRunner', () => {
 		});
 
 		it('emits the runs of a durable task as durable', async () => {
-			dummy.target = { scope: 'cluster', scheduler: { maxAttempts: 3 } };
+			dummy.target = { scope: 'cluster', scheduler: { retryOnFailure: true } };
 			const { runner, metadata, durableScheduler, eventService } = setup(durably);
 			metadata.register(DummySystemTask);
 			await initRunner(runner);

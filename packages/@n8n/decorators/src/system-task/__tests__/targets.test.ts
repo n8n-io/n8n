@@ -3,28 +3,31 @@ import { clusterTarget, instanceTarget, leaderTimerTarget } from '../system-task
 describe('clusterTarget', () => {
 	it('should make a cluster target that runs on the scheduler', () => {
 		const target = clusterTarget({
-			scheduler: { maxAttempts: 3 },
+			scheduler: { retryOnFailure: true },
 			leaderTimer: { runOnTakeover: true },
 		});
 
 		expect(target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
+			scheduler: { retryOnFailure: true },
 			leaderTimer: { runOnTakeover: true },
 		});
-		expect(target.scheduler.maxAttempts).toBe(3);
+		expect(target.scheduler.retryOnFailure).toBe(true);
 	});
 
 	it('should not take an unknown scheduler option', () => {
 		// @ts-expect-error The option is `catchUp`.
-		const target = clusterTarget({ scheduler: { maxAttempts: 3, catchup: false } });
+		const target = clusterTarget({ scheduler: { retryOnFailure: true, catchup: false } });
 
 		expect(target.scope).toBe('cluster');
 	});
 
 	it('should not take an instance type', () => {
 		// @ts-expect-error A cluster task runs on a main, so it names no instance type.
-		const target = clusterTarget({ scheduler: { maxAttempts: 3 }, instanceTypes: ['worker'] });
+		const target = clusterTarget({
+			scheduler: { retryOnFailure: true },
+			instanceTypes: ['worker'],
+		});
 
 		expect(target.scope).toBe('cluster');
 	});

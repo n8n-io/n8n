@@ -12,7 +12,12 @@ it('should let an instance task name the instance types that run it', () => {
 it('should let a cluster task run on the scheduler and fall back to the leader timer', () => {
 	const target: SystemTaskTarget = {
 		scope: 'cluster',
-		scheduler: { maxAttempts: 1, missedAfterSeconds: 300, catchUp: false, timeoutSeconds: 60 },
+		scheduler: {
+			retryOnFailure: false,
+			missedAfterSeconds: 300,
+			catchUp: false,
+			timeoutSeconds: 60,
+		},
 		leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 	};
 
@@ -35,7 +40,7 @@ it('should not let a cluster task name no runner', () => {
 it('should not let a cluster task name an instance type', () => {
 	const target: SystemTaskTarget = {
 		scope: 'cluster',
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 		// @ts-expect-error A cluster task runs on a main, so it names no instance type.
 		instanceTypes: ['worker'],
 	};
@@ -46,7 +51,7 @@ it('should not let a cluster task name an instance type', () => {
 it('should not let a cluster task set a retry delay outside the leader timer', () => {
 	const target: SystemTaskTarget = {
 		scope: 'cluster',
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 		// @ts-expect-error The scheduler retries by attempts, the leader timer by delay.
 		retryDelaySeconds: 30,
 	};
@@ -54,7 +59,7 @@ it('should not let a cluster task set a retry delay outside the leader timer', (
 	expect(target.scope).toBe('cluster');
 });
 
-it('should make a scheduler task state its attempts', () => {
+it('should make a scheduler task state whether it retries on failure', () => {
 	// @ts-expect-error There is no safe default: a repeat is not safe for every task.
 	const scheduler: SchedulerOptions = { missedAfterSeconds: 60 };
 
@@ -63,9 +68,9 @@ it('should make a scheduler task state its attempts', () => {
 
 it('should not take null as a concurrency limit', () => {
 	// @ts-expect-error `'unlimited'` says it in words.
-	const scheduler: SchedulerOptions = { maxAttempts: 3, concurrencyLimit: null };
+	const scheduler: SchedulerOptions = { retryOnFailure: true, concurrencyLimit: null };
 
-	expect(scheduler.maxAttempts).toBe(3);
+	expect(scheduler.retryOnFailure).toBe(true);
 });
 
 it('should not let an instance task name no instance type', () => {
@@ -80,7 +85,7 @@ it('should not let an instance task run on the scheduler', () => {
 	const target: SystemTaskTarget = {
 		scope: 'instance',
 		instanceTypes: ['worker'],
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 	};
 
 	expect(target.scope).toBe('instance');

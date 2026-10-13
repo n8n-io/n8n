@@ -19,7 +19,7 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3, timeoutSeconds: 1800 },
+			scheduler: { retryOnFailure: true, timeoutSeconds: 1800 },
 		});
 	});
 

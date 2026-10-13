@@ -69,11 +69,11 @@ export interface InstanceTarget {
 /** What the durable scheduler stores for a task and honors on every occurrence. */
 export interface SchedulerOptions {
 	/**
-	 * How many times one occurrence may run. A run that throws, times out or
-	 * loses its lease uses one attempt. Set 1 when running twice for one
+	 * Runs an occurrence again when its run throws, times out or loses its
+	 * lease, up to three runs in all. Set `false` when running twice for one
 	 * occurrence is not safe.
 	 */
-	readonly maxAttempts: number;
+	readonly retryOnFailure: boolean;
 
 	/**
 	 * How many seconds after its planned time an occurrence may still start.

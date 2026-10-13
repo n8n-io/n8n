@@ -17,7 +17,7 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 	);
 
 	readonly target = clusterTarget({
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 		leaderTimer: {
 			/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
 			runOnTakeover: true,

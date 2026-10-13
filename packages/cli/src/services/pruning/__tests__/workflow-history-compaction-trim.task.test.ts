@@ -13,7 +13,7 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 		expect(task.schedule).toEqual({ kind: 'cron', cronExpression: '0 3 * * *', timezone: null });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3, missedAfterSeconds: 3600, timeoutSeconds: 3600 },
+			scheduler: { retryOnFailure: true, missedAfterSeconds: 3600, timeoutSeconds: 3600 },
 		});
 	});
 

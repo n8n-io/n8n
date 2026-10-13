@@ -20,7 +20,7 @@ export class InsightsPruningTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// One DELETE that ignores the signal. A timeout that stops the run before the
 			// DELETE ends lets the next run start a second one, so it waits for the
 			// statement timeout first.

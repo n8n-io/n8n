@@ -50,7 +50,7 @@ it('should round a sub-second interval of a scheduler task to one second', () =>
 	const schedule = resolveSystemTaskSchedule(
 		taskWith(
 			{ kind: 'interval', intervalSeconds: 0.5 },
-			{ scope: 'cluster', scheduler: { maxAttempts: 3 } },
+			{ scope: 'cluster', scheduler: { retryOnFailure: true } },
 		),
 	);
 

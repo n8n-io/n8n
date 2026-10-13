@@ -17,7 +17,7 @@ export class JtiCleanupTask implements SystemTask {
 		this.config.jtiCleanupIntervalSeconds,
 	);
 
-	readonly target = clusterTarget({ scheduler: { maxAttempts: 3 } });
+	readonly target = clusterTarget({ scheduler: { retryOnFailure: true } });
 
 	private readonly logger: Logger;
 

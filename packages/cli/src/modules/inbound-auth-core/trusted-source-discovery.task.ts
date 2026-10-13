@@ -16,7 +16,7 @@ export class TrustedSourceDiscoveryTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(DISCOVERY_POLL_INTERVAL_SECONDS);
 
-	readonly target = clusterTarget({ scheduler: { maxAttempts: 3 } });
+	readonly target = clusterTarget({ scheduler: { retryOnFailure: true } });
 
 	constructor(private readonly discovery: TrustedSourceDiscoveryService) {}
 

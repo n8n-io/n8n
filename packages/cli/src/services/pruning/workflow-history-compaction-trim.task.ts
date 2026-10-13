@@ -21,7 +21,7 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// A late run on the same day reads the same window, so an hour carries the
 			// occurrence across a restart at 03:00 instead of losing the day's trim.
 			missedAfterSeconds: Time.hours.toSeconds,

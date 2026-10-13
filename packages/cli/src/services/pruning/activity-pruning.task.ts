@@ -22,7 +22,7 @@ export class ActivityPruningTask implements SystemTask {
 	target = clusterTarget({
 		scheduler: {
 			/** Deleting rows already deleted is a no-op, so a repeated or retried run is harmless. */
-			maxAttempts: 3,
+			retryOnFailure: true,
 		},
 		leaderTimer: {
 			/** A new leader inherits whatever backlog built up while nobody was sweeping. */

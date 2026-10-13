@@ -35,6 +35,8 @@ export interface SystemTaskRunOptions {
 /** One occurrence at a time, like the in-memory timer. */
 export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
 
+const MAX_ATTEMPTS_WITH_RETRY = 3;
+
 /** Whether the task runs on the durable scheduler while the scheduler is enabled. */
 export function runsOnScheduler(task: SystemTask): task is SchedulerSystemTask {
 	return task.target.scheduler !== undefined;
@@ -76,7 +78,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 				? ScheduledJobMisfirePolicy.Skip
 				: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: scheduler.missedAfterSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
-		maxAttempts: scheduler.maxAttempts,
+		maxAttempts: scheduler.retryOnFailure ? MAX_ATTEMPTS_WITH_RETRY : 1,
 		concurrencyLimit: concurrencyLimit === 'unlimited' ? null : concurrencyLimit,
 		timeoutSeconds: roundedTimeoutSeconds(scheduler.timeoutSeconds),
 	};
@@ -86,7 +88,6 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 	// outright, so match the column's whole range here rather than at the failing insert.
 	// Only a static floor: the scheduler's usable minimum depends on its configured
 	// intervals, so whatever provisions a task still has to clamp against those.
-	assertInRange(task.name, 'maxAttempts', options.maxAttempts, 1);
 	assertInRange(task.name, 'missedAfterSeconds', options.misfireGraceSeconds, 1);
 	// A limit below 1 would block every occurrence.
 	if (options.concurrencyLimit !== null) {

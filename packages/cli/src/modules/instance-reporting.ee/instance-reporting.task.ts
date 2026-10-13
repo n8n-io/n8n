@@ -11,7 +11,7 @@ export class InstanceReportingTask implements SystemTask {
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(15 * Time.minutes.toSeconds);
 
 	readonly target = clusterTarget({
-		scheduler: { maxAttempts: 1 },
+		scheduler: { retryOnFailure: false },
 		leaderTimer: { runOnTakeover: true },
 	});
 

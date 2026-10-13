@@ -21,7 +21,7 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// A run takes 7 to 13 minutes on a large instance, and the workflows it does not
 			// reach get only one more run.
 			timeoutSeconds: 30 * Time.minutes.toSeconds,

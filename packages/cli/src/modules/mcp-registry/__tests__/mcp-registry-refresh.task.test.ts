@@ -17,7 +17,7 @@ describe('McpRegistryRefreshTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 8 * 3600 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
+			scheduler: { retryOnFailure: true },
 			leaderTimer: { runOnTakeover: true },
 		});
 	});

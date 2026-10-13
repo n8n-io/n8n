@@ -14,7 +14,7 @@ describe('WorkflowPublicationOutboxCleanupTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
+			scheduler: { retryOnFailure: true },
 			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 		});
 	});

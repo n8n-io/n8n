@@ -17,7 +17,7 @@ export class StaleMemberCleanupTask implements SystemTask {
 		REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_SECONDS,
 	);
 
-	readonly target = clusterTarget({ scheduler: { maxAttempts: 3 } });
+	readonly target = clusterTarget({ scheduler: { retryOnFailure: true } });
 
 	private readonly logger: Logger;
 

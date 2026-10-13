@@ -23,7 +23,7 @@ describe('WorkflowStatisticsRollupTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 5 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
+			scheduler: { retryOnFailure: true },
 			leaderTimer: { runOnTakeover: true },
 		});
 	});

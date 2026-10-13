@@ -18,7 +18,7 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(ROLLUP_INTERVAL_SECONDS);
 
 	readonly target = clusterTarget({
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 		leaderTimer: {
 			/** Increments pile up while no instance is the leader, so a backlog is waiting. */
 			runOnTakeover: true,

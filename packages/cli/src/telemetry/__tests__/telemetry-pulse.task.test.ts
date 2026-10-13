@@ -20,7 +20,7 @@ describe('TelemetryPulseTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 21600 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 1, missedAfterSeconds: 3600, catchUp: true },
+			scheduler: { retryOnFailure: false, missedAfterSeconds: 3600, catchUp: true },
 		});
 	});
 

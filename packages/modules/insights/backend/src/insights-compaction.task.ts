@@ -19,7 +19,7 @@ export class InsightsCompactionTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: {
-			maxAttempts: 3,
+			retryOnFailure: true,
 			// The compaction budget plus the batch in flight when it runs out.
 			timeoutSeconds: timeoutAfterLimit(
 				this.insightsConfig.compactionMaxRuntimeSeconds,

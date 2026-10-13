@@ -16,7 +16,7 @@ export class TrustedKeyRefreshTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(REFRESH_POLL_INTERVAL_SECONDS);
 
-	readonly target = clusterTarget({ scheduler: { maxAttempts: 3 } });
+	readonly target = clusterTarget({ scheduler: { retryOnFailure: true } });
 
 	constructor(private readonly trustedKeyService: TrustedKeyService) {}
 

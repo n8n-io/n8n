@@ -18,7 +18,7 @@ describe('LicenseRenewalTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 900 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 1, missedAfterSeconds: 300, catchUp: true },
+			scheduler: { retryOnFailure: false, missedAfterSeconds: 300, catchUp: true },
 			leaderTimer: { runOnTakeover: true },
 		});
 	});

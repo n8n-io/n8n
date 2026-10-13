@@ -19,7 +19,7 @@ describe('ExecutionPruningHardDeleteTask', () => {
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 900 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3, timeoutSeconds: 900 },
+			scheduler: { retryOnFailure: true, timeoutSeconds: 900 },
 			leaderTimer: { retryDelaySeconds: 1 },
 		});
 	});

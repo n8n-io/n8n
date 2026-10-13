@@ -19,7 +19,7 @@ export class McpRegistryRefreshTask implements SystemTask {
 	);
 
 	readonly target = clusterTarget({
-		scheduler: { maxAttempts: 3 },
+		scheduler: { retryOnFailure: true },
 		leaderTimer: { runOnTakeover: true },
 	});
 
