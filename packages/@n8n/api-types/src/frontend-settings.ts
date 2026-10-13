@@ -465,6 +465,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether agents use the skills hub (`N8N_SKILLS_HUB_ENABLED`). */
+		skillsHubEnabled?: boolean;
 	};
 };
 

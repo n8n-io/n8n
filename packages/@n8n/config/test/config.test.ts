@@ -743,6 +743,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
 			channelReconcileIntervalSeconds: 60,
+			skillsHubEnabled: false,
 		},
 	} satisfies GlobalConfigShape;
 
