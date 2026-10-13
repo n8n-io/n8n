@@ -28,9 +28,7 @@ function closeModal() {
 }
 
 async function onCancel() {
-	if (submitting.value) return;
 	await props.data.onCancel?.();
-	if (submitting.value) return;
 	closeModal();
 }
 
@@ -47,10 +45,8 @@ async function onConfirm() {
 }
 
 async function onOpenChange(open: boolean) {
-	if (open || submitting.value) return;
+	if (open) return;
 	const shouldClose = await props.data.onClose?.();
-	// A confirm request can start while onClose is still running.
-	if (submitting.value) return;
 	if (shouldClose !== false) closeModal();
 }
 </script>
