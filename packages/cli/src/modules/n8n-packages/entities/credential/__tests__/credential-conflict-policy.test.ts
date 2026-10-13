@@ -195,7 +195,10 @@ describe('differingCredentials', () => {
 				targetId: 'target-1',
 				sourceIds: ['source-1'],
 				name: 'Destination',
-				usedBy: [{ kind: 'workflow', id: 'wf-2' }],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
 			},
 			{
 				kind: 'differs',

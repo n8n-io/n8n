@@ -96,8 +96,17 @@ function groupByTarget(
 	const byTarget = new Map<string, CredentialUpdateCandidate[]>();
 	for (const candidate of candidates) {
 		const group = byTarget.get(candidate.targetId) ?? [];
-		// Scopes of one project package can plan the same package credential more than once.
-		if (!group.some(({ sourceId }) => sourceId === candidate.sourceId)) group.push(candidate);
+		// Scopes of one project package can plan the same package credential more than once,
+		// each with its own consumers: keep one entry, with the consumers of all scopes.
+		const index = group.findIndex(({ sourceId }) => sourceId === candidate.sourceId);
+		if (index === -1) {
+			group.push(candidate);
+		} else {
+			group[index] = {
+				...group[index],
+				usedBy: mergeRequirementConsumers([...group[index].usedBy, ...candidate.usedBy]),
+			};
+		}
 		byTarget.set(candidate.targetId, group);
 	}
 	return byTarget;
