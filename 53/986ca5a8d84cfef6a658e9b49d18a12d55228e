@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue
+  s_a9ecfc9cbf1014::t_8a31e6cccfa46b 23
+packages/frontend/editor-ui/src/features/ai/chatHub/composables/useChatHubMarkdownOptions.ts
+  s_5cfde26ccd6346::t_a657047cbe5dc7 226-227
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMarkdownChunk.vue
+  s_5cfde26ccd6346::t_8ed966dc4c539a 99-102
+packages/frontend/@n8n/design-system/src/components/N8nLink/__snapshots__/Link.test.ts.snap
+  s_a9ecfc9cbf1014::t_c1b77339705077 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53986ca5a8d84cfef6a658e9b49d18a12d55228e",
+  "prompts": {},
+  "sessions": {
+    "s_5cfde26ccd6346": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1348d-d71b-7486-9bcd-c7ded0c64499",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a9ecfc9cbf1014": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a13498-bff8-7633-842b-73499a44f569",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
