@@ -5110,6 +5110,7 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should not copy a selection that contains a restricted node type', async () => {
+			const toast = useToast();
 			const nodes = buildImportNodes();
 			nodes[1].type = 'n8n-nodes-base.slack';
 			workflowDocumentStoreInstance.allNodes = nodes;
@@ -5123,6 +5124,12 @@ describe('useCanvasOperations', () => {
 
 			expect(copied).toBe(false);
 			expect(useClipboard().copy).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 
 		it('should include nodeGroups when all group members are copied', async () => {
@@ -7402,6 +7409,28 @@ describe('useCanvasOperations', () => {
 
 			expect(duplicatedNodeIds).toHaveLength(1);
 			expect(workflowDocumentStoreInstance.createGroup).not.toHaveBeenCalled();
+		});
+
+		it('should not duplicate a selection that contains a restricted node type', async () => {
+			const toast = useToast();
+			const nodes = buildImportNodes();
+			nodes[1].type = 'n8n-nodes-base.slack';
+			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			const duplicatedNodeIds = await useCanvasOperations().duplicateNodes(['1', '2']);
+
+			expect(duplicatedNodeIds).toEqual([]);
+			expect(workflowDocumentStoreInstance.addNode).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 
 		it('should show max node type error when duplicating nodes that exceed maxNodes limit', async () => {
