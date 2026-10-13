@@ -1,5 +1,7 @@
 Cursor:
   $ref: './cursor.yml'
+IdempotencyKey:
+  $ref: './idempotencyKey.yml'
 Limit:
   $ref: './limit.yml'
 Offset:

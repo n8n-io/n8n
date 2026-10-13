@@ -4,6 +4,8 @@ tags:
 summary: Install a community package
 description: Install a community package by npm name and optional version.
 x-required-scope: communityPackage:install
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -35,5 +37,9 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

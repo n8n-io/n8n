@@ -4,10 +4,8 @@ tags:
 summary: Retry an execution
 description: Retry an execution from your instance.
 x-required-scope: execution:retry
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
   - schema:
       type: integer
       minimum: 1
@@ -15,6 +13,9 @@ parameters:
     description: The ID of the execution.
     name: executionId
     in: path
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
 requestBody:
   content:
     application/json:
@@ -173,3 +174,5 @@ responses:
     $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

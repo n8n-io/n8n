@@ -1,4 +1,4 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -17,6 +17,11 @@ import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import {
+	createIdempotencyMiddleware,
+	takeIdempotencyClaimId,
+} from '@/idempotency/idempotency.middleware';
+import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
 import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
@@ -62,17 +67,26 @@ export class PublicApiControllerRegistry {
 		private readonly authStrategyRegistry: AuthStrategyRegistry,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly eventService: EventService,
+		private readonly idempotencyKeyService: IdempotencyKeyService,
+		private readonly logger: Logger,
 	) {}
 
 	activate(router: Router, apiVersion: string) {
+		const idempotency = createIdempotencyMiddleware(this.idempotencyKeyService);
+
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (!metadata.isPublicApi) continue;
-			this.activateController(router, controllerClass, apiVersion);
+			this.activateController(router, controllerClass, apiVersion, idempotency);
 		}
 	}
 
-	private activateController(parent: Router, controllerClass: Controller, apiVersion: string) {
+	private activateController(
+		parent: Router,
+		controllerClass: Controller,
+		apiVersion: string,
+		idempotency: RequestHandler,
+	) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 		const controllerRouter = createRouter({ mergeParams: true });
 		const prefix = metadata.basePath.replace(/\/+/g, '/').replace(/\/$/, '') || '/';
@@ -130,21 +144,26 @@ export class PublicApiControllerRegistry {
 						`${controllerClass.name}.${handlerName}`,
 						result,
 					);
+					await this.releaseIdempotencyClaim(res);
 					return;
 				}
 
 				const result = await controller[handlerName](...args);
 
-				if (res.headersSent) return;
+				if (res.headersSent) {
+					await this.releaseIdempotencyClaim(res);
+					return;
+				}
 
 				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					await this.storeIdempotencyResponse(res, successStatus, null);
 					res.status(successStatus).send();
 					return;
 				}
 
-				res
-					.status(successStatus)
-					.json(route.responseDto ? route.responseDto.parse(result) : result);
+				const body = route.responseDto ? route.responseDto.parse(result) : result;
+				await this.storeIdempotencyResponse(res, successStatus, body);
+				res.status(successStatus).json(body);
 			};
 
 			const middlewares: RequestHandler[] = [];
@@ -184,12 +203,13 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
 			}
 
-			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
+			middlewares.push(idempotency, ...controllerMiddlewares, ...(route.middlewares ?? []));
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
 				try {
 					await handler(req, res);
 				} catch (error) {
+					await this.releaseIdempotencyClaim(res);
 					if (res.headersSent) {
 						next(error);
 						return;
@@ -202,6 +222,32 @@ export class PublicApiControllerRegistry {
 			};
 
 			controllerRouter[route.method](route.path, ...middlewares, finalHandler);
+		}
+	}
+
+	private async storeIdempotencyResponse(
+		res: Response,
+		status: number,
+		body: unknown,
+	): Promise<void> {
+		const id = takeIdempotencyClaimId(res);
+		if (!id) return;
+
+		try {
+			await this.idempotencyKeyService.complete(id, status, body);
+		} catch (error) {
+			this.logger.error('Failed to store an idempotency response', { error });
+		}
+	}
+
+	private async releaseIdempotencyClaim(res: Response): Promise<void> {
+		const id = takeIdempotencyClaimId(res);
+		if (!id) return;
+
+		try {
+			await this.idempotencyKeyService.release(id);
+		} catch (error) {
+			this.logger.error('Failed to release an idempotency key', { error });
 		}
 	}
 

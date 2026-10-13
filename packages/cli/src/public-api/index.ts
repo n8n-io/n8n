@@ -11,6 +11,8 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { rememberRawBody } from '@/idempotency/idempotency-request';
+
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
@@ -370,7 +372,12 @@ function createApiRouter(
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
-		express.json({ limit: payloadLimit }),
+		express.json({
+			limit: payloadLimit,
+			verify: (req, _res, buf) => {
+				rememberRawBody(req, buf);
+			},
+		}),
 		jsonParseErrorHandler,
 		createPublicControllerMiddleware(version),
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
