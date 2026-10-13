@@ -45,14 +45,6 @@ function decodeWorkspaceFileContent(content: string | Buffer): string {
 	return Buffer.isBuffer(content) ? content.toString('utf-8') : content;
 }
 
-/**
- * A sandbox read or write that failed for a provider reason. These failures are
- * transient, but level `error` keeps them in error reporting.
- */
-function sandboxFileError(message: string, cause: unknown): OperationalError {
-	return new OperationalError(message, { cause, level: 'error' });
-}
-
 function selectWriteFailureCause(writeError: unknown, fallbackError: unknown): unknown {
 	if (isQuotaExhaustedError(writeError)) return writeError;
 	if (isQuotaExhaustedError(fallbackError)) return fallbackError;
@@ -127,9 +119,12 @@ async function readWorkspaceFileContent(
 		} catch (error) {
 			// A provider failure is not a missing file — surface it instead of reporting null.
 			if (isTransientSandboxIoError(error)) {
-				throw sandboxFileError(
+				throw new OperationalError(
 					`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
-					error,
+					{
+						cause: error,
+						level: 'error',
+					},
 				);
 			}
 			return { content: null, transport: 'filesystem', missReason: formatErrorForLog(error) };
@@ -145,9 +140,12 @@ async function readWorkspaceFileContent(
 		};
 	} catch (error) {
 		if (isTransientSandboxIoError(error)) {
-			throw sandboxFileError(
+			throw new OperationalError(
 				`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
-				error,
+				{
+					cause: error,
+					level: 'error',
+				},
 			);
 		}
 		return { content: null, transport: 'command', missReason: formatErrorForLog(error) };
@@ -219,9 +217,12 @@ async function writeWorkspaceFileContent(
 				if (isAbortError(fallbackError)) throw fallbackError;
 				// Preserve whichever path carries quota metadata so callers can
 				// classify the combined failure correctly.
-				throw sandboxFileError(
+				throw new OperationalError(
 					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
-					selectWriteFailureCause(error, fallbackError),
+					{
+						cause: selectWriteFailureCause(error, fallbackError),
+						level: 'error',
+					},
 				);
 			}
 		}
@@ -232,9 +233,12 @@ async function writeWorkspaceFileContent(
 		return 'command';
 	} catch (error) {
 		if (isAbortError(error)) throw error;
-		throw sandboxFileError(
+		throw new OperationalError(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
-			error,
+			{
+				cause: error,
+				level: 'error',
+			},
 		);
 	}
 }
