@@ -837,7 +837,8 @@ defineExpose({
 				:credential-id="credentialId"
 				:project-id="projectId"
 				:agent-id="agentId"
-				:settings="currentSettings"
+				:settings="savedSettings"
+				:pending-settings="currentSettings"
 				:unsaved-changes="manifestChanged"
 				:persist-channel="persistChannel"
 			/>

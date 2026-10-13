@@ -28,8 +28,14 @@ const props = defineProps<{
 	credentialId: string;
 	projectId: string;
 	agentId: string;
-	/** What the channel runs on, which is what the published app must match. */
+	/** What the channel runs on. The package hands over this, not an open edit. */
 	settings?: AgentTeamsIntegrationSettings;
+	/**
+	 * What the form holds. Publishing saves it first and sends this, captured
+	 * before the save: `settings` catches up a round trip later, and an edit made
+	 * while the save is away is not what was persisted.
+	 */
+	pendingSettings?: AgentTeamsIntegrationSettings;
 	/**
 	 * Whether the form holds a manifest change that is not saved yet. Publishing
 	 * saves it first, so the catalogue never gets a version n8n does not hold.
@@ -96,11 +102,14 @@ async function run(name: Busy, action: () => Promise<void>) {
 
 const publish = async () =>
 	await run('publish', async () => {
+		// Captured before the save: read after it, an edit made while the save was
+		// away would go to the catalogue without ever being persisted.
+		const publishing = props.pendingSettings ?? props.settings;
 		// Saved first, and abandoned if that fails: a publish that lands on top of
 		// a failed save would leave the catalogue ahead of n8n, which is worse
 		// than leaving it behind.
 		if (props.unsavedChanges && !(await props.persistChannel?.())) return;
-		await props.runtime.publishApp(props.settings);
+		await props.runtime.publishApp(publishing);
 	});
 
 /**

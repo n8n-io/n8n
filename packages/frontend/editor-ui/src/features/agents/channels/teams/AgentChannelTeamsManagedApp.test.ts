@@ -5,6 +5,7 @@ import { configure, fireEvent, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 
+import { fetchTeamsAppPackage } from './api';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
@@ -151,6 +152,61 @@ describe('AgentChannelTeamsManagedApp', () => {
 		// Saved first: the catalogue must never hold a version n8n does not.
 		expect(persistChannel.mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(runtime.publishApp).mock.invocationCallOrder[0],
+		);
+	});
+
+	/**
+	 * The form can move while the save is away. Publishing what the form held
+	 * when the button was pressed keeps the catalogue at or behind n8n; reading
+	 * it afterwards could put an unsaved edit in the organisation's catalogue.
+	 */
+	it('publishes what the form held when the save started', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+		});
+		const { rerender, getByTestId } = render({
+			runtime,
+			unsavedChanges: true,
+			pendingSettings: { teamChannels: true },
+			persistChannel: vi.fn().mockResolvedValue(true),
+		});
+
+		await waitFor(() =>
+			expect(getByTestId('teams-settings-publish')).not.toHaveAttribute('disabled'),
+		);
+		const publishing = fireEvent.click(getByTestId('teams-settings-publish'));
+		// The user keeps editing while the save is in flight.
+		await rerender({ pendingSettings: { teamChannels: true, groupChats: true } });
+		await publishing;
+
+		await waitFor(() => expect(runtime.publishApp).toHaveBeenCalledWith({ teamChannels: true }));
+	});
+
+	// The package is what the channel runs on, so an open edit is not in it.
+	it('builds the package from the saved settings, not an open edit', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref({ status: 'published', teamsAppId: 'teams-app-1' }),
+		});
+		const { getByTestId } = render({
+			runtime,
+			unsavedChanges: true,
+			settings: { teamChannels: false },
+			pendingSettings: { teamChannels: true },
+		});
+
+		await waitFor(() =>
+			expect(getByTestId('teams-settings-download')).not.toHaveAttribute('disabled'),
+		);
+		await fireEvent.click(getByTestId('teams-settings-download'));
+
+		await waitFor(() =>
+			expect(fetchTeamsAppPackage).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				'bot-cred-1',
+				{ teamChannels: false },
+			),
 		);
 	});
 
