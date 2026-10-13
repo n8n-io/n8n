@@ -201,7 +201,6 @@ catalog:
   cross-env: ^7.0.3
   csv-parse: 7.0.2
   dotenv: 17.2.3
-  electron: 41.10.4
   esbuild: ^0.28.1
   eslint: 9.29.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
