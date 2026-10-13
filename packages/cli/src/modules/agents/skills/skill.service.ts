@@ -307,8 +307,13 @@ export class SkillService {
 	// ---------------------------------------------------------------- attach
 
 	/** An agent can attach instance skills and the skills of its own project. */
-	isAttachable(skill: Pick<Skill, 'userId' | 'projectId'>, agentProjectId: string): boolean {
+	isAttachable(
+		skill: Pick<Skill, 'userId' | 'projectId' | 'agentId'>,
+		agent: { id: string; projectId: string },
+	): boolean {
 		if (skill.userId !== null) return false;
+		if (skill.agentId && skill.agentId !== agent.id) return false;
+		const agentProjectId = agent.projectId;
 		return skill.projectId === null || skill.projectId === agentProjectId;
 	}
 
@@ -353,7 +358,7 @@ export class SkillService {
 		const names = await this.latestNames([...keptExistingIds, ...newIds], ctx);
 		for (const id of newIds) {
 			const skill = found.get(id);
-			if (skill && !this.isAttachable(skill, agent.projectId)) {
+			if (skill && !this.isAttachable(skill, agent)) {
 				throw new UserError(
 					`Skill "${names.get(id) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project and instance skills.`,
 				);

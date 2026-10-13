@@ -27,7 +27,11 @@ import {
 } from '../skills/skill-content-hash';
 
 /** Where a skill lives. Both null is an instance skill. */
-export type SkillTarget = { userId: string | null; projectId: string | null };
+export type SkillTarget = {
+	userId: string | null;
+	projectId: string | null;
+	agentId?: string | null;
+};
 
 /** One skill with one of its version rows and that row's files, sorted by path. */
 export type ResolvedSkillRow = {
@@ -53,6 +57,7 @@ export type SkillListFilter = {
 	projectId?: string;
 	/** Instance skills and the skills of this project: what its agents may attach. */
 	attachableTo?: string;
+	attachableAgentId?: string;
 	search?: string;
 	skip: number;
 	take?: number;
@@ -88,7 +93,11 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (filter.attachableTo !== undefined) {
 			const { projectIds } = visibility;
 			if (projectIds === 'all' || projectIds.includes(filter.attachableTo)) {
-				branches.push('skill.projectId = :attachableTo');
+				branches.push(
+					filter.attachableAgentId === undefined
+						? 'skill.projectId = :attachableTo AND skill.agentId IS NULL'
+						: 'skill.projectId = :attachableTo AND (skill.agentId IS NULL OR skill.agentId = :attachableAgentId)',
+				);
 			}
 		} else {
 			if (!filter.scope || filter.scope === 'user') {
@@ -110,6 +119,9 @@ export class SkillRepository extends BaseRepository<Skill> {
 				userId: visibility.userId,
 				projectIds: visibility.projectIds,
 				...(filter.attachableTo !== undefined && { attachableTo: filter.attachableTo }),
+				...(filter.attachableAgentId !== undefined && {
+					attachableAgentId: filter.attachableAgentId,
+				}),
 			});
 		if (filter.projectId)
 			query.andWhere('skill.projectId = :projectId', { projectId: filter.projectId });
@@ -236,6 +248,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				id: skill.id,
 				userId: skill.target.userId,
 				projectId: skill.target.projectId,
+				agentId: skill.target.agentId ?? null,
 				source: skill.source,
 				createdById: skill.createdById,
 			});
