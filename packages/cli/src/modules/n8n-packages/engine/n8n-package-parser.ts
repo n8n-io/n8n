@@ -150,11 +150,17 @@ export class N8nPackageParser {
 	async getCredentials(reader: PackageReader): Promise<Map<string, SerializedCredential>> {
 		const manifest = await this.getManifest(reader);
 		const credentials = new Map<string, SerializedCredential>();
+		const requiredTypes = new Map(
+			(manifest.requirements?.credentials ?? []).map(({ id, type }) => [id, type]),
+		);
 
 		// The manifest target already points into the owner project folder or the
 		// top-level `credentials/` folder, so the import scope does not matter here.
 		for (const entry of manifest.credentials ?? []) {
-			credentials.set(entry.id, await this.readCredential(reader, entry));
+			credentials.set(
+				entry.id,
+				await this.readCredential(reader, entry, requiredTypes.get(entry.id)),
+			);
 		}
 
 		return credentials;
@@ -439,6 +445,7 @@ export class N8nPackageParser {
 	private async readCredential(
 		reader: PackageReader,
 		entry: ManifestEntry,
+		requiredType: string | undefined,
 	): Promise<SerializedCredential> {
 		const path = entityFilePath('credentials', entry.target);
 		const wire = await this.readJson(reader, path, 'credential');
@@ -466,6 +473,14 @@ export class N8nPackageParser {
 		if (credential.name !== entry.name) {
 			throw new UserError(
 				`Package credential at ${path} declares name "${credential.name}" but the manifest lists it as "${entry.name}".`,
+			);
+		}
+
+		// Matching binds a destination credential of the requirement type, so data of
+		// another type would merge into a credential with a different schema.
+		if (requiredType !== undefined && credential.type !== requiredType) {
+			throw new UserError(
+				`Package credential at ${path} declares type "${credential.type}" but the requirement lists it as "${requiredType}".`,
 			);
 		}
 

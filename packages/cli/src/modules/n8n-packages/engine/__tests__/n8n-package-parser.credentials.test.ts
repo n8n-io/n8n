@@ -202,4 +202,53 @@ describe('N8nPackageParser.getCredentials', () => {
 			'Package credential at credentials/github-cred-1/credential.json declares name "Renamed" but the manifest lists it as "GitHub".',
 		);
 	});
+	it('throws a UserError when the file type does not match the requirement type', async () => {
+		const reader = makeReader(
+			manifestWith({
+				credentials: [topLevelEntry],
+				requirements: {
+					credentials: [
+						{
+							id: 'cred-1',
+							name: 'GitHub',
+							type: 'githubOAuth2Api',
+							usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+						},
+					],
+				},
+			}),
+			{
+				'credentials/github-cred-1/credential.json': {
+					id: 'cred-1',
+					name: 'GitHub',
+					type: 'githubApi',
+				},
+			},
+		);
+
+		const error = await parser.getCredentials(reader).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(UserError);
+		expect(error).toHaveProperty(
+			'message',
+			'Package credential at credentials/github-cred-1/credential.json declares type "githubApi" but the requirement lists it as "githubOAuth2Api".',
+		);
+	});
+
+	it('accepts a credential file whose requirement has no type', async () => {
+		const credential = { id: 'cred-1', name: 'GitHub', type: 'githubApi' };
+		const reader = makeReader(
+			manifestWith({
+				credentials: [topLevelEntry],
+				requirements: {
+					credentials: [{ id: 'cred-1', usedBy: [{ kind: 'agent', id: 'agent-1' }] }],
+				},
+			}),
+			{ 'credentials/github-cred-1/credential.json': credential },
+		);
+
+		const credentials = await parser.getCredentials(reader);
+
+		expect(credentials.get('cred-1')).toEqual(credential);
+	});
 });
