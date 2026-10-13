@@ -691,7 +691,38 @@ describe('SubAgentRunner', () => {
 				guardrail: { code: 'budget.session' },
 			},
 		});
-		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session', agentId: 'agent-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session' });
+	});
+
+	it('names the child as the budget owner on a monthly guardrail stop', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.monthly' },
+			},
+		});
+		expect(onBudgetNotice).toHaveBeenCalledWith({
+			code: 'budget.monthly',
+			agentId: 'agent-1',
+		});
 	});
 
 	it('does not emit a budget notice for a non-budget guardrail stop', async () => {
