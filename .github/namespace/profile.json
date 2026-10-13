@@ -13,7 +13,6 @@
 		{
 			"volume_tag": "n8n-docker-poc",
 			"volume_size_gb": 20,
-			"bundled_git_mirror": true,
 			"bundled_runner_actions_cache": true
 		}
 	]
