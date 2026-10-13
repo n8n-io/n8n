@@ -2,6 +2,7 @@ import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { IRunExecutionData } from 'n8n-workflow';
@@ -43,6 +44,11 @@ export async function executionStarted(
 
 	if (needsInit) {
 		workflowExecutionStateStore.promotePendingExecution(data.executionId);
+		// Wipe sub-workflow progress overlays left over from previous runs.
+		// Stale entries are keyed by old execution ids and would otherwise
+		// accumulate until page reload; overlays of any still-running
+		// execution self-heal on its next progress event.
+		useSubworkflowProgressStore().reset();
 	}
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
