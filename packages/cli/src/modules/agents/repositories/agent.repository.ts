@@ -676,11 +676,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		ids: string[],
 		ctx: OperationContext = {},
 	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
-		if (ids.length === 0) return [];
-		return await this.managerFor(ctx).find(Agent, {
-			where: { id: In(ids) },
-			select: ['id', 'projectId'],
-		});
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		// In batches: a skill can have more followers than SQLite allows bound parameters.
+		for (const chunk of chunkIds([...new Set(ids)])) {
+			agents.push(
+				...(await this.managerFor(ctx).find(Agent, {
+					where: { id: In(chunk) },
+					select: ['id', 'projectId'],
+				})),
+			);
+		}
+		return agents;
 	}
 
 	/**

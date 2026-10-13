@@ -136,6 +136,28 @@ export class SkillService {
 		return new Map([...rows].map(([id, row]) => [id, row.version.name]));
 	}
 
+	/**
+	 * The name each ref runs under: its pinned version's name, else the latest. Works per
+	 * ref, because one agent can pin a skill that another agent follows.
+	 */
+	private async runtimeNames(
+		refs: Array<{ id: string; versionId?: string | null }>,
+		ctx: OperationContext,
+	): Promise<(ref: { id: string; versionId?: string | null }) => string | undefined> {
+		const latest = await this.latestNames(
+			refs.map((ref) => ref.id),
+			ctx,
+		);
+		const pinned = await this.skillRepository.findVersionsByIds(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		return (ref) => {
+			const pin = ref.versionId ? pinned.get(ref.versionId) : undefined;
+			return pin?.skill.id === ref.id ? pin.version.name : latest.get(ref.id);
+		};
+	}
+
 	// ---------------------------------------------------------------- writes
 
 	/** Creates a skill with its v1. Returns the new id. */
@@ -246,12 +268,14 @@ export class SkillService {
 			agents.map((agent) => agent.id),
 			ctx,
 		);
-		const otherIds = (agent: (typeof agents)[number]) =>
-			(refs.get(agent.id) ?? []).map((ref) => ref.skillId).filter((id) => id !== skillId);
-		const names = await this.latestNames(agents.flatMap(otherIds), ctx);
+		const otherRefs = (agent: (typeof agents)[number]) =>
+			(refs.get(agent.id) ?? [])
+				.filter((ref) => ref.skillId !== skillId)
+				.map((ref) => ({ id: ref.skillId, versionId: ref.versionId }));
+		const nameOf = await this.runtimeNames(agents.flatMap(otherRefs), ctx);
 		const clashing = agents.filter((agent) =>
 			renameIntroducesClash(
-				otherIds(agent).flatMap((id) => names.get(id) ?? []),
+				otherRefs(agent).flatMap((ref) => nameOf(ref) ?? []),
 				oldName,
 				newName,
 			),
@@ -366,21 +390,21 @@ export class SkillService {
 		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
 		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
 
-		const keptExistingIds = [...new Set(kept.map((ref) => ref.id))].filter((id) =>
-			existingIds.has(id),
-		);
-		const names = await this.latestNames([...keptExistingIds, ...newIds], ctx);
+		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
+		const newRefs = newIds.map((id) => ({ id }));
+		const nameOf = await this.runtimeNames([...keptExisting, ...newRefs], ctx);
 		for (const id of newIds) {
 			const skill = found.get(id);
 			if (skill && !this.isAttachable(skill, agent)) {
 				throw new UserError(
-					`Skill "${names.get(id) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
+					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
 				);
 			}
 		}
+		// A kept ref runs its pinned version, so compare the name of that version.
 		const clashes = findIntroducedNameClashes(
-			keptExistingIds.flatMap((id) => names.get(id) ?? []),
-			newIds.flatMap((id) => names.get(id) ?? []),
+			keptExisting.flatMap((ref) => nameOf(ref) ?? []),
+			newRefs.flatMap((ref) => nameOf(ref) ?? []),
 		);
 		if (clashes.length > 0) {
 			throw new UserError(

@@ -633,6 +633,26 @@ describe('SkillService', () => {
 			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_new'], TX_CTX);
 		});
 
+		it('compares the name of the version a pinned ref runs, not the latest name', async () => {
+			const old = skillRow('skill_old', { projectId: PROJECT });
+			givenAgentRefs([{ skillId: 'skill_old', versionId: 'skill_old-v1' }]);
+			givenSkills([
+				{ skill: old, name: 'Tone' },
+				{ skill: skillRow('skill_new'), name: 'tone' },
+			]);
+			// The agent runs v1, which is still called "Pricing".
+			skills.findVersionsByIds.mockResolvedValue(
+				new Map([['skill_old-v1', versionRow(old, 1, { name: 'Pricing' })]]),
+			);
+
+			await expect(
+				service.checkRefs(agent, [
+					{ id: 'skill_old', versionId: 'skill_old-v1' },
+					{ id: 'skill_new' },
+				]),
+			).resolves.toEqual([{ id: 'skill_old', versionId: 'skill_old-v1' }, { id: 'skill_new' }]);
+		});
+
 		it('drops a new ref to a missing skill', async () => {
 			givenSkills([{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' }]);
 

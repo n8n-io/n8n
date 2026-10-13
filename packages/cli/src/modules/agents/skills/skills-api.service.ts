@@ -105,6 +105,11 @@ export class SkillsApiService {
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		return {
 			...item,
+			// Name, description and number from the same row as the content, so a save that
+			// lands between the two reads cannot mix two versions.
+			name: latest.version.name,
+			description: latest.version.description,
+			latestVersion: latest.version.version,
 			skill: content,
 			skillHash: getAgentSkillHash(content),
 			usedBy: await this.skillRepository.findUsage(skill.id, agentProjectIds ?? 'all'),
