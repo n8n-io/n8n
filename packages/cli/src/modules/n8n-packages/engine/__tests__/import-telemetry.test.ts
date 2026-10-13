@@ -98,6 +98,7 @@ const scope = (input: {
 		dataTablePlan: {
 			creations: new Array(dt.created),
 			updates: new Array(dt.updated ?? 0),
+			columnAlignments: [],
 			failures: [],
 			matchedCount: dt.matched,
 		},

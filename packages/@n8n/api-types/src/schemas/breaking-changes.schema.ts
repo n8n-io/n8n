@@ -156,7 +156,8 @@ const breakingChangeReportDataSchema = {
 const breakingChangeReportSchema = z.object(breakingChangeReportDataSchema).strict();
 
 const breakingChangeLightReportDataSchema = {
-	generatedAt: z.date(),
+	// Absent until the first sync of the target version completes.
+	generatedAt: z.date().optional(),
 	targetVersion: z.string(),
 	currentVersion: z.string(),
 	instanceResults: z.array(instanceRuleResultsSchema),

@@ -19,6 +19,10 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 		expect(task.misfireGraceSeconds).toBe(Time.hours.toSeconds);
 	});
 
+	it('should outlast the default task timeout', () => {
+		expect(task.timeoutSeconds).toBe(3600);
+	});
+
 	it('should trim on run, handing the pass its abort signal', async () => {
 		const { signal } = new AbortController();
 

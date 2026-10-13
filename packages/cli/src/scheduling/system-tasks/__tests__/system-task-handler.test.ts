@@ -1,12 +1,14 @@
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ClaimedTask, DispatchReporter } from '@n8n/scheduler';
+import type { ClaimedTask, DispatchReporter, TaskRun } from '@n8n/scheduler';
 import { createDispatchReporter, LeaseLostError } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { SystemTaskHandler } from '../system-task-handler';
 import { DummySystemTask } from './dummy.task';
+
+const runOf = (signal: AbortSignal): TaskRun => ({ signal, remainingMs: () => 60_000 });
 
 describe('SystemTaskHandler', () => {
 	const claimed = mock<ClaimedTask>({ id: 'task-1', jobId: 2 });
@@ -41,7 +43,7 @@ describe('SystemTaskHandler', () => {
 	it('runs the task', async () => {
 		const { task, report, handler } = setup('idempotent');
 
-		await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 		expect(task.runCount).toBe(1);
 	});
@@ -55,7 +57,7 @@ describe('SystemTaskHandler', () => {
 				seenSignal = signal;
 			};
 
-			await context.handler.execute(claimed, context.report, context.leaseController.signal);
+			await context.handler.execute(claimed, context.report, runOf(context.leaseController.signal));
 			expect(seenSignal?.aborted).toBe(false);
 			context[source].abort();
 
@@ -70,7 +72,7 @@ describe('SystemTaskHandler', () => {
 				signal.addEventListener('abort', () => reject(new Error('aborted')));
 			});
 
-		const executing = handler.execute(claimed, report, leaseController.signal);
+		const executing = handler.execute(claimed, report, runOf(leaseController.signal));
 		leaseController.abort();
 
 		await expect(executing).rejects.toThrow();
@@ -86,7 +88,7 @@ describe('SystemTaskHandler', () => {
 			});
 		const error = new LeaseLostError();
 
-		const executing = handler.execute(claimed, report, leaseController.signal);
+		const executing = handler.execute(claimed, report, runOf(leaseController.signal));
 		leaseController.abort(error);
 
 		await expect(executing).rejects.toBe(error);
@@ -107,7 +109,7 @@ describe('SystemTaskHandler', () => {
 				runCountsAtDispatch.push(task.runCount);
 			});
 
-			await handler.execute(claimed, report, new AbortController().signal);
+			await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 			expect(runCountsAtDispatch).toEqual([1]);
 		},
@@ -128,7 +130,7 @@ describe('SystemTaskHandler', () => {
 				vi.fn(),
 			);
 
-			const returned = await handler.execute(claimed, report, new AbortController().signal);
+			const returned = await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 			expect(returned).toBe(report.dispatched());
 		},
@@ -140,9 +142,9 @@ describe('SystemTaskHandler', () => {
 			throw new Error('failed');
 		};
 
-		await expect(handler.execute(claimed, report, new AbortController().signal)).rejects.toThrow(
-			'failed',
-		);
+		await expect(
+			handler.execute(claimed, report, runOf(new AbortController().signal)),
+		).rejects.toThrow('failed');
 	});
 
 	it.each(['idempotent', 'non-idempotent'] as const)(
@@ -154,9 +156,9 @@ describe('SystemTaskHandler', () => {
 				throw error;
 			};
 
-			await expect(handler.execute(claimed, report, new AbortController().signal)).rejects.toThrow(
-				error,
-			);
+			await expect(
+				handler.execute(claimed, report, runOf(new AbortController().signal)),
+			).rejects.toThrow(error);
 
 			expect(onRunError).toHaveBeenCalledWith(error);
 		},
@@ -169,7 +171,7 @@ describe('SystemTaskHandler', () => {
 				signal.addEventListener('abort', () => reject(new Error('aborted')));
 			});
 
-		const executing = handler.execute(claimed, report, new AbortController().signal);
+		const executing = handler.execute(claimed, report, runOf(new AbortController().signal));
 		shutdownController.abort();
 
 		await expect(executing).rejects.toThrow();
@@ -182,7 +184,7 @@ describe('SystemTaskHandler', () => {
 			throw new Error('sink');
 		});
 
-		await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 		expect(task.runCount).toBe(1);
 		expect(onRunError).not.toHaveBeenCalled();
@@ -191,7 +193,7 @@ describe('SystemTaskHandler', () => {
 	it('does not report a run that succeeds', async () => {
 		const { report, handler, onRunError } = setup('idempotent');
 
-		await handler.execute(claimed, report, new AbortController().signal);
+		await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 		expect(onRunError).not.toHaveBeenCalled();
 	});
@@ -211,7 +213,7 @@ describe('SystemTaskHandler', () => {
 				await vi.advanceTimersByTimeAsync(250);
 			};
 
-			await handler.execute(claimed, report, new AbortController().signal);
+			await handler.execute(claimed, report, runOf(new AbortController().signal));
 
 			expect(eventService.emit.mock.calls).toEqual([
 				['system-task-run-started', { name: 'dummy', mode: 'durable' }],
@@ -228,9 +230,9 @@ describe('SystemTaskHandler', () => {
 				throw new Error('failed');
 			};
 
-			await expect(handler.execute(claimed, report, new AbortController().signal)).rejects.toThrow(
-				'failed',
-			);
+			await expect(
+				handler.execute(claimed, report, runOf(new AbortController().signal)),
+			).rejects.toThrow('failed');
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'system-task-run-settled',
@@ -245,7 +247,7 @@ describe('SystemTaskHandler', () => {
 					signal.addEventListener('abort', () => resolve());
 				});
 
-			const executing = handler.execute(claimed, report, new AbortController().signal);
+			const executing = handler.execute(claimed, report, runOf(new AbortController().signal));
 			shutdownController.abort();
 			await executing;
 
@@ -262,7 +264,7 @@ describe('SystemTaskHandler', () => {
 					signal.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 
-			const executing = handler.execute(claimed, report, new AbortController().signal);
+			const executing = handler.execute(claimed, report, runOf(new AbortController().signal));
 			shutdownController.abort();
 			await expect(executing).rejects.toThrow();
 
@@ -279,7 +281,7 @@ describe('SystemTaskHandler', () => {
 					signal.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 
-			const executing = handler.execute(claimed, report, leaseController.signal);
+			const executing = handler.execute(claimed, report, runOf(leaseController.signal));
 			leaseController.abort();
 			await expect(executing).rejects.toThrow();
 

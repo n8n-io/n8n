@@ -436,6 +436,7 @@ describe('GlobalConfig', () => {
 				enabled: false,
 				name: '',
 			},
+			suspendExecutionsOnShutdown: false,
 		},
 		taskRunners: {
 			mode: 'internal',
@@ -509,6 +510,7 @@ describe('GlobalConfig', () => {
 			pollTimeoutSeconds: 45,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
@@ -679,8 +681,6 @@ describe('GlobalConfig', () => {
 			optimizingTimeWindowHours: 2,
 			trimmingMinimumAgeDays: 6,
 			trimmingTimeWindowDays: 2,
-			trimOnStartUp: false,
-			skipOnStartUp: false,
 		},
 		expressionEngine: {
 			engine: 'vm',

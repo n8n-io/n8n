@@ -92,6 +92,14 @@ export interface ProtectedResource {
 /** What a resource contributes to advertising: RFC 9728 metadata and the 401 challenge. */
 export type AdvertisedResource = Pick<Inbound, 'surface' | 'resource' | 'acceptedSourceIds'>;
 
+/**
+ * Authenticates, then identifies, in one call. Stops before resource authorization: the
+ * caller decides what the returned context may do.
+ */
+export abstract class AuthenticationPipeline {
+	abstract run(extracted: Extracted): Promise<Result<SecurityContext>>;
+}
+
 /** The dispatcher. Owns what every method shares: driver lookup and surface acceptance. */
 export abstract class AuthenticationService {
 	abstract authenticate(extracted: Extracted): Promise<Result<Verified>>;

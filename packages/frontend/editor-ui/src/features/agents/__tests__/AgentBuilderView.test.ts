@@ -5720,19 +5720,29 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 		return () => wrapper.find('[data-testid="agent-evals-tab-content"]').exists();
 	}
 
-	it('selects the evals tab for a request raised before it mounted', async () => {
+	function savedGenerationCalls() {
+		return generateDraftCasesMock.mock.calls.filter(([, , , options]) => options?.save !== false);
+	}
+
+	it('selects the evals tab and prepares unsaved examples for a request raised before it mounted', async () => {
 		const wrapper = await seedFocusRequest('a1', false);
-		await settle(evalsTabShown(wrapper));
+		await settle(() => evalsTabShown(wrapper)() && generateDraftCasesMock.mock.calls.length > 0);
 
 		expect(evalsTabShown(wrapper)()).toBe(true);
-		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+		expect(generateDraftCasesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			count: 10,
+			save: false,
+		});
+		expect(savedGenerationCalls()).toEqual([]);
 	});
 
-	it('starts generation when the request asks for it', async () => {
+	it('starts one saved generation when the request asks for it', async () => {
 		await seedFocusRequest('a1', true);
-		await settle(() => generateDraftCasesMock.mock.calls.length > 0);
+		await settle(() => savedGenerationCalls().length > 0);
 
-		expect(generateDraftCasesMock).toHaveBeenCalledOnce();
+		// The empty-state preview can also request unsaved examples. Those must
+		// not be mistaken for a second request to persist a dataset.
+		expect(savedGenerationCalls()).toEqual([[expect.anything(), 'p1', 'a1', {}]]);
 	});
 
 	it('ignores a request naming a different agent', async () => {
