@@ -48,7 +48,7 @@ const forwarded = useForwardPropsEmits(props, emit);
 	<DateRangePickerRoot v-bind="forwarded">
 		<DateRangePickerTrigger as-child>
 			<slot name="trigger">
-				<IconButton variant="subtle" icon="calendar" aria-label="Open calendar" />
+				<IconButton variant="outline" icon="calendar" aria-label="Open calendar" />
 			</slot>
 		</DateRangePickerTrigger>
 
@@ -63,11 +63,11 @@ const forwarded = useForwardPropsEmits(props, emit);
 					<div :class="$style.CalendarWrapper">
 						<DateRangePickerHeader :class="$style.CalendarHeader">
 							<DateRangePickerPrev as-child>
-								<IconButton icon="chevron-left" variant="subtle" />
+								<IconButton icon="chevron-left" variant="outline" />
 							</DateRangePickerPrev>
 							<DateRangePickerHeading :class="$style.CalendarHeading" />
 							<DateRangePickerNext as-child>
-								<IconButton icon="chevron-right" variant="subtle" />
+								<IconButton icon="chevron-right" variant="outline" />
 							</DateRangePickerNext>
 						</DateRangePickerHeader>
 
@@ -116,7 +116,7 @@ const forwarded = useForwardPropsEmits(props, emit);
 
 						<slot name="footer" :close="closePopover">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								label="Apply"
 								class="mt-2xs"
 								:class="$style.ApplyButton"

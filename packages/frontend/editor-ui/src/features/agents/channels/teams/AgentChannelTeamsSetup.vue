@@ -545,7 +545,7 @@ defineExpose({
 						<N8nButton
 							:href="ENTRA_APP_REGISTRATION_URL"
 							target="_blank"
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							icon="entra"
 							data-testid="teams-entra-register-link"
@@ -629,7 +629,7 @@ defineExpose({
 							<N8nButton
 								:href="deployToAzureUrl ?? undefined"
 								target="_blank"
-								variant="subtle"
+								variant="outline"
 								size="medium"
 								icon="azure"
 								:disabled="!deployToAzureUrl"

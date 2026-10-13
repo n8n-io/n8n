@@ -83,7 +83,7 @@ function onInputKeydown(event: KeyboardEvent, index: number) {
 			/>
 		</div>
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			icon="plus"
 			size="small"
 			:disabled="prompts.length >= MAX_PROMPTS"
