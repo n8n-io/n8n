@@ -9,6 +9,7 @@ import type {
 	BreakingChangeWorkflowOwner,
 	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
+	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getUsers } from '@n8n/rest-api-client/api/users';
@@ -19,6 +20,7 @@ import {
 	N8nDataTableServer,
 	N8nDropdownMenu,
 	N8nIcon,
+	N8nInfoTip,
 	N8nInput,
 	N8nLink,
 	N8nLoading,
@@ -32,6 +34,7 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -54,6 +57,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 const rbacStore = useRBACStore();
+const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const toast = useToast();
 
@@ -66,6 +70,8 @@ const router = useRouter();
 // The page needs only `breakingChanges:list`. A migration, a state change or
 // an owner choice needs `breakingChanges:migrate`.
 const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
+// A notification is an email, so the instance needs SMTP.
+const canNotify = computed(() => canMigrate.value && settingsStore.isSmtpSetup);
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -240,13 +246,13 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		},
 	];
 
-	// The actions column only holds the Migrate button.
-	if (showMigrate.value) {
+	// The actions column holds the Migrate and Notify buttons.
+	if (showMigrate.value || canNotify.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: 160,
+			width: (showMigrate.value ? 160 : 0) + (canNotify.value ? 110 : 0),
 			disableSort: true,
 		});
 	}
@@ -295,11 +301,10 @@ function openMigrateModal(workflows: AffectedWorkflow[]) {
 	});
 }
 
-// Won't fix counts as resolved, so the badge counts only the open findings. A
-// migration fixes the finding on save, so a migrated row is not open either.
+// Won't fix counts as resolved, so the badge counts only the unresolved findings. A
+// migration fixes the finding on save, so a migrated row is not unresolved either.
 const openCount = computed(
-	() =>
-		state.value.affectedWorkflows.filter((workflow) => findingState(workflow) === 'open').length,
+	() => state.value.affectedWorkflows.filter((workflow) => isUnresolved(workflow)).length,
 );
 
 // Rows with a state change in flight. One change at a time keeps the revert correct.
@@ -311,8 +316,21 @@ function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>)
 		...state.value,
 		affectedWorkflows: state.value.affectedWorkflows.map((workflow) => {
 			const status = statuses.get(workflow.id);
-			return status ? { ...workflow, status } : workflow;
+			if (!status) return workflow;
+			// Reopening drops the notified mark, as the server does.
+			return status === 'open'
+				? { ...workflow, status, notifiedAt: undefined }
+				: { ...workflow, status };
 		}),
+	};
+}
+
+// Puts the rows back as they were before a failed change, notified date included.
+function restoreWorkflows(rows: AffectedWorkflow[]) {
+	const byId = new Map(rows.map((row) => [row.id, row]));
+	state.value = {
+		...state.value,
+		affectedWorkflows: state.value.affectedWorkflows.map((row) => byId.get(row.id) ?? row),
 	};
 }
 
@@ -329,8 +347,7 @@ async function onFindingStatusChange(
 	workflow: AffectedWorkflow,
 	status: MigrationFindingTriageStatus,
 ) {
-	const previousStatus = workflow.status;
-	if (status === previousStatus || savingWorkflowIds.value.has(workflow.id)) return;
+	if (status === workflow.status || savingWorkflowIds.value.has(workflow.id)) return;
 
 	setFindingStatuses(new Map([[workflow.id, status]]));
 	setSaving([workflow.id], true);
@@ -342,7 +359,7 @@ async function onFindingStatusChange(
 			status,
 		);
 	} catch (error) {
-		setFindingStatuses(new Map([[workflow.id, previousStatus]]));
+		restoreWorkflows([workflow]);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
 	} finally {
 		setSaving([workflow.id], false);
@@ -361,11 +378,15 @@ function isSelectable(workflow: AffectedWorkflow): boolean {
 	return !migratedWorkflowIds.value.has(workflow.id);
 }
 
-/** The selected rows that a bulk change to `status` would change. */
+/**
+ * The selected rows that a bulk change to `status` would change. A notified
+ * row counts as changeable to open, like in the row's own select: reopening
+ * drops the notified mark.
+ */
 function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
 	return selectedWorkflows.value.filter(
 		(workflow) =>
-			workflow.status !== status &&
+			findingState(workflow) !== status &&
 			isSelectable(workflow) &&
 			!savingWorkflowIds.value.has(workflow.id),
 	);
@@ -388,7 +409,7 @@ async function changeFindingStatuses(
 		);
 		return true;
 	} catch (error) {
-		setFindingStatuses(new Map(workflows.map((workflow) => [workflow.id, workflow.status])));
+		restoreWorkflows(workflows);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
 		return false;
 	} finally {
@@ -419,11 +440,72 @@ const unusedOpenWorkflows = computed(() => {
 	const now = Date.now();
 	return state.value.affectedWorkflows.filter(
 		(workflow) =>
-			findingState(workflow) === 'open' &&
+			isUnresolved(workflow) &&
 			!savingWorkflowIds.value.has(workflow.id) &&
 			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now),
 	);
 });
+
+// Rows with a notification in flight.
+const notifyingWorkflowIds = ref<Set<string>>(new Set());
+
+// An email goes to the owner, so a row without one has nobody to notify.
+function canNotifyRow(workflow: AffectedWorkflow): boolean {
+	return canNotify.value && !!workflow.owner?.email && isUnresolved(workflow);
+}
+
+const skipReasonKeys: Record<
+	MigrationNotifySkipReason,
+	| 'settings.migrationReport.detail.notify.skipped.noOwner'
+	| 'settings.migrationReport.detail.notify.skipped.noFinding'
+	| 'settings.migrationReport.detail.notify.skipped.sendFailed'
+> = {
+	no_owner: 'settings.migrationReport.detail.notify.skipped.noOwner',
+	no_finding: 'settings.migrationReport.detail.notify.skipped.noFinding',
+	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
+};
+
+/** Emails the owner of one workflow. A second call on a notified row is a reminder. */
+async function onNotify(workflow: AffectedWorkflow) {
+	if (notifyingWorkflowIds.value.has(workflow.id) || savingWorkflowIds.value.has(workflow.id))
+		return;
+	notifyingWorkflowIds.value = new Set(notifyingWorkflowIds.value).add(workflow.id);
+	try {
+		const result = await breakingChangesApi.notifyFindingOwners(
+			rootStore.restApiContext,
+			props.migrationRuleId,
+			[workflow.id],
+		);
+		const skipped = result.skipped.find((entry) => entry.workflowId === workflow.id);
+		if (skipped) {
+			toast.showMessage({
+				type: 'error',
+				title: i18n.baseText('settings.migrationReport.detail.notify.error.title'),
+				message: i18n.baseText(skipReasonKeys[skipped.reason]),
+			});
+			return;
+		}
+		state.value = {
+			...state.value,
+			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
+				row.id === workflow.id ? { ...row, status: 'notified', notifiedAt: new Date() } : row,
+			),
+		};
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.migrationReport.detail.notify.success.title'),
+			message: i18n.baseText('settings.migrationReport.detail.notify.success.message', {
+				interpolate: { owner: ownerLabel(workflow), name: workflow.name },
+			}),
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.migrationReport.detail.notify.error.title'));
+	} finally {
+		const next = new Set(notifyingWorkflowIds.value);
+		next.delete(workflow.id);
+		notifyingWorkflowIds.value = next;
+	}
+}
 
 // Show only the rows that the callout counts.
 function reviewUnusedWorkflows() {
@@ -503,6 +585,16 @@ function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus 
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
+// A notified finding still needs a fix, so it counts and filters as open.
+function isUnresolved(workflow: AffectedWorkflow): boolean {
+	const findingStatus = findingState(workflow);
+	return findingStatus === 'open' || findingStatus === 'notified';
+}
+
+function hasState(workflow: AffectedWorkflow, status: MigrationFindingTriageStatus): boolean {
+	return status === 'open' ? isUnresolved(workflow) : findingState(workflow) === status;
+}
+
 const wontFixCount = computed(
 	() =>
 		state.value.affectedWorkflows.filter((workflow) => findingState(workflow) === 'wont_fix')
@@ -561,7 +653,7 @@ const filteredWorkflows = computed(() => {
 	return state.value.affectedWorkflows.filter(
 		(workflow) =>
 			(!query || workflow.name.toLowerCase().includes(query)) &&
-			(!stateFilter.value || findingState(workflow) === stateFilter.value) &&
+			(!stateFilter.value || hasState(workflow, stateFilter.value)) &&
 			matchesWorkflowFilters(workflow, workflowFilters.value, now),
 	);
 });
@@ -874,23 +966,60 @@ const sortedWorkflows = computed(() => {
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canMigrate || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+						!canMigrate ||
+						savingWorkflowIds.has(item.id) ||
+						notifyingWorkflowIds.has(item.id) ||
+						migratedWorkflowIds.has(item.id)
 					"
 					@update:model-value="onFindingStatusChange(item, $event)"
 				/>
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions">
-					<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
-						{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
-					</N8nText>
 					<N8nButton
-						v-else
+						v-if="canNotifyRow(item)"
+						variant="subtle"
 						size="small"
-						:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
-						data-test-id="migrate-workflow-button"
-						@click="openMigrateModal([item])"
+						:loading="notifyingWorkflowIds.has(item.id)"
+						:label="
+							i18n.baseText(
+								item.notifiedAt
+									? 'settings.migrationReport.detail.notify.remind'
+									: 'settings.migrationReport.detail.notify.button',
+							)
+						"
+						data-test-id="migration-notify-owner-button"
+						@click="onNotify(item)"
 					/>
+					<N8nInfoTip
+						v-if="item.notifiedAt"
+						type="tooltip"
+						theme="info"
+						:bold="false"
+						data-test-id="migration-workflow-notified-at"
+					>
+						<I18nT
+							keypath="settings.migrationReport.detail.table.notifiedAt"
+							tag="span"
+							scope="global"
+						>
+							<template #time>
+								<TimeAgo :date="item.notifiedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nInfoTip>
+					<template v-if="showMigrate">
+						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
+							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
+						</N8nText>
+						<N8nButton
+							v-else
+							size="small"
+							:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
+							data-test-id="migrate-workflow-button"
+							@click="openMigrateModal([item])"
+						/>
+					</template>
 				</div>
 			</template>
 		</N8nDataTableServer>
