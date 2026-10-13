@@ -2,18 +2,16 @@ import type { IExecuteSingleFunctions, INodeExecutionData, PostReceiveAction } f
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
 
-// Stands in for an entry in the shared FEATURED_MODELS map.
-vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => {
-	const featured = 'models/gemini-featured';
-	return {
-		...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
-		getGoogleModelLabel: (modelId: string) => (modelId === featured ? 'Gemini Featured' : modelId),
-		pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
-			...models.filter((model) => getModelId(model) === featured),
-			...models.filter((model) => getModelId(model) !== featured),
-		],
-	};
-});
+// Stands in for the shared MODEL_DISPLAY_NAMES and FEATURED_MODELS maps.
+vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
+	getGoogleModelLabel: (modelId: string) =>
+		modelId === 'models/gemini-named' ? 'Gemini Named' : modelId,
+	pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
+		...models.filter((model) => getModelId(model) === 'models/gemini-featured'),
+		...models.filter((model) => getModelId(model) !== 'models/gemini-featured'),
+	],
+}));
 
 describe('LmChatGoogleGemini', () => {
 	it('should send every model field to the provider catalog with a Gemini 3.x floor', () => {
@@ -39,31 +37,29 @@ describe('LmChatGoogleGemini', () => {
 		}
 	});
 
-	it('should list featured models first, under their product name, in every version', async () => {
+	it('should label, sort and pin models in every version', async () => {
 		const modelProperties = new LmChatGoogleGemini().description.properties.filter(
 			(p) => p.name === 'modelName',
 		);
-		const sortedOptions: INodeExecutionData[] = [
-			{ json: { name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' } },
+		const options: INodeExecutionData[] = [
+			{ json: { name: 'models/gemini-zeta', value: 'models/gemini-zeta' } },
 			{ json: { name: 'models/gemini-featured', value: 'models/gemini-featured' } },
+			{ json: { name: 'models/gemini-named', value: 'models/gemini-named' } },
 		];
 
 		expect(modelProperties).toHaveLength(3);
 		for (const property of modelProperties) {
 			const postReceive = property.typeOptions?.loadOptions?.routing?.output
 				?.postReceive as PostReceiveAction[];
-			const featureModels = postReceive.at(-1);
-			if (typeof featureModels !== 'function') throw new Error('Expected a postReceive function');
+			const labelModels = postReceive.at(-1);
+			if (typeof labelModels !== 'function') throw new Error('Expected a postReceive function');
 
-			const options = await featureModels.call(
-				{} as IExecuteSingleFunctions,
-				sortedOptions,
-				{} as never,
-			);
+			const result = await labelModels.call({} as IExecuteSingleFunctions, options, {} as never);
 
-			expect(options.map((option) => option.json)).toEqual([
-				{ name: 'Gemini Featured', value: 'models/gemini-featured' },
-				{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
+			expect(result.map((option) => option.json)).toEqual([
+				{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
+				{ name: 'Gemini Named', value: 'models/gemini-named' },
+				{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
 			]);
 		}
 	});

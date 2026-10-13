@@ -1,4 +1,4 @@
-import { getFeaturedModelName, pinFeaturedModels } from '@n8n/api-types';
+import { getModelDisplayName, pinFeaturedModels } from '@n8n/api-types';
 
 import { baseUrl, byName, getJson } from '../request';
 import type { ListModelsFn } from '../types';
@@ -56,9 +56,9 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 	return pinGoogleModels(models, (model) => model.id);
 };
 
-/** Dropdown label of a Google model id: the product name of a featured model, else the id. */
+/** Dropdown label of a Google model id: its product name when it has one, else the id. */
 export function getGoogleModelLabel(modelId: string): string {
-	return getFeaturedModelName('google', modelId) ?? modelId;
+	return getModelDisplayName('google', modelId) ?? modelId;
 }
 
 /** Moves featured Google models to the top of a model list. */

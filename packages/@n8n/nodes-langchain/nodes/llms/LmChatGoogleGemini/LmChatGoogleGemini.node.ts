@@ -41,8 +41,8 @@ async function filterChatModels(
 	);
 }
 
-/** List featured models (e.g. a model at launch) first, under their product name. */
-async function featureModels(
+/** Show models under their product name, sorted by it, with featured models first. */
+async function labelModels(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
@@ -51,6 +51,7 @@ async function featureModels(
 			? { ...item, json: { ...item.json, name: getGoogleModelLabel(item.json.value) } }
 			: item,
 	);
+	labelled.sort((a, b) => String(a.json.name).localeCompare(String(b.json.name)));
 	return pinGoogleModels(labelled, (item) => String(item.json.value));
 }
 
@@ -97,13 +98,7 @@ const modelRLC: INodeProperties = {
 								description: '={{$responseItem.description}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
-						featureModels,
+						labelModels,
 					],
 				},
 			},
@@ -153,13 +148,7 @@ const modelRLCV2: INodeProperties = {
 								description: '={{$responseItem.description}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
-						featureModels,
+						labelModels,
 					],
 				},
 			},

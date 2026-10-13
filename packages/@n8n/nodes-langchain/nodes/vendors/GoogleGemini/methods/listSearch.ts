@@ -21,15 +21,18 @@ async function baseModelSearch(
 		models: Array<{ name: string }>;
 	};
 
-	let models = response.models.filter((model) => modelFilter(model.name));
+	let results = response.models
+		.filter((model) => modelFilter(model.name))
+		.map((model) => ({ name: getGoogleModelLabel(model.name), value: model.name }));
 	if (filter) {
-		models = models.filter((model) => model.name.toLowerCase().includes(filter.toLowerCase()));
+		const query = filter.toLowerCase();
+		results = results.filter(
+			(result) =>
+				result.name.toLowerCase().includes(query) || result.value.toLowerCase().includes(query),
+		);
 	}
 
-	const results = models.map((model) => ({
-		name: getGoogleModelLabel(model.name),
-		value: model.name,
-	}));
+	results.sort((a, b) => a.name.localeCompare(b.name));
 	return { results: pinGoogleModels(results, (result) => result.value) };
 }
 
@@ -74,24 +77,25 @@ export async function imageGenerationModelSearch(
 ): Promise<INodeListSearchResult> {
 	const rawResult = await baseModelSearch.call(this, isImageModel);
 	let results = rawResult.results.map((r) => {
-		if (r.name.includes('gemini-nano-banana-2.1')) {
+		const modelId = String(r.value);
+		if (modelId.includes('gemini-nano-banana-2.1')) {
 			return { name: `${r.name} (Nano Banana 2.1)`, value: r.value };
 		}
 
 		// The Lite id also contains "gemini-3.1-flash-image". Match it first.
-		if (r.name.includes('gemini-3.1-flash-lite-image')) {
+		if (modelId.includes('gemini-3.1-flash-lite-image')) {
 			return { name: `${r.name} (Nano Banana 2 Lite)`, value: r.value };
 		}
 
-		if (r.name.includes('gemini-3.1-flash-image')) {
+		if (modelId.includes('gemini-3.1-flash-image')) {
 			return { name: `${r.name} (Nano Banana 2)`, value: r.value };
 		}
 
-		if (r.name.includes('gemini-2.5-flash-image')) {
+		if (modelId.includes('gemini-2.5-flash-image')) {
 			return { name: `${r.name} (Nano Banana)`, value: r.value };
 		}
 
-		if (r.name.includes('gemini-3-pro-image')) {
+		if (modelId.includes('gemini-3-pro-image')) {
 			return { name: `${r.name} (Nano Banana Pro)`, value: r.value };
 		}
 

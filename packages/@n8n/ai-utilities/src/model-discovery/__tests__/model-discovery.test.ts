@@ -150,17 +150,18 @@ describe('model-discovery', () => {
 			expect(calledUrl(fetch)).toBe('https://generativelanguage.googleapis.com/v1beta/models');
 			expect(calledHeaders(fetch)['x-goog-api-key']).toBe('g-key');
 			expect(models).toEqual([
-				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
-				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
+				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
 			]);
 		});
 
-		it('lists featured models first, under their product name', async () => {
-			FEATURED_MODELS.google = { 'gemini-featured': 'Gemini Featured' };
+		it('labels models with their product name and lists featured models first', async () => {
+			FEATURED_MODELS.google = ['gemini-featured'];
 			const fetch = mockFetch({
 				models: [
-					{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
+					{ name: 'models/gemini-2.5-pro', supportedGenerationMethods: ['generateContent'] },
 					{ name: 'models/gemini-featured', supportedGenerationMethods: ['generateContent'] },
+					{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
 				],
 			});
 
@@ -168,8 +169,9 @@ describe('model-discovery', () => {
 				const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
 
 				expect(models).toEqual([
-					{ id: 'models/gemini-featured', name: 'Gemini Featured' },
-					{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+					{ id: 'models/gemini-featured', name: 'models/gemini-featured' },
+					{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+					{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
 				]);
 			} finally {
 				delete FEATURED_MODELS.google;

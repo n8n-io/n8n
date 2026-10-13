@@ -11,18 +11,16 @@ import {
 } from './listSearch';
 import * as transport from '../transport';
 
-// Stands in for an entry in the shared FEATURED_MODELS map.
-vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => {
-	const featured = 'models/gemini-featured';
-	return {
-		...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
-		getGoogleModelLabel: (modelId: string) => (modelId === featured ? 'Gemini Featured' : modelId),
-		pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
-			...models.filter((model) => getModelId(model) === featured),
-			...models.filter((model) => getModelId(model) !== featured),
-		],
-	};
-});
+// Stands in for the shared MODEL_DISPLAY_NAMES and FEATURED_MODELS maps.
+vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
+	getGoogleModelLabel: (modelId: string) =>
+		modelId === 'models/gemini-named' ? 'Gemini Named' : modelId,
+	pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
+		...models.filter((model) => getModelId(model) === 'models/gemini-featured'),
+		...models.filter((model) => getModelId(model) !== 'models/gemini-featured'),
+	],
+}));
 
 const mockResponse = {
 	models: [
@@ -115,19 +113,36 @@ describe('GoogleGemini -> listSearch', () => {
 			});
 		});
 
-		it('should list featured models first, under their product name', async () => {
+		it('should label, sort and pin models', async () => {
 			apiRequestMock.mockResolvedValue({
-				models: [{ name: 'models/gemini-2.5-flash' }, { name: 'models/gemini-featured' }],
+				models: [
+					{ name: 'models/gemini-zeta' },
+					{ name: 'models/gemini-featured' },
+					{ name: 'models/gemini-named' },
+				],
 			});
 
 			const result = await modelSearch.call(mockExecuteFunctions);
 
 			expect(result).toEqual({
 				results: [
-					{ name: 'Gemini Featured', value: 'models/gemini-featured' },
-					{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
+					{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
+					{ name: 'Gemini Named', value: 'models/gemini-named' },
+					{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
 				],
 			});
+		});
+
+		it('should match the filter against the product name and the id', async () => {
+			apiRequestMock.mockResolvedValue({
+				models: [{ name: 'models/gemini-zeta' }, { name: 'models/gemini-named' }],
+			});
+
+			const byName = await modelSearch.call(mockExecuteFunctions, 'Gemini N');
+			const byId = await modelSearch.call(mockExecuteFunctions, 'gemini-zeta');
+
+			expect(byName.results).toEqual([{ name: 'Gemini Named', value: 'models/gemini-named' }]);
+			expect(byId.results).toEqual([{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' }]);
 		});
 	});
 
@@ -144,12 +159,12 @@ describe('GoogleGemini -> listSearch', () => {
 						value: 'models/gemini-2.5-flash',
 					},
 					{
-						name: 'models/gemma-3-1b-it',
-						value: 'models/gemma-3-1b-it',
-					},
-					{
 						name: 'models/gemini-2.5-flash-preview-native-audio-dialog',
 						value: 'models/gemini-2.5-flash-preview-native-audio-dialog',
+					},
+					{
+						name: 'models/gemma-3-1b-it',
+						value: 'models/gemma-3-1b-it',
 					},
 				],
 			});
@@ -169,10 +184,6 @@ describe('GoogleGemini -> listSearch', () => {
 						value: 'models/gemini-2.0-flash-exp-image-generation',
 					},
 					{
-						name: 'models/imagen-3.0-generate-002',
-						value: 'models/imagen-3.0-generate-002',
-					},
-					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-2.5-flash-image (Nano Banana)',
 						value: 'models/gemini-2.5-flash-image',
@@ -189,13 +200,17 @@ describe('GoogleGemini -> listSearch', () => {
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
+						value: 'models/gemini-3.1-flash-lite-image',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
 						value: 'models/gemini-nano-banana-2.1',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
-						value: 'models/gemini-3.1-flash-lite-image',
+						name: 'models/imagen-3.0-generate-002',
+						value: 'models/imagen-3.0-generate-002',
 					},
 				],
 			});
@@ -242,13 +257,13 @@ describe('GoogleGemini -> listSearch', () => {
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
-						value: 'models/gemini-nano-banana-2.1',
+						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
+						value: 'models/gemini-3.1-flash-lite-image',
 					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'models/gemini-3.1-flash-lite-image (Nano Banana 2 Lite)',
-						value: 'models/gemini-3.1-flash-lite-image',
+						name: 'models/gemini-nano-banana-2.1 (Nano Banana 2.1)',
+						value: 'models/gemini-nano-banana-2.1',
 					},
 				],
 			});

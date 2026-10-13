@@ -137,7 +137,7 @@ describe('useModelCatalog', () => {
 
 	it('lists featured models first and the rest by name', async () => {
 		const { FEATURED_MODELS } = await import('@n8n/api-types');
-		FEATURED_MODELS.google = { 'gemini-featured': 'Gemini Featured' };
+		FEATURED_MODELS.google = ['gemini-featured'];
 		mocks.getModelCatalog.mockResolvedValue({});
 		mocks.getProviderModels.mockResolvedValue({
 			provider: 'google',
