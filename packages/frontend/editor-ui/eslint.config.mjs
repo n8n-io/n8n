@@ -51,10 +51,6 @@ const extractedFeatures = [
 	},
 ];
 
-/**
- * Prettier stays out of the startup bundle only while `loadPrettier` is its one runtime
- * importer. Spread next to `extractedFeatures` in every block that sets the rule.
- */
 const prettierImport = {
 	group: ['prettier', 'prettier/*'],
 	allowTypeImports: true,
