@@ -173,6 +173,12 @@ describe('POST /trusted-sources', () => {
 		],
 		['an issuer that is not a URL', { issuer: 'acme' }, ['issuer'], /url/i],
 		['an http issuer', { issuer: 'http://acme.example.com' }, ['issuer'], /https/],
+		[
+			'an unknown config key',
+			{ config: { ...minimalConfig(), identity: { typo: true } } },
+			['config', 'identity'],
+			/typo/,
+		],
 	])(
 		'refuses %s with the offending path and writes nothing',
 		async (_, overrides, path, message) => {
