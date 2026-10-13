@@ -1,5 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig } from '@n8n/api-types';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,6 +9,11 @@ import type { Agent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
+import {
+	type AgentFixtureOverrides,
+	type AgentHistoryFixtureOverrides,
+	createAgentSkillRefsService,
+} from '../../__tests__/test-utils/stored-agent-config';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
@@ -39,7 +45,7 @@ const customToolDescriptor: ToolDescriptor = {
 	providerOptions: null,
 };
 
-function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
+function makeAgentHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHistory {
 	return {
 		agentId,
 		versionId,
@@ -50,7 +56,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	} as unknown as AgentHistory;
 }
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 	return {
 		id: agentId,
 		name: 'Helper Agent',
@@ -75,7 +81,11 @@ describe('SubAgentSourceResolver', () => {
 		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
-		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);
+		resolver = new SubAgentSourceResolver(
+			agentRepository,
+			agentHistoryRepository,
+			createAgentSkillRefsService(agentRepository),
+		);
 	});
 
 	it('resolves the latest draft when no version is pinned', async () => {
@@ -110,6 +120,70 @@ describe('SubAgentSourceResolver', () => {
 				config: runnableConfig,
 			},
 		});
+	});
+
+	it('retains background configuration and tool bodies after a draft edit', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				tools: {
+					lookup: { descriptor: customToolDescriptor, code: 'original tool body' },
+				},
+				skills: {
+					original_skill: {
+						name: 'Original skill',
+						description: 'Original description',
+						instructions: 'Original skill body',
+					},
+				},
+			}),
+		);
+		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ schema: { name: 'Incomplete draft', model: '', instructions: '' }, tools: {} }),
+		);
+		const resumed = await resolver.resolveForRuntime(
+			{ agentId },
+			{ projectId, runtimeSnapshot: JSON.stringify(original) },
+		);
+		expect(resumed).toEqual(original);
+		const mismatchedSnapshot = resolver.resolveForRuntime(
+			{ agentId },
+			{
+				projectId,
+				runtimeSnapshot: JSON.stringify({
+					...original,
+					source: { ...original.source, sourceId: 'agent-2' },
+				}),
+			},
+		);
+		await expect(mismatchedSnapshot).rejects.toThrow(UserError);
+		await expect(mismatchedSnapshot).rejects.toThrow(
+			'Saved background task configuration does not match this agent',
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		await expect(
+			resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			),
+		).rejects.toThrow();
+	});
+
+	it.each([
+		['empty snapshot', ''],
+		['invalid JSON', '{'],
+		['null snapshot', 'null'],
+		['missing source', '{}'],
+		['null source', '{"source":null}'],
+		['missing source ID', JSON.stringify({ source: { config: runnableConfig } })],
+		['invalid config', JSON.stringify({ source: { sourceId: agentId, config: {} } })],
+	])('rejects saved background configuration with %s', async (_description, runtimeSnapshot) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		const result = resolver.resolveForRuntime({ agentId }, { projectId, runtimeSnapshot });
+
+		await expect(result).rejects.toThrow(UnexpectedError);
+		await expect(result).rejects.toThrow('Invalid saved background task configuration');
 	});
 
 	it('pins a resumed version over the currently published one in production runs', async () => {
@@ -253,6 +327,59 @@ describe('SubAgentSourceResolver', () => {
 		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
 			`Version "${versionId}" not found for agent "${agentId}"`,
 		);
+	});
+
+	describe('skill refs round trip', () => {
+		const draftRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+		];
+		const publishedRefs = [
+			{ type: 'skill' as const, id: 'mid', enabled: true },
+			{ type: 'skill' as const, id: 'zeta' },
+		];
+		const pinnedRefs = [{ type: 'skill' as const, id: 'old', enabled: false }];
+
+		beforeEach(() => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: { ...runnableConfig, skills: draftRefs },
+					activeVersion: makeAgentHistory({
+						schema: { ...runnableConfig, skills: publishedRefs },
+					}),
+				}),
+			);
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
+				makeAgentHistory({
+					versionId: 'pinned-version',
+					schema: { ...runnableConfig, skills: pinnedRefs },
+				}),
+			);
+		});
+
+		it('resolves the draft with the draft skill refs', async () => {
+			const result = await resolver.resolveForRuntime({ agentId }, { projectId });
+
+			expect(result.source.config.skills).toEqual(draftRefs);
+		});
+
+		it('resolves the published version with its skill refs', async () => {
+			const result = await resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, usePublishedVersion: true },
+			);
+
+			expect(result.source.config.skills).toEqual(publishedRefs);
+		});
+
+		it('resolves a pinned version with its skill refs', async () => {
+			const result = await resolver.resolveForRuntime(
+				{ agentId, versionId: 'pinned-version' },
+				{ projectId },
+			);
+
+			expect(result.source.config.skills).toEqual(pinnedRefs);
+		});
 	});
 
 	it('rejects a resolved config that is not runnable', async () => {

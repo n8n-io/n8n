@@ -14,6 +14,7 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { NodeSchemaContext, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	buildDateAnchors,
@@ -195,7 +196,8 @@ export async function generateEvalPinData(
 		const responseText =
 			typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
-		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
+		// The model sometimes explains its answer after the JSON block.
+		const pinData = parsePinDataResponse(extractJsonCandidate(responseText), expectedNodeNames);
 
 		// Envelope repair for parser-target roots; the shared helper derives the
 		// envelope key from each root's with-parser `__schema__` variant

@@ -9,11 +9,25 @@ import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
-import { useInstanceAiThreadHistory } from '../composables/useInstanceAiThreadHistory';
 import { useToast } from '@n8n/composables/useToast';
 import ChatHistoryDropdown, {
 	type ChatHistoryItemData,
 } from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
+import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
+import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
+import { useMergedChatHistory } from '@/features/agents/n8nChatPage/useMergedChatHistory';
+import {
+	agentThreadActions,
+	chatItemRoute,
+	chatItemTitle,
+	mergeRecentChats,
+	type RecentChatItem,
+} from '@/features/agents/n8nChatPage/mergeRecentChats';
+import {
+	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
+	RECENT_CHATS_LIMIT,
+} from '@/features/agents/constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -49,7 +63,42 @@ const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
 const toast = useToast();
-const { history, search, sentinelRef, loadMore } = useInstanceAiThreadHistory();
+const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+// An embedding host that scopes or disables navigation has no route for an agent
+// thread to land on — show only the Assistant threads it asked for, same as before
+// n8n Chat threads existed.
+const isScoped = computed(() => Boolean(props.filter) || !props.navigate);
+const agentThreadsStore = useAgentN8nChatThreadsStore();
+const showChatIcons = computed(() => isAgentsN8nChatFlag.value && !isScoped.value);
+// Falls back to the route param when omitted (the page's own use).
+const activeThreadId = computed(
+	() =>
+		props.activeThreadId ??
+		(typeof route.params.threadId === 'string' ? route.params.threadId : undefined),
+);
+// With n8n Chat on, the dropdown shows the same few recent chats as the sidebar; "View all"
+// leads to the full, paged list. Reads the store directly, rather than the `history` below:
+// `useMergedChatHistory`'s `enabled` option needs this to be built before it hands `history`
+// back.
+const isRecentOnly = computed(() => showChatIcons.value && !store.threadHistory.search);
+// A search merges in agent threads too (`GET /agents/v2/n8n-chat/threads` now takes
+// `search`), but only on the unscoped "new chat" entry page: once an Assistant thread is
+// open, or for an embedding host, search stays Assistant-only, same as `isRecentOnly` /
+// `isScoped` above.
+const searchesAgentThreads = computed(
+	() => showChatIcons.value && !isRecentOnly.value && activeThreadId.value === undefined,
+);
+
+const {
+	history,
+	search,
+	sentinelRef,
+	items: mergedItems,
+	hasMore: mergedHasMore,
+	isLoading: mergedIsLoading,
+	error: mergedError,
+	loadMore,
+} = useMergedChatHistory({ enabled: () => searchesAgentThreads.value });
 
 const menuOpen = ref(false);
 const menuContentId = useId();
@@ -60,11 +109,6 @@ const historyDropdownRef = ref<{
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
-const activeThreadId = computed(
-	() =>
-		props.activeThreadId ??
-		(typeof route.params.threadId === 'string' ? route.params.threadId : undefined),
-);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{
@@ -79,29 +123,81 @@ const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	},
 ];
 
-// Scope the server-paged history to the embedding host's subject, such as one agent.
-const filteredThreads = computed(() =>
-	props.filter ? history.value.threads.filter(props.filter) : history.value.threads,
+const agentActions = agentThreadActions(i18n);
+
+const AGENT_ITEM_ID_PREFIX = 'agent:';
+
+function itemRowId(item: RecentChatItem): string {
+	return item.kind === 'assistant' ? item.thread.id : `${AGENT_ITEM_ID_PREFIX}${item.thread.id}`;
+}
+
+const scopedItems = computed<RecentChatItem[]>(() => {
+	// Same merge as the sidebar.
+	if (isRecentOnly.value) {
+		return mergeRecentChats(history.value.threads, agentThreadsStore.knownThreads, {
+			limit: RECENT_CHATS_LIMIT,
+			openThreadId: activeThreadId.value,
+		});
+	}
+	// Agent threads merged in by the server search — `useMergedChatHistory` already folds
+	// both sources together, gated by the `enabled` option passed to it above.
+	if (searchesAgentThreads.value) return mergedItems.value;
+	// Scope the server-paged history to the embedding host's subject, such as one agent.
+	return history.value.threads
+		.filter((thread) => (props.filter ? props.filter(thread) : true))
+		.map((thread) => ({ kind: 'assistant' as const, thread }));
+});
+
+// The recent-only list never pages; "View all" opens the full list.
+const hasMore = computed(() => {
+	if (isRecentOnly.value) return false;
+	if (searchesAgentThreads.value) return mergedHasMore.value;
+	return history.value.hasMore;
+});
+const isLoading = computed(() =>
+	searchesAgentThreads.value ? mergedIsLoading.value : history.value.loading,
+);
+const error = computed(() =>
+	searchesAgentThreads.value ? mergedError.value : history.value.error,
 );
 
 const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemData>>>(() =>
-	filteredThreads.value.map((thread) => ({
-		id: thread.id,
-		label: thread.title,
-		disabled: props.disabled,
-		testId: 'instance-ai-thread-item',
-		data: {
-			updatedAt: thread.updatedAt ?? thread.createdAt,
-			actions: threadActions,
-		},
-	})),
+	scopedItems.value.map((item) => {
+		if (item.kind === 'assistant') {
+			return {
+				id: item.thread.id,
+				label: item.thread.title,
+				disabled: props.disabled,
+				testId: 'instance-ai-thread-item',
+				data: {
+					updatedAt: item.thread.updatedAt ?? item.thread.createdAt,
+					actions: threadActions,
+				},
+			};
+		}
+		return {
+			id: itemRowId(item),
+			label: chatItemTitle(item, i18n),
+			disabled: props.disabled,
+			testId: 'instance-ai-agent-thread-item',
+			data: { updatedAt: item.thread.updatedAt, actions: agentActions },
+		};
+	}),
 );
 
-const lastVisibleThreadId = computed(() => filteredThreads.value.at(-1)?.id);
+const itemsById = computed(
+	() => new Map(scopedItems.value.map((item) => [itemRowId(item), item] as const)),
+);
+
+const lastVisibleItemId = computed(() => {
+	const last = scopedItems.value.at(-1);
+	return last ? itemRowId(last) : undefined;
+});
 let restoreTriggerFocus = false;
 
+// Counts the shown rows, so a search that only matches agent threads also highlights.
 watch(
-	[() => history.value.threads.length, () => history.value.search],
+	[() => scopedItems.value.length, () => history.value.search],
 	([threadCount, searchTerm], [previousThreadCount]) => {
 		if (!searchTerm || previousThreadCount !== 0 || threadCount === 0) return;
 		void nextTick(() => historyDropdownRef.value?.highlightFirstItem());
@@ -112,6 +208,9 @@ function handleMenuOpenChange(open: boolean) {
 	menuOpen.value = open;
 	if (open) {
 		restoreTriggerFocus = false;
+		// Same store and page size as the sidebar, so both lists agree.
+		if (showChatIcons.value)
+			void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
 		return;
 	}
 	if (!restoreTriggerFocus) return;
@@ -204,8 +303,8 @@ async function confirmRename(threadId: string) {
 			type: 'success',
 			title: i18n.baseText('instanceAi.threads.renameSuccess'),
 		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('instanceAi.threads.renameError'));
+	} catch (renameError) {
+		toast.showError(renameError, i18n.baseText('instanceAi.threads.renameError'));
 	}
 }
 
@@ -222,13 +321,33 @@ function handleThreadSelect(threadId: string) {
 	}
 }
 
-function handleThreadAction(action: string, threadId: string) {
+function handleMenuSelect(itemId: string) {
 	if (props.disabled) return;
+	if (!itemId.startsWith(AGENT_ITEM_ID_PREFIX)) {
+		handleThreadSelect(itemId);
+		return;
+	}
+	const agentItem = itemsById.value.get(itemId);
+	if (agentItem?.kind !== 'agent') return;
+	restoreTriggerFocus = true;
+	void router.push(chatItemRoute(agentItem));
+}
+
+function handleThreadAction(action: string, itemId: string) {
+	if (props.disabled) return;
+	if (itemId.startsWith(AGENT_ITEM_ID_PREFIX)) {
+		// This dropdown is Assistant-only (never open on an agent's own chat page), so
+		// deleting here never needs to navigate away.
+		const item = itemsById.value.get(itemId);
+		if (action === 'delete' && item?.kind === 'agent')
+			void agentThreadsStore.deleteThread(item.thread);
+		return;
+	}
 	if (action === 'delete') {
-		void handleDeleteThread(threadId);
+		void handleDeleteThread(itemId);
 	} else if (action === 'rename') {
 		// Wait for the action menu to unmount before the rename input takes focus.
-		requestAnimationFrame(() => startRename(threadId));
+		requestAnimationFrame(() => startRename(itemId));
 	}
 }
 </script>
@@ -238,7 +357,7 @@ function handleThreadAction(action: string, threadId: string) {
 		ref="historyDropdownRef"
 		:model-value="menuOpen"
 		:items="menuItems"
-		:loading="history.loading && filteredThreads.length === 0"
+		:loading="isLoading && scopedItems.length === 0"
 		:max-height="props.maxHeight"
 		:search-placeholder="i18n.baseText('instanceAi.threads.searchPlaceholder')"
 		:action-button-label="i18n.baseText('instanceAi.threads.actions')"
@@ -248,13 +367,17 @@ function handleThreadAction(action: string, threadId: string) {
 		:content-id="menuContentId"
 		content-test-id="instance-ai-thread-list"
 		@search="search = $event"
-		@select="handleThreadSelect"
+		@select="handleMenuSelect"
 		@action="handleThreadAction"
 		@item-dblclick="startRename"
 		@update:model-value="handleMenuOpenChange"
 	>
 		<template v-if="$slots.trigger" #trigger>
 			<slot name="trigger" />
+		</template>
+
+		<template v-if="showChatIcons" #item-leading="{ item, ui }">
+			<RecentChatIcon :class="ui.class" :item="itemsById.get(item.id)" />
 		</template>
 
 		<template #loading>
@@ -268,10 +391,10 @@ function handleThreadAction(action: string, threadId: string) {
 		<template #empty>
 			<div
 				:class="$style.empty"
-				:role="history.error ? 'alert' : 'status'"
+				:role="error ? 'alert' : 'status'"
 				data-test-id="instance-ai-thread-list-empty"
 			>
-				<template v-if="history.error">
+				<template v-if="error">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.threads.loadError') }}
 					</N8nText>
@@ -280,7 +403,7 @@ function handleThreadAction(action: string, threadId: string) {
 					</N8nButton>
 				</template>
 				<div
-					v-else-if="history.hasMore && !history.loading && !history.error"
+					v-else-if="hasMore && !isLoading && !error"
 					ref="sentinelRef"
 					:class="$style.sentinel"
 					data-test-id="instance-ai-thread-sentinel"
@@ -313,9 +436,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 		<template #item-trailing="{ item }">
 			<div
-				v-if="
-					item.id === lastVisibleThreadId && history.hasMore && !history.loading && !history.error
-				"
+				v-if="item.id === lastVisibleItemId && hasMore && !isLoading && !error"
 				ref="sentinelRef"
 				:class="$style.sentinel"
 				data-test-id="instance-ai-thread-sentinel"
@@ -323,24 +444,13 @@ function handleThreadAction(action: string, threadId: string) {
 		</template>
 
 		<template #footer>
-			<div
-				v-if="filteredThreads.length > 0 && (history.loading || history.error || navigate)"
-				:class="$style.footer"
-			>
-				<div
-					v-if="filteredThreads.length > 0 && history.loading"
-					:class="$style.status"
-					role="status"
-				>
+			<div v-if="scopedItems.length > 0 && (isLoading || error || navigate)" :class="$style.footer">
+				<div v-if="scopedItems.length > 0 && isLoading" :class="$style.status" role="status">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.threads.loading') }}
 					</N8nText>
 				</div>
-				<div
-					v-else-if="filteredThreads.length > 0 && history.error"
-					:class="$style.status"
-					role="alert"
-				>
+				<div v-else-if="scopedItems.length > 0 && error" :class="$style.status" role="alert">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.threads.loadError') }}
 					</N8nText>

@@ -96,6 +96,7 @@ export const createUpdateUserPreferenceTool = (
 
 		const refuse = (reason: PreferenceWriteReason, message: string, textLength?: number) => {
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+				user_id: user.id,
 				surface: 'mcp',
 				reason: toRejectedReason(reason),
 				// The scope the call named, when it named one. The field is absent only for a
@@ -165,6 +166,7 @@ export const createUpdateUserPreferenceTool = (
 				logger.error('Updating an AI preference over MCP failed', { error });
 			}
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+				user_id: user.id,
 				surface: 'mcp',
 				reason: toRejectedReason(reason),
 				scope_type: requestedScope ?? beforeScope,
@@ -186,6 +188,7 @@ export const createUpdateUserPreferenceTool = (
 
 		const scope = preferenceScopeOf(preference);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE, {
+			user_id: user.id,
 			surface: 'mcp',
 			scope_type: scope,
 			text_length: preference.content.length,
@@ -195,6 +198,7 @@ export const createUpdateUserPreferenceTool = (
 		// as an edit from the review form. Without it an MCP edit is invisible to the ratio that
 		// says whether the assistant saves the right text.
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface: 'mcp',
 			outcome: 'accepted_after_edit',
 			scope_type: scope,
@@ -203,6 +207,7 @@ export const createUpdateUserPreferenceTool = (
 		// The same pair the chat card fires on a move, so one number covers every surface that
 		// can take a preference off the scope the tool wrote it with.
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			user_id: user.id,
 			scope_type: scope,
 			text_length: preference.content.length,
 			// The same answer the move event gives. A change of project is a move, and reading
@@ -213,6 +218,7 @@ export const createUpdateUserPreferenceTool = (
 		});
 		if (moved) {
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+				user_id: user.id,
 				surface: 'mcp',
 				offered_scope: beforeScope,
 				accepted_scope: scope,

@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -8,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@n8n/errors';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -22,6 +24,7 @@ const context = {
 	threadId: 'thread-1',
 	executionId: 'execution-1',
 	userId: 'user-1',
+	surface: 'preview' as const,
 };
 const thread = mock<AgentExecutionThread>({
 	id: context.threadId,
@@ -61,6 +64,8 @@ function makeService(isMultiMain = true) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const publisher = mock<Publisher>();
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
+	const steering = mock<AgentMessageSteeringService>();
+	const backgroundJobs = mock<AgentBackgroundJobService>();
 	const service = new AgentChatExecutionService(
 		Container.get(LockService),
 		repository,
@@ -69,6 +74,8 @@ function makeService(isMultiMain = true) {
 		publisher,
 		mock<InstanceSettings>({ isMultiMain }),
 		updates,
+		steering,
+		backgroundJobs,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
 	repository.findOneBy.mockImplementation(async (where) =>
@@ -80,10 +87,48 @@ function makeService(isMultiMain = true) {
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 	checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
-	return { service, repository, executionService, checkpointStorage, publisher, updates };
+	return {
+		service,
+		repository,
+		executionService,
+		checkpointStorage,
+		publisher,
+		updates,
+		steering,
+		backgroundJobs,
+	};
 }
 
 beforeEach(() => Container.reset());
+
+it('closes steering admission before signaling Stop', async () => {
+	const { service, steering } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	const committed = createDeferredPromise();
+	steering.close.mockReturnValue(committed.promise);
+	const stopping = service.requestCancel(context);
+	await vi.waitFor(() =>
+		expect(steering.close).toHaveBeenCalledWith(context.threadId, context.executionId),
+	);
+	try {
+		expect(controller.signal.aborted).toBe(false);
+	} finally {
+		committed.resolve();
+	}
+	await stopping;
+	expect(controller.signal.aborted).toBe(true);
+	await service.settle(context.executionId, async () => {});
+});
+
+it('leaves background children running when a connection closes during suspension', async () => {
+	const { service, backgroundJobs } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	controller.abort();
+	await service.settle(context.executionId, async () => {}, 'run-1');
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
 
 it.each([
 	{ userId: 'other-user' },
@@ -112,11 +157,22 @@ it('relays Stop to the owning main and leaves other and later executions running
 	mainA.service.register(context, controller);
 	mainA.service.register({ ...context, threadId: 'thread-2', executionId: 'execution-2' }, other);
 	expect(await mainB.service.requestCancel(context)).toBe(true);
+	expect(mainB.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		'agent-1',
+		'thread-1',
+		'draft-chat:user-1',
+	);
+	const { surface: _surface, ...wireContext } = context;
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 		command: 'cancel-agent-chat-execution',
-		payload: context,
+		payload: { ...wireContext, productionN8nChat: false },
 	});
 	await mainA.service.handleCancel(context);
+	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		'agent-1',
+		'thread-1',
+		'draft-chat:user-1',
+	);
 	await mainA.service.handleCancel(context);
 	expect(controller.signal.aborted).toBe(true);
 	expect(other.signal.aborted).toBe(false);
@@ -125,6 +181,33 @@ it('relays Stop to the owning main and leaves other and later executions running
 	mainA.service.register({ ...context, executionId: 'execution-3' }, next);
 	await mainA.service.handleCancel(context);
 	expect(next.signal.aborted).toBe(false);
+});
+
+it('keeps pubsub wire compatibility with a main still on the old productionN8nChat payload', async () => {
+	const mainA = makeService();
+	const mainB = makeService();
+	const controller = new AbortController();
+	const production = { ...context, surface: 'n8n-chat' as const };
+	mainA.service.register(production, controller);
+	const producedExecution = { ...running, source: 'n8n_chat_production' };
+	mainA.repository.findOneBy.mockResolvedValue(producedExecution);
+	mainB.repository.findOneBy.mockResolvedValue(producedExecution);
+
+	expect(await mainB.service.requestCancel(production)).toBe(true);
+	const { surface: _surface, ...wireContext } = production;
+	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
+		command: 'cancel-agent-chat-execution',
+		payload: { ...wireContext, productionN8nChat: true },
+	});
+
+	// An old main on the previous version relays this shape, with no `surface` field.
+	await mainA.service.handleCancel({ ...wireContext, productionN8nChat: true });
+	expect(controller.signal.aborted).toBe(true);
+	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		'agent-1',
+		'thread-1',
+		'n8n-chat-production:user-1',
+	);
 });
 
 it.each(['local', 'remote', 'during validation'] as const)(
@@ -269,7 +352,7 @@ it('requires the production source before cancelling a suspended run', async () 
 
 it('rejects preview and foreign executions on the production cancel route', async () => {
 	const { service, repository } = makeService();
-	const production = { ...context, productionN8nChat: true };
+	const production = { ...context, surface: 'n8n-chat' as const };
 	await expect(service.requestCancel(production)).rejects.toBeInstanceOf(NotFoundError);
 	repository.findOneBy.mockResolvedValue({ ...running, source: 'n8n_chat_production' });
 	await expect(

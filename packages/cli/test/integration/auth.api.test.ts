@@ -336,6 +336,7 @@ describe('GET /resolve-signup-token', () => {
 	test('should validate invite token', async () => {
 		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 		const token = Container.get(JwtService).sign(
+			'invite',
 			{ inviterId: owner.id, inviteeId: memberShell.id },
 			{ expiresIn: '90d' },
 		);
@@ -357,6 +358,7 @@ describe('GET /resolve-signup-token', () => {
 		license.setQuota('quota:users', 0);
 		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 		const token = Container.get(JwtService).sign(
+			'invite',
 			{ inviterId: owner.id, inviteeId: memberShell.id },
 			{ expiresIn: '90d' },
 		);
@@ -369,6 +371,7 @@ describe('GET /resolve-signup-token', () => {
 	test('should fail with invalid inputs', async () => {
 		const { id: inviteeId } = await createUser({ role: { slug: 'global:member' } });
 		const validToken = Container.get(JwtService).sign(
+			'invite',
 			{ inviterId: owner.id, inviteeId },
 			{ expiresIn: '90d' },
 		);
@@ -397,6 +400,7 @@ describe('GET /resolve-signup-token', () => {
 	test('should send roles for user-invite-email-click event', async () => {
 		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
 		const token = Container.get(JwtService).sign(
+			'invite',
 			{ inviterId: owner.id, inviteeId: memberShell.id },
 			{ expiresIn: '90d' },
 		);

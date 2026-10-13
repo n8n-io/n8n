@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
+import { TaskTimeoutError } from '@n8n/scheduler';
 import { SpanStatus, type Span, type StartSpanOpts, type Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -35,6 +36,25 @@ describe('observeSystemTaskRun', () => {
 		async () => {
 			throw error;
 		};
+
+	it.each([
+		{ mode: 'durable' as const, durable: true },
+		{ mode: 'leader_timer' as const, durable: false },
+		{ mode: 'instance_timer' as const, durable: false },
+	])('tells a $mode run whether it is durable', async ({ mode, durable }) => {
+		const run = vi.fn(resolves);
+		const signal = new AbortController().signal;
+
+		await observeSystemTaskRun(
+			mock<EventService>(),
+			setupTracing().tracing,
+			taskThat(run),
+			mode,
+			signal,
+		);
+
+		expect(run).toHaveBeenCalledExactlyOnceWith(signal, { durable });
+	});
 
 	it('settles a run that throws synchronously as a failure, rather than rejecting', async () => {
 		const eventService = mock<EventService>();
@@ -166,5 +186,37 @@ describe('observeSystemTaskRun', () => {
 
 		expect(span.setAttribute).toHaveBeenCalledWith('n8n.system_task.result', 'aborted');
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
+	});
+
+	it.each([
+		{ aborted: ['lease'], result: 'lease_lost' },
+		{ aborted: ['shutdown'], result: 'aborted' },
+		{ aborted: ['shutdown', 'lease'], result: 'lease_lost' },
+		{ aborted: ['timeout'], result: 'timed_out' },
+	] as const)('settles a run stopped by $aborted as $result', async ({ aborted, result }) => {
+		const eventService = mock<EventService>();
+		const controllers = { shutdown: new AbortController(), lease: new AbortController() };
+		const task = taskThat(async () => {
+			aborted.forEach((source) =>
+				source === 'timeout'
+					? controllers.lease.abort(new TaskTimeoutError(60))
+					: controllers[source].abort(),
+			);
+		});
+
+		const outcome = await observeSystemTaskRun(
+			eventService,
+			setupTracing().tracing,
+			task,
+			'durable',
+			controllers.shutdown.signal,
+			controllers.lease.signal,
+		);
+
+		expect(outcome.result).toBe(result);
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'system-task-run-settled',
+			expect.objectContaining({ result }),
+		);
 	});
 });

@@ -8,7 +8,7 @@ import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 

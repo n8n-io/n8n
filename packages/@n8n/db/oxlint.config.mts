@@ -21,6 +21,12 @@ export default defineConfig({
 	},
 	overrides: [
 		{
+			files: ['src/migrations/**/*.ts'],
+			rules: {
+				'typescript/no-deprecated': 'off',
+			},
+		},
+		{
 			files: ['src/migrations/sqlite/1681134145996-AddUserActivatedProperty.ts'],
 			rules: { 'typescript/no-base-to-string': 'warn' },
 		},

@@ -37,7 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: packages/testing/playwright/scripts/canvas-perf-sentinels.mjs
+          sparse-checkout: packages/quality/testing/playwright/scripts/canvas-perf-sentinels.mjs
           sparse-checkout-cone-mode: false
 
       - name: Download performance shard artifacts
@@ -54,4 +54,4 @@ jobs:
             echo "::warning::No test-results.json found in performance artifacts — sentinel skipped."
             exit 0
           fi
-          node packages/testing/playwright/scripts/canvas-perf-sentinels.mjs "${RESULTS_PATHS[@]}"
+          node packages/quality/testing/playwright/scripts/canvas-perf-sentinels.mjs "${RESULTS_PATHS[@]}"

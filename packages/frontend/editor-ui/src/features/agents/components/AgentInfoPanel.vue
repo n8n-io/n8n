@@ -67,6 +67,7 @@ const props = withDefaults(
 );
 const emit = defineEmits<{
 	'update:config': [changes: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
 }>();
 
 const i18n = useI18n();
@@ -220,6 +221,7 @@ function scheduleDeploymentNameEmit(value: string) {
 
 function onDeploymentNameInput(value: string) {
 	deploymentName.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		cancelDeploymentNameEmit();
 		emit('update:config', { modelDeploymentName: value });
@@ -352,6 +354,8 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 }
 
 const instructions = ref(props.config?.instructions ?? '');
+const instructionsEditor = ref<InstanceType<typeof N8nMarkdownEditor>>();
+const modelSelector = ref<InstanceType<typeof AgentModelSelector>>();
 
 // Keep the local editor stable while external config updates arrive.
 watch(
@@ -365,14 +369,24 @@ const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
+function focusInstructions() {
+	instructionsEditor.value?.focus();
+}
+
+function focusModel() {
+	modelSelector.value?.open();
+}
+
 function onInstructionsInput(value: string) {
 	instructions.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		emit('update:config', { instructions: value });
 		return;
 	}
 	void emitInstructionsDebounced();
 }
+defineExpose({ focusInstructions, focusModel });
 </script>
 
 <template>
@@ -394,6 +408,7 @@ function onInstructionsInput(value: string) {
 						</N8nText>
 					</div>
 					<AgentModelSelector
+						ref="modelSelector"
 						:disabled="props.disabled"
 						:selected-model="selectedAgent"
 						:credentials="effectiveCredentials"
@@ -476,6 +491,7 @@ function onInstructionsInput(value: string) {
 					</N8nText>
 				</div>
 				<N8nMarkdownEditor
+					ref="instructionsEditor"
 					:id="instructionsEditorId"
 					:class="$style.instructionsDocument"
 					:model-value="instructions"

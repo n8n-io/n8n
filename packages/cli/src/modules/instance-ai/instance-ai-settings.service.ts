@@ -1,4 +1,5 @@
-import { EventService } from '@n8n/backend-services';
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -17,6 +18,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
+	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
@@ -36,7 +38,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,
@@ -1247,6 +1248,15 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
+	getMcpToolPermissions(): McpToolPermissions {
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
+	}
+
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
@@ -1469,8 +1479,8 @@ export class InstanceAiSettingsService {
 		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
-		if (!provider) {
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (!credentialProvider) {
 			return null;
 		}
 
@@ -1478,10 +1488,22 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
+		// The UI saves its self-hosted option as an OpenAI credential with a custom URL.
+		// These servers speak /chat/completions, so build them like an env `custom/` model.
+		const provider =
+			credentialType === 'openAiApi' && baseUrl && isOpenAiCustomEndpoint(baseUrl)
+				? 'custom'
+				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
-		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+		return {
+			id,
+			url: baseUrl,
+			...(apiKey ? { apiKey } : {}),
+			...(headers ? { headers } : {}),
+			...this.customModelOptionsFor(id),
+		};
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────
@@ -1851,7 +1873,9 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

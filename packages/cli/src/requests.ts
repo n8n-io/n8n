@@ -211,15 +211,7 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<
-		{},
-		{},
-		{ name?: string; verify?: boolean; version?: string; checksum?: string }
-	>;
-
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
-
-	type Update = Post;
 }
 
 // ----------------------------------

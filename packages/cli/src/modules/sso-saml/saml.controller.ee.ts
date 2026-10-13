@@ -18,6 +18,7 @@ import { sendErrorResponse } from '@/response-helper';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
+import { SamlEmailNotVerifiedError } from './errors/saml-email-not-verified.error';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
@@ -187,8 +188,9 @@ export class SamlController {
 				return res.render('saml-connection-test-failed', { message: (error as Error).message });
 			}
 			this.eventService.emit('user-login-failed', {
-				userEmail: 'unknown',
+				userEmail: error instanceof SamlEmailNotVerifiedError ? error.email : 'unknown',
 				authenticationMethod: 'saml',
+				reason: (error as Error).message,
 			});
 			// A login denied by role mapping is not a failure to authenticate: send the
 			// user to the sign-in page, which explains they have no access.
@@ -213,6 +215,7 @@ export class SamlController {
 		try {
 			const refererUrl = req.headers.referer;
 			if (refererUrl) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const parsedUrl = url.parse(refererUrl);
 				if (parsedUrl?.query) {
 					const parsedQueryParams = querystring.parse(parsedUrl.query);

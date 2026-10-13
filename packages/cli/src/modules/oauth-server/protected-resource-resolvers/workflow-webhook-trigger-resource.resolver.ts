@@ -167,6 +167,7 @@ export class WorkflowWebhookTriggerResourceResolver implements ProtectedResource
 				id: `workflow-webhook:${workflow.id}:${resourcePath}`,
 				// Canonical URL = the method being resolved, so the metadata document served
 				// at `?method=POST` advertises `?method=POST` back (RFC 9728 §3.1).
+				surface: 'trigger' as const,
 				getResourceUrl: () => urlFor(requestedMethod),
 				// A token minted for any of this trigger's methods is accepted at all of
 				// them; cross-trigger replay stays impossible because the list is built

@@ -27,6 +27,20 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
+import { getCredentialOptions } from '../../credentials.api';
+
+vi.mock('../../credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getCredentialOptions: vi.fn(),
+}));
+
+const { isAgentUi, getAgentCredentialHelp } = vi.hoisted(() => ({
+	isAgentUi: { value: false },
+	getAgentCredentialHelp: vi.fn(),
+}));
+vi.mock('@/features/agents/composables/useAgentAssistantCredentialHelp', () => ({
+	useAgentAssistantCredentialHelp: () => ({ isAgentUi, getCredentialHelp: getAgentCredentialHelp }),
+}));
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
@@ -359,6 +373,8 @@ const createCredentialResponse = (
 describe('CredentialEdit', () => {
 	beforeEach(() => {
 		broadcastMessageListener = undefined;
+		isAgentUi.value = false;
+		getAgentCredentialHelp.mockReset();
 		routerCurrentRouteMock.value = { query: {} };
 		aiGatewayBalance.value = 1;
 		aiGatewayEnabled.value = false;
@@ -1308,6 +1324,46 @@ describe('CredentialEdit', () => {
 			return { credentialsStore, pinia, uiStore };
 		};
 
+		it.each([
+			{ agentUi: true, accepted: true },
+			{ agentUi: true, accepted: false },
+			{ agentUi: false, accepted: true },
+		])(
+			'uses the credential help for its surface (Agent UI: $agentUi, accepted: $accepted)',
+			async ({ agentUi, accepted }) => {
+				isAgentUi.value = agentUi;
+				const panelHelp = vi.fn().mockResolvedValue(accepted);
+				getAgentCredentialHelp.mockReturnValue(panelHelp);
+				const chatHelp = vi.fn().mockResolvedValue(true);
+				const credentialType: ICredentialType = {
+					name: 'testApi',
+					displayName: 'Test API',
+					properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
+				};
+				const { pinia, uiStore } = setupNewCredential(credentialType, {
+					instanceAiCredentialHelp: chatHelp,
+				});
+				const view = renderComponent({
+					props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+					pinia,
+				});
+				const helpButton = await view.findByTestId('credential-edit-instance-ai-help-button');
+				await userEvent.click(within(helpButton).getByRole('button'));
+
+				await waitFor(() => {
+					expect(agentUi ? panelHelp : chatHelp).toHaveBeenCalledWith(
+						expect.objectContaining({ credentialType: 'testApi', displayName: 'Test API' }),
+					);
+				});
+				expect(agentUi ? chatHelp : panelHelp).not.toHaveBeenCalled();
+				if (accepted || !agentUi) {
+					expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+				} else {
+					expect(uiStore.closeModal).not.toHaveBeenCalled();
+				}
+			},
+		);
+
 		const setupGatewayCredentialError = async ({
 			contextNode = {
 				id: 'node-1',
@@ -1743,6 +1799,109 @@ describe('CredentialEdit', () => {
 				},
 			);
 		});
+
+		test.each(['custom', 'listed'])(
+			'saves a %s project without a credential test',
+			async (mode) => {
+				const credentialType: ICredentialType = {
+					name: 'googleVertexAiApi',
+					displayName: 'Google Vertex AI',
+					properties: [
+						{
+							name: 'email',
+							displayName: 'Service Account Email',
+							type: 'string',
+							default: '',
+							required: true,
+						},
+						{
+							name: 'privateKey',
+							displayName: 'Private Key',
+							type: 'string',
+							default: '',
+							required: true,
+							typeOptions: { password: true },
+						},
+						{
+							name: 'project',
+							displayName: 'Project',
+							type: 'options',
+							options: [{ name: 'Custom', value: '__custom__' }],
+							default: '__custom__',
+							typeOptions: {
+								loadOptionsMethod: 'projects',
+								loadOptionsDependsOn: ['email', 'privateKey'],
+							},
+						},
+						{
+							name: 'projectId',
+							displayName: 'Project ID',
+							type: 'string',
+							required: true,
+							default: '',
+							displayOptions: { show: { project: ['__custom__'] } },
+						},
+					],
+				};
+				const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+					initialData: { email: 'service@example.com', privateKey: 'draft-key' },
+					closeOnSave: true,
+				});
+				if (mode === 'custom') {
+					vi.mocked(getCredentialOptions).mockRejectedValue(new Error('Permission denied'));
+				} else {
+					vi.mocked(getCredentialOptions).mockResolvedValue({
+						results: [{ name: 'Target project', value: 'target-project' }],
+					});
+				}
+				const view = renderComponent({
+					props: {
+						activeId: credentialType.name,
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'new',
+					},
+					pinia,
+				});
+				const saveButton = await view.findByRole('button', { name: 'Save' });
+				const projectSelect = await view.findByLabelText('Project');
+				const projectIdForm = view.getByText('Project ID').closest('form')!;
+				const projectIdInput = within(projectIdForm).getByRole('textbox');
+				expect(projectSelect).toHaveValue('Custom');
+				expect(projectIdInput).toBeVisible();
+				expect(saveButton).toBeDisabled();
+				expect(credentialsStore.createNewCredential).not.toHaveBeenCalled();
+				if (mode === 'custom') {
+					await userEvent.click(projectIdInput);
+					await userEvent.paste('target-project');
+				} else {
+					await waitFor(() => expect(projectSelect).toBeEnabled());
+					await userEvent.click(projectSelect);
+					await userEvent.click(await view.findByText('Target project'));
+					expect(view.queryByText('Project ID')).toBeNull();
+					expect(projectIdInput).not.toBeInTheDocument();
+				}
+				await waitFor(() => expect(saveButton).toBeEnabled());
+				await userEvent.click(saveButton);
+				await waitFor(() =>
+					expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'googleVertexAiApi',
+							data: {
+								email: 'service@example.com',
+								privateKey: 'draft-key',
+								...(mode === 'custom'
+									? { projectId: 'target-project' }
+									: { project: 'target-project' }),
+							},
+						}),
+						'personal-project',
+						undefined,
+					),
+				);
+				expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+			},
+		);
 
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {

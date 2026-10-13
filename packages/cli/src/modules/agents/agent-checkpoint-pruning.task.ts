@@ -1,8 +1,10 @@
+import { DatabaseConfig, statementTimeoutSeconds } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
 
 /**
  * Expires agent checkpoints past their TTL, so a stale suspended run can no
@@ -24,9 +26,22 @@ export class AgentCheckpointPruningTask implements SystemTask {
 
 	readonly retryDelaySeconds = 30;
 
-	constructor(private readonly checkpointStorage: N8NCheckpointStorage) {}
+	// The checkpoint step is one UPDATE that ignores the signal. A timeout that
+	// stops the run before the UPDATE ends lets the next run start a second one,
+	// so it waits for the statement timeout first.
+	readonly timeoutSeconds = timeoutAfterLimit(
+		statementTimeoutSeconds(this.databaseConfig),
+		5 * Time.minutes.toSeconds,
+	);
 
-	async run(): Promise<void> {
+	constructor(
+		private readonly databaseConfig: DatabaseConfig,
+		private readonly checkpointStorage: N8NCheckpointStorage,
+		private readonly backgroundJobs: AgentBackgroundJobService,
+	) {}
+
+	async run(signal: AbortSignal): Promise<void> {
 		await this.checkpointStorage.pruneStaleSuspensions();
+		await this.backgroundJobs.pruneExpiredPausedJobs(undefined, signal);
 	}
 }

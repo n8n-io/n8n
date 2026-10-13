@@ -39,7 +39,8 @@ const renderComponent = createThreadComponentRenderer(InstanceAiMessageComponent
 	global: {
 		stubs: {
 			AgentActivityTree: {
-				template: '<div data-test-id="agent-activity-tree" />',
+				template:
+					'<div data-test-id="agent-activity-tree" :data-entries="agentNode.timeline.length" />',
 				props: ['agentNode', 'isRoot'],
 			},
 		},
@@ -413,10 +414,11 @@ describe('InstanceAiMessage', () => {
 			const bubble = getByTestId('instance-ai-answered-questions');
 			expect(bubble).toHaveTextContent('HubSpot');
 			expect(copy.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '1');
 		});
 
 		it('should leave answers in the timeline when text follows them', () => {
-			const { queryByTestId } = renderComponent({
+			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					message: makeMessage({
 						content: 'Hi',
@@ -429,6 +431,28 @@ describe('InstanceAiMessage', () => {
 			});
 
 			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '3');
+		});
+
+		it.each([
+			{ name: 'a pending card', status: 'completed', isLoading: true },
+			{ name: 'an answer while the run is active', status: 'active', isLoading: false },
+		] as const)('should leave $name in the timeline', ({ status, isLoading }) => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						content: 'Hi',
+						agentTree: makeAgentTree({
+							status,
+							toolCalls: [{ ...answeredCall, isLoading }],
+							timeline: [greeting, answer],
+						}),
+					}),
+				},
+			});
+
+			expect(queryByTestId('instance-ai-answered-questions')).not.toBeInTheDocument();
+			expect(getByTestId('agent-activity-tree')).toHaveAttribute('data-entries', '2');
 		});
 	});
 });

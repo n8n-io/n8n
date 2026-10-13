@@ -1,0 +1,114 @@
+operationId: deleteDataTableRows
+tags:
+  - DataTable
+summary: Delete rows from a data table
+description: Delete rows matching filter conditions from a data table. Filter is required to prevent accidental deletion of all data.
+x-required-scope: dataTableRow:delete
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+  - schema:
+      type: string
+      format: jsonString
+    required: true
+    description: JSON string of filter conditions. Required to prevent accidental deletion of all data.
+    example: '{"type":"and","filters":[{"columnName":"status","condition":"eq","value":"archived"}]}'
+    name: filter
+    in: query
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    description: If true, return the deleted rows. If false, return true on success.
+    name: returnData
+    in: query
+  - schema:
+      type: string
+      enum:
+        - 'true'
+        - 'false'
+      default: 'false'
+    required: false
+    description: If true, preview which rows would be deleted without actually deleting them.
+    name: dryRun
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          anyOf:
+            - type: boolean
+              description: Returned when returnData is false and dryRun is false
+            - type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    nullable: true
+                    description: The row ID (auto-generated)
+                  createdAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                    description: The date and time the row was created
+                  updatedAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                    description: The date and time the row was last updated
+                  dryRunState:
+                    type: string
+                    enum:
+                      - before
+                      - after
+                    description: Whether this entry shows the row state before or after the change
+                required:
+                  - id
+                  - createdAt
+                  - updatedAt
+                  - dryRunState
+              description: 'Returned when dryRun is true: one entry per row per before/after state'
+            - type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: The row ID (auto-generated)
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: The date and time the row was created
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: The date and time the row was last updated
+                required:
+                  - id
+                  - createdAt
+                  - updatedAt
+                description: A data table row with system columns (id, createdAt, updatedAt) and user-defined columns
+              description: Returned when returnData is true and dryRun is false
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

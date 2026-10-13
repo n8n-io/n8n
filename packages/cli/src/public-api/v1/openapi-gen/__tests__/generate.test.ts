@@ -9,6 +9,7 @@ import {
 	registerSharedSchemas,
 	type OpenApiDocument,
 } from '../generate';
+import { buildBinarySuccessResponse } from '../decorator-routes';
 
 function makeNamedResponseDto(className: string, shape: Parameters<typeof Z.class>[0]) {
 	return { [className]: class extends Z.class(shape) {} }[className];
@@ -185,6 +186,36 @@ describe('shared schema registry', () => {
 		expect(op1).not.toContain('\\');
 	});
 
+	it('strips the untyped nullable an unknown array item generates, leaving items: {}', () => {
+		const registry = new OpenAPIRegistry();
+		const widget = registry.register(
+			'Widget',
+			z.object({ id: z.string(), nodes: z.array(z.unknown()) }),
+		);
+
+		registry.registerPath({
+			method: 'get',
+			path: '/widgets',
+			responses: {
+				200: { description: 'ok', content: { 'application/json': { schema: widget } } },
+			},
+		});
+
+		const artifacts = buildArtifactsFromRegistry(registry, [
+			{
+				outputPath: 'handlers/widgets/spec/paths/getWidgets.generated.yml',
+				pathKey: '/widgets',
+				method: 'get',
+			},
+		]);
+
+		const schemaFile = artifacts.find(
+			(a) => a.outputPath === 'shared/spec/schemas/widget.generated.yml',
+		);
+		expect(schemaFile?.content).toContain('nodes:\n    type: array\n    items: {}\n');
+		expect(schemaFile?.content).not.toContain('nullable');
+	});
+
 	it('inlines a schema referenced by only one operation', () => {
 		const registry = new OpenAPIRegistry();
 		// A schema not registered as a component stays inline wherever it is used.
@@ -237,5 +268,33 @@ describe('shared schema registry', () => {
 
 		expect(registered.get(dtoA)).toBeDefined();
 		expect(registered.get(dtoB)).toBeDefined();
+	});
+
+	it('emits a binary response body with format: binary and its header descriptions', () => {
+		const registry = new OpenAPIRegistry();
+		registry.registerPath({
+			method: 'get',
+			path: '/exports',
+			responses: {
+				200: buildBinarySuccessResponse({
+					mediaType: 'application/gzip',
+					description: 'An archive.',
+					headers: { 'X-Archive-Size': { description: 'Size of the archive' } },
+				}),
+			},
+		});
+
+		const [artifact] = buildArtifactsFromRegistry(registry, [
+			{
+				outputPath: 'handlers/exports/spec/paths/export.generated.yml',
+				pathKey: '/exports',
+				method: 'get',
+			},
+		]);
+
+		expect(artifact.content).toContain('application/gzip:');
+		expect(artifact.content).toContain('format: binary');
+		expect(artifact.content).toContain('X-Archive-Size:');
+		expect(artifact.content).toContain('Size of the archive');
 	});
 });

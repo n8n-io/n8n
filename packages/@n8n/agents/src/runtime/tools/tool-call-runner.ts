@@ -27,6 +27,7 @@ import type { AgentMessage, ContentToolCall, Message } from '../../types/sdk/mes
 import type { JSONValue } from '../../types/utils/json';
 import { parseWithSchema } from '../../utils/parse';
 import { isZodSchema } from '../../utils/zod';
+import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { incrementToolCallCount } from '../loop/execution-counter';
 import { stringifyError } from '../loop/runtime-helpers';
 import type { AgentMessageList } from '../model/message-list';
@@ -124,6 +125,25 @@ export class ToolCallRunner {
 		if (!validation.ok) return validation.outcome;
 		const input = validation.input;
 
+		const guardrails = GuardrailRunner.from(params.guardrails);
+		const guardCtx = guardrails?.toolCallContext({
+			toolCallId,
+			toolName,
+			input,
+			runId: params.runId,
+		});
+		// Skip only a call that already suspended. An unexecuted pending call
+		// is still a first execution, even when resume data is present.
+		if (guardrails && guardCtx && !params.previouslySuspended) {
+			const stop = await guardrails.beforeTool(guardCtx);
+			if (stop) {
+				return await this.toolError(
+					params,
+					new Error(`Tool call stopped by guardrail: ${stop.code}`),
+				);
+			}
+		}
+
 		if (shouldEmitToolExecutionStart(builtTool, resumeData)) {
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionStart,
@@ -133,13 +153,15 @@ export class ToolCallRunner {
 			});
 		}
 
-		return await this.executeValidatedToolCall(params, builtTool, input);
+		return await this.executeValidatedToolCall(params, builtTool, input, guardrails, guardCtx);
 	}
 
 	private async executeValidatedToolCall(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
 		input: JSONValue,
+		guardrails: GuardrailRunner | undefined,
+		guardCtx: ReturnType<GuardrailRunner['toolCallContext']> | undefined,
 	): Promise<ToolCallOutcome> {
 		let toolResult: unknown;
 		const suspension: InterruptedToolSuspension = {
@@ -169,6 +191,9 @@ export class ToolCallRunner {
 		if (isSuspendedToolResult(toolResult)) {
 			return await this.buildSuspendedOutcome(params, builtTool, toolResult);
 		}
+
+		// Final result only: a call that suspended reports once, after resume.
+		if (guardrails && guardCtx) await guardrails.afterTool(guardCtx, toolResult);
 		return await this.buildSuccessOutcome(params, builtTool, input, toolResult);
 	}
 
@@ -226,6 +251,7 @@ export class ToolCallRunner {
 			emitEvent: (event) => this.eventBus.emit(event),
 			abortSignal: params.abortSignal,
 			executionCounter: params.executionCounter,
+			approvalContext: params.approvalContext,
 			suspendPayload: params.suspendPayload,
 			continuation: params.continuation,
 			resumeSchema: params.resumeSchema,
@@ -349,6 +375,7 @@ export class ToolCallRunner {
 			resumeData,
 			resolvedTelemetry,
 			executionCounter,
+			approvalContext,
 			abortSignal,
 			suspendPayload,
 			continuation,
@@ -369,6 +396,7 @@ export class ToolCallRunner {
 							emitEvent: (event) => this.eventBus.emit(event),
 							abortSignal,
 							executionCounter,
+							approvalContext,
 							suspendPayload,
 							continuation,
 							resumeSchema,

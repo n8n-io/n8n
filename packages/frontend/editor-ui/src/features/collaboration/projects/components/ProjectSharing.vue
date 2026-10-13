@@ -5,10 +5,11 @@ import type { AllRolesMap } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, ref, watch, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
-import type { ProjectSearchFn } from '../projects.utils';
+import { compareSharingEntries, type ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 
 import {
 	N8nBadge,
@@ -40,11 +41,30 @@ type Props = {
 	teleported?: boolean;
 	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
 	showSuffix?: boolean;
+	roleDescriptions?: Record<string, string>;
+	/**
+	 * List the entries in a stable order, people first, then projects, each by
+	 * name, so sharing with one does not move it.
+	 */
+	sortSelected?: boolean;
+	/**
+	 * Projects not shared with yet, listed among the shared ones. The
+	 * `unshared-actions` slot renders what can be done with each.
+	 */
+	unsharedProjects?: Array<{ project: ProjectSharingData; subtitle: string }>;
+	confirmRemoval?: (project: ProjectSharingData) => {
+		title: string;
+		message: string;
+		confirmButtonText?: string;
+		cancelButtonText?: string;
+	};
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
 });
+
+const message = useMessage();
 
 // Keep an in-place popper outside a scroll container's clipping area.
 const inPlacePopperOptions: { strategy: 'fixed' } = { strategy: 'fixed' };
@@ -72,12 +92,26 @@ const emit = defineEmits<{
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
 
-const selectedProjects = computed((): ProjectSharingData[] | null => {
+type ListEntry =
+	| { kind: 'shared'; project: ProjectSharingData }
+	| { kind: 'unshared'; project: ProjectSharingData; subtitle: string };
+
+const listEntries = computed((): ListEntry[] | null => {
 	if (!Array.isArray(model.value)) {
 		return null;
 	}
 
-	return props.isSharedGlobally ? [GLOBAL_GROUP, ...model.value] : model.value;
+	const entries: ListEntry[] = [
+		...model.value.map((project): ListEntry => ({ kind: 'shared', project })),
+		...(props.unsharedProjects ?? []).map(
+			({ project, subtitle }): ListEntry => ({ kind: 'unshared', project, subtitle }),
+		),
+	];
+	if (props.sortSelected) {
+		entries.sort((entryA, entryB) => compareSharingEntries(entryA.project, entryB.project));
+	}
+
+	return props.isSharedGlobally ? [{ kind: 'shared', project: GLOBAL_GROUP }, ...entries] : entries;
 });
 
 const selectPlaceholder = computed(
@@ -193,7 +227,16 @@ const onProjectSelected = (projectId: string) => {
 	emit('projectAdded', project);
 };
 
-const onRoleAction = (project: ProjectSharingData, role: string) => {
+const showStaticRole = computed(() => !!props.roleDescriptions && !!props.roles?.length);
+const staticRole = computed(() => (showStaticRole.value ? props.roles?.[0] : undefined));
+const staticRoleDescription = computed(() =>
+	staticRole.value ? props.roleDescriptions?.[staticRole.value.slug] : undefined,
+);
+
+const canRemoveProject = (project: ProjectSharingData) =>
+	!(project.id === GLOBAL_GROUP.id && !props.canShareGlobally);
+
+const onRoleAction = async (project: ProjectSharingData, role: string) => {
 	if (!Array.isArray(model.value) || props.readonly) {
 		return;
 	}
@@ -205,6 +248,22 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 	}
 
 	if (role === 'remove') {
+		if (props.confirmRemoval) {
+			const {
+				title,
+				message: confirmMessage,
+				confirmButtonText,
+				cancelButtonText,
+			} = props.confirmRemoval(project);
+			const confirmed = await message.confirm(confirmMessage, title, {
+				confirmButtonText,
+				cancelButtonText,
+			});
+			if (confirmed !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+
 		model.value = model.value.filter((p) => p.id !== project.id);
 		emit('projectRemoved', project);
 	}
@@ -286,52 +345,94 @@ watch(
 				</N8nOption>
 			</N8nSelect>
 		</N8nTooltip>
-		<ul v-if="selectedProjects" :class="$style.selectedProjects">
+		<ul v-if="listEntries" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
-					<N8nBadge variant="outline">
+					<span v-if="showStaticRole" :class="$style.rectBadge">
+						{{ locale.baseText('auth.roles.owner') }}
+					</span>
+					<N8nBadge v-else variant="outline">
 						{{ locale.baseText('auth.roles.owner') }}
 					</N8nBadge></ProjectSharingInfo
 				>
 			</li>
-			<li
-				v-for="project in selectedProjects"
-				:key="project.id"
-				:class="$style.project"
-				data-test-id="project-sharing-list-item"
-			>
-				<ProjectSharingInfo :project="project" />
-				<N8nSelect
-					v-if="
-						props.roles?.length &&
-						!props.static &&
-						!(project.id === GLOBAL_GROUP.id && !canShareGlobally)
-					"
-					:class="$style.projectRoleSelect"
-					:model-value="props.roles[0]"
-					:disabled="props.readonly"
-					size="small"
-					@update:model-value="onRoleAction(project, $event)"
+			<template v-for="entry in listEntries" :key="entry.project.id">
+				<li
+					v-if="entry.kind === 'unshared'"
+					:class="$style.project"
+					data-test-id="project-sharing-unshared-item"
 				>
-					<N8nOption
-						v-for="role in roles"
-						:key="role.slug"
-						:value="role.slug"
-						:label="role.displayName"
-					/>
-				</N8nSelect>
-				<N8nButton
-					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
-					variant="subtle"
-					icon-only
-					native-type="button"
-					icon="trash-2"
-					:aria-label="locale.baseText('generic.delete')"
-					:disabled="props.readonly"
-					data-test-id="project-sharing-remove"
-					@click="onRoleAction(project, 'remove')"
-				/>
-			</li>
+					<ProjectSharingInfo :project="entry.project" :subtitle="entry.subtitle">
+						<slot name="unshared-actions" :project="entry.project" />
+					</ProjectSharingInfo>
+				</li>
+				<li v-else :class="$style.project" data-test-id="project-sharing-list-item">
+					<ProjectSharingInfo :project="entry.project">
+						<span v-if="staticRole" :class="$style.trailingRow">
+							<N8nText
+								color="text-light"
+								:title="staticRoleDescription"
+								data-test-id="project-sharing-static-role"
+							>
+								{{ staticRole.displayName }}
+							</N8nText>
+							<N8nTooltip
+								v-if="canRemoveProject(entry.project)"
+								:content="locale.baseText('projects.sharing.removeAccess')"
+								placement="top"
+							>
+								<N8nButton
+									variant="subtle"
+									icon-only
+									native-type="button"
+									icon="trash-2"
+									:aria-label="locale.baseText('projects.sharing.removeAccess')"
+									:disabled="props.readonly"
+									data-test-id="project-sharing-remove"
+									@click="onRoleAction(entry.project, 'remove')"
+								/>
+							</N8nTooltip>
+						</span>
+					</ProjectSharingInfo>
+					<N8nSelect
+						v-if="
+							props.roles?.length &&
+							!props.static &&
+							!showStaticRole &&
+							canRemoveProject(entry.project)
+						"
+						:class="$style.projectRoleSelect"
+						:model-value="props.roles[0]"
+						:disabled="props.readonly"
+						data-test-id="project-sharing-role-select"
+						size="small"
+						@update:model-value="onRoleAction(entry.project, $event)"
+					>
+						<N8nOption
+							v-for="role in roles"
+							:key="role.slug"
+							:value="role.slug"
+							:label="role.displayName"
+						/>
+					</N8nSelect>
+					<N8nTooltip
+						v-if="!props.static && !showStaticRole && canRemoveProject(entry.project)"
+						:content="locale.baseText('projects.sharing.removeAccess')"
+						placement="top"
+					>
+						<N8nButton
+							variant="subtle"
+							icon-only
+							native-type="button"
+							icon="trash-2"
+							:aria-label="locale.baseText('projects.sharing.removeAccess')"
+							:disabled="props.readonly"
+							data-test-id="project-sharing-remove"
+							@click="onRoleAction(entry.project, 'remove')"
+						/>
+					</N8nTooltip>
+				</li>
+			</template>
 		</ul>
 	</div>
 </template>
@@ -343,6 +444,28 @@ watch(
 	align-items: center;
 	padding: var(--spacing--2xs) 0;
 	gap: var(--spacing--2xs);
+}
+
+.rectBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	white-space: nowrap;
+	height: var(--height--sm);
+	padding-inline: var(--spacing--2xs);
+	border: 1px solid var(--border-color);
+	border-radius: var(--radius);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--text-color);
+}
+
+.trailingRow {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: var(--spacing--2xs);
+	white-space: nowrap;
 }
 
 .selectedProjects {

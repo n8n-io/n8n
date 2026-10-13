@@ -83,6 +83,12 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
+const serviceActionLabel = computed(() =>
+	i18n.baseText(
+		props.item.status === 'connected' ? 'generic.settings' : 'tools.connection.action.setup',
+	),
+);
+
 const actionLabel = computed(() => {
 	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
 	if (props.item.status === 'disconnected') {
@@ -96,9 +102,13 @@ const installBlocked = computed(
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
+const isRowNavigable = computed(() => props.item.kind !== 'service');
 
 const restriction = computed(() =>
 	props.item.kind === 'node' ? props.item.restriction : undefined,
+);
+const isActivationBlocked = computed(
+	() => Boolean(restriction.value) && !hasToolConnection(props.item.status),
 );
 
 const rowRef = ref<HTMLElement | null>(null);
@@ -118,7 +128,7 @@ const hasDirectAction = computed(
 
 function handleRowClick() {
 	if (props.item.disabled) return;
-	if (restriction.value) return;
+	if (isActivationBlocked.value) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -137,18 +147,23 @@ function handleConnect() {
 		:class="[
 			$style.row,
 			$style[`row--${item.kind}`],
-			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: !!restriction },
+			{
+				[$style.rowDisabled]: isDisabled,
+				[$style.rowRestricted]: !!restriction,
+				[$style.rowBlocked]: isActivationBlocked,
+			},
 		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<button
-			type="button"
-			:class="$style.mainAction"
-			:disabled="isDisabled || item.status === 'connecting'"
-			:aria-disabled="!!restriction || undefined"
+		<component
+			:is="isRowNavigable ? 'button' : 'div'"
+			:type="isRowNavigable ? 'button' : undefined"
+			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
+			:aria-disabled="isActivationBlocked || undefined"
 			data-test-id="tools-connection-row-main"
-			@click="handleRowClick"
+			@click="isRowNavigable && handleRowClick()"
 		>
 			<template v-if="item.kind === 'workflow'">
 				<span :class="$style.workflowIcon" aria-hidden="true">
@@ -205,7 +220,7 @@ function handleConnect() {
 					</N8nText>
 				</span>
 			</template>
-		</button>
+		</component>
 
 		<div :class="$style.action">
 			<RestrictedNodePopover
@@ -213,6 +228,7 @@ function handleConnect() {
 				:node-type-name="item.title"
 				:scope="restriction.scope"
 				:anchor="rowRef"
+				:side-offset="48"
 			/>
 			<N8nTooltip
 				v-else-if="isDisabled"
@@ -230,6 +246,14 @@ function handleConnect() {
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
 			</N8nTooltip>
+			<N8nButton
+				v-else-if="item.kind === 'service'"
+				variant="outline"
+				size="small"
+				:label="serviceActionLabel"
+				data-test-id="tools-connection-row-service-action"
+				@click="handleRowClick"
+			/>
 			<ToolCredentialPicker
 				v-else-if="shouldShowCredentialPicker"
 				:item="item"
@@ -340,12 +364,14 @@ function handleConnect() {
 }
 
 .rowRestricted {
+	.mainAction > * {
+		opacity: 0.45;
+	}
+}
+
+.rowBlocked {
 	.mainAction {
 		cursor: not-allowed;
-
-		> * {
-			opacity: 0.45;
-		}
 	}
 
 	&:hover {
@@ -375,6 +401,10 @@ function handleConnect() {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
 		outline-offset: 2px;
 	}
+}
+
+.mainActionStatic {
+	cursor: default;
 }
 
 .row--workflow {

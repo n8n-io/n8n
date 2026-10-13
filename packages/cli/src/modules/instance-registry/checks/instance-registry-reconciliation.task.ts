@@ -1,4 +1,4 @@
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { CheckService } from './check.service';
@@ -13,15 +13,17 @@ import { REGISTRY_CONSTANTS } from '../instance-registry.types';
 export class InstanceRegistryReconciliationTask implements SystemTask {
 	readonly name = 'instance-registry-reconciliation';
 
-	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(
-		REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS,
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_SECONDS,
 	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
+	readonly maxAttempts = 1;
+
 	readonly placement: SystemTaskPlacement = {
 		scope: 'cluster',
-		durable: false,
+		durable: true,
 		runOnTakeover: true,
 	};
 

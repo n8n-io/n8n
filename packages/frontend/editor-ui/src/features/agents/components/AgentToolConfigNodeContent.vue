@@ -22,6 +22,7 @@ const props = defineProps<{
 	contentTestId?: string;
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
+	readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -63,6 +64,7 @@ defineExpose({
 		:hidden-operations="HIDDEN_AGENT_NODE_TOOL_OPERATIONS"
 		:parameter-issues="props.parameterIssues"
 		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
+		:read-only="props.readOnly"
 		:sync-node-to-ndv="true"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"

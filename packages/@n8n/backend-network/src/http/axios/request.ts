@@ -39,7 +39,7 @@ export function convertN8nRequestToAxios(
 		auth,
 		url,
 		maxBodyLength: Infinity,
-		maxContentLength: Infinity,
+		maxContentLength: n8nRequest.maxResponseBodyBytes ?? Infinity,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
@@ -156,6 +156,7 @@ function isEmpty(value: unknown): boolean {
 }
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
+// oxlint-disable-next-line typescript/no-deprecated
 export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOptions) {
 	const method = requestOptions.method ?? 'GET';
 	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {

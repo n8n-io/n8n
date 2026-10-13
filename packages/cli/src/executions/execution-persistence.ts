@@ -650,11 +650,13 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
+		// Files first: a failed file delete leaves the rows, so the next run retries them.
 		await Promise.all([
-			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
 			this.jsonStore.delete(this.toBlobRefs(targets)),
 		]);
+
+		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
@@ -915,6 +917,7 @@ export class ExecutionPersistence {
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (conditions?.requireNotFinished) where.finished = false;
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;

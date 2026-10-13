@@ -21,7 +21,11 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
+
+	// A run takes 7 to 13 minutes on a large instance, and the workflows it does not
+	// reach get only one more run.
+	readonly timeoutSeconds = 30 * Time.minutes.toSeconds;
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,

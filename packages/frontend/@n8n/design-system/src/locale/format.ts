@@ -3,7 +3,7 @@ const RE_NARGS = /(%|)\{([0-9a-zA-Z_]+)\}/g;
  *  String format template
  *  - Inspired:
  *    https://github.com/ElemeFE/element/blob/dev/src/locale/format.js
- *    https://github.com/Matt-Esch/string-template/index.js
+ *    https://github.com/Matt-Esch/string-template/blob/master/index.js
  */
 export default function () {
 	const isReplacementGroup = (target: object, key: string): target is Record<string, unknown> =>

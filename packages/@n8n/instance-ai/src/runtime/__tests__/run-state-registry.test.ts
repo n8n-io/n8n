@@ -341,6 +341,35 @@ describe('RunStateRegistry', () => {
 				expect(registry.getThreadUser('unknown')).toBeUndefined();
 			});
 		});
+
+		describe('listLiveThreadIdsForUser', () => {
+			it('lists active threads before suspended threads and skips duplicates', () => {
+				registry.startRun({
+					threadId: 'thread-active',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.startRun({
+					threadId: 'thread-other',
+					user: { id: 'user-2', name: 'Bob' },
+				});
+				registry.startRun({
+					threadId: 'thread-suspended',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.suspendRun(
+					'thread-suspended',
+					createSuspendedRunState({
+						threadId: 'thread-suspended',
+						user: { id: 'user-1', name: 'Alice' },
+					}),
+				);
+
+				expect(registry.listLiveThreadIdsForUser('user-1')).toEqual([
+					'thread-active',
+					'thread-suspended',
+				]);
+			});
+		});
 	});
 
 	// ── getThreadStatus ───────────────────────────────────────────────────────

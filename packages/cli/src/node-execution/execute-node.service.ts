@@ -17,11 +17,12 @@ import type {
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 export const DEFAULT_EXECUTE_NODE_TIMEOUT_MS = 30_000;
 export const MAX_EXECUTE_NODE_TIMEOUT_MS = 60_000;
@@ -86,6 +87,7 @@ export class ExecuteNodeService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async run(user: User, request: ExecuteNodeRequest): Promise<ExecuteNodeResult> {
@@ -98,6 +100,7 @@ export class ExecuteNodeService {
 		await this.checkCredentialAccess(user, credentials);
 
 		const node = this.buildNode(request, credentials);
+		this.deprecatedNodesValidationService.validateOnCreate([node]);
 		const timeoutMs = Math.min(
 			request.timeoutMs ?? DEFAULT_EXECUTE_NODE_TIMEOUT_MS,
 			MAX_EXECUTE_NODE_TIMEOUT_MS,
@@ -192,6 +195,7 @@ export class ExecuteNodeService {
 		newWorkflow.isArchived = true;
 		newWorkflow.versionId = uuid();
 		newWorkflow.name = `Execute node ${node.type}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = [node];
@@ -302,8 +306,8 @@ export class ExecuteNodeService {
 		}
 	}
 
-	/** The post-execute promise does not reliably settle on multi-main (Bull's
-	 *  `job.finished()` behind it), so poll the execution row there — same as
+	/** The post-execute promise does not reliably settle on multi-main
+	 *  (`ScalingService.waitForJob()` behind it), so poll the execution row there — same as
 	 *  chat-hub's `waitForExecutionCompletion`. */
 	private async waitForSettled(executionId: string, signal: AbortSignal): Promise<void> {
 		if (!this.instanceSettings.isMultiMain) {

@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@n8n/errors';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';

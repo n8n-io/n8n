@@ -12,6 +12,7 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	AI_EVALUATION,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_SUBCATEGORY,
@@ -69,6 +70,7 @@ import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type {
 	CommandCreateElement,
+	NodeFilterType,
 	SectionCreateElement,
 	SimplifiedNodeType,
 	ViewCreateElement,
@@ -127,7 +129,7 @@ export function isNodeViewSection(item: NodeViewElement): item is SectionCreateE
 }
 
 export interface NodeView {
-	value: string;
+	value: NodeFilterType;
 	title: string;
 	info?: string;
 	subtitle?: string;
@@ -187,19 +189,6 @@ function getEvaluationNode(
 	];
 }
 
-function getMessageAnAgentNode(
-	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
-	settingsStore: ReturnType<typeof useSettingsStore>,
-) {
-	if (!settingsStore.isModuleActive('agents')) return [];
-
-	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
-	if (!node) return [];
-
-	// The early-preview tag is attached centrally in `applyNodeTags`.
-	return [getNodeView(node)];
-}
-
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
@@ -210,9 +199,15 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
 
-	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
-	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
-	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
+	const aiNodeTypes = nodeTypesStore.allLatestNodeTypes.filter(
+		(node) => !nodeTypesStore.isNodeTypeModuleDisabled(node.name),
+	);
+	const chainNodes = getAiNodesBySubcategory(aiNodeTypes, AI_CATEGORY_CHAINS);
+	// Message an Agent leads the agents list
+	const agentNodes = getAiNodesBySubcategory(aiNodeTypes, AI_CATEGORY_AGENTS).sort(
+		(a, b) =>
+			Number(b.key === MESSAGE_AN_AGENT_NODE_TYPE) - Number(a.key === MESSAGE_AN_AGENT_NODE_TYPE),
+	);
 
 	const websiteCategoryURLParams = new URLSearchParams(
 		templatesStore.websiteTemplateRepositoryParameters,
@@ -233,9 +228,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			...callouts,
-			// shown only when agents module is active
-			// TODO: revert before GA release
-			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
 			...evaluationNode,
@@ -660,18 +652,16 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		],
 	};
 
-	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if (hasAINodes)
-		view.items.unshift({
-			key: AI_NODE_CREATOR_VIEW,
-			type: 'view',
-			properties: {
-				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-				icon: 'robot',
-				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				borderless: true,
-			},
-		} as NodeViewItem);
+	view.items.unshift({
+		key: AI_NODE_CREATOR_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+			icon: 'robot',
+			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+			borderless: true,
+		},
+	} as NodeViewItem);
 
 	view.items.push({
 		type: 'section',
@@ -715,4 +705,19 @@ export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
 			name: 'badge-check',
 		},
 	};
+}
+
+export const NODE_CREATOR_VIEWS: Record<NodeFilterType, (nodes: SimplifiedNodeType[]) => NodeView> =
+	{
+		[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+		[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+		[AI_NODE_CREATOR_VIEW]: AIView,
+		[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
+		[AI_UNCATEGORIZED_CATEGORY]: AINodesView,
+		[AI_EVALUATION]: AINodesView,
+		[HUMAN_IN_THE_LOOP_CATEGORY]: HitlToolView,
+	};
+
+export function isNodeCreatorView(key: string): key is NodeFilterType {
+	return Object.hasOwn(NODE_CREATOR_VIEWS, key);
 }

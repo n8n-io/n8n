@@ -73,6 +73,7 @@ class WebhookRequestHandler {
 				// pass the response from the webhookManager. However, we still have code
 				// that doesn't use that yet. We need to keep this here until all codepaths
 				// return a `WebhookResponse` instead.
+				// oxlint-disable-next-line typescript/no-deprecated
 				this.sendLegacyResponse(res, response.data, true, response.responseCode, response.headers);
 			}
 		} catch (e) {

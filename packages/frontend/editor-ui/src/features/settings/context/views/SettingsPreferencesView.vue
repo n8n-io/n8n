@@ -20,12 +20,12 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import PreferenceModal from '../components/PreferenceModal.vue';
 import PreferencesTable from '../components/PreferencesTable.vue';
-import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { PREFERENCES_DEFAULT_PAGE_SIZE, PREFERENCES_DEFAULT_SORT_BY } from '../context.constants';
 import { useContextStore } from '../context.store';
 import type { AiPreferenceScope } from '@n8n/api-types';
 
 import type { Preference } from '../context.types';
-import { preferenceScope } from '../context.utils';
+import { preferenceScope, toPreferenceSortOption } from '../context.utils';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -38,7 +38,7 @@ const { showError, showMessage } = useToast();
 const tableOptions = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
-	sortBy: [],
+	sortBy: PREFERENCES_DEFAULT_SORT_BY,
 });
 const selection = ref<string[]>([]);
 const loadFailed = ref(false);
@@ -53,8 +53,13 @@ const selectedCount = computed(() => selection.value.length);
 
 async function load() {
 	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const sortBy = toPreferenceSortOption(tableOptions.value.sortBy);
 	try {
-		await contextStore.fetchPreferences({ skip: page * itemsPerPage, take: itemsPerPage });
+		await contextStore.fetchPreferences({
+			skip: page * itemsPerPage,
+			take: itemsPerPage,
+			sortBy,
+		});
 		loadFailed.value = false;
 
 		// Deleting the last rows of a page can leave the page past the end.
@@ -64,6 +69,7 @@ async function load() {
 			await contextStore.fetchPreferences({
 				skip: lastPage * itemsPerPage,
 				take: itemsPerPage,
+				sortBy,
 			});
 		}
 	} catch (error) {
@@ -73,7 +79,12 @@ async function load() {
 }
 
 async function onOptionsUpdate(options: TableOptions) {
-	tableOptions.value = options;
+	const [previous] = tableOptions.value.sortBy;
+	const sortBy =
+		options.sortBy.length > 0 || !previous
+			? options.sortBy
+			: [{ id: previous.id, desc: !previous.desc }];
+	tableOptions.value = { ...options, sortBy };
 	await load();
 }
 

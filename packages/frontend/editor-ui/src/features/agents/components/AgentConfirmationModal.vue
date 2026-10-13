@@ -82,12 +82,11 @@ async function onOpenChange(open: boolean) {
 .content {
 	display: flex;
 	flex-direction: row;
-	align-items: start;
+	align-items: center;
 	gap: var(--spacing--xs);
 }
 
 .icon {
 	flex-shrink: 0;
-	margin-top: var(--spacing--4xs);
 }
 </style>

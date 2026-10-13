@@ -29,9 +29,11 @@ and infrastructure services that need the persistence layer or that only
 
 - `EventService`: the shared, typed event bus.
 - `UrlService`: instance and webhook URLs.
+- `CacheService`: application cache access.
+- `RedisClientService`: shared Redis connections and support code.
 
-The next PRs move `CacheService`, `RedisClientService`, `ProtectedResourceRegistry`,
-`RoleService`, the finder services and the scope checks here, one area at a time.
+The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
+and the scope checks here, one area at a time.
 
 ### Register event payloads
 

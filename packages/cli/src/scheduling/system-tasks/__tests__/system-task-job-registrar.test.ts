@@ -114,6 +114,22 @@ describe('systemTaskProvisionRequest', () => {
 		});
 	});
 
+	it('keeps one occurrence at a time, as the in-memory timer does', () => {
+		expect(request().concurrencyLimit).toBe(1);
+	});
+
+	it.each([null, 4])('honours a declared concurrency limit of %s', (concurrencyLimit) => {
+		expect(request({ concurrencyLimit }).concurrencyLimit).toBe(concurrencyLimit);
+	});
+
+	it('leaves the timeout to the instance setting when the task declares none', () => {
+		expect(request()).toHaveProperty('timeoutSeconds', undefined);
+	});
+
+	it("honours a task's own timeout", () => {
+		expect(request({ timeoutSeconds: 600 }).timeoutSeconds).toBe(600);
+	});
+
 	it("honours a task's own policy, grace and attempts", () => {
 		expect(
 			request({
@@ -191,6 +207,7 @@ describe('SystemTaskJobRegistrar', () => {
 				misfirePolicy: 'coalesce',
 				misfireGraceSeconds: 60,
 				maxAttempts: 3,
+				concurrencyLimit: 1,
 			});
 		});
 

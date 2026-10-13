@@ -6,6 +6,30 @@ import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
 
+it.each([
+	{ active: true, enabled: true, expected: true },
+	{ active: true, enabled: undefined, expected: true },
+	{ active: true, enabled: false, expected: false },
+	{ active: false, enabled: true, expected: false },
+])(
+	'gates Agents and its features (active=$active, enabled=$enabled)',
+	({ active, enabled, expected }) => {
+		setActivePinia(createPinia());
+		const store = useSettingsStore();
+		store.settings.activeModules = active ? ['agents'] : [];
+		store.moduleSettings.agents = {
+			enabled,
+			modules: ['tasks'],
+			knowledgeBaseEnabled: true,
+			proxyEnabled: false,
+		};
+
+		expect(store.isAgentsEnabled).toBe(expected);
+		expect(store.isAgentModuleActive('tasks')).toBe(expected);
+		expect(store.isAgentsKnowledgeBaseFeatureEnabled).toBe(expected);
+	},
+);
+
 const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),

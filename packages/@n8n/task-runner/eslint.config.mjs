@@ -6,9 +6,11 @@ export default defineConfig(
 	{
 		rules: {
 			complexity: 'error',
-
-			'@typescript-eslint/no-require-imports': 'warn',
 		},
+	},
+	{
+		files: ['src/js-task-runner/js-task-runner.ts'],
+		rules: { '@typescript-eslint/no-require-imports': 'warn' },
 	},
 	{
 		files: ['**/*.test.ts'],

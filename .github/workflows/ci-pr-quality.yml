@@ -99,8 +99,8 @@ jobs:
           mode: filter
           filters: |
             janitor:
-              packages/testing/playwright/**
-              packages/testing/janitor/**
+              packages/quality/testing/playwright/**
+              packages/quality/testing/janitor/**
 
   check-static-analysis:
     name: Static Analysis

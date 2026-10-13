@@ -3,6 +3,7 @@ import type { CredentialProvider } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentJsonConfig,
+	type AgentJsonSkillConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
@@ -18,7 +19,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -33,6 +34,8 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
 import type { Agent } from '../entities/agent.entity';
+import { resolveAgentRunSource, type AgentRunSource } from '../utils/agent-published-snapshot';
+import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
@@ -114,19 +117,20 @@ vi.mock('../json-config/from-json-config', async () => {
 	};
 });
 
-function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
+function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
 		model: 'anthropic/claude-sonnet-4-5',
 		instructions: 'Be helpful',
 		tools,
 	};
-	return {
+	const agent = {
 		id: 'agent-1',
 		projectId,
 		schema,
 		tools: { custom_tool: { descriptor: { name: 'custom_tool' }, code: '' } },
 	} as unknown as Agent;
+	return { agent, skillRefs: undefined };
 }
 
 function makeService(overrides: {
@@ -216,6 +220,53 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	afterEach(() => {
 		Container.reset();
 	});
+
+	it.each([
+		{ run: 'draft', usePublishedVersion: false },
+		{ run: 'published', usePublishedVersion: true },
+	])(
+		'builds a $run runtime with the skill refs of the same $run',
+		async ({ usePublishedVersion }) => {
+			const { service } = makeService({});
+			const draftRefs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: 'alpha', enabled: false },
+			];
+			const publishedRefs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'mid', enabled: true },
+				{ type: 'skill', id: 'zeta' },
+			];
+			const baseConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = {
+				id: 'agent-1',
+				projectId,
+				schema: storedAgentConfig({ ...baseConfig, skills: draftRefs }),
+				tools: {},
+				skills: {},
+				activeVersion: {
+					versionId: 'version-1',
+					schema: storedAgentConfig({ ...baseConfig, skills: publishedRefs }),
+					tools: {},
+					skills: {},
+				},
+			} as unknown as Agent;
+
+			const runSource = await resolveAgentRunSource(
+				agent,
+				usePublishedVersion,
+				createAgentSkillRefsService(),
+				{},
+			);
+			await service.reconstructFromAgentEntity(runSource, mock<CredentialProvider>(), 'test');
+
+			const [config] = buildFromJsonMock.mock.calls.at(-1) as [AgentJsonConfig];
+			expect(config.skills).toEqual(usePublishedVersion ? publishedRefs : draftRefs);
+		},
+	);
 
 	it('does not filter tools when no user is supplied (published/integration runs)', async () => {
 		const { service } = makeService({});
@@ -320,6 +371,30 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			['credential:read'],
 		);
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
+	});
+
+	it('skips disabled tools before looking up user access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		const { service, credentialsFinderService, workflowFinderService, workflowRepository } =
+			makeService({});
+		const entity = makeAgentEntity([
+			{ ...nodeToolWithCredential, enabled: false },
+			{ ...workflowTool, enabled: false },
+			customTool,
+		]);
+
+		await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'test',
+			undefined,
+			testUser,
+		);
+
+		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+		expect(workflowRepository.findOneByAgentToolReference).not.toHaveBeenCalled();
 	});
 
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {

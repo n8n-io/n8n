@@ -229,6 +229,36 @@ describe('v2/components/Select', () => {
 		});
 	});
 
+	describe('alignment', () => {
+		it.each(['start', 'center', 'end'] as const)(
+			'should place the menu with align %s',
+			async (align) => {
+				const wrapper = render(Select, {
+					props: {
+						items: [{ value: '1', label: 'Option 1' }],
+						align,
+						defaultOpen: true,
+					},
+				});
+
+				const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+				expect(popover).toHaveAttribute('data-align', align);
+			},
+		);
+
+		it('should align the menu to the start of the trigger by default', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [{ value: '1', label: 'Option 1' }],
+					defaultOpen: true,
+				},
+			});
+
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			expect(popover).toHaveAttribute('data-align', 'start');
+		});
+	});
+
 	describe('item types', () => {
 		it('should render object items with value and label', async () => {
 			const items = [

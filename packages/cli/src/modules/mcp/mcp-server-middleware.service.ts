@@ -44,7 +44,7 @@ export class McpServerMiddlewareService {
 	async getUserForToken(token: string): Promise<UserWithContext> {
 		let decoded: { meta?: { isOAuth?: boolean } };
 		try {
-			decoded = this.jwtService.decode<{ meta?: { isOAuth?: boolean } }>(token);
+			decoded = this.jwtService.decodeUnverified<{ meta?: { isOAuth?: boolean } }>(token);
 		} catch (error) {
 			return {
 				user: null,

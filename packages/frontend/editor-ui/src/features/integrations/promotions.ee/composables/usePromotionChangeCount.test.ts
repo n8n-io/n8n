@@ -18,6 +18,7 @@ type Pending = {
 
 const changes = (count: number): PromotionChanges => ({
 	commitSha: 'a'.repeat(40),
+	source: { configId: 'config-1', branchName: 'main' },
 	changes: Array.from({ length: count }, (_, index) => ({
 		id: `workflow-${index}`,
 		name: `Workflow ${index}`,

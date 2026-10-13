@@ -632,8 +632,8 @@ describe('auto-close on source-control pull', () => {
 			mock<PolicyEnforcementService>({
 				// The repository verifies the token, so it has to be a real one. With no backend
 				// registered the real service clears everything, which is what a default pull does.
-				enforceContentImport: async (context) =>
-					await Container.get(PolicyEnforcementService).enforceContentImport(context),
+				enforceContentImport: async (context, actor) =>
+					await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 			}), // policyEnforcementService
 			mock(), // dataTableSizeValidator
 			Container.get(WorkflowPublishedVersionRepository),
@@ -641,6 +641,7 @@ describe('auto-close on source-control pull', () => {
 			mock(), // workflowPublishGuard
 			Container.get(WorkflowMutationHooksProxy),
 			Container.get(WorkflowFinderService),
+			mock(),
 		);
 	});
 

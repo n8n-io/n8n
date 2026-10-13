@@ -11,6 +11,78 @@ import * as path from 'path';
 
 import type * as GenerateTypesModule from '../generate-types/generate-types';
 
+/**
+ * Return every member name that a `{ ... }` block declares more than once.
+ * This is what `tsc` reports as TS2300 for the generated files. The installed
+ * TypeScript 7 package has no JavaScript compiler API, so a small scanner
+ * does the walk: every `{` opens a scope, and a member is a plain or quoted
+ * name followed by an optional `?` and a `:`. Comments and string literals
+ * are skipped.
+ */
+function findDuplicateTypeMembers(source: string): string[] {
+	const memberPattern = /^(?:([A-Za-z_$][\w$]*)|'((?:\\.|[^'\\\n])*)')\s*\??\s*:/;
+	const duplicates: string[] = [];
+	const scopes: Array<Set<string>> = [];
+	let expectMember = false;
+	let i = 0;
+
+	const skipTo = (needle: string, from: number): number => {
+		const index = source.indexOf(needle, from);
+		return index === -1 ? source.length : index + needle.length;
+	};
+
+	while (i < source.length) {
+		const ch = source[i];
+		const rest = source.slice(i, i + 2);
+
+		if (rest === '/*') {
+			i = skipTo('*/', i + 2);
+			continue;
+		}
+		if (rest === '//') {
+			i = skipTo('\n', i + 2);
+			continue;
+		}
+
+		if (expectMember) {
+			const match = memberPattern.exec(source.slice(i));
+			if (match) {
+				const name = match[1] ?? match[2];
+				const scope = scopes[scopes.length - 1];
+				if (scope.has(name)) duplicates.push(name);
+				scope.add(name);
+				i += match[0].length;
+				expectMember = false;
+				continue;
+			}
+		}
+
+		if (ch === "'" || ch === '"' || ch === '`') {
+			i++;
+			while (i < source.length && source[i] !== ch) {
+				i += source[i] === '\\' ? 2 : 1;
+			}
+			i++;
+			expectMember = false;
+			continue;
+		}
+
+		if (ch === '{') {
+			scopes.push(new Set());
+			expectMember = true;
+		} else if (ch === '}') {
+			scopes.pop();
+			expectMember = false;
+		} else if (ch === ';' || ch === ',') {
+			expectMember = scopes.length > 0;
+		} else if (!/\s/.test(ch)) {
+			expectMember = false;
+		}
+		i++;
+	}
+	return duplicates;
+}
+
 // We'll import these functions once implemented
 // For now, we define the expected interfaces and test structure
 
@@ -43,6 +115,10 @@ interface NestedOption {
 	default?: unknown;
 	// Nested options can themselves have options (e.g., options type inside a collection)
 	options?: NestedOption[];
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
 }
 
 interface NodeProperty {
@@ -637,6 +713,183 @@ describe('generate-types', () => {
 			expect(result).toContain('parameters?:');
 			expect(result).toContain('name?:');
 			expect(result).toContain('value?:');
+		});
+
+		describe('same-named nested declarations', () => {
+			const collectionWith = (options: NodeProperty[]): NodeProperty => ({
+				name: 'otherOptions',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options,
+			});
+
+			const fieldName = (displayOptions: NodeProperty['displayOptions']): NodeProperty => ({
+				displayName: 'Field Name',
+				name: 'fieldName',
+				type: 'string',
+				default: '',
+				displayOptions,
+			});
+
+			it('should emit one key with every condition when the types are identical', () => {
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						fieldName({ show: { fieldType: ['text'] } }),
+						fieldName({ show: { fieldSource: ['manual'] } }),
+					]),
+				);
+
+				expect(result.match(/fieldName\?:/g)).toHaveLength(1);
+				expect(result).toContain('@displayOptions.show { fieldType: ["text"] }');
+				expect(result).toContain('@displayOptions.show { fieldSource: ["manual"] }');
+				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
+			});
+
+			it('should collapse a hide/show fork of one key into one condition', () => {
+				// The Form node's fieldName: hidden for html, shown again for hiddenField
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						fieldName({ hide: { fieldType: ['html'] } }),
+						fieldName({ show: { fieldType: ['hiddenField'] } }),
+					]),
+				);
+
+				expect(result.match(/@displayOptions/g)).toHaveLength(1);
+				expect(result).toContain('@displayOptions.hide { fieldType: ["html"] }');
+			});
+
+			it('should union the values when show conditions differ in one key', () => {
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						fieldName({ show: { fieldType: ['text'], mode: ['manual'] } }),
+						fieldName({ show: { fieldType: ['number'], mode: ['manual'] } }),
+					]),
+				);
+
+				expect(result.match(/@displayOptions/g)).toHaveLength(1);
+				expect(result).toContain(
+					'@displayOptions.show { fieldType: ["text", "number"], mode: ["manual"] }',
+				);
+			});
+
+			it('should emit a union with per-member JSDoc when the types differ', () => {
+				// Slack's message.post `ephemeral`: a fixedCollection for channels, a boolean for users
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						{
+							displayName: 'Send as Ephemeral Message',
+							name: 'ephemeral',
+							type: 'fixedCollection',
+							default: {},
+							displayOptions: { show: { '/select': ['channel'] } },
+							options: [
+								{
+									displayName: 'Send as Ephemeral Message',
+									name: 'ephemeralValues',
+									values: [{ displayName: 'User', name: 'user', type: 'string', default: '' }],
+								},
+							],
+						},
+						{
+							displayName: 'Send as Ephemeral Message',
+							name: 'ephemeral',
+							type: 'boolean',
+							default: true,
+							displayOptions: { show: { '/select': ['user'] } },
+						},
+					]),
+				);
+
+				expect(result.match(/\n\s*ephemeral\?:/g)).toHaveLength(1);
+				expect(result).toMatch(
+					/ephemeral\?:\n\s*\/\*\*[^]*?@displayOptions\.show \{ \/select: \["channel"\] \}[^]*?\*\/\n\s*\| \{/,
+				);
+				expect(result).toMatch(
+					/@displayOptions\.show \{ \/select: \["user"\] \}[^]*?\*\/\n\s*\| boolean \| Expression<boolean>/,
+				);
+				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
+			});
+
+			it('should drop a nested value that the combination can never show', () => {
+				// Freshdesk contact: `email` under additionalFields is shown only for update
+				const prop = collectionWith([
+					{ displayName: 'Address', name: 'address', type: 'string', default: '' },
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { '/operation': ['update'] } },
+					},
+				]);
+
+				const createResult = generateTypes.mapPropertyType(prop, { operation: 'create' });
+				expect(createResult).toContain('address?:');
+				expect(createResult).not.toContain('email?:');
+
+				const updateResult = generateTypes.mapPropertyType(prop, { operation: 'update' });
+				expect(updateResult).toContain('email?:');
+				expect(updateResult).not.toContain('@displayOptions');
+			});
+
+			it('should drop the conditions when one variant is unconditional', () => {
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10 },
+						{
+							displayName: 'Timeout',
+							name: 'timeout',
+							type: 'number',
+							default: 10,
+							displayOptions: { show: { batching: [true] } },
+						},
+					]),
+				);
+
+				expect(result.match(/timeout\?:/g)).toHaveLength(1);
+				expect(result).not.toContain('@displayOptions');
+			});
+
+			it('should merge same-named fixedCollection values', () => {
+				const prop: NodeProperty = {
+					name: 'filters',
+					displayName: 'Filters',
+					type: 'fixedCollection',
+					default: {},
+					options: [
+						{
+							displayName: 'Conditions',
+							name: 'conditions',
+							values: [
+								{
+									displayName: 'Condition',
+									name: 'condition',
+									type: 'options',
+									default: 'equals',
+									options: [{ name: 'Equals', value: 'equals' }],
+									displayOptions: { show: { type: ['text'] } },
+								},
+								{
+									displayName: 'Condition',
+									name: 'condition',
+									type: 'options',
+									default: 'equals',
+									options: [{ name: 'Greater Than', value: 'greater_than' }],
+									displayOptions: { show: { type: ['number'] } },
+								},
+							],
+						},
+					],
+				};
+
+				const result = generateTypes.mapPropertyType(prop);
+
+				expect(result.match(/\n\s*condition\?:/g)).toHaveLength(1);
+				expect(result).toContain("| 'equals' | Expression<string>");
+				expect(result).toContain("| 'greater_than' | Expression<string>");
+				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
+			});
 		});
 
 		it('should map nested string fields with multipleValues to array types', () => {
@@ -2332,6 +2585,148 @@ describe('generate-types', () => {
 		});
 	});
 
+	describe('filterPropertiesForVersion with nested @version gates', () => {
+		const botProfile = (version: unknown, description: string): NodeProperty => ({
+			displayName: 'Bot Profile',
+			name: 'botProfile',
+			type: 'string',
+			default: '',
+			description,
+			displayOptions: { show: { '@version': [version] } },
+		});
+		const otherOptions: NodeProperty = {
+			name: 'otherOptions',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{ displayName: 'Link Names', name: 'link_names', type: 'boolean', default: false },
+				botProfile({ _cnd: { lte: 2.5 } }, 'old'),
+				botProfile({ _cnd: { gte: 2.6 } }, 'new'),
+			],
+		};
+		const formFields: NodeProperty = {
+			name: 'formFields',
+			displayName: 'Form Fields',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						botProfile({ _cnd: { lt: 2.4 } }, 'old'),
+						botProfile({ _cnd: { gte: 2.4 } }, 'new'),
+					],
+				},
+			],
+		};
+
+		it('should filter collection options by version', () => {
+			const [result] = generateTypes.filterPropertiesForVersion([otherOptions], 2.7);
+			expect(result.options?.map((o) => o.description ?? o.name)).toEqual(['link_names', 'new']);
+		});
+
+		it('should filter fixedCollection values by version', () => {
+			const [result] = generateTypes.filterPropertiesForVersion([formFields], 2.3);
+			expect(result.options?.[0].values?.map((v) => v.description)).toEqual(['old']);
+		});
+
+		it('should return the same object when nothing is gated', () => {
+			const plain: NodeProperty = {
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options: [{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10 }],
+			};
+			const [result] = generateTypes.filterPropertiesForVersion([plain], 1);
+			expect(result).toBe(plain);
+		});
+
+		it('should emit only the version-correct nested variant in the type file', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.slackLike',
+				displayName: 'Slack Like',
+				group: ['output'],
+				version: [2.5, 2.7],
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [otherOptions],
+			};
+
+			const content = generateTypes.generateSingleVersionTypeFile(node, 2.7);
+			expect(content.match(/botProfile\?:/g)).toHaveLength(1);
+			expect(content).toContain('/** new');
+			expect(content).not.toContain('/** old');
+		});
+	});
+
+	describe('generatePropertyLine with conditional requirements', () => {
+		const text: NodeProperty = {
+			name: 'text',
+			displayName: 'Message Text',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: { resource: ['message'], operation: ['post'], messageType: ['text'] },
+			},
+		};
+
+		it('should make a property optional when a residual condition gates it', () => {
+			const line = generateTypes.generatePropertyLine(text, false, {
+				resource: 'message',
+				operation: 'post',
+			});
+			expect(line).toContain('text?: string | Expression<string>;');
+			expect(line).toContain('@displayOptions.show { messageType: ["text"] }');
+			expect(line).toContain('@required when the displayOptions conditions above match');
+		});
+
+		it('should keep a property required when the combination satisfies every condition', () => {
+			const line = generateTypes.generatePropertyLine(text, false, {
+				resource: 'message',
+				operation: 'post',
+				messageType: 'text',
+			});
+			expect(line).toContain('text: string | Expression<string>;');
+			expect(line).not.toContain('@required');
+		});
+
+		it('should treat a hide on a discriminator the combination does not match as decided', () => {
+			// Oracle-style: `table` is hidden for execute, so in the insert file it is unconditional.
+			const table: NodeProperty = {
+				name: 'table',
+				displayName: 'Table',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { hide: { operation: ['execute'] } },
+			};
+			const line = generateTypes.generatePropertyLine(table, false, { operation: 'insert' });
+			expect(line).toContain('table: string | Expression<string>;');
+			expect(line).not.toContain('@displayOptions');
+			expect(line).not.toContain('@required');
+		});
+
+		it('should keep a property required when only @version gates it', () => {
+			const prop: NodeProperty = {
+				...text,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+			};
+			const line = generateTypes.generatePropertyLine(prop, false);
+			expect(line).toContain('text: string | Expression<string>;');
+			expect(line).not.toContain('@required');
+		});
+
+		it('should not add the @required tag to an optional property', () => {
+			const line = generateTypes.generatePropertyLine({ ...text, required: false }, true);
+			expect(line).toContain('text?: string | Expression<string>;');
+			expect(line).not.toContain('@required');
+		});
+	});
+
 	describe('groupVersionsByProperties', () => {
 		it('should group versions with identical properties', () => {
 			// Mock nodes with same properties at different versions
@@ -2676,6 +3071,106 @@ describe('generate-types', () => {
 			// Hidden nodes should not have generated files
 			// (would need to check actual hidden nodes from the JSON)
 		});
+	});
+
+	describe('generated type members are unique', () => {
+		it('findDuplicateTypeMembers should report a repeated member', () => {
+			expect(
+				findDuplicateTypeMembers('type T = { a?: string; b?: { c?: 1; c?: 2 }; a?: 1 };'),
+			).toEqual(['c', 'a']);
+		});
+
+		it('should emit no duplicate members for same-named nested declarations', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.slackLike',
+				displayName: 'Slack Like',
+				group: ['output'],
+				version: 2.7,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'select',
+						displayName: 'Send Message To',
+						type: 'options',
+						default: 'channel',
+						options: [
+							{ name: 'Channel', value: 'channel' },
+							{ name: 'User', value: 'user' },
+						],
+					},
+					{
+						name: 'otherOptions',
+						displayName: 'Options',
+						type: 'collection',
+						default: {},
+						options: [
+							{
+								displayName: 'Ephemeral',
+								name: 'ephemeral',
+								type: 'fixedCollection',
+								default: {},
+								displayOptions: { show: { '/select': ['channel'] } },
+								options: [
+									{
+										displayName: 'Values',
+										name: 'ephemeralValues',
+										values: [{ displayName: 'User', name: 'user', type: 'string', default: '' }],
+									},
+								],
+							},
+							{
+								displayName: 'Ephemeral',
+								name: 'ephemeral',
+								type: 'boolean',
+								default: true,
+								displayOptions: { show: { '/select': ['user'] } },
+							},
+						],
+					},
+				],
+			};
+
+			const content = generateTypes.generateSingleVersionTypeFile(node, 2.7);
+			expect(findDuplicateTypeMembers(content)).toEqual([]);
+		});
+
+		// Needs a built nodes-base. Skip, rather than pass, when it is absent so
+		// the corpus check is visibly unrun.
+		const corpusNodesPath = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
+
+		it.skipIf(!fs.existsSync(corpusNodesPath))(
+			'should emit no duplicate members across the real node corpus',
+			async () => {
+				const outputDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'n8n-node-defs-'));
+				try {
+					const nodes = JSON.parse(
+						await fs.promises.readFile(corpusNodesPath, 'utf-8'),
+					) as NodeTypeDescription[];
+					await generateTypes.orchestrateGeneration({ nodes, outputDir });
+
+					const duplicates: string[] = [];
+					const walk = async (dir: string): Promise<void> => {
+						for (const entry of await fs.promises.readdir(dir, { withFileTypes: true })) {
+							const entryPath = path.join(dir, entry.name);
+							if (entry.isDirectory()) {
+								await walk(entryPath);
+							} else if (entry.name.endsWith('.ts')) {
+								const source = await fs.promises.readFile(entryPath, 'utf-8');
+								for (const name of findDuplicateTypeMembers(source)) {
+									duplicates.push(`${path.relative(outputDir, entryPath)}: ${name}`);
+								}
+							}
+						}
+					};
+					await walk(outputDir);
+					expect(duplicates).toEqual([]);
+				} finally {
+					await fs.promises.rm(outputDir, { recursive: true, force: true });
+				}
+			},
+			120_000,
+		);
 	});
 
 	// =========================================================================

@@ -89,6 +89,7 @@ export class McpSettingsController {
 		return { success: true };
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/workflows', { middlewares: listQueryMiddleware })
 	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
 		const options: ListQuery.Options = {

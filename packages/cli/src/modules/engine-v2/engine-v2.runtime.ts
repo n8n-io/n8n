@@ -11,6 +11,7 @@ import {
 } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
+import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -57,6 +58,7 @@ export class EngineV2Runtime {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
+		private readonly binaryDataService: BinaryDataService,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
@@ -111,6 +113,11 @@ export class EngineV2Runtime {
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
+				// The same call the v1 hard delete makes: one prefix per run, safe to repeat.
+				deleteExecutionFiles: async ({ workflowId, executionId }) =>
+					await this.binaryDataService.deleteMany([
+						FileLocation.ofExecution(workflowId, executionId),
+					]),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),

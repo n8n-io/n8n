@@ -3378,18 +3378,23 @@ export function useCanvasOperations() {
 			// Fix the node position as it could be totally offscreen
 			// and the pasted nodes would so not be directly visible to
 			// the user
+			const groupSize =
+				workflowData.nodes && workflowData.nodes.length > 1
+					? getNodesGroupSize(workflowData.nodes)
+					: DEFAULT_NODE_SIZE;
+			const pastePosition: XYPosition =
+				source === 'paste' && viewport
+					? [
+							(viewport.xMin + viewport.xMax - groupSize[0]) / 2,
+							(viewport.yMin + viewport.yMax - groupSize[1]) / 2,
+						]
+					: lastClickPosition.value;
 			workflowHelpers.updateNodePositions(
 				workflowData,
-				NodeViewUtils.getNewNodePosition(
-					workflowDocumentStore.value.allNodes,
-					lastClickPosition.value,
-					{
-						...(workflowData.nodes && workflowData.nodes.length > 1
-							? { size: getNodesGroupSize(workflowData.nodes) }
-							: {}),
-						viewport,
-					},
-				),
+				NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, pastePosition, {
+					size: groupSize,
+					viewport,
+				}),
 			);
 
 			if (ownsImportBulk) {
@@ -3617,7 +3622,7 @@ export function useCanvasOperations() {
 			Object.entries(credentials).filter(([, credential]) => {
 				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
 				const used = usedCredentials[credential.id];
-				return !used || used.currentUserHasAccess;
+				return !used || used.currentUserCanUse;
 			}),
 		);
 	}

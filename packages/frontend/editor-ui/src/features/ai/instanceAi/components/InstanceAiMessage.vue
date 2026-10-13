@@ -119,9 +119,11 @@ const attachments = computed(() =>
  */
 const trailingAnswer = computed(() => {
 	const tree = props.message.agentTree;
-	const last = tree?.timeline.at(-1);
+	// A live run appends after the answer. Only a settled message ends on it.
+	if (!tree || tree.status === 'active') return undefined;
+	const last = tree.timeline.at(-1);
 	if (last?.type !== 'tool-call') return undefined;
-	const toolCall = tree?.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
+	const toolCall = tree.toolCalls.find((tc) => tc.toolCallId === last.toolCallId);
 	return toolCall?.confirmation?.inputType === 'questions' && !toolCall.isLoading
 		? toolCall
 		: undefined;

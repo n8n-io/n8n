@@ -35,7 +35,7 @@ import { AgentsService } from '../agents.service';
 import { modelStreamStallOptions } from '../model-stream-stall-options';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
-import { buildBuilderPrompt } from './agents-builder-prompts';
+import { buildBuilderPrompt, buildBuilderSessionContext } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, type BuilderTools } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
 import {
@@ -242,7 +242,8 @@ export class AgentsBuilderService {
 		// always runs on it directly.
 		const modelConfig = session.modelConfig;
 
-		const finalInstructions = await this.createBuilderInstructions(projectId, agentId, session);
+		const finalInstructions = this.createBuilderInstructions(session);
+		const sessionContext = await this.createBuilderSessionContext(projectId, agentId);
 		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
@@ -264,6 +265,8 @@ export class AgentsBuilderService {
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(finalInstructions)
+			// Sent after the cached instructions so per-agent values do not break the cache.
+			.volatileInstructionsProvider(async () => sessionContext)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
@@ -336,19 +339,19 @@ export class AgentsBuilderService {
 		}
 	}
 
-	private async createBuilderInstructions(
-		projectId: string,
-		agentId: string,
-		session: InstanceAiBuilderSessionOptions,
-	): Promise<string> {
-		const modelRecommendationsSection = await getModelRecommendationsSection();
-		const instructions = buildBuilderPrompt({
-			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
-			modelRecommendationsSection,
-		});
+	/** Static per addendum, so every build with the same addendum shares one cached prompt. */
+	private createBuilderInstructions(session: InstanceAiBuilderSessionOptions): string {
+		const instructions = buildBuilderPrompt();
 		return session.instructionsAddendum
 			? `${instructions}\n\n${session.instructionsAddendum}`
 			: instructions;
+	}
+
+	private async createBuilderSessionContext(projectId: string, agentId: string): Promise<string> {
+		return buildBuilderSessionContext({
+			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
+			modelRecommendationsSection: await getModelRecommendationsSection(),
+		});
 	}
 
 	private async createBuilderMemory(
