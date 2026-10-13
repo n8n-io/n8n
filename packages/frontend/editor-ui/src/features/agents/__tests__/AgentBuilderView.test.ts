@@ -125,6 +125,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [],
 		getCredentialsByType: () => [],
+		getUsableCredentialByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
 		fetchUsableCredentials: fetchUsableCredentialsMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
@@ -1271,7 +1272,10 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await renderView();
 
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
-		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({ projectId: 'p1' });
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			forAgent: true,
+		});
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 

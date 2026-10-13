@@ -152,6 +152,7 @@ function makeRuntimeReconstructionService(
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
+		mock<CredentialsService>(),
 	);
 }
 
