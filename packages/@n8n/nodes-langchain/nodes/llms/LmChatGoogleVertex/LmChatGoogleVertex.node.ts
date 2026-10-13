@@ -1,5 +1,3 @@
-import { ProjectsClient } from '@google-cloud/resource-manager';
-import { getGoogleServiceAccountCredentials } from 'n8n-nodes-base/google-service-account';
 import type { GoogleAISafetySetting } from '@langchain/google-common';
 import { ChatVertexAI, type ChatVertexAIInput } from '@langchain/google-vertexai';
 import {
@@ -31,6 +29,7 @@ import {
 	googleVertexCredentials,
 	googleVertexAiCredentialTest,
 	resolveGoogleVertexCredentials,
+	searchGoogleProjects,
 } from '@utils/google-vertex';
 
 function errorDescriptionMapper(error: NodeError) {
@@ -121,26 +120,16 @@ export class LmChatGoogleVertex implements INodeType {
 	methods = {
 		credentialTest: { googleVertexAiCredentialTest },
 		listSearch: {
-			async gcpProjectsList(this: ILoadOptionsFunctions) {
-				const results: Array<{ name: string; value: string }> = [];
-
-				const credentials = await this.getCredentials('googleApi');
-				const client = new ProjectsClient({
-					credentials: getGoogleServiceAccountCredentials(credentials),
-				});
-
-				const [projects] = await client.searchProjects();
-
-				for (const project of projects) {
-					if (project.projectId) {
-						results.push({
-							name: project.displayName ?? project.projectId,
-							value: project.projectId,
-						});
-					}
-				}
-
-				return { results };
+			async gcpProjectsList(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			) {
+				return await searchGoogleProjects(
+					await this.getCredentials('googleApi'),
+					filter,
+					paginationToken,
+				);
 			},
 		},
 	};

@@ -1,7 +1,13 @@
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from '../constants';
-import { isPackageInstalled, packageResolverFor } from '../package-resolver';
+import {
+	isCredentialTypeKnown,
+	isPackageInstalled,
+	packageResolverFor,
+	policedTypeFor,
+} from '../package-resolver';
 
 /** A minimal stand-in for `LoadNodesAndCredentials`, built from just its public `loaders`. */
 function makeRegistry(loaders: LoadNodesAndCredentials['loaders']): LoadNodesAndCredentials {
@@ -87,5 +93,78 @@ describe('isPackageInstalled', () => {
 	it('is false for a package named after an inherited Object.prototype property', () => {
 		expect(isPackageInstalled(makeRegistry({}), 'toString')).toBe(false);
 		expect(isPackageInstalled(makeRegistry({}), 'constructor')).toBe(false);
+	});
+});
+
+describe('policedTypeFor', () => {
+	const withKnownCredentials = (
+		knownCredentials: LoadNodesAndCredentials['knownCredentials'],
+	): LoadNodesAndCredentials => ({ knownCredentials }) as LoadNodesAndCredentials;
+	const nodeTypes = {} as NodeTypes;
+
+	it('lists every credential type a type is built on, nearest first', () => {
+		const policedType = policedTypeFor(
+			CREDENTIAL_TYPES_KIND,
+			nodeTypes,
+			withKnownCredentials({
+				oAuth2Api: { className: '', sourcePath: '' },
+				googleOAuth2Api: { className: '', sourcePath: '', extends: ['oAuth2Api'] },
+				googleSheetsOAuth2Api: { className: '', sourcePath: '', extends: ['googleOAuth2Api'] },
+			}),
+		);
+
+		expect(policedType('googleSheetsOAuth2Api')).toEqual({
+			name: 'googleSheetsOAuth2Api',
+			baseName: 'googleSheetsOAuth2Api',
+			ancestors: ['googleOAuth2Api', 'oAuth2Api'],
+		});
+	});
+
+	it('lists a shared base once when two parents build on it', () => {
+		const policedType = policedTypeFor(
+			CREDENTIAL_TYPES_KIND,
+			nodeTypes,
+			withKnownCredentials({
+				left: { className: '', sourcePath: '', extends: ['root'] },
+				right: { className: '', sourcePath: '', extends: ['root'] },
+				both: { className: '', sourcePath: '', extends: ['left', 'right'] },
+			}),
+		);
+
+		expect(policedType('both').ancestors).toEqual(['left', 'right', 'root']);
+	});
+
+	it('stops on a cycle instead of looping', () => {
+		const policedType = policedTypeFor(
+			CREDENTIAL_TYPES_KIND,
+			nodeTypes,
+			withKnownCredentials({
+				aApi: { className: '', sourcePath: '', extends: ['bApi'] },
+				bApi: { className: '', sourcePath: '', extends: ['aApi'] },
+			}),
+		);
+
+		expect(policedType('aApi').ancestors).toEqual(['bApi']);
+	});
+
+	it('gives an unknown credential type no ancestors', () => {
+		const policedType = policedTypeFor(CREDENTIAL_TYPES_KIND, nodeTypes, withKnownCredentials({}));
+
+		expect(policedType('toString').ancestors).toEqual([]);
+	});
+});
+
+describe('isCredentialTypeKnown', () => {
+	const registry = {
+		knownCredentials: { slackApi: { className: '', sourcePath: '' } },
+	} as unknown as LoadNodesAndCredentials;
+
+	it('is true for a known credential type', () => {
+		expect(isCredentialTypeKnown(registry, 'slackApi')).toBe(true);
+	});
+
+	it('is false for an unknown type, or one named after an Object.prototype property', () => {
+		expect(isCredentialTypeKnown(registry, 'unknownApi')).toBe(false);
+		expect(isCredentialTypeKnown(registry, 'constructor')).toBe(false);
 	});
 });

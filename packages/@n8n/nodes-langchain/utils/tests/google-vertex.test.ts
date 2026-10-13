@@ -6,17 +6,125 @@ import {
 	type ICredentialTestFunctions,
 	type INode,
 	type INodeTypes,
+	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EmbeddingsGoogleVertex } from '../../nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node';
 import { LmChatGoogleVertex } from '../../nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node';
-import { googleVertexAiCredentialTest } from '../google-vertex';
+import {
+	googleVertexAiCredentialTest,
+	resolveGoogleVertexCredentials,
+	searchGoogleProjects,
+} from '../google-vertex';
 
 vi.mock('n8n-nodes-base/google-service-account', async (importOriginal) => ({
 	...(await importOriginal<typeof import('n8n-nodes-base/google-service-account')>()),
 	getGoogleAccessToken: vi.fn(),
 }));
+
+const { searchProjects, close, ProjectsClient } = vi.hoisted(() => {
+	const searchProjects = vi.fn();
+	const close = vi.fn();
+	return {
+		searchProjects,
+		close,
+		ProjectsClient: vi.fn(
+			class {
+				searchProjects = searchProjects;
+				close = close;
+			},
+		),
+	};
+});
+
+vi.mock('@google-cloud/resource-manager', () => ({ ProjectsClient }));
+
+describe('Google Vertex credential project', () => {
+	it.each([
+		{ project: undefined, projectId: 'saved-project', expected: 'saved-project' },
+		{ project: '__custom__', projectId: 'manual-project', expected: 'manual-project' },
+		{ project: 'selected-project', projectId: 'old-manual-project', expected: 'selected-project' },
+	])('uses project $expected for selector $project', async ({ project, projectId, expected }) => {
+		const context = mock<ISupplyDataFunctions>();
+		context.getCredentials.mockResolvedValue({
+			email: 'service@example.com',
+			privateKey: 'test-key',
+			region: 'global',
+			...(project === undefined ? {} : { project }),
+			projectId,
+		});
+		context.getNodeParameter.mockImplementation((name) =>
+			name === 'authentication' ? 'googleVertexAiApi' : '',
+		);
+		await expect(resolveGoogleVertexCredentials(context, 0)).resolves.toMatchObject({
+			projectId: expected,
+		});
+	});
+});
+
+describe('Google project discovery', () => {
+	const credentials = Object.freeze({
+		email: ' service@owner-project.iam.gserviceaccount.com ',
+		privateKey: '-----BEGIN PRIVATE KEY----- key -----END PRIVATE KEY-----',
+		region: 'eu',
+	});
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it.each([
+		{ filter: undefined, expectedRequest: { pageToken: 'current-page' } },
+		{ filter: '', expectedRequest: { pageToken: 'current-page' } },
+		{ filter: ' \t\n ', expectedRequest: { pageToken: 'current-page' } },
+		{
+			filter: 'target',
+			expectedRequest: {
+				pageToken: 'current-page',
+				query: 'displayName:"target*" projectId:"target*"',
+			},
+		},
+		{
+			filter: ' Target "project"\\folder ',
+			expectedRequest: {
+				pageToken: 'current-page',
+				query:
+					'displayName:"Target \\"project\\"\\\\folder*" projectId:"Target \\"project\\"\\\\folder*"',
+			},
+		},
+	])('returns projects and pagination for filter $filter', async ({ filter, expectedRequest }) => {
+		searchProjects.mockResolvedValue([
+			[
+				{ displayName: 'Target project', projectId: 'target-project' },
+				{ projectId: 'another-project' },
+				{ displayName: 'Missing ID' },
+			],
+			{ pageToken: 'next-page' },
+		]);
+
+		await expect(searchGoogleProjects(credentials, filter, 'current-page')).resolves.toEqual({
+			results: [
+				{ name: 'Target project (target-project)', value: 'target-project' },
+				{ name: 'another-project', value: 'another-project' },
+			],
+			paginationToken: 'next-page',
+		});
+		expect(ProjectsClient).toHaveBeenCalledWith({
+			credentials: {
+				client_email: 'service@owner-project.iam.gserviceaccount.com',
+				private_key: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+			},
+		});
+		expect(searchProjects).toHaveBeenCalledWith(expectedRequest, { autoPaginate: false });
+		expect(close).toHaveBeenCalled();
+	});
+
+	it('closes the client when project discovery fails', async () => {
+		searchProjects.mockRejectedValue(new Error('Permission denied'));
+
+		await expect(searchGoogleProjects(credentials)).rejects.toThrow('Permission denied');
+		expect(close).toHaveBeenCalled();
+	});
+});
 
 describe.each([new LmChatGoogleVertex(), new EmbeddingsGoogleVertex()])(
 	'$description.displayName credential selection',
@@ -76,14 +184,17 @@ describe('googleVertexAiCredentialTest', () => {
 	const context = mock<ICredentialTestFunctions>({
 		helpers: mock<ICredentialTestFunctions['helpers']>({ request }),
 	});
-	const credential = mock<ICredentialsDecrypted>({
+	const credential: ICredentialsDecrypted = {
+		id: 'vertex-credential',
+		name: 'Google Vertex AI',
+		type: 'googleVertexAiApi',
 		data: {
 			email: 'test@example.com',
 			privateKey: 'test-private-key',
 			projectId: ' test-project ',
 			delegatedEmail: 'unused@example.com',
 		},
-	});
+	};
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -91,23 +202,41 @@ describe('googleVertexAiCredentialTest', () => {
 		request.mockResolvedValue({ locations: [] });
 	});
 
-	it('checks the credential project with Vertex scopes and service account authentication', async () => {
-		const result = await googleVertexAiCredentialTest.call(context, credential);
+	it.each([
+		{ project: undefined, projectId: ' test-project ', expected: 'test-project' },
+		{ project: '__custom__', projectId: ' manual-project ', expected: 'manual-project' },
+		{
+			project: ' selected-project ',
+			projectId: 'old-manual-project',
+			expected: 'selected-project',
+		},
+	])(
+		'checks project $expected with Vertex scopes and service account authentication',
+		async ({ project, projectId, expected }) => {
+			const result = await googleVertexAiCredentialTest.call(context, {
+				...credential,
+				data: {
+					...credential.data,
+					...(project === undefined ? {} : { project }),
+					projectId,
+				},
+			});
 
-		expect(result.status).toBe('OK');
-		expect(getGoogleAccessToken).toHaveBeenCalledWith(
-			{ email: 'test@example.com', privateKey: 'test-private-key' },
-			'vertex',
-		);
-		expect(request).toHaveBeenCalledWith(
-			expect.objectContaining({
-				method: 'GET',
-				uri: 'https://aiplatform.googleapis.com/v1/projects/test-project/locations',
-				headers: { Authorization: 'Bearer test-access-token' },
-				qs: { pageSize: 1 },
-			}),
-		);
-	});
+			expect(result.status).toBe('OK');
+			expect(getGoogleAccessToken).toHaveBeenCalledWith(
+				{ email: 'test@example.com', privateKey: 'test-private-key' },
+				'vertex',
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'GET',
+					uri: `https://aiplatform.googleapis.com/v1/projects/${expected}/locations`,
+					headers: { Authorization: 'Bearer test-access-token' },
+					qs: { pageSize: 1 },
+				}),
+			);
+		},
+	);
 
 	it('reports a project error even when the service account key is valid', async () => {
 		request.mockRejectedValue(new Error('Project not found'));

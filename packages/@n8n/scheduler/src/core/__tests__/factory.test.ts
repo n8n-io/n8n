@@ -250,6 +250,7 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	status: ScheduledTaskStatus.Running,
 	attempts: 0,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	...overrides,
 });
@@ -355,6 +356,7 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -402,6 +404,7 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1279,6 +1282,7 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1333,6 +1337,7 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1630,6 +1635,7 @@ describe('createScheduler metrics', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1794,7 +1800,7 @@ describe('createScheduler metrics', () => {
 		const RENEWAL_INTERVAL_MS = 5_000;
 
 		/** Fires one long handler that stays pending until `finish` is called. */
-		const fireLongHandler = async (metrics: SchedulerMetrics) => {
+		const fireLongHandler = async (metrics: SchedulerMetrics, task = claimedTask()) => {
 			const made = makeScheduler({
 				metrics,
 				executor: { leaseSeconds: LEASE_SECONDS, lookaheadSeconds: 1 },
@@ -1808,7 +1814,7 @@ describe('createScheduler metrics', () => {
 					return report.notDispatched();
 				},
 			});
-			made.taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+			made.taskStore.claimDueTasks.mockResolvedValue([task]);
 			made.taskStore.beginDispatch.mockResolvedValue(1);
 			made.taskStore.completeTask.mockResolvedValue(1);
 			await made.scheduler.execute();
@@ -1867,27 +1873,27 @@ describe('createScheduler metrics', () => {
 			finish();
 		});
 
-		it('warns once when a run is still pending after sixty leases', async () => {
-			const { taskStore, onEvent, finish } = await fireLongHandler(mock<SchedulerMetrics>());
+		it('counts and warns once when a run reaches its timeout', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
 			taskStore.renewLease.mockResolvedValue(true);
-			const stuckWarning = {
+			const { timeoutSeconds } = claimedTask();
+			const timeoutWarning = {
 				level: 'warn',
-				message: 'Scheduler task is still running after many leases; it may be stuck',
-				context: {
-					taskId: claimedTask().id,
-					taskType: 'test-task',
-					runningSeconds: 60 * LEASE_SECONDS,
-				},
+				message: 'Scheduler task run reached its timeout',
+				context: { taskId: claimedTask().id, taskType: 'test-task', timeoutSeconds },
 			};
 
-			await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000 - 1);
-			expect(onEvent).not.toHaveBeenCalledWith(stuckWarning);
+			await vi.advanceTimersByTimeAsync(timeoutSeconds * 1_000 - 1);
+			expect(onEvent).not.toHaveBeenCalledWith(timeoutWarning);
+			expect(metrics.recordTaskTimeout).not.toHaveBeenCalled();
 
 			await vi.advanceTimersByTimeAsync(60_000);
 			const warnings = onEvent.mock.calls.filter(
-				([event]) => event.message === stuckWarning.message,
+				([event]) => event.message === timeoutWarning.message,
 			);
-			expect(warnings).toEqual([[stuckWarning]]);
+			expect(warnings).toEqual([[timeoutWarning]]);
+			expect(metrics.recordTaskTimeout).toHaveBeenCalledExactlyOnceWith('test-task');
 			finish();
 		});
 	});
