@@ -179,7 +179,7 @@ export class SystemTaskRunner {
 				name: task.name,
 				schedule,
 			});
-			this.instanceTaskRunner.add(task, schedule, { retryDelaySeconds: target.retryDelaySeconds });
+			this.instanceTaskRunner.add(task, schedule);
 		} else if (runsOnScheduler(task) && this.schedulerEnabled()) {
 			this.handOverToDurableScheduler(task, schedule);
 		} else {

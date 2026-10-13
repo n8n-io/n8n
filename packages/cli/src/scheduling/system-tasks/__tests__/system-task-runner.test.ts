@@ -1460,18 +1460,13 @@ describe('SystemTaskRunner', () => {
 			);
 		});
 
-		it('reports a failing instance-scoped run and retries it on the instance timer', async () => {
+		it('reports a failing instance-scoped run and runs it again at its next occurrence', async () => {
 			const { runner, metadata, eventService, errorReporter } = setup({
 				isLeader: false,
 				instanceRole: 'unset',
 				instanceType: 'worker',
 			});
 			const error = new Error('failed');
-			perInstance.target = {
-				scope: 'instance',
-				instanceTypes: ['main', 'worker', 'webhook'],
-				retryDelaySeconds: 5,
-			};
 			perInstance.onRun = async () => {
 				throw error;
 			};
@@ -1486,12 +1481,15 @@ describe('SystemTaskRunner', () => {
 				shouldBeLogged: false,
 				shouldIsolate: true,
 			});
-			expect(eventService.emit).toHaveBeenCalledWith('system-task-retry-scheduled', {
-				name: 'per-instance-dummy',
-			});
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'system-task-retry-scheduled',
+				expect.anything(),
+			);
 
-			await vi.advanceTimersByTimeAsync(5 * Time.seconds.toMilliseconds);
+			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS - 1);
+			expect(perInstance.runCount).toBe(1);
 
+			await vi.advanceTimersByTimeAsync(1);
 			expect(perInstance.runCount).toBe(2);
 		});
 

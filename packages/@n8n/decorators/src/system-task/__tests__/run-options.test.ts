@@ -148,14 +148,6 @@ it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 	},
 );
 
-it('should reject an out-of-range retry delay of an instance task', () => {
-	expect(() =>
-		validateSystemTask(
-			taskOn({ scope: 'instance', instanceTypes: ['main'], retryDelaySeconds: 0 }),
-		),
-	).toThrow('A system task declares an out-of-range retry delay');
-});
-
 it('should accept the longest retry delay a timeout honors', () => {
 	expect(() =>
 		validateSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds: 2_147_483 } })),

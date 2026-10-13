@@ -4,7 +4,6 @@ it('should let an instance task name the instance types that run it', () => {
 	const target: SystemTaskTarget = {
 		scope: 'instance',
 		instanceTypes: ['main', 'worker'],
-		retryDelaySeconds: 30,
 	};
 
 	expect(target.scope).toBe('instance');
@@ -45,10 +44,10 @@ it('should not let a cluster task name an instance type', () => {
 });
 
 it('should not let a cluster task set a retry delay outside the leader timer', () => {
-	// @ts-expect-error The scheduler retries by attempts, the leader timer by delay.
 	const target: SystemTaskTarget = {
 		scope: 'cluster',
 		scheduler: { maxAttempts: 3 },
+		// @ts-expect-error The scheduler retries by attempts, the leader timer by delay.
 		retryDelaySeconds: 30,
 	};
 

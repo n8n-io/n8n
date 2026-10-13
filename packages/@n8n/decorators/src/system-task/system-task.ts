@@ -51,11 +51,8 @@ export function leaderTimerTarget(leaderTimer: LeaderTimerOptions): LeaderTimerT
 }
 
 /** A target that runs the task in every instance of `instanceTypes`. */
-export function instanceTarget(
-	instanceTypes: InstanceTarget['instanceTypes'],
-	options: Omit<InstanceTarget, 'scope' | 'instanceTypes'> = {},
-): InstanceTarget {
-	return { scope: 'instance', instanceTypes, ...options };
+export function instanceTarget(instanceTypes: InstanceTarget['instanceTypes']): InstanceTarget {
+	return { scope: 'instance', instanceTypes };
 }
 
 /**
@@ -112,11 +109,8 @@ export function validateSystemTask(task: SystemTask): void {
 	resolveSystemTaskRunOptions(task);
 
 	const { target } = task;
-	const retryDelaySeconds =
-		target.scope === 'instance'
-			? target.retryDelaySeconds
-			: // oxlint-disable-next-line typescript/no-deprecated -- validated while the leader timer still runs tasks
-				target.leaderTimer?.retryDelaySeconds;
+	// oxlint-disable-next-line typescript/no-deprecated -- validated while the leader timer still runs tasks
+	const retryDelaySeconds = target.leaderTimer?.retryDelaySeconds;
 	if (
 		retryDelaySeconds !== undefined &&
 		(!Number.isInteger(retryDelaySeconds) ||

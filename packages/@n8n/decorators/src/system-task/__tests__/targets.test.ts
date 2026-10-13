@@ -41,10 +41,9 @@ describe('leaderTimerTarget', () => {
 
 describe('instanceTarget', () => {
 	it('should make an instance target for the instance types', () => {
-		expect(instanceTarget(['main', 'worker'], { retryDelaySeconds: 30 })).toEqual({
+		expect(instanceTarget(['main', 'worker'])).toEqual({
 			scope: 'instance',
 			instanceTypes: ['main', 'worker'],
-			retryDelaySeconds: 30,
 		});
 	});
 

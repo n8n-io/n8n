@@ -48,7 +48,6 @@ export interface ClusterTarget {
 	 */
 	readonly leaderTimer?: LeaderTimerOptions;
 	readonly instanceTypes?: never;
-	readonly retryDelaySeconds?: never;
 }
 
 /** A cluster task that runs on the leader timer only. */
@@ -57,18 +56,12 @@ export interface LeaderTimerTarget {
 	readonly scheduler?: never;
 	readonly leaderTimer: LeaderTimerOptions;
 	readonly instanceTypes?: never;
-	readonly retryDelaySeconds?: never;
 }
 
 /** A task that runs in every instance of the types it names. */
 export interface InstanceTarget {
 	readonly scope: 'instance';
 	readonly instanceTypes: readonly [InstanceType, ...InstanceType[]];
-	/**
-	 * How long after a failed run the task runs again, instead of at its
-	 * next occurrence. An integer from 1 to about 24 days.
-	 */
-	readonly retryDelaySeconds?: number;
 	readonly scheduler?: never;
 	readonly leaderTimer?: never;
 }
