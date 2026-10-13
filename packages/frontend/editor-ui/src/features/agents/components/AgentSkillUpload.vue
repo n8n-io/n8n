@@ -158,7 +158,6 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	align-items: center;
 	justify-content: flex-start;
 	gap: var(--spacing--md);
-	padding: var(--spacing--md) var(--spacing--lg);
 	min-width: 0;
 }
 
@@ -224,10 +223,6 @@ function onDrop(files: File[] | null, event: DragEvent) {
 }
 
 @media (max-width: 480px) {
-	.upload {
-		padding: var(--spacing--md);
-	}
-
 	.dropZone {
 		padding: var(--spacing--xl) var(--spacing--sm);
 	}
