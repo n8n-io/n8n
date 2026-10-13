@@ -23,9 +23,9 @@ describe('clusterTarget', () => {
 	});
 
 	it('should not take an instance type', () => {
-		// @ts-expect-error A cluster task runs on a main, so it names no instance type.
 		const target = clusterTarget({
 			scheduler: { retryOnFailure: true },
+			// @ts-expect-error A cluster task runs on a main, so it names no instance type.
 			instanceTypes: ['worker'],
 		});
 
