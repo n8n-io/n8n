@@ -435,10 +435,9 @@ async function loadFileAccess() {
 	const justApproved = fileAccessJustApproved.value;
 	fileAccessJustApproved.value = false;
 	if (justApproved) {
-		fileAccessRecheck = setTimeout(
-			() => void checkFileAccess(id, FILE_ACCESS_RECHECKS),
-			FILE_ACCESS_RECHECK_MS,
-		);
+		fileAccessRecheck = setTimeout(() => {
+			void checkFileAccess(id, FILE_ACCESS_RECHECKS);
+		}, FILE_ACCESS_RECHECK_MS);
 	} else {
 		await checkFileAccess(id, FILE_ACCESS_RECHECKS);
 	}
@@ -455,10 +454,9 @@ async function checkFileAccess(id: string, rechecksLeft: number) {
 		if (credentialId.value !== id) return;
 		fileAccessStatus.value = status;
 		if (status === 'notApproved' && rechecksLeft > 0) {
-			fileAccessRecheck = setTimeout(
-				() => void checkFileAccess(id, rechecksLeft - 1),
-				FILE_ACCESS_RECHECK_MS,
-			);
+			fileAccessRecheck = setTimeout(() => {
+				void checkFileAccess(id, rechecksLeft - 1);
+			}, FILE_ACCESS_RECHECK_MS);
 		}
 	} catch {
 		// Unchecked reads the same as not approved.
