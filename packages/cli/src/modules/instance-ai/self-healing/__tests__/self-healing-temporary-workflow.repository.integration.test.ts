@@ -65,24 +65,16 @@ async function fixture() {
 	temporary.active = false;
 	temporary.activeVersionId = null;
 	temporary.isArchived = true;
-	temporary.meta = { instanceAiVerification: true };
 	temporary.versionId = randomUUID();
 	const policyCleared = await new PolicyEnforcementService().enforceWorkflowSave(
 		{ workflow: temporary, storedWorkflow: null, projectId: project.id },
 		{ kind: 'system', reason: 'execution' },
 	);
-	const threadId = randomUUID();
-	await Container.get(InstanceAiThreadRepository).save({
-		id: threadId,
-		projectId: project.id,
-		resourceId: 'test-verification',
-		title: '',
-	});
 	const saved = await Container.get(TransactionRunner).run(
 		{ policyCleared },
 		async (ctx) => await repository.createTemporary(temporary, original.id, ctx),
 	);
-	return { original, originalHistory, saved, threadId };
+	return { original, originalHistory, saved, projectId: project.id };
 }
 
 it('copies access and keeps the original workflow and its history unchanged', async () => {
@@ -106,17 +98,17 @@ it('copies access and keeps the original workflow and its history unchanged', as
 	).toEqual(originalHistory);
 });
 
-it('deletes only archived verification workflows with a durable marker', async () => {
+it('permits cleanup only for marked temporary workflows', async () => {
 	const { original, saved } = await fixture();
-	await repository.deleteTemporary(original.id);
-	expect(await Container.get(WorkflowRepository).existsBy({ id: original.id })).toBe(true);
+	expect(await repository.canDelete(original.id)).toBe(false);
+	expect(await repository.canDelete(saved.id)).toBe(true);
 	await repository.deleteTemporary(saved.id);
 	expect(await Container.get(WorkflowRepository).existsBy({ id: saved.id })).toBe(false);
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
 });
 
 it.each(['new', 'running', 'waiting', 'unknown'] as const)(
-	'keeps a workflow while its execution is %s',
+	'defers cleanup while its execution is %s',
 	async (status) => {
 		const { saved } = await fixture();
 		const execution = await Container.get(ExecutionRepository).save({
@@ -127,15 +119,14 @@ it.each(['new', 'running', 'waiting', 'unknown'] as const)(
 			finished: false,
 		});
 		expect(await repository.findUnfinishedExecutionIds(saved.id)).toEqual([execution.id]);
-		await repository.deleteTemporary(saved.id);
-		expect(await Container.get(WorkflowRepository).existsBy({ id: saved.id })).toBe(true);
+		expect(await repository.canDelete(saved.id)).toBe(false);
 	},
 );
 
 it('recovers only old verification markers', async () => {
-	const { saved, threadId } = await fixture();
+	const { saved } = await fixture();
 	const old = new Date('2026-10-10T00:00:00Z');
-	await repository.save({ id: `thread:${threadId}`, createdAt: old });
+	await repository.save({ id: `thread:${randomUUID()}`, createdAt: old });
 	expect(await repository.findAbandonedIds(new Date('2026-10-11T00:00:00Z'))).toEqual([]);
 	await repository.update({ id: markerId(saved.id) }, { createdAt: old });
 	expect(await repository.findAbandonedIds(new Date('2026-10-11T00:00:00Z'))).toEqual([saved.id]);
@@ -177,7 +168,14 @@ it('keeps an old snapshot when its execution was just canceled', async () => {
 });
 
 it('keeps cleanup markers when the investigation thread is deleted', async () => {
-	const { saved, threadId } = await fixture();
+	const { saved, projectId } = await fixture();
+	const threadId = randomUUID();
+	await Container.get(InstanceAiThreadRepository).save({
+		id: threadId,
+		projectId,
+		resourceId: 'test-verification',
+		title: '',
+	});
 	await Container.get(InstanceAiThreadRepository).delete(threadId);
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(true);
 	await repository.deleteTemporary(saved.id);

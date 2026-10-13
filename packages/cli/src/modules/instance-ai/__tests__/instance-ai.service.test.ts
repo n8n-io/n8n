@@ -316,7 +316,6 @@ import type {
 	SelfHealingRunInput,
 	SelfHealingRunOptions,
 	SelfHealingRunResult,
-	SelfHealingVerifier,
 } from '../self-healing/self-healing-agent.service';
 import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
 import { RunStateRegistry } from '@n8n/instance-ai';
@@ -1554,7 +1553,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 		executionId: 'execution-1',
 		message: 'The execution failed.',
 	};
-	const verifier = vi.fn<SelfHealingVerifier>();
 
 	function createLauncher() {
 		return Object.assign(
@@ -1614,8 +1612,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 		const pending = createDeferredPromise<SelfHealingRunResult>();
 		service.selfHealingAgent.execute.mockReturnValue(pending.promise);
 
-		const run = service.startSelfHealingRun(input, verifier);
-		const options = service.selfHealingAgent.execute.mock.calls[0][2];
+		const run = service.startSelfHealingRun(input);
+		const options = service.selfHealingAgent.execute.mock.calls[0][1];
 		expect(service.runState.activeRunCountForUser(fakeUser.id)).toBe(1);
 		expect(service.inFlightExecutions.size).toBe(1);
 		expect(options.sandbox).toBe(service.sandboxService);
@@ -1641,21 +1639,19 @@ describe('InstanceAiService — self-healing launcher', () => {
 		service.instanceAiConfig.maxConcurrentRunsPerUser = 1;
 		service.runState.startRun({ threadId: 'existing', user: fakeUser });
 
-		await expect(service.startSelfHealingRun(input, verifier)).rejects.toThrow(
-			InstanceAiRunLimitError,
-		);
+		await expect(service.startSelfHealingRun(input)).rejects.toThrow(InstanceAiRunLimitError);
 
 		expect(service.selfHealingAgent.execute).not.toHaveBeenCalled();
 		expect(service.runState.activeRunCount()).toBe(1);
 	});
 
-	it('checks the gate and verifier before registering a run', async () => {
+	it('checks the gate before registering a run', async () => {
 		const service = createLauncher();
 		service.selfHealingAgent.assertEnabled.mockImplementation(() => {
 			throw new Error('Unavailable');
 		});
 
-		await expect(service.startSelfHealingRun(input, verifier)).rejects.toThrow('Unavailable');
+		await expect(service.startSelfHealingRun(input)).rejects.toThrow('Unavailable');
 
 		expect(service.runState.activeRunCount()).toBe(0);
 		expect(service.selfHealingAgent.execute).not.toHaveBeenCalled();
@@ -1665,9 +1661,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		const service = createLauncher();
 		service.selfHealingAgent.execute.mockRejectedValue(new Error('Storage unavailable'));
 
-		await expect(service.startSelfHealingRun(input, verifier)).rejects.toThrow(
-			'Storage unavailable',
-		);
+		await expect(service.startSelfHealingRun(input)).rejects.toThrow('Storage unavailable');
 		await service.drainInFlightExecutions(1000);
 
 		expect(service.runState.activeRunCount()).toBe(0);
@@ -1677,14 +1671,14 @@ describe('InstanceAiService — self-healing launcher', () => {
 	it('lets shutdown abort setup and waits for its cleanup to finish', async () => {
 		const service = createLauncher();
 		const cleanup = createDeferredPromise<undefined>();
-		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
 			await new Promise<void>((resolve) =>
 				options.signal.addEventListener('abort', () => resolve(), { once: true }),
 			);
 			await cleanup.promise;
 			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
 		});
-		const run = service.startSelfHealingRun(input, verifier);
+		const run = service.startSelfHealingRun(input);
 		const { activeRuns } = service.runState.shutdown();
 		for (const active of activeRuns) active.abortController.abort('service_shutdown');
 		let drained = false;
@@ -1702,13 +1696,13 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 	it('preserves finish reasons without starting chat title work', async () => {
 		const service = createLauncher();
-		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
 			const result = { ...completedRun(options), finishReason: 'length' as const };
 			options.onFinish(result, 'model-1');
 			return result;
 		});
 
-		const result = await service.startSelfHealingRun(input, verifier);
+		const result = await service.startSelfHealingRun(input);
 
 		expect(service.publishRunFinish).toHaveBeenCalledWith(
 			result.threadId,
@@ -1730,13 +1724,13 @@ describe('InstanceAiService — self-healing launcher', () => {
 		async (status) => {
 			const service = createLauncher();
 			const settle = createDeferredPromise<undefined>();
-			service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+			service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
 				await settle.promise;
 				const result = { ...completedRun(options), status };
 				options.onFinish(result, 'model-1');
 				return result;
 			});
-			const run = service.startSelfHealingRun(input, verifier);
+			const run = service.startSelfHealingRun(input);
 			service.tracing.finalizeRunTracing.mockImplementation(async () => {
 				settle.resolve(undefined);
 				await run;
@@ -1765,13 +1759,13 @@ describe('InstanceAiService — self-healing launcher', () => {
 	it('uses the shared timeout classification for internal cancellation', async () => {
 		const service = createLauncher();
 		service.liveness.consumeRunTimeout.mockReturnValue({ timedOut: true });
-		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => ({
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => ({
 			...completedRun(options),
 			status: 'cancelled',
 			reason: options.getAbortReason(),
 		}));
 
-		expect(await service.startSelfHealingRun(input, verifier)).toMatchObject({
+		expect(await service.startSelfHealingRun(input)).toMatchObject({
 			reason: INSTANCE_AI_RUN_TIMEOUT_REASON,
 		});
 	});
@@ -1779,7 +1773,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 	it('keeps the cancellation event when shutdown starts before the run settles', async () => {
 		const service = createLauncher();
 		const settle = createDeferredPromise<undefined>();
-		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
 			await settle.promise;
 			const result = {
 				...completedRun(options),
@@ -1789,8 +1783,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			options.onFinish(result, 'model-1');
 			return result;
 		});
-		const run = service.startSelfHealingRun(input, verifier);
-		const options = service.selfHealingAgent.execute.mock.calls[0][2];
+		const run = service.startSelfHealingRun(input);
+		const options = service.selfHealingAgent.execute.mock.calls[0][1];
 		service.runState.getActiveRun(options.threadId)?.abortController.abort();
 
 		const shutdown = service.shutdown();

@@ -72,7 +72,6 @@ export class SelfHealingTemporaryWorkflowService {
 		workflow.pinData = structuredClone(baseline.original.pinData);
 		workflow.staticData = structuredClone(original.staticData);
 		workflow.nodeGroups = structuredClone(baseline.original.nodeGroups ?? []);
-		workflow.meta = { instanceAiVerification: true };
 		workflow.isArchived = true;
 		// oxlint-disable-next-line typescript/no-deprecated
 		workflow.active = false;

@@ -8,7 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { SharedWorkflowRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import {
@@ -25,7 +25,6 @@ import {
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
-	type SelfHealingCandidateVerifier,
 	type SelfHealingOutput,
 	type SelfHealingThreadMetadata,
 	type ServiceProxyConfig,
@@ -60,18 +59,6 @@ export type SelfHealingRunInput = {
 	executionId: string;
 	message: string;
 };
-
-/** The backend supplies authority. The model supplies only candidate arguments. */
-export type SelfHealingVerifier = (
-	input: Parameters<SelfHealingCandidateVerifier>[0] & {
-		user: User;
-		baseline: WorkflowSuggestionBaseline;
-		executionId: string;
-		workspace: Workspace;
-		context: InstanceAiContext;
-		abortSignal: AbortSignal;
-	},
-) => Promise<unknown>;
 
 export type SelfHealingRunResult = {
 	threadId: string;
@@ -124,7 +111,6 @@ export class SelfHealingAgentService {
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly suggestions: WorkflowSuggestionService,
-		private readonly sharedWorkflows: SharedWorkflowRepository,
 		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly memory: TypeORMAgentMemory,
 		private readonly checkpoints: TypeORMAgentCheckpointStore,
@@ -138,21 +124,17 @@ export class SelfHealingAgentService {
 		private readonly candidates: SelfHealingCandidateService,
 	) {}
 
-	assertEnabled(verifier?: SelfHealingVerifier): void {
+	assertEnabled(): void {
 		if (!this.config.instanceAi.selfHealingEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
-		}
-		if (verifier !== undefined && typeof verifier !== 'function') {
-			throw new BadRequestError('A self-healing candidate verifier is required.');
 		}
 	}
 
 	async execute(
 		input: SelfHealingRunInput,
-		verifyCandidate: SelfHealingVerifier | undefined,
 		options: SelfHealingRunOptions,
 	): Promise<SelfHealingRunResult> {
-		this.assertEnabled(verifyCandidate);
+		this.assertEnabled();
 		input = { ...input, baseline: structuredClone(input.baseline) };
 		const user = await this.validateInput(input);
 		const { baseline, executionId, message } = input;
@@ -233,8 +215,6 @@ export class SelfHealingAgentService {
 				context,
 				modelId,
 				metadata,
-				workspace,
-				verifyCandidate: verifyCandidate ?? (async (args) => await this.candidates.verify(args)),
 			});
 			result.status = stream.status;
 			result.finishReason = stream.finishReason;
@@ -295,10 +275,6 @@ export class SelfHealingAgentService {
 		}
 		if (!message.trim()) throw new BadRequestError('A failure message is required.');
 		const actor = await this.suggestions.requireCurrentBaseline(baseline);
-		const project = await this.sharedWorkflows.getWorkflowOwningProject(baseline.workflowId);
-		if (project?.id !== baseline.projectId) {
-			throw new BadRequestError('The workflow does not belong to the baseline project.');
-		}
 		const execution = await this.executions.getReference(actor, baseline.workflowId, executionId);
 		if (execution.status !== 'available') {
 			throw new BadRequestError('The failed execution is unavailable for this workflow.');
@@ -403,16 +379,12 @@ export class SelfHealingAgentService {
 		context,
 		modelId,
 		metadata,
-		workspace,
-		verifyCandidate,
 	}: {
 		input: SelfHealingRunInput;
 		options: SelfHealingRunOptions;
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
-		workspace: Workspace;
-		verifyCandidate: SelfHealingVerifier;
 	}): Promise<StreamRunResult> {
 		const { user, baseline, executionId, message } = input;
 		const { runId, threadId, signal } = options;
@@ -427,12 +399,11 @@ export class SelfHealingAgentService {
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();
-				return await verifyCandidate({
+				return await this.candidates.verify({
 					...args,
 					user,
 					baseline,
 					executionId,
-					workspace,
 					context,
 					abortSignal: signal,
 				});

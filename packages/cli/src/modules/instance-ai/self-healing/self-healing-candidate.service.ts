@@ -1,4 +1,6 @@
+import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import {
@@ -8,6 +10,8 @@ import {
 	planVerificationSimulation,
 	prepareVerificationRun,
 	runWorkflowVerification,
+	type InstanceAiContext,
+	type SelfHealingCandidateInput,
 	type WorkflowBuildOutcome,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -16,11 +20,16 @@ import { STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import { toWorkflowJSON } from '../workflow-json';
 import { compileCandidateWorkflow, type CandidateWorkflowResult } from './candidate-workflow';
-import type { SelfHealingVerifier } from './self-healing-agent.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingTemporaryWorkflowService } from './self-healing-temporary-workflow.service';
 
-type CandidateInput = Parameters<SelfHealingVerifier>[0];
+type CandidateInput = SelfHealingCandidateInput & {
+	user: User;
+	baseline: WorkflowSuggestionBaseline;
+	executionId: string;
+	context: InstanceAiContext;
+	abortSignal: AbortSignal;
+};
 type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }>;
 
 @Service()
@@ -51,7 +60,6 @@ export class SelfHealingCandidateService {
 			baseline,
 			context,
 			filePath,
-			shareParameters: context.allowSendingParameterValues !== false,
 			abortSignal,
 		});
 		if (!candidate.success) {

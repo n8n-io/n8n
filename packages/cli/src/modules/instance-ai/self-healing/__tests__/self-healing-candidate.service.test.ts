@@ -6,7 +6,6 @@ import type { InstanceAiContext, InstanceAiExecutionService } from '@n8n/instanc
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
-import type { SelfHealingVerifier } from '../self-healing-agent.service';
 import { SelfHealingCandidateService } from '../self-healing-candidate.service';
 import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import type { SelfHealingTemporaryWorkflowService } from '../self-healing-temporary-workflow.service';
@@ -74,7 +73,7 @@ describe('SelfHealingCandidateService', () => {
 		logger,
 	);
 	let source: string;
-	let input: Parameters<SelfHealingVerifier>[0];
+	let input: Parameters<SelfHealingCandidateService['verify']>[0];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -95,7 +94,6 @@ describe('SelfHealingCandidateService', () => {
 			user,
 			baseline: structuredClone(baseline),
 			executionId: 'failed-1',
-			workspace,
 			filePath: 'self-healing/candidate.json',
 			abortSignal: new AbortController().signal,
 			context: mock<InstanceAiContext>({

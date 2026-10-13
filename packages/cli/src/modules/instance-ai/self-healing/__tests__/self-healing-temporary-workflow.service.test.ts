@@ -106,7 +106,6 @@ it('runs the exact candidate on an isolated workflow and keeps its findings afte
 			settings: baseline.original.settings,
 			pinData: baseline.original.pinData,
 			staticData: original.staticData,
-			meta: { instanceAiVerification: true },
 			isArchived: true,
 			activeVersionId: null,
 		});
@@ -130,17 +129,14 @@ it('runs the exact candidate on an isolated workflow and keeps its findings afte
 	expect(workflows.deleteTemporary).toHaveBeenCalledWith('temporary');
 });
 
-it.each(['Execution failed', 'Execution interrupted'])(
-	'cleans up when verification throws: %s',
-	async (message) => {
-		await expect(
-			service.withTemporaryWorkflow(input, async () => {
-				throw new Error(message);
-			}),
-		).rejects.toThrow(message);
-		expect(workflows.deleteTemporary).toHaveBeenCalledWith('temporary');
-	},
-);
+it('cleans up when verification throws', async () => {
+	await expect(
+		service.withTemporaryWorkflow(input, async () => {
+			throw new Error('Execution failed');
+		}),
+	).rejects.toThrow('Execution failed');
+	expect(workflows.deleteTemporary).toHaveBeenCalledWith('temporary');
+});
 
 it('retains the marker when execution data cleanup fails', async () => {
 	executions.hardDeleteByWorkflowId.mockRejectedValue(new Error('Storage unavailable'));

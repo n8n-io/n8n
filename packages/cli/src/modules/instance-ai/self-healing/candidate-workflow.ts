@@ -26,14 +26,12 @@ type CandidateWorkflowInput = {
 	baseline: WorkflowSuggestionBaseline;
 	context: InstanceAiContext;
 	filePath: string;
-	shareParameters: boolean;
 	abortSignal?: AbortSignal;
 };
 
 export type CandidateWorkflowResult =
 	| {
 			success: true;
-			filePath: string;
 			candidateChecksum: string;
 			workflow: WorkflowSuggestionSnapshot;
 			warnings: ValidationWarning[];
@@ -150,11 +148,10 @@ export async function compileCandidateWorkflow({
 	baseline,
 	context,
 	filePath,
-	shareParameters,
 	abortSignal,
 }: CandidateWorkflowInput): Promise<CandidateWorkflowResult> {
 	abortSignal?.throwIfAborted();
-	if (!shareParameters) {
+	if (context.allowSendingParameterValues === false) {
 		return {
 			success: false,
 			reason: 'parameter_sharing_disabled',
@@ -212,7 +209,6 @@ export async function compileCandidateWorkflow({
 		}
 		return {
 			success: true,
-			filePath,
 			candidateChecksum: await calculateWorkflowChecksum(workflow),
 			workflow: structuredClone(workflow),
 			warnings,

@@ -157,13 +157,22 @@ export class WorkflowSuggestionService {
 	}
 
 	async requireCurrentBaseline(baseline: WorkflowSuggestionBaseline) {
-		const user = await this.requireEditor(baseline.backgroundUserId, baseline.workflowId);
-		const target = await this.readWorkflowTarget(baseline.workflowId, {});
+		const { user, workflow } = await this.getEditorContext(
+			baseline.backgroundUserId,
+			baseline.workflowId,
+		);
+		const target = {
+			workflow,
+			projectId: workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId,
+			latestPublishHistoryEventId:
+				await this.workflowPublishHistoryRepository.getLatestPublishHistoryEventId(
+					baseline.workflowId,
+				),
+		};
 		if (
 			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum ||
-			!target.workflow ||
 			!(await this.matchesBaseline(baseline, target)) ||
-			!(await this.isPublished(target.workflow, {}))
+			!(await this.isPublished(workflow, {}))
 		) {
 			throw new ConflictError('The workflow no longer matches the published baseline.');
 		}

@@ -61,15 +61,9 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 		if (!marker) return undefined;
 		const workflow = await this.manager.findOne(WorkflowEntity, {
 			where: { id: workflowId },
-			select: ['id', 'isArchived', 'activeVersionId', 'meta'],
+			select: ['id', 'isArchived', 'activeVersionId'],
 		});
-		if (
-			workflow &&
-			(!workflow.isArchived ||
-				workflow.activeVersionId ||
-				workflow.meta?.instanceAiVerification !== true)
-		)
-			return undefined;
+		if (workflow && (!workflow.isArchived || workflow.activeVersionId)) return undefined;
 		return marker;
 	}
 
@@ -98,7 +92,6 @@ export class SelfHealingTemporaryWorkflowRepository extends BaseRepository<Insta
 	}
 
 	async deleteTemporary(workflowId: string): Promise<void> {
-		if (!(await this.canDelete(workflowId))) return;
 		await this.manager.delete(WorkflowEntity, workflowId);
 		await this.delete({ id: RESOURCE_PREFIX + workflowId });
 	}

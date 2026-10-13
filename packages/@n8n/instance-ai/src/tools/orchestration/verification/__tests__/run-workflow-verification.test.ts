@@ -95,74 +95,42 @@ describe('runWorkflowVerification', () => {
 		]);
 	});
 
-	it('combines scripted decision coverage and reports a failed pass', async () => {
-		const gateOutcome: WorkflowBuildOutcome = {
-			...buildOutcome,
-			nodeSimulationPlan: [
-				{
-					nodeName: 'Approval',
-					verdict: 'simulate',
-					reason: 'Waits for a decision',
-					confidence: 'high',
-					source: 'deterministic',
-					haltBranch: true,
-				},
-				...(buildOutcome.nodeSimulationPlan ?? []),
-			],
-			waitGateScripts: [
-				{
-					nodeName: 'Approval',
-					cutEdge: { source: 'Process result', target: 'Approval' },
-					decisions: [
-						{ label: 'approve', items: [{ approved: true }] },
-						{ label: 'decline', items: [{ approved: false }] },
-					],
-				},
-			],
+	it('runs the prepared gate script with its decision data and cut edge', async () => {
+		const script = {
+			nodeName: 'Approval',
+			cutEdge: { source: 'Process result', target: 'Approval' },
+			decisions: [{ label: 'approve', items: [{ approved: true }] }],
 		};
-		const preparation = prepareVerificationRun(gateOutcome, {});
-		if (preparation.kind !== 'ready') throw new Error('Expected verification fixtures');
-		const run = vi
-			.fn<InstanceAiExecutionService['run']>()
-			.mockResolvedValueOnce({
-				executionId: 'approve-1',
-				status: 'success',
-				executedNodeNames: ['Approval', 'Send message'],
-			})
-			.mockResolvedValueOnce({
-				executionId: 'decline-1',
-				status: 'success',
-				executedNodeNames: ['Approval', 'Process result'],
-				nodeErrors: [{ nodeName: 'Process result', message: 'Invalid field' }],
-			});
+		const run = vi.fn<InstanceAiExecutionService['run']>().mockResolvedValue({
+			executionId: 'approve-1',
+			status: 'success',
+			executedNodeNames: ['Approval'],
+		});
 
-		const { result, analysis, parameterCheckRuns } = await runWorkflowVerification({
+		const { parameterCheckRuns } = await runWorkflowVerification({
 			executionService: { run },
 			workflowId: 'workflow-1',
-			buildOutcome: gateOutcome,
-			prepared: preparation.prepared,
+			buildOutcome,
+			prepared: {
+				verificationPinData: { Approval: [] },
+				simulatedNodes: [{ nodeName: 'Approval', reason: 'Waits for a decision' }],
+				haltedGateNames: ['Approval'],
+				gateScript: script,
+			},
 			stateBefore: undefined,
 			runId: 'run-1',
 		});
 
-		expect(run).toHaveBeenCalledTimes(2);
-		expect(run.mock.calls[0][2]).toMatchObject({
-			verificationPinData: {
-				Approval: [{ approved: true }],
-				'Send message': [{ id: 'message-1' }],
-			},
-			omitConnections: [{ source: 'Process result', target: 'Approval' }],
-			isVerificationRun: true,
-		});
-		expect(result.status).toBe('error');
-		expect(analysis.success).toBe(false);
-		expect(analysis.nodesNotReached).toEqual([]);
-		expect(analysis.nodeErrors).toEqual([
-			{ nodeName: 'Process result', message: '[decision: decline] Invalid field' },
-		]);
-		expect(parameterCheckRuns).toEqual([
-			{ executionId: 'approve-1', nodeNames: ['Approval', 'Send message'] },
-			{ executionId: 'decline-1', nodeNames: ['Approval'] },
-		]);
+		expect(run).toHaveBeenCalledOnce();
+		expect(run).toHaveBeenCalledWith(
+			'workflow-1',
+			undefined,
+			expect.objectContaining({
+				verificationPinData: { Approval: [{ approved: true }] },
+				omitConnections: [script.cutEdge],
+				isVerificationRun: true,
+			}),
+		);
+		expect(parameterCheckRuns).toEqual([{ executionId: 'approve-1', nodeNames: ['Approval'] }]);
 	});
 });

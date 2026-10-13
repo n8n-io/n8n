@@ -259,7 +259,6 @@ import {
 	SelfHealingAgentService,
 	type SelfHealingRunInput,
 	type SelfHealingRunResult,
-	type SelfHealingVerifier,
 } from './self-healing/self-healing-agent.service';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
@@ -1531,11 +1530,8 @@ export class InstanceAiService {
 	}
 
 	/** Run one internal investigation under the normal host lifecycle. */
-	async startSelfHealingRun(
-		input: SelfHealingRunInput,
-		verifyCandidate?: SelfHealingVerifier,
-	): Promise<SelfHealingRunResult> {
-		this.selfHealingAgent.assertEnabled(verifyCandidate);
+	async startSelfHealingRun(input: SelfHealingRunInput): Promise<SelfHealingRunResult> {
+		this.selfHealingAgent.assertEnabled();
 		this.assertRunAdmissible(input.user);
 		const threadId = randomUUID();
 		this.liveness.clearThreadState(threadId);
@@ -1544,7 +1540,7 @@ export class InstanceAiService {
 			user: input.user,
 		});
 		const execution = this.selfHealingAgent
-			.execute(input, verifyCandidate, {
+			.execute(input, {
 				threadId,
 				runId,
 				messageGroupId,

@@ -91,8 +91,8 @@ describe('compileCandidateWorkflow', () => {
 		await rm(directory, { recursive: true, force: true });
 	});
 
-	async function compile(filePath = 'candidate.json', shareParameters = true) {
-		return await compileCandidateWorkflow({ baseline, context, filePath, shareParameters });
+	async function compile(filePath = 'candidate.json') {
+		return await compileCandidateWorkflow({ baseline, context, filePath });
 	}
 
 	function generatedWorkflow(): WorkflowJSON {
@@ -369,8 +369,9 @@ try {
 
 	it('rejects verification when parameters are hidden', async () => {
 		await writeCandidate(generatedWorkflow());
+		context.allowSendingParameterValues = false;
 
-		expect(await compile('candidate.json', false)).toMatchObject({
+		expect(await compile()).toMatchObject({
 			success: false,
 			reason: 'parameter_sharing_disabled',
 		});

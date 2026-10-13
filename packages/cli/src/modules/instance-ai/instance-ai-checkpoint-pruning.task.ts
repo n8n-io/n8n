@@ -46,6 +46,6 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 
 	async run(signal: AbortSignal): Promise<void> {
 		await this.instanceAiService.pruneExpiredData(Date.now(), signal);
-		if (!signal.aborted) await this.temporaryWorkflows.cleanupAbandoned(signal);
+		await this.temporaryWorkflows.cleanupAbandoned(signal);
 	}
 }
