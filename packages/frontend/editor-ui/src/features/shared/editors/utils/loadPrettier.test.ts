@@ -4,8 +4,7 @@ import { loadPrettier, type PrettierModules } from './loadPrettier';
 
 type PluginName = keyof PrettierModules['plugins'];
 
-// Node resolves `prettier` to a build with every parser built in, so plugins would be ignored.
-// The browser gets the standalone build, which formats only with the plugins it is given.
+// Use the browser build: the Node build has every parser built in and ignores the plugins
 vi.mock('prettier', async () => await import('prettier/standalone'));
 
 describe('loadPrettier', () => {
