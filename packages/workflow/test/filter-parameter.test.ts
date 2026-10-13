@@ -757,6 +757,40 @@ describe('FilterParameter', () => {
 						);
 						expect(result).toBe(false);
 					});
+
+					it('should add the i flag and keep the left value for async regex operations', async () => {
+						const regexTest = vi.fn(async () => true);
+						const result = await executeFilterConditionAsync(
+							{
+								id: '1',
+								leftValue: 'LOWERCASE',
+								rightValue: '[A-Z]',
+								operator: { operation: 'regex', type: 'string' },
+							},
+							filterFactory({ options: { caseSensitive: false, version: 4 } }).options,
+							regexTest,
+						);
+
+						expect(result).toBe(true);
+						expect(regexTest).toHaveBeenCalledWith('[A-Z]', 'LOWERCASE', 'i');
+					});
+
+					it('should keep existing flags when it adds the i flag for async regex operations', async () => {
+						const regexTest = vi.fn(async () => false);
+						const result = await executeFilterConditionAsync(
+							{
+								id: '1',
+								leftValue: 'FOO',
+								rightValue: '/foo/g',
+								operator: { operation: 'notRegex', type: 'string' },
+							},
+							filterFactory({ options: { caseSensitive: false, version: 4 } }).options,
+							regexTest,
+						);
+
+						expect(result).toBe(true);
+						expect(regexTest).toHaveBeenCalledWith('foo', 'FOO', 'gi');
+					});
 				});
 			});
 
