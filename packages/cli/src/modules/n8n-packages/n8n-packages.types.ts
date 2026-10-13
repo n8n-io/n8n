@@ -2,7 +2,10 @@ import type { PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
-import type { CredentialConflict } from './entities/credential/credential.types';
+import type {
+	CredentialConflict,
+	CredentialUpdateForbidden,
+} from './entities/credential/credential.types';
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
 import type { TagResolutionFailure } from './entities/tag/tag.types';
 import type {
@@ -579,6 +582,7 @@ export type BlockingIssue =
 			usedBy: PackageRequirementConsumer[];
 	  }
 	| ({ type: 'credential-conflict' } & CredentialConflict)
+	| ({ type: 'credential-update-forbidden' } & CredentialUpdateForbidden)
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'workflow-removal-forbidden' } & WorkflowRemovalFailure)

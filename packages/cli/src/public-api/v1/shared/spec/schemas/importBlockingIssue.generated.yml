@@ -206,6 +206,35 @@ oneOf:
       type:
         type: string
         enum:
+          - credential-update-forbidden
+      targetId:
+        type: string
+        description: Id of the destination credential.
+      sourceIds:
+        type: array
+        items:
+          type: string
+        description: Ids of the package credentials that resolve to it.
+      name:
+        type: string
+        description: Name of the destination credential.
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use the listed package credentials.
+    required:
+      - type
+      - targetId
+      - sourceIds
+      - name
+      - usedBy
+    description: A matched credential that the import can update, but the caller has no `credential:update` permission on it. Only under `credentialConflictPolicy` `overwrite` or `fail`. The import does not read its values, so this blocks also when the package would not change it. Use `keep-existing` to bind it without a change.
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - project-conflict
       kind:
         type: string

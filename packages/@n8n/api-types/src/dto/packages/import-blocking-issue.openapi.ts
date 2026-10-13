@@ -104,6 +104,21 @@ export const credentialConflictIssueOpenApi: ZodOpenAPIMetadata = {
 		'reported.',
 };
 
+export const credentialUpdateForbiddenFieldDocs = {
+	targetId: { description: 'Id of the destination credential.' },
+	sourceIds: { description: 'Ids of the package credentials that resolve to it.' },
+	name: { description: 'Name of the destination credential.' },
+	usedBy: { description: 'Package consumers that use the listed package credentials.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialUpdateForbiddenIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A matched credential that the import can update, but the caller has no ' +
+		'`credential:update` permission on it. Only under `credentialConflictPolicy` `overwrite` ' +
+		'or `fail`. The import does not read its values, so this blocks also when the package ' +
+		'would not change it. Use `keep-existing` to bind it without a change.',
+};
+
 export const projectConflictFieldDocs = {
 	name: { description: "The project's name as it appears in the package." },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;

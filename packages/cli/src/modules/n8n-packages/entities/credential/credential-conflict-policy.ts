@@ -7,7 +7,9 @@ import { mergeCredentialData } from '@/credentials/credential-data-merge';
 import type {
 	CredentialConflict,
 	CredentialImportPlan,
+	CredentialMatch,
 	CredentialUpdateCandidate,
+	CredentialUpdateForbidden,
 	CredentialUpdateScope,
 } from './credential.types';
 import { CredentialConflictPolicy } from '../../n8n-packages.types';
@@ -39,8 +41,9 @@ export type UpdatableCredential = Pick<
 >;
 
 /**
- * Whether the conflict policy can update a matched destination credential. Any other match is
- * only bound: it never changes and never blocks.
+ * Whether a matched destination credential is in the update scope of the conflict policy. Any
+ * other match is only bound: it never changes and never blocks. A match in scope also needs
+ * `credential:update`, else it blocks: see `CredentialImporter`.
  */
 export function isUpdateCandidate(
 	credential: UpdatableCredential,
@@ -90,10 +93,8 @@ function uniqueSorted(values: string[]): string[] {
 	return [...new Set(values)].sort();
 }
 
-function groupByTarget(
-	candidates: CredentialUpdateCandidate[],
-): Map<string, CredentialUpdateCandidate[]> {
-	const byTarget = new Map<string, CredentialUpdateCandidate[]>();
+function groupByTarget<T extends CredentialMatch>(candidates: T[]): Map<string, T[]> {
+	const byTarget = new Map<string, T[]>();
 	for (const candidate of candidates) {
 		const group = byTarget.get(candidate.targetId) ?? [];
 		// Scopes of one project package can plan the same package credential more than once,
@@ -112,18 +113,21 @@ function groupByTarget(
 	return byTarget;
 }
 
-function toConflict(
-	kind: CredentialConflict['kind'],
-	targetId: string,
-	group: CredentialUpdateCandidate[],
-): CredentialConflict {
+function toTargetIssue(targetId: string, group: CredentialMatch[]): CredentialUpdateForbidden {
 	return {
-		kind,
 		targetId,
 		sourceIds: uniqueSorted(group.map(({ sourceId }) => sourceId)),
 		name: group[0].targetName,
 		usedBy: mergeRequirementConsumers(group.flatMap(({ usedBy }) => usedBy)),
 	};
+}
+
+function toConflict(
+	kind: CredentialConflict['kind'],
+	targetId: string,
+	group: CredentialMatch[],
+): CredentialConflict {
+	return { kind, ...toTargetIssue(targetId, group) };
 }
 
 /** One `differs` conflict for each destination credential that the package would change. */
@@ -176,5 +180,17 @@ export function credentialConflicts(
 	return CONFLICTS[policy](
 		plans.flatMap(({ candidates }) => candidates),
 		plans.flatMap(({ updates }) => updates),
+	);
+}
+
+/**
+ * One issue for each destination credential in the update scope that the user cannot update.
+ * Takes every scope at once, like {@link credentialConflicts}.
+ */
+export function forbiddenCredentialUpdates(
+	plans: Array<Pick<CredentialImportPlan, 'forbidden'>>,
+): CredentialUpdateForbidden[] {
+	return [...groupByTarget(plans.flatMap(({ forbidden }) => forbidden))].map(([targetId, group]) =>
+		toTargetIssue(targetId, group),
 	);
 }

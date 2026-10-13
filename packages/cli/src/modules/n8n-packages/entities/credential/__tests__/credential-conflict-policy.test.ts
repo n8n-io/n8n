@@ -6,11 +6,16 @@ import {
 	credentialUpdateScope,
 	divergentCredentials,
 	differingCredentials,
+	forbiddenCredentialUpdates,
 	isUpdateCandidate,
 	resolveCredentialConflictPolicy,
 	type UpdatableCredential,
 } from '../credential-conflict-policy';
-import type { CredentialUpdateCandidate, CredentialUpdateScope } from '../credential.types';
+import type {
+	CredentialMatch,
+	CredentialUpdateCandidate,
+	CredentialUpdateScope,
+} from '../credential.types';
 
 const EXPRESSION = '={{ $vars.token }}';
 const OTHER_EXPRESSION = '={{ $vars.otherToken }}';
@@ -328,5 +333,49 @@ describe('credentialConflicts', () => {
 
 		expect(credentialConflicts('fail', plans)).toHaveLength(1);
 		expect(credentialConflicts('overwrite', plans)).toEqual([]);
+	});
+});
+
+describe('forbiddenCredentialUpdates', () => {
+	const match = (overrides: Partial<CredentialMatch> = {}): CredentialMatch => ({
+		sourceId: 'source-1',
+		targetId: 'target-1',
+		targetName: 'Destination',
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		...overrides,
+	});
+
+	it('gives one issue for each destination across scopes, with merged consumers', () => {
+		const plans = [
+			{ forbidden: [match(), match({ targetId: 'target-2', targetName: 'Other' })] },
+			{
+				forbidden: [
+					match({ usedBy: [{ kind: 'workflow', id: 'wf-2' }] }),
+					match({ sourceId: 'source-0' }),
+				],
+			},
+		];
+
+		expect(forbiddenCredentialUpdates(plans)).toEqual([
+			{
+				targetId: 'target-1',
+				sourceIds: ['source-0', 'source-1'],
+				name: 'Destination',
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
+			},
+			{
+				targetId: 'target-2',
+				sourceIds: ['source-1'],
+				name: 'Other',
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			},
+		]);
+	});
+
+	it('reports nothing without forbidden matches', () => {
+		expect(forbiddenCredentialUpdates([{ forbidden: [] }])).toEqual([]);
 	});
 });

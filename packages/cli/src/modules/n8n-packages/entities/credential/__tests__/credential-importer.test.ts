@@ -445,7 +445,9 @@ describe('CredentialImporter', () => {
 			expect(result.successes).toEqual(new Map([['cred-1', 'cred-1']]));
 			expect(result.candidates).toEqual([]);
 			expect(result.updates).toEqual([]);
+			expect(result.forbidden).toEqual([]);
 			expect(credentialsFinder.findById).not.toHaveBeenCalled();
+			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
 			expect(credentialsService.decrypt).not.toHaveBeenCalled();
 		});
 
@@ -523,7 +525,8 @@ describe('CredentialImporter', () => {
 			expect(credentialsService.decrypt).not.toHaveBeenCalled();
 		});
 
-		it('only binds a match the user cannot update, and loads and decrypts nothing', async () => {
+		it('reports a match in scope that the user cannot update as forbidden, and decrypts nothing', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination());
 			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
 
 			const result = await importer.plan(
@@ -537,12 +540,45 @@ describe('CredentialImporter', () => {
 			expect(result.successes).toEqual(new Map([['cred-1', 'cred-1']]));
 			expect(result.candidates).toEqual([]);
 			expect(result.updates).toEqual([]);
+			expect(result.forbidden).toEqual([
+				{
+					sourceId: 'cred-1',
+					targetId: 'cred-1',
+					targetName: 'Source GitHub',
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-1' },
+						{ kind: 'workflow', id: 'wf-2' },
+					],
+				},
+			]);
 			expect(credentialsFinder.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
 				['cred-1'],
 				user,
 				['credential:update'],
 			);
-			expect(credentialsFinder.findById).not.toHaveBeenCalled();
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('only binds a match out of scope, and checks no permission for it', async () => {
+			credentialsFinder.findById.mockResolvedValue(
+				destination({
+					shared: [
+						mock<SharedCredentials>({ role: 'credential:owner', projectId: 'project-other' }),
+					],
+				}),
+			);
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'overwrite',
+					packageCredentials: new Map([['cred-1', packageFile({ name: 'Renamed' })]]),
+				}),
+			);
+
+			expect(result.candidates).toEqual([]);
+			expect(result.forbidden).toEqual([]);
+			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
 			expect(credentialsService.decrypt).not.toHaveBeenCalled();
 		});
 

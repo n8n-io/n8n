@@ -104,6 +104,19 @@ describe('toImportBlockedError', () => {
 		expect(error).toBeInstanceOf(UnprocessableRequestError);
 	});
 
+	it('maps a credential-update-forbidden to 422', () => {
+		const error = toImportBlockedError([
+			{
+				type: 'credential-update-forbidden',
+				targetId: 'c1',
+				sourceIds: ['s1'],
+				name: 'GitHub',
+				usedBy: [{ kind: 'workflow', id: 'w1' }],
+			},
+		]);
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+	});
+
 	it('maps variable-only blocks to 422', () => {
 		const error = toImportBlockedError([variableUnresolved]);
 		expect(error).toBeInstanceOf(UnprocessableRequestError);

@@ -51,20 +51,24 @@ export interface CredentialResolution {
 	failures: CredentialResolutionFailure[];
 }
 
-/**
- * A matched destination credential that the conflict policy can update, with the package
- * payload for it. Holds no stored values: the write decrypts and merges again.
- */
-export interface CredentialUpdateCandidate {
+/** A package credential and the destination credential it resolves to. */
+export interface CredentialMatch {
 	sourceId: string;
 	targetId: string;
 	/** Destination credential name, for reporting. */
 	targetName: string;
+	usedBy: PackageRequirementConsumer[];
+}
+
+/**
+ * A matched destination credential that the conflict policy can update, with the package
+ * payload for it. Holds no stored values: the write decrypts and merges again.
+ */
+export interface CredentialUpdateCandidate extends CredentialMatch {
 	/** Package credential name. */
 	name: string;
 	/** Package expression values. Absent when the package was exported without values. */
 	data?: SerializedCredentialData;
-	usedBy: PackageRequirementConsumer[];
 }
 
 export interface CredentialImportPlan extends CredentialResolution {
@@ -72,6 +76,8 @@ export interface CredentialImportPlan extends CredentialResolution {
 	candidates: CredentialUpdateCandidate[];
 	/** The candidates that `overwrite` would change. */
 	updates: CredentialUpdateCandidate[];
+	/** Matches in the update scope that the user cannot update. Empty under `keep-existing`. */
+	forbidden: CredentialMatch[];
 }
 
 /**
@@ -87,6 +93,13 @@ export interface CredentialConflict {
 	name: string;
 	usedBy: PackageRequirementConsumer[];
 }
+
+/**
+ * A destination credential in the update scope that the importing user cannot update.
+ * Blocks under `overwrite` and `fail`, also when it would not change: its stored values are
+ * never read.
+ */
+export type CredentialUpdateForbidden = Omit<CredentialConflict, 'kind'>;
 
 /** Which matched destination credentials the conflict policy can update. */
 export interface CredentialUpdateScope {

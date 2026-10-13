@@ -296,6 +296,26 @@ describe('toPackagesError', () => {
 		);
 	});
 
+	it('lists credential-update-forbidden issues for a 422', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-update-forbidden',
+						targetId: 'c1',
+						sourceIds: ['s1'],
+						name: 'GitHub',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint).toContain(
+			'credential "GitHub" (c1) matches package credential s1, but you lack permission to update it. Use keep-existing or ask its owner. Used by workflow w1',
+		);
+	});
+
 	it('lists variable-limit-exceeded issues for a 422', () => {
 		const result = toPackagesError(
 			new ApiError(422, 'Import blocked', undefined, {

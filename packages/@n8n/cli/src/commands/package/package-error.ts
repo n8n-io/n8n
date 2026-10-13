@@ -49,6 +49,13 @@ type BlockingIssue =
 			name: string;
 			usedBy: RequirementConsumer[];
 	  }
+	| {
+			type: 'credential-update-forbidden';
+			targetId: string;
+			sourceIds: string[];
+			name: string;
+			usedBy: RequirementConsumer[];
+	  }
 	| { type: 'variable-unresolved'; name: string; usedBy: RequirementConsumer[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedBy: RequirementConsumer[] }
 	| {
@@ -169,6 +176,11 @@ function formatIssue(issue: unknown): string {
 			return `credential "${it.name}" (${it.targetId}) receives different values from package credentials ${sources}, used by ${usedBy}`;
 		}
 		return `credential "${it.name}" (${it.targetId}) differs from package credential ${sources}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-update-forbidden') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		return `credential "${it.name}" (${it.targetId}) matches package credential ${sources}, but you lack permission to update it. Use keep-existing or ask its owner. Used by ${usedBy}`;
 	}
 	if (it.type === 'variable-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);

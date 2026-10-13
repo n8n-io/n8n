@@ -12,12 +12,14 @@ import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
 	CredentialImportPlan,
+	CredentialMatch,
 	CredentialResolution,
 	CredentialResolutionFailure,
 	CredentialUpdateCandidate,
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
+import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 
 @Service()
 export class CredentialImporter {
@@ -46,41 +48,36 @@ export class CredentialImporter {
 			});
 
 		if (request.conflictPolicy === 'keep-existing') {
-			return { ...resolution, candidates: [], updates: [] };
+			return { ...resolution, candidates: [], updates: [], forbidden: [] };
 		}
 
 		return { ...resolution, ...(await this.planUpdates(context.user, request, resolution)) };
 	}
 
 	/**
-	 * Compares each matched credential that has a package file with its stored state.
+	 * Compares each matched credential in the update scope that has a package file with its
+	 * stored state. A match the user cannot update is `forbidden` instead, and is not read.
 	 * Decrypted values stay in this method: the plan keeps only ids and the package payload.
 	 */
 	private async planUpdates(
 		user: User,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
-	): Promise<Pick<CredentialImportPlan, 'candidates' | 'updates'>> {
+	): Promise<Pick<CredentialImportPlan, 'candidates' | 'updates' | 'forbidden'>> {
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
 		);
-		// Matching needs only use access. The comparison reads the stored secret, so it runs
-		// only on credentials the user can update: any other match is only bound.
-		const updatableIds = await this.credentialsFinder.findCredentialIdsWithScopeForUser(
-			[...resolution.successes]
-				.filter(([sourceId]) => request.packageCredentials?.has(sourceId))
-				.map(([, targetId]) => targetId),
-			user,
-			['credential:update'],
-		);
 		const destinations = new Map<string, CredentialsEntity | null>();
-		const candidates: CredentialUpdateCandidate[] = [];
-		const updates: CredentialUpdateCandidate[] = [];
+		const inScope: Array<{
+			match: CredentialMatch;
+			packageCredential: SerializedCredential;
+			destination: CredentialsEntity;
+		}> = [];
 
 		for (const [sourceId, targetId] of resolution.successes) {
 			// No file means the exporting user could not read the credential: bind only.
 			const packageCredential = request.packageCredentials?.get(sourceId);
-			if (packageCredential === undefined || !updatableIds.has(targetId)) continue;
+			if (packageCredential === undefined) continue;
 
 			if (!destinations.has(targetId)) {
 				destinations.set(
@@ -91,13 +88,42 @@ export class CredentialImporter {
 			const destination = destinations.get(targetId);
 			if (!destination || !isUpdateCandidate(destination, request.updateScope)) continue;
 
+			inScope.push({
+				match: {
+					sourceId,
+					targetId,
+					targetName: destination.name,
+					usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
+				},
+				packageCredential,
+				destination,
+			});
+		}
+
+		// Matching needs only use access. The comparison reads the stored secret, so a match in
+		// scope that the user cannot update blocks without being read.
+		const updatableIds =
+			inScope.length > 0
+				? await this.credentialsFinder.findCredentialIdsWithScopeForUser(
+						[...new Set(inScope.map(({ match }) => match.targetId))],
+						user,
+						['credential:update'],
+					)
+				: new Set<string>();
+		const candidates: CredentialUpdateCandidate[] = [];
+		const updates: CredentialUpdateCandidate[] = [];
+		const forbidden: CredentialMatch[] = [];
+
+		for (const { match, packageCredential, destination } of inScope) {
+			if (!updatableIds.has(match.targetId)) {
+				forbidden.push(match);
+				continue;
+			}
+
 			const candidate: CredentialUpdateCandidate = {
-				sourceId,
-				targetId,
-				targetName: destination.name,
+				...match,
 				name: packageCredential.name,
 				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
-				usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
 			};
 			candidates.push(candidate);
 
@@ -108,7 +134,7 @@ export class CredentialImporter {
 			if (differs) updates.push(candidate);
 		}
 
-		return { candidates, updates };
+		return { candidates, updates, forbidden };
 	}
 
 	/**

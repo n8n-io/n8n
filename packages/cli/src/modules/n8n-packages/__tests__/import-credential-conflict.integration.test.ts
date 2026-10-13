@@ -14,7 +14,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, UnprocessableRequestError } from '@n8n/errors';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
@@ -75,13 +75,16 @@ async function workflowPackage(
 	);
 }
 
-async function blockingIssuesOf(promise: Promise<unknown>): Promise<BlockingIssue[]> {
+async function blockingIssuesOf(
+	promise: Promise<unknown>,
+	errorClass: typeof ConflictError | typeof UnprocessableRequestError = ConflictError,
+): Promise<BlockingIssue[]> {
 	const error = await promise.then(
 		() => undefined,
 		(e: unknown) => e,
 	);
 	const issues = (error as ConflictError).meta?.issues as BlockingIssue[];
-	expect(error, JSON.stringify(issues)).toBeInstanceOf(ConflictError);
+	expect(error, JSON.stringify(issues)).toBeInstanceOf(errorClass);
 	return issues;
 }
 
@@ -292,25 +295,75 @@ describe('credentialConflictPolicy', () => {
 		await expectNothingWritten(credential);
 	});
 
-	it('fail only binds a global credential that the importing user cannot update', async () => {
-		const member = await createMember();
-		await linkUserToProject(member, project, 'project:admin');
-		const credential = await saveCredential(
-			githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
-			{ user: owner, role: 'credential:owner' },
-		);
+	describe('global credential that the importing user cannot update', () => {
+		let member: User;
+		let credential: CredentialsEntity;
 
-		const result = await importPackage({
-			user: member,
-			projectId: project.id,
-			credentialConflictPolicy: 'fail',
-			packageBuffer: await workflowPackage(credential, {
-				name: 'Renamed',
-				data: { accessToken: EXPRESSION },
-			}),
+		beforeEach(async () => {
+			member = await createMember();
+			await linkUserToProject(member, project, 'project:admin');
+			credential = await saveCredential(
+				githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
+				{ user: owner, role: 'credential:owner' },
+			);
 		});
 
-		expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
+		it('fail blocks it and writes nothing', async () => {
+			const issues = await blockingIssuesOf(
+				importPackage({
+					user: member,
+					projectId: project.id,
+					credentialConflictPolicy: 'fail',
+					packageBuffer: await workflowPackage(credential, {
+						name: 'Renamed',
+						data: { accessToken: EXPRESSION },
+					}),
+				}),
+				UnprocessableRequestError,
+			);
+
+			expect(issues).toEqual([
+				{
+					type: 'credential-update-forbidden',
+					targetId: credential.id,
+					sourceIds: [credential.id],
+					name: 'Global GitHub',
+					usedBy: [{ kind: 'workflow', id: 'wf-source' }],
+				},
+			]);
+			await expectNothingWritten(credential);
+		});
+
+		it('overwrite blocks it also when the package would not change it', async () => {
+			const issues = await blockingIssuesOf(
+				importPackage({
+					user: member,
+					projectId: project.id,
+					credentialConflictPolicy: 'overwrite',
+					packageBuffer: await workflowPackage(credential, { name: 'Global GitHub' }),
+				}),
+				UnprocessableRequestError,
+			);
+
+			expect(issues).toEqual([
+				expect.objectContaining({
+					type: 'credential-update-forbidden',
+					targetId: credential.id,
+				}),
+			]);
+			await expectNothingWritten(credential);
+		});
+
+		it('keep-existing binds it', async () => {
+			const result = await importPackage({
+				user: member,
+				projectId: project.id,
+				credentialConflictPolicy: 'keep-existing',
+				packageBuffer: await workflowPackage(credential, { name: 'Renamed' }),
+			});
+
+			expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
+		});
 	});
 
 	it('fail only binds a managed credential', async () => {

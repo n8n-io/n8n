@@ -9,6 +9,8 @@ import {
 	credentialPolicyViolationIssueOpenApi,
 	credentialUnresolvedFieldDocs,
 	credentialUnresolvedIssueOpenApi,
+	credentialUpdateForbiddenFieldDocs,
+	credentialUpdateForbiddenIssueOpenApi,
 	dataTableSchemaOperationOpenApi,
 	dataTableUnresolvedFieldDocs,
 	dataTableUnresolvedIssueOpenApi,
@@ -146,6 +148,18 @@ const credentialConflictIssueSchema = z
 		usedBy: z.array(packageRequirementConsumerSchema).openapi(credentialConflictFieldDocs.usedBy),
 	})
 	.openapi(credentialConflictIssueOpenApi);
+
+const credentialUpdateForbiddenIssueSchema = z
+	.object({
+		type: z.literal('credential-update-forbidden'),
+		targetId: z.string().openapi(credentialUpdateForbiddenFieldDocs.targetId),
+		sourceIds: z.array(z.string()).openapi(credentialUpdateForbiddenFieldDocs.sourceIds),
+		name: z.string().openapi(credentialUpdateForbiddenFieldDocs.name),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(credentialUpdateForbiddenFieldDocs.usedBy),
+	})
+	.openapi(credentialUpdateForbiddenIssueOpenApi);
 
 const projectConflictIssueSchema = z
 	.object({
@@ -390,6 +404,7 @@ export const importBlockingIssueSchema = z
 		workflowArchiveForbiddenIssueSchema,
 		credentialUnresolvedIssueSchema,
 		credentialConflictIssueSchema,
+		credentialUpdateForbiddenIssueSchema,
 		projectConflictIssueSchema,
 		folderConflictIssueSchema,
 		workflowRemovalForbiddenIssueSchema,
