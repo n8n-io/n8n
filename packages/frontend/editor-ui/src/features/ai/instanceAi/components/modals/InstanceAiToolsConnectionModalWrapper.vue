@@ -11,6 +11,7 @@ import DefaultDetailBody from '@/features/shared/toolsConnection/DefaultDetailBo
 import McpToolSettingsContent from '@/features/shared/toolsConnection/McpToolSettingsContent.vue';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
@@ -33,7 +34,6 @@ import type {
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
-import { iconForTool } from '../../toolIcons';
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
 import { BROWSER_USE_CONNECTION_TYPE, COMPUTER_USE_CONNECTION_TYPE } from '../../constants';
@@ -169,7 +169,7 @@ function buildItem(
 		longDescription: server.description,
 		status: isConnectLocked(server.slug) ? 'connecting' : (connection?.status ?? 'none'),
 		connectionFailureReason: connection?.failureReason,
-		iconSource: iconForTool(server.icons, uiStore.appliedTheme),
+		iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
 		credentials: server.credentials.map(({ credentialType, name }) => ({
 			authType: credentialType,
 			displayName: name,
@@ -380,13 +380,15 @@ async function handleDisconnect(item: ToolConnectionItem) {
 	if (item.kind === 'mcp-server') {
 		const confirmed = await message.confirm(
 			i18n.baseText('tools.connection.settings.removeConfirm.description', {
-				interpolate: { service: item.title },
+				interpolate: { item: 'connector', service: item.title },
 			}),
 			{
 				title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
 					interpolate: { name: item.title },
 				}),
-				confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton'),
+				confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton', {
+					interpolate: { item: 'connector' },
+				}),
 				cancelButtonText: i18n.baseText('generic.cancel'),
 			},
 		);

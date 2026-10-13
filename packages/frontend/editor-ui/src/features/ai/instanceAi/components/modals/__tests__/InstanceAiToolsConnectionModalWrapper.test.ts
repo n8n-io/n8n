@@ -15,10 +15,11 @@ import type {
 
 const featureFlags = vi.hoisted(() => ({ computerUse: false }));
 const confirmRemoveMock = vi.hoisted(() => vi.fn());
+const baseTextMock = vi.hoisted(() => vi.fn((key: string) => key));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
-	i18n: { baseText: (key: string) => key },
+	i18n: { baseText: baseTextMock },
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -393,6 +394,14 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 				title: 'tools.connection.settings.removeConfirm.title',
 				confirmButtonText: 'tools.connection.settings.removeConfirm.confirmButton',
 			}),
+		);
+		expect(baseTextMock).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.description',
+			{ interpolate: { item: 'connector', service: 'Linear' } },
+		);
+		expect(baseTextMock).toHaveBeenCalledWith(
+			'tools.connection.settings.removeConfirm.confirmButton',
+			{ interpolate: { item: 'connector' } },
 		);
 		expect(mockDisconnect).not.toHaveBeenCalled();
 	});

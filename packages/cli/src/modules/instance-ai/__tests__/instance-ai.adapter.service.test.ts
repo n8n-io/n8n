@@ -114,11 +114,18 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+	overrides: {
+		allowSendingParameterValues?: boolean;
+		queueMode?: boolean;
+		maxExecutionTimeout?: number;
+	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
-		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+		executions: {
+			mode: overrides.queueMode ? 'queue' : 'regular',
+			maxTimeout: overrides.maxExecutionTimeout ?? 3600,
+		},
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
 		instanceAi: { nodeUsageEnabled: false },
@@ -1963,7 +1970,7 @@ describe('executeNodeService adapter', () => {
 		mockedUserHasScopes.mockReset();
 	});
 
-	it('runs the node in the bound project after asserting execute scope there', async () => {
+	it('runs the node in the bound project after asserting create and execute scopes there', async () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 		const executeNodeService = {
 			run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
@@ -1973,16 +1980,19 @@ describe('executeNodeService adapter', () => {
 		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
 		await context.executeNodeService?.execute(executeRequest);
 
-		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['workflow:execute'], false, {
-			projectId: 'team-project-1',
-		});
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(
+			mockUser,
+			['workflow:create', 'workflow:execute'],
+			false,
+			{ projectId: 'team-project-1' },
+		);
 		expect(executeNodeService.run).toHaveBeenCalledWith(
 			mockUser,
 			expect.objectContaining({ projectId: 'team-project-1' }),
 		);
 	});
 
-	it('does not run when the user lacks execute scope in the bound project', async () => {
+	it('does not run when the user lacks the required scopes in the bound project', async () => {
 		mockedUserHasScopes.mockResolvedValue(false);
 		const executeNodeService = { run: vi.fn() };
 		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
@@ -2645,6 +2655,8 @@ function createWorkflowAdapterForTests(overrides?: {
 	allowSendingParameterValues?: boolean;
 	// The effective value for the run, passed to `createContext`. Overrides the env value.
 	runAllowSendingParameterValues?: boolean;
+	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
+	maxExecutionTimeout?: number;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2667,6 +2679,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: vi.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(undefined),
+		findOne: vi.fn().mockResolvedValue(savedWorkflow),
 		createContent: vi.fn().mockResolvedValue(savedWorkflow),
 		runInTransaction: vi.fn(
 			async (
@@ -2735,6 +2748,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		globalConfigStub({
 			allowSendingParameterValues: overrides?.allowSendingParameterValues ?? true,
+			maxExecutionTimeout: overrides?.maxExecutionTimeout,
 		}),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
@@ -4130,6 +4144,104 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	describe('execution timeout', () => {
+		const withTimeout = (executionTimeout: number) =>
+			({ ...minimalWorkflowJSON, settings: { executionTimeout } }) as unknown as WorkflowJSON;
+
+		it('rejects a create when executionTimeout is above the configured maximum', async () => {
+			const { adapter, mockWorkflowRepository, mockWorkflowService } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+
+			await expect(adapter.createFromWorkflowJSON(withTimeout(3000))).rejects.toThrow(
+				"executionTimeout (3000s) exceeds this instance's maximum of 2400s. Set executionTimeout to 2400 or less.",
+			);
+			expect(mockWorkflowRepository.createContent).not.toHaveBeenCalled();
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it.each([2400, 300, -1])('accepts a create with executionTimeout %s', async (timeout) => {
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				maxExecutionTimeout: 2400,
+			});
+
+			await adapter.createFromWorkflowJSON(withTimeout(timeout));
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					settings: expect.objectContaining({ executionTimeout: timeout }),
+				}),
+				expect.anything(),
+				expect.anything(),
+			);
+		});
+
+		it('accepts any executionTimeout when no maximum is configured', async () => {
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				maxExecutionTimeout: -1,
+			});
+
+			await adapter.createFromWorkflowJSON(withTimeout(99999));
+
+			expect(mockWorkflowService.update).toHaveBeenCalled();
+		});
+
+		it('rejects an update that sets executionTimeout above the configured maximum', async () => {
+			const { adapter, mockWorkflowService } = createWorkflowAdapterForTests({
+				maxExecutionTimeout: 2400,
+			});
+
+			await expect(
+				adapter.updateFromWorkflowJSON('wf-existing', withTimeout(3000)),
+			).rejects.toThrow("exceeds this instance's maximum of 2400s");
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it('accepts an update that keeps a stored executionTimeout above the maximum', async () => {
+			// The maximum can be lowered after a workflow was saved. An unchanged
+			// value must not make the workflow impossible to save.
+			const { adapter, mockWorkflowRepository, mockWorkflowService, savedWorkflow } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+			mockWorkflowRepository.findOne.mockResolvedValue({
+				...savedWorkflow,
+				settings: { executionTimeout: 3000 },
+			});
+
+			await adapter.updateFromWorkflowJSON('wf-existing', withTimeout(3000));
+
+			expect(mockWorkflowService.update).toHaveBeenCalled();
+		});
+
+		it('reads the stored workflow once when both executionTimeout and redactionPolicy need it', async () => {
+			const { adapter, mockWorkflowRepository, mockSharedWorkflowRepository, savedWorkflow } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+			mockWorkflowRepository.findOne.mockResolvedValue({
+				...savedWorkflow,
+				settings: { executionTimeout: 3000, redactionPolicy: 'none' },
+			});
+			Object.assign(mockSharedWorkflowRepository, {
+				getWorkflowOwningProject: vi.fn().mockResolvedValue({ id: 'team-project-id' }),
+			});
+
+			await adapter.updateFromWorkflowJSON('wf-existing', {
+				...minimalWorkflowJSON,
+				settings: { executionTimeout: 3000, redactionPolicy: 'none' },
+			} as unknown as WorkflowJSON);
+
+			expect(mockWorkflowRepository.findOne).toHaveBeenCalledTimes(1);
+		});
+
+		it('accepts an update with executionTimeout within the maximum without reading the stored workflow', async () => {
+			const { adapter, mockWorkflowRepository, mockWorkflowService } =
+				createWorkflowAdapterForTests({ maxExecutionTimeout: 2400 });
+
+			await adapter.updateFromWorkflowJSON('wf-existing', withTimeout(1200));
+
+			expect(mockWorkflowRepository.findOne).not.toHaveBeenCalled();
+			expect(mockWorkflowService.update).toHaveBeenCalled();
+		});
+	});
+
 	it('does not inject executionOrder on update, leaving the stored value to the merge', async () => {
 		// update merges over stored settings, so forcing v1 here would upgrade a
 		// workflow the user deliberately kept on v0.
@@ -5287,6 +5399,28 @@ describe('createExecutionAdapter run()', () => {
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
 		});
+	});
+
+	it('marks a trigger-mode run as awaited so a worker never parks it at shutdown', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Schedule',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+				},
+			],
+			connections: {},
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.executionMode).toBe('trigger');
+		expect(runData.callerAwaitsOutcome).toBe('completion');
 	});
 
 	it('still applies overrides when the workflow has no settings', async () => {

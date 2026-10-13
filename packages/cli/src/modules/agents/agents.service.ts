@@ -5,11 +5,13 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
+	getProviderAttachmentCapabilities,
 	type AgentChatListItem,
 	type AgentChatListResponse,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
+	type AgentN8nChatAgentDetails,
 	type AgentN8nChatThreadSummary,
 	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
@@ -17,7 +19,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
+import {
+	In,
+	isUniqueConstraintError,
+	ProjectRelationRepository,
+	TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
@@ -36,11 +44,13 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { fromAgentDocument } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { toAgentRef } from './utils/agent-ref';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -94,6 +104,8 @@ export class AgentsService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentPolicyService: AgentPolicyService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -147,12 +159,13 @@ export class AgentsService {
 			defaultModel,
 		});
 		await this.agentPolicyService.enforceSave(projectId, null, schemaConfig, null, actor);
+		const { config: storedConfig, skillRefs } = fromAgentDocument(schemaConfig);
 
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
-			schema: schemaConfig,
+			schema: storedConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
@@ -164,7 +177,10 @@ export class AgentsService {
 		try {
 			// `insertNew`, not `save`: `save` would update the row a reused
 			// client-minted id names instead of letting the primary key reject it.
-			await this.agentRepository.insertNew(agent);
+			await this.transactionRunner.run({}, async (ctx) => {
+				await this.agentRepository.insertNew(agent, ctx);
+				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, ctx);
+			});
 			saved = agent;
 		} catch (error) {
 			return {
@@ -269,7 +285,8 @@ export class AgentsService {
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
-		const skills = (schema?.skills ?? []).map((skill) => ({
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		const skills = (skillRefs ?? []).map((skill) => ({
 			id: skill.id,
 			name: entity.skills[skill.id]?.name ?? skill.id,
 		}));
@@ -370,10 +387,30 @@ export class AgentsService {
 	async findChatReachableAgentForUser(
 		agentId: string,
 		user: User,
-	): Promise<AgentChatListItem | null> {
+	): Promise<AgentN8nChatAgentDetails | null> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
-		return agent ? toChatListItem(agent) : null;
+		if (!agent) return null;
+
+		const schema = agent.activeVersion?.schema;
+		// Names are labels only: keep disabled sub-agents so older threads that
+		// delegated to them still show a name. Dedupe so a repeated entry shows once.
+		const subAgentIds = [
+			...new Set((schema?.subAgents?.agents ?? []).map((subAgent) => subAgent.agentId)),
+		];
+		const namesById = new Map(
+			(await this.agentRepository.findByIdsAndProjectId(subAgentIds, agent.projectId)).map(
+				(row) => [row.id, row.name],
+			),
+		);
+
+		return {
+			...toChatListItem(agent),
+			subAgents: subAgentIds.flatMap((id) => {
+				const name = namesById.get(id);
+				return name ? [{ id, name }] : [];
+			}),
+		};
 	}
 
 	/**
@@ -385,18 +422,15 @@ export class AgentsService {
 	 */
 	async findN8nChatThreadsForUser(
 		user: User,
-		options: { limit: number; cursor?: string; agentId?: string },
+		options: { limit: number; cursor?: string; agentId?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const agentIds = options.agentId
 			? await this.reachableAgentIds(options.agentId, projectIds)
 			: await this.agentRepository.findChatReachableIds(projectIds);
-		return await this.agentExecutionService.findN8nChatThreadsForAgents(
-			user.id,
-			agentIds,
-			options.limit,
-			options.cursor,
-		);
+		// `options` also carries `agentId`, already consumed above; the callee only reads
+		// `limit`/`cursor`/`search` off it.
+		return await this.agentExecutionService.findN8nChatThreadsForAgents(user.id, agentIds, options);
 	}
 
 	/**
@@ -619,12 +653,16 @@ export class AgentsService {
 	}
 }
 
-/** Keeps the chat list to what the page renders: icon and blurb from the published snapshot. */
+/** Keeps the chat list to what the page renders: icon, blurb, and attachment support from the published snapshot. */
 function toChatListItem(agent: Agent): AgentChatListItem {
-	const description = agent.activeVersion?.schema?.description;
+	const schema = agent.activeVersion?.schema;
+	const description = schema?.description;
 	return {
 		...toAgentRef(agent),
 		...(description ? { description } : {}),
 		project: { id: agent.projectId, name: agent.project.name },
+		attachments: getProviderAttachmentCapabilities(
+			schema?.model ? splitModelId(schema.model).provider : undefined,
+		),
 	};
 }

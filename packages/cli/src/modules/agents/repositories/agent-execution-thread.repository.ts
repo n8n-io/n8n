@@ -1,6 +1,12 @@
 import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
 import type { SerializableAgentState } from '@n8n/agents';
-import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	TransactionRunner,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
@@ -169,17 +175,19 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	 * Selects only the columns the cross-agent thread list renders.
 	 * `activeVersion.schema` loads in full — it is read for the published
 	 * personalisation — but the draft schema, tools and skills never load.
+	 *
+	 * `options.search` matches the title case-insensitively. A thread without
+	 * a title never matches: `LOWER(NULL) LIKE ...` is `NULL`, not true.
 	 */
 	async findN8nChatThreadsForOwner(
 		userId: string,
 		agentIds: string[],
-		limit: number,
-		cursor?: string,
+		options: { limit: number; cursor?: string; search?: string },
 	): Promise<AgentExecutionThreadPage> {
-		const query = this.n8nChatThreadsQuery(userId, agentIds);
+		const query = this.n8nChatThreadsQuery(userId, agentIds, options.search);
 		if (!query) return { threads: [], nextCursor: null };
 
-		return await this.paginateByUpdatedAt(query, limit, cursor);
+		return await this.paginateByUpdatedAt(query, options.limit, options.cursor);
 	}
 
 	/**
@@ -204,6 +212,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	private n8nChatThreadsQuery(
 		userId: string,
 		agentIds: string[],
+		search?: string,
 	): SelectQueryBuilder<AgentExecutionThread> | null {
 		if (agentIds.length === 0) return null;
 
@@ -223,6 +232,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.where('thread.ownerId = :userId', { userId })
 			.andWhere("thread.accessScope = 'user'")
 			.andWhere('thread.agentId IN (:...agentIds)', { agentIds });
+		if (search) {
+			query.andWhere(`LOWER(thread.title) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+				search: `%${escapeLike(search.toLowerCase())}%`,
+			});
+		}
 		// ponytail: the origin rule re-runs a correlated first-source subquery per
 		// thread row; fine for one user's threads, add a stored thread origin
 		// column if profiling shows it.

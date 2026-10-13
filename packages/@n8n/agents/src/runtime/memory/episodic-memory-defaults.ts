@@ -78,8 +78,7 @@ export function createEpisodicMemoryReflectFn(
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return {
 			reflection: response.output,
-			// oxlint-disable-next-line typescript/no-deprecated - Tech debt. Changing to response.finalStep.providerMetadata breaks tests
-			usage: toTokenUsage(response.usage, response.providerMetadata),
+			usage: toTokenUsage(response.usage, response.finalStep.providerMetadata),
 			model: getModelIdString(model),
 		};
 	};

@@ -13,6 +13,7 @@ import {
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
 import type { WorkflowExporter } from '../../workflow/workflow.exporter';
+import { ProjectShellExporter } from '../project-shell.exporter';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
 
@@ -76,7 +77,7 @@ function makeExporter({
 
 	const exporter = new ProjectExporter(
 		projectService,
-		new ProjectSerializer(),
+		new ProjectShellExporter(new ProjectSerializer()),
 		folderFinder,
 		workflowFinder,
 		folderExporter,
@@ -103,7 +104,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -126,7 +127,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: true,
 		});
 
@@ -146,7 +147,7 @@ describe('ProjectExporter', () => {
 				projectIds: [project.id],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
@@ -163,7 +164,7 @@ describe('ProjectExporter', () => {
 				projectIds: ['missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
@@ -180,7 +181,7 @@ describe('ProjectExporter', () => {
 				projectIds: ['denied-1'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
@@ -196,7 +197,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -237,7 +238,7 @@ describe('ProjectExporter', () => {
 			projectIds: [newerProject.id, olderProject.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -289,7 +290,7 @@ describe('ProjectExporter', () => {
 				workflowIds: ['w-root', 'w-in-f1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			});
 
@@ -322,7 +323,7 @@ describe('ProjectExporter', () => {
 					workflowIds: ['w1', 'w-elsewhere'],
 					writer: new CapturingWriter(),
 					includeTags: true,
-					workflowVersionPolicy: 'latest',
+					versionPolicy: 'latest',
 					includeArchivedWorkflows: false,
 				}),
 			).rejects.toMatchObject({
@@ -356,7 +357,7 @@ describe('ProjectExporter', () => {
 				workflowIds: ['w-published', 'w-unpublished'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'ignore-unpublished',
+				versionPolicy: 'ignore-unpublished',
 				includeArchivedWorkflows: false,
 			});
 
@@ -378,7 +379,7 @@ describe('ProjectExporter', () => {
 				workflowIds: [],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			});
 
@@ -403,7 +404,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 

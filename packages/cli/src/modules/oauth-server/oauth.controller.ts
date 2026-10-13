@@ -19,6 +19,7 @@ import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@n8n/backend-services';
 
+import { OAuthServerLocalAuthorizationServer } from './oauth-local-authorization-server';
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
@@ -147,6 +148,7 @@ export class OAuthController {
 	constructor(
 		private readonly urlService: UrlService,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
+		private readonly localServer: OAuthServerLocalAuthorizationServer,
 	) {}
 
 	// Add CORS headers for OAuth discovery endpoints
@@ -172,46 +174,15 @@ export class OAuthController {
 		res.status(204).end();
 	}
 
-	/**
-	 * Single RFC 8414 authorization-server metadata document, shared by all
-	 * protected resources: one issuer (the instance origin), one set of
-	 * endpoints, one signing key.
-	 *
-	 * Keeps advertising the legacy `/mcp-oauth/*` endpoint paths — clients that
-	 * registered via DCR persist these URLs, so changing them would strand
-	 * every already-connected client.
-	 */
+	/** RFC 8414 authorization-server metadata, built by the local authorization server. */
 	@Get('/.well-known/oauth-authorization-server', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
 	})
-	metadata(_req: Request, res: Response) {
+	async metadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
-
-		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const allScopes = this.resourceRegistry.getAllScopes();
-		const metadata: Record<string, unknown> = {
-			issuer: baseUrl,
-			authorization_endpoint: `${baseUrl}/mcp-oauth/authorize`,
-			token_endpoint: `${baseUrl}/mcp-oauth/token`,
-			registration_endpoint: `${baseUrl}/mcp-oauth/register`,
-			revocation_endpoint: `${baseUrl}/mcp-oauth/revoke`,
-			// RFC 8414 §2: public keys that verify the access tokens this server signs.
-			jwks_uri: this.urlService.getInstanceJwksUri(),
-			response_types_supported: ['code'],
-			grant_types_supported: ['authorization_code', 'refresh_token'],
-			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
-			code_challenge_methods_supported: ['S256'],
-			// RFC 9207: we include the `iss` parameter on authorization responses
-			authorization_response_iss_parameter_supported: true,
-		};
-
-		if (allScopes.length > 0) {
-			metadata.scopes_supported = allScopes;
-		}
-
-		res.json(metadata);
+		res.json(await this.localServer.getMetadata());
 	}
 
 	@Options('/.well-known/oauth-authorization-server/*issuerPath', {

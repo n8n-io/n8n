@@ -1,8 +1,11 @@
 operationId: replaceNodeTypePolicyAttachments
 tags:
   - NodeTypePolicy
-summary: Replace a scope's attached policy documents
-description: Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.
+summary: "Beta: Replace a scope's attached policy documents"
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.
 x-required-scope: nodeTypePolicy:manage
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -45,7 +48,76 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/policyAttachmentsPublicDto.generated.yml
+          type: object
+          properties:
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  policyId:
+                    type: string
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        action:
+                          type: string
+                          enum:
+                            - allow
+                            - deny
+                            - delegate
+                        selector:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - name
+                                value:
+                                  type: string
+                                  minLength: 1
+                              required:
+                                - kind
+                                - value
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - package
+                                value:
+                                  type: string
+                                  minLength: 1
+                              required:
+                                - kind
+                                - value
+                          type: object
+                      required:
+                        - id
+                        - action
+                        - selector
+                  priority:
+                    type: integer
+                  isFloor:
+                    type: boolean
+                required:
+                  - policyId
+                  - rules
+                  - priority
+                  - isFloor
+            version:
+              type: integer
+              minimum: 0
+              exclusiveMinimum: true
+          required:
+            - attachments
+            - version
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

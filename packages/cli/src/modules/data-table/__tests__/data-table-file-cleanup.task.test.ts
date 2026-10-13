@@ -34,8 +34,7 @@ describe('DataTableFileCleanupTask', () => {
 	it('should run on every main at the configured interval', () => {
 		expect(task.name).toBe('data-table-file-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'instance', instanceTypes: ['main'] });
+		expect(task.target).toEqual({ scope: 'instance', instanceTypes: ['main'] });
 	});
 
 	it('should delete the old upload files of this process', async () => {

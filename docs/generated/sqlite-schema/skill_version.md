@@ -106,13 +106,13 @@ erDiagram
   datetime_3_ updatedAt
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK
   varchar_36_ projectId FK
   varchar_16_ source
   datetime_3_ updatedAt
-  varchar userId FK
 }
 ```
 

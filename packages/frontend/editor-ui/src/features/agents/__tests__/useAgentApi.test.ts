@@ -5,6 +5,7 @@ import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-c
 import {
 	cancelAgentChatExecution,
 	cancelAgentChatRun,
+	deleteN8nChatThread,
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
@@ -302,6 +303,21 @@ describe('useAgentApi', () => {
 				'/agents/v2/n8n-chat/threads/thread%2F1',
 			);
 			expect(result).toBe(summary);
+		});
+	});
+
+	describe('deleteN8nChatThread', () => {
+		it('deletes one of the own n8n Chat threads', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ success: true });
+
+			const result = await deleteN8nChatThread(restApiContext, 'project-1', 'agent-1', 'thread/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'DELETE',
+				'/projects/project-1/agents/v2/agent-1/n8n-chat/thread%2F1',
+			);
+			expect(result).toEqual({ success: true });
 		});
 	});
 

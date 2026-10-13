@@ -46,6 +46,7 @@ import {
 	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
@@ -125,6 +126,8 @@ type WorkflowUpdateOptions = {
 	allowArchivedUpdate?: boolean;
 	/** Skips the settings.errorWorkflow check for a package import. */
 	allowUnresolvedErrorWorkflow?: boolean;
+	/** The history version this update restores, so its nodes keep their credentials. */
+	restoredFromVersionId?: string;
 };
 
 type PreparedWorkflowUpdate = {
@@ -185,6 +188,7 @@ export class WorkflowService {
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	/**
@@ -554,6 +558,7 @@ export class WorkflowService {
 			versionDescription,
 			allowArchivedUpdate = false,
 			allowUnresolvedErrorWorkflow = false,
+			restoredFromVersionId,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -603,11 +608,32 @@ export class WorkflowService {
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
 		if (this.licenseState.isSharingLicensed()) {
+			// A restore may bring back nodes whose credentials the user cannot use. Only a
+			// version from this workflow's own history qualifies.
+			let restoredNodes: INode[] | undefined;
+			if (restoredFromVersionId) {
+				const restoredVersion = await this.workflowHistoryService.findVersion(
+					workflowId,
+					restoredFromVersionId,
+				);
+				if (!restoredVersion) {
+					throw new BadRequestError("The version to restore is not in this workflow's history.");
+				}
+				// Normalize the stored nodes the way the submitted ones were above, so a
+				// credential renamed since that version still matches.
+				const normalizedVersion = await WorkflowHelpers.replaceInvalidCredentials(
+					{ ...workflowUpdateData, nodes: structuredClone(restoredVersion.nodes) },
+					ownerProject.id,
+				);
+				restoredNodes = normalizedVersion.nodes;
+			}
+
 			const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 			await Container.get(EnterpriseWorkflowService).preventTampering(
 				workflowUpdateData,
 				workflowId,
 				user,
+				restoredNodes,
 			);
 		}
 
@@ -665,6 +691,14 @@ export class WorkflowService {
 				},
 				WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 				rules,
+			);
+		}
+
+		if (hasNodesKey && nodesChanged) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				workflowUpdateData.nodes,
+				workflow.nodes,
+				workflow.id,
 			);
 		}
 

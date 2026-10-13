@@ -110,9 +110,9 @@ export const githubUsesCredentialsMockServer = {
 export const databricksGenieTemplatedMockServer: McpRegistryServer = {
 	name: 'com.databricks/genie-mcp',
 	slug: 'databricks-genie',
-	title: 'Databricks Genie',
-	description: 'Databricks Genie MCP server, resolved per-customer from the workspace host.',
-	tagline: 'Connect to Databricks Genie',
+	title: 'Databricks Genie One',
+	description: 'Databricks Genie One MCP server, resolved per-customer from the workspace host.',
+	tagline: 'Connect to Databricks Genie One',
 	attribution: 'Powered by Genie',
 	version: '1.0.0',
 	updatedAt: '2026-08-20T10:00:00.000Z',

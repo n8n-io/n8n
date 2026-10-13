@@ -257,13 +257,13 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.skill" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
   varchar_36_ projectId FK
   varchar_16_ source
   timestamp_3__with_time_zone updatedAt
-  uuid userId FK
 }
 "public.type_availability_policy_scope" {
   timestamp_3__with_time_zone createdAt
