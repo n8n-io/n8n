@@ -22,6 +22,8 @@ export interface StreamRunOptions {
 	logger: Logger;
 	onActivity?: () => void;
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
+	/** Return stream read failures with partial usage instead of throwing. */
+	captureStreamErrors?: boolean;
 }
 
 export type StreamRunResult = ExecuteResumableStreamResult;
@@ -70,5 +72,6 @@ async function consumeStream(
 		},
 		control: { mode: 'manual' },
 		initialAgentRunId: options.agentRunId,
+		captureStreamErrors: options.captureStreamErrors,
 	});
 }

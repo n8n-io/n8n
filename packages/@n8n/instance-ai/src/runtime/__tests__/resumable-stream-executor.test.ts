@@ -114,6 +114,7 @@ describe('normalizeStreamSource', () => {
 		const result = await executeResumableStream({
 			agent: {},
 			stream: source,
+			captureStreamErrors: true,
 			context: {
 				threadId: 'thread-1',
 				runId: 'run-1',
@@ -169,27 +170,32 @@ describe('executeResumableStream', () => {
 		await expect(result.text).resolves.toBe('Working...');
 	});
 
-	it.each([false, true])(
-		'retains usage when stream iteration fails (aborted: %s)',
-		async (aborted) => {
+	it.each([
+		{ aborted: false, captureStreamErrors: true },
+		{ aborted: true, captureStreamErrors: true },
+		{ aborted: true, captureStreamErrors: false },
+	])(
+		'retains usage when stream iteration fails (aborted: $aborted, capture: $captureStreamErrors)',
+		async ({ aborted, captureStreamErrors }) => {
 			const controller = new AbortController();
 			const streamError = new Error('Connection closed');
 			const eventBus = createEventBus();
 			async function* failingStream() {
 				await Promise.resolve();
+				if (aborted) controller.abort();
 				yield {
 					type: 'finish',
 					finishReason: 'error',
 					model: 'test-model',
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				};
-				if (aborted) controller.abort();
 				throw streamError;
 			}
 
 			const result = await executeResumableStream({
 				agent: {},
 				stream: { runId: 'agent-run-1', fullStream: failingStream() },
+				captureStreamErrors,
 				context: {
 					threadId: 'thread-1',
 					runId: 'run-1',
@@ -220,6 +226,8 @@ describe('executeResumableStream', () => {
 					'thread-1',
 					expect.objectContaining({ type: 'error' }),
 				);
+			} else {
+				expect(eventBus.publish).not.toHaveBeenCalled();
 			}
 		},
 	);
@@ -248,6 +256,7 @@ describe('executeResumableStream', () => {
 				executeResumableStream({
 					agent: {},
 					stream: { runId: 'agent-run-1', fullStream: stream() },
+					captureStreamErrors: true,
 					context: {
 						threadId: 'thread-1',
 						runId: 'run-1',

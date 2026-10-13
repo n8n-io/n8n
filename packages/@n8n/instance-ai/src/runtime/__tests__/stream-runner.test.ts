@@ -86,11 +86,15 @@ describe('streamAgentRun', () => {
 					signal: new AbortController().signal,
 					eventBus: createEventBus(),
 					logger: createLogger(),
+					captureStreamErrors: true,
 				},
 			);
 
 			expect(result).toEqual(terminalResult);
 			expect(agent.stream).toHaveBeenCalledWith('test input', { recoverUsageOnAbort: true });
+			expect(executeResumableStream).toHaveBeenLastCalledWith(
+				expect.objectContaining({ captureStreamErrors: true }),
+			);
 		},
 	);
 

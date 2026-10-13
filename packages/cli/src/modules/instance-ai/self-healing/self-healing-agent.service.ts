@@ -400,6 +400,7 @@ export class SelfHealingAgentService {
 					eventBus: this.events,
 					logger: this.logger,
 					onActivity: options.onActivity,
+					captureStreamErrors: true,
 				},
 			);
 		return tracing ? await tracing.withActiveSpan(tracing.actorRun, consume) : await consume();

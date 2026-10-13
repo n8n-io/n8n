@@ -261,7 +261,7 @@ describe('SelfHealingAgentService', () => {
 					hostRunId: 'host-run',
 				}),
 			}),
-			expect.anything(),
+			expect.objectContaining({ captureStreamErrors: true }),
 		);
 	});
 

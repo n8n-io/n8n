@@ -68,6 +68,8 @@ export interface ExecuteResumableStreamOptions {
 	context: ResumableStreamContext;
 	control: ResumableStreamControl;
 	initialAgentRunId?: string;
+	/** Return stream read failures with partial usage instead of throwing. */
+	captureStreamErrors?: boolean;
 }
 
 export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
@@ -300,8 +302,12 @@ interface StreamPassResult {
 	nativeStepIndex: number;
 }
 
-/** Convert stream read failures to error chunks. Processing errors still propagate. */
-async function* readStreamChunks(stream: AsyncIterable<unknown>, context: ResumableStreamContext) {
+/** Preserve abort drains and optionally capture other stream read failures. */
+async function* readStreamChunks(
+	stream: AsyncIterable<unknown>,
+	context: ResumableStreamContext,
+	captureStreamErrors = false,
+) {
 	const iterator = stream[Symbol.asyncIterator]();
 	let finished = false;
 	try {
@@ -317,8 +323,10 @@ async function* readStreamChunks(stream: AsyncIterable<unknown>, context: Resuma
 						runId: context.runId,
 						error: error instanceof Error ? error.message : String(error),
 					});
-				} else {
+				} else if (captureStreamErrors) {
 					yield { type: 'error', error };
+				} else {
+					throw error;
 				}
 				return;
 			}
@@ -372,8 +380,9 @@ async function consumeStreamPass(args: {
 	let finishReason: FinishReason | undefined;
 	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
+	const chunks = readStreamChunks(activeStream, options.context, options.captureStreamErrors);
 
-	for await (const chunk of readStreamChunks(activeStream, options.context)) {
+	for await (const chunk of chunks) {
 		usageAccumulator.observe(chunk);
 		if (isRecord(chunk) && chunk.type === 'finish') {
 			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
