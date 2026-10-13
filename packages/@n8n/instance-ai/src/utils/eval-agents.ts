@@ -1,6 +1,12 @@
 /** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
-import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
+import {
+	Agent,
+	Tool,
+	type BuiltTelemetry,
+	type GenerateResult,
+	type ModelConfig,
+} from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 
 import { evalUsageGuardrail } from './eval-usage';
@@ -163,10 +169,12 @@ export function createEvalAgent(
 		cache?: boolean;
 		/** Host-resolved model used when no eval model API key is configured in the environment. */
 		fallbackModelConfig?: ModelConfig;
+		telemetry?: BuiltTelemetry;
 	},
 ): Agent {
 	const model = resolveAgentModel(options.model, options.fallbackModelConfig);
 	const agent = new Agent(name).model(model);
+	if (options.telemetry) agent.telemetry(options.telemetry);
 
 	if (options.cache) {
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);

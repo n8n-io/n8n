@@ -11,6 +11,7 @@ import { executeTool } from '../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../tool-registry';
 import { createAskUserTool } from '../../tools/shared/ask-user.tool';
 import {
+	getCurrentHelperTelemetry,
 	buildAgentTraceInputs,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
@@ -2156,6 +2157,35 @@ describe('createInstanceAiTraceContext', () => {
 				input: { message: 'hello' },
 			}),
 		).resolves.toBeUndefined();
+	});
+
+	it('shares product telemetry with helpers only inside an active trace', async () => {
+		expect(getCurrentHelperTelemetry('verification-helper')).toBeUndefined();
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'helper-thread',
+			messageId: 'message',
+			runId: 'run',
+			userId: 'user',
+			input: {},
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
+			const helper = getCurrentHelperTelemetry('verification-helper');
+			expect(helper).toMatchObject({
+				enabled: true,
+				rootAnchored: false,
+				recordInputs: false,
+				recordOutputs: false,
+				metadata: {
+					thread_id: 'helper-thread',
+					evalRole: 'helper',
+					agent_role: 'verification-helper',
+				},
+			});
+			expect(helper?.provider).toBe(agentsMock.getProvider());
+		});
+		expect(getCurrentHelperTelemetry('verification-helper')).toBeUndefined();
 	});
 
 	it('runs ad-hoc span callbacks when product span creation fails', async () => {

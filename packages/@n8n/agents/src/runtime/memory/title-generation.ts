@@ -256,7 +256,7 @@ export async function generateThreadTitle(opts: {
 		if (!userText) return;
 
 		const titleModelId = opts.titleConfig.model ?? opts.agentModel;
-		const titleModel = createModel(titleModelId, opts.modelFetch);
+		const titleModel = createModel(titleModelId, opts.modelFetch, opts.telemetry);
 		const generated = await generateTitleAndEmojiFromMessage(titleModel, userText, {
 			instructions: opts.titleConfig.instructions,
 			executionCounter: opts.executionCounter,

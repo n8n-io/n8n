@@ -638,6 +638,25 @@ function getCurrentProductTrace():
 	return productTraceStorage.getStore();
 }
 
+/** Reuse the active product provider and parent for synchronous verification helpers. */
+export function getCurrentHelperTelemetry(name: string): BuiltTelemetry | undefined {
+	const current = getCurrentProductTrace();
+	if (!current || current.runtime.shutdown || !current.runtime.telemetry.enabled) return undefined;
+	return {
+		...current.runtime.telemetry,
+		functionId: name,
+		metadata: toTelemetryMetadata(current.currentRun.metadata, {
+			evalRole: 'helper',
+			agent_role: name,
+		}),
+		recordInputs: false,
+		recordOutputs: false,
+		runtimeRootSpanEnabled: true,
+		rootAnchored: false,
+		traceModelRequests: true,
+	};
+}
+
 function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | undefined {
 	const activeContext = otelContext.active();
 	const activeSpanContext = otelTrace.getSpan(activeContext)?.spanContext();
@@ -1763,6 +1782,7 @@ function createTelemetryFactory(options: {
 		if (options.baseTelemetry) {
 			return {
 				...options.baseTelemetry,
+				traceModelRequests: true,
 				functionId,
 				metadata,
 				recordInputs: true,

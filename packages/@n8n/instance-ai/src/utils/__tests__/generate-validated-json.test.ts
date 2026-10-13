@@ -1,11 +1,14 @@
 import type { MockedFunction } from 'vitest';
 import { z } from 'zod';
 
+vi.mock('../../tracing/langsmith-tracing', () => ({ getCurrentHelperTelemetry: vi.fn() }));
+
 vi.mock('../eval-agents', async () => {
 	const actual: object = await vi.importActual('../eval-agents');
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
+import { getCurrentHelperTelemetry } from '../../tracing/langsmith-tracing';
 import { createEvalAgent, extractText } from '../eval-agents';
 import { generateValidatedJson } from '../generate-validated-json';
 
@@ -98,4 +101,16 @@ describe('generateValidatedJson', () => {
 			expect.objectContaining({ fallbackModelConfig }),
 		);
 	});
+});
+
+it('passes the current product trace to verification helpers', async () => {
+	const telemetry = { enabled: true, recordInputs: false, recordOutputs: false, integrations: [] };
+	vi.mocked(getCurrentHelperTelemetry).mockReturnValueOnce(telemetry);
+	setupAgentMock('{"ok": true}');
+	await generate();
+	expect(getCurrentHelperTelemetry).toHaveBeenCalledWith('test-agent');
+	expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+		'test-agent',
+		expect.objectContaining({ telemetry }),
+	);
 });

@@ -327,3 +327,25 @@ search:
     - html
     - json   # required for Instance AI
 ```
+
+## Verification helper and provider request traces
+
+When product tracing is enabled, the workflow destructiveness classifier and
+simulation-fixture generator reuse the current product trace and provider.
+Their spans carry `evalRole=helper` and the helper name in `agent_role`. Their
+prompt and output recording is disabled. Calls outside an active product trace
+keep their existing behavior.
+
+Product model calls also emit `model.provider.request` spans per HTTP attempt.
+These report provider/model identity, HTTP status and time to response headers.
+They preserve the configured transport and parent span. They contain no request
+URL, headers, body, response body, token usage, or exception text. HTTP success
+does not mean a stream completed: the parent generation span reports stream
+errors, tokens and timing. Generation spans own usage, so request spans must not
+be summed into generation/token totals. Prebuilt external LanguageModel objects
+bypass the SDK transport and must supply their own request tracing.
+
+The agents SDK option `BuiltTelemetry.traceModelRequests` is opt-in. Instance AI
+enables it for product calls; external harnesses with their own fetch tracing
+leave it unset to avoid duplicate attempt spans. The existing trace enablement,
+redaction and provider lifetime rules still apply.
