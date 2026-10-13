@@ -20,6 +20,7 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	projectId?: string;
 	contentTestId?: string;
+	hiddenParameters?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 	readOnly?: boolean;
@@ -63,6 +64,7 @@ defineExpose({
 		:project-id="props.projectId"
 		for-agent
 		:hidden-operations="HIDDEN_AGENT_NODE_TOOL_OPERATIONS"
+		:hidden-parameters="props.hiddenParameters"
 		:parameter-issues="props.parameterIssues"
 		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
 		:read-only="props.readOnly"

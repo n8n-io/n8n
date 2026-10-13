@@ -4,19 +4,28 @@ import type {
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type { AgentRequirementSource } from '../requirement-source';
+import type { SerializedCredentialData } from '../../spec/serialized/credential.schema';
 
-export interface AgentCredentialRequirement {
+/** A requirement enriched with the expression data the package bundles for it, when any. */
+export type PlacedCredentialRequirement = PackageCredentialRequirement & {
+	packageData?: SerializedCredentialData;
+	packageDataIsComplete?: boolean;
+};
+
+export interface CredentialReference {
 	credentialId: string;
 	credentialName?: string;
 	credentialType?: string;
 }
 
-export interface WorkflowCredentialRequirement {
+export interface WorkflowCredentialRequirement extends Required<CredentialReference> {
 	workflowId: string;
-	credentialId: string;
-	credentialName: string;
-	credentialType: string;
 }
+
+export type CredentialRequirement =
+	| WorkflowCredentialRequirement
+	| (AgentRequirementSource & CredentialReference);
 
 export type CredentialResolutionFailureKind =
 	| 'not_found'
@@ -45,10 +54,11 @@ export interface CredentialApplyResult {
 	bindings: ImportBindingMap;
 	matched: string[];
 	stubbed: string[];
+	seeded: string[];
 }
 
 export interface CredentialBindingRequest {
-	requirements: PackageCredentialRequirement[] | undefined;
+	requirements: PlacedCredentialRequirement[] | undefined;
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;

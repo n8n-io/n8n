@@ -49,6 +49,7 @@ const recommendations = [
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 let eventBus: EventBus;
+let modalBeforeClose: (() => unknown) | undefined;
 
 const renderComponent = createComponentRenderer(MigrateWorkflowModal, {
 	pinia: createTestingPinia(),
@@ -57,6 +58,10 @@ const renderComponent = createComponentRenderer(MigrateWorkflowModal, {
 			// Render all slots directly so the modal body/footer are queryable
 			// without the open-state + teleport machinery of the real Modal.
 			Modal: {
+				props: ['beforeClose'],
+				setup(props: { beforeClose?: () => unknown }) {
+					modalBeforeClose = () => props.beforeClose?.();
+				},
 				template:
 					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
 			},
@@ -64,12 +69,19 @@ const renderComponent = createComponentRenderer(MigrateWorkflowModal, {
 	},
 });
 
-function render() {
+const secondWorkflow = {
+	...workflow,
+	id: 'workflow-2',
+	name: 'Second Workflow',
+	issues: [{ ...workflow.issues[0], nodeId: 'node-2', nodeName: 'Other AI Transform' }],
+};
+
+function render(workflows = [workflow]) {
 	eventBus = createEventBus();
 	return renderComponent({
 		props: {
 			modalName: MIGRATE_WORKFLOW_MODAL_KEY,
-			data: { ruleId: 'rule-1', workflow, recommendations, eventBus },
+			data: { ruleId: 'rule-1', workflows, recommendations, eventBus },
 		},
 	});
 }
@@ -181,5 +193,114 @@ describe('MigrateWorkflowModal', () => {
 
 		expect(await screen.findByText('This node has no generated code yet.')).toBeInTheDocument();
 		expect(screen.getByTestId('migrate-modal-close-button')).toBeInTheDocument();
+	});
+
+	describe('bulk', () => {
+		it('names the number of workflows and shows the change once', () => {
+			render([workflow, secondWorkflow]);
+
+			// The title and the confirm button both name the count.
+			expect(screen.getAllByText('Migrate 2 workflows')).toHaveLength(2);
+			expect(screen.getByTestId('migrate-modal-confirm-button')).toHaveTextContent(
+				'Migrate 2 workflows',
+			);
+			expect(screen.getAllByText('Replace AI Transform with a Code node')).toHaveLength(1);
+		});
+
+		it('migrates every workflow, keeps going after a failure and reports each result', async () => {
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule)
+				.mockRejectedValueOnce(new ResponseError('This node has no generated code yet.'))
+				.mockResolvedValueOnce({ ...migrationResult, workflowId: 'workflow-2' });
+			const onMigrated = vi.fn();
+			render([workflow, secondWorkflow]);
+			eventBus.on('migrated', onMigrated);
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+
+			expect(
+				await screen.findByText(/1 workflow was migrated and saved as a new version/),
+			).toBeInTheDocument();
+			expect(breakingChangesApi.migrateWorkflowForRule).toHaveBeenCalledTimes(2);
+			expect(breakingChangesApi.migrateWorkflowForRule).toHaveBeenNthCalledWith(
+				2,
+				rootStore.restApiContext,
+				'rule-1',
+				'workflow-2',
+			);
+			expect(onMigrated).toHaveBeenCalledTimes(1);
+			expect(onMigrated).toHaveBeenCalledWith({ workflowId: 'workflow-2' });
+			expect(screen.getByText('Second Workflow').closest('a')).toHaveAttribute(
+				'href',
+				'/workflow/workflow-2',
+			);
+			expect(screen.getByText('Could not migrate "Test Workflow"')).toBeInTheDocument();
+			expect(screen.getByText(/This node has no generated code yet/)).toBeInTheDocument();
+			expect(screen.getByTestId('migrate-modal-done-button')).toBeInTheDocument();
+		});
+
+		it('names the workflow of each warning', async () => {
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule)
+				.mockResolvedValueOnce(migrationResult)
+				.mockResolvedValueOnce({
+					...migrationResult,
+					workflowId: 'workflow-2',
+					migratedNodeIds: ['node-2'],
+					notes: ['Review the output format.'],
+				});
+			render([workflow, secondWorkflow]);
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+
+			expect(
+				await screen.findByText('Review the changes in "Second Workflow"'),
+			).toBeInTheDocument();
+			expect(screen.getByText('Review the output format.')).toBeInTheDocument();
+			expect(screen.getByText('Other AI Transform').closest('a')).toHaveAttribute(
+				'href',
+				'/workflow/workflow-2/node-2',
+			);
+		});
+
+		it('shows the progress and blocks closing while it migrates', async () => {
+			let resolveFirst!: (result: typeof migrationResult) => void;
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule)
+				.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+				.mockResolvedValueOnce({ ...migrationResult, workflowId: 'workflow-2' });
+			render([workflow, secondWorkflow]);
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+
+			const confirmButton = screen.getByTestId('migrate-modal-confirm-button');
+			expect(confirmButton).toHaveTextContent('Migrating 0 of 2');
+			expect(confirmButton).toBeDisabled();
+			expect(confirmButton).not.toHaveAttribute('aria-busy');
+			expect(modalBeforeClose?.()).toBe(false);
+
+			resolveFirst(migrationResult);
+
+			expect(await screen.findByTestId('migrate-modal-done-button')).toBeInTheDocument();
+			expect(modalBeforeClose?.()).toBe(true);
+		});
+
+		it('publishes only the republishable workflows', async () => {
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule)
+				.mockResolvedValueOnce({ ...migrationResult, republishable: true })
+				.mockResolvedValueOnce({ ...migrationResult, workflowId: 'workflow-2' });
+			render([workflow, secondWorkflow]);
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+			const publishButton = await screen.findByTestId('migrate-modal-publish-button');
+			expect(publishButton).toHaveTextContent('Publish 1 workflow');
+			await userEvent.click(publishButton);
+
+			expect(
+				await screen.findByText('Published 1 workflow to the migrated version'),
+			).toBeInTheDocument();
+			expect(workflowsStore.publishWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsStore.publishWorkflow).toHaveBeenCalledWith('workflow-1', {
+				versionId: 'new-version-1234',
+			});
+			expect(screen.getByTestId('migrate-modal-done-button')).toBeInTheDocument();
+		});
 	});
 });

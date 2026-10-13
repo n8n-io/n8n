@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { EmbeddedCanvasElementKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
 import NodeView from '@/app/views/NodeView.vue';
@@ -34,6 +34,9 @@ const emit = defineEmits<{
 // Inject the host's scoped provides. Workflow id / document store resolve to the
 // host's local refs, not the app-level globals.
 const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
+
+// The header here sits below the page top, so fixed overlays align to the canvas.
+provide(EmbeddedCanvasElementKey, useTemplateRef<HTMLElement>('canvas'));
 
 const canvasStore = useCanvasStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -131,7 +134,7 @@ const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStor
 	<div :class="$style.host" data-test-id="workflow-canvas-host">
 		<template v-if="isReady">
 			<MainHeader :class="$style.header" />
-			<div :class="$style.canvas">
+			<div ref="canvas" :class="$style.canvas">
 				<NodeView />
 			</div>
 			<LogsPanel :class="$style.logs" />

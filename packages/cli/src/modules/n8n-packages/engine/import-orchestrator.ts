@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
@@ -76,6 +77,7 @@ import type {
 	PackageWorkflowRequirement,
 } from '../spec/requirements.schema';
 import { ContentImportPolicyGate, contentImportTransport } from './content-import-policy';
+import { CredentialSavePolicyGate } from './credential-save-policy';
 import { toImportBlockedError } from './import-blocked.error';
 import { assertDataTableWritesAllowed, assertVariableWritesAllowed } from './import-gates';
 
@@ -146,6 +148,7 @@ export class ImportOrchestrator {
 		private readonly workflowRemover: WorkflowRemover,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly contentImportPolicyGate: ContentImportPolicyGate,
+		private readonly credentialSavePolicyGate: CredentialSavePolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
 	) {}
@@ -172,7 +175,12 @@ export class ImportOrchestrator {
 			plans.map((plan) => plan.dataTablePlan),
 		);
 
-		for (const { input, variablePlan } of plans) {
+		for (const { input, variablePlan, credentialPlan } of plans) {
+			await this.credentialImporter.assertCanCreate(
+				input.context,
+				input.credentialRequest,
+				credentialPlan,
+			);
 			if (variablePlan.creations.length > 0) {
 				await this.variableImporter.assertCanCreate(
 					input.context,
@@ -295,11 +303,18 @@ export class ImportOrchestrator {
 			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
+		const actor: PolicyActor = { kind: 'user', user: context.user };
 		const refusedByPolicy = await this.contentImportPolicyGate.refusedWorkflows(
 			workflowPlan.items,
 			context.projectId,
 			contentImportTransport(input.importSource),
-			{ kind: 'user', user: context.user },
+			actor,
+		);
+		const refusedStubs = await this.credentialSavePolicyGate.refusedStubs(
+			credentialRequest,
+			credentialPlan,
+			context.projectId,
+			actor,
 		);
 
 		const blockingIssues = this.collectBlockingIssues({
@@ -318,7 +333,7 @@ export class ImportOrchestrator {
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
 
-		blockingIssues.push(...refusedByPolicy);
+		blockingIssues.push(...refusedByPolicy, ...refusedStubs);
 
 		return {
 			input,
@@ -375,7 +390,14 @@ export class ImportOrchestrator {
 		const blockedFromPublish = new Map<string, WorkflowPublishingBlockedReason>();
 		for (const sourceWorkflowId of workflowsBlockedFromPublish(
 			credentialRequest.requirements,
-			new Set(credentialResult.stubbed),
+			new Set([
+				...credentialResult.stubbed,
+				...credentialResult.seeded.filter(
+					(id) =>
+						!credentialRequest.requirements?.find((requirement) => requirement.id === id)
+							?.packageDataIsComplete,
+				),
+			]),
 		)) {
 			blockedFromPublish.set(sourceWorkflowId, 'stub-credential');
 		}
@@ -553,7 +575,10 @@ function toDataTableBlockingIssue(
 		const writtenIds = new Set(
 			failure.missingScope === 'dataTable:create'
 				? plan.creations.map(({ id }) => id)
-				: plan.updates.map(({ table }) => table.id),
+				: [
+						...plan.updates.map(({ table }) => table.id),
+						...plan.columnAlignments.map(({ id }) => id),
+					],
 		);
 		requirements = requirements.filter(({ id }) => writtenIds.has(id));
 	}

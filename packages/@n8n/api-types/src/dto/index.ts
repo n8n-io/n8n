@@ -54,6 +54,8 @@ export type { DiscoverDataPublic } from './discover/discover-public.dto';
 
 export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change-report-query.dto';
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
+export { UpdateMigrationFindingStatusesRequestDto } from './breaking-changes/update-migration-finding-statuses-request.dto';
+export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
 
 export {
 	AuditPublicDto,
@@ -167,6 +169,7 @@ export { SourceControlPullResponsePublicDto } from './source-control/source-cont
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { TestCredentialRequestDto } from './credentials/test-credential-request.dto';
+export { CredentialOptionsRequestDto } from './credentials/credential-options-request.dto';
 export {
 	CredentialPublicDto,
 	CredentialListPublicDto,
@@ -185,6 +188,8 @@ export {
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
+	AI_PREFERENCES_SORT_OPTIONS,
+	type AiPreferenceSortOption,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
@@ -352,26 +357,49 @@ export {
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
 export type {
+	NodeTypePolicyRule,
+	NodeTypePolicySelector,
 	NonDelegatingPolicyAction,
 	NonDelegatingPolicyRule,
 	PolicyAction,
 	PolicyRule,
 	PolicySelector,
 } from './type-availability-policies/policy-rule.types';
-export { policySelectorSchema } from './type-availability-policies/policy-selector.schema';
+export { isNodeTypePolicyRule } from './type-availability-policies/policy-rule.types';
 export {
+	credentialTypePolicySelectorSchema,
+	nodeTypePolicySelectorSchema,
+} from './type-availability-policies/policy-selector.schema';
+export {
+	credentialTypePolicyRuleSchemas,
+	nodeTypePolicyRuleSchemas,
 	nonDelegatingPolicyActionSchema,
-	nonDelegatingPolicyRuleListSchema,
 	policyActionSchema,
-	policyRuleListSchema,
-	policyRuleSchema,
 } from './type-availability-policies/policy-rule.schema';
-export { PutInstancePolicyDto } from './type-availability-policies/put-instance-policy.dto';
-export { PutProjectPolicyDto } from './type-availability-policies/put-project-policy.dto';
-export { CreatePolicyDocumentDto } from './type-availability-policies/create-policy-document.dto';
-export { UpdatePolicyDocumentDto } from './type-availability-policies/update-policy-document.dto';
+export {
+	PutCredentialTypeInstancePolicyDto,
+	PutInstancePolicyDto,
+} from './type-availability-policies/put-instance-policy.dto';
+export {
+	PutCredentialTypeProjectPolicyDto,
+	PutProjectPolicyDto,
+} from './type-availability-policies/put-project-policy.dto';
+export {
+	CreateCredentialTypePolicyDocumentDto,
+	CreatePolicyDocumentDto,
+} from './type-availability-policies/create-policy-document.dto';
+export {
+	UpdateCredentialTypePolicyDocumentDto,
+	UpdatePolicyDocumentDto,
+} from './type-availability-policies/update-policy-document.dto';
 export { ReplaceAttachmentsDto } from './type-availability-policies/replace-attachments.dto';
 export {
+	CredentialTypePolicyAttachmentsPublicDto,
+	CredentialTypePolicyDocumentListPublicDto,
+	CredentialTypePolicyDocumentPublicDto,
+	CredentialTypePolicyDocumentWriteResultPublicDto,
+	CredentialTypePolicyEffectivePublicDto,
+	CredentialTypePolicyEffectiveWriteResultPublicDto,
 	ListNodeTypePolicyDocumentsQueryDto,
 	PolicyAttachmentsPublicDto,
 	PolicyDocumentListPublicDto,
@@ -675,7 +703,11 @@ export {
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
 	UpdatePromotionProviderDto,
+	isPromotionGitHostType,
+	supportsPromotionAuthType,
 	promotionGitConfigSchemas,
+	promotionGitHostBaseUrlSchema,
+	promotionGitHostConfigSchema,
 	promotionGitSshKeyAuthInputSchema,
 	promotionGitSshKeyAuthUpdateSchema,
 	promotionGitSshKeyConfigSchema,
@@ -687,8 +719,11 @@ export {
 	promotionProviderConfigSchema,
 	promotionProviderPublicSchema,
 	promotionProviderSummarySchema,
+	promotionProviderTypeCapabilities,
 	promotionProviderTypeSchema,
 	promotionSshKeyTypeSchema,
+	type PromotionGitHostConfig,
+	type PromotionGitHostType,
 	type PromotionProviderAuthInput,
 	type PromotionProviderAuthType,
 	type PromotionProviderAuthUpdate,

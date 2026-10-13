@@ -88,6 +88,14 @@ const credentialIdAtEditOpen = ref('');
 const channelActionInFlight = ref(false);
 const saveAttempted = ref(false);
 
+/**
+ * A setup whose remaining steps happen outside n8n writes several times and
+ * reaches no single terminal step, so the first successful write is the
+ * completion. Later writes must not report it again: each one would re-run the
+ * `trigger-added` telemetry and the channel reload on the agent page.
+ */
+const connectReported = ref(false);
+
 function channelTypeFromView(view: ChannelView): string | null {
 	if (view === 'list') return null;
 	return view.replace(/_(setup|edit)$/, '');
@@ -313,10 +321,17 @@ watch(
 
 // n8n Chat's setup view also needs a footer ("Make available"), unlike every
 // other channel's setup, which connects straight from its own view.
+/**
+ * A setup that outlives its connect gets the footer too, so its Done button
+ * sits where every other dialog's does rather than at the end of the scroll.
+ */
+const setupCanFinish = computed(
+	() => isSetupMode.value && channelViewRef.value?.canFinish === true,
+);
 const showFooterActions = computed(
 	() =>
 		selectedChannelType.value !== null &&
-		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value)),
+		(isEditMode.value || (isSetupMode.value && isN8nChatSelected.value) || setupCanFinish.value),
 );
 
 const currentChannelCredentialId = computed(() =>
@@ -368,6 +383,7 @@ function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
 	openedFromList.value = true;
 	saveAttempted.value = false;
+	connectReported.value = false;
 	currentView.value = `${channelType}_setup`;
 }
 
@@ -375,6 +391,7 @@ function goToEdit(channelType: string) {
 	prepareChannelEdit(channelType);
 	openedFromList.value = true;
 	saveAttempted.value = false;
+	connectReported.value = false;
 	currentView.value = `${channelType}_edit`;
 }
 
@@ -382,6 +399,7 @@ function goBackToList() {
 	if (actionInFlight.value) return;
 	prepareChannelEdit(null);
 	saveAttempted.value = false;
+	connectReported.value = false;
 	currentView.value = 'list';
 }
 
@@ -392,6 +410,16 @@ function goBackToList() {
  */
 function completeAndClose() {
 	emit('update:open', false);
+}
+
+/**
+ * Done is the save for a setup that never ran one. The routes that bind the
+ * credential themselves emit `persist`; a step already finished when the setup
+ * reopened does not, so closing on Done left the channel unbound and absent
+ * from the agent. Staying open on a failure keeps the reason on screen.
+ */
+async function finishSetup() {
+	if (await writeChannelConfig()) completeAndClose();
 }
 
 function handleModalOpenUpdate(isOpen: boolean) {
@@ -430,14 +458,19 @@ async function runBeforeSave(): Promise<boolean> {
 	}
 }
 
-async function saveChannelConfig() {
-	if (actionInFlight.value) return;
+/**
+ * Writes the channel config and reports whether it landed. Separate from
+ * closing, because a setup whose remaining steps happen outside n8n writes
+ * what it has and leaves the dialog open.
+ */
+async function writeChannelConfig(): Promise<boolean> {
+	if (actionInFlight.value) return false;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
 	const credentialId = currentChannelCredentialId.value;
-	if (!channelType || !credentialId) return;
-	if (channelViewRef.value?.validationError) return;
-	if (!channelApprovalValid.value) return;
+	if (!channelType || !credentialId) return false;
+	if (channelViewRef.value?.validationError) return false;
+	if (!channelApprovalValid.value) return false;
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
@@ -453,11 +486,11 @@ async function saveChannelConfig() {
 	try {
 		if (!(await persistAgent())) {
 			trackSetupFailure(channelType, 'persist');
-			return;
+			return false;
 		}
 		if (!(await runBeforeSave())) {
 			trackSetupFailure(channelType, 'before_save');
-			return;
+			return false;
 		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
 			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
@@ -469,19 +502,36 @@ async function saveChannelConfig() {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
 		// exposes that failure to the setup view.
 		trackSetupFailure(channelType, 'connect');
-		return;
+		return false;
 	} finally {
 		channelActionInFlight.value = false;
 	}
 
-	finishConnect(channelType);
+	emit('agent-changed');
+	reportConnected(channelType);
+	return true;
+}
+
+async function saveChannelConfig() {
+	if (!(await writeChannelConfig())) return;
+	const channelType = selectedChannelType.value;
+	// Through `finishConnect`, so one place decides whether a connect closes the
+	// modal. The report it makes first has already happened and is one-shot.
+	if (channelType) finishConnect(channelType);
+}
+
+function reportConnected(channelType: string) {
+	if (connectReported.value) return;
+	connectReported.value = true;
+	endSetupTracking(true);
+	emit('channel-connected', channelType);
 }
 
 function finishConnect(channelType: string) {
-	endSetupTracking(true);
-	emit('channel-connected', channelType);
-	emit('agent-changed');
-	completeAndClose();
+	reportConnected(channelType);
+	// A view that drives steps of its own past the connect closes itself, by
+	// emitting `done`.
+	if (!channelViewRef.value?.keepOpenAfterConnect) completeAndClose();
 }
 
 /** Same shape as `persistAgent`: reports its own failure and returns whether it saved. */
@@ -526,17 +576,18 @@ async function saveN8nChat() {
 		channelActionInFlight.value = false;
 	}
 
+	emit('agent-changed');
 	if (settingUp) {
 		finishConnect(N8N_CHAT_INTEGRATION_TYPE);
 		return;
 	}
-	emit('agent-changed');
 	completeAndClose();
 }
 
 function handlePlatformConnected() {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
+	emit('agent-changed');
 	finishConnect(channelType);
 }
 
@@ -574,6 +625,7 @@ watch(
 			void loadChannelState();
 			openedFromList.value = props.view === 'list';
 			saveAttempted.value = false;
+			connectReported.value = false;
 			currentView.value = props.view;
 		} else {
 			captureConnectedCredential(null);
@@ -669,7 +721,9 @@ watch(
 					@create="createCredential"
 					@edit="editCredential"
 					@connect="saveChannelConfig"
+					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
+					@done="completeAndClose"
 				/>
 				<N8nText
 					v-if="saveAttempted && !currentChannelCredentialId"
@@ -703,7 +757,17 @@ watch(
 			</N8nButton>
 		</template>
 		<template v-if="showFooterActions" #footerActions>
-			<template v-if="isN8nChatSelected">
+			<N8nButton
+				v-if="setupCanFinish"
+				variant="solid"
+				size="medium"
+				:loading="actionInFlight"
+				data-testid="agent-channel-setup-done"
+				@click="finishSetup"
+			>
+				{{ i18n.baseText('generic.done') }}
+			</N8nButton>
+			<template v-else-if="isN8nChatSelected">
 				<N8nButton
 					variant="ghost"
 					size="medium"

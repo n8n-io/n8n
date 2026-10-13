@@ -3,6 +3,8 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import {
+	credentialPolicyViolationFieldDocs,
+	credentialPolicyViolationIssueOpenApi,
 	credentialUnresolvedFieldDocs,
 	credentialUnresolvedIssueOpenApi,
 	dataTableSchemaOperationOpenApi,
@@ -192,7 +194,7 @@ const folderRemovalForbiddenIssueSchema = z
 	})
 	.openapi(folderRemovalForbiddenIssueOpenApi);
 
-/** `destructive` operations delete the data in a column. */
+/** `destructive` operations remove the values in a column. */
 const dataTableSchemaOperationSchema = z
 	.discriminatedUnion('kind', [
 		z.object({
@@ -213,6 +215,12 @@ const dataTableSchemaOperationSchema = z
 			from: dataTableColumnTypeSchema,
 			to: dataTableColumnTypeSchema,
 			destructive: z.literal(true),
+		}),
+		z.object({
+			kind: z.literal('rename-column'),
+			from: z.string(),
+			to: z.string(),
+			destructive: z.literal(false),
 		}),
 		z.object({
 			kind: z.literal('reorder-columns'),
@@ -347,6 +355,19 @@ const policyViolationIssueSchema = z
 	})
 	.openapi(policyViolationIssueOpenApi);
 
+const credentialPolicyViolationIssueSchema = z
+	.object({
+		type: z.literal('credential-policy-violation'),
+		sourceId: z.string().openapi(credentialPolicyViolationFieldDocs.sourceId),
+		name: z.string().optional(),
+		credentialType: z.string(),
+		usedBy: z
+			.array(packageRequirementConsumerSchema)
+			.openapi(credentialPolicyViolationFieldDocs.usedBy),
+		violations: z.array(policyViolationSchema),
+	})
+	.openapi(credentialPolicyViolationIssueOpenApi);
+
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
 		workflowConflictIssueSchema,
@@ -367,6 +388,7 @@ export const importBlockingIssueSchema = z
 		variableLimitExceededIssueSchema,
 		missingNodeTypeIssueSchema,
 		policyViolationIssueSchema,
+		credentialPolicyViolationIssueSchema,
 	])
 	.openapi('ImportBlockingIssue');
 

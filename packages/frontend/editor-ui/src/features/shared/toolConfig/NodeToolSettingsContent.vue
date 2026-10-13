@@ -24,6 +24,7 @@ import {
 	collectParametersByTab,
 	createCommonNodeSettings,
 	removeMismatchedOptionValues,
+	resetValuesOfChangedShape,
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
@@ -61,6 +62,8 @@ const props = defineProps<{
 	forAgent?: boolean;
 	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
+	/** Parameter names owned by the hosting surface instead of the node form. */
+	hiddenParameters?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
@@ -97,10 +100,20 @@ const nodeTypeDescription = computed(() => {
 		return null;
 	}
 	const description = nodeTypesStore.getNodeType(props.initialNode.type);
-	if (!description || !props.hiddenOperations?.length) {
-		return description;
-	}
-	return omitOperationOptions(description, props.hiddenOperations);
+	if (!description) return null;
+
+	const withFilteredOperations = props.hiddenOperations?.length
+		? omitOperationOptions(description, props.hiddenOperations)
+		: description;
+	if (!props.hiddenParameters?.length) return withFilteredOperations;
+
+	const hiddenParameters = new Set(props.hiddenParameters);
+	return {
+		...withFilteredOperations,
+		properties: withFilteredOperations.properties.filter(
+			(parameter) => !hiddenParameters.has(parameter.name),
+		),
+	};
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -249,7 +262,8 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 
 	// Re-derive parameters the same way the NDV does (see
 	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
-	// apply the change, drop options that no longer match, then refill defaults.
+	// apply the change, drop options and same-named values that no longer match,
+	// then refill defaults.
 	// This resets a dependent param (e.g. `operation`) to the new resource's
 	// default when `resource` changes, instead of keeping a stale selection.
 	let parameters =
@@ -272,6 +286,8 @@ function handleChangeParameter(updateData: IUpdateInformation) {
 			value: null,
 		});
 	}
+
+	parameters = resetValuesOfChangedShape(nodeType, node.value, parameters, [updateData.name]);
 
 	const newParameters =
 		NodeHelpers.getNodeParameters(

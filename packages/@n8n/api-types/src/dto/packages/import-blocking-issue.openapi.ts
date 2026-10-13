@@ -179,7 +179,7 @@ export const dataTableUnresolvedFieldDocs = {
 export const dataTableSchemaOperationOpenApi: ZodOpenAPIMetadata = {
 	description:
 		'A single change `dataTableSchemaConflictPolicy=overwrite` would make (or made) to a ' +
-		"matched target table's schema. `destructive` operations delete the data in a column.",
+		"matched target table's schema. `destructive` operations remove the values in a column.",
 };
 
 export const dataTableUnresolvedIssueOpenApi: ZodOpenAPIMetadata = {
@@ -298,4 +298,16 @@ export const policyViolationIssueOpenApi: ZodOpenAPIMetadata = {
 		'skipping the workflow: the import rewrites cross-workflow references to the ids each ' +
 		'workflow would get, so dropping one leaves the workflows that call it pointing at a row ' +
 		'nothing ever wrote.',
+};
+
+export const credentialPolicyViolationFieldDocs = {
+	sourceId: { description: 'Credential id as it appears in the package.' },
+	usedBy: { description: 'Package consumers that use this credential.' },
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const credentialPolicyViolationIssueOpenApi: ZodOpenAPIMetadata = {
+	description:
+		'A credential the import would write that the credential-save policy refused, for ' +
+		'example a stub of a credential type this instance does not allow. The import stops ' +
+		'before any writes.',
 };

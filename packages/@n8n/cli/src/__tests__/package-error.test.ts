@@ -56,6 +56,7 @@ describe('toPackagesError', () => {
 						typeMismatches: [],
 						overwriteChanges: [
 							{ kind: 'remove-column', column: 'note', type: 'string', destructive: true },
+							{ kind: 'rename-column', from: 'mail', to: 'email', destructive: false },
 							{ kind: 'add-column', column: 'BaaId', type: 'string', destructive: false },
 						],
 						usedBy: [{ kind: 'workflow', id: 'wf1' }],
@@ -69,7 +70,7 @@ describe('toPackagesError', () => {
 			'data table "First" (dt1) does not match the package schema (missing columns: BaaId), used by workflow wf1',
 		);
 		expect(hint).toContain(
-			'--data-table-schema-conflict-policy=overwrite would: remove column note (data lost), add column BaaId',
+			'--data-table-schema-conflict-policy=overwrite would: remove column note (values removed), rename column mail to email, add column BaaId',
 		);
 	});
 
@@ -153,6 +154,54 @@ describe('toPackagesError', () => {
 		const hint = (result as ApiError).hint ?? '';
 		expect(hint).toContain('credential c1 unresolved (not_found)');
 		expect(hint).toContain('workflow w1, workflow w2');
+	});
+
+	it('lists credential-policy-violation issues with every violation', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-policy-violation',
+						sourceId: 'c1',
+						name: 'Prod GitHub',
+						credentialType: 'githubApi',
+						usedBy: [
+							{ kind: 'workflow', id: 'w1' },
+							{ kind: 'agent', id: 'a1' },
+						],
+						violations: [
+							{ kind: 'k', checkId: 'a', message: 'GitHub API is not allowed' },
+							{ kind: 'k', checkId: 'b', message: 'Second reason' },
+						],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain(
+			'credential "Prod GitHub" (c1, githubApi) refused by policy: GitHub API is not allowed; Second reason, used by workflow w1, agent a1',
+		);
+	});
+
+	it('names a refused credential by its source id when it has no name', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-policy-violation',
+						sourceId: 'c1',
+						credentialType: 'githubApi',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+						violations: [{ kind: 'k', checkId: 'a', message: 'Not allowed' }],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'credential "c1" (c1, githubApi) refused by policy: Not allowed',
+		);
 	});
 
 	it.each([

@@ -189,6 +189,9 @@ paths:
   /n8n-packages/import-selection:
     post:
       $ref: ./handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  /n8n-packages/export:
+    post:
+      $ref: ./handlers/n8n-packages/spec/paths/exportPackage.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml

@@ -223,6 +223,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'initial-client-id',
 			);
@@ -256,6 +257,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://newprovider.example.com/auth',
+					userinfo_endpoint: 'https://newprovider.example.com/userinfo',
 				},
 				'new-client-id',
 			);
@@ -286,6 +288,7 @@ describe('OIDC service', () => {
 				response_types: ['code'],
 				scopes: ['openid', 'profile', 'email'],
 				authorization_endpoint: 'https://example.com/auth',
+				userinfo_endpoint: 'https://example.com/userinfo',
 			},
 			'test-client-id',
 		);
@@ -332,6 +335,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -461,6 +465,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -547,6 +552,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -577,6 +583,7 @@ describe('OIDC service', () => {
 					response_types: ['code'],
 					scopes: ['openid', 'profile', 'email'],
 					authorization_endpoint: 'https://example.com/auth',
+					userinfo_endpoint: 'https://example.com/userinfo',
 				},
 				'test-client-id',
 			);
@@ -1369,6 +1376,86 @@ describe('OIDC service', () => {
 				'mock-access-token-userinfo-error',
 				'mock-subject-userinfo-error',
 			);
+		});
+
+		describe('without a UserInfo endpoint', () => {
+			const baseConfig: OidcConfigDto = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
+				loginEnabled: true,
+				prompt: 'select_account',
+				authenticationContextClassReference: [],
+				additionalScopes: '',
+				rpInitiatedLogoutEnabled: false,
+			};
+
+			const createConfiguration = (userinfoEndpoint?: string) =>
+				new real_odic_client.Configuration(
+					{
+						issuer: 'https://example.com/auth/realms/n8n',
+						client_id: 'test-client-id',
+						redirect_uris: ['http://n8n.io/sso/oidc/callback'],
+						response_types: ['code'],
+						scopes: ['openid', 'profile', 'email'],
+						authorization_endpoint: 'https://example.com/auth',
+						...(userinfoEndpoint && { userinfo_endpoint: userinfoEndpoint }),
+					},
+					'test-client-id',
+				);
+
+			beforeAll(async () => {
+				discoveryMock.mockResolvedValue(createConfiguration());
+				// updateConfig drops the cached configuration so the next login rediscovers.
+				await oidcService.updateConfig(baseConfig);
+			});
+
+			afterAll(async () => {
+				discoveryMock.mockResolvedValue(createConfiguration('https://example.com/userinfo'));
+				await oidcService.updateConfig(baseConfig);
+			});
+
+			it('should create the user from ID token claims', async () => {
+				const state = oidcService.generateState();
+				const nonce = oidcService.generateNonce();
+				const callbackUrl = new URL(
+					`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+				);
+
+				const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers = {
+					access_token: 'mock-access-token-id-token-profile',
+					id_token: 'mock-id-token-id-token-profile',
+					token_type: 'bearer',
+					claims: () => {
+						return {
+							sub: 'mock-subject-id-token-profile',
+							iss: 'https://example.com/auth/realms/n8n',
+							aud: 'test-client-id',
+							iat: Math.floor(Date.now() / 1000) - 1000,
+							exp: Math.floor(Date.now() / 1000) + 3600,
+							email: 'id-token-user@example.com',
+							email_verified: true,
+							given_name: 'Alex',
+							family_name: 'Smith',
+						} as mocked_oidc_client.IDToken;
+					},
+					expiresIn: () => 3600,
+				} as mocked_oidc_client.TokenEndpointResponse &
+					mocked_oidc_client.TokenEndpointResponseHelpers;
+
+				authorizationCodeGrantMock.mockReset();
+				fetchUserInfoMock.mockReset();
+				authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+
+				expect(fetchUserInfoMock).not.toHaveBeenCalled();
+				const userFromDB = await userRepository.findOneOrFail({ where: { id: user.id } });
+				expect(userFromDB.email).toEqual('id-token-user@example.com');
+				expect(userFromDB.firstName).toEqual('Alex');
+				expect(userFromDB.lastName).toEqual('Smith');
+			});
 		});
 	});
 
