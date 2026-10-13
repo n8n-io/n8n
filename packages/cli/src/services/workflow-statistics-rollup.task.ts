@@ -1,14 +1,11 @@
 import { SchedulerConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskRunContext, SystemTaskSchedule } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.service';
 
 const ROLLUP_INTERVAL_SECONDS = 5;
-
-/** Ends a run before the next occurrence, so a backlog does not cause overlap skips. */
-const IN_MEMORY_RUN_BUDGET_MS = (ROLLUP_INTERVAL_SECONDS - 1) * Time.seconds.toMilliseconds;
 
 /**
  * Folds the pending workflow statistics increments into the counters, and
@@ -28,22 +25,20 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 		},
 	});
 
-	private readonly durableRunBudgetMs: number;
+	private readonly runBudgetMs: number;
 
 	constructor(
 		private readonly rollupService: WorkflowStatisticsRollupService,
 		schedulerConfig: SchedulerConfig,
 	) {
-		// Leave one second for a slower batch. The durable lease is not renewed during a run.
-		this.durableRunBudgetMs =
+		// Ends a run before the next occurrence, so a backlog does not cause overlap skips.
+		// It also ends before a lease too short for the heartbeat to renew in time.
+		this.runBudgetMs =
 			(Math.min(ROLLUP_INTERVAL_SECONDS, schedulerConfig.leaseDurationSeconds) - 1) *
 			Time.seconds.toMilliseconds;
 	}
 
-	async run(signal: AbortSignal, { runner }: SystemTaskRunContext): Promise<void> {
-		await this.rollupService.rollup(
-			signal,
-			runner === 'scheduler' ? this.durableRunBudgetMs : IN_MEMORY_RUN_BUDGET_MS,
-		);
+	async run(signal: AbortSignal): Promise<void> {
+		await this.rollupService.rollup(signal, this.runBudgetMs);
 	}
 }

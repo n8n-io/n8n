@@ -20,7 +20,6 @@ export type {
 	LeaderTimerTarget,
 	SchedulerOptions,
 	SchedulerSystemTask,
-	SystemTaskRunContext,
 	SystemTaskTarget,
 	SystemTaskSchedule,
 } from './types';

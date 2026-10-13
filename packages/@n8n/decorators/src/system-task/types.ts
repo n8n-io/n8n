@@ -25,7 +25,7 @@ export interface SystemTask {
 	 * A scheduler run also aborts on lease loss or expiry, and at its timeout.
 	 * Ignoring the signal delays shutdown and can let another run overlap.
 	 */
-	run(signal: AbortSignal, context: SystemTaskRunContext): Promise<void>;
+	run(signal: AbortSignal): Promise<void>;
 }
 
 /**
@@ -114,11 +114,6 @@ export interface LeaderTimerOptions {
 	 * occurrence. An integer from 1 to about 24 days.
 	 */
 	readonly retryDelaySeconds?: number;
-}
-
-/** What started a run. */
-export interface SystemTaskRunContext {
-	readonly runner: 'scheduler' | 'leaderTimer' | 'instanceTimer';
 }
 
 /** A task that runs on the durable scheduler while the scheduler is enabled. */

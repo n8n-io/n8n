@@ -22,7 +22,7 @@ describe('AgentInterruptedExecutionSweepTask', () => {
 	it('hands the signal to the sweeper', async () => {
 		const { signal } = new AbortController();
 
-		await task.run(signal, { runner: 'scheduler' });
+		await task.run(signal);
 
 		expect(sweeper.sweep).toHaveBeenCalledWith(signal);
 	});

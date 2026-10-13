@@ -27,7 +27,7 @@ describe('ExecutionPruningHardDeleteTask', () => {
 	it('should hard-delete with the run signal', async () => {
 		const { signal } = new AbortController();
 
-		await task.run(signal, { runner: 'scheduler' });
+		await task.run(signal);
 
 		expect(pruningService.hardDelete).toHaveBeenCalledWith(signal);
 	});

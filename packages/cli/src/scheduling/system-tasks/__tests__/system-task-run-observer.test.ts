@@ -37,24 +37,23 @@ describe('observeSystemTaskRun', () => {
 			throw error;
 		};
 
-	it.each([
-		{ mode: 'durable' as const, runner: 'scheduler' },
-		{ mode: 'leader_timer' as const, runner: 'leaderTimer' },
-		{ mode: 'instance_timer' as const, runner: 'instanceTimer' },
-	])('tells a $mode run which runner started it', async ({ mode, runner }) => {
-		const run = vi.fn(resolves);
-		const signal = new AbortController().signal;
+	it.each(['durable', 'leader_timer', 'instance_timer'] as const)(
+		'passes the signal to a %s run',
+		async (mode) => {
+			const run = vi.fn(resolves);
+			const signal = new AbortController().signal;
 
-		await observeSystemTaskRun(
-			mock<EventService>(),
-			setupTracing().tracing,
-			taskThat(run),
-			mode,
-			signal,
-		);
+			await observeSystemTaskRun(
+				mock<EventService>(),
+				setupTracing().tracing,
+				taskThat(run),
+				mode,
+				signal,
+			);
 
-		expect(run).toHaveBeenCalledExactlyOnceWith(signal, { runner });
-	});
+			expect(run).toHaveBeenCalledExactlyOnceWith(signal);
+		},
+	);
 
 	it('settles a run that throws synchronously as a failure, rather than rejecting', async () => {
 		const eventService = mock<EventService>();

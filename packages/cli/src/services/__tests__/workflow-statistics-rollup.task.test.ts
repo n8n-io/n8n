@@ -34,23 +34,14 @@ describe('WorkflowStatisticsRollupTask', () => {
 		{ leaseDurationSeconds: 2, runBudgetMs: 1000 },
 		{ leaseDurationSeconds: 1, runBudgetMs: 0 },
 	])(
-		'should pass the signal and a $runBudgetMs ms budget to a durable run with a $leaseDurationSeconds second lease',
+		'should pass the signal and a $runBudgetMs ms budget with a $leaseDurationSeconds second lease',
 		async ({ leaseDurationSeconds, runBudgetMs }) => {
 			const task = makeTask({ leaseDurationSeconds });
 			const signal = new AbortController().signal;
 
-			await task.run(signal, { runner: 'scheduler' });
+			await task.run(signal);
 
 			expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, runBudgetMs);
 		},
 	);
-
-	it('should pass a budget below the interval to an in-memory run, whatever the lease', async () => {
-		const task = makeTask({ leaseDurationSeconds: 1 });
-		const signal = new AbortController().signal;
-
-		await task.run(signal, { runner: 'leaderTimer' });
-
-		expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, 4000);
-	});
 });
