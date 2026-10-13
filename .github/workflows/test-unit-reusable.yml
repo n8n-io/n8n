@@ -161,7 +161,7 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner-provider == 'namespace' && 'namespace-profile-n8n-ci-tools;overrides.cache-tag=github-namespace-profile-n8n-ci-tests-n8n-io-n8n' || (inputs.runner-provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
       AFFECTED_PACKAGES: ${{ inputs.affectedPackages }}

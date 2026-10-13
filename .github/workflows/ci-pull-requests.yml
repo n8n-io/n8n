@@ -344,7 +344,7 @@ jobs:
   check-packaging:
     name: Check packaging
     if: needs.install-and-build.outputs.ci == 'true'
-    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tools;overrides.cache-tag=github-namespace-profile-n8n-ci-tests-n8n-io-n8n' || (inputs.runner_provider || vars.RUNNER_PROVIDER) == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: [install-and-build, format-check]
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
@@ -377,7 +377,7 @@ jobs:
         || contains(github.event.pull_request.labels.*.name, 'force-engine-e2e'))
     uses: ./.github/workflows/prepare-docker-reusable.yml
     with:
-      runner: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tests' || 'blacksmith-4vcpu-ubuntu-2204' }}
+      runner: ${{ inputs.runner_provider == 'namespace' && 'namespace-profile-n8n-ci-tools;overrides.cache-tag=github-namespace-profile-n8n-ci-tests-n8n-io-n8n' || 'blacksmith-4vcpu-ubuntu-2204' }}
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 

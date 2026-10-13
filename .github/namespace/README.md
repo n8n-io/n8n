@@ -45,9 +45,12 @@ Each job clears installed dependencies before installation. Nested setup retains
 Native Turbo caching shares build outputs across jobs.
 
 The profiles separate the full build, checks, E2E, and partial tooling installs into different cache volumes.
+Light jobs (packaging, dev-server smoke, frontend declarations, image prep, backend integration, workflow scripts) peak below 4 cores, so they run on the 4x8 tools profile.
+The jobs with a full install keep the checks volume through `overrides.cache-tag`.
 E2E profiles also cache container image pulls.
 On Namespace, the prep job pushes the CI images to the workspace registry (`n8n-ci/n8n` and `n8n-ci/runners`). E2E shards pull them.
 Each image tag is `ci-<variant>-<sha>`. A re-run of the same commit reuses the pushed images.
+The remote builders do not keep layers between runs, so the build also reads and writes a registry layer cache (`n8n-ci/buildcache-<variant>`).
 Set a short expiry on those repositories once per workspace:
 
 ```bash
