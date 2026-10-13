@@ -10,10 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { createSelfHealingAgent } from '../self-healing-agent';
 import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
-import {
-	SELF_HEALING_WORKSPACE_TOOL_NAMES,
-	type SelfHealingCandidateVerifier,
-} from '../../self-healing';
+import type { SelfHealingCandidateVerifier } from '../../self-healing';
 import { loadInstanceAiRuntimeSkillSource } from '../../skills/runtime-skills';
 import type { InstanceAiContext, WorkflowDetail } from '../../types';
 import type { InstanceAiEventBus } from '../../event-bus';
@@ -164,7 +161,7 @@ describe('createSelfHealingAgent', () => {
 	it('restricts the final SDK tools and loads the investigation skill before inference', async () => {
 		const context = createContext();
 		context.workspace = new Workspace({
-			filesystem: mock<WorkspaceFilesystem>({ status: 'ready' }),
+			filesystem: mock<WorkspaceFilesystem>({ status: 'ready', basePath: '/workspace' }),
 			sandbox: mock<WorkspaceSandbox>({ status: 'running' }),
 		});
 		const agent = await createAgent(context);
@@ -188,12 +185,17 @@ describe('createSelfHealingAgent', () => {
 				'n8n-docs',
 				'research',
 				'verify_candidate',
-				...SELF_HEALING_WORKSPACE_TOOL_NAMES,
+				'workspace_read_file',
+				'workspace_read_tool_result',
+				'workspace_write_file',
+				'workspace_str_replace_file',
+				'workspace_execute_command',
 			].sort(),
 		);
 		expect(config.instructions).toContain('# Self-healing');
 		expect(config.instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
-		expect(config.instructions).not.toContain('workspace_execute_command');
+		expect(config.instructions).toContain('Filesystem access is scoped to `/workspace`');
+		expect(config.instructions).toContain('execute commands in the workspace');
 		expect(config.observationalMemory).toBeUndefined();
 		expect(config.skillSource).toBeUndefined();
 		expect(await loadInstanceAiRuntimeSkillSource().loadSkill('self-healing')).toBeNull();
@@ -270,7 +272,6 @@ describe('createSelfHealingAgent', () => {
 		});
 		expect(result.note).toContain('verify_candidate');
 		expect(result.note).not.toContain('build-workflow');
-		expect(result.note).not.toContain('workspace_execute_command');
 		expect(JSON.stringify(tool.inputSchema)).not.toContain('build-workflow');
 		expect(files.get(candidatePath)).toBe('edited candidate');
 	});

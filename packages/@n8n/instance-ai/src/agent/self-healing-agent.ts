@@ -9,10 +9,9 @@ import {
 import { resolve } from 'node:path';
 
 import { applyAgentThinking } from './apply-agent-thinking';
-import { UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import {
 	SELF_HEALING_PROFILE_VERSION,
-	SELF_HEALING_WORKSPACE_TOOL_NAMES,
 	selfHealingCandidateInputSchema,
 	selfHealingOutputSchema,
 	type SelfHealingCandidateVerifier,
@@ -101,10 +100,8 @@ export async function createSelfHealingAgent(
 	const workspace = context.workspace
 		? createLazyRuntimeWorkspace({
 				ensureWorkspace: async () => context.workspace,
-				allowedToolNames: SELF_HEALING_WORKSPACE_TOOL_NAMES,
-				sandboxInstructions: '',
-				filesystemInstructions:
-					'Use workspace file tools. Paths must stay within the workspace root.',
+				sandboxInstructions: getSandboxWorkspaceSection(context.workspace.filesystem?.basePath),
+				filesystemInstructions: '',
 			})
 		: undefined;
 	const modelId = context.threadId

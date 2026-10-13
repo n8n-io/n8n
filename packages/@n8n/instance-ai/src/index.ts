@@ -879,11 +879,6 @@ defineLazyExport(
 	'SELF_HEALING_RESOURCE_PREFIX',
 	() => loadSelfHealing().SELF_HEALING_RESOURCE_PREFIX,
 );
-export declare const SELF_HEALING_WORKSPACE_TOOL_NAMES: typeof SelfHealingMod.SELF_HEALING_WORKSPACE_TOOL_NAMES;
-defineLazyExport(
-	'SELF_HEALING_WORKSPACE_TOOL_NAMES',
-	() => loadSelfHealing().SELF_HEALING_WORKSPACE_TOOL_NAMES,
-);
 export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
 defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);
 export declare const selfHealingIdentitySchema: typeof SelfHealingMod.selfHealingIdentitySchema;

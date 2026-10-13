@@ -21,9 +21,9 @@ It uses the same workflow converter as ordinary workflow reads.
 Live workflow reads provide context. They do not replace this candidate or its baseline.
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
-It can read and edit workspace files and call `verify_candidate`.
+It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
 Research remains subject to the existing policy. A request that needs approval is unavailable.
-The agent has no shell, save, publish, credential setup, MCP, browser, or delegation tools.
+The agent has no save, publish, credential setup, MCP, browser, or delegation tools.
 It does not request user confirmation or start follow-up runs.
 
 The call returns technical `status`, finish information, credit and timing `usage`, and validated `output`

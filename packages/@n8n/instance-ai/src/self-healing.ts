@@ -3,12 +3,6 @@ import { z } from 'zod';
 
 export const SELF_HEALING_PROFILE_VERSION = 'self-healing-v1';
 export const SELF_HEALING_RESOURCE_PREFIX = 'ia-self-healing:';
-export const SELF_HEALING_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
-	'workspace_read_file',
-	'workspace_read_tool_result',
-	'workspace_write_file',
-	'workspace_str_replace_file',
-]);
 
 export const selfHealingOutputSchema = z
 	.object({
