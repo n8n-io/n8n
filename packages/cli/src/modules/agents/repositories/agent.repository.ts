@@ -696,13 +696,15 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * won `saveDraftFenced`.
 	 */
 	async updateDraftSkills(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
 		ctx: OperationContext,
 	): Promise<void> {
+		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
+		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
 		await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
-			.set({ schema: agent.schema, skills: agent.skills })
+			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
 			.where('id = :id', { id: agent.id })
 			.execute();
 	}

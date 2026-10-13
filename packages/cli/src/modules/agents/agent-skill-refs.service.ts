@@ -82,7 +82,7 @@ export class AgentSkillRefsService {
 
 	/** The refs of the agent draft and the skill bodies the draft runs. */
 	async readDraft(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
 		ctx: OperationContext,
 	): Promise<AgentSkillsSnapshot> {
 		const skillRefs = await this.refsForDraft(agent, ctx);
@@ -149,7 +149,7 @@ export class AgentSkillRefsService {
 	 * to validate and report the refs that are saved, not the submitted ones.
 	 */
 	async effectiveDraftRefs(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
 		refs: AgentJsonSkillConfig[],
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
@@ -174,7 +174,7 @@ export class AgentSkillRefsService {
 	 * keeps its pin only when the draft already has that pin.
 	 */
 	async replaceDraftRefs(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
 		refs: AgentSkillRefs,
 		ctx: OperationContext,
 	): Promise<void> {
@@ -204,7 +204,7 @@ export class AgentSkillRefsService {
 	 * skill row and needs no skill permission.
 	 */
 	async restoreDraftRefs(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
 		version: Pick<AgentHistory, 'versionId' | 'skills'>,
 		refs: AgentSkillRefs,
 		ctx: OperationContext,
@@ -256,7 +256,7 @@ export class AgentSkillRefsService {
 	 * project to create a skill. Returns the refs that the draft now has.
 	 */
 	async createDraftRefs(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
 		refs: AgentSkillRefs,
 		bodies: Record<string, AgentSkill>,
 		creator: User | null,
@@ -333,7 +333,7 @@ export class AgentSkillRefsService {
 	}
 
 	async createSkills(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
 		skills: AgentSkill[],
 		creatorId: string,
 		availableTo: AgentSkillAvailability,
@@ -422,7 +422,7 @@ export class AgentSkillRefsService {
 	}
 
 	private async writeLegacyDraft(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
 		schema: StoredAgentConfig,
 		refs: AgentJsonSkillConfig[],
 		skills: Record<string, AgentSkill>,
