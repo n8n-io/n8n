@@ -140,9 +140,8 @@ const TARGETS = new Map<string, Target>(
  *   not throw.
  * - Item Lists 1 and 2: a failure becomes a success when the node did not find a field
  *   (Aggregate, Split Out) or got a value that is not an array or object (Split Out).
- *   The new nodes add a hint or wrap the value. The migration reports a note for Split Out
- *   and for Aggregate with individual fields. The note also turns off the one-click
- *   republish.
+ *   The new nodes add a hint or wrap the value. The migration reports a note where the old
+ *   node can throw. The note also turns off the one-click republish.
  */
 export const itemListsToTransformNodes: NodeMigration = {
 	ruleId: 'item-lists-removed-v3',

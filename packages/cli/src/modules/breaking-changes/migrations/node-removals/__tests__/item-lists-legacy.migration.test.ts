@@ -31,22 +31,64 @@ describe('Item Lists 1 and 2', () => {
 	// The old nodes stop with an error where the new nodes continue. A note tells the user to
 	// check the workflow, and it turns off the one-click republish.
 	describe('note about a failure that becomes a success', () => {
-		const individual = { operation: 'aggregateItems', aggregate: 'aggregateIndividualFields' };
-
-		it.each(LEGACY_VERSIONS)('reports a note for Aggregate with individual fields in %s', (v) => {
-			expect(migrate(v, individual).notes).toEqual([
-				expect.stringContaining('missing in all items'),
-			]);
+		const aggregate = (parameters: INodeParameters = {}, options: INodeParameters = {}) => ({
+			operation: 'aggregateItems',
+			aggregate: 'aggregateIndividualFields',
+			fieldsToAggregate: { fieldToAggregate: [{ fieldToAggregate: 'id' }] },
+			...parameters,
+			...(Object.keys(options).length > 0 ? { options } : {}),
 		});
 
-		it('reports a note for Aggregate when the saved node omits the default mode', () => {
-			expect(migrate(2.2, { operation: 'aggregateItems' }).notes).toHaveLength(1);
+		describe('Aggregate with individual fields', () => {
+			it.each([1, 2])(
+				'reports a note in Item Lists %s when a missing field stops the node',
+				(v) => {
+					expect(migrate(v, aggregate()).notes).toEqual([
+						expect.stringContaining('missing in all items'),
+					]);
+				},
+			);
+
+			it('reports a note when the saved node omits the mode and the field', () => {
+				expect(migrate(2, { operation: 'aggregateItems' }).notes).toHaveLength(1);
+			});
+
+			it.each([2.1, 2.2])('reports no note in Item Lists %s, because it never stops', (v) => {
+				expect(migrate(v, aggregate()).notes).toBeUndefined();
+			});
+
+			it.each([1, 2])('reports no note in Item Lists %s when Keep Missing is on', (v) => {
+				expect(migrate(v, aggregate({}, { keepMissing: true })).notes).toBeUndefined();
+			});
+
+			it.each([
+				['off', false],
+				['an expression, which could be off', '={{ $json.keep }}'],
+			])('reports a note when Keep Missing is %s', (_name, keepMissing) => {
+				expect(migrate(1, aggregate({}, { keepMissing })).notes).toHaveLength(1);
+			});
 		});
 
-		it.each(LEGACY_VERSIONS)('reports a note for Split Out in %s', (version) => {
-			const result = migrate(version, { operation: 'splitOutItems', fieldToSplitOut: 'tags' });
+		describe('Split Out', () => {
+			const splitOut = { operation: 'splitOutItems', fieldToSplitOut: 'tags' };
 
-			expect(result.notes).toEqual([expect.stringContaining('not a list or an object')]);
+			it.each([1, 2])(
+				'reports a note in Item Lists %s for a missing field or a plain value',
+				(v) => {
+					expect(migrate(v, splitOut).notes).toEqual([expect.stringContaining('was missing')]);
+				},
+			);
+
+			it('reports a note in Item Lists 2.1 for a plain value only', () => {
+				const { notes } = migrate(2.1, splitOut);
+
+				expect(notes).toEqual([expect.stringContaining('not a list or an object')]);
+				expect(notes?.[0]).not.toContain('was missing');
+			});
+
+			it('reports no note in Item Lists 2.2, because it never stops', () => {
+				expect(migrate(2.2, splitOut).notes).toBeUndefined();
+			});
 		});
 
 		it.each(LEGACY_VERSIONS)(

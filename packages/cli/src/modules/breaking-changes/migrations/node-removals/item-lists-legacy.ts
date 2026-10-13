@@ -24,12 +24,27 @@ export interface LegacyResult {
 	notes?: string[];
 }
 
-// Item Lists 1 and 2 stop with an error where the new nodes continue. A workflow can rely on
-// that error, for example with an error output or an error workflow.
+// A note turns off the one-click republish, so it only fits where the old node can throw.
 const MISSING_FIELD_NOTE =
 	'This node used to stop with an error when a field was missing in all items. The new node continues. Check the workflow if it relies on that error.';
-const SPLIT_OUT_NOTE =
-	'This node used to stop with an error when the field was missing, or when its value was not a list or an object. The new node continues. Check the workflow if it relies on that error.';
+
+// Item Lists 2.1 and later never throw. Before that, Keep Missing off (or an expression) can.
+function canStopForMissingField(node: INode, options: INodeParameters): boolean {
+	return node.typeVersion < 2.1 && options.keepMissing !== true;
+}
+
+// Split Out throws for a missing field before 2.1, and for a value it cannot split before 2.2.
+function splitOutNote(typeVersion: number): string[] | undefined {
+	if (typeVersion >= 2.2) return undefined;
+
+	const cause =
+		typeVersion < 2.1
+			? 'the field was missing, or when its value was not a list or an object'
+			: 'the value of the field was not a list or an object';
+	return [
+		`This node used to stop with an error when ${cause}. The new node continues. Check the workflow if it relies on that error.`,
+	];
+}
 
 const unreadable = (label: string) =>
 	new Error(`"${label}" could not be read. Open the node, check this field and migrate again.`);
@@ -132,8 +147,6 @@ function assertPlainName(value: string, label: string, { allowEmpty = false } = 
  * Concatenate Items (`aggregateItems`) to Aggregate.
  * Individual fields copy as they are. The all-data mode needs the field lists as strings.
  * Versions 1 and 2 throw for a missing field and the new node adds a hint, which is accepted.
- * That change is reported as a note, but only for individual fields. The all-data mode reads
- * no field.
  */
 export function legacyAggregate(node: INode): LegacyResult {
 	const { parameters } = node;
@@ -143,12 +156,13 @@ export function legacyAggregate(node: INode): LegacyResult {
 	]);
 
 	if (aggregate === 'aggregateIndividualFields') {
+		const options = readOptions(node, ['disableDotNotation', 'mergeLists', 'keepMissing']);
 		return {
 			parameters: {
 				...pickDefined(parameters, ['aggregate', 'fieldsToAggregate']),
-				...withOptions(readOptions(node, ['disableDotNotation', 'mergeLists', 'keepMissing'])),
+				...withOptions(options),
 			},
-			notes: [MISSING_FIELD_NOTE],
+			notes: canStopForMissingField(node, options) ? [MISSING_FIELD_NOTE] : undefined,
 		};
 	}
 
@@ -280,7 +294,10 @@ export function legacySplitOut(node: INode): LegacyResult {
 		);
 	}
 
-	return { parameters: { ...result, ...withOptions(options) }, notes: [SPLIT_OUT_NOTE] };
+	return {
+		parameters: { ...result, ...withOptions(options) },
+		notes: splitOutNote(node.typeVersion),
+	};
 }
 
 const SUMMARIZE_KEY_PREFIXES: Record<string, string> = {
