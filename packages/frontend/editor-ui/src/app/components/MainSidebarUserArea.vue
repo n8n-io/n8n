@@ -27,7 +27,7 @@ const userMenuItems = ref<IMenuItem[]>([
 	},
 	{
 		id: 'logout',
-		icon: 'arrow-to-bracket-right',
+		icon: 'log-out',
 		label: i18n.baseText('auth.signout'),
 	},
 ]);

@@ -175,6 +175,10 @@ const getIconSize = computed<IconSize>(() => {
 	background-color: var(--callout--color--background--secondary);
 	color: var(--callout--color--text--secondary);
 
+	.messageSection > :global(.n8n-text) {
+		font-weight: inherit;
+	}
+
 	.icon {
 		color: var(--callout--icon-color--secondary);
 	}

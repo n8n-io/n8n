@@ -1,6 +1,9 @@
 <script lang="ts" setup>
+import { useI18n } from '../../composables/useI18n';
 import type { IconSize } from '../../types';
 import N8nIcon from '../N8nIcon';
+
+const { t } = useI18n();
 
 const TYPE = ['dots', 'ring', 'grid', 'blocks'] as const;
 
@@ -61,7 +64,7 @@ withDefaults(defineProps<SpinnerProps>(), {
 		<div
 			v-else-if="type === 'blocks'"
 			:class="['blocks-spinner', `blocks-spinner--${size}`]"
-			aria-label="Loading"
+			:aria-label="t('spinner.loading')"
 			role="status"
 		>
 			<div v-for="block in 9" :key="block" class="blocks-spinner__block"></div>
@@ -121,6 +124,8 @@ withDefaults(defineProps<SpinnerProps>(), {
 	border-radius: 50%;
 	animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
 	border-color: var(--color--primary) transparent transparent transparent;
+
+	@include motion.reduced-motion;
 }
 .lds-ring div:nth-child(1) {
 	animation-delay: -0.45s;
@@ -179,6 +184,8 @@ withDefaults(defineProps<SpinnerProps>(), {
 	background: var(--color--primary);
 	animation: blocks-spinner-opacity var(--ld-duration) var(--easing--spring) infinite;
 	animation-delay: calc(var(--ld-duration) / -9 * var(--ld-step));
+
+	@include motion.reduced-motion;
 }
 
 .blocks-spinner__block:nth-child(2) {

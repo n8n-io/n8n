@@ -229,12 +229,12 @@
 			--button--color--background-hover: color-mix(
 				in srgb,
 				var(--color--primary),
-				light-dark(white, black) 10%
+				light-dark(var(--color--neutral-white), var(--color--neutral-black)) 10%
 			);
 			--button--color--background-active: color-mix(
 				in srgb,
 				var(--color--primary),
-				light-dark(white, black) 12%
+				light-dark(var(--color--neutral-white), var(--color--neutral-black)) 12%
 			);
 			--button--color: var(--text-color--inverse);
 			--button--border-color: var(--color--primary);
@@ -285,6 +285,7 @@
 		}
 
 		.el-message-box__btns .btn--confirm {
+			--button--color: var(--color--neutral-white);
 			--button--color--background: light-dark(var(--color--red-500), var(--color--red-600));
 			--button--color--background-hover: light-dark(var(--color--red-600), var(--color--red-500));
 			--button--color--background-active: light-dark(var(--color--red-600), var(--color--red-400));

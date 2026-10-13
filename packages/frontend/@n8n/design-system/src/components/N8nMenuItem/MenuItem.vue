@@ -250,6 +250,11 @@ const tooltipPlacement = computed(() => {
 		border-radius: var(--radius--full);
 		height: var(--height--sm);
 		width: var(--height--sm);
+		margin-inline: auto;
+
+		.menuItemLabel {
+			display: none;
+		}
 	}
 }
 

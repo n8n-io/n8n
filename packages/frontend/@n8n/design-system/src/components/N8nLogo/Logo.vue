@@ -96,6 +96,10 @@ onMounted(() => {
 
 .large {
 	margin-bottom: var(--spacing--xl);
-	height: var(--height--2xs);
+
+	.logo,
+	.logoText {
+		height: var(--height--2xs);
+	}
 }
 </style>

@@ -316,11 +316,6 @@ const onCheckboxChange = (index: number) => {
 		font-weight: var(--font-weight--medium);
 	}
 
-	h3,
-	h4 {
-		font-weight: var(--font-weight--medium);
-	}
-
 	p,
 	span {
 		margin-bottom: var(--spacing--sm);

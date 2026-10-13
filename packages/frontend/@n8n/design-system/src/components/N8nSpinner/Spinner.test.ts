@@ -1,11 +1,27 @@
 import { readFileSync } from 'node:fs';
 import { render } from '@testing-library/vue';
 
+import { i18n } from '../../locale';
 import Spinner from './Spinner.vue';
 
 const source = readFileSync('src/components/N8nSpinner/Spinner.vue', 'utf8');
 
 describe('Spinner', () => {
+	afterEach(() => {
+		i18n((key) => key);
+	});
+
+	it('uses the default accessible loading label', () => {
+		const { getByRole } = render(Spinner);
+		expect(getByRole('status', { name: 'Loading…' })).toBeInTheDocument();
+	});
+
+	it('uses the configured translation for the accessible loading label', () => {
+		i18n((key) => (key === 'spinner.loading' ? 'Chargement…' : key));
+		const { getByRole } = render(Spinner);
+		expect(getByRole('status', { name: 'Chargement…' })).toBeInTheDocument();
+	});
+
 	it('renders nine blocks at medium size by default', () => {
 		const { container, getByRole } = render(Spinner);
 		expect(getByRole('status').classList.contains('blocks-spinner--medium')).toBe(true);

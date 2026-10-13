@@ -465,15 +465,25 @@ function stopSnake(leaveTrail: boolean) {
 	scheduleAmbientTrail();
 }
 
-function isEditableTarget(target: EventTarget | null) {
+function isInteractiveTarget(target: EventTarget | null) {
 	return (
-		target instanceof HTMLElement &&
-		(target.isContentEditable || target.closest('input, textarea, select') !== null)
+		target instanceof Element &&
+		target.closest(
+			'input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"]), [tabindex], [role="button"], [role="menu"], [role="menuitem"], [role="listbox"], [role="combobox"], [role="slider"], [role="tab"], [role="tree"]',
+		) !== null
 	);
 }
 
 function handleKeyDown(event: KeyboardEvent) {
-	if (event.altKey || event.ctrlKey || event.metaKey || isEditableTarget(event.target)) return;
+	/** Keep control navigation separate from the background game. */
+	if (
+		event.defaultPrevented ||
+		event.altKey ||
+		event.ctrlKey ||
+		event.metaKey ||
+		isInteractiveTarget(event.target)
+	)
+		return;
 
 	if (event.key === 'Escape' && snake.isActive) {
 		stopSnake(true);

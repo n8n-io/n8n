@@ -50,7 +50,8 @@ const { t } = useI18n();
 			color-mix(in srgb, var(--color--neutral-white), transparent 25%) 60%,
 			transparent 75%
 		);
-		background-size: 250% 100%;
+		/** Keep the full highlight inside the moving layer. */
+		background-size: 100% 100%;
 		mix-blend-mode: lighten;
 		opacity: 1;
 		transform: translateX(-100%);
