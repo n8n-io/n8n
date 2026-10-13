@@ -47,7 +47,7 @@ export interface CreateSelfHealingAgentOptions {
 const SOURCE_GUIDANCE =
 	'Read workflow source for context. Keep edits in the supplied self-healing candidate file. ' +
 	'Use workspace_read_file and workspace_str_replace_file, then verify_candidate. ' +
-	'A live workflow read does not replace the candidate baseline.';
+	'Workflow reads return the original baseline for this investigation.';
 
 function createSelfHealingTools(
 	context: InstanceAiContext,

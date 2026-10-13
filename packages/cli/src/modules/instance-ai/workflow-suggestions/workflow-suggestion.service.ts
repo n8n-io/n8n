@@ -156,6 +156,20 @@ export class WorkflowSuggestionService {
 		};
 	}
 
+	async requireCurrentBaseline(baseline: WorkflowSuggestionBaseline) {
+		const user = await this.requireEditor(baseline.backgroundUserId, baseline.workflowId);
+		const target = await this.readWorkflowTarget(baseline.workflowId, {});
+		if (
+			(await calculateWorkflowChecksum(baseline.original)) !== baseline.expectedBaseline.checksum ||
+			!target.workflow ||
+			!(await this.matchesBaseline(baseline, target)) ||
+			!(await this.isPublished(target.workflow, {}))
+		) {
+			throw new ConflictError('The workflow no longer matches the published baseline.');
+		}
+		return user;
+	}
+
 	private async readWorkflowTarget(
 		workflowId: string,
 		ctx: OperationContext,

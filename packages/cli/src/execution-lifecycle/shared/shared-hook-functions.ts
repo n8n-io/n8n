@@ -50,6 +50,9 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'pinData',
 		'nodeGroups',
 	]);
+	if (workflowData.meta?.instanceAiVerification === true) {
+		pristineWorkflowData.meta = { instanceAiVerification: true };
+	}
 
 	const fullExecutionData: UpdateExecutionPayload = {
 		data: runData.data,

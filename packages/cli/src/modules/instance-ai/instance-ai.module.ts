@@ -55,6 +55,14 @@ export class InstanceAiModule implements ModuleInterface {
 		void sweeper.sweep().catch((error: unknown) => {
 			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
 		});
+		const { SelfHealingTemporaryWorkflowService } = await import(
+			'./self-healing/self-healing-temporary-workflow.service.js'
+		);
+		void Container.get(SelfHealingTemporaryWorkflowService)
+			.cleanupAbandoned()
+			.catch((error: unknown) => {
+				sweepLogger.error('Assistant verification cleanup failed on startup', { error });
+			});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');

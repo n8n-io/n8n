@@ -5,20 +5,20 @@ It also provides the result review API.
 
 ## Run an investigation
 
-Call `InstanceAiService.startSelfHealingRun(input, verifyCandidate)` from backend code.
+Call `InstanceAiService.startSelfHealingRun(input)` from backend code.
 Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup.
 Supply the acting `user`, captured `WorkflowSuggestionBaseline`, failed `executionId`,
 and failure description in `message`.
 The actor must match `baseline.backgroundUserId` and have current workflow read and edit access.
 The baseline project and execution must belong to `baseline.workflowId`.
 
-Supply a real verifier before model work starts. The verifier receives the actor, baseline,
-execution ID, workspace, abort signal, and the model arguments `{ filePath, validationOnly? }`.
-AST-1479 owns verifier implementation. Production has no successful placeholder verifier.
+The backend binds `verify_candidate({ filePath, validationOnly? })` to this investigation.
+It checks current access and the captured baseline before it reads and compiles the candidate.
+With `validationOnly: true`, it returns structural checks without execution.
 
 `SelfHealingAgentService` creates `self-healing/candidate.workflow.ts` from the captured baseline.
 It uses the same workflow converter as ordinary workflow reads.
-Live workflow reads provide context. They do not replace this candidate or its baseline.
+Workflow reads return the captured baseline. The agent cannot select another workflow or version.
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
 It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
@@ -48,9 +48,31 @@ Read and persist accepted candidate data before workspace cleanup removes it.
 
 AST-1480 owns investigation admission, baseline capture, final candidate compilation,
 acceptance, and atomic completion. This invocation creates no result or suggestion record.
-When parameter sharing is disabled, candidate source omits node parameters.
-Final reconstruction must preserve those baseline values or reject the candidate before acceptance.
+When parameter sharing is disabled, candidate source omits node parameters and verification is unavailable.
+Use `compileCandidateWorkflow()` for final reconstruction. It preserves baseline fields, node identity,
+layout, and credential references. It rejects unchanged or unsupported candidates.
+Recheck the baseline before saving the result. A successful execution is not required to store useful changes.
 There is no automatic trigger or public launch endpoint.
+
+## Verify a candidate
+
+Each call compiles the current workspace file. `candidateChecksum` identifies the compiled candidate.
+Validation and execution evidence are separate. Edits require another check.
+The tool reuses the builder simulation planner, execution adapter, and coverage analysis.
+It returns node previews, failures, simulated nodes, and nodes that the run did not reach.
+Some nodes execute against external services under the existing simulation rules.
+
+Full verification creates an archived, unpublished temporary workflow with a backend-assigned ID.
+It copies the candidate graph and the original runtime state. Execution writes affect this copy.
+The saved workflow, its history, and its published version remain unchanged.
+`workflowData.meta.instanceAiVerification` identifies these Assistant verification executions.
+Failure consumers must exclude them from production failure detection.
+
+The service copies findings into the tool response before cleanup. It stops unfinished executions
+and deletes terminal executions and their temporary workflow. Canceled executions remain for
+24 hours after cancellation. Startup and the existing prune task retry records older than 24 hours.
+A namespaced resource record keeps cleanup ownership after the investigation thread is deleted.
+No suggestion row is created by verification.
 
 ## Store a result
 

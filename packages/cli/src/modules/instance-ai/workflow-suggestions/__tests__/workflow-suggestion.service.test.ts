@@ -144,6 +144,26 @@ it('captures a detached baseline without creating a suggestion', async () => {
 	expect(publication.getStatus).toHaveBeenCalledWith(workflow.id, {});
 });
 
+it('checks a current baseline without creating a suggestion', async () => {
+	await expect(service.requireCurrentBaseline(baseline)).resolves.toEqual(user);
+	expect(suggestions.createPending).not.toHaveBeenCalled();
+});
+
+it.each(['content', 'saved version', 'published version', 'publication history', 'snapshot'])(
+	'rejects verification after a change to the %s',
+	async (change) => {
+		if (change === 'content') workflow.name = 'Changed';
+		if (change === 'saved version') workflow.versionId = 'new-version';
+		if (change === 'published version') workflow.activeVersionId = 'new-version';
+		if (change === 'publication history') {
+			workflowPublishHistoryRepository.getLatestPublishHistoryEventId.mockResolvedValue(2);
+		}
+		if (change === 'snapshot') baseline.original.name = 'Changed';
+		await expect(service.requireCurrentBaseline(baseline)).rejects.toThrow('baseline');
+		expect(suggestions.createPending).not.toHaveBeenCalled();
+	},
+);
+
 it.each(['unpublished', 'saved changes', 'archived', 'publishing'] as const)(
 	'rejects baseline capture when the workflow is %s',
 	async (state) => {

@@ -1533,7 +1533,7 @@ export class InstanceAiService {
 	/** Run one internal investigation under the normal host lifecycle. */
 	async startSelfHealingRun(
 		input: SelfHealingRunInput,
-		verifyCandidate: SelfHealingVerifier,
+		verifyCandidate?: SelfHealingVerifier,
 	): Promise<SelfHealingRunResult> {
 		this.selfHealingAgent.assertEnabled(verifyCandidate);
 		this.assertRunAdmissible(input.user);

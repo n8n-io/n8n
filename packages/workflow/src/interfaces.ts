@@ -4094,6 +4094,8 @@ export interface IWorkflowSettings {
 }
 
 export interface WorkflowFEMeta {
+	/** Marks a backend-owned workflow used to verify an Assistant candidate. */
+	instanceAiVerification?: true;
 	onboardingId?: string;
 	templateId?: string;
 	instanceId?: string;

@@ -32,6 +32,15 @@ import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulator';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
+import type * as VerificationAnalysisMod from './tools/orchestration/verification/analyze-result';
+import type * as PrepareVerificationRunMod from './tools/orchestration/verification/prepare-run';
+import type * as ResolvedParameterWarningsMod from './tools/orchestration/verification/resolved-parameter-warnings';
+import type * as WorkflowVerificationMod from './tools/orchestration/verification/run-workflow-verification';
+import type * as ToolSimulationPreflightMod from './tools/orchestration/verification/tool-simulation-preflight';
+import type * as VerificationSimulationMod from './tools/workflows/plan-verification-simulation';
+import type * as WorkflowSourceCompilerMod from './tools/workflows/workflow-source-compiler';
+import type * as WorkflowNodeDiffMod from './tools/workflows/workflow-node-diff';
+import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
@@ -126,6 +135,33 @@ const loadAgentPersistence = lazyModule(
 );
 const loadAgentContextTool = lazyModule(
 	() => require('./tools/agent-context.tool') as typeof AgentContextToolMod,
+);
+const loadVerificationAnalysis = lazyModule<typeof VerificationAnalysisMod>(() =>
+	require('./tools/orchestration/verification/analyze-result'),
+);
+const loadPrepareVerificationRun = lazyModule<typeof PrepareVerificationRunMod>(() =>
+	require('./tools/orchestration/verification/prepare-run'),
+);
+const loadResolvedParameterWarnings = lazyModule<typeof ResolvedParameterWarningsMod>(() =>
+	require('./tools/orchestration/verification/resolved-parameter-warnings'),
+);
+const loadWorkflowVerification = lazyModule<typeof WorkflowVerificationMod>(() =>
+	require('./tools/orchestration/verification/run-workflow-verification'),
+);
+const loadToolSimulationPreflight = lazyModule<typeof ToolSimulationPreflightMod>(() =>
+	require('./tools/orchestration/verification/tool-simulation-preflight'),
+);
+const loadVerificationSimulation = lazyModule<typeof VerificationSimulationMod>(() =>
+	require('./tools/workflows/plan-verification-simulation'),
+);
+const loadWorkflowSourceCompiler = lazyModule<typeof WorkflowSourceCompilerMod>(() =>
+	require('./tools/workflows/workflow-source-compiler'),
+);
+const loadWorkflowNodeDiff = lazyModule<typeof WorkflowNodeDiffMod>(() =>
+	require('./tools/workflows/workflow-node-diff'),
+);
+const loadWorkflowValidationWarnings = lazyModule<typeof WorkflowValidationWarningsMod>(() =>
+	require('./tools/workflows/workflow-validation-warnings'),
 );
 const loadTitleUtils = lazyModule(() => require('./memory/title-utils') as typeof TitleUtilsMod);
 const loadMcpClientManager = lazyModule(
@@ -676,6 +712,26 @@ export type {
 	WorkflowVerificationObligation,
 	WorkflowVerificationObligationSource,
 } from './workflow-loop';
+export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWorkflowSource =
+	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
+export const downgradeUnchangedNodeBlockers: typeof WorkflowNodeDiffMod.downgradeUnchangedNodeBlockers =
+	lazyFunction(() => loadWorkflowNodeDiff().downgradeUnchangedNodeBlockers);
+export const partitionWarnings: typeof WorkflowValidationWarningsMod.partitionWarnings =
+	lazyFunction(() => loadWorkflowValidationWarnings().partitionWarnings);
+export const planVerificationSimulation: typeof VerificationSimulationMod.planVerificationSimulation =
+	lazyFunction(() => loadVerificationSimulation().planVerificationSimulation);
+export const prepareVerificationRun: typeof PrepareVerificationRunMod.prepareVerificationRun =
+	lazyFunction(() => loadPrepareVerificationRun().prepareVerificationRun);
+export const collectResolvedParameterWarnings: typeof ResolvedParameterWarningsMod.collectResolvedParameterWarnings =
+	lazyFunction(() => loadResolvedParameterWarnings().collectResolvedParameterWarnings);
+export const checkToolSimulationSupport: typeof ToolSimulationPreflightMod.checkToolSimulationSupport =
+	lazyFunction(() => loadToolSimulationPreflight().checkToolSimulationSupport);
+export const runWorkflowVerification: typeof WorkflowVerificationMod.runWorkflowVerification =
+	lazyFunction(() => loadWorkflowVerification().runWorkflowVerification);
+export const buildNodePreviews: typeof VerificationAnalysisMod.buildNodePreviews = lazyFunction(
+	() => loadVerificationAnalysis().buildNodePreviews,
+);
+export type { ValidationWarning } from './tools/workflows/workflow-validation-warnings';
 export type WorkflowLoopRuntime = WorkflowLoopRuntimeMod.WorkflowLoopRuntime;
 export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRuntime = lazyClass(
 	() => loadWorkflowLoopRuntime().WorkflowLoopRuntime,

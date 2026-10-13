@@ -6,9 +6,8 @@ description: Investigate one failed workflow execution and prepare a candidate f
 # Self-healing
 
 Read the supplied failure description and candidate source. Use execution
-diagnostics to find the cause. Read other workflows or executions only when
-they help explain the failure. Live workflow reads provide context. They do
-not replace the supplied candidate or its baseline.
+diagnostics to find the cause. Workflow reads return the captured baseline
+for this investigation. Keep edits in the supplied candidate file.
 
 Make the smallest useful change to the supplied candidate. Preserve node IDs,
 credential references, workflow intent, and unrelated behavior. Use
@@ -23,7 +22,9 @@ Call `verify_candidate` with the candidate file path. Start with
 `validationOnly: true` when you need static checks. Use the verification
 result as evidence. A successful static check alone does not prove that the
 workflow runs correctly. If a check fails, inspect the evidence before another
-edit. Stop if the same approach fails twice.
+edit. Each result identifies the candidate it checked. After any edit, check
+the candidate again. Report simulated nodes and nodes that the check did not
+reach. Stop if the same approach fails twice.
 
 Return structured output. Use `fix_ready` only for a verified candidate.
 Use `needs_you` when a person must provide information or resolve a blocker.

@@ -52,6 +52,7 @@ import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.se
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import { toWorkflowJSON } from '../workflow-json';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
+import { SelfHealingCandidateService } from './self-healing-candidate.service';
 
 export type SelfHealingRunInput = {
 	user: User;
@@ -67,6 +68,7 @@ export type SelfHealingVerifier = (
 		baseline: WorkflowSuggestionBaseline;
 		executionId: string;
 		workspace: Workspace;
+		context: InstanceAiContext;
 		abortSignal: AbortSignal;
 	},
 ) => Promise<unknown>;
@@ -133,23 +135,25 @@ export class SelfHealingAgentService {
 		private readonly aiUsage: AiUsageService,
 		private readonly credits: InstanceAiCreditService,
 		private readonly events: InProcessEventBus,
+		private readonly candidates: SelfHealingCandidateService,
 	) {}
 
-	assertEnabled(verifier: SelfHealingVerifier): void {
+	assertEnabled(verifier?: SelfHealingVerifier): void {
 		if (!this.config.instanceAi.selfHealingEnabled) {
 			throw new BadRequestError('Self-healing investigations are disabled.');
 		}
-		if (typeof verifier !== 'function') {
+		if (verifier !== undefined && typeof verifier !== 'function') {
 			throw new BadRequestError('A self-healing candidate verifier is required.');
 		}
 	}
 
 	async execute(
 		input: SelfHealingRunInput,
-		verifyCandidate: SelfHealingVerifier,
+		verifyCandidate: SelfHealingVerifier | undefined,
 		options: SelfHealingRunOptions,
 	): Promise<SelfHealingRunResult> {
 		this.assertEnabled(verifyCandidate);
+		input = { ...input, baseline: structuredClone(input.baseline) };
 		const user = await this.validateInput(input);
 		const { baseline, executionId, message } = input;
 		const { threadId, runId, signal } = options;
@@ -230,7 +234,7 @@ export class SelfHealingAgentService {
 				modelId,
 				metadata,
 				workspace,
-				verifyCandidate,
+				verifyCandidate: verifyCandidate ?? (async (args) => await this.candidates.verify(args)),
 			});
 			result.status = stream.status;
 			result.finishReason = stream.finishReason;
@@ -290,7 +294,7 @@ export class SelfHealingAgentService {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
 		if (!message.trim()) throw new BadRequestError('A failure message is required.');
-		const actor = await this.suggestions.requireEditor(user.id, baseline.workflowId);
+		const actor = await this.suggestions.requireCurrentBaseline(baseline);
 		const project = await this.sharedWorkflows.getWorkflowOwningProject(baseline.workflowId);
 		if (project?.id !== baseline.projectId) {
 			throw new BadRequestError('The workflow does not belong to the baseline project.');
@@ -336,7 +340,61 @@ export class SelfHealingAgentService {
 			context.permissions = applyBranchReadOnlyOverrides(context.permissions);
 		}
 		context.threadMemory = this.memory;
+		this.bindWorkflowReads(context, input, shareParameters);
 		return { context, modelId, proxy, shareParameters };
+	}
+
+	private bindWorkflowReads(
+		context: InstanceAiContext,
+		{ user, baseline }: SelfHealingRunInput,
+		shareParameters: boolean,
+	) {
+		const workflowService = context.workflowService;
+		const requireTarget = async (workflowId: string) => {
+			if (workflowId !== baseline.workflowId) {
+				throw new ForbiddenError('Read the workflow assigned to this investigation.');
+			}
+			await this.suggestions.requireEditor(user.id, workflowId);
+		};
+		context.workflowService = {
+			...workflowService,
+			get: async (workflowId) => {
+				await requireTarget(workflowId);
+				const detail = await workflowService.get(workflowId);
+				return {
+					...detail,
+					name: baseline.original.name,
+					connections: structuredClone(baseline.original.connections),
+					settings: baseline.original.settings
+						? { ...structuredClone(baseline.original.settings) }
+						: undefined,
+					versionId: baseline.expectedBaseline.savedVersionId,
+					activeVersionId: baseline.expectedBaseline.publishedVersionId,
+					checksum: baseline.expectedBaseline.checksum,
+					nodes: baseline.original.nodes.map((node) => ({
+						...structuredClone(node),
+						parameters: shareParameters ? structuredClone(node.parameters) : undefined,
+					})),
+				};
+			},
+			getAsWorkflowJSON: async (workflowId, versionId) => {
+				await requireTarget(workflowId);
+				if (versionId && versionId !== baseline.expectedBaseline.publishedVersionId) {
+					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
+				}
+				return toWorkflowJSON(
+					{ ...structuredClone(baseline.original), id: workflowId },
+					{ redactParameters: !shareParameters },
+				);
+			},
+			getPinnedDataSummary: async (workflowId) => {
+				await requireTarget(workflowId);
+				return Object.entries(baseline.original.pinData ?? {}).map(([nodeName, items]) => ({
+					nodeName,
+					itemCount: items.length,
+				}));
+			},
+		};
 	}
 
 	private async runAgent({
@@ -375,6 +433,7 @@ export class SelfHealingAgentService {
 					baseline,
 					executionId,
 					workspace,
+					context,
 					abortSignal: signal,
 				});
 			},

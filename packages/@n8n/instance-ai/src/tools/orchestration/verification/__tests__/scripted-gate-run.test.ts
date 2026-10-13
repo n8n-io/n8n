@@ -78,6 +78,20 @@ function makeArgs(runMock: ReturnType<typeof vi.fn>): ScriptedGateRunArgs {
 }
 
 describe('runScriptedGateVerification', () => {
+	it('does not start another decision pass after cancellation', async () => {
+		const controller = new AbortController();
+		const run = vi.fn().mockImplementationOnce(async () => {
+			controller.abort();
+			return approvePassResult;
+		});
+
+		await expect(
+			runScriptedGateVerification({ ...makeArgs(run), abortSignal: controller.signal }),
+		).rejects.toThrow();
+
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+
 	it('runs one pass per decision with the gate pin swapped and the loop edge cut', async () => {
 		const run = vi
 			.fn()

@@ -33,6 +33,7 @@ import {
 	type SelfHealingVerifier,
 } from '../self-healing-agent.service';
 import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
+import type { SelfHealingCandidateService } from '../self-healing-candidate.service';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
@@ -104,6 +105,7 @@ describe('SelfHealingAgentService', () => {
 	const aiUsage = mock<AiUsageService>();
 	const credits = mock<InstanceAiCreditService>();
 	const events = mock<InProcessEventBus>();
+	const candidates = mock<SelfHealingCandidateService>();
 	const filesystem = mock<WorkspaceFilesystem>();
 	const workspace = mock<Workspace>({ filesystem });
 	const service = new SelfHealingAgentService(
@@ -121,6 +123,7 @@ describe('SelfHealingAgentService', () => {
 		aiUsage,
 		credits,
 		events,
+		candidates,
 	);
 	let controller: AbortController;
 	let options: SelfHealingRunOptions;
@@ -160,6 +163,7 @@ describe('SelfHealingAgentService', () => {
 		};
 		verifier = vi.fn().mockResolvedValue({ valid: true });
 		suggestions.requireEditor.mockResolvedValue(user);
+		suggestions.requireCurrentBaseline.mockResolvedValue(user);
 		projects.getWorkflowOwningProject.mockResolvedValue(mock<Project>({ id: 'project' }));
 		executions.getReference.mockResolvedValue({ status: 'available', id: '123' });
 		models.resolveAgentModelConfig.mockResolvedValue('test/model');
@@ -413,12 +417,49 @@ describe('SelfHealingAgentService', () => {
 		expect(options.onFinish).toHaveBeenCalledTimes(1);
 	});
 
-	it('rejects a disabled gate or missing verifier before model work', async () => {
+	it('uses the production verifier when the caller supplies no override', async () => {
+		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
+			await factoryOptions.verifyCandidate({ filePath: validOutput.candidateFilePath });
+			return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
+		});
+		await service.execute(input, undefined, options);
+		expect(candidates.verify).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseline,
+				context: expect.objectContaining({ threadId: options.threadId, runId: options.runId }),
+			}),
+		);
+	});
+
+	it('reads the captured graph after later workflow changes and rejects other targets', async () => {
+		const context = mock<InstanceAiContext>({
+			workflowService: {
+				get: vi.fn().mockResolvedValue({ name: 'Later edit', versionId: 'v2', nodes: [] }),
+			},
+		});
+		adapter.createContext.mockReturnValueOnce(context);
+		await service.execute(input, verifier, options);
+		expect(await context.workflowService.get('workflow')).toMatchObject({
+			name: baseline.original.name,
+			versionId: 'v1',
+			nodes: baseline.original.nodes,
+		});
+		expect(await context.workflowService.getAsWorkflowJSON('workflow')).toMatchObject({
+			name: baseline.original.name,
+			nodes: [expect.objectContaining({ id: 'node-id', parameters: { value: 'original value' } })],
+		});
+		await expect(context.workflowService.get('another-workflow')).rejects.toThrow('assigned');
+		await expect(context.workflowService.getAsWorkflowJSON('workflow', 'v2')).rejects.toThrow(
+			'baseline',
+		);
+	});
+
+	it('rejects a disabled gate or invalid verifier before model work', async () => {
 		config.instanceAi.selfHealingEnabled = false;
 		await expect(service.execute(input, verifier, options)).rejects.toThrow('disabled');
 		config.instanceAi.selfHealingEnabled = true;
 		await expect(
-			service.execute(input, undefined as unknown as SelfHealingVerifier, options),
+			service.execute(input, null as unknown as SelfHealingVerifier, options),
 		).rejects.toThrow('verifier');
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
 	});
@@ -433,7 +474,7 @@ describe('SelfHealingAgentService', () => {
 	});
 
 	it('rejects lost edit access, project changes, and unavailable execution input', async () => {
-		suggestions.requireEditor.mockRejectedValueOnce(new Error('No edit access'));
+		suggestions.requireCurrentBaseline.mockRejectedValueOnce(new Error('No edit access'));
 		await expect(service.execute(input, verifier, options)).rejects.toThrow('edit access');
 		projects.getWorkflowOwningProject.mockResolvedValueOnce(
 			mock<Project>({ id: 'another-project' }),
