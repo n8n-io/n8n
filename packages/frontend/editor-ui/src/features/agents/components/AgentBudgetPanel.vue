@@ -68,9 +68,11 @@ async function loadSpend(silent = false) {
 	} catch {
 		if (request !== spendRequest) return;
 		// Keep the last shown value when a silent refresh fails
-		if (!silent) {
+		if (!silent || spentUsd.value === undefined) {
 			spentUsd.value = undefined;
 			spendState.value = 'error';
+		} else {
+			spendState.value = 'ready';
 		}
 	}
 }
