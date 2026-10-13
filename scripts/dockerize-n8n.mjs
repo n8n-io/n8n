@@ -48,6 +48,9 @@ const shouldPush = hasRegistryHost(imageBaseName);
 // CI needs a tarball, not images in the daemon. BuildKit writes it directly.
 // This removes the dockerd import and the `docker save` that follows it.
 const tarballDir = process.env.DOCKER_BUILD_TARBALL_DIR;
+// Optional registry layer cache (one tag per target). Use it when the builder
+// does not keep layers between CI runs.
+const cacheRef = process.env.DOCKER_BUILD_CACHE_REF;
 
 const compiledAppDir = path.join(rootDir, 'compiled');
 const compiledTaskRunnerDir = path.join(rootDir, 'dist', 'task-runner-javascript');
@@ -156,8 +159,20 @@ async function buildWithBake(targets) {
 		);
 	}
 
+	// mode=max also exports the intermediate stages, such as the native module build.
+	const registryCache =
+		cacheRef && isContainerDriver && !noCache
+			? targets.flatMap((t) => [
+					'--set',
+					`${t}.cache-from=type=registry,ref=${cacheRef}:${t}`,
+					'--set',
+					`${t}.cache-to=type=registry,ref=${cacheRef}:${t},mode=max,image-manifest=true,oci-mediatypes=true`,
+				])
+			: [];
+
 	const flags = [
 		...(noCache ? ['--no-cache'] : []),
+		...registryCache,
 		// The 'docker' driver builds into the daemon and rejects both flags.
 		...(isContainerDriver
 			? [

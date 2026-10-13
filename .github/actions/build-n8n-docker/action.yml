@@ -39,6 +39,8 @@ runs:
           echo "base=${NSC_CONTAINER_REGISTRY}/n8n-ci/n8n"
           echo "runners-base=${NSC_CONTAINER_REGISTRY}/n8n-ci/runners"
           echo "tag=${tag}"
+          # The remote builders do not keep layers between runs, so keep them in the registry.
+          echo "cache-ref=${NSC_CONTAINER_REGISTRY}/n8n-ci/buildcache-${BUILD_VARIANT}"
         } >> "$GITHUB_OUTPUT"
         if docker buildx imagetools inspect "${NSC_CONTAINER_REGISTRY}/n8n-ci/n8n:${tag}" > /dev/null 2>&1 &&
           docker buildx imagetools inspect "${NSC_CONTAINER_REGISTRY}/n8n-ci/runners:${tag}" > /dev/null 2>&1; then
@@ -68,6 +70,7 @@ runs:
         IMAGE_BASE_NAME: ${{ steps.dest.outputs.base }}
         RUNNERS_IMAGE_BASE_NAME: ${{ steps.dest.outputs.runners-base }}
         IMAGE_TAG: ${{ steps.dest.outputs.tag }}
+        DOCKER_BUILD_CACHE_REF: ${{ steps.dest.outputs.cache-ref }}
         DOCKER_BUILD_TARBALL_DIR: ${{ steps.dest.outputs.registry != 'true' && '/tmp/n8n-images' || '' }}
         DOCKER_BUILD_PC: ${{ inputs.build-variant == 'pc' }}
 

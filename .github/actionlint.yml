@@ -9,7 +9,8 @@ self-hosted-runner:
     - blacksmith-32vcpu-ubuntu-2204-arm
     - namespace-profile-n8n-ci-build
     - namespace-profile-n8n-ci-tests
-    - namespace-profile-n8n-ci-tests;overrides.cache-tag=n8n-ci-workflow-scripts
     - namespace-profile-n8n-ci-e2e
     - namespace-profile-n8n-ci-tools
+    - namespace-profile-n8n-ci-tools;overrides.cache-tag=github-namespace-profile-n8n-ci-tests-n8n-io-n8n
+    - namespace-profile-n8n-ci-tools;overrides.cache-tag=n8n-ci-workflow-scripts
     - ubuntu-slim
