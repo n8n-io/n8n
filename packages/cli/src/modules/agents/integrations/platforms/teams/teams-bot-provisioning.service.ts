@@ -325,11 +325,16 @@ export class TeamsBotProvisioningService {
 		return await this.tokens.acquire(credential, AZURE_RESOURCE);
 	}
 
+	/**
+	 * `credential:use`, not `credential:read`: the token taken here creates a bot
+	 * in the customer's Azure subscription. Seeing a sign-in is not standing to
+	 * act with it.
+	 */
 	private async managerCredential(options: ListSubscriptionsOptions): Promise<CredentialsEntity> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			options.managerCredentialId,
 			options.user,
-			['credential:read'],
+			['credential:use'],
 		);
 		if (!credential || credential.type !== TEAMS_MANAGER_CREDENTIAL_TYPE) {
 			throw withTeamsFailure(

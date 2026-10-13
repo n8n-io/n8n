@@ -476,5 +476,27 @@ describe('TeamsBotProvisioningService', () => {
 
 			await expect(service.provisionBot(provisionOptions)).rejects.toThrow(BadRequestError);
 		});
+
+		/**
+		 * The token taken here creates a bot in the customer's subscription.
+		 * Being allowed to see a sign-in is the lower rung, and does not carry
+		 * standing to act with it.
+		 */
+		it('refuses a sign-in the user may see but not act with', async () => {
+			// Answers for reading the credential, refuses for acting with it.
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id: string, _user: unknown, scopes: string[]) =>
+					(scopes.includes('credential:use')
+						? null
+						: mock<CredentialsEntity>({
+								id: 'manager-1',
+								name: 'Microsoft organization',
+								type: 'microsoftTeamsManagerOAuth2Api',
+							})) as never,
+			);
+
+			await expect(service.provisionBot(provisionOptions)).rejects.toThrow(BadRequestError);
+			expect(arm.request).not.toHaveBeenCalled();
+		});
 	});
 });

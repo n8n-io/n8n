@@ -126,11 +126,17 @@ export class TeamsEntraProvisioningService {
 		};
 	}
 
+	/**
+	 * `credential:use`, not `credential:read`: the setup acts as this sign-in --
+	 * it registers an application in the directory and mints a secret for it.
+	 * Reading is the rung that sees a credential, and seeing one is not standing
+	 * to act with it.
+	 */
 	private async managerCredential(options: ProvisionEntraAppOptions): Promise<CredentialsEntity> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			options.managerCredentialId,
 			options.user,
-			['credential:read'],
+			['credential:use'],
 		);
 		if (!credential || credential.type !== TEAMS_MANAGER_CREDENTIAL_TYPE) {
 			throw withTeamsFailure(

@@ -209,6 +209,30 @@ describe('TeamsEntraProvisioningService', () => {
 		await expect(service.provision(options)).rejects.toThrow(BadRequestError);
 	});
 
+	/**
+	 * The setup acts as this sign-in: it registers an application in the
+	 * customer's directory and mints a secret for it. Being allowed to see a
+	 * credential is the lower rung, and does not carry standing to act with it.
+	 */
+	it('refuses a sign-in the user may see but not act with', async () => {
+		// Someone who may see this sign-in and has not been granted its use: the
+		// lookup answers for reading it and refuses for acting with it.
+		credentialsFinderService.findCredentialForUser.mockImplementation(
+			async (_id: string, _user: unknown, scopes: string[]) =>
+				(scopes.includes('credential:use')
+					? null
+					: mock<CredentialsEntity>({
+							id: 'manager-1',
+							name: 'Microsoft organization',
+							type: 'microsoftTeamsManagerOAuth2Api',
+						})) as never,
+		);
+
+		await expect(service.provision(options)).rejects.toThrow(BadRequestError);
+		// Nothing reached Microsoft: the refusal comes before the token.
+		expect(graph.request).not.toHaveBeenCalled();
+	});
+
 	it('remembers which organisation the sign-in belongs to', async () => {
 		await service.provision(options);
 
