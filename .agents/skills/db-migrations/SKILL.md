@@ -110,6 +110,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] Identifiers go through **`escape.tableName(...)` / `escape.columnName(...)`**. Never hand-write `n8n_table` prefixes. — [Always escape identifiers](#always-escape-identifiers)
 - [ ] **Match column type to value semantics.** Native `uuid` for UUIDs, `timestampTimezone()` for timestamps, a numeric type for numbers, `bool` for booleans, `json` for structured data. Never `varchar` as a catch-all. — [Column types](#column-types)
 - [ ] **Pick the narrowest sane type within that category:** `int`/`smallint` not `bigint` when range allows; `text` not `varchar(255)` for unbounded strings; never `double` for version numbers. — [Column types](#column-types)
+- [ ] **New tables use an integer PK** (`int.primary.autoGenerate2`). A UUID PK uses UUIDv7. For a UUID or string PK, write the reason in the PR description. — [Primary Keys](#primary-keys)
 - [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL. Migration's `notNull` matches the entity's nullability. — [NOT NULL and entity parity](#not-null-and-entity-parity)
 - [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`. — [Constrain enum-like strings](#constrain-enum-like-strings), [Add comments on columns](#add-comments-on-columns)
 - [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. Avoid polymorphic `(typeCol, idCol)` patterns. — [Foreign Key Constraints](#foreign-key-constraints), [General Design Guidance](#general-design-guidance)
@@ -439,11 +440,28 @@ Don't set the default of a `status` column to a terminal value — `"running"` m
 
 ### Primary Keys
 
-Every table needs a primary key. Choose the type in this order:
+Every table needs a primary key. **Use an integer key by default.** Read the options below in order. Use the first option that fits. Do not choose a later option only because you prefer it.
 
-1. **Integer** — `column('id').int.primary.autoGenerate2`. Preferred for new tables: compact, fast joins, no ordering surprises. `autoGenerate2` uses Postgres `IDENTITY` (preferred over the deprecated `serial`-based `autoGenerate`).
-2. **UUID** — `column('id').uuid.primary`. Use when IDs are generated client-side, exposed in URLs, or need to be unguessable. Generate UUIDs in application code via `randomUUID()` from `node:crypto`; do **not** chain `.autoGenerate2` on `.uuid` (the DSL throws — `DEFAULT uuid_generate_v4()` fails on managed Postgres like Supabase because it needs the `uuid-ossp` extension in `public`). Use `.uuid` instead of `.varchar(36)`.
-3. **String** — `column('id').varchar(36).primary` for IDs whose format isn't a UUID (e.g. nanoid-style IDs). Convention: nanoid length 16 for entity IDs.
+1. **Integer (default)** — `column('id').int.primary.autoGenerate2`. Use this for every new table, unless a condition in option 2 or 3 is true. Integer keys are small, make joins fast, and sort in insert order. `autoGenerate2` uses Postgres `IDENTITY`. Do not use `autoGenerate`. It uses `serial`, which is deprecated.
+2. **UUID** — `column('id').uuid.primary`. Use this only when one of these conditions is true:
+   - The application must know the ID before the insert. For example, the client makes the ID.
+   - The ID is in a URL or a public API. A sequential ID would show how many rows exist, or let users guess other IDs.
+
+   **You must use UUIDv7.** Make the ID in application code with the `uuid` package: `import { v7 as uuidv7 } from 'uuid'`. A UUIDv7 starts with a timestamp, so the IDs sort in creation order and new rows go to the end of the index. A UUIDv4 is random, for example `randomUUID()` from `node:crypto`. It puts new rows at random positions in the index. This splits index pages and makes the index larger.
+
+   Do **not** chain `.autoGenerate2` on `.uuid`. The DSL throws an error. The database default would make a UUIDv4, and `uuid_generate_v4()` needs the `uuid-ossp` extension, which managed Postgres services such as Supabase do not always have. Use `.uuid`, not `.varchar(36)`.
+3. **String** — `column('id').varchar(36).primary`. Use this only when one of these conditions is true:
+   - The ID must match a format that is not a UUID and that the entity already uses. For example, the public API or the UI already shows nanoid IDs for this entity.
+   - The UI shows the ID to users, so the ID must be short and easy to read. A UUID is too long to read, copy, or type.
+
+   By convention, entity IDs are nanoids with 16 characters.
+
+**Give a reason for every key that is not an integer.** If you choose UUID or string, write the reason in the PR description. Reviewers will ask for it. These reasons are not sufficient alone:
+- "Other tables use string IDs."
+- "This module already does it this way."
+- "We might need it later."
+
+**This order applies to a generated `id` column.** A join table that only links other tables can use its FK columns as a composite key (see below). An FK column always uses the type of the key that it references.
 
 **Keep ID-column types consistent across related tables.** Mixing `uuid` and `varchar(36)` for what is "the same kind of ID" creates JOIN footguns.
 
@@ -696,7 +714,7 @@ If only Postgres needs the change, just put the file in `postgresdb/`; don't wri
 
 ### Postgres-version-aware UUID generation
 
-`gen_random_uuid()` requires Postgres ≥ 13. n8n dropped Postgres 12 — prefer it over `uuid_generate_v4()` (which needs the `uuid-ossp` extension and breaks on managed services like Supabase). For UUID PKs, generate at the application level with `randomUUID()` — see [Primary Keys](#primary-keys).
+`gen_random_uuid()` requires Postgres ≥ 13. n8n dropped Postgres 12 — prefer it over `uuid_generate_v4()` (which needs the `uuid-ossp` extension and breaks on managed services like Supabase). For UUID PKs, make a UUIDv7 in application code — see [Primary Keys](#primary-keys).
 
 ### SQLite doesn't enforce `varchar(N)` length
 
