@@ -1,3 +1,4 @@
+import { sign } from 'aws4';
 import get from 'lodash/get';
 import type {
 	IDataObject,
@@ -10,6 +11,14 @@ import type {
 } from 'n8n-workflow';
 import { sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
+
+import { getAwsDomain, type AWSRegion } from '../../../../credentials/common/aws/regions';
+import type {
+	AwsSecurityHeaders,
+	AwsAssumeRoleCredentialsType,
+	AwsIamCredentialsType,
+} from '../../../../credentials/common/aws/types';
+import { assumeRole } from '../../../../credentials/common/aws/utils';
 import { getAwsCredentials } from '../../GenericFunctions';
 
 export async function awsApiRequest(
@@ -142,4 +151,58 @@ export async function awsApiRequestRESTAllItems(
 		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== 'false'
 	);
 	return returnData;
+}
+
+export async function getPresignedS3Url(
+	this: IExecuteFunctions,
+	method: 'GET' | 'PUT',
+	bucketName: string,
+	key: string,
+	region: AWSRegion,
+	expiresIn: number,
+	responseContentDisposition?: string,
+): Promise<string> {
+	const { credentials, credentialsType } = await getAwsCredentials(this);
+
+	// Resolve effective access key / secret / session token
+	let securityHeaders: AwsSecurityHeaders;
+	if (credentialsType === 'awsAssumeRole') {
+		const tmp = await assumeRole(credentials as AwsAssumeRoleCredentialsType, region);
+		securityHeaders = tmp;
+	} else {
+		const c = credentials as AwsIamCredentialsType;
+		securityHeaders = {
+			accessKeyId: c.accessKeyId,
+			secretAccessKey: c.secretAccessKey,
+			sessionToken: c.temporaryCredentials ? c.sessionToken : undefined,
+		};
+	}
+
+	const useVirtualHost = !bucketName.includes('.');
+	const domain = getAwsDomain(region);
+	const host = useVirtualHost ? `${bucketName}.s3.${region}.${domain}` : `s3.${region}.${domain}`;
+	const basePath = useVirtualHost ? '' : `/${bucketName}`;
+
+	// Compose query for SigV4 query signing
+	const qs = new URLSearchParams({ 'X-Amz-Expires': String(expiresIn) });
+	if (responseContentDisposition) {
+		qs.set('response-content-disposition', responseContentDisposition);
+	}
+	// this.logger.info(`content-disposition: ${qs.get('response-content-disposition')}`);
+
+	const path = `${basePath}/${encodeURI(key)}?${qs.toString()}`;
+	// this.logger.info(`Generating presigned S3 URL for ${method} ${path} in region ${region}`);
+	const signOpts = {
+		host,
+		method,
+		path,
+		service: 's3',
+		region,
+		signQuery: true,
+	} as unknown as Request;
+
+	// @ts-expect-error - currently it is used only for GET request. There is no body
+	const signed = sign(signOpts, securityHeaders);
+
+	return `https://${signed.host}${signed.path}`;
 }

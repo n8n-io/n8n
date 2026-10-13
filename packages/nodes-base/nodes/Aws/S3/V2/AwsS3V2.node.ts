@@ -16,7 +16,11 @@ import { uriEncodeS3CopySource } from '../../../../credentials/common/aws/utils'
 import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
-import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import {
+	awsApiRequestREST,
+	awsApiRequestRESTAllItems,
+	getPresignedS3Url,
+} from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 import { getAwsCredentials } from '../../GenericFunctions';
 
@@ -779,6 +783,61 @@ export class AwsS3V2 implements INodeType {
 							);
 							returnData.push(...executionData);
 						}
+					}
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
+						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const expiresIn = this.getNodeParameter('urlExpiryTime', i) as number;
+						const options = this.getNodeParameter('options', i);
+						let ContentDisposition: string | undefined;
+
+						// this.logger.info(`options: ${JSON.stringify(options)}`);
+						if (options.noContentDisposition) {
+							ContentDisposition = undefined;
+						} else {
+							ContentDisposition = `attachment; filename="${fileKey.split('/').pop()}"`;
+						}
+
+						if (fileKey.substring(fileKey.length - 1) === '/') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Presigning a whole directory is not supported, please provide a file key',
+							);
+						}
+
+						const responseData = await awsApiRequestREST.call(
+							this,
+							servicePath,
+							'GET',
+							basePath,
+							'',
+							{
+								location: '',
+							},
+						);
+
+						const region = responseData.LocationConstraint._;
+
+						const url = await getPresignedS3Url.call(
+							this,
+							'GET',
+							bucketName,
+							fileKey,
+							region as string,
+							expiresIn,
+							ContentDisposition,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ url, expiresIn }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push.apply(returnData, executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'upload') {
