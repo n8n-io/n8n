@@ -71,15 +71,14 @@ export function createAgentSkillRefsService(
 		);
 	};
 
-	service.refsForVersion.mockImplementation(async (version) =>
-		pinnedRefs(version.versionId, storedSkillRefs(version)),
-	);
+	// A published version's refs carry no `versionId`: its pins live in their own table.
+	service.refsForVersion.mockImplementation(async (version) => storedSkillRefs(version));
 	service.readDraft.mockImplementation(async (agent) => {
 		const skillRefs = readDraftRefs(agent);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.readVersion.mockImplementation(async (version) => {
-		const skillRefs = pinnedRefs(version.versionId, storedSkillRefs(version));
+		const skillRefs = storedSkillRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));

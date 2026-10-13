@@ -442,6 +442,20 @@ describe('SkillRepository', () => {
 			expect([...pinned.keys()]).toEqual([id]);
 			expect(pinned.get(id)?.version).toMatchObject({ id: v1, version: 1 });
 		});
+
+		it('keeps the pins of one publish in the order they were given', async () => {
+			const zeta = await createSkill();
+			const alpha = await createSkill();
+			const agentVersionId = await publish((await createAgent('Support')).id);
+
+			await skills.insertPins([
+				{ agentVersionId, skillId: zeta, skillVersionId: await latestVersionId(zeta) },
+				{ agentVersionId, skillId: alpha, skillVersionId: await latestVersionId(alpha) },
+			]);
+
+			expect([...(await skills.findPinned(agentVersionId)).keys()]).toEqual([zeta, alpha]);
+			expect(await skills.findPinnedSkillIds(agentVersionId)).toEqual([zeta, alpha]);
+		});
 	});
 
 	describe('dependencies', () => {

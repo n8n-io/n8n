@@ -75,7 +75,9 @@ export class AgentSkillRefsService {
 		version: Pick<AgentHistory, 'versionId' | 'schema' | 'skills'>,
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
-		return (await this.readVersion(version, ctx)).skillRefs;
+		if (!this.usesSkillsHub) return readLegacyRefs(version.schema);
+		const skillIds = await this.skillRepository.findPinnedSkillIds(version.versionId, ctx);
+		return toSkillRefs(skillIds.map((id) => ({ id })));
 	}
 
 	/** The refs of the agent draft and the skill bodies the draft runs. */

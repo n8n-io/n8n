@@ -241,6 +241,19 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return result;
 	}
 
+	/**
+	 * The skill ids one published agent version pins, in the order of the draft refs at
+	 * publish. Reads no version or file rows.
+	 */
+	async findPinnedSkillIds(agentVersionId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+			select: ['skillId'],
+			where: { agentVersionId },
+			order: { createdAt: 'ASC' },
+		});
+		return pins.map((pin) => pin.skillId);
+	}
+
 	/** The next version number of a skill: the highest version plus one, or 1. */
 	async nextVersionNumber(skillId: string, ctx: OperationContext = {}): Promise<number> {
 		const latest = await this.managerFor(ctx).findOne(SkillVersion, {

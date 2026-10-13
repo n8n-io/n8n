@@ -87,6 +87,23 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('refsForVersion', () => {
+		it('reads the pinned skill ids in order, without the skill bodies', async () => {
+			skillRepository.findPinnedSkillIds.mockResolvedValue(['zeta', 'alpha']);
+
+			const refs = await service.refsForVersion(
+				{ versionId: 'version-1', schema: null, skills: null },
+				ctx,
+			);
+
+			expect(refs).toEqual([
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: 'alpha' },
+			]);
+			expect(skillRepository.findPinned).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('readVersion', () => {
 		it('returns the pins of the version in order and the pinned bodies', async () => {
 			skillRepository.findPinned.mockResolvedValue(

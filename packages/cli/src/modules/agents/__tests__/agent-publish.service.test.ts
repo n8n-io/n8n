@@ -1126,7 +1126,7 @@ describe('AgentPublishService', () => {
 			expect(refsCtx).toBe(saveCtx);
 			expect(written).toBe(agent);
 			expect(version).toBe(activeVersion);
-			expect(refs).toEqual(pinned);
+			expect(refs).toEqual(skillRefs);
 		});
 
 		it('shows the skill refs of a version in its document', async () => {
