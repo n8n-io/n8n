@@ -21,6 +21,14 @@ import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
+// A mocked module's factory runs on its first import, so the first `init()` that imports the
+// controller is the one that proves the gate. Keep the "loaded" case last.
+const { loadController } = vi.hoisted(() => ({ loadController: vi.fn() }));
+vi.mock('../trusted-source.controller', () => {
+	loadController();
+	return {};
+});
+
 describe('InboundAuthCoreModule', () => {
 	describe('init', () => {
 		const dbStore = mock<TrustedSourceDbStore>();
@@ -111,5 +119,43 @@ describe('InboundAuthCoreModule', () => {
 			'TrustedSourceEntity',
 			'TrustedSourceIdentityEntity',
 		]);
+	});
+	describe('management controller', () => {
+		const FLAG = 'N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED';
+
+		beforeEach(() => {
+			loadController.mockClear();
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+		});
+
+		it('is not loaded while the flag is unset', async () => {
+			await new InboundAuthCoreModule().init();
+
+			expect(loadController).not.toHaveBeenCalled();
+		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'is not loaded on a %s instance even with the flag',
+			async (instanceType) => {
+				vi.stubEnv(FLAG, 'true');
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+
+				await new InboundAuthCoreModule().init();
+
+				expect(loadController).not.toHaveBeenCalled();
+			},
+		);
+
+		it('is loaded on a main instance when the flag is true', async () => {
+			vi.stubEnv(FLAG, 'true');
+
+			await new InboundAuthCoreModule().init();
+
+			expect(loadController).toHaveBeenCalledOnce();
+		});
 	});
 });

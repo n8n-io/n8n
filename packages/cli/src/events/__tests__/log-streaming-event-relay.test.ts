@@ -3543,4 +3543,24 @@ describe('LogStreamingEventRelay', () => {
 			);
 		});
 	});
+	describe('trusted source events', () => {
+		it.each([
+			['trusted-source-created', 'n8n.audit.trusted-source.created'],
+			['trusted-source-updated', 'n8n.audit.trusted-source.updated'],
+			['trusted-source-deleted', 'n8n.audit.trusted-source.deleted'],
+		] as const)('should log on `%s` event', (eventName, auditEventName) => {
+			const event = {
+				userId: 'user-1',
+				sourceId: 'source-1',
+				issuer: 'https://idp.example.com',
+			};
+
+			eventService.emit(eventName, event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: auditEventName,
+				payload: event,
+			});
+		});
+	});
 });

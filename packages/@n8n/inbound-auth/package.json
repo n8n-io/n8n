@@ -23,7 +23,6 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@n8n/api-types": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "n8n-workflow": "workspace:*"
   },

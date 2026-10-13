@@ -1013,6 +1013,24 @@ export type RelayEventMap = {
 		role: string;
 	};
 
+	'trusted-source-created': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-updated': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+	};
+
+	'trusted-source-deleted': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+	};
+
 	// #endregion
 
 	// #region Token exchange
