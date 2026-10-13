@@ -926,8 +926,4 @@ export type {
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';
-<<<<<<< HEAD
-=======
-export * from './self-healing-results';
 export * from './model-priority';
->>>>>>> acf5291d (feat: Show Gemini models by name and list prioritized models first in model pickers (#40965))
