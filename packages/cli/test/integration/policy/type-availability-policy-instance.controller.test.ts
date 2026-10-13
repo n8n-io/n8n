@@ -7,6 +7,7 @@ import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -499,6 +500,48 @@ describe('node type availability policy instance controller admin happy path', (
 			.delete(`/node-type-policies/policies/${policyId}`);
 
 		expect(response.statusCode).toBe(409);
+	});
+
+	// GOV-181: A write from an old read must preserve the attachments saved by another admin.
+	test('PUT /scopes/:scopeId/attachments with a stale version returns 409 and writes nothing', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const instance = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		expect(instance.statusCode).toBe(200);
+
+		const read = await agent.get('/node-type-policies/instance');
+		expect(read.statusCode).toBe(200);
+		const { scopeId, version } = read.body.data;
+		const rule = {
+			id: 'r1',
+			action: 'deny',
+			selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
+		};
+		const policy = await agent.post('/node-type-policies/policies').send({ rules: [rule] });
+		expect(policy.statusCode).toBe(200);
+		const attachment = { policyId: policy.body.data.policy.id, priority: 0, isFloor: false };
+
+		const first = await agent
+			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
+			.send({ attachments: [attachment], version });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.version).toBe(version + 1);
+		expect(first.body.data.attachments).toEqual([{ ...attachment, rules: [rule] }]);
+
+		const stale = await agent
+			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
+			.send({ attachments: [], version });
+
+		expect.soft(stale.statusCode).toBe(409);
+		const persisted = await agent.get('/node-type-policies/instance');
+		expect(persisted.statusCode).toBe(200);
+		expect.soft(persisted.body.data.version).toBe(first.body.data.version);
+		expect.soft(persisted.body.data.rules).toEqual([rule]);
+		const attachments = await Container.get(
+			TypeAvailabilityPolicyAttachmentRepository,
+		).listAttachmentsForScope(scopeId, {});
+		expect.soft(attachments).toEqual([{ ...attachment, rules: [rule] }]);
 	});
 
 	test('PUT /scopes/:scopeId/attachments persists and fires an audit event', async () => {
