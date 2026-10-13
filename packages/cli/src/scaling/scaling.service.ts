@@ -265,6 +265,10 @@ export class ScalingService {
 			this.activeExecutions.getRunningExecutionIds().length !== 0;
 		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
 
+		if (this.globalConfig.queue.suspendExecutionsOnShutdown) {
+			this.jobProcessor.suspendRunningJobs();
+		}
+
 		let count = 0;
 
 		while (hasQueuedJobsToDrain() || (hasInProcessExecutionsToDrain() && isWithinDrainBudget())) {
