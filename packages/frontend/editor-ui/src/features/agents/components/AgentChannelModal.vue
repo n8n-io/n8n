@@ -714,6 +714,7 @@ watch(
 					:agent-id="agentId"
 					:personalisation="personalisation"
 					:ensure-agent-persisted="ensureAgentPersisted"
+					:persist-channel="writeChannelConfig"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"
 					:runtime="currentRuntime"

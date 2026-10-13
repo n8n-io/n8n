@@ -74,6 +74,12 @@ export interface TeamsAgentSetupState {
 	 */
 	defaultDisplayName: string;
 	defaultDescription: string;
+	/**
+	 * Whether the connected credential is one the recommended setup made for
+	 * this agent. A channel wired up by hand is left to the manual flow even
+	 * where the recommended one could have run.
+	 */
+	provisionedByN8n: boolean;
 }
 
 /**
@@ -158,4 +164,16 @@ export interface TeamsProvisionedBotSummary {
 	botName: string;
 	resourceGroup: string;
 	subscriptionId: string;
+}
+
+/**
+ * Where the Teams app stands in the organisation's catalogue, read back from
+ * Microsoft rather than tracked by n8n.
+ *
+ * `unknown` covers an app that is not listed yet: published policies take a day
+ * or two to apply, so an app missing from the listing has not been refused.
+ */
+export interface TeamsCatalogState {
+	status: 'published' | 'submitted' | 'rejected' | 'unknown';
+	teamsAppId: string | null;
 }

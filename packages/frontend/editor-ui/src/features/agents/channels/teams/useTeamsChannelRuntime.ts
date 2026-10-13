@@ -1,5 +1,7 @@
 import type {
+	AgentTeamsIntegrationSettings,
 	TeamsAzureSubscription,
+	TeamsCatalogState,
 	TeamsAgentSetupState,
 	TeamsManagedSetupState,
 	TeamsProvisionedAppSummary,
@@ -17,11 +19,13 @@ import type { AgentChannelRuntime, AgentChannelRuntimeContext } from '../types';
 import {
 	createTeamsManagerCredential,
 	getTeamsAzureSubscriptions,
+	getTeamsCatalogState,
 	getTeamsManagedSetup,
 	getTeamsSetupState,
 	provisionTeamsApp,
 	provisionTeamsBot,
 	reportTeamsManualBotRoute,
+	publishTeamsApp,
 } from './api';
 
 const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
@@ -41,6 +45,8 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	botSetupState: Ref<TeamsAgentSetupState | null>;
 	provisionedBot: Ref<TeamsProvisionedBotSummary | null>;
 	subscriptions: Ref<TeamsAzureSubscription[]>;
+	catalogState: Ref<TeamsCatalogState | null>;
+	connectedCredentialId: Ref<string>;
 	/**
 	 * Each reports whether its reply was applied. A reply for an agent or a
 	 * sign-in the setup has moved on from is dropped, and a caller that read a
@@ -52,6 +58,8 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	provisionBot: (subscriptionId: string) => Promise<boolean>;
 	/** Says the setup left the recommended flow to make the bot by hand. */
 	reportManualBotRoute: () => Promise<void>;
+	publishApp: (settings?: AgentTeamsIntegrationSettings) => Promise<boolean>;
+	refreshCatalogState: () => Promise<void>;
 }
 
 export function isTeamsChannelRuntime(
@@ -85,6 +93,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	const botSetupState = ref<TeamsAgentSetupState | null>(null);
 	const provisionedBot = ref<TeamsProvisionedBotSummary | null>(null);
 	const subscriptions = ref<TeamsAzureSubscription[]>([]);
+	const catalogState = ref<TeamsCatalogState | null>(null);
 
 	/** Every provisioning call needs a finished sign-in to act with. */
 	function requireManagerCredential(): string {
@@ -93,8 +102,24 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		return managerCredentialId.value;
 	}
 
+	/**
+	 * The channel's own credential, handed over by the settings view. A setup
+	 * reopened after it connected never ran the step that would have recorded
+	 * one, but the channel is bound to the very credential that step wrote.
+	 */
+	const connectedCredentialId = ref('');
+
+	/**
+	 * The settings view's credential wins: it is the one the save binds to the
+	 * agent, so publishing the one this session happened to register would put a
+	 * manifest in the catalogue naming a bot the channel does not use.
+	 */
+	function channelCredentialId(): string {
+		return connectedCredentialId.value || (provisionedApp.value?.credentialId ?? '');
+	}
+
 	function requireProvisionedCredential(): string {
-		const credentialId = provisionedApp.value?.credentialId;
+		const credentialId = channelCredentialId();
 		if (!credentialId)
 			throw new Error(i18n.baseText('agents.channels.teams.managed.errors.createAppFirst'));
 		return credentialId;
@@ -138,6 +163,12 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		// picker when the project already has one.
 		const connected = managedSetup.value.managerCredentials.find((item) => item.connected);
 		if (!managerCredentialId.value && connected) managerCredentialId.value = connected.id;
+
+		// What the catalogue says now, rather than what it said when this setup
+		// was last open. Publishing can take a day to take effect, so coming back
+		// later is the ordinary path, and until this the step only ever knew what
+		// it had done itself. Not awaited: the stepper reads without it.
+		if (managerCredentialId.value) void refreshCatalogState().catch(() => {});
 	}
 
 	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
@@ -265,6 +296,56 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		return true;
 	}
 
+	async function publishApp(settings?: AgentTeamsIntegrationSettings): Promise<boolean> {
+		// The slowest call here -- it uploads the package -- so the most likely
+		// to land after the account or the agent moved on.
+		const requestedFor = contextKey();
+		const state = await publishTeamsApp(
+			rootStore.restApiContext,
+			context.projectId.value,
+			context.agentId.value,
+			{
+				managerCredentialId: requireManagerCredential(),
+				credentialId: requireProvisionedCredential(),
+				settings,
+			},
+		);
+		if (requestedFor !== contextKey()) return false;
+		catalogState.value = state;
+		return true;
+	}
+
+	async function refreshCatalogState() {
+		const askedWith = managerCredentialId.value;
+		if (!askedWith) return;
+		// `load()` fires this without awaiting it, and `load()` itself runs from
+		// three places -- so several reads can be in flight at once, each able to
+		// answer about a different tenant.
+		const requestedFor = contextKey();
+		const state = await getTeamsCatalogState(
+			rootStore.restApiContext,
+			context.projectId.value,
+			context.agentId.value,
+			askedWith,
+			channelCredentialId(),
+		);
+		if (requestedFor !== contextKey()) return;
+
+		// `unknown` means the catalogue could not answer, not that the app is
+		// gone -- and for minutes after a publish that is the only answer it
+		// gives. Letting it overwrite a state we watched Microsoft report sends
+		// the step back to offering a publish that has already happened, which
+		// Microsoft then refuses as a duplicate.
+		if (
+			state.status === 'unknown' &&
+			catalogState.value &&
+			catalogState.value.status !== 'unknown'
+		) {
+			return;
+		}
+		catalogState.value = state;
+	}
+
 	function editManagerCredential(credentialId: string) {
 		uiStore.openExistingCredential(credentialId, {
 			hideAskAssistant: true,
@@ -299,9 +380,13 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		botSetupState,
 		provisionedBot,
 		subscriptions,
+		catalogState,
+		connectedCredentialId,
 		provisionApp,
 		loadSubscriptions,
 		provisionBot,
 		reportManualBotRoute,
+		publishApp,
+		refreshCatalogState,
 	};
 }

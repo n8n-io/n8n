@@ -86,6 +86,40 @@ export class TeamsGraphService {
 		}
 		return { statusCode: response.statusCode, body: response.body, ok };
 	}
+
+	/**
+	 * The app catalog takes the package as a raw zip rather than JSON, so the
+	 * body is sent unencoded with the zip content type.
+	 */
+	async postZip(accessToken: string, path: string, archive: Buffer): Promise<GraphResponse> {
+		const response = await this.outboundHttp
+			// Fixed public vendor host, not user-controllable.
+			.requests({ useDefaultSsrfPolicy: 'unsafe' })
+			.request({
+				method: 'POST',
+				url: graphUrl(path),
+				headers: {
+					authorization: `Bearer ${accessToken}`,
+					'content-type': 'application/zip',
+				},
+				body: archive,
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+				timeout: GRAPH_TIMEOUT_MS,
+			});
+
+		const ok = response.statusCode >= 200 && response.statusCode < 300;
+		if (!ok) {
+			// The outer code is generic for a rejected package; the reason is in the
+			// inner code and the message, which name the manifest field at fault.
+			this.logger.warn('[TeamsGraph] Graph refused the app package', {
+				path,
+				statusCode: response.statusCode,
+				error: describeGraphError(response.body) ?? graphErrorCode(response.body),
+			});
+		}
+		return { statusCode: response.statusCode, body: response.body, ok };
+	}
 }
 
 /** Graph reports failures as `{ error: { code, message } }`. */
