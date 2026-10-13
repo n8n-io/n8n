@@ -174,6 +174,10 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case '--output-dir':
 				args.outputDir = argv[++i];
+				if (!args.outputDir) {
+					console.error('--output-dir needs a directory for eval-results.json.');
+					process.exit(1);
+				}
 				break;
 			default:
 				break;
