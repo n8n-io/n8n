@@ -11,6 +11,10 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
+		// Read the skills hub flag once, before anything reads or writes agent skills.
+		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
+		await Container.get(SkillsHubRollout).init();
+
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
 		await import('./agent-workflow-tool-resume.service.js');
@@ -214,6 +218,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
@@ -221,7 +226,7 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
-			skillsHubEnabled: config.skillsHubEnabled,
+			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 

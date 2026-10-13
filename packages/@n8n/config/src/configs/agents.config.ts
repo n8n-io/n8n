@@ -113,11 +113,4 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
 	channelReconcileIntervalSeconds: number = 60;
-
-	/**
-	 * Agents read their skills from the skills hub, and the skills API and UI show.
-	 * Keep it off on an instance with existing agents: their skills are not in the hub.
-	 */
-	@Env('N8N_SKILLS_HUB_ENABLED')
-	skillsHubEnabled: boolean = false;
 }

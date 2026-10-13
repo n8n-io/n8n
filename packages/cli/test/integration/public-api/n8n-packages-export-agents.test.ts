@@ -8,13 +8,13 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
+import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -50,8 +50,8 @@ let dependency: Agent;
 let workflow: WorkflowEntity;
 let repository: AgentRepository;
 
-beforeAll(() => {
-	Container.get(AgentsConfig).skillsHubEnabled = true;
+beforeAll(async () => {
+	await setSkillsHubFlag(true);
 	repository = Container.get(AgentRepository);
 	Container.get(InstanceSettings).markAsLeader();
 });

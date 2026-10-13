@@ -13,10 +13,10 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
-import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
+import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -58,7 +58,7 @@ describe('Agent skills in the skills hub', () => {
 	const broadcaster = mockInstance(AgentUpdateBroadcaster);
 
 	beforeAll(async () => {
-		Container.get(AgentsConfig).skillsHubEnabled = true;
+		await setSkillsHubFlag(true);
 		mockInstance(Telemetry);
 		mockInstance(AgentRuntimeCacheService);
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
@@ -286,7 +286,7 @@ describe('Agent skills in the skills hub', () => {
 	});
 
 	it('keeps skills on the agent row when the skills hub is off', async () => {
-		Container.get(AgentsConfig).skillsHubEnabled = false;
+		await setSkillsHubFlag(false);
 		try {
 			const agent = await createAgent([]);
 			const context = { user: editor, modifiedBy: 'builder' as const };
@@ -318,7 +318,7 @@ describe('Agent skills in the skills hub', () => {
 			expect(await Container.get(SkillRepository).findByIds([created.id])).toEqual([]);
 			expect(await skillRefs.refsForDraft(row, {})).toEqual([{ type: 'skill', id: created.id }]);
 		} finally {
-			Container.get(AgentsConfig).skillsHubEnabled = true;
+			await setSkillsHubFlag(true);
 		}
 	});
 

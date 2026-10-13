@@ -4,7 +4,6 @@ import type {
 	AgentSkillAvailability,
 	StoredAgentConfig,
 } from '@n8n/api-types';
-import { AgentsConfig } from '@n8n/config';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -18,6 +17,7 @@ import { withoutLegacySkillRefs, type AgentSkillRefs } from './json-config/agent
 import { AgentRepository } from './repositories/agent.repository';
 import { SkillRepository } from './repositories/skill.repository';
 import { SkillService, toAgentSkill, type SkillRef } from './skills/skill.service';
+import { SkillsHubRollout } from './skills/skills-hub-rollout';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
 import { generateAgentResourceId } from './utils/agent-resource-id';
@@ -33,7 +33,7 @@ export interface AgentSkillsSnapshot {
  * version, and for the skill bodies they resolve to. All other code reads and
  * writes skill refs through this service.
  *
- * With the skills hub on (`N8N_SKILLS_HUB_ENABLED`), the refs of a draft are the
+ * With the skills hub on (the `125_context_skills` flag), the refs of a draft are the
  * `agent_skill_dependency` rows and the refs of a published version are the
  * `agent_version_skill_dependency` pins, in attach order. The skill bodies come
  * from the skills hub.
@@ -48,11 +48,11 @@ export class AgentSkillRefsService {
 		private readonly skillRepository: SkillRepository,
 		private readonly skillService: SkillService,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentsConfig: AgentsConfig,
+		private readonly rollout: SkillsHubRollout,
 	) {}
 
 	get usesSkillsHub(): boolean {
-		return this.agentsConfig.skillsHubEnabled;
+		return this.rollout.isEnabled;
 	}
 
 	/** Skill refs of the agent draft, in attach order. A pinned ref has `versionId`. */

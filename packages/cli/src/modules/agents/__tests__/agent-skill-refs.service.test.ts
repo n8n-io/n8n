@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { AgentJsonSkillConfig, StoredAgentConfig } from '@n8n/api-types';
-import { AgentsConfig } from '@n8n/config';
 import type { OperationContext, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
@@ -17,6 +16,7 @@ import type { SkillVersion } from '../entities/skill-version.entity';
 import type { Skill } from '../entities/skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
 import type { SkillService } from '../skills/skill.service';
+import type { SkillsHubRollout } from '../skills/skills-hub-rollout';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -43,7 +43,7 @@ describe('AgentSkillRefsService', () => {
 	let skillRepository: Mocked<SkillRepository>;
 	let skillService: Mocked<SkillService>;
 	let agentRepository: Mocked<AgentRepository>;
-	let agentsConfig: AgentsConfig;
+	let rollout: { isEnabled: boolean };
 	let service: AgentSkillRefsService;
 
 	beforeEach(() => {
@@ -52,12 +52,12 @@ describe('AgentSkillRefsService', () => {
 		skillRepository = mock<SkillRepository>();
 		skillService = mock<SkillService>();
 		agentRepository = mock<AgentRepository>();
-		agentsConfig = Object.assign(new AgentsConfig(), { skillsHubEnabled: true });
+		rollout = { isEnabled: true };
 		service = new AgentSkillRefsService(
 			skillRepository,
 			skillService,
 			agentRepository,
-			agentsConfig,
+			rollout as SkillsHubRollout,
 		);
 		skillRepository.findDependencies.mockResolvedValue(new Map());
 		skillRepository.findPinned.mockResolvedValue(new Map());
@@ -544,7 +544,7 @@ describe('AgentSkillRefsService', () => {
 			}) as unknown as Agent;
 
 		beforeEach(() => {
-			agentsConfig.skillsHubEnabled = false;
+			rollout.isEnabled = false;
 		});
 
 		it('reads the refs and bodies from the agent row and hides disabled refs', async () => {
