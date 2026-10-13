@@ -81,6 +81,7 @@ import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -942,7 +943,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('preserves event order when ownership resolves during live delivery', async () => {
-			const ownership = Promise.withResolvers<'owned'>();
+			const ownership = createDeferredPromise<'owned'>();
 			memoryService.checkThreadOwnership
 				.mockResolvedValueOnce('not_found')
 				.mockReturnValueOnce(ownership.promise);
@@ -1033,7 +1034,13 @@ describe('InstanceAiController', () => {
 			['messages', async () => await controller.getThreadMessages(req, res, THREAD_ID, mock())],
 			[
 				'raw messages and attachments',
-				async () => await controller.getThreadMessages(req, res, THREAD_ID, mock({ raw: 'true' })),
+				async () =>
+					await controller.getThreadMessages(
+						req,
+						res,
+						THREAD_ID,
+						mock<InstanceAiThreadMessagesQuery>({ raw: 'true' }),
+					),
 			],
 			['status', async () => await controller.getThreadStatus(req, res, THREAD_ID)],
 			['artifact tabs', async () => await controller.getThreadTabs(req, res, THREAD_ID)],

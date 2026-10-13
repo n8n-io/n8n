@@ -287,6 +287,7 @@ import {
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
@@ -1610,7 +1611,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 	it('tracks setup through completion and releases the shared run registration', async () => {
 		const service = createLauncher();
-		const pending = Promise.withResolvers<SelfHealingRunResult>();
+		const pending = createDeferredPromise<SelfHealingRunResult>();
 		service.selfHealingAgent.execute.mockReturnValue(pending.promise);
 
 		const run = service.startSelfHealingRun(input, verifier);
@@ -1675,7 +1676,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 	it('lets shutdown abort setup and waits for its cleanup to finish', async () => {
 		const service = createLauncher();
-		const cleanup = Promise.withResolvers<undefined>();
+		const cleanup = createDeferredPromise<undefined>();
 		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
 			await new Promise<void>((resolve) =>
 				options.signal.addEventListener('abort', () => resolve(), { once: true }),
@@ -1728,7 +1729,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		'publishes one finish event when a %s run settles during shutdown tracing',
 		async (status) => {
 			const service = createLauncher();
-			const settle = Promise.withResolvers<undefined>();
+			const settle = createDeferredPromise<undefined>();
 			service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
 				await settle.promise;
 				const result = { ...completedRun(options), status };
@@ -1777,7 +1778,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 
 	it('keeps the cancellation event when shutdown starts before the run settles', async () => {
 		const service = createLauncher();
-		const settle = Promise.withResolvers<undefined>();
+		const settle = createDeferredPromise<undefined>();
 		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
 			await settle.promise;
 			const result = {

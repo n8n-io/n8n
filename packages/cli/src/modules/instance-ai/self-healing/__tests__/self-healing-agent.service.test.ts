@@ -22,6 +22,7 @@ import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import type { InstanceAiModelService } from '../../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
+import type { RuntimeSandboxEntry } from '../../sandbox/instance-ai-sandbox.service';
 import type { TypeORMAgentCheckpointStore } from '../../storage/typeorm-agent-checkpoint-store';
 import type { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
@@ -133,7 +134,7 @@ describe('SelfHealingAgentService', () => {
 		controller = new AbortController();
 		files = new Map();
 		filesystem.writeFile.mockImplementation(async (path, content) => {
-			files.set(path, content);
+			files.set(path, typeof content === 'string' ? content : Buffer.from(content));
 		});
 		filesystem.readFile.mockImplementation(async (path) => files.get(path) ?? '');
 		vi.mocked(getWorkspaceRoot).mockResolvedValue('/workspace');
@@ -396,7 +397,7 @@ describe('SelfHealingAgentService', () => {
 	it('stops after setup cancellation and releases a partial workspace', async () => {
 		vi.mocked(options.sandbox.getOrCreateWorkspace).mockImplementationOnce(async () => {
 			controller.abort();
-			return { workspace } as Awaited<ReturnType<typeof options.sandbox.getOrCreateWorkspace>>;
+			return mock<RuntimeSandboxEntry>({ workspace });
 		});
 		const result = await service.execute(input, verifier, options);
 		expect(result).toMatchObject({ status: 'cancelled', reason: 'shutdown' });
