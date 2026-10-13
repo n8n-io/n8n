@@ -120,8 +120,10 @@ jobs:
         run: |
           docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:stable" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:latest" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}-stable" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:stable" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:latest" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}-stable" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
 
       - name: Tag beta/next Docker image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
@@ -153,8 +155,10 @@ jobs:
         run: |
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}-stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
 
       - name: Tag beta/next GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
