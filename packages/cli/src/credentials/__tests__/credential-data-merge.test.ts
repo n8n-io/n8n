@@ -41,6 +41,26 @@ describe('mergeCredentialData', () => {
 				expect(result).toEqual({ clientId: 'id', clientSecret: EXPRESSION, oauthTokenData });
 			});
 
+			it('keeps an existing-only key that shares a name with an inherited property', () => {
+				const result = mergeCredentialData({
+					existing: { toString: 'secret', apiKey: 'key' },
+					incoming: { apiKey: EXPRESSION },
+					arrays,
+				});
+
+				expect(result).toEqual({ toString: 'secret', apiKey: EXPRESSION });
+			});
+
+			it('does not read an inherited property as the existing value', () => {
+				const result = mergeCredentialData({
+					existing: {},
+					incoming: { toString: '' },
+					arrays,
+				});
+
+				expect(result).toEqual({ toString: '' });
+			});
+
 			it('adds an incoming-only key', () => {
 				const result = mergeCredentialData({
 					existing: { apiKey: 'secret' },

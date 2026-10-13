@@ -63,7 +63,9 @@ function mergeObjects(
 	const merged: Record<string, unknown> = {};
 
 	for (const [key, incomingValue] of Object.entries(incoming)) {
-		const mergedValue = mergeValue(incomingValue, existing[key], arrays);
+		// Own keys only, so a name such as `toString` does not resolve to an inherited value.
+		const existingValue = Object.hasOwn(existing, key) ? existing[key] : undefined;
+		const mergedValue = mergeValue(incomingValue, existingValue, arrays);
 
 		if (mergedValue !== undefined) {
 			merged[key] = mergedValue;
@@ -76,7 +78,7 @@ function mergeObjects(
 	// preserved above. Without this it would be dropped and reset to its default. This also
 	// covers oauthTokenData, which incoming data never carries.
 	for (const [key, existingValue] of Object.entries(existing)) {
-		if (!(key in incoming)) {
+		if (!Object.hasOwn(incoming, key)) {
 			merged[key] = existingValue;
 		}
 	}
