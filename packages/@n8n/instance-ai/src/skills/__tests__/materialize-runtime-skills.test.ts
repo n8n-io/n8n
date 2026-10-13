@@ -426,10 +426,20 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				await runtimeSource.prepare?.();
 
 				expect(writeFile).not.toHaveBeenCalled();
+				// Served skills keep the profile's composed instructions, with the sandbox
+				// paths filled in.
+				const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
 				for (const entry of source.registry.skills) {
 					const served = await runtimeSource.loadSkill(entry.id);
 					const original = await source.loadSkill(entry.id);
-					expect(served?.description).toBe(original?.description);
+					if (!served || !original) throw new Error(`Expected skill "${entry.id}"`);
+					expect(served.description).toBe(original.description);
+					expect(served.instructions).toBe(
+						original.instructions
+							.replaceAll('$' + '{N8N_SKILL_DIR}', served.directory ?? '')
+							.replaceAll('$' + '{N8N_SKILLS_DIR}', skillsRoot)
+							.replaceAll('$' + '{N8N_WORKSPACE_DIR}', root),
+					);
 				}
 			},
 		);

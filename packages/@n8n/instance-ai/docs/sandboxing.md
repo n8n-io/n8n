@@ -137,9 +137,10 @@ manifest again.
 
 The runtime skills bundle contains every bundled skill, whatever the prompt
 profile, skill flags or enabled modules. The image, the snapshot and the
-setup write the same set, so a sandbox from an image or snapshot reuses it.
-`load_skill` serves only the skills that the profile, the flags and the
-enabled modules allow.
+setup write the same set, so a sandbox from an image or snapshot of the same
+n8n version reuses it. A bundle from an older image or snapshot has a
+different hash, so setup writes it again one time. `load_skill` serves only
+the skills that the profile, the flags and the enabled modules allow.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 

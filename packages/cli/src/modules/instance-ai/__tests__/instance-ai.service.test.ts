@@ -1181,6 +1181,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			bundleSource: unknown;
 		};
 		// The sandbox stores every bundled skill, the same set that the image and snapshot bake.
+		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalled();
+		expect(bundleSource).toBeDefined();
 		expect(bundleSource).toBe((loadInstanceAiRuntimeSkillSource as Mock).mock.results[0]?.value);
 		const verifiedBundles = await resolveVerifiedBundles();
 		expect(verifiedBundles).toEqual(new Map());
