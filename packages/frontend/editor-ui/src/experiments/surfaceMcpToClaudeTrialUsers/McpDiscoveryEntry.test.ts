@@ -5,7 +5,11 @@ import McpDiscoveryEntry from './McpDiscoveryEntry.vue';
 import { MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), trackEntry: vi.fn() }));
-const discovery = reactive({ ctaStage: 'build', trackEntry: mocks.trackEntry });
+const discovery = reactive({
+	shouldShowEntryPoints: true,
+	ctaStage: 'build',
+	trackEntry: mocks.trackEntry,
+});
 vi.mock('./mcpDiscovery.store', () => ({ useMcpDiscoveryStore: () => discovery }));
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),

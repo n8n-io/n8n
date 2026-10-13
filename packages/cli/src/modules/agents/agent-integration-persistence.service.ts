@@ -176,14 +176,14 @@ export class AgentIntegrationPersistenceService {
 		return parseResult.data;
 	}
 
-	private async recordIntegrationMutation(
+	private recordIntegrationMutation(
 		agent: Agent,
 		previousIntegrations: AgentIntegrationConfig[],
 		context: CredentialIntegrationMutationContext,
-	): Promise<void> {
+	): void {
 		const previousSchema = agent.schema ?? null;
 		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
-		await this.modificationTelemetry.record({
+		this.modificationTelemetry.record({
 			agent,
 			projectId: agent.projectId,
 			user: context.user,
@@ -233,7 +233,7 @@ export class AgentIntegrationPersistenceService {
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await written.emitSetupCompleted?.();
-		await this.recordIntegrationMutation(agent, current, context);
+		this.recordIntegrationMutation(agent, current, context);
 
 		return { agent, changed: true, published, ...(removed ? { removed } : {}) };
 	}

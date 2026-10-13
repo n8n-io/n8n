@@ -1,3 +1,4 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -76,3 +77,4 @@ describe('MCP discovery eligibility', () => {
 		expect(evaluateMcpDiscoveryEligibility({ ...eligible, now })).toEqual({ status: 'unknown' });
 	});
 });
+// EOF Experiment cleanup

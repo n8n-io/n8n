@@ -3,8 +3,11 @@ import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { MCP_DISCOVERY_EXPERIMENT_KEY, type FrontendSettings } from '@n8n/api-types';
+import type { FrontendSettings } from '@n8n/api-types';
 import {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT,
+	// EOF Experiment cleanup
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
@@ -116,6 +119,7 @@ describe('Posthog store', () => {
 		beforeEach(() => {
 			setup();
 		});
+		// EOF Experiment cleanup
 
 		it('should not init if posthog is not enabled', () => {
 			setSettings({ posthog: { ...DEFAULT_POSTHOG_SETTINGS, enabled: false } });
@@ -480,24 +484,20 @@ describe('Posthog store', () => {
 			});
 		});
 
-		describe('MCP discovery assignment', () => {
-			const key = MCP_DISCOVERY_EXPERIMENT_KEY;
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		describe('MCP discovery eligibility', () => {
+			const key = MCP_DISCOVERY_EXPERIMENT.name;
 			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;
 
-			beforeEach(() => {
-				vi.useFakeTimers();
-			});
+			beforeEach(() => vi.useFakeTimers());
+			afterEach(() => vi.useRealTimers());
 
-			afterEach(() => {
-				vi.useRealTimers();
-			});
-
-			it('ignores raw flags until the visit assigns the experiment', () => {
+			it('makes the live flag available but does not track it before eligibility', () => {
 				const posthog = usePostHog();
 				posthog.init({ [key]: 'variant' });
 				posthog.trackExposure(key);
-
-				expect(posthog.getVariant(key)).toBeUndefined();
+				vi.advanceTimersByTime(2000);
+				expect(posthog.getVariant(key)).toBe('variant');
 				expect(useTelemetry().track).not.toHaveBeenCalledWith(
 					participationEvent,
 					expect.objectContaining({ name: key }),
@@ -506,47 +506,32 @@ describe('Posthog store', () => {
 			});
 
 			it.each(['control', 'variant'] as const)(
-				'uses the durable %s assignment instead of the raw flag',
+				'tracks eligible %s immediately after init, once',
 				(variant) => {
 					const posthog = usePostHog();
-					posthog.init({ [key]: variant === 'control' ? 'variant' : 'control' });
-					posthog.setMcpDiscoveryAssignment(variant);
-
-					expect(posthog.getVariant(key)).toBe(variant);
-					expect(posthog.isVariantEnabled(key, variant)).toBe(true);
+					posthog.init({ [key]: variant });
+					vi.advanceTimersByTime(100);
+					posthog.setMcpDiscoveryEligible(true);
+					posthog.setMcpDiscoveryEligible(true);
+					vi.advanceTimersByTime(2000);
+					expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+						name: key,
+						variant,
+					});
 				},
 			);
 
-			it('tracks an assignment immediately after init and only once', () => {
+			it('uses the live override for both participation and native exposure', () => {
 				const posthog = usePostHog();
 				posthog.init({ [key]: 'variant' });
-				vi.advanceTimersByTime(100);
-
-				posthog.setMcpDiscoveryAssignment('variant');
-
-				expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
-					name: key,
-					variant: 'variant',
-				});
-
-				posthog.setMcpDiscoveryAssignment('variant');
-				posthog.init({ [key]: 'control' });
-				vi.advanceTimersByTime(2000);
-
-				expect(useTelemetry().track).toHaveBeenCalledTimes(1);
-			});
-
-			it('uses an override for exposure without changing the assigned participation variant', () => {
-				const posthog = usePostHog();
 				posthog.overrides[key] = { value: 'control' };
-				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.setMcpDiscoveryEligible(true);
 				posthog.trackExposure(key);
 				posthog.trackExposure(key);
-
 				expect(posthog.getVariant(key)).toBe('control');
 				expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
 					name: key,
-					variant: 'variant',
+					variant: 'control',
 				});
 				expect(window.posthog?.capture).toHaveBeenCalledExactlyOnceWith('$feature_flag_called', {
 					$feature_flag: key,
@@ -554,33 +539,45 @@ describe('Posthog store', () => {
 				});
 			});
 
-			it('clears the assignment without exposing the raw flag', () => {
+			it('records a new live variant after eligibility without overwriting it', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'control' });
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.overrides[key] = { value: 'variant' };
+				posthog.setMcpDiscoveryEligible(true);
+				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
+				expect(useTelemetry().track).toHaveBeenLastCalledWith(participationEvent, {
+					name: key,
+					variant: 'variant',
+				});
+			});
+
+			it('stops tracking when eligibility is cleared without changing the flag', () => {
 				const posthog = usePostHog();
 				posthog.init({ [key]: 'variant' });
-				posthog.setMcpDiscoveryAssignment('control');
-				posthog.setMcpDiscoveryAssignment(null);
+				posthog.setMcpDiscoveryEligible(true);
+				posthog.setMcpDiscoveryEligible(false);
 				posthog.trackExposure(key);
-
-				expect(posthog.getVariant(key)).toBeUndefined();
+				expect(posthog.getVariant(key)).toBe('variant');
 				expect(window.posthog?.capture).not.toHaveBeenCalled();
 			});
 
-			it('clears the assignment and tracking deduplication on reset', () => {
+			it('clears eligibility and tracking deduplication on reset', () => {
 				const posthog = usePostHog();
-				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.init({ [key]: 'variant' });
+				posthog.setMcpDiscoveryEligible(true);
 				posthog.trackExposure(key);
-
 				posthog.reset();
-				expect(posthog.getVariant(key)).toBeUndefined();
+				posthog.init({ [key]: 'variant' });
 				posthog.trackExposure(key);
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
-
-				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.setMcpDiscoveryEligible(true);
 				posthog.trackExposure(key);
 				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
 			});
 		});
+		// EOF Experiment cleanup
 
 		// Experiment cleanup (119_surface_assistant_on_workflow_error)
 		describe('cloud-only experiment tracking', () => {
@@ -615,7 +612,6 @@ describe('Posthog store', () => {
 				);
 			});
 		});
-		// EOF Experiment cleanup
 
 		afterEach(() => {
 			resetStores();

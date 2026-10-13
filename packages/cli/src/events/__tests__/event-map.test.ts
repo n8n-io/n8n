@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import type { McpDiscoveryEventMap } from '@/modules/mcp-discovery/events';
+// EOF Experiment cleanup
 import { EventService, type EventMap } from '@n8n/backend-services';
 import { expectTypeOf } from 'vitest';
 
@@ -13,7 +16,9 @@ import type { WorkflowPublicationMetricsEventMap } from '../maps/workflow-public
 
 describe('CLI event map', () => {
 	it('registers all existing event payloads on the shared service', () => {
-		type CliEventMap = RelayEventMap &
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		type CliEventMap = McpDiscoveryEventMap &
+			RelayEventMap &
 			QueueMetricsEventMap &
 			AiEventMap &
 			ExecutionDataEventMap &
@@ -22,6 +27,7 @@ describe('CLI event map', () => {
 			WorkflowPublicationMetricsEventMap &
 			PollTriggerMetricsEventMap &
 			SystemTaskMetricsEventMap;
+		// EOF Experiment cleanup
 
 		expectTypeOf<EventMap>().toMatchTypeOf<CliEventMap>();
 		expectTypeOf<CliEventMap>().toMatchTypeOf<EventMap>();

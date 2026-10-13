@@ -11,13 +11,17 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@n8n/backend-services';
+import {
+	UrlService,
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	EventService,
+	// EOF Experiment cleanup
+} from '@n8n/backend-services';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -98,7 +102,9 @@ export class AuthService {
 	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
-		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -298,6 +304,7 @@ export class AuthService {
 		}
 	}
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	issueCookie(
 		res: Response,
 		user: User,
@@ -307,12 +314,12 @@ export class AuthService {
 		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
 	) {
 		this.setAuthCookie(res, user, usedMfa, browserId, isEmbed, cookieOverrides);
-		// Capture the login time now; experiment storage must not delay authentication.
-		this.mcpDiscoveryActivity.recordFirstLogin(user.id, Date.now()).catch((error: unknown) => {
-			this.logger.warn('Failed to record MCP discovery login', { error });
-		});
+		this.eventService.emit('experiment-user-first-login', { userId: user.id, at: Date.now() });
 	}
+	// EOF Experiment cleanup
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	// Restore this method as issueCookie when removing the experiment wrapper.
 	private setAuthCookie(
 		res: Response,
 		user: User,
@@ -338,6 +345,7 @@ export class AuthService {
 			secure: cookieOverrides?.secure ?? secure,
 		});
 	}
+	// EOF Experiment cleanup
 
 	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
@@ -492,6 +500,7 @@ export class AuthService {
 			const embedCookieOverrides = jwtPayload.isEmbed
 				? ({ sameSite: 'none' as const, secure: true } as const)
 				: undefined;
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			this.setAuthCookie(
 				res,
 				user,
@@ -500,6 +509,7 @@ export class AuthService {
 				jwtPayload.isEmbed,
 				embedCookieOverrides,
 			);
+			// EOF Experiment cleanup
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];

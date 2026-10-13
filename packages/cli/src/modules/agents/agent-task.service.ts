@@ -166,7 +166,7 @@ export class AgentTaskService {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.saveDefinitions(tasks, ctx);
 		});
-		await this.saveCompletion.taskSaved(
+		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 			context.pushRef,
 		);
@@ -220,7 +220,7 @@ export class AgentTaskService {
 			const [savedTask] = await this.taskRepository.saveDefinitions([task], ctx);
 			return savedTask;
 		});
-		await this.saveCompletion.taskSaved(
+		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 			context.pushRef,
 		);
@@ -249,7 +249,7 @@ export class AgentTaskService {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
 		});
-		await this.saveCompletion.taskSaved(
+		this.saveCompletion.taskSaved(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 			context.pushRef,
 		);

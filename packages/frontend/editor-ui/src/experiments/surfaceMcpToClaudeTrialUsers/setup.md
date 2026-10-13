@@ -14,9 +14,11 @@ integration checks are complete. No custom Cloud hook is required.
    decisions in the team's project documentation.
 
 Do not use a flag payload for eligibility. Disabling the flag hides treatment
-without deleting saved assignments. Cached evaluations can delay this by up to
-ten minutes. An inactive editor session checks again on the next page load or
-sign-in.
+without deleting saved eligibility. The UI reacts when its existing PostHog
+store receives the new value; the eligibility poll does not refresh flags.
+A dashboard flag change may therefore require reloading the editor to receive it.
+Keep the instance-group allocation stable during the experiment: live variants
+are not pinned in the instance database.
 
 ## Verification
 
@@ -32,15 +34,25 @@ Before rollout, verify:
 - The first eligibility check runs after Cloud owner initialization, without
   waiting for the next poll.
 - A qualifying owner sees entry points after the cutoff without refreshing.
+- Both arms expand the sidebar once after eligibility and flag loading. A manual
+  collapse remains after subsequent checks and editor reloads. Nonparticipants
+  keep their sidebar state.
 - Assistant edits before the cutoff exclude the owner. Edits after it do not.
-- Control and treatment keep one saved assignment after reload and restart.
+- Eligibility remains saved after reload and restart. Control/treatment follows
+  the current PostHog value, including local overrides.
 - All four placements open MCP settings before Claude connects, then open Claude in a new tab.
 - Only the expanded sidebar shows `Connect to n8n`, and only while MCP is disabled.
-- Modern and legacy Claude clients update connection state and hide all four
-  entry points after a successful workflow write. Failed writes do not hide them.
+- Modern and legacy Claude clients update the CTA connection state.
+- A successful workflow write through Claude, another MCP client, or an unnamed
+  client hides all four entry points. Reads, failed writes and zero-operation
+  updates do not hide them.
+- Connect stays prominent with non-Claude clients connected. It becomes neutral
+  when Claude connects and prominent again when Claude disconnects.
 - Revocation, API-key rotation, dismissal, and reconnect behave as specified.
-- Disabled or absent flags stop polling. PostHog failures retry and preserve the
-  saved assignment.
+- Disabled or absent flags hide treatment without clearing eligibility. Late
+  flags enable treatment and resume completion polling without a page reload.
+- Exposure is sent only after eligibility, for the live arm. A flag loaded before
+  eligibility must not count the owner as participating yet.
 - View and click events include `surface`, `cta_stage`, and experiment metadata.
 - Keyboard navigation, narrow windows, dark mode, and collapsed sidebar work.
 

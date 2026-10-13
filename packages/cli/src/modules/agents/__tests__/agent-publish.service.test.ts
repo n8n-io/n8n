@@ -1,6 +1,8 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,7 +10,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
@@ -132,6 +133,7 @@ function makeService() {
 	Container.set(ChatIntegrationService, chatIntegrationService);
 	Container.set(AgentTaskService, taskService);
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const service = new AgentPublishService(
 		mockLogger(),
 		agentRepository,
@@ -150,7 +152,7 @@ function makeService() {
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
-			new AgentModificationTelemetryService(telemetry, mock<McpDiscoveryActivityService>()),
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 		new AgentDefinitionService(
 			agentTaskRepository,
@@ -159,6 +161,7 @@ function makeService() {
 			transactionRunner,
 		),
 	);
+	// EOF Experiment cleanup
 
 	return {
 		service,

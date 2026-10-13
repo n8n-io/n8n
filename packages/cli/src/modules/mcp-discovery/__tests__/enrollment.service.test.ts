@@ -1,18 +1,18 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import type { GlobalConfig } from '@n8n/config';
 import type { ApiKey, ApiKeyRepository, Settings, SettingsRepository, User, Role } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { UserConsentRepository } from '@/modules/oauth-server/database/repositories/oauth-user-consent.repository';
 import type { UserConsent } from '@/modules/oauth-server/database/entities/oauth-user-consent.entity';
-import type { PostHogClient } from '@/posthog';
 
+import type { McpDiscoveryActivityEvents } from '../activity-events.service';
 import { discoveryUserKey } from '../activity.service';
 import { McpDiscoveryEnrollmentService } from '../enrollment.service';
 
 vi.mock('@n8n/db', () => ({ SettingsRepository: class {}, ApiKeyRepository: class {} }));
 vi.mock('@n8n/config', () => ({ GlobalConfig: class {} }));
 
-vi.mock('@/posthog', () => ({ PostHogClient: class {} }));
 vi.mock('@/modules/oauth-server/database/repositories/oauth-user-consent.repository', () => ({
 	UserConsentRepository: class {},
 }));
@@ -20,9 +20,9 @@ vi.mock('@/modules/oauth-server/database/repositories/oauth-user-consent.reposit
 describe('MCP discovery enrollment', () => {
 	const settings = mock<SettingsRepository>();
 	const config = mock<GlobalConfig>({ deployment: { type: 'cloud' } });
-	const posthog = mock<PostHogClient>();
 	const consents = mock<UserConsentRepository>();
 	const apiKeys = mock<ApiKeyRepository>();
+	const activityEvents = mock<McpDiscoveryActivityEvents>();
 	const rows = new Map<string, string>();
 	let service: McpDiscoveryEnrollmentService;
 	const start = Date.UTC(2026, 9, 2, 12);
@@ -48,46 +48,53 @@ describe('MCP discovery enrollment', () => {
 			const value = rows.get(key);
 			return value === undefined ? null : mock<Settings>({ key, value });
 		});
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-			status: 'available',
-			value: 'variant',
-		});
 		consents.findConnectedClients.mockResolvedValue({ rows: [], total: 0 });
 		apiKeys.find.mockResolvedValue([]);
-		service = new McpDiscoveryEnrollmentService(settings, config, posthog, consents, apiKeys);
+		service = new McpDiscoveryEnrollmentService(
+			settings,
+			config,
+			consents,
+			apiKeys,
+			activityEvents,
+		);
 	});
 
 	afterEach(() => vi.useRealTimers());
 
 	it.each(['global:admin', 'global:member'])(
-		'does not enroll %s even with a Claude answer or saved assignment',
+		'does not enroll %s even with a Claude answer or saved eligibility',
 		async (slug) => {
 			vi.setSystemTime(start + 30 * 60 * 1000);
 			const saved = await visit('owner');
 			const user = mock<User>({ id: 'owner', role: mock<Role>({ slug }) });
-			posthog.getFeatureFlagForInstanceWithStatus.mockClear();
 
 			expect((await service.visit(user, { pickedClaude: true, isTrial: true })).status).toBe(
 				'inactive',
 			);
-			expect(posthog.getFeatureFlagForInstanceWithStatus).not.toHaveBeenCalled();
-			expect(rows.get(discoveryUserKey('owner', 'assignment'))).toBe(
-				JSON.stringify(saved.assignment),
-			);
+			expect(rows.get(discoveryUserKey('owner', 'eligibleAt'))).toBe(String(saved.eligibleAt));
 		},
 	);
+
+	it('waits for observed Assistant activity before it reads eligibility', async () => {
+		activityEvents.flush.mockImplementationOnce(async () => {
+			rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start + 1000));
+		});
+		vi.setSystemTime(start + 30 * 60 * 1000);
+		expect((await visit('owner')).status).toBe('excluded');
+		expect(activityEvents.flush).toHaveBeenCalledOnce();
+	});
 
 	it('starts the clock once and enrolls at the deadline', async () => {
 		expect((await visit('owner')).status).toBe('waiting');
 		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect(await visit('owner')).toMatchObject({
 			status: 'assigned',
-			assignment: { variant: 'variant' },
+			eligibleAt: start + 30 * 60 * 1000,
 		});
 		expect(rows.get(discoveryUserKey('owner', 'firstLoginAt'))).toBe(String(start));
 	});
 
-	it('keeps the saved assignment after AI use', async () => {
+	it('keeps the saved eligibility after AI use', async () => {
 		await visit('owner');
 		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
@@ -95,7 +102,7 @@ describe('MCP discovery enrollment', () => {
 		expect(await visit('owner')).toEqual(assigned);
 	});
 
-	it('keeps an existing assignment after upgrade', async () => {
+	it('keeps an existing eligibility after upgrade', async () => {
 		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
 		expect(await service.visit(owner('owner'), { pickedClaude: true, isTrial: false })).toEqual(
@@ -112,71 +119,37 @@ describe('MCP discovery enrollment', () => {
 		).toMatchObject({ status: 'excluded' });
 	});
 
-	it('uses the winning instance assignment for a later eligible owner', async () => {
-		await visit('first');
-		await visit('second');
-		vi.setSystemTime(start + 30 * 60 * 1000);
-		await visit('first');
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-			status: 'available',
-			value: 'control',
-		});
-		expect(await visit('second')).toMatchObject({ assignment: { variant: 'variant' } });
-	});
-
-	it('completes an empty user claim with the saved instance assignment', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
-		const first = await visit('first');
-		const instanceAssignment = rows.get('experiment.mcpDiscovery.instanceAssignment');
-		rows.set(discoveryUserKey('second', 'assignment'), '');
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-			status: 'available',
-			value: 'control',
-		});
-
-		expect(await visit('second')).toMatchObject({
-			status: 'assigned',
-			assignment: first.assignment,
-		});
-		expect(rows.get(discoveryUserKey('second', 'assignment'))).toBe(instanceAssignment);
-		expect(rows.get('experiment.mcpDiscovery.instanceAssignment')).toBe(instanceAssignment);
-	});
-
-	it('recovers empty instance and user claims with one shared assignment', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
-		rows.set('experiment.mcpDiscovery.instanceAssignment', '');
-		rows.set(discoveryUserKey('first', 'assignment'), '');
-		rows.set(discoveryUserKey('second', 'assignment'), '');
-		posthog.getFeatureFlagForInstanceWithStatus
-			.mockResolvedValueOnce({ status: 'available', value: 'variant' })
-			.mockResolvedValueOnce({ status: 'available', value: 'control' });
-
-		const [first, second] = await Promise.all([visit('first'), visit('second')]);
-
-		expect(first.status).toBe('assigned');
-		expect(second.status).toBe('assigned');
-		expect(first.assignment).toEqual(second.assignment);
-		const instanceAssignment = rows.get('experiment.mcpDiscovery.instanceAssignment');
-		expect(rows.get(discoveryUserKey('first', 'assignment'))).toBe(instanceAssignment);
-		expect(rows.get(discoveryUserKey('second', 'assignment'))).toBe(instanceAssignment);
-	});
-
-	it('checks eligibility before completing an empty user claim', async () => {
-		const key = discoveryUserKey('owner', 'assignment');
+	it('recovers an empty eligibility claim after checking eligibility', async () => {
+		const key = discoveryUserKey('owner', 'eligibleAt');
 		rows.set(key, '');
-
 		expect((await visit('owner')).status).toBe('waiting');
 		expect(rows.get(key)).toBe('');
-		expect(settings.claimKey).not.toHaveBeenCalled();
+		vi.setSystemTime(start + 30 * 60 * 1000);
+		expect((await visit('owner')).status).toBe('assigned');
+		expect(rows.get(key)).toBe(String(Date.now()));
 	});
 
-	it('does not overwrite a malformed nonempty assignment', async () => {
+	it('stores eligibility without an instance or user variant assignment', async () => {
 		vi.setSystemTime(start + 30 * 60 * 1000);
-		const key = discoveryUserKey('owner', 'assignment');
-		rows.set(key, 'invalid');
+		const result = await visit('owner');
+		expect(result).not.toHaveProperty('assignment');
+		expect(rows.has(discoveryUserKey('owner', 'assignment'))).toBe(false);
+		expect(rows.has('experiment.mcpDiscovery.instanceAssignment')).toBe(false);
+		expect(settings.claimKey).toHaveBeenCalledExactlyOnceWith(
+			discoveryUserKey('owner', 'eligibleAt'),
+			String(Date.now()),
+		);
+	});
 
-		expect((await visit('owner')).status).toBe('unknown');
-		expect(rows.get(key)).toBe('invalid');
+	it('restores eligibility saved by the previous implementation without reading its variant', async () => {
+		rows.set(discoveryUserKey('owner', 'eligibleAt'), String(start));
+		rows.set(
+			discoveryUserKey('owner', 'assignment'),
+			JSON.stringify({ variant: 'control', assignedAt: start }),
+		);
+		const result = await service.visit(owner('owner'));
+		expect(result).toMatchObject({ status: 'assigned', eligibleAt: start });
+		expect(result).not.toHaveProperty('assignment');
 		expect(settings.claimKey).not.toHaveBeenCalled();
 	});
 
@@ -211,7 +184,7 @@ describe('MCP discovery enrollment', () => {
 		expect((await visit('owner')).status).toBe('assigned');
 	});
 
-	it('reports a new connection without changing the saved assignment', async () => {
+	it('reports a new connection without changing the saved eligibility', async () => {
 		await visit('owner');
 		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
@@ -235,14 +208,14 @@ describe('MCP discovery enrollment', () => {
 		expect(rows.has(discoveryUserKey('no-login', 'firstLoginAt'))).toBe(false);
 	});
 
-	it('preserves enrollment after successful Claude use', async () => {
+	it('preserves enrollment after successful MCP use', async () => {
 		vi.setSystemTime(start + 30 * 60 * 1000);
 		const before = await visit('owner');
 		rows.set(discoveryUserKey('owner', 'claudeMcpUsedAt'), String(Date.now()));
 		expect(await visit('owner')).toMatchObject({
 			status: 'assigned',
-			assignment: before.assignment,
-			hasUsedClaudeMcp: true,
+			eligibleAt: before.eligibleAt,
+			hasUsedMcp: true,
 		});
 	});
 
@@ -283,7 +256,13 @@ describe('MCP discovery enrollment', () => {
 
 	it('keeps dismissal in shared storage across service instances', async () => {
 		await service.dismissCoachmark('owner');
-		const another = new McpDiscoveryEnrollmentService(settings, config, posthog, consents, apiKeys);
+		const another = new McpDiscoveryEnrollmentService(
+			settings,
+			config,
+			consents,
+			apiKeys,
+			activityEvents,
+		);
 		expect(
 			(await another.visit(owner('owner'), { pickedClaude: true, isTrial: true }))
 				.coachmarkDismissed,
@@ -294,70 +273,10 @@ describe('MCP discovery enrollment', () => {
 		).toBe(false);
 	});
 
-	it('does not assign an instance outside the PostHog cohort', async () => {
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-			status: 'available',
-			value: false,
-		});
-		expect((await visit('owner')).status).toBe('inactive');
-		expect(rows.has(discoveryUserKey('owner', 'assignment'))).toBe(false);
-	});
-
-	it('returns unknown while PostHog is unavailable and enrolls after recovery', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({ status: 'unavailable' });
-
-		expect((await visit('owner')).status).toBe('unknown');
-		expect(settings.claimKey).not.toHaveBeenCalled();
-
-		vi.setSystemTime(start + 31 * 60 * 1000);
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-			status: 'available',
-			value: 'variant',
-		});
-		expect(await visit('owner')).toMatchObject({
-			status: 'assigned',
-			eligibleAt: start + 30 * 60 * 1000,
-			assignment: { variant: 'variant' },
-		});
-	});
-
-	it.each(['control', 'variant'] as const)(
-		'preserves a saved %s assignment through a PostHog outage',
-		async (variant) => {
-			vi.setSystemTime(start + 30 * 60 * 1000);
-			posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-				status: 'available',
-				value: variant,
-			});
-			await service.dismissCoachmark('owner');
-			const assigned = await visit('owner');
-			const savedRows = new Map(rows);
-			settings.claimKey.mockClear();
-			posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({ status: 'unavailable' });
-
-			expect(await visit('owner')).toEqual({
-				status: 'unknown',
-				coachmarkDismissed: true,
-			});
-			expect(rows).toEqual(savedRows);
-			expect(settings.claimKey).not.toHaveBeenCalled();
-
-			vi.setSystemTime(start + 31 * 60 * 1000);
-			posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-				status: 'available',
-				value: variant === 'control' ? 'variant' : 'control',
-			});
-			expect(await visit('owner')).toEqual(assigned);
-			expect(rows).toEqual(savedRows);
-		},
-	);
-
 	it('excludes an account that is not trialing', async () => {
 		expect(
 			(await service.visit(owner('owner'), { pickedClaude: true, isTrial: false })).status,
 		).toBe('excluded');
-		expect(posthog.getFeatureFlagForInstanceWithStatus).not.toHaveBeenCalled();
 	});
 
 	it('retries missing trial data and assigns when Cloud confirms a trial', async () => {
@@ -369,32 +288,21 @@ describe('MCP discovery enrollment', () => {
 		expect((await visit('owner')).status).toBe('assigned');
 	});
 
-	it('honors the kill switch without erasing assignments', async () => {
-		await visit('owner');
-		vi.setSystemTime(start + 30 * 60 * 1000);
-		await visit('owner');
-		posthog.getFeatureFlagForInstanceWithStatus.mockResolvedValue({
-			status: 'available',
-			value: false,
-		});
-		expect((await visit('owner')).status).toBe('inactive');
-		expect(rows.has(discoveryUserKey('owner', 'assignment'))).toBe(true);
-	});
 	it('waits for an unfinished Assistant write instead of excluding or enrolling', async () => {
 		vi.setSystemTime(start + 31 * 60 * 1000);
 		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), '');
 		expect((await visit('owner')).status).toBe('unknown');
-		expect(rows.has(discoveryUserKey('owner', 'assignment'))).toBe(false);
+		expect(rows.has(discoveryUserKey('owner', 'eligibleAt'))).toBe(false);
 		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start + 20 * 60 * 1000));
 		expect((await visit('owner')).status).toBe('excluded');
 	});
 
-	it('does not hide entry points for an unfinished Claude write', async () => {
+	it('does not hide entry points for an unfinished MCP write', async () => {
 		vi.setSystemTime(start + 31 * 60 * 1000);
 		rows.set(discoveryUserKey('owner', 'claudeMcpUsedAt'), '');
-		expect(await visit('owner')).toMatchObject({ status: 'assigned', hasUsedClaudeMcp: false });
+		expect(await visit('owner')).toMatchObject({ status: 'assigned', hasUsedMcp: false });
 		rows.set(discoveryUserKey('owner', 'claudeMcpUsedAt'), String(Date.now()));
-		expect(await visit('owner')).toMatchObject({ status: 'assigned', hasUsedClaudeMcp: true });
+		expect(await visit('owner')).toMatchObject({ status: 'assigned', hasUsedMcp: true });
 	});
 
 	it('does not count an unfinished credential observation as a connection', async () => {
@@ -404,3 +312,4 @@ describe('MCP discovery enrollment', () => {
 		expect(await visit('owner')).toMatchObject({ hasConnectedClaude: false });
 	});
 });
+// EOF Experiment cleanup

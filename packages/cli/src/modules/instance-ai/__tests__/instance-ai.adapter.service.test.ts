@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
 	const {
@@ -82,7 +85,6 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
@@ -1921,7 +1923,6 @@ function createNodeAdapterServiceForTests(
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
-		mock<McpDiscoveryActivityService>(),
 		nodeCatalogService,
 		undefined,
 		undefined,
@@ -1931,7 +1932,7 @@ function createNodeAdapterServiceForTests(
 		undefined,
 		options?.executeNodeService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[44],
+		>[43],
 	);
 
 	(
@@ -2440,7 +2441,6 @@ function createDataTableAdapterForTests(overrides?: {
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
-		mock<McpDiscoveryActivityService>(),
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -2629,6 +2629,7 @@ describe('createDataTableAdapter', () => {
 // createWorkflowAdapter – project scoping
 // ---------------------------------------------------------------------------
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 function createWorkflowAdapterForTests(overrides?: {
 	threadId?: string | null;
 	setupPanelVariant?: 'control' | 'variant';
@@ -2650,6 +2651,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	// The effective value for the run, passed to `createContext`. Overrides the env value.
 	runAllowSendingParameterValues?: boolean;
 }) {
+	// EOF Experiment cleanup
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
@@ -2711,7 +2713,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		preventTampering: vi.fn(async (data: unknown) => data),
 	};
 	const mockTelemetry = { track: vi.fn() };
-	const discoveryActivity = mock<McpDiscoveryActivityService>();
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const discoveryActivity = mock<EventService>();
+	// EOF Experiment cleanup
 	const mockFolderRepository = {
 		getFolderPathsToRoot: vi.fn().mockResolvedValue(new Map<string, string[]>()),
 		getMany: vi.fn().mockResolvedValue([]),
@@ -2736,6 +2740,7 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		globalConfigStub({
@@ -2784,7 +2789,7 @@ function createWorkflowAdapterForTests(overrides?: {
 			isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		discoveryActivity as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
@@ -2799,28 +2804,30 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockPolicyEnforcementService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
-		discoveryActivity,
 		undefined,
 		undefined,
 		undefined,
 		undefined,
-		mockFolderRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[41],
+		mockFolderRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[40],
 		overrides?.omitFolderFinderService
 			? undefined
 			: (mockFolderFinderService as unknown as ConstructorParameters<
 					typeof InstanceAiAdapterService
-				>[42]),
+				>[41]),
 		undefined,
 		undefined,
 		{
 			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[45],
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
 	);
+	// EOF Experiment cleanup
 
 	const boundProjectId =
 		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
 	const context = service.createContext(mockUser, {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		threadId: overrides?.threadId === null ? undefined : (overrides?.threadId ?? 'thread-1'),
+		// EOF Experiment cleanup
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
@@ -2828,6 +2835,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	});
 	const adapter = context.workflowService;
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	return {
 		discoveryActivity,
 		adapter,
@@ -2850,6 +2858,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockLogger,
 		mockUser,
 	};
+	// EOF Experiment cleanup
 }
 
 const minimalWorkflowJSON = {
@@ -2864,19 +2873,25 @@ describe('createWorkflowAdapter', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it('records Assistant creation and modification, but not publishing', async () => {
 		const { adapter, discoveryActivity, mockUser } = createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
-		expect(discoveryActivity.recordAssistantMutation).toHaveBeenCalledExactlyOnceWith(mockUser.id);
+		expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-assistant-change-saved', {
+			userId: mockUser.id,
+			at: expect.any(Number),
+		});
 
 		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
-		expect(discoveryActivity.recordAssistantMutation).toHaveBeenCalledTimes(2);
+		expect(discoveryActivity.emit).toHaveBeenCalledTimes(2);
 
 		await adapter.publish('wf-new');
-		expect(discoveryActivity.recordAssistantMutation).toHaveBeenCalledTimes(2);
+		expect(discoveryActivity.emit).toHaveBeenCalledTimes(2);
 	});
+	// EOF Experiment cleanup
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it('does not record writes without the thread context required by Builder events', async () => {
 		const { adapter, discoveryActivity, mockTelemetry } = createWorkflowAdapterForTests({
 			threadId: null,
@@ -2885,10 +2900,12 @@ describe('createWorkflowAdapter', () => {
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 		await adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
 
-		expect(discoveryActivity.recordAssistantMutation).not.toHaveBeenCalled();
+		expect(discoveryActivity.emit).not.toHaveBeenCalled();
 		expect(mockTelemetry.track).not.toHaveBeenCalled();
 	});
+	// EOF Experiment cleanup
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it.each(['create', 'update'] as const)(
 		'does not record a failed Builder %s',
 		async (operation) => {
@@ -2902,11 +2919,13 @@ describe('createWorkflowAdapter', () => {
 					: adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON);
 			await expect(result).rejects.toThrow('Save failed');
 
-			expect(discoveryActivity.recordAssistantMutation).not.toHaveBeenCalled();
+			expect(discoveryActivity.emit).not.toHaveBeenCalled();
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		},
 	);
+	// EOF Experiment cleanup
 
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it('records a successful save even when telemetry fails', async () => {
 		const { adapter, discoveryActivity, mockTelemetry, mockUser } = createWorkflowAdapterForTests();
 		mockTelemetry.track.mockImplementationOnce(() => {
@@ -2916,8 +2935,12 @@ describe('createWorkflowAdapter', () => {
 		await expect(adapter.updateFromWorkflowJSON('wf-new', minimalWorkflowJSON)).rejects.toThrow(
 			'Telemetry unavailable',
 		);
-		expect(discoveryActivity.recordAssistantMutation).toHaveBeenCalledExactlyOnceWith(mockUser.id);
+		expect(discoveryActivity.emit).toHaveBeenCalledWith('experiment-assistant-change-saved', {
+			userId: mockUser.id,
+			at: expect.any(Number),
+		});
 	});
+	// EOF Experiment cleanup
 
 	it('summarizes pinned data as node names and item counts, without payloads', async () => {
 		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
@@ -4931,7 +4954,6 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
-		mock<McpDiscoveryActivityService>(),
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -5235,7 +5257,6 @@ function createRunAdapterForTests(
 		createMockPolicyEnforcementService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[35],
-		mock<McpDiscoveryActivityService>(),
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -5985,15 +6006,14 @@ function createAdapterWithGatewayMock(
 	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
-	args[36] = mock<McpDiscoveryActivityService>();
-	args[43] = overrides?.instanceContext;
+	args[42] = overrides?.instanceContext;
 	if (overrides?.aiPreferenceService) {
 		// Last constructor parameter — extending the array beyond index 33 leaves
 		// every index in between as an unassigned (undefined) hole, same as when
 		// this override is not given.
-		args[46] = overrides.aiPreferenceService as unknown as ConstructorParameters<
+		args[45] = overrides.aiPreferenceService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[46];
+		>[45];
 	}
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),

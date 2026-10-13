@@ -1,12 +1,13 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -94,15 +95,17 @@ function setup(options: SetupOptions = {}) {
 	};
 
 	return {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		service: new AgentIntegrationPersistenceService(
 			agentRepository,
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			eventService,
-			new AgentModificationTelemetryService(telemetry, mock<McpDiscoveryActivityService>()),
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 			credentialsService,
 			setupCompletionService,
 		),
+		// EOF Experiment cleanup
 		agent,
 		row,
 		agentRepository,

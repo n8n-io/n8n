@@ -1,30 +1,25 @@
-import {
-	MCP_DISCOVERY_EXPERIMENT_KEY,
-	mcpDiscoveryAssignmentSchema,
-	type McpDiscoveryState,
-	type McpDiscoveryVisitRequestDto,
-} from '@n8n/api-types';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { GlobalConfig } from '@n8n/config';
 import { ApiKeyRepository, SettingsRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { UserConsentRepository } from '@/modules/oauth-server/database/repositories/oauth-user-consent.repository';
-import { PostHogClient } from '@/posthog';
 
 import { discoveryUserKey, isClaudeMcpClient } from './activity.service';
+import { McpDiscoveryActivityEvents } from './activity-events.service';
 import { evaluateMcpDiscoveryEligibility } from './eligibility';
-
-const instanceAssignmentKey = 'experiment.mcpDiscovery.instanceAssignment';
+import type { McpDiscoveryVisitRequestDto } from './mcp-discovery.dto';
+import type { McpDiscoveryState } from './types';
 
 @Service()
 export class McpDiscoveryEnrollmentService {
 	constructor(
 		private readonly settings: SettingsRepository,
 		private readonly config: GlobalConfig,
-		private readonly posthog: PostHogClient,
 		private readonly consents: UserConsentRepository,
 		private readonly apiKeys: ApiKeyRepository,
+		private readonly activityEvents: McpDiscoveryActivityEvents,
 	) {}
 
 	async dismissCoachmark(userId: string): Promise<void> {
@@ -39,38 +34,22 @@ export class McpDiscoveryEnrollmentService {
 		if (this.config.deployment.type !== 'cloud') return inactive;
 		if (user.role.slug !== 'global:owner') return inactive;
 		const userId = user.id;
+		await this.activityEvents.flush(userId);
 
 		const dismissed = await this.settings.findByKey(discoveryUserKey(userId, 'coachmarkDismissed'));
 		const base = { coachmarkDismissed: dismissed?.value === 'true' };
 		const unknown: McpDiscoveryState = { ...base, status: 'unknown' };
-		const enrolled = await this.settings.findByKey(discoveryUserKey(userId, 'assignment'));
-
-		if (!enrolled?.value) {
-			if (isTrial === undefined) return unknown;
-			if (!isTrial) return { ...base, status: 'excluded' };
+		const savedEligibility = await this.readEligibilityTime(userId);
+		if (savedEligibility !== undefined) {
+			return {
+				...base,
+				status: 'assigned',
+				eligibleAt: savedEligibility,
+				...(await this.getMcpState(userId)),
+			};
 		}
-
-		// A disabled flag remains a kill switch. It never removes the saved assignment.
-		const evaluation = await this.posthog.getFeatureFlagForInstanceWithStatus(
-			MCP_DISCOVERY_EXPERIMENT_KEY,
-		);
-		// An unavailable result must allow the editor to retry.
-		if (evaluation.status === 'unavailable') return unknown;
-		const flag = evaluation.value;
-		if (flag !== 'control' && flag !== 'variant') return { ...base, status: 'inactive' };
-		// An empty value is an unfinished claim. Retry it after checking eligibility.
-		if (enrolled?.value) {
-			const assignment = mcpDiscoveryAssignmentSchema.safeParse(this.parseJson(enrolled.value));
-			return assignment.success
-				? {
-						...base,
-						status: 'assigned',
-						assignment: assignment.data,
-						eligibleAt: await this.readEligibilityTime(userId),
-						...(await this.getClaudeState(userId)),
-					}
-				: unknown;
-		}
+		if (isTrial === undefined) return unknown;
+		if (!isTrial) return { ...base, status: 'excluded' };
 
 		// Instance creation dates are filtered by the PostHog release condition.
 		const now = Date.now();
@@ -91,28 +70,15 @@ export class McpDiscoveryEnrollmentService {
 			String(eligibility.eligibleAt),
 		);
 
-		await this.settings.claimKey(
-			instanceAssignmentKey,
-			JSON.stringify({ variant: flag, assignedAt: now }),
-		);
-		// Read the winning claim so concurrent users cannot split the instance.
-		const claimed = await this.settings.findByKey(instanceAssignmentKey);
-		const assignment = mcpDiscoveryAssignmentSchema.safeParse(this.parseJson(claimed?.value));
-		if (!assignment.success) return unknown;
-		await this.settings.claimKey(
-			discoveryUserKey(userId, 'assignment'),
-			JSON.stringify(assignment.data),
-		);
 		return {
 			...base,
 			status: 'assigned',
 			eligibleAt: eligibility.eligibleAt,
-			assignment: assignment.data,
-			...(await this.getClaudeState(userId)),
+			...(await this.getMcpState(userId)),
 		};
 	}
 
-	private async getClaudeState(userId: string) {
+	private async getMcpState(userId: string) {
 		const [connected, keys, used] = await Promise.all([
 			this.consents.findConnectedClients({ userId, now: Date.now() }),
 			this.apiKeys.find({ where: { userId, audience: 'mcp-server-api' }, select: ['id'] }),
@@ -134,7 +100,7 @@ export class McpDiscoveryEnrollmentService {
 			connected.rows.some(({ client }) => isClaudeMcpClient(client.name));
 		return {
 			hasConnectedClaude,
-			hasUsedClaudeMcp: this.parseTimestamp(used?.value) !== undefined,
+			hasUsedMcp: this.parseTimestamp(used?.value) !== undefined,
 		};
 	}
 
@@ -146,13 +112,5 @@ export class McpDiscoveryEnrollmentService {
 	private parseTimestamp(value?: string): number | undefined {
 		return value && Number.isFinite(Number(value)) ? Number(value) : undefined;
 	}
-
-	private parseJson(value: string | undefined): unknown {
-		if (!value) return undefined;
-		try {
-			return JSON.parse(value);
-		} catch {
-			return undefined;
-		}
-	}
 }
+// EOF Experiment cleanup

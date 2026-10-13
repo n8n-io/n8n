@@ -1,4 +1,5 @@
-import { McpDiscoveryVisitRequestDto } from '../mcp-discovery';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { McpDiscoveryVisitRequestDto } from '../mcp-discovery.dto';
 
 describe('McpDiscoveryVisitRequestDto', () => {
 	it.each([true, false, undefined])('accepts a Claude choice of %s', (pickedClaude) => {
@@ -30,3 +31,4 @@ describe('McpDiscoveryVisitRequestDto', () => {
 		).toEqual({ pickedClaude: true });
 	});
 });
+// EOF Experiment cleanup

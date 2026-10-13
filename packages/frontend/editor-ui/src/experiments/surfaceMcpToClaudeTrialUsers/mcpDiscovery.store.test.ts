@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import { createPinia, setActivePinia } from 'pinia';
+import { createPinia, disposePinia, getActivePinia, setActivePinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { MCP_DISCOVERY_EXPERIMENT } from '@/app/constants/experiments';
@@ -15,8 +15,9 @@ const mocks = vi.hoisted(() => ({
 		getOwnerCurrentPlan: vi.fn(),
 	},
 	track: vi.fn(),
-	setAssignment: vi.fn(),
+	setEligible: vi.fn(),
 	getVariant: vi.fn(),
+	flags: { variant: undefined as string | boolean | undefined },
 	users: { isInstanceOwner: true, currentUser: { id: 'member' } },
 	settings: {
 		moduleSettings: { mcp: { mcpAccessEnabled: false } },
@@ -39,15 +40,21 @@ vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => mocks.users }))
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track: mocks.track }) }));
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
-		setMcpDiscoveryAssignment: mocks.setAssignment,
+		setMcpDiscoveryEligible: mocks.setEligible,
 		getVariant: mocks.getVariant,
 	}),
 }));
 
 describe('MCP discovery store', () => {
+	afterEach(() => {
+		disposePinia(getActivePinia()!);
+	});
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		mocks.users.isInstanceOwner = true;
+		mocks.flags.variant = 'variant';
+		mocks.getVariant.mockImplementation(() => reactive(mocks.flags).variant);
 		mocks.cloud.getOwnerCurrentPlan.mockResolvedValue({ metadata: { group: 'trial' } });
 		mocks.cloud.currentUserCloudInfo = {
 			information: {
@@ -63,16 +70,17 @@ describe('MCP discovery store', () => {
 	it.each(['control', 'variant'] as const)(
 		'records exposure for eligible %s users',
 		async (variant) => {
+			mocks.flags.variant = variant;
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
-				assignment: { variant, assignedAt: 123 },
+				eligibleAt: 123,
 				coachmarkDismissed: false,
 			});
 			const store = useMcpDiscoveryStore();
 			await store.refresh();
 			expect(store.isEnabled).toBe(true);
 			expect(store.isTreatment).toBe(variant === 'variant');
-			expect(mocks.setAssignment).toHaveBeenCalledWith(variant);
+			expect(mocks.setEligible).toHaveBeenCalledWith(true);
 			expect(mocks.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.MCP.DISCOVERY_EXPOSED,
 				expect.objectContaining({
@@ -85,6 +93,40 @@ describe('MCP discovery store', () => {
 		},
 	);
 
+	it('uses live flags after eligibility without another visit and records each exposed variant once', async () => {
+		mocks.flags.variant = undefined;
+		mocks.request.mockResolvedValue({
+			status: 'assigned',
+			eligibleAt: 123,
+			coachmarkDismissed: false,
+		});
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		expect(store.isEnabled).toBe(false);
+		expect(mocks.track).not.toHaveBeenCalled();
+		reactive(mocks.flags).variant = 'control';
+		expect(store.isEnabled).toBe(true);
+		expect(store.shouldShowEntryPoints).toBe(false);
+		reactive(mocks.flags).variant = 'variant';
+		expect(store.shouldShowEntryPoints).toBe(true);
+		expect(mocks.track).toHaveBeenCalledTimes(2);
+		reactive(mocks.flags).variant = false;
+		expect(store.shouldShowEntryPoints).toBe(false);
+		expect(store.state.status).toBe('assigned');
+		reactive(mocks.flags).variant = 'variant';
+		expect(store.shouldShowEntryPoints).toBe(true);
+		expect(mocks.track).toHaveBeenCalledTimes(2);
+		expect(mocks.request).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not expose a live treatment flag before eligibility', async () => {
+		mocks.request.mockResolvedValue({ status: 'waiting', coachmarkDismissed: false });
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		expect(store.shouldShowEntryPoints).toBe(false);
+		expect(mocks.track).not.toHaveBeenCalled();
+	});
+
 	it('does not expose unknown users or show treatment on request failure', async () => {
 		mocks.request.mockRejectedValue(new Error('Unavailable'));
 		const store = useMcpDiscoveryStore();
@@ -93,6 +135,24 @@ describe('MCP discovery store', () => {
 		expect(store.isTreatment).toBe(false);
 		expect(mocks.track).not.toHaveBeenCalled();
 	});
+
+	it.each([{ status: 'unexpected' }, { coachmarkDismissed: 'false' }, { eligibleAt: '123' }])(
+		'does not enroll or track exposure for an invalid response: %j',
+		async (invalidFields) => {
+			mocks.request.mockResolvedValue({
+				status: 'assigned',
+				eligibleAt: 123,
+				coachmarkDismissed: false,
+				...invalidFields,
+			});
+			const store = useMcpDiscoveryStore();
+			await store.refresh();
+			expect(store.state.status).toBe('unknown');
+			expect(store.isEnabled).toBe(false);
+			expect(mocks.setEligible).not.toHaveBeenCalled();
+			expect(mocks.track).not.toHaveBeenCalled();
+		},
+	);
 
 	it('reads the existing Cloud account API once and sends the Claude choice with the Cloud trial status', async () => {
 		mocks.cloud.currentUserCloudInfo = null;
@@ -133,7 +193,7 @@ describe('MCP discovery store', () => {
 
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 		});
 		await store.refresh();
@@ -144,15 +204,16 @@ describe('MCP discovery store', () => {
 	});
 
 	it.each(['control', 'variant'] as const)(
-		'restores a saved %s assignment when the Cloud plan request fails',
+		'restores eligibility with a live %s variant when the Cloud plan request fails',
 		async (variant) => {
+			mocks.flags.variant = variant;
 			mocks.cloud.getOwnerCurrentPlan.mockRejectedValue(new Error('Unavailable'));
-			const assignment = { variant, assignedAt: 123 };
+			const eligibleAt = 123;
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
-				assignment,
+				eligibleAt,
 				coachmarkDismissed: true,
-				hasUsedClaudeMcp: false,
+				hasUsedMcp: false,
 			});
 			const store = useMcpDiscoveryStore();
 			await store.refresh();
@@ -160,11 +221,11 @@ describe('MCP discovery store', () => {
 			expect(mocks.request).toHaveBeenCalledTimes(1);
 			expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
 			expect(mocks.cloud.fetchUserCloudAccount).not.toHaveBeenCalled();
-			expect(store.state.assignment).toEqual(assignment);
+			expect(store.state.eligibleAt).toBe(eligibleAt);
 			expect(store.coachmarkDismissed).toBe(true);
 			expect(store.isEnabled).toBe(true);
 			expect(store.shouldShowEntryPoints).toBe(variant === 'variant');
-			expect(mocks.setAssignment).toHaveBeenCalledWith(variant);
+			expect(mocks.setEligible).toHaveBeenCalledWith(true);
 		},
 	);
 
@@ -214,7 +275,7 @@ describe('MCP discovery store', () => {
 	it('does not fetch the plan again after assignment', async () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 		});
 		const store = useMcpDiscoveryStore();
@@ -291,7 +352,7 @@ describe('MCP discovery store', () => {
 	it('tracks visible placements once and clicks with experiment metadata', async () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 		});
 		const store = useMcpDiscoveryStore();
@@ -314,7 +375,7 @@ describe('MCP discovery store', () => {
 		mocks.request
 			.mockResolvedValueOnce({
 				status: 'assigned',
-				assignment: { variant: 'variant', assignedAt: 123 },
+				eligibleAt: 123,
 				coachmarkDismissed: false,
 			})
 			.mockResolvedValueOnce({ success: true });
@@ -338,7 +399,7 @@ describe('MCP discovery store', () => {
 		// Use a reactive store update to recompute with the changed settings mock.
 		store.state = {
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 1 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 			hasConnectedClaude: false,
 		};
@@ -351,7 +412,7 @@ describe('MCP discovery store', () => {
 		const store = useMcpDiscoveryStore();
 		store.state = {
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 		};
 		const visit = Promise.withResolvers<unknown>();
@@ -361,7 +422,7 @@ describe('MCP discovery store', () => {
 
 		visit.resolve({
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 			hasConnectedClaude: true,
 		});
@@ -375,7 +436,7 @@ describe('MCP discovery store', () => {
 		const store = useMcpDiscoveryStore();
 		store.state = {
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 		};
 		const request = Promise.withResolvers<unknown>();
@@ -388,13 +449,13 @@ describe('MCP discovery store', () => {
 		expect(store.state).toEqual({ status: 'inactive', coachmarkDismissed: false });
 	});
 
-	it('hides entries after Claude use while retaining experiment enrollment', async () => {
+	it('hides entries after MCP use while retaining experiment enrollment', async () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 1 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 			hasConnectedClaude: true,
-			hasUsedClaudeMcp: true,
+			hasUsedMcp: true,
 		});
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
@@ -417,7 +478,7 @@ describe('MCP discovery store', () => {
 		mocks.users.currentUser = { id: 'other' };
 		resolve({
 			status: 'assigned',
-			assignment: { variant: 'variant', assignedAt: 123 },
+			eligibleAt: 123,
 			coachmarkDismissed: false,
 		});
 		await pending;
@@ -430,7 +491,7 @@ describe('MCP discovery store', () => {
 			mocks.settings.moduleSettings.mcp.mcpAccessEnabled = stage !== 'build';
 			mocks.request.mockResolvedValue({
 				status: 'assigned',
-				assignment: { variant: 'variant', assignedAt: 123 },
+				eligibleAt: 123,
 				coachmarkDismissed: false,
 				hasConnectedClaude: stage === 'build_in_claude',
 			});

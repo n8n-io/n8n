@@ -1,5 +1,7 @@
 import type { Mocked } from 'vitest';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import type { ApiKey, ApiKeyRepository, User, TokenGrant } from '@n8n/db';
+// EOF Experiment cleanup
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -12,13 +14,17 @@ const makeUser = (id: string): User => ({ ...mock<User>(), id });
 describe('McpServerApiKeyService', () => {
 	let authStrategyRegistry: Mocked<AuthStrategyRegistry>;
 	let service: McpServerApiKeyService;
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	let apiKeys: Mocked<ApiKeyRepository>;
+	// EOF Experiment cleanup
 
 	beforeEach(() => {
 		authStrategyRegistry = mock<AuthStrategyRegistry>();
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		apiKeys = mock<ApiKeyRepository>();
 		apiKeys.findOne.mockResolvedValue(null);
 		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
+		// EOF Experiment cleanup
 	});
 
 	describe('verifyApiKey', () => {
@@ -70,6 +76,7 @@ describe('McpServerApiKeyService', () => {
 			expect(result.caller).toEqual({ authType: 'api_key' });
 		});
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('passes only the verified stored key ID for connection tracking', async () => {
 			const subject = makeUser('subject-1');
 			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, scopes: [] });
@@ -81,13 +88,16 @@ describe('McpServerApiKeyService', () => {
 				select: ['id'],
 			});
 		});
+		// EOF Experiment cleanup
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('does not reject a valid login when connection metadata is unavailable', async () => {
 			const subject = makeUser('subject-1');
 			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, scopes: [] });
 			apiKeys.findOne.mockRejectedValue(new Error('Temporary failure'));
 			expect((await service.verifyApiKey('token')).user).toBe(subject);
 		});
+		// EOF Experiment cleanup
 
 		it('returns a rejection context when the registry returns null', async () => {
 			authStrategyRegistry.buildContextFromToken.mockResolvedValue(null);

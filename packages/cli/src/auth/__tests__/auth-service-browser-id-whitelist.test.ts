@@ -1,4 +1,6 @@
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { GlobalConfig } from '@n8n/config';
 import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -21,8 +23,9 @@ describe('AuthService Browser ID Whitelist', () => {
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 		const mfaService = mock<MfaService>();
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		authService = new AuthService(
-			mock<McpDiscoveryActivityService>(),
+			mock<EventService>(),
 			globalConfig,
 			mock(),
 			mock(),
@@ -32,6 +35,7 @@ describe('AuthService Browser ID Whitelist', () => {
 			invalidAuthTokenRepository,
 			mfaService,
 		);
+		// EOF Experiment cleanup
 	});
 
 	describe('skipBrowserIdCheckEndpoints', () => {

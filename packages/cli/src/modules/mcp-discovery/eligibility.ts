@@ -1,3 +1,4 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 /** PostHog selects new instances; the Cloud plan API identifies trials. */
 export type McpDiscoveryEligibilityInput = {
 	pickedClaude?: boolean;
@@ -40,3 +41,4 @@ export function evaluateMcpDiscoveryEligibility(
 	}
 	return { status: 'eligible', eligibleAt };
 }
+// EOF Experiment cleanup

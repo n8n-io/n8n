@@ -27,7 +27,6 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 	listMcpServerTools: listMcpServerToolsMock,
 }));
 
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
@@ -218,10 +217,12 @@ describe('McpAgentToolsService', () => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		const modificationTelemetry = new AgentModificationTelemetryService(
 			lifecycleTelemetry,
-			mock<McpDiscoveryActivityService>(),
+			mock<EventService>(),
 		);
+		// EOF Experiment cleanup
 		const localCredentialsService = mock<CredentialsService>();
 		const workflowRepository = mock<WorkflowRepository>();
 		const agentTaskRepository = mock<AgentTaskRepository>();

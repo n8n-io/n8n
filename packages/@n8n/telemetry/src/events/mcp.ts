@@ -22,17 +22,17 @@ const nudgeSurface = z
 	);
 
 export const MCP_TELEMETRY = defineTelemetryEvents({
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	DISCOVERY_EXPOSED: {
 		name: 'User entered MCP discovery experiment',
 		description:
-			'A user passed the durable personal eligibility check and inherited the instance assignment. Includes control and treatment, independently of clicks.',
+			'A user passed the durable personal eligibility check and received a live PostHog variant. Includes control and treatment, independently of clicks.',
 		properties: z.looseObject({
 			variant: z.enum(['control', 'variant']),
-			assigned_at: z.number(),
 			eligible_at: z
 				.number()
 				.optional()
-				.describe('The user first login plus 30 minutes. Assignment can be saved later.'),
+				.describe('The user first login plus 30 minutes. Eligibility can be saved later.'),
 			concurrent_experiments: z.record(z.string(), z.string()),
 		}),
 	},
@@ -56,6 +56,7 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
 		}),
 	},
+	// EOF Experiment cleanup
 	MCP_NUDGE_VIEWED: {
 		name: 'User viewed MCP nudge',
 		description:

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useId } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
-import { ClaudeLogo } from '@n8n/frontend-module-mcp';
+import ClaudeLogo from './ClaudeLogo.vue';
 withDefaults(
 	defineProps<{
 		placement: 'canvas' | 'sidebar' | 'footer';

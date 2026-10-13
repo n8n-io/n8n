@@ -1,8 +1,11 @@
 <script lang="ts" setup>
 import { onClickOutside, type VueInstance } from '@vueuse/core';
-import { computed, ref, type Ref } from 'vue';
-import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
-import { ClaudeLogo } from '@n8n/frontend-module-mcp';
+import { ref, type Ref } from 'vue';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useClaudeCreateMenu } from '@/experiments/surfaceMcpToClaudeTrialUsers/useClaudeCreateMenu';
+import claudeStyles from '@/experiments/surfaceMcpToClaudeTrialUsers/createMenu.module.scss';
+import ClaudeLogo from '@/experiments/surfaceMcpToClaudeTrialUsers/ClaudeLogo.vue';
+// EOF Experiment cleanup
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import {
@@ -25,7 +28,6 @@ defineProps<{
 	hideCreate?: boolean;
 }>();
 
-const { showMcpDiscovery, mcpDiscovery, entryLabel, openEntry } = useMcpDiscovery();
 const emit = defineEmits<{
 	collapse: [];
 	openCommandBar: [event: MouseEvent];
@@ -59,23 +61,12 @@ const {
 	upgradeLabel,
 	hasPermissionToCreateProjects,
 } = useGlobalEntityCreation();
-const claudeAppendSlotName = 'item.append.claude-mcp';
-const claudeMenu = computed(() =>
-	showMcpDiscovery.value
-		? [
-				...menu.value,
-				{ id: 'claude-divider', isDivider: true as const },
-				{ id: 'claude-mcp', title: entryLabel.value },
-			]
-		: menu.value,
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCreateMenu(
+	menu,
+	handleMenuSelect,
 );
-function selectItem(id: string) {
-	if (id === 'claude-mcp') {
-		openEntry('create_menu');
-	} else {
-		void handleMenuSelect(id);
-	}
-}
+// EOF Experiment cleanup
 </script>
 
 <template>
@@ -115,12 +106,13 @@ function selectItem(id: string) {
 				</N8nTooltip>
 			</N8nLogo>
 		</RouterLink>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 		<N8nNavigationDropdown
 			v-if="!hideCreate"
 			ref="createBtn"
 			data-test-id="universal-add"
 			:menu="claudeMenu"
-			:submenu-class="showMcpDiscovery ? $style.claudeMenu : undefined"
+			:submenu-class="claudeStyles.claudeMenu"
 			:teleport="true"
 			@select="selectItem"
 		>
@@ -131,9 +123,11 @@ function selectItem(id: string) {
 				icon="plus"
 				icon-size="large"
 				aria-label="Add new item"
-				@click="showMcpDiscovery && mcpDiscovery.trackEntry('create_menu', 'viewed')"
+				@click="trackOpen"
 			/>
-			<template #[claudeAppendSlotName]><ClaudeLogo :class="$style.claudeMenuIcon" /></template>
+			<template #[claudeAppendSlotName]
+				><ClaudeLogo :class="claudeStyles.claudeMenuIcon"
+			/></template>
 			<template #[createWorkflowsAppendSlotName]>
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly"
@@ -183,6 +177,7 @@ function selectItem(id: string) {
 				</N8nTooltip>
 			</template>
 		</N8nNavigationDropdown>
+		<!-- EOF Experiment cleanup -->
 		<KeyboardShortcutTooltip
 			v-if="!settingsStore.isCanvasOnly"
 			:placement="isCollapsed ? 'right' : 'bottom'"
@@ -225,14 +220,6 @@ function selectItem(id: string) {
 </template>
 
 <style lang="scss" module>
-.claudeMenu :global(.el-menu-item):has(.claudeMenuIcon) {
-	gap: var(--spacing--2xs);
-}
-.claudeMenu :global(.el-menu-item):has(.claudeMenuIcon) > span:has(.claudeMenuIcon) {
-	order: -1;
-	margin-left: 0;
-}
-
 .header {
 	display: flex;
 	align-items: center;

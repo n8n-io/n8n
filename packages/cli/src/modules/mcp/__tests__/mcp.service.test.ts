@@ -1,6 +1,6 @@
-import { mock } from 'vitest-mock-extended';
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
+// EOF Experiment cleanup
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -88,7 +88,6 @@ describe('McpService', () => {
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
-	let discoveryActivity: ReturnType<typeof mock<McpDiscoveryActivityService>>;
 
 	beforeEach(() => {
 		eventService = mockInstance(EventService);
@@ -103,9 +102,7 @@ describe('McpService', () => {
 		logger = mockLogger();
 
 		aiPreferenceService = mockInstance(AiPreferenceService);
-		discoveryActivity = mock<McpDiscoveryActivityService>();
 		mcpService = new McpService(
-			discoveryActivity,
 			logger,
 			executionsConfig,
 			instanceSettings,
@@ -163,7 +160,6 @@ describe('McpService', () => {
 			});
 
 			const queueMcpService = new McpService(
-				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				queueExecutionsConfig,
 				instanceSettings,
@@ -370,7 +366,6 @@ describe('McpService', () => {
 			mcpAppsEnabled?: boolean;
 		}) =>
 			new McpService(
-				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				executionsConfig,
 				instanceSettings,
@@ -904,6 +899,7 @@ describe('McpService', () => {
 			return await invokeTool(args, {});
 		};
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it.each(['search_workflows', 'get_workflow_history', 'execute_workflow'])(
 			'skips discovery bookkeeping for %s',
 			async (toolName) => {
@@ -920,14 +916,19 @@ describe('McpService', () => {
 						},
 					),
 				).resolves.toEqual(result);
-				expect(discoveryActivity.recordClaudeToolResult).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith(
+					'experiment-mcp-workflow-write-completed',
+					expect.anything(),
+				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'mcp-tool-called',
 					expect.objectContaining({ toolName, status: 'success' }),
 				);
 			},
 		);
+		// EOF Experiment cleanup
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('records successful Claude workflow results through the production registrar', async () => {
 			const user = mcpUser();
 			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
@@ -942,17 +943,19 @@ describe('McpService', () => {
 				{},
 				{ clientInfo: { name: 'Claude' }, auth: { grantedScopes: undefined, caller } },
 			);
-			expect(discoveryActivity.recordClaudeToolResult).toHaveBeenCalledWith(
-				user.id,
-				'Claude',
-				'update_workflow',
-				'success',
-				'wf-42',
-				2,
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
+				userId: user.id,
+				clientName: 'Claude',
+				toolName: 'update_workflow',
+				status: 'success',
+				workflowId: 'wf-42',
+				structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
 				caller,
-			);
+			});
 		});
+		// EOF Experiment cleanup
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('passes credentials to discovery when a legacy tool call has no client name', async () => {
 			const user = mcpUser();
 			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
@@ -967,31 +970,17 @@ describe('McpService', () => {
 				{},
 				{ auth: { grantedScopes: undefined, caller } },
 			);
-			expect(discoveryActivity.recordClaudeToolResult).toHaveBeenCalledWith(
-				user.id,
-				undefined,
-				'create_workflow_from_code',
-				'success',
-				'wf-42',
-				undefined,
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
+				userId: user.id,
+				clientName: undefined,
+				toolName: 'create_workflow_from_code',
+				status: 'success',
+				workflowId: 'wf-42',
+				structuredContent: { workflowId: 'wf-42' },
 				caller,
-			);
+			});
 		});
-
-		it('does not turn a successful write into an error when discovery persistence fails', async () => {
-			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
-			discoveryActivity.recordClaudeToolResult.mockRejectedValue(new Error('Database unavailable'));
-			const result = { content: [], structuredContent: { workflowId: 'wf-42' } };
-			await expect(
-				registerAndInvoke(
-					server,
-					'create_workflow_from_code',
-					async () => result,
-					{},
-					{ clientInfo: { name: 'Claude' } },
-				),
-			).resolves.toEqual(result);
-		});
+		// EOF Experiment cleanup
 
 		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
 			const user = mcpUser();
@@ -1264,7 +1253,6 @@ describe('McpService', () => {
 			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
-				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				executionsConfig,
 				instanceSettings,
@@ -1324,7 +1312,6 @@ describe('McpService', () => {
 			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
-				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				executionsConfig,
 				instanceSettings,
@@ -1404,7 +1391,6 @@ describe('McpService', () => {
 				(urlService.getInstanceBaseUrl as Mock).mockReturnValue(instanceBaseUrl);
 
 				return new McpService(
-					mock<McpDiscoveryActivityService>(),
 					mockLogger(),
 					executionsConfig,
 					instanceSettings,

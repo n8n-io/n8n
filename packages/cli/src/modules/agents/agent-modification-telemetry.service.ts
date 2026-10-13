@@ -1,10 +1,12 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 
-import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { Telemetry } from '@/telemetry';
 
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
@@ -150,19 +152,26 @@ function modificationProperties({ agent, projectId, user, changedParts }: AgentM
 export class AgentModificationTelemetryService {
 	constructor(
 		private readonly telemetry: Telemetry,
-		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
 	) {}
 
-	async record(event: AgentModificationEvent): Promise<void> {
+	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { agent, by, wasUnconfigured } = event;
 			if (wasUnconfigured && isUnconfiguredAgent(agent.schema, agent.integrations)) return;
 
-			// Match Builder creation/modification semantics independently of telemetry delivery.
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			if (by === 'builder') {
-				await this.mcpDiscoveryActivity.recordAssistantMutation(event.user.id);
+				this.eventService.emit('experiment-assistant-change-saved', {
+					userId: event.user.id,
+					at: Date.now(),
+				});
 			}
+
+			// EOF Experiment cleanup
 
 			const properties = modificationProperties(event);
 			if (wasUnconfigured) {

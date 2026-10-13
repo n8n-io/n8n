@@ -1,3 +1,4 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import { getMcpClientBrand } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -45,40 +46,30 @@ export class McpDiscoveryActivityService {
 		await this.settings.claimKey(discoveryUserKey(userId, 'firstLoginAt'), String(loggedInAt));
 	}
 
-	async recordClaudeToolResult(
+	async recordMcpToolResult(
 		userId: string,
-		clientName: string | undefined,
 		toolName: string,
 		status: 'success' | 'error',
 		workflowId?: string,
 		appliedOperations?: number,
-		caller?: McpCallerAuth,
 	): Promise<void> {
 		if (this.config.deployment.type !== 'cloud' || status !== 'success') return;
-		if (clientName) {
-			if (!isClaudeMcpClient(clientName)) return;
-		} else {
-			// Legacy MCP requests omit the name after the handshake.
-			const field = connectionField(caller);
-			if (!field) return;
-			const connection = await this.settings.findByKey(discoveryUserKey(userId, field));
-			if (!connection?.value) return;
-		}
-		await this.recordClaudeConnection(userId, clientName, caller);
 		if (!workflowId || !['create_workflow_from_code', 'update_workflow'].includes(toolName)) return;
 		if (toolName === 'update_workflow' && appliedOperations === 0) return;
+		// Keep the existing key so previous completions still hide entry points.
 		await this.settings.claimKey(discoveryUserKey(userId, 'claudeMcpUsedAt'), String(Date.now()));
 	}
 
-	async recordAssistantMutation(userId: string): Promise<void> {
+	async recordAssistantMutation(userId: string, changedAt = Date.now()): Promise<void> {
 		if (this.config.deployment.type !== 'cloud') return;
 		try {
 			await this.settings.claimKey(
 				discoveryUserKey(userId, 'assistantMutationAt'),
-				String(Date.now()),
+				String(changedAt),
 			);
 		} catch (error) {
 			this.logger.warn('Failed to record MCP discovery Assistant activity', { error });
 		}
 	}
 }
+// EOF Experiment cleanup

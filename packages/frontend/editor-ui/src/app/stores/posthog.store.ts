@@ -1,4 +1,3 @@
-import { MCP_DISCOVERY_EXPERIMENT_KEY } from '@n8n/api-types';
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
@@ -8,6 +7,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FeatureFlagPayloads, FeatureFlags, IDataObject } from 'n8n-workflow';
 import {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	MCP_DISCOVERY_EXPERIMENT,
+	// EOF Experiment cleanup
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
@@ -35,7 +37,9 @@ export const usePostHog = defineStore('posthog', () => {
 	const rootStore = useRootStore();
 	const { debounce } = useDebounce();
 
-	const mcpDiscoveryAssignment = ref<'control' | 'variant' | null>(null);
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const mcpDiscoveryEligible = ref(false);
+	// EOF Experiment cleanup
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const featureFlagPayloads: Ref<FeatureFlagPayloads | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -64,7 +68,9 @@ export const usePostHog = defineStore('posthog', () => {
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
-		mcpDiscoveryAssignment.value = null;
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		mcpDiscoveryEligible.value = false;
+		// EOF Experiment cleanup
 		featureFlagPayloads.value = null;
 		trackedDemoExp.value = {};
 		trackedExposures.value = {};
@@ -73,9 +79,6 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
-		if (experiment === MCP_DISCOVERY_EXPERIMENT_KEY) {
-			return overrides.value[experiment]?.value ?? mcpDiscoveryAssignment.value ?? undefined;
-		}
 		return overrides.value[experiment]?.value ?? featureFlags.value?.[experiment];
 	};
 
@@ -182,8 +185,10 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 		// EOF Experiment cleanup
 
-		const variant =
-			name === MCP_DISCOVERY_EXPERIMENT_KEY ? mcpDiscoveryAssignment.value : featFlags[name];
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
+		const variant = name === MCP_DISCOVERY_EXPERIMENT.name ? getVariant(name) : featFlags[name];
+		// EOF Experiment cleanup
 		if (!variant || trackedDemoExp.value[name] === variant) {
 			return;
 		}
@@ -196,10 +201,12 @@ export const usePostHog = defineStore('posthog', () => {
 		trackedDemoExp.value[name] = variant;
 	};
 
-	const setMcpDiscoveryAssignment = (variant: 'control' | 'variant' | null) => {
-		mcpDiscoveryAssignment.value = variant;
-		if (variant) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT_KEY);
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	const setMcpDiscoveryEligible = (eligible: boolean) => {
+		mcpDiscoveryEligible.value = eligible;
+		if (eligible) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT.name);
 	};
+	// EOF Experiment cleanup
 
 	const trackExperiments = (featFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
@@ -334,6 +341,9 @@ export const usePostHog = defineStore('posthog', () => {
 	 * flag+variant; cleared on reset().
 	 */
 	const trackExposure = (experiment: string) => {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		if (experiment === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
+		// EOF Experiment cleanup
 		const variant = getVariant(experiment);
 		if (variant === undefined || variant === false) return;
 		if (trackedExposures.value[experiment] === variant) return;
@@ -346,7 +356,9 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
-		setMcpDiscoveryAssignment,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		setMcpDiscoveryEligible,
+		// EOF Experiment cleanup
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,

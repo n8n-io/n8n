@@ -1,5 +1,4 @@
 import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
-import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_APPS_FLAG,
@@ -232,7 +231,6 @@ export class McpService {
 	private readonly pendingResponses = new Map<string, PendingMcpResponse>();
 
 	constructor(
-		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
@@ -275,17 +273,15 @@ export class McpService {
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
 
-	async recordDiscoveryConnection(
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	recordDiscoveryConnection(
 		userId: string,
 		clientName?: string,
 		caller?: McpAuthContext['caller'],
 	) {
-		try {
-			await this.mcpDiscoveryActivity.recordClaudeConnection(userId, clientName, caller);
-		} catch (error) {
-			this.logger.warn('Failed to record MCP discovery connection', { error });
-		}
+		this.eventService.emit('experiment-mcp-client-connected', { userId, clientName, caller });
 	}
+	// EOF Experiment cleanup
 
 	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
@@ -373,8 +369,10 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
 	) {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		const caller = auth?.caller;
 		const telemetryCaller = caller?.authType === 'api_key' ? { authType: caller.authType } : caller;
+		// EOF Experiment cleanup
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
@@ -386,29 +384,23 @@ export class McpService {
 				try {
 					const result = await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
-					const isWorkflowMutation =
-						tool.name === 'create_workflow_from_code' || tool.name === 'update_workflow';
-					if (isWorkflowMutation && result && !isInputRequired(result)) {
-						// Experiment bookkeeping must not turn a successful tool write into an error.
-						try {
-							await this.mcpDiscoveryActivity.recordClaudeToolResult(
-								user.id,
-								clientInfo?.name,
-								tool.name,
-								status,
-								getWorkflowId(result.structuredContent),
-								typeof result.structuredContent === 'object' &&
-									result.structuredContent !== null &&
-									'appliedOperations' in result.structuredContent &&
-									typeof result.structuredContent.appliedOperations === 'number'
-									? result.structuredContent.appliedOperations
-									: undefined,
-								auth?.caller,
-							);
-						} catch (error) {
-							this.logger.warn('Failed to record MCP discovery activity', { error });
-						}
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					if (
+						(tool.name === 'create_workflow_from_code' || tool.name === 'update_workflow') &&
+						result &&
+						!isInputRequired(result)
+					) {
+						this.eventService.emit('experiment-mcp-workflow-write-completed', {
+							userId: user.id,
+							clientName: clientInfo?.name,
+							toolName: tool.name,
+							status,
+							workflowId: getWorkflowId(result.structuredContent),
+							structuredContent: result.structuredContent,
+							caller: auth?.caller,
+						});
 					}
+					// EOF Experiment cleanup
 					this.eventService.emit('mcp-tool-called', {
 						user,
 						toolName: tool.name,
@@ -417,7 +409,9 @@ export class McpService {
 							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
 						status,
 						errorMessage,
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 						...telemetryCaller,
+						// EOF Experiment cleanup
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -428,7 +422,9 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 						...telemetryCaller,
+						// EOF Experiment cleanup
 						clientName: clientInfo?.name,
 					});
 					throw error;

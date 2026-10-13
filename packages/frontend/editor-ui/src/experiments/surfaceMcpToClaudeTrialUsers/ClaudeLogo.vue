@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ClaudeIcon from '../assets/client-icons/claude.svg?component';
+import ClaudeIcon from './claude.svg?component';
 </script>
 
 <template>

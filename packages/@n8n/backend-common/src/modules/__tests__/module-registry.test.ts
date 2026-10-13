@@ -71,6 +71,7 @@ describe('eligibleModules', () => {
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
 			'inbound-auth-core',
@@ -79,6 +80,7 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			'mcp-discovery',
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -106,10 +108,12 @@ describe('eligibleModules', () => {
 			'agents',
 			'scim',
 		]);
+		// EOF Experiment cleanup
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
 		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
 			'inbound-auth-core',
@@ -119,6 +123,7 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			'mcp-discovery',
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -147,6 +152,7 @@ describe('eligibleModules', () => {
 			'scim',
 			'type-availability-policies',
 		]);
+		// EOF Experiment cleanup
 	});
 
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {

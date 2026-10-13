@@ -1,6 +1,8 @@
 <script setup lang="ts">
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
 import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+// EOF Experiment cleanup
 
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import {
@@ -21,7 +23,9 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 const { showMcpDiscovery } = useMcpDiscovery();
+// EOF Experiment cleanup
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
@@ -119,6 +123,7 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 		<template v-if="showMcpDiscovery">
 			<div :class="$style.orDivider">
 				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
@@ -160,6 +165,7 @@ async function onClickTemplatesLink() {
 				</p>
 			</div>
 		</template>
+		<!-- EOF Experiment cleanup -->
 	</div>
 </template>
 

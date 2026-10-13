@@ -1,4 +1,6 @@
-import type { EventService } from '@n8n/backend-services';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -11,7 +13,6 @@ import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { Telemetry } from '@/telemetry';
@@ -109,6 +110,7 @@ function makeService() {
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const service = new AgentConfigService(
 		mockLogger(),
 		agentRepository,
@@ -124,9 +126,10 @@ function makeService() {
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
-			new AgentModificationTelemetryService(telemetry, mock<McpDiscoveryActivityService>()),
+			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 	);
+	// EOF Experiment cleanup
 
 	return {
 		service,

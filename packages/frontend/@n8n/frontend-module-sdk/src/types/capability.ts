@@ -1,3 +1,7 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import type { Component } from 'vue';
+// EOF Experiment cleanup
+
 /**
  * A typed key for a capability. `declareCapability()` is the only way to make
  * one, and the token is the only way to read or write its slot in the registry.
@@ -31,9 +35,17 @@ export interface McpExposeAllOffer {
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
 }
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export interface McpDiscoverySettings {
-	/** These getters read reactive state. Call them inside a computed. */
-	isEnabled(): boolean;
-	shouldShowCoachmark(): boolean;
-	dismissCoachmark(): Promise<void>;
+	connectHint: Component;
+	overrides():
+		| {
+				description: string;
+				docsLeadingText: string;
+				clientTitle: string;
+				clientDescription: string;
+				connectVariant: 'solid' | 'outline';
+		  }
+		| undefined;
 }
+// EOF Experiment cleanup

@@ -8,14 +8,24 @@ import { useMcpDiscovery } from './useMcpDiscovery';
 
 const props = defineProps<{ placement: 'canvas' | 'sidebar' | 'footer'; collapsed?: boolean }>();
 const target = ref<HTMLElement>();
-const { mcpDiscovery: discovery, entryLabel, entryDescription, openEntry } = useMcpDiscovery();
+const {
+	showMcpDiscovery,
+	mcpDiscovery: discovery,
+	entryLabel,
+	entryDescription,
+	openEntry,
+} = useMcpDiscovery();
 useIntersectionObserver(target, ([entry]) => {
 	if (entry?.isIntersecting) discovery.trackEntry(props.placement, 'viewed');
 });
 </script>
 
 <template>
-	<span ref="target" :class="[$style.wrapper, { [$style.sidebar]: placement === 'sidebar' }]">
+	<span
+		v-if="showMcpDiscovery"
+		ref="target"
+		:class="[$style.wrapper, { [$style.sidebar]: placement === 'sidebar' }]"
+	>
 		<ClaudeEntryPoint
 			:placement="placement"
 			:collapsed="collapsed"
