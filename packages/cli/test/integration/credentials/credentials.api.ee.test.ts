@@ -439,6 +439,21 @@ describe('GET /credentials/for-workflow', () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toContainEqual(expect.objectContaining({ id: ownCredential.id }));
 		});
+
+		test('keeps the personal credentials of other users that the owner may use instance-wide when forAgent is true', async () => {
+			const ownCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			const memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const response = await authOwnerAgent
+				.get('/credentials/for-workflow')
+				.query({ projectId: ownerPersonalProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContainEqual(expect.objectContaining({ id: ownCredential.id }));
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: memberCredential.id }),
+			);
+		});
 	});
 
 	describe('forAgent with N8N_ENV_FEAT_CRED_SHARING disabled', () => {

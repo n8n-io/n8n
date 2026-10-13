@@ -206,8 +206,8 @@ const managedCredentialOption = computed<ManagedCredentialOption | null>(() => {
 });
 
 const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
-	credentialsStore.allCredentials
-		.filter((credential) => credential.type === fallbackCredentialType.value)
+	credentialsStore
+		.getUsableCredentialByType(fallbackCredentialType.value)
 		.map((credential) => ({
 			id: credential.id,
 			name: credential.name,

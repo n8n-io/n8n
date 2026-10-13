@@ -21,12 +21,11 @@ const aiGatewayState = vi.hoisted(() => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		allCredentials: [{ id: 'any' }],
 		hasUsableCredentialsForScope: (scope: unknown) => {
 			agentScope.requested.push(scope);
 			return agentScope.isFetched;
 		},
-		getCredentialsByType: (type: string) => credentialsByType.value[type] ?? [],
+		getUsableCredentialByType: (type: string) => credentialsByType.value[type] ?? [],
 		getCredentialById: (id: string) =>
 			Object.values(credentialsByType.value)
 				.flat()

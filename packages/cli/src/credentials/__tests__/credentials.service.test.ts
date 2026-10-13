@@ -3687,7 +3687,7 @@ describe('CredentialsService', () => {
 				expect(result[0]).toMatchObject({ id: 'cred-personal' });
 			});
 
-			it('leaves out the personal credentials of other users that the project owner may use instance-wide, when excludePersonalRoute is set', async () => {
+			it('keeps the personal credentials of other users that the project owner may use instance-wide, when excludePersonalRoute is set', async () => {
 				flags.credSharingEnabled = true;
 				const foreignCredential = makePersonalCredential();
 				foreignCredential.shared = [
@@ -3710,11 +3710,11 @@ describe('CredentialsService', () => {
 					excludePersonalRoute: true,
 				});
 
-				expect(result).toEqual([]);
-				expect(credentialsRepository.findAllPersonalCredentials).not.toHaveBeenCalled();
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
 			});
 
-			it('leaves out the personal credentials of other users for a workflow, when excludePersonalRoute is set', async () => {
+			it('keeps the personal credentials of other users for a workflow, when excludePersonalRoute is set', async () => {
 				flags.credSharingEnabled = true;
 				const foreignCredential = makePersonalCredential();
 				foreignCredential.shared = [
@@ -3737,8 +3737,8 @@ describe('CredentialsService', () => {
 					excludePersonalRoute: true,
 				});
 
-				expect(result).toEqual([]);
-				expect(credentialsRepository.findAllPersonalCredentials).not.toHaveBeenCalled();
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
 			});
 
 			it('keeps the instance-wide personal credentials when excludePersonalRoute is not set', async () => {

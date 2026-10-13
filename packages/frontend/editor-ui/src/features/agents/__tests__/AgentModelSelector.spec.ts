@@ -136,7 +136,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 			Object.values(credentialsByType.value)
 				.flat()
 				.find((credential) => credential.id === id),
-		getCredentialsByType: (type: string) => credentialsByType.value[type] ?? [],
+		getUsableCredentialByType: (type: string) => credentialsByType.value[type] ?? [],
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 	}),
 }));

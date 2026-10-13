@@ -45,10 +45,11 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		allCredentials: [
-			{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
-			{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
-		],
+		getUsableCredentialByType: (type: string) =>
+			[
+				{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
+				{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
+			].filter((credential) => credential.type === type),
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 	}),
 }));

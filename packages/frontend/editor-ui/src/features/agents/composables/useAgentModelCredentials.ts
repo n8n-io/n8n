@@ -70,11 +70,11 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 
 		const credentialsById = new Map<
 			string,
-			ReturnType<typeof credentialsStore.getCredentialsByType>[number]
+			ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
 		>();
 
 		for (const credentialType of getProviderCredentialTypes(provider)) {
-			for (const credential of credentialsStore.getCredentialsByType(credentialType)) {
+			for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
 				if (!credentialsById.has(credential.id)) {
 					credentialsById.set(credential.id, credential);
 				}

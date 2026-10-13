@@ -628,8 +628,11 @@ export class CredentialsService {
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
 	 * for workflows that have not been saved yet.
-	 * @param options.excludePersonalRoute Skip the personal route. Agents set
-	 * this because they do not support it yet.
+	 * @param options.excludePersonalRoute Skip the personal route, which lets a
+	 * user bring their own personal credentials into a team project they are a
+	 * member of. Agents set this because they do not support it yet. The
+	 * instance-wide shortcut for owners and admins in their personal project
+	 * stays in place.
 	 */
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
@@ -645,16 +648,11 @@ export class CredentialsService {
 			'credential:read',
 		]);
 
-		const projectRouteOnly = isCredSharingEnabled() && options.excludePersonalRoute === true;
-
 		// get all credentials the workflow or project has access to
 		const credentialIdsForWorkflow = new Set(
-			(projectRouteOnly
-				? await this.findCredentialsOfWorkflowOrProject(options)
-				: 'workflowId' in options
-					? await this.findAllCredentialIdsForWorkflow(options.workflowId)
-					: await this.findAllCredentialIdsForProject(options.projectId)
-			).map((c) => c.id),
+			'workflowId' in options
+				? (await this.findAllCredentialIdsForWorkflow(options.workflowId)).map((c) => c.id)
+				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
 		const personalRouteCredentialIds =
@@ -765,14 +763,6 @@ export class CredentialsService {
 		// Otherwise the workflow can only use credentials from projects it's part
 		// of.
 		return await this.credentialsRepository.findAllCredentialsForWorkflow(workflowId);
-	}
-
-	private async findCredentialsOfWorkflowOrProject(
-		options: { workflowId: string } | { projectId: string },
-	): Promise<CredentialsEntity[]> {
-		return 'workflowId' in options
-			? await this.credentialsRepository.findAllCredentialsForWorkflow(options.workflowId)
-			: await this.credentialsRepository.findAllCredentialsForProject(options.projectId);
 	}
 
 	async findAllCredentialIdsForProject(projectId: string): Promise<CredentialsEntity[]> {

@@ -189,11 +189,11 @@ function getCredentialTypeDisplayName(credentialType: string): string {
 function getCredentialsForProvider(provider: AgentModelProvider) {
 	const credentialsById = new Map<
 		string,
-		ReturnType<typeof credentialsStore.getCredentialsByType>[number]
+		ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
 	>();
 
 	for (const credentialType of getProviderCredentialTypes(provider)) {
-		for (const credential of credentialsStore.getCredentialsByType(credentialType)) {
+		for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
 			if (!credentialsById.has(credential.id)) {
 				credentialsById.set(credential.id, credential);
 			}
