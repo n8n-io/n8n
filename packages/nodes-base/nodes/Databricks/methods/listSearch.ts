@@ -1,5 +1,3 @@
-import { isRecord } from '@n8n/utils/is-record';
-import { NodeApiError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IHttpRequestOptions,
@@ -20,9 +18,11 @@ import {
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
+import { getSelectedLakebaseTarget } from '../actions/lakebase/helpers';
 import {
 	assertLakebaseOAuth,
 	collectPages,
+	explainLakebaseSchemaError,
 	lakebaseApiRequest,
 	resolveLakebaseRestBase,
 	toPage,
@@ -577,17 +577,6 @@ const LAKEBASE_SEARCH_MAX_PAGES = 10;
 // Internal tables the Data API lists under Ignore privileges; a user table named databricks_* is still reachable By ID
 const INTERNAL_TABLE_PREFIX = /^databricks_/;
 
-function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
-	const read = (name: string) =>
-		extractResourceLocatorValue(context.getCurrentNodeParameter(name)) || undefined;
-	return {
-		project: read('lakebaseProject'),
-		branch: read('lakebaseBranch'),
-		database: read('lakebaseDatabase'),
-		schema: read('lakebaseSchema'),
-	};
-}
-
 const byText = (filter: string | undefined) => {
 	const needle = filter?.toLowerCase();
 	return (item: { name: string; value: string }) =>
@@ -747,19 +736,9 @@ export async function getLakebaseTables(
 			.filter(byText(filter));
 		return { results };
 	} catch (error) {
-		if (
-			error instanceof NodeApiError &&
-			isRecord(error.context.data) &&
-			error.context.data.code === 'PGRST205'
-		) {
-			// Only a NodeApiError keeps its description on the way to the dropdown, so mutate like makePermissionErrorLegible does
-			error.message =
-				'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID';
-			error.description =
-				'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.';
-			throw error;
-		}
-		makePermissionErrorLegible(error);
-		throw error;
+		explainLakebaseSchemaError(
+			error,
+			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
+		);
 	}
 }
