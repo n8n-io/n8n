@@ -4,7 +4,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import {
-	SKILLS_FLAG,
 	skillNameKey,
 	type AgentConfigValidationIssue,
 	type SkillDetail,
@@ -12,7 +11,6 @@ import {
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createAgentSkill, createHubSkill, getHubSkill } from './useAgentApi';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
@@ -136,14 +134,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const posthogStore = usePostHog();
 	const rbacStore = useRBACStore();
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
-	const hubSkillsEnabled = computed(
-		() => !localSkills && posthogStore.isFeatureEnabled(SKILLS_FLAG),
-	);
+	const hubSkillsEnabled = !localSkills;
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -343,7 +338,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				existingSkillNames: appliedSkillNames(id),
-				hubSkillsEnabled: hubSkillsEnabled.value,
+				hubSkillsEnabled,
 				outdated: !localSkills && (agent.value?.outdatedSkillIds ?? []).includes(id),
 				onUseLatestVersion: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
@@ -449,7 +444,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
-				hubSkillsEnabled: hubSkillsEnabled.value,
+				hubSkillsEnabled,
 				attachedSkillIds: appliedSkills.value.map(({ id }) => id),
 				projectLabel: projectName.value ?? undefined,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),

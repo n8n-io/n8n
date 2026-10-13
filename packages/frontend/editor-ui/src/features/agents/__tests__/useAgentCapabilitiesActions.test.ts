@@ -39,12 +39,8 @@ vi.mock('../composables/useAgentApi', () => ({
 	getHubSkill: vi.fn(),
 }));
 
-const { isFeatureEnabledSpy, hasScopeSpy } = vi.hoisted(() => ({
-	isFeatureEnabledSpy: vi.fn(() => false),
+const { hasScopeSpy } = vi.hoisted(() => ({
 	hasScopeSpy: vi.fn(() => false),
-}));
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: isFeatureEnabledSpy }),
 }));
 vi.mock('@n8n/stores/rbac.store', () => ({
 	useRBACStore: () => ({ hasScope: hasScopeSpy }),
@@ -656,11 +652,10 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		isFeatureEnabledSpy.mockReturnValue(true);
 		hasScopeSpy.mockReturnValue(false);
 	});
 
-	it('opens the add modal with the picker data when the flag is on', () => {
+	it('opens the add modal with the picker data', () => {
 		hasScopeSpy.mockReturnValue(true);
 		const { modalData } = setupHub();
 
@@ -668,13 +663,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(modalData.attachedSkillIds).toEqual(['tone']);
 		expect(modalData.canCreateInstanceSkills).toBe(true);
 		expect(hasScopeSpy).toHaveBeenCalledWith('skill:create');
-	});
-
-	it('keeps the picker off when the flag is off', () => {
-		isFeatureEnabledSpy.mockReturnValue(false);
-		const { modalData } = setupHub();
-
-		expect(modalData.hubSkillsEnabled).toBe(false);
 	});
 
 	it('attaches a hub skill as a ref through the config save, without a copy', async () => {
@@ -832,7 +820,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(editData.outdated).toBe(false);
 	});
 
-	it('passes the flag to the edit modal so it can check the edit permission', () => {
+	it('tells the edit modal to check the edit permission', () => {
 		const { actions, uiStore } = setupHub();
 
 		actions.onOpenSkillFromList('tone');
