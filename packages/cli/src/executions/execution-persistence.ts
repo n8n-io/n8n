@@ -18,6 +18,7 @@ import type {
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import {
@@ -660,9 +661,13 @@ export class ExecutionPersistence {
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
-		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
+		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
 
-		await this.jsonStore.delete(this.toBlobRefs(refs));
+		// Batches keep each row delete under the SQLite expression-depth limit. Each batch
+		// deletes its files before its rows, so a failed file delete leaves the rows to retry.
+		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
+			await this.hardDelete(batch);
+		}
 	}
 
 	/**

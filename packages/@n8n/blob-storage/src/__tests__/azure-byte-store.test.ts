@@ -166,3 +166,76 @@ describe('delete', () => {
 		expect(Math.max(...concurrent)).toBeLessThanOrEqual(50);
 	});
 });
+
+describe('deletePrefix', () => {
+	it('should delete each listed page before reading the next', async () => {
+		const order: string[] = [];
+		let call = 0;
+		azureBlob.listPages.mockImplementation(async function* () {
+			if (call++ > 0) return; // the verification pass finds nothing
+			order.push('page1');
+			yield ['w/1/binary_data/a', 'w/1/binary_data/b'];
+			order.push('page2');
+			yield ['w/1/binary_data/c'];
+		});
+		azureBlob.delete.mockImplementation(async (key: string) => {
+			await new Promise((resolve) => setImmediate(resolve));
+			order.push(`delete:${key}`);
+		});
+
+		await store.deletePrefix('w/1/binary_data');
+
+		expect(azureBlob.listPages).toHaveBeenCalledTimes(2);
+		expect(azureBlob.listPages).toHaveBeenCalledWith('w/1/binary_data/');
+		expect(order[0]).toBe('page1');
+		expect(order.slice(1, 3).sort()).toEqual([
+			'delete:w/1/binary_data/a',
+			'delete:w/1/binary_data/b',
+		]);
+		expect(order.slice(3)).toEqual(['page2', 'delete:w/1/binary_data/c']);
+	});
+
+	it('should skip an empty page and delete the blobs listed around it', async () => {
+		let call = 0;
+		azureBlob.listPages.mockImplementation(async function* () {
+			if (call++ > 0) return;
+			yield [];
+			yield ['w/1/binary_data/a'];
+		});
+
+		await store.deletePrefix('w/1/binary_data');
+
+		expect(azureBlob.delete).toHaveBeenCalledTimes(1);
+		expect(azureBlob.delete).toHaveBeenCalledWith('w/1/binary_data/a');
+	});
+
+	it('should list again and delete a blob that the first pass skipped', async () => {
+		const passes = [['w/1/binary_data/a'], ['w/1/binary_data/skipped'], []];
+		azureBlob.listPages.mockImplementation(async function* () {
+			const names = passes.shift() ?? [];
+			if (names.length > 0) yield names;
+		});
+
+		await store.deletePrefix('w/1/binary_data');
+
+		expect(azureBlob.delete).toHaveBeenCalledWith('w/1/binary_data/skipped');
+		expect(azureBlob.listPages).toHaveBeenCalledTimes(3);
+	});
+
+	it('should reject when blobs keep appearing after repeated passes', async () => {
+		azureBlob.listPages.mockImplementation(async function* () {
+			yield ['w/1/binary_data/a'];
+		});
+
+		await expect(store.deletePrefix('w/1/binary_data')).rejects.toThrow();
+
+		expect(azureBlob.listPages).toHaveBeenCalledTimes(3);
+	});
+
+	it.each(['', '.', '/', './', '..', 'a/../b'])('should reject prefix %j', async (prefix) => {
+		await expect(store.deletePrefix(prefix)).rejects.toThrow();
+
+		expect(azureBlob.listPages).not.toHaveBeenCalled();
+		expect(azureBlob.delete).not.toHaveBeenCalled();
+	});
+});
