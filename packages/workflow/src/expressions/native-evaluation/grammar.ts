@@ -1,4 +1,5 @@
 import type { namedTypes } from 'ast-types';
+import { DateTime } from 'luxon';
 
 // The closed subset grammar, its operator and method allowlists, and the
 // limits the parser and the evaluator share. See index.ts for the overview.
@@ -33,6 +34,7 @@ export type SimpleNode =
 	| { kind: 'nodeRef'; ref: 'input' }
 	| { kind: 'nodeRef'; ref: 'node'; name: string }
 	| { kind: 'nodeRef'; ref: 'legacy'; name: string }
+	| { kind: 'timeRoot'; name: TimeRoot }
 	| { kind: 'undefined' }
 	| { kind: 'member'; object: SimpleNode; key: string | number; optional: boolean }
 	| { kind: 'chain'; expression: SimpleNode }
@@ -53,9 +55,9 @@ export type SimpleNode =
 
 export type Literal = Extract<SimpleNode, { kind: 'literal' }>;
 
-// Data roots: plain reads off the data proxy. `$now`/`$today` are excluded on
-// purpose: they are Luxon DateTimes whose methods would make every useful
-// expression on them a CallExpression anyway.
+// Data roots: plain reads off the data proxy. `$now`/`$today` are Luxon
+// DateTimes, which this grammar cannot hold as a value; they are time roots
+// below, readable only through an allowlisted getter or method.
 //
 // Note on $parameter: the proxy resolves nested `=` parameter values by
 // re-entering resolveSimpleParameterValue - a nested non-simple value simply
@@ -85,6 +87,18 @@ export const NODE_REF_MEMBERS = new Set(['item']);
 export const LEGACY_NODE_REF_MEMBERS = new Set(['json', 'binary']);
 export const NODE_REF_METHODS = new Set(['first', 'last', 'all']);
 
+// Time roots: `$now` and `$today`, the proxy's Luxon DateTimes. Like a node
+// reference, a time root is only ever built as the object of an allowlisted
+// getter (TIME_MEMBERS) or the receiver of an allowlisted zero-argument
+// method (TIME_METHODS), each of which yields a primitive; the DateTime
+// itself never stands alone in the grammar. Both lists stay clear of Intl:
+// the in-isolate Luxon copy formats and localises differently, so
+// toFormat(), toLocaleString() and the locale-dependent getters are the
+// engine's. The proxy builds both roots with the workflow timezone as
+// Luxon's default zone, which is what the isolates set too.
+export const TIME_ROOTS = ['$now', '$today'] as const;
+export type TimeRoot = (typeof TIME_ROOTS)[number];
+
 // Intrinsics are captured at import so a later patch to a prototype or a
 // global (a polyfill, a community package) does not change what the native
 // path runs; the isolates never see such a patch either.
@@ -95,6 +109,15 @@ export const toNum = Number;
 export const clone = structuredClone;
 
 export type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
+
+const captureGetters = (proto: object, names: string[]): ReadonlyMap<string, NativeMethod> => {
+	const getters = new Map<string, NativeMethod>();
+	for (const name of names) {
+		const getter = Object.getOwnPropertyDescriptor(proto, name)?.get;
+		if (typeof getter === 'function') getters.set(name, getter as NativeMethod);
+	}
+	return getters;
+};
 
 const captureMethods = (proto: object, names: string[]): ReadonlyMap<string, NativeMethod> => {
 	const methods = new Map<string, NativeMethod>();
@@ -167,7 +190,49 @@ export const ITERATOR_NATIVES = captureMethods(Array.prototype, [...ITERATOR_MET
 // A callback parameter may not take one of these names: the body would then
 // read the parameter where this grammar reads the root. `undefined` is a
 // legal parameter name in JS; here it is a literal.
-export const RESERVED_NAMES = new Set<string>([...DATA_ROOTS, '$input', '$node', '$', 'undefined']);
+export const RESERVED_NAMES = new Set<string>([
+	...DATA_ROOTS,
+	...TIME_ROOTS,
+	'$input',
+	'$node',
+	'$',
+	'undefined',
+]);
+
+// A test that mocks luxon leaves DateTime without a prototype; the lists are
+// then empty and every time root declines.
+const capturedProto: unknown = Reflect.get(DateTime ?? {}, 'prototype');
+const dateTimeProto: object =
+	typeof capturedProto === 'object' && capturedProto !== null ? capturedProto : {};
+
+export const TIME_MEMBERS = captureGetters(dateTimeProto, [
+	'year',
+	'month',
+	'day',
+	'hour',
+	'minute',
+	'second',
+	'millisecond',
+	'weekday',
+	'weekNumber',
+	'quarter',
+	'daysInMonth',
+	'offset',
+]);
+
+// Zero-argument only: the one argument these take is an options object,
+// which the grammar has no literal for. toString() is toISO(). Like
+// CALLABLE_METHODS, the names stay disjoint from the expression extensions
+// (plus/minus/format are extensions in the engines, not Luxon's).
+export const TIME_METHODS = captureMethods(dateTimeProto, [
+	'toMillis',
+	'toSeconds',
+	'toUnixInteger',
+	'toISO',
+	'toISODate',
+	'toISOTime',
+	'toString',
+]);
 
 export const CALLABLE_METHODS = new Set([
 	...STRING_METHODS.keys(),
