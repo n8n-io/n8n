@@ -1,4 +1,4 @@
-import { computed, h, watch } from 'vue';
+import { computed, getCurrentScope, h, onScopeDispose, watch } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -79,11 +79,24 @@ export function useExecutionRedaction() {
 		}
 	}
 
+	// The listeners below start from a click handler, outside any component scope,
+	// so nothing stops them on unmount. Tie them to this composable's scope instead.
+	let stopPendingReload: (() => void) | undefined;
+	let disposed = false;
+	if (getCurrentScope()) {
+		onScopeDispose(() => {
+			disposed = true;
+			stopPendingReload?.();
+		});
+	}
+
 	/**
 	 * Reloads the execution when the credential modal closes after the sharing of
 	 * the credential changed, so the panel shows the data the user can now see.
 	 */
 	function reloadAfterSharingChange(credentialId: string, executionId: string) {
+		stopPendingReload?.();
+
 		let sharingChanged = false;
 		const stopListening = credentialsStore.$onAction(({ name, args, after }) => {
 			if (name !== 'setCredentialSharedWith' || args[0].credentialId !== credentialId) return;
@@ -91,18 +104,27 @@ export function useExecutionRedaction() {
 				sharingChanged = true;
 			});
 		});
+		// Open, not active: a modal on top makes it inactive while it stays open.
 		const stopWatching = watch(
-			() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY],
+			() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
 			(isOpen) => {
 				if (isOpen) return;
-				stopListening();
-				stopWatching();
+				stop();
 				if (!sharingChanged) return;
 				reloadExecutionData(executionId).catch((error: unknown) => {
+					// The panel this reload was for is gone, so there is nobody to tell.
+					if (disposed) return;
 					showError(error, i18n.baseText('ndv.redacted.reloadError'));
 				});
 			},
 		);
+
+		function stop() {
+			stopListening();
+			stopWatching();
+			if (stopPendingReload === stop) stopPendingReload = undefined;
+		}
+		stopPendingReload = stop;
 	}
 
 	function openCredentialSharing() {

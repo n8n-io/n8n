@@ -13,6 +13,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { flushPromises } from '@vue/test-utils';
+import { effectScope } from 'vue';
 
 const showError = vi.fn();
 const confirm = vi.fn();
@@ -114,7 +115,7 @@ describe('useExecutionRedaction()', () => {
 						credentialIds,
 					},
 				},
-			}) as never;
+			}) as unknown as IExecutionResponse;
 
 		const viewerWith = (globalScopes: string[]) => {
 			const usersStore = mockedStore(useUsersStore);
@@ -207,12 +208,70 @@ describe('useExecutionRedaction()', () => {
 				expect(setExecutionRunDataSpy).toHaveBeenCalledWith(reloadedData);
 			});
 
+			it('keeps listening while another modal opens over the credential modal', async () => {
+				useExecutionRedaction().openCredentialSharing();
+				// A modal on top makes the credential modal no longer the active one, but it
+				// is still open, and the user can still change the sharing.
+				useUIStore().openModal('someOtherModal');
+				await flushPromises();
+				await useCredentialsStore().setCredentialSharedWith({
+					credentialId: 'alice-gmail',
+					sharedWithProjects: [],
+				});
+				useUIStore().closeModal('someOtherModal');
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+			});
+
 			it('does not reload when the sharing did not change', async () => {
 				useExecutionRedaction().openCredentialSharing();
 				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
 				await flushPromises();
 
 				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+			});
+
+			it('stops listening when the panel goes away before the modal closes', async () => {
+				const scope = effectScope();
+				const redaction = scope.run(() => useExecutionRedaction());
+				redaction?.openCredentialSharing();
+				await useCredentialsStore().setCredentialSharedWith({
+					credentialId: 'alice-gmail',
+					sharedWithProjects: [],
+				});
+
+				scope.stop();
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+			});
+
+			it('shows no error for a reload that fails after the panel went away', async () => {
+				let rejectReload: (error: Error) => void = () => {};
+				workflowsStore.fetchExecutionDataById = vi.fn(
+					async () =>
+						await new Promise((_resolve, reject) => {
+							rejectReload = reject;
+						}),
+				);
+				const scope = effectScope();
+				const redaction = scope.run(() => useExecutionRedaction());
+				redaction?.openCredentialSharing();
+				await useCredentialsStore().setCredentialSharedWith({
+					credentialId: 'alice-gmail',
+					sharedWithProjects: [],
+				});
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				scope.stop();
+				rejectReload(new Error('Network error'));
+				await flushPromises();
+
+				expect(showError).not.toHaveBeenCalled();
 			});
 
 			it('stops listening once the modal closed', async () => {
