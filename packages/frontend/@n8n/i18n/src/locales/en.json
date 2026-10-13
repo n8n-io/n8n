@@ -4664,7 +4664,7 @@
 	"settings.migrationReport.detail.state.error.title": "Could not change the state",
 	"settings.migrationReport.detail.state.notified": "Notified",
 	"settings.migrationReport.detail.state.notified.description": "The owner was emailed, the fix is still needed",
-	"settings.migrationReport.detail.table.notifiedAt": "notified {time}",
+	"settings.migrationReport.detail.table.notifiedAt": "Last notified {time}",
 	"settings.migrationReport.detail.notify.button": "Notify owner",
 	"settings.migrationReport.detail.notify.remind": "Remind",
 	"settings.migrationReport.detail.notify.success.title": "Owner notified",

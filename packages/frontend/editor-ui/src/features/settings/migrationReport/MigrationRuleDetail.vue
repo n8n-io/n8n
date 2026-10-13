@@ -20,6 +20,7 @@ import {
 	N8nDataTableServer,
 	N8nDropdownMenu,
 	N8nIcon,
+	N8nInfoTip,
 	N8nInput,
 	N8nLink,
 	N8nLoading,
@@ -958,34 +959,16 @@ const sortedWorkflows = computed(() => {
 				</div>
 			</template>
 			<template #[`item.status`]="{ item }">
-				<div :class="$style.cellStack">
-					<FindingStateSelect
-						:model-value="item.status"
-						:disabled="
-							!canMigrate ||
-							savingWorkflowIds.has(item.id) ||
-							notifyingWorkflowIds.has(item.id) ||
-							migratedWorkflowIds.has(item.id)
-						"
-						@update:model-value="onFindingStatusChange(item, $event)"
-					/>
-					<N8nText
-						v-if="item.notifiedAt"
-						size="small"
-						color="text-light"
-						data-test-id="migration-workflow-notified-at"
-					>
-						<I18nT
-							keypath="settings.migrationReport.detail.table.notifiedAt"
-							tag="span"
-							scope="global"
-						>
-							<template #time>
-								<TimeAgo :date="item.notifiedAt.toString()" />
-							</template>
-						</I18nT>
-					</N8nText>
-				</div>
+				<FindingStateSelect
+					:model-value="item.status"
+					:disabled="
+						!canMigrate ||
+						savingWorkflowIds.has(item.id) ||
+						notifyingWorkflowIds.has(item.id) ||
+						migratedWorkflowIds.has(item.id)
+					"
+					@update:model-value="onFindingStatusChange(item, $event)"
+				/>
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions">
@@ -1004,6 +987,23 @@ const sortedWorkflows = computed(() => {
 						data-test-id="migration-notify-owner-button"
 						@click="onNotify(item)"
 					/>
+					<N8nInfoTip
+						v-if="item.notifiedAt"
+						type="tooltip"
+						theme="info"
+						:bold="false"
+						data-test-id="migration-workflow-notified-at"
+					>
+						<I18nT
+							keypath="settings.migrationReport.detail.table.notifiedAt"
+							tag="span"
+							scope="global"
+						>
+							<template #time>
+								<TimeAgo :date="item.notifiedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nInfoTip>
 					<template v-if="showMigrate">
 						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
 							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}

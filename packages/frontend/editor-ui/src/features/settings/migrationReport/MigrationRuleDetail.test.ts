@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -1567,17 +1567,29 @@ describe('MigrationRuleDetail', () => {
 			);
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await screen.findByText('1 affected');
-			const row = getRow('Test Workflow 1');
-			expect(within(row).getByTestId('migration-workflow-notified-at')).not.toHaveTextContent(
-				'just now',
+			// The hover must start inside the tooltip trigger, so target the icon in the tip.
+			const notifiedTip = (name: string) =>
+				within(getRow(name))
+					.getByTestId('migration-workflow-notified-at')
+					.querySelector('svg') as Element;
+			await hoverTooltipTrigger(notifiedTip('Test Workflow 1'));
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Last notified'));
+			expect(getTooltip()).not.toHaveTextContent('just now');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
 			);
 
-			await userEvent.click(within(row).getByTestId('migration-notify-owner-button'));
-
-			await waitFor(() => {
-				expect(
-					within(getRow('Test Workflow 1')).getByTestId('migration-workflow-notified-at'),
-				).toHaveTextContent('just now');
+			await waitFor(() => expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalled());
+			// The click closes the open tooltip and the row re-renders, so the pointer
+			// has to leave the old trigger before a hover opens the new one.
+			const trigger = notifiedTip('Test Workflow 1').closest('[data-grace-area-trigger]');
+			trigger?.dispatchEvent(
+				new PointerEvent('pointerleave', { bubbles: true, pointerType: 'mouse' }),
+			);
+			await hoverTooltipTrigger(notifiedTip('Test Workflow 1'));
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Last notified just now'), {
+				timeout: 3000,
 			});
 			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledTimes(1);
 			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
