@@ -11,13 +11,9 @@ export class AgentsModule implements ModuleInterface {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
-		// Read the skills hub flag once, before anything reads or writes agent skills. With
-		// the flag on, the leader copies inline agent skills into the hub before agents run.
-		// The import also registers the copy for a later leader takeover.
+		// Read the skills hub flag once, before anything reads or writes agent skills.
 		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		await Container.get(SkillsHubRollout).init();
-		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
-		await Container.get(SkillsHubStartupCopy).runOnStartup();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.

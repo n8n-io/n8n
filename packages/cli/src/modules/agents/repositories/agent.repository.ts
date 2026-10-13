@@ -671,20 +671,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return changed;
 	}
 
-	/** One page of agents with their inline skill columns, oldest first, for the startup skill copy. */
-	async findPageWithInlineSkills(
-		skip: number,
-		take: number,
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>>> {
-		return await this.managerFor(ctx).find(Agent, {
-			select: ['id', 'projectId', 'schema', 'skills'],
-			order: { createdAt: 'ASC', id: 'ASC' },
-			skip,
-			take,
-		});
-	}
-
 	/** The project of each agent, to send an update push to the right project. */
 	async findProjectIdsByIds(
 		ids: string[],
