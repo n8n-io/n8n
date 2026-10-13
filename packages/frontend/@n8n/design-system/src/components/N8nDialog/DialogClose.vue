@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { DialogClose } from 'reka-ui';
 
+import { useI18n } from '../../composables/useI18n';
 import Icon from '../N8nIcon/Icon.vue';
 
 export interface DialogCloseProps {
@@ -11,6 +12,8 @@ export interface DialogCloseProps {
 }
 
 defineProps<DialogCloseProps>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -20,7 +23,7 @@ defineProps<DialogCloseProps>();
 	<DialogClose
 		v-else
 		:class="$style['close-button']"
-		aria-label="Close dialog"
+		:aria-label="t('dialog.close')"
 		data-test-id="dialog-close-button"
 	>
 		<slot>
