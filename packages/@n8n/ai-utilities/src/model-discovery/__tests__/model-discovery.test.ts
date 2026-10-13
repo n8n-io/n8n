@@ -201,6 +201,32 @@ describe('model-discovery', () => {
 		});
 	});
 
+	describe('google priority', () => {
+		it('drops a priority that is not a finite number', async () => {
+			const fetch = mockFetch({
+				models: [
+					{
+						name: 'models/gemini-2.5-pro',
+						priority: Number.POSITIVE_INFINITY,
+						supportedGenerationMethods: ['generateContent'],
+					},
+					{
+						name: 'models/gemini-2.5-flash',
+						priority: '5',
+						supportedGenerationMethods: ['generateContent'],
+					},
+				],
+			});
+
+			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+
+			expect(models).toEqual([
+				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+			]);
+		});
+	});
+
 	describe('groq', () => {
 		it('keeps only active model objects', async () => {
 			const fetch = mockFetch({

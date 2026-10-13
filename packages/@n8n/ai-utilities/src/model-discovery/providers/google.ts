@@ -68,7 +68,9 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 		.map((model) => ({
 			id: model.name,
 			name: getGoogleModelLabel(model.name, model.displayName),
-			...(typeof model.priority === 'number' ? { priority: model.priority } : {}),
+			...(typeof model.priority === 'number' && Number.isFinite(model.priority)
+				? { priority: model.priority }
+				: {}),
 		}))
 		.sort(byName);
 	return pinPrioritizedModels(models, (model) => model.priority);
