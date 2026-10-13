@@ -13,22 +13,11 @@ import type {
 	ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 
-const featureFlags = vi.hoisted(() => ({ computerUse: false }));
 const confirmRemoveMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	i18n: { baseText: (key: string) => key },
-}));
-
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.computerUse;
-			},
-		},
-	}),
 }));
 
 const {
@@ -110,40 +99,33 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => ({
 		isMcpAvailable: true,
-		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
-		isGatewayConnected: false,
-		isBrowserUseConnected: false,
+		browserConnected: false,
 	}),
 }));
 
-const { browserTelemetryMock, computerTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(
-	() => ({
-		browserTelemetryMock: {
-			trackModalOpened: vi.fn(),
-		},
-		computerTelemetryMock: {
-			trackModalOpened: vi.fn(),
-		},
-		telemetryMock: {
-			trackFirstCredentialConnectionStart: vi.fn(),
-			trackCredentialDropdownOpened: vi.fn(),
-			trackExistingCredentialSelected: vi.fn(),
-			trackNewCredentialConnectionStart: vi.fn(),
-			trackToolPermissionsUpdated: vi.fn(),
-		},
-		uiStoreMock: {
-			modalsById: {
-				instanceAiToolsConnection: { open: true, data: {} },
-			} as Record<string, { open: boolean; data?: Record<string, unknown> }>,
-			closeModal: vi.fn(),
-			setModalData: vi.fn(),
-			openNewCredential: vi.fn(),
-			openExistingCredential: vi.fn(),
-			appliedTheme: 'light',
-		},
-	}),
-);
+const { browserTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(() => ({
+	browserTelemetryMock: {
+		trackModalOpened: vi.fn(),
+	},
+	telemetryMock: {
+		trackFirstCredentialConnectionStart: vi.fn(),
+		trackCredentialDropdownOpened: vi.fn(),
+		trackExistingCredentialSelected: vi.fn(),
+		trackNewCredentialConnectionStart: vi.fn(),
+		trackToolPermissionsUpdated: vi.fn(),
+	},
+	uiStoreMock: {
+		modalsById: {
+			instanceAiToolsConnection: { open: true, data: {} },
+		} as Record<string, { open: boolean; data?: Record<string, unknown> }>,
+		closeModal: vi.fn(),
+		setModalData: vi.fn(),
+		openNewCredential: vi.fn(),
+		openExistingCredential: vi.fn(),
+		appliedTheme: 'light',
+	},
+}));
 
 uiStoreMock.modalsById = reactive(uiStoreMock.modalsById);
 
@@ -153,10 +135,6 @@ vi.mock('../../../instanceAiMcp.telemetry', () => ({
 
 vi.mock('../../../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => browserTelemetryMock,
-}));
-
-vi.mock('../../../instanceAiComputerUse.telemetry', () => ({
-	useInstanceAiComputerUseTelemetry: () => computerTelemetryMock,
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -286,7 +264,6 @@ const renderComponent = createComponentRenderer(InstanceAiToolsConnectionModalWr
 describe('InstanceAiToolsConnectionModalWrapper', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.computerUse = false;
 		modalListeners = {};
 		modalProps = {};
 		mcpStoreMock.connections = [];
@@ -614,20 +591,15 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 	});
 
 	it('tracks opening built-in connection details', () => {
-		featureFlags.computerUse = true;
 		renderComponent();
 		const serviceItems = (modalProps.items as ServiceConnectionItem[]).filter(
 			(item) => item.kind === 'service',
 		);
 		const browserItem = serviceItems.find((item) => item.serviceId === 'browser-use');
-		const computerItem = serviceItems.find((item) => item.serviceId === 'computer-use');
 
 		expect(browserItem).toBeDefined();
-		expect(computerItem).toBeDefined();
 		emitModalEvent('onUpdate:detailItem', browserItem);
-		emitModalEvent('onUpdate:detailItem', computerItem);
 
 		expect(browserTelemetryMock.trackModalOpened).toHaveBeenCalledWith('tools_modal');
-		expect(computerTelemetryMock.trackModalOpened).toHaveBeenCalledWith(false, 'tools_modal');
 	});
 });

@@ -203,7 +203,7 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			computerUseState: context.computerUseState,
+			browserUseState: context.browserUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,

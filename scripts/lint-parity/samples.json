@@ -45,10 +45,6 @@
 		"src/expressions/grammar.terms.ts",
 		"test/expressions/expressions.test.ts"
 	],
-	"packages/@n8n/computer-use": [
-		"src/__mocks__/@inquirer/prompts.ts",
-		"src/config-templates.test.ts"
-	],
 	"packages/@n8n/config": [
 		"src/configs/__tests__/ai.config.test.ts",
 		"src/configs/activity-log.config.ts"
@@ -79,13 +75,11 @@
 	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",
-		"evaluations/computer-use/report-html.ts",
 		"src/__tests__/binary-checks.test.ts",
 		"src/agent/aia-model-defaults.ts",
 		"src/tools/__tests__/activity.tool.test.ts"
 	],
 	"packages/@n8n/json-schema-to-zod": ["src/index.ts", "test/json-schema-to-zod.test.ts"],
-	"packages/@n8n/local-gateway": ["src/main/connect-origin.test.ts", "src/main/connect-origin.ts"],
 	"packages/@n8n/mcp-apps": [
 		"src/apps-manifest.ts",
 		"src/apps/workflow-preview/App.vue",

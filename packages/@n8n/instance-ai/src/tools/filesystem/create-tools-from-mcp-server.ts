@@ -227,20 +227,20 @@ function warnSkippedLocalMcpTool(logger: Logger) {
 
 /**
  * Build native tools dynamically from the MCP tools advertised by a connected
- * local MCP server (e.g. the computer-use daemon).
+ * local MCP server (the Browser Use session).
  *
- * Each tool's input schema is converted from the daemon's JSON Schema definition
+ * Each tool's input schema is converted from the server's JSON Schema definition
  * to a Zod schema so the LLM receives accurate parameter information. Falls back
  * to `z.record(z.unknown())` if conversion fails for a particular tool.
  *
- * When the daemon responds with `GATEWAY_CONFIRMATION_REQUIRED`, the tool
+ * When the server responds with `GATEWAY_CONFIRMATION_REQUIRED`, the tool
  * suspends the agent via the native `suspend()` mechanism. This persists
  * the confirmation request to the database, so it survives page reloads and
- * server restarts. On resume, the tool re-calls the daemon with the selected
+ * server restarts. On resume, the tool re-calls the server with the selected
  * decision token.
  *
  * The `toModelOutput` callback converts MCP image blocks into AI SDK content
- * output parts so the LLM receives gateway screenshots as real multimodal input.
+ * output parts so the LLM receives browser screenshots as real multimodal input.
  */
 export function createToolsFromLocalMcpServer({
 	server,
@@ -299,7 +299,7 @@ export function createToolsFromLocalMcpServer({
 				// Convert JSON Schema → Zod (v3) so the LLM sees the actual parameter shapes.
 				// McpTool.inputSchema properties are typed as Record<string, unknown> to
 				// accommodate arbitrary JSON Schema values; the cast is safe here because
-				// the daemon always sends valid JSON Schema objects.
+				// the server always sends valid JSON Schema objects.
 				inputSchema = convertJsonSchemaToZod(mcpTool.inputSchema as JSONSchema);
 			}
 		} catch {
@@ -356,7 +356,7 @@ export function createToolsFromLocalMcpServer({
 							isError: true,
 						});
 					}
-					// Re-call the daemon with the user's decision
+					// Re-call the server with the user's decision
 					return observeResult(
 						await callServer({ ...args, _confirmation: resumeData.resourceDecision }),
 					);
@@ -367,7 +367,7 @@ export function createToolsFromLocalMcpServer({
 				const { _confirmation: _stripped, ...safeArgs } = args;
 				const result = await callServer(safeArgs);
 
-				// If the daemon requires a resource-access confirmation, suspend the agent
+				// If the server requires a resource-access confirmation, suspend the agent
 				if (result.isError) {
 					const payload = tryParseGatewayConfirmationRequired(result);
 					if (payload && typeof ctx.suspend === 'function') {

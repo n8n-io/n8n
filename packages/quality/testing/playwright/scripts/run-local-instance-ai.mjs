@@ -48,7 +48,6 @@ const testEnv = {
 	N8N_ENABLED_MODULES: 'instance-ai',
 	N8N_INSTANCE_AI_MODEL: 'anthropic/claude-sonnet-4-6',
 	N8N_INSTANCE_AI_MODEL_API_KEY: apiKey,
-	N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED: 'true',
 	...callerTestEnv,
 };
 

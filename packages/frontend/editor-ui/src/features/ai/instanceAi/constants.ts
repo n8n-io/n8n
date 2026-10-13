@@ -34,7 +34,6 @@ export const INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY = 'instanceAiAgentBu
 export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
-export const COMPUTER_USE_CONNECTION_TYPE = 'computer-use';
 
 export const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
 export const CHROME_EXTENSION_URL = `https://chromewebstore.google.com/detail/n8n-browser-use/${BROWSER_USE_EXTENSION_ID}`;
@@ -67,6 +66,5 @@ export function isNodeChipRemovalKey(key: string): boolean {
 	return NODE_CHIP_REMOVAL_KEYS.has(key);
 }
 
-export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
 export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
 export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';

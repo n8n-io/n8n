@@ -36,7 +36,6 @@ const moduleSettingsFor = ({ activationCapped = false }: { activationCapped?: bo
 		'instance-ai': {
 			enabled: true,
 			mcpConnectionsAvailable: false,
-			localGatewayDisabled: false,
 			browserUseEnabled: false,
 			proxyEnabled: false,
 			cloudManaged: false,

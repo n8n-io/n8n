@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -41,42 +40,22 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: vi.fn().mockResolvedValue(null),
 	updateSettings: vi.fn(),
-	fetchPreferences: vi.fn().mockResolvedValue({
-		credentialId: null,
-		credentialType: null,
-		credentialName: null,
-		modelName: 'gpt-4',
-		localGatewayDisabled: false,
-	}),
-	updatePreferences: vi.fn(),
 	fetchServiceCredentials: vi.fn().mockResolvedValue([]),
 	fetchInstanceModelCredentials: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock('../instanceAi.api', () => ({
-	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
-	() => ({
-		computerUseExperimentMock: vi.fn(),
-		contextPreferencesEnabledMock: vi.fn(() => true),
-		routerPushMock: vi.fn(),
-	}),
-);
+const { contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(() => ({
+	contextPreferencesEnabledMock: vi.fn(() => true),
+	routerPushMock: vi.fn(),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
-}));
-
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
@@ -116,7 +95,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		fetchCredentialTypesSpy = vi
@@ -180,7 +158,6 @@ describe('SettingsInstanceAiView', () => {
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,
-				localGatewayDisabled: false,
 			},
 		});
 	});
@@ -595,21 +572,6 @@ describe('SettingsInstanceAiView', () => {
 		it('shows the browser use toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
-		});
-	});
-
-	describe('Computer use settings', () => {
-		it('shows the computer use toggle when the experiment is enabled', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-computer-use-toggle')).toBeVisible();
-		});
-
-		it('hides the computer use toggle when the experiment is disabled', () => {
-			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-computer-use-toggle')).toBeNull();
 		});
 	});
 

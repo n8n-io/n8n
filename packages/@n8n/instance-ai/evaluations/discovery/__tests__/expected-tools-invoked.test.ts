@@ -253,7 +253,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			userMessage: 'Help me set up Slack credentials',
 			expectedToolInvocations: {
 				anyOfToolCalls: [
-					{ toolName: 'load_skill', argsContainAny: ['credential-setup-with-computer-use'] },
+					{ toolName: 'load_skill', argsContainAny: ['credential-setup-with-browser-use'] },
 					{ toolName: 'browser_navigate' },
 				],
 			},
@@ -266,7 +266,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 					toolCalls: [
 						{
 							toolName: 'load_skill',
-							args: { skillId: 'credential-setup-with-computer-use' },
+							args: { skillId: 'credential-setup-with-browser-use' },
 						},
 					],
 				}),
@@ -291,7 +291,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			);
 
 			expect(result.pass).toBe(false);
-			expect(result.comment).toContain('credential-setup-with-computer-use');
+			expect(result.comment).toContain('credential-setup-with-browser-use');
 		});
 	});
 

@@ -5,15 +5,11 @@ import {
 	type InputMenuItem,
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
-import {
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
-} from '../constants';
+import { INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY } from '../constants';
 
 const {
 	browserUseTelemetry,
 	ensureBrowserConnected,
-	computerUseTelemetry,
 	featureFlags,
 	ignorePendingConnectResult,
 	mcpStore,
@@ -24,8 +20,7 @@ const {
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	ensureBrowserConnected: vi.fn(),
-	computerUseTelemetry: { trackModalOpened: vi.fn() },
-	featureFlags: { computerUse: true, preferences: false },
+	featureFlags: { preferences: false },
 	ignorePendingConnectResult: vi.fn(),
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
@@ -43,15 +38,8 @@ const {
 	settingsStore: {
 		fetch: vi.fn(),
 		isMcpAvailable: true,
-		isLocalGatewayDisabled: false,
-		isComputerUseAvailable: true,
 		isBrowserUseAvailable: true,
-		isGatewayConnected: false,
-		computerUseConnectionStatus: 'none',
 		browserUseConnectionStatus: 'none',
-		gatewayHostIdentifier: null as string | null,
-		persistLocalGatewayPreference: vi.fn(),
-		disconnectComputerUse: vi.fn(),
 		disconnectBrowserUse: vi.fn(),
 	},
 	uiStore: {
@@ -81,16 +69,6 @@ vi.mock('../composables/useBrowserUseConnection', () => ({
 	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
 }));
 
-vi.mock('@/experiments/instanceAiComputerUse', () => ({
-	useInstanceAiComputerUseExperiment: () => ({
-		isFeatureEnabled: {
-			get value() {
-				return featureFlags.computerUse;
-			},
-		},
-	}),
-}));
-
 vi.mock('../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => settingsStore,
 }));
@@ -109,10 +87,6 @@ vi.mock('../instanceAiMcp.telemetry', () => ({
 
 vi.mock('../instanceAiBrowserUse.telemetry', () => ({
 	useInstanceAiBrowserUseTelemetry: () => browserUseTelemetry,
-}));
-
-vi.mock('../instanceAiComputerUse.telemetry', () => ({
-	useInstanceAiComputerUseTelemetry: () => computerUseTelemetry,
 }));
 
 function findItem(items: InputMenuItem[], id: string): InputMenuItem | undefined {
@@ -148,22 +122,15 @@ const mcpStatusCases: Array<{
 describe('useInstanceAiInputMenuItems', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		featureFlags.computerUse = true;
 		featureFlags.preferences = false;
 		mcpStore.connections = [];
 		settingsStore.isMcpAvailable = true;
-		settingsStore.isLocalGatewayDisabled = false;
-		settingsStore.isComputerUseAvailable = true;
 		settingsStore.isBrowserUseAvailable = true;
-		settingsStore.isGatewayConnected = false;
-		settingsStore.computerUseConnectionStatus = 'none';
 		settingsStore.browserUseConnectionStatus = 'none';
-		settingsStore.gatewayHostIdentifier = null;
 	});
 
 	it('omits connection groups that instance settings report as unavailable', () => {
 		settingsStore.isMcpAvailable = false;
-		settingsStore.isComputerUseAvailable = false;
 		settingsStore.isBrowserUseAvailable = false;
 
 		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
@@ -212,69 +179,33 @@ describe('useInstanceAiInputMenuItems', () => {
 		},
 	);
 
-	it.each([
-		{
-			id: 'computer',
-			setDisconnected: () => {
-				settingsStore.computerUseConnectionStatus = 'disconnected';
-				settingsStore.gatewayHostIdentifier = 'Work computer';
-			},
-			modal: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-			title: 'Work computer',
-		},
-		{
-			id: 'browser',
-			setDisconnected: () => {
-				settingsStore.browserUseConnectionStatus = 'disconnected';
-			},
-			// Browser Use reconnects through the shared flow, which opens a modal only when
-			// the extension actually needs the user.
-			modal: null,
-			title: 'instanceAi.inputMenu.browser.connectedTitle',
-		},
-	])(
-		'shows a Reconnect menu when $id disconnects unexpectedly',
-		async ({ id, setDisconnected, modal, title }) => {
-			setDisconnected();
-			const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
-
-			const item = findItem(menuItems.value, id);
-			expect(item?.data?.status).toBe('disconnected');
-			expect(item?.data?.action).toBeUndefined();
-			expect(findItem(menuItems.value, `${id}-status`)?.label).toBe(title);
-			expect(disconnectedConnectionCount.value).toBe(1);
-
-			await findItem(menuItems.value, `${id}-reconnect`)?.data?.action?.();
-			if (modal) {
-				expect(uiStore.openModal).toHaveBeenCalledWith(modal);
-			} else {
-				expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
-				expect(uiStore.openModal).not.toHaveBeenCalled();
-			}
-		},
-	);
-
-	it('keeps user-disconnected services as direct Connect actions', () => {
+	it('shows a Reconnect menu when Browser Use disconnects unexpectedly', async () => {
+		settingsStore.browserUseConnectionStatus = 'disconnected';
 		const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 
-		for (const id of ['computer', 'browser']) {
-			const item = findItem(menuItems.value, id);
-			expect(item?.data?.status).toBe('none');
-			expect(item?.children).toBeUndefined();
-			expect(item?.data?.action).toBeTypeOf('function');
-		}
-		expect(disconnectedConnectionCount.value).toBe(0);
+		const item = findItem(menuItems.value, 'browser');
+		expect(item?.data?.status).toBe('disconnected');
+		expect(item?.data?.action).toBeUndefined();
+		expect(findItem(menuItems.value, 'browser-status')?.label).toBe(
+			'instanceAi.inputMenu.browser.connectedTitle',
+		);
+		expect(disconnectedConnectionCount.value).toBe(1);
+
+		// Browser Use reconnects through the shared flow, which opens a modal only when
+		// the extension actually needs the user.
+		await findItem(menuItems.value, 'browser-reconnect')?.data?.action?.();
+		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+		expect(uiStore.openModal).not.toHaveBeenCalled();
 	});
 
-	it('does not offer direct Browser Use disconnect when browser access comes from Computer Use', () => {
-		settingsStore.isGatewayConnected = true;
+	it('keeps a user-disconnected service as a direct Connect action', () => {
+		const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(vi.fn());
 
-		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
-
-		expect(findItem(menuItems.value, 'browser-disconnect')).toBeUndefined();
-		expect(findItem(menuItems.value, 'browser')?.label).toBe(
-			'instanceAi.inputMenu.browser.connect',
-		);
+		const item = findItem(menuItems.value, 'browser');
+		expect(item?.data?.status).toBe('none');
+		expect(item?.children).toBeUndefined();
+		expect(item?.data?.action).toBeTypeOf('function');
+		expect(disconnectedConnectionCount.value).toBe(0);
 	});
 
 	it('disconnects Browser Use when the direct extension is connected', async () => {
@@ -286,27 +217,16 @@ describe('useInstanceAiInputMenuItems', () => {
 		expect(settingsStore.disconnectBrowserUse).toHaveBeenCalledOnce();
 	});
 
-	it('shows Computer Use as connecting while daemon pairing is in progress', () => {
-		settingsStore.computerUseConnectionStatus = 'connecting';
-
-		const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
-
-		expect(findItem(menuItems.value, 'computer')?.data?.status).toBe('connecting');
-	});
-
 	it('delegates attachment and connection actions to their owners', async () => {
 		const attachFiles = vi.fn();
-		settingsStore.isLocalGatewayDisabled = true;
-		settingsStore.isGatewayConnected = true;
-		settingsStore.computerUseConnectionStatus = 'connected';
+		settingsStore.browserUseConnectionStatus = 'connected';
 		mcpStore.connections = [makeMcpConnection('1', 'connected')];
 		const { menuItems } = useInstanceAiInputMenuItems(attachFiles);
 
 		await findItem(menuItems.value, 'attach-files')?.data?.action?.();
 		await findItem(menuItems.value, 'mcp-1-setup')?.data?.action?.();
 		await findItem(menuItems.value, 'mcp-1-disconnect')?.data?.action?.();
-		await findItem(menuItems.value, 'computer-disconnect')?.data?.action?.();
-		await findItem(menuItems.value, 'browser')?.data?.action?.();
+		await findItem(menuItems.value, 'browser-disconnect')?.data?.action?.();
 
 		expect(attachFiles).toHaveBeenCalledOnce();
 		expect(mcpTelemetry.trackSettingsOpened).toHaveBeenCalledWith('server-1', 'input_menu');
@@ -319,8 +239,7 @@ describe('useInstanceAiInputMenuItems', () => {
 		expect(ignorePendingConnectResult.mock.invocationCallOrder[0]).toBeLessThan(
 			mcpStore.disconnect.mock.invocationCallOrder[0] ?? 0,
 		);
-		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
-		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+		expect(settingsStore.disconnectBrowserUse).toHaveBeenCalledOnce();
 	});
 
 	describe('the preferences item', () => {
