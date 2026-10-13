@@ -109,7 +109,11 @@ export async function imageGenerationModelSearch(
 
 	if (filter) {
 		const filterLowerCase = filter.toLowerCase();
-		results = results.filter((r) => r.name.toLowerCase().includes(filterLowerCase));
+		results = results.filter(
+			(r) =>
+				r.name.toLowerCase().includes(filterLowerCase) ||
+				String(r.value).toLowerCase().includes(filterLowerCase),
+		);
 	}
 
 	return {

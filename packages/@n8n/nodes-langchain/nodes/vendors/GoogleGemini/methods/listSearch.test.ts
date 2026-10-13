@@ -224,6 +224,27 @@ describe('GoogleGemini -> listSearch', () => {
 		});
 	});
 
+	describe('imageModelSearch with names from the API', () => {
+		it('should match the filter against the id when the API names the model', async () => {
+			apiRequestMock.mockResolvedValue({
+				models: [{ name: 'models/gemini-2.5-flash-image', displayName: 'Gemini 2.5 Flash Image' }],
+			});
+
+			const result = await imageGenerationModelSearch.call(
+				mockExecuteFunctions,
+				'gemini-2.5-flash-image',
+			);
+
+			expect(result.results).toEqual([
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'Gemini 2.5 Flash Image (Nano Banana)',
+					value: 'models/gemini-2.5-flash-image',
+				},
+			]);
+		});
+	});
+
 	describe('imageEditModelSearch', () => {
 		it('should return image edit models', async () => {
 			apiRequestMock.mockResolvedValue(mockResponse);
