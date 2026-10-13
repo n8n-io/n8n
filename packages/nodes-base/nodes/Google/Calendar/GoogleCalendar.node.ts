@@ -27,6 +27,7 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	googleApiRequestWithRetries,
+	parseAttendees,
 	type RecurrentEvent,
 } from './GenericFunctions';
 import { sortItemKeysByPriorityList } from '../../../utils/utilities';
@@ -241,16 +242,7 @@ export class GoogleCalendar implements INodeType {
 							},
 						};
 						if (additionalFields.attendees) {
-							body.attendees = [];
-							(additionalFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees = parseAttendees.call(this, additionalFields.attendees, i);
 						}
 						if (additionalFields.color) {
 							body.colorId = additionalFields.color as string;
@@ -642,16 +634,7 @@ export class GoogleCalendar implements INodeType {
 						}
 						// nodeVersion < 1.2
 						if (updateFields.attendees) {
-							body.attendees = [];
-							(updateFields.attendees as string[]).forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees = parseAttendees.call(this, updateFields.attendees, i);
 						}
 						// nodeVersion >= 1.2
 						if (updateFields.attendeesUi) {
@@ -663,6 +646,7 @@ export class GoogleCalendar implements INodeType {
 									};
 								}
 							).values;
+							const parsedAttendees = parseAttendees.call(this, attendees, i);
 							body.attendees = [];
 							if (mode === 'add') {
 								const event = await googleApiRequest.call(
@@ -674,15 +658,7 @@ export class GoogleCalendar implements INodeType {
 									body.attendees?.push(attendee);
 								});
 							}
-							attendees.forEach((attendee) => {
-								body.attendees!.push.apply(
-									body.attendees,
-									attendee
-										.split(',')
-										.map((a) => a.trim())
-										.map((email) => ({ email })),
-								);
-							});
+							body.attendees.push(...parsedAttendees);
 						}
 						if (updateFields.color) {
 							body.colorId = updateFields.color as string;

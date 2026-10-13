@@ -1,6 +1,7 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IDataObject, INode, IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
@@ -126,6 +127,58 @@ describe('Google Calendar Node', () => {
 				{},
 			);
 		});
+
+		it.each([
+			{
+				version: 1.1,
+				mode: 'legacy',
+				updateFields: { attendees: [{ email: 'alice@example.com' }] },
+			},
+			{
+				version: 1.2,
+				mode: 'replace',
+				updateFields: {
+					attendeesUi: {
+						values: { mode: 'replace', attendees: [{ email: 'alice@example.com' }] },
+					},
+				},
+			},
+			{
+				version: 1.3,
+				mode: 'add',
+				updateFields: {
+					attendeesUi: {
+						values: { mode: 'add', attendees: [{ email: 'alice@example.com' }] },
+					},
+				},
+			},
+		])(
+			'should report a node error for an attendee object in version $version ($mode)',
+			async ({ version, updateFields }) => {
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: version }));
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('event')
+					.mockReturnValueOnce('update')
+					.mockReturnValueOnce('myCalendar')
+					.mockReturnValueOnce('myEvent');
+				if (version >= 1.3) {
+					mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('instance');
+				}
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce(true)
+					.mockReturnValueOnce(updateFields);
+
+				const execution = googleCalendar.execute.call(mockExecuteFunctions);
+
+				await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+				await expect(execution).rejects.toMatchObject({
+					message: expect.stringMatching(/attendee/i),
+					context: { itemIndex: 0 },
+				});
+				expect(genericFunctions.googleApiRequest).not.toHaveBeenCalled();
+			},
+		);
 
 		describe('all-day <-> timed conversion', () => {
 			const setupUpdate = (updateFields: IDataObject) => {
