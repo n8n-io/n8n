@@ -9,6 +9,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { deleteAgentTask, getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
+import { GENERIC_ISSUE_KEYS, SPECIFIC_ISSUE_KEYS } from '../utils/validationIssues';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
@@ -65,13 +66,8 @@ type TaskRow = AgentTaskDto & {
 };
 
 const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	...GENERIC_ISSUE_KEYS,
+	invalid_value: SPECIFIC_ISSUE_KEYS['task.invalid_value'],
 };
 
 const taskIssueMessages = computed(() => {
