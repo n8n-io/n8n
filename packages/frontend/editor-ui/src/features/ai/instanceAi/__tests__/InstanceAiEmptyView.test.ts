@@ -593,7 +593,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(telemetryTrack).toHaveBeenCalledTimes(1);
 			expect(telemetryTrack).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
-				{ workflowPreviewsAboveAssistantVariant: variant },
+				{ variant, '$feature/124_workflow_previews_above_assistant': variant },
 			);
 		},
 	);

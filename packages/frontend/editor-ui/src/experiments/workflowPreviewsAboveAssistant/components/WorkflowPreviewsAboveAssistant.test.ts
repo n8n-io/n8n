@@ -154,11 +154,9 @@ describe('WorkflowPreviewsAboveAssistant', () => {
 			'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt';
 
 		expect(button.className).not.toContain('tryExampleVisible');
-		expect(button).toHaveAttribute('tabindex', '-1');
 
 		await fireEvent.mouseEnter(getByTestId('workflow-preview-unit'));
 		expect(button.className).toContain('tryExampleVisible');
-		expect(button).not.toHaveAttribute('tabindex');
 		expect(button).toHaveTextContent('Try this example');
 
 		await fireEvent.mouseEnter(button);
@@ -176,6 +174,44 @@ describe('WorkflowPreviewsAboveAssistant', () => {
 		await fireEvent.mouseLeave(getByTestId('workflow-preview-unit'));
 		expect(emitted()['preview-prompt']?.at(-1)).toEqual([null]);
 		expect(button.className).not.toContain('tryExampleVisible');
+	});
+
+	it('reveals "Try this example" on keyboard focus and previews its prompt', async () => {
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const { getByTestId, emitted } = renderComponent();
+		const button = getByTestId('workflow-preview-try-example');
+		const scoreMyLeadsPromptKey =
+			'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt';
+
+		await user.tab();
+		expect(getByTestId('workflow-preview-previous')).toHaveFocus();
+		expect(button.className).toContain('tryExampleVisible');
+		expect(getByTestId('workflow-preview-unit').className).not.toContain('unitDimmed');
+
+		await user.tab();
+		await user.tab();
+		expect(button).toHaveFocus();
+		expect(emitted()['preview-prompt']).toEqual([[scoreMyLeadsPromptKey]]);
+
+		await user.tab();
+		expect(button).not.toHaveFocus();
+		expect(emitted()['preview-prompt']?.at(-1)).toEqual([null]);
+		expect(button.className).not.toContain('tryExampleVisible');
+	});
+
+	it('keeps "Try this example" visible while focused after the pointer leaves', async () => {
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const { getByTestId, emitted } = renderComponent();
+		const button = getByTestId('workflow-preview-try-example');
+
+		await user.tab();
+		await user.tab();
+		await user.tab();
+		await fireEvent.mouseEnter(getByTestId('workflow-preview-unit'));
+		await fireEvent.mouseLeave(getByTestId('workflow-preview-unit'));
+
+		expect(button.className).toContain('tryExampleVisible');
+		expect(emitted()['preview-prompt']?.at(-1)).not.toEqual([null]);
 	});
 
 	it('labels the arrows for assistive technology', () => {

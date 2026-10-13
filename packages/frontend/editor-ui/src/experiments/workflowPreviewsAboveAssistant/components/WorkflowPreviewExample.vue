@@ -650,7 +650,7 @@ onUnmounted(() => {
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
-	color: var(--color--text--base);
+	color: var(--color--text);
 }
 
 .nodeLabelText {
@@ -668,7 +668,7 @@ onUnmounted(() => {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 64px;
+	width: var(--spacing--3xl);
 	height: var(--spacing--2xs);
 	border-radius: var(--radius--full);
 	background: var(--preview-line-color);

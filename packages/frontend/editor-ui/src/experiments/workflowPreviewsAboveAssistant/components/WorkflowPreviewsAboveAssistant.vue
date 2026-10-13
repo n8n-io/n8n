@@ -25,7 +25,9 @@ const reservedPreviewHeight = computed(() =>
 
 const activeExampleIndex = ref(0);
 const firstExampleBuilt = ref(false);
-const hovered = ref(false);
+const isPointerInside = ref(false);
+const hasFocusWithin = ref(false);
+const hovered = computed(() => isPointerInside.value || hasFocusWithin.value);
 const activeExample = computed(
 	() => WORKFLOW_PREVIEW_EXAMPLES[activeExampleIndex.value] ?? WORKFLOW_PREVIEW_EXAMPLES[0],
 );
@@ -41,7 +43,15 @@ function showExampleAtOffset(offset: number) {
 }
 
 function handleUnitLeave() {
-	hovered.value = false;
+	isPointerInside.value = false;
+	if (!hasFocusWithin.value) emit('preview-prompt', null);
+}
+
+function handleUnitFocusOut(event: FocusEvent) {
+	const unit = event.currentTarget;
+	const nextFocused = event.relatedTarget;
+	if (unit instanceof Node && nextFocused instanceof Node && unit.contains(nextFocused)) return;
+	hasFocusWithin.value = false;
 	emit('preview-prompt', null);
 }
 </script>
@@ -51,8 +61,10 @@ function handleUnitLeave() {
 		<div
 			:class="[$style.unit, !hovered && $style.unitDimmed]"
 			data-test-id="workflow-preview-unit"
-			@mouseenter="hovered = true"
+			@mouseenter="isPointerInside = true"
 			@mouseleave="handleUnitLeave"
+			@focusin="hasFocusWithin = true"
+			@focusout="handleUnitFocusOut"
 		>
 			<div
 				ref="previewAreaRef"
@@ -112,10 +124,11 @@ function handleUnitLeave() {
 					variant="outline"
 					size="small"
 					:class="[$style.tryExample, hovered && $style.tryExampleVisible]"
-					:tabindex="hovered ? undefined : -1"
 					data-test-id="workflow-preview-try-example"
 					@mouseenter="emit('preview-prompt', activeExample.promptKey)"
 					@mouseleave="emit('preview-prompt', null)"
+					@focus="emit('preview-prompt', activeExample.promptKey)"
+					@blur="emit('preview-prompt', null)"
 					@click="emit('use-example', activeExample)"
 				>
 					{{ i18n.baseText('experiments.workflowPreviewsAboveAssistant.tryExample') }}
@@ -162,7 +175,7 @@ function handleUnitLeave() {
 			oklch(from var(--canvas--dot--color) l c h / 0.5) 1px,
 			transparent 1px
 		);
-		background-size: 16px 16px;
+		background-size: var(--spacing--sm) var(--spacing--sm);
 		mask-image: radial-gradient(
 			ellipse closest-side at center,
 			black 40%,
@@ -221,7 +234,7 @@ function handleUnitLeave() {
 
 .title {
 	margin: 0;
-	color: var(--color--text--base);
+	color: var(--color--text);
 	font-size: var(--font-size--lg);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);

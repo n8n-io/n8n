@@ -200,9 +200,11 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user assigned to the workflow previews experiment (124) reached the n8n Assistant empty state, the view that hosts the previews above the chat input, including the control variant. Fires once per visit to that view. Does not fire on a thread, nor for the proactive starter or split empty-state layouts, which replace this view.',
 		properties: z.object({
-			workflowPreviewsAboveAssistantVariant: workflowPreviewsAboveAssistantVariant.describe(
+			variant: workflowPreviewsAboveAssistantVariant.describe(
 				'Variant of the 124_workflow_previews_above_assistant feature flag the user saw',
 			),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/124_workflow_previews_above_assistant': workflowPreviewsAboveAssistantVariant,
 		}),
 	},
 	// EOF Experiment cleanup

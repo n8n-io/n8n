@@ -18,6 +18,7 @@ import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT,
 } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -397,9 +398,10 @@ watch(
 			return;
 		}
 
-		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED, {
-			workflowPreviewsAboveAssistantVariant: variant,
-		});
+		telemetry.track(
+			TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED,
+			getExperimentTelemetryPayload(WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT, variant),
+		);
 		hasTrackedWorkflowPreviewsEmptyStateView = true;
 	},
 	{ immediate: true },
