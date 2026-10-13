@@ -20,6 +20,11 @@ vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({ copy: copySpy }),
 }));
 
+const showMessage = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage }),
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
@@ -1205,6 +1210,83 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 		await waitFor(() => {
 			expect(emitted()['update:modelValue']).toEqual([['cred-1']]);
+		});
+	});
+
+	describe('file access', () => {
+		const deployed = (fileAccessConsentUrl: string | null, settings = { teamChannels: true }) => ({
+			modelValue: 'cred-1',
+			setup: setupState({ managerCredentials: [connectedCredential] }),
+			savedSettings: settings,
+			runtime: buildRuntime({
+				provisionedApp: ref({
+					credentialId: 'bot-cred-1',
+					appId: 'app-1',
+					appName: 'Support Bot (n8n)',
+					organizationName: 'Acme Corp',
+					entraAppUrl: 'https://entra.microsoft.com/app-1',
+					fileAccessConsentUrl,
+					secretExpiresAt: '2028-09-17T00:00:00Z',
+				}),
+				provisionedBot: ref({
+					botName: 'support-bot-1',
+					resourceGroup: 'n8n-agents',
+					subscriptionId: 'sub-1',
+				}),
+			}),
+		});
+		const CONSENT_URL = 'https://login.microsoftonline.com/tenant-1/adminconsent?client_id=app-1';
+
+		const renderWith = (overrides: Record<string, unknown>) =>
+			renderComponent({ props: props(overrides), pinia: createTestingPinia(), global: { stubs } });
+
+		it('leaves the step out when the agent works only in direct chats', () => {
+			const { queryByText } = renderWith(deployed(CONSENT_URL, { teamChannels: false }));
+
+			expect(queryByText('agents.channels.teams.managed.fileAccess.title')).not.toBeInTheDocument();
+		});
+
+		it('asks for file access in its own step, before the last one', async () => {
+			const { getByText, getByTestId, queryByTestId } = renderWith(deployed(CONSENT_URL));
+
+			const title = getByText('agents.channels.teams.managed.fileAccess.title');
+			expect(
+				title.compareDocumentPosition(getByText('agents.channels.teams.managed.finish.title')) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			await waitFor(() => expect(getByTestId('teams-file-access-menu')).toBeVisible());
+			// Not repeated as a callout on the availability step.
+			expect(queryByTestId('teams-file-access')).not.toBeInTheDocument();
+		});
+
+		it('opens the approval in a new tab', async () => {
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const { getByTestId } = renderWith(deployed(CONSENT_URL));
+
+			await fireEvent.click(getByTestId('teams-file-access-approve'));
+
+			expect(open).toHaveBeenCalledWith(CONSENT_URL, '_blank', 'noopener');
+		});
+
+		it('copies the link for an admin and says so', async () => {
+			const { getByTestId } = renderWith(deployed(CONSENT_URL));
+
+			await fireEvent.click(getByTestId('teams-file-access-copy'));
+
+			expect(copySpy).toHaveBeenCalledWith(CONSENT_URL);
+			expect(showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'agents.channels.teams.managed.fileAccess.copied',
+				message: 'agents.channels.teams.managed.fileAccess.copiedHint Acme Corp',
+			});
+		});
+
+		it('falls back to the app permissions in Entra without a consent link', async () => {
+			const { getByTestId } = renderWith(deployed(null));
+
+			await fireEvent.click(getByTestId('teams-file-access-copy'));
+
+			expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('app-1'));
 		});
 	});
 });

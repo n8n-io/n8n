@@ -42,6 +42,8 @@ const props = withDefaults(
 		 * setup does not keep its progress, so there the consent opens a new tab.
 		 */
 		openConsentInPlace?: boolean;
+		/** The managed setup asks for file access in a step of its own. */
+		hideFileAccess?: boolean;
 	}>(),
 	{
 		startCollapsed: false,
@@ -49,6 +51,7 @@ const props = withDefaults(
 		fileAccessConsentUrl: null,
 		fileAccessStatus: null,
 		openConsentInPlace: false,
+		hideFileAccess: false,
 	},
 );
 
@@ -112,6 +115,7 @@ const rows = computed(() => [
  * only an app permission that an administrator grants can read.
  */
 const fileAccess = computed(() => {
+	if (props.hideFileAccess) return null;
 	if (!value.value.teamChannels && !value.value.groupChats) return null;
 	if (props.fileAccessStatus === 'approved' || props.fileAccessStatus === 'checking') return null;
 	if (props.fileAccessConsentUrl) {
