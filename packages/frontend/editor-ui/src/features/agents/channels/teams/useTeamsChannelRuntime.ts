@@ -58,7 +58,7 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	provisionBot: (subscriptionId: string) => Promise<boolean>;
 	/** Says the setup left the recommended flow to make the bot by hand. */
 	reportManualBotRoute: () => Promise<void>;
-	publishApp: (settings?: AgentTeamsIntegrationSettings) => Promise<void>;
+	publishApp: (settings?: AgentTeamsIntegrationSettings) => Promise<boolean>;
 	refreshCatalogState: () => Promise<void>;
 }
 
@@ -296,7 +296,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		return true;
 	}
 
-	async function publishApp(settings?: AgentTeamsIntegrationSettings) {
+	async function publishApp(settings?: AgentTeamsIntegrationSettings): Promise<boolean> {
 		// The slowest call here -- it uploads the package -- so the most likely
 		// to land after the account or the agent moved on.
 		const requestedFor = contextKey();
@@ -310,8 +310,9 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 				settings,
 			},
 		);
-		if (requestedFor !== contextKey()) return;
+		if (requestedFor !== contextKey()) return false;
 		catalogState.value = state;
+		return true;
 	}
 
 	async function refreshCatalogState() {

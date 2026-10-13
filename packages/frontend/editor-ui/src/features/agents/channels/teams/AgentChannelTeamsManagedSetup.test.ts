@@ -67,7 +67,7 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 	loadSubscriptions: vi.fn().mockResolvedValue(true),
 	provisionBot: vi.fn().mockResolvedValue(true),
 	reportManualBotRoute: vi.fn().mockResolvedValue(undefined),
-	publishApp: vi.fn(),
+	publishApp: vi.fn().mockResolvedValue(true),
 	refreshCatalogState: vi.fn(),
 	...overrides,
 });
@@ -332,7 +332,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						subscriptionId: 'sub-1',
 					}),
 					catalogState: ref<TeamsCatalogState | null>(null),
-					publishApp: vi.fn(),
+					publishApp: vi.fn().mockResolvedValue(true),
 				}),
 			);
 			const { getByTestId } = createComponentRenderer(Host, {
@@ -1008,7 +1008,8 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					}),
 					catalogState: ref<TeamsCatalogState | null>({ status: 'unknown', teamsAppId: null }),
 					publishApp: vi.fn(
-						async () => await new Promise<void>((resolve) => (finishPublish = resolve)),
+						async () =>
+							await new Promise<boolean>((resolve) => (finishPublish = () => resolve(true))),
 					),
 				}),
 			);
@@ -1092,6 +1093,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					catalogState,
 					publishApp: vi.fn(async () => {
 						catalogState.value = { status: 'published', teamsAppId: 'teams-app-1' };
+						return true;
 					}),
 				}),
 			);

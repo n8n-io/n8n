@@ -465,9 +465,11 @@ const persisted = ref(false);
  */
 const publishApp = async () =>
 	await run('publish', async () => {
-		await props.runtime.publishApp(currentSettings.value);
-		// Only once it went through: set before, a refused publish leaves the
-		// catalogue's "not listed yet" sitting beside the error explaining why.
+		// Only once it went through, and only for the account it went through for:
+		// set before, a refused publish leaves the catalogue's "not listed yet"
+		// sitting beside the error explaining why, and a reply the setup has moved
+		// on from would bind the channel for a tenant nobody published to.
+		if (!(await props.runtime.publishApp(currentSettings.value))) return;
 		hasPublished.value = true;
 		persistChannel();
 	});

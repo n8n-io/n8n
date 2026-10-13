@@ -12,6 +12,7 @@ import {
 	getTeamsSetupState,
 	provisionTeamsApp,
 	reportTeamsManualBotRoute,
+	publishTeamsApp,
 } from './api';
 import { useTeamsChannelRuntime } from './useTeamsChannelRuntime';
 
@@ -253,6 +254,24 @@ describe('useTeamsChannelRuntime', () => {
 			});
 
 			await expect(runtime.loadSubscriptions()).resolves.toBe(false);
+		});
+
+		/**
+		 * The upload is the slowest call here, so the likeliest to land late --
+		 * and its caller binds the channel on a success, which must not happen
+		 * for a tenant nobody published to.
+		 */
+		it('says a publish that landed for another sign-in was not applied', async () => {
+			const runtime = buildRuntime();
+			runtime.managerCredentialId.value = 'cred-1';
+			runtime.provisionedApp.value = { credentialId: 'bot-cred-1' } as never;
+			vi.mocked(publishTeamsApp).mockImplementation(async () => {
+				runtime.managerCredentialId.value = 'cred-2';
+				return { status: 'published', teamsAppId: 'teams-app-1' };
+			});
+
+			await expect(runtime.publishApp()).resolves.toBe(false);
+			expect(runtime.catalogState.value).toBeNull();
 		});
 
 		it('says a reply for the sign-in still selected was applied', async () => {
