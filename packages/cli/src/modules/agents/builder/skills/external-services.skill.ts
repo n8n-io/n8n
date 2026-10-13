@@ -220,8 +220,11 @@ search terms for that service.
   when it returns a credential, and use Gateway credits otherwise. Do not copy
   a listed credential ID into config; use \`ask_credential\` for that choice.
   For Gateway credits, use
-  \`selectedResult.aiGateway\` for URL, transport, authentication, and metadata.
-  Keep \`selectedResult.name\`.
+  \`selectedResult.aiGateway\` for URL, transport, authentication, tools, and
+  metadata. Keep \`selectedResult.name\`.
+- A result with \`authentication: "none"\` and no \`aiGateway\` runs only on
+  Gateway credits. Use its own fields and treat it as the Gateway credits
+  choice in the steps below.
 
 Follow these steps for the selected MCP result:
 

@@ -73,7 +73,12 @@ function findAiGatewayVariants(
 					server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE &&
 					server.status === 'active' &&
 					Boolean(descriptions.get(server)?.node) &&
-					(server.authType === 'usesCredentials' || Boolean(descriptions.get(server)?.credential)),
+					(server.authType === 'usesCredentials' ||
+						Boolean(descriptions.get(server)?.credential)) &&
+					// Pairing adds a 'gateway' authentication option. Skip a server that already has one.
+					!getMcpRegistryCredentialOptions(server).some(
+						({ value }) => value === AI_GATEWAY_MCP_CONNECTION_MODE,
+					),
 			)
 			.map((server) => server.slug),
 	);

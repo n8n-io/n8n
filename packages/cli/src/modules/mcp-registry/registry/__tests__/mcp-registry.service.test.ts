@@ -234,6 +234,47 @@ describe('McpRegistryService', () => {
 			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
 		});
 
+		function registerLoader(loadNodesAndCredentials: LoadNodesAndCredentials) {
+			const loader = Object.create(McpRegistryNodeLoader.prototype) as McpRegistryNodeLoader;
+			loader.setServers = vi.fn();
+			loader.loadAll = vi.fn().mockResolvedValue(undefined);
+			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
+			return loader;
+		}
+
+		it('refreshFromApi reloads the node types when Gateway credits are turned off with no row changes', async () => {
+			const {
+				service,
+				apiClient,
+				aiGatewayService,
+				repository,
+				loadNodesAndCredentials,
+				publisher,
+			} = createService();
+			const loader = registerLoader(loadNodesAndCredentials);
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			await service.init();
+			aiGatewayService.isEnabled.mockReturnValue(false);
+
+			await service.refreshFromApi();
+
+			expect(loader.loadAll).toHaveBeenCalledTimes(2);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-mcp-registry' });
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
+		});
+
+		it('refreshFromApi does not reload when the Gateway credits state and rows are unchanged', async () => {
+			const { service, apiClient, loadNodesAndCredentials, publisher } = createService();
+			const loader = registerLoader(loadNodesAndCredentials);
+			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
+			await service.init();
+
+			await service.refreshFromApi();
+
+			expect(loader.loadAll).toHaveBeenCalledTimes(1);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
 		it('refreshFromApi rethrows a gateway failure and writes nothing', async () => {
 			const { service, apiClient, aiGatewayService, repository } = createService();
 			apiClient.fetchServersMetadata.mockResolvedValue(unchangedMetadata);
@@ -550,7 +591,7 @@ describe('McpRegistryService', () => {
 			loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME] = loader;
 
 			await expect(service.getConnection('@n8n/mcp-registry.notion')).resolves.toEqual(connection);
-			expect(loader.getConnection).toHaveBeenCalledWith('@n8n/mcp-registry.notion');
+			expect(loader.getConnection).toHaveBeenCalledWith('@n8n/mcp-registry.notion', undefined);
 		});
 
 		it('returns undefined when the registry loader is not registered', async () => {

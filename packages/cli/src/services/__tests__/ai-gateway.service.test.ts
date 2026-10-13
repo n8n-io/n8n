@@ -280,6 +280,32 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('throws UserError for a non-registry node and does not mint', async () => {
+			const service = makeService();
+
+			await expect(
+				service.getSyntheticCredential({
+					credentialType: 'firecrawlMcpGatewayApi',
+					userId: USER_ID,
+					node: { type: 'n8n-nodes-base.httpRequest', typeVersion: 4, parameters: {} },
+				}),
+			).rejects.toThrow(UserError);
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('mints for an MCP registry node', async () => {
+			requestMock.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'firecrawlMcpGatewayApi',
+				userId: USER_ID,
+				node: { type: '@n8n/mcp-registry.firecrawl', typeVersion: 1, parameters: {} },
+			});
+
+			expect(result).toMatchObject({ token: 'mock-jwt-token' });
+		});
+
 		it('mints only for an MCP credential type the registry registered', async () => {
 			const credentialTypes = mock<CredentialTypes>({ recognizes: vi.fn().mockReturnValue(false) });
 			const service = makeService({ credentialTypes });
@@ -917,6 +943,30 @@ describe('AiGatewayService', () => {
 				// The URL keeps the gateway's own slug.
 				remotes: [{ type: 'streamable-http', url: 'http://gateway.test/v1/gateway/mcp/firecrawl' }],
 			});
+		});
+
+		it('keeps a supported icon MIME type and drops an unsupported one', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({
+					servers: [
+						{
+							...MOCK_MCP_SERVERS.servers[0],
+							icons: [
+								{ src: 'https://example.com/logo.svg', mimeType: 'image/svg+xml' },
+								{ src: 'https://example.com/logo.gif', mimeType: 'image/gif' },
+							],
+						},
+					],
+				}),
+			);
+			const service = makeService();
+
+			const [server] = await service.fetchN8nConnectMcpServers();
+
+			expect(server.icons).toEqual([
+				{ src: 'https://example.com/logo.svg', mimeType: 'image/svg+xml' },
+				{ src: 'https://example.com/logo.gif' },
+			]);
 		});
 
 		it('throws when the gateway is unreachable, so the registry refresh retries', async () => {

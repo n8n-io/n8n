@@ -148,25 +148,34 @@ describe('McpRegistryClientTool', () => {
 			expect(result).toEqual([{ name: 'tool-a', value: 'tool-a' }]);
 		});
 
-		it('accepts a Gateway credits credential type', async () => {
-			const ctx = createLoadOptionsCtx(
-				{ serverTransport: 'httpStreamable', endpointUrl: 'https://gw.example.com/mcp' },
-				{ credentials: { firecrawlMcpGatewayApi: {} } },
-			);
-			loadMcpToolOptionsMock.mockResolvedValue([]);
+		it.each([
+			{ selector: 'gateway', expected: 'firecrawlMcpGatewayApi' },
+			{ selector: 'oAuth2', expected: 'firecrawlMcpOAuth2Api' },
+		])(
+			'uses the $expected credential type when authentication is "$selector"',
+			async ({ selector, expected }) => {
+				const ctx = createLoadOptionsCtx(
+					{
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://gw.example.com/mcp',
+						authentication: selector,
+					},
+					{ credentials: { firecrawlMcpOAuth2Api: {}, firecrawlMcpGatewayApi: {} } },
+				);
+				loadMcpToolOptionsMock.mockResolvedValue([]);
 
-			// Gateway servers ride the same registry-credential path as OAuth2 ones;
-			// the binding carries the minted gateway credential type.
-			const node = createRegisteredNode('https://gw.example.com/mcp', 'httpStreamable', [
-				{ credentialType: 'firecrawlMcpGatewayApi', selector: 'gateway' },
-			]);
-			await node.methods.loadOptions.getTools.call(ctx);
+				const node = createRegisteredNode('https://gw.example.com/mcp', 'httpStreamable', [
+					{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
+					{ credentialType: 'firecrawlMcpGatewayApi', selector: 'gateway' },
+				]);
+				await node.methods.loadOptions.getTools.call(ctx);
 
-			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
-				ctx,
-				expect.objectContaining({ authentication: 'firecrawlMcpGatewayApi' }),
-			);
-		});
+				expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
+					ctx,
+					expect.objectContaining({ authentication: expected }),
+				);
+			},
+		);
 
 		it('throws an error when no OAuth2 credentials are defined on the node', async () => {
 			const ctx = createLoadOptionsCtx(

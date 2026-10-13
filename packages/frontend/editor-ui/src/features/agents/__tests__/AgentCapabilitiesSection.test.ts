@@ -12,9 +12,11 @@ import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 
 enableAutoUnmount(afterEach);
 
-const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
-	() => null,
-);
+const { getNodeType, getNodeTypes, loadNodeTypesIfNotLoaded } = vi.hoisted(() => ({
+	getNodeType: vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(() => null),
+	getNodeTypes: vi.fn<() => Promise<void>>(async () => undefined),
+	loadNodeTypesIfNotLoaded: vi.fn<() => Promise<void>>(async () => undefined),
+}));
 
 function createNodeType(name: string, displayName: string): SimplifiedNodeType {
 	return {
@@ -35,6 +37,8 @@ function createNodeType(name: string, displayName: string): SimplifiedNodeType {
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType,
+		getNodeTypes,
+		loadNodeTypesIfNotLoaded,
 	}),
 }));
 
@@ -771,6 +775,31 @@ describe('AgentCapabilitiesSection', () => {
 
 		expect(wrapper.text()).toContain('Github');
 		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]').length).toBe(1);
+	});
+
+	it('loads node types when an MCP server node type is missing', async () => {
+		// The loader keeps module-level state, so use a name no other test requests.
+		const nodeTypeName = '@n8n/mcp-registry.capabilitiesSectionMissing';
+		getNodeType.mockReturnValue(null);
+
+		mountSection(
+			[],
+			{},
+			configWithMcpServers([
+				{
+					name: 'registry-server',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					metadata: { nodeTypeName },
+				},
+			]),
+		);
+		await flushPromises();
+
+		expect(getNodeType).toHaveBeenCalledWith(nodeTypeName);
+		expect(getNodeTypes).toHaveBeenCalledTimes(1);
+		expect(loadNodeTypesIfNotLoaded).toHaveBeenCalled();
 	});
 
 	it('renders selected sub-agents as chips and opens the add modal from capabilities', async () => {

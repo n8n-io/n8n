@@ -1,5 +1,5 @@
-import { searchMcpRegistryServers } from '../mcp-registry-search';
-import type { McpRegistryServer } from '../mcp-registry.types';
+import { listMcpRegistryServers, searchMcpRegistryServers } from '../mcp-registry-search';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE, type McpRegistryServer } from '../mcp-registry.types';
 import { githubUsesCredentialsMockServer } from '../mock-servers';
 
 function server(overrides: Partial<McpRegistryServer> = {}): McpRegistryServer {
@@ -123,5 +123,83 @@ describe('searchMcpRegistryServers', () => {
 		const [result] = searchMcpRegistryServers([server({ slug: 'notion' })], ['notion']);
 
 		expect(result.isTemplated).toBe(false);
+	});
+});
+
+describe('listMcpRegistryServers with Gateway credits rows', () => {
+	const official = server({
+		slug: 'firecrawl',
+		title: 'Firecrawl',
+		description: 'Firecrawl MCP server',
+		tagline: 'Scrape websites',
+		remotes: [{ type: 'streamable-http', url: 'https://mcp.firecrawl.example/mcp' }],
+		tools: [{ name: 'scrape' }, { name: 'crawl' }],
+	});
+	const gateway = server({
+		slug: 'n8n-connect-firecrawl',
+		title: 'Firecrawl (Gateway credits)',
+		description: 'Hosted crawler',
+		tagline: 'Billed web extraction',
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		remotes: [
+			{ type: 'streamable-http', url: 'https://gateway.example.com/v1/gateway/mcp/firecrawl' },
+		],
+		tools: [{ name: 'scrape' }],
+	});
+
+	it('collapses a paired official and gateway row into one result', () => {
+		const results = listMcpRegistryServers([official, gateway], {
+			pairedSlugs: new Set(['firecrawl']),
+		});
+
+		expect(results).toHaveLength(1);
+		expect(results[0]).toMatchObject({
+			slug: 'firecrawl',
+			authentication: 'firecrawlMcpOAuth2Api',
+			tools: [{ name: 'scrape' }, { name: 'crawl' }],
+			aiGateway: {
+				url: 'https://gateway.example.com/v1/gateway/mcp/firecrawl',
+				transport: 'streamableHttp',
+				authentication: 'none',
+				tools: [{ name: 'scrape' }],
+				metadata: {
+					nodeTypeName: '@n8n/mcp-registry.firecrawl',
+					connectionMode: 'gateway',
+				},
+			},
+		});
+	});
+
+	it('returns a gateway row without an active official counterpart on its own', () => {
+		const results = listMcpRegistryServers([gateway, { ...official, status: 'deprecated' }]);
+
+		const gatewayResult = results.find(({ slug }) => slug === 'n8n-connect-firecrawl');
+		expect(gatewayResult).toMatchObject({ authentication: 'none', credentialType: '' });
+		expect(gatewayResult?.aiGateway).toBeUndefined();
+	});
+
+	it('skips rows that are not in loadedSlugs', () => {
+		const results = listMcpRegistryServers([official, gateway], {
+			loadedSlugs: new Set(['firecrawl']),
+		});
+
+		expect(results.map(({ slug }) => slug)).toEqual(['firecrawl']);
+	});
+
+	it('leaves aiGateway unset when pairedSlugs does not contain the official slug', () => {
+		const results = listMcpRegistryServers([official, gateway], { pairedSlugs: new Set() });
+
+		const officialResult = results.find(({ slug }) => slug === 'firecrawl');
+		expect(officialResult?.aiGateway).toBeUndefined();
+	});
+
+	it('returns the paired official result for a query that matches only the gateway row', () => {
+		const results = searchMcpRegistryServers([official, gateway], ['hosted crawler'], {
+			pairedSlugs: new Set(['firecrawl']),
+		});
+
+		expect(results).toHaveLength(1);
+		expect(results[0].slug).toBe('firecrawl');
+		expect(results[0].aiGateway).toBeDefined();
 	});
 });

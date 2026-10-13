@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
+import { AI_GATEWAY_MCP_CONNECTION_MODE } from '@n8n/api-types';
 import type { INode, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import {
+	isGatewayMcpNodeType,
 	mcpServerToNode,
 	nodeToMcpServer,
 	nodeTypeToNewMcpServer,
@@ -60,7 +62,44 @@ function makeMcpNodeType(version: number | number[]): INodeTypeDescription {
 	} as INodeTypeDescription;
 }
 
+/** A registry node that offers both a user OAuth2 credential and Gateway credits. */
+function makeMixedRegistryNodeType(): INodeTypeDescription {
+	return {
+		...makeMcpNodeType(1),
+		name: '@n8n/mcp-registry.firecrawl',
+		displayName: 'Firecrawl',
+		credentials: [
+			{
+				name: 'firecrawlMcpOAuth2Api',
+				required: true,
+				displayOptions: { show: { authentication: ['oAuth2'] } },
+			},
+			{
+				name: 'firecrawlMcpGatewayApi',
+				required: true,
+				displayOptions: { show: { authentication: [AI_GATEWAY_MCP_CONNECTION_MODE] } },
+			},
+		],
+	};
+}
+
 describe('useMcpServerAdapter', () => {
+	describe('isGatewayMcpNodeType()', () => {
+		it('returns true for a node type with a Gateway credential', () => {
+			expect(isGatewayMcpNodeType(makeMixedRegistryNodeType())).toBe(true);
+		});
+
+		it('returns false for a node type without a Gateway credential', () => {
+			const nodeType = {
+				...makeMcpNodeType(1),
+				credentials: [{ name: 'httpBearerAuth', required: true }],
+			} satisfies INodeTypeDescription;
+
+			expect(isGatewayMcpNodeType(nodeType)).toBe(false);
+			expect(isGatewayMcpNodeType(makeMcpNodeType(1))).toBe(false);
+		});
+	});
+
 	describe('nodeTypeToNewMcpServer()', () => {
 		it('defaults a newly added MCP server tool to the httpStreamable transport', () => {
 			// A first-class agent always adds the node at its latest version, so the
@@ -75,6 +114,54 @@ describe('useMcpServerAdapter', () => {
 			const server = nodeTypeToNewMcpServer(makeMcpNodeType(1.1));
 
 			expect(server.transport).toBe('sse');
+		});
+
+		it('selects Gateway credits for a registry node whose only credential is a Gateway type', () => {
+			const nodeType = {
+				...makeMcpNodeType(1),
+				name: '@n8n/mcp-registry.firecrawl',
+				displayName: 'Firecrawl',
+				credentials: [{ name: 'firecrawlMcpGatewayApi', required: true }],
+			} satisfies INodeTypeDescription;
+
+			const server = nodeTypeToNewMcpServer(nodeType);
+
+			expect(server.authentication).toBe('none');
+			expect(server.metadata).toEqual({
+				nodeTypeName: '@n8n/mcp-registry.firecrawl',
+				connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
+			});
+		});
+
+		it('keeps the authentication option value for the generic MCP client node', () => {
+			const nodeType = {
+				...makeMcpNodeType(1),
+				properties: [
+					...makeMcpNodeType(1).properties,
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'Bearer Auth', value: 'bearerAuth' },
+							{ name: 'None', value: 'none' },
+						],
+						default: 'bearerAuth',
+					},
+				],
+				credentials: [
+					{
+						name: 'httpBearerAuth',
+						required: true,
+						displayOptions: { show: { authentication: ['bearerAuth'] } },
+					},
+				],
+			} satisfies INodeTypeDescription;
+
+			const server = nodeTypeToNewMcpServer(nodeType);
+
+			expect(server.authentication).toBe('bearerAuth');
+			expect(server.metadata).toBeUndefined();
 		});
 	});
 
@@ -112,7 +199,35 @@ describe('useMcpServerAdapter', () => {
 				connectionTimeoutMs: 60001,
 				metadata: {
 					nodeTypeName: '@n8n/mcp-registry.gitHub',
+					connectionMode: 'enterpriseOAuth2',
 				},
+			});
+		});
+
+		it('stores no credential and the gateway connection mode for a Gateway credits server', () => {
+			const node: INode = {
+				id: 'firecrawl-mcp',
+				name: 'firecrawl-mcp',
+				type: '@n8n/mcp-registry.firecrawl',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					endpointUrl: 'https://mcp.gateway/firecrawl',
+					serverTransport: 'httpStreamable',
+					authentication: AI_GATEWAY_MCP_CONNECTION_MODE,
+				},
+				credentials: {
+					firecrawlMcpGatewayApi: { id: null, name: '', __aiGatewayManaged: true },
+				},
+			};
+
+			const server = nodeToMcpServer(node);
+
+			expect(server.authentication).toBe('none');
+			expect(server.credential).toBeUndefined();
+			expect(server.metadata).toEqual({
+				nodeTypeName: '@n8n/mcp-registry.firecrawl',
+				connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
 			});
 		});
 	});
@@ -189,6 +304,27 @@ describe('useMcpServerAdapter', () => {
 					__aiGatewayManaged: true,
 				},
 			});
+		});
+
+		it('restores the Gateway selection on a registry node that also offers OAuth2', () => {
+			const node = mcpServerToNode(
+				{
+					name: 'firecrawl-mcp',
+					url: 'https://mcp.gateway/firecrawl',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					metadata: {
+						nodeTypeName: '@n8n/mcp-registry.firecrawl',
+						connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,
+					},
+				},
+				makeMixedRegistryNodeType(),
+			);
+
+			expect(node.credentials).toEqual({
+				firecrawlMcpGatewayApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+			expect(node.parameters.authentication).toBe(AI_GATEWAY_MCP_CONNECTION_MODE);
 		});
 	});
 });

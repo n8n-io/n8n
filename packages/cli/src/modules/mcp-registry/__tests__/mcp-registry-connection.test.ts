@@ -1,9 +1,14 @@
 import type { McpOAuth2CredentialType, McpRegistryConnection } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialOptions,
 	prepareMcpRegistryConnection,
 	resolveMcpRegistryConnection,
 } from '../mcp-registry-connection';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	type McpRegistryServer,
+} from '../registry/mcp-registry.types';
 import { databricksGenieTemplatedMockServer, notionMockServer } from '../registry/mock-servers';
 
 const credentialType: McpOAuth2CredentialType = 'exampleMcpOAuth2Api';
@@ -17,6 +22,15 @@ const connection: McpRegistryConnection = {
 	isTemplated: false,
 };
 
+const gatewayServer: McpRegistryServer = {
+	...notionMockServer,
+	slug: 'n8n-connect-firecrawl',
+	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+	remotes: [
+		{ type: 'streamable-http', url: 'https://gateway.example.com/v1/gateway/mcp/firecrawl' },
+	],
+};
+
 const templatedConnection: McpRegistryConnection = {
 	nodeTypeName: '@n8n/mcp-registry.example',
 	credentialBindings: [{ credentialType, selector: 'oAuth2' }],
@@ -25,7 +39,25 @@ const templatedConnection: McpRegistryConnection = {
 	isTemplated: true,
 };
 
+describe('getMcpRegistryCredentialOptions', () => {
+	it('returns a single Gateway credits option for a gateway-managed server', () => {
+		expect(getMcpRegistryCredentialOptions(gatewayServer)).toEqual([
+			{
+				credentialType: 'n8nConnectFirecrawlMcpGatewayApi',
+				name: 'Gateway credits',
+				value: 'gateway',
+			},
+		]);
+	});
+});
+
 describe('resolveMcpRegistryConnection', () => {
+	it('binds the Gateway credits credential type for a gateway-managed server', () => {
+		expect(resolveMcpRegistryConnection(gatewayServer)?.credentialBindings).toEqual([
+			{ credentialType: 'n8nConnectFirecrawlMcpGatewayApi', selector: 'gateway' },
+		]);
+	});
+
 	it('resolves http remotes and remotes that include userinfo', () => {
 		const result = resolveMcpRegistryConnection({
 			...notionMockServer,

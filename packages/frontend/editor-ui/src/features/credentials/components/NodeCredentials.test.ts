@@ -2415,6 +2415,21 @@ describe('NodeCredentials', () => {
 					],
 				};
 				mockedStore(useNodeTypesStore).setNodeTypes([mixedNodeType]);
+				credentialsStore.state.credentialTypes = {
+					...credentialsStore.state.credentialTypes,
+					firecrawlMcpOAuth2Api: {
+						name: 'firecrawlMcpOAuth2Api',
+						displayName: 'Firecrawl OAuth2',
+						properties: [],
+					},
+				};
+				credentialsStore.state.credentials = {
+					'firecrawl-cred': createCredential({
+						id: 'firecrawl-cred',
+						name: 'Firecrawl account',
+						type: 'firecrawlMcpOAuth2Api',
+					}),
+				};
 				ndvStore.activeNode = gatewayNode;
 
 				renderComponent({
@@ -2422,6 +2437,7 @@ describe('NodeCredentials', () => {
 				});
 
 				expect(screen.queryByTestId('node-credentials-gateway-only')).not.toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 			});
 		});
 

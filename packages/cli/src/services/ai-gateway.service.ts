@@ -21,10 +21,14 @@ import { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
-import { MCP_BASE_GATEWAY_CREDENTIAL_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
+import {
+	MCP_BASE_GATEWAY_CREDENTIAL_NAME,
+	MCP_REGISTRY_PACKAGE_NAME,
+} from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import {
 	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	mcpRegistryIconMimeTypeSchema,
 	N8N_CONNECT_MCP_CAPABILITY,
 	N8N_CONNECT_MCP_SLUG_PREFIX,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
@@ -53,10 +57,15 @@ function mcpServerToRegistryServer(server: AiGatewayMcpServer, baseUrl: string):
 		tagline: server.tagline,
 		version: server.version,
 		updatedAt: server.updatedAt,
-		icons: server.icons.map((icon) => ({
-			src: icon.src,
-			...(icon.theme ? { theme: icon.theme } : {}),
-		})),
+		icons: server.icons.map((icon) => {
+			// The registry picks the preferred icon format by MIME type. Drop a value it does not accept.
+			const mimeType = mcpRegistryIconMimeTypeSchema.safeParse(icon.mimeType);
+			return {
+				src: icon.src,
+				...(mimeType.success ? { mimeType: mimeType.data } : {}),
+				...(icon.theme ? { theme: icon.theme } : {}),
+			};
+		}),
 		websiteUrl: server.websiteUrl,
 		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
 		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
@@ -257,6 +266,14 @@ export class AiGatewayService {
 				!this.credentialTypes.recognizes(credentialType)
 			) {
 				throw new UserError(`Gateway credits do not serve credential type "${credentialType}".`);
+			}
+			// Only a registry node may hold this token. A node that can request any
+			// credential type (such as HTTP Request) must not receive it. The execution
+			// context already checks that the registry node declares this type.
+			if (node && !node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
+				throw new UserError(
+					`Credential type "${credentialType}" can only be used by its MCP server node.`,
+				);
 			}
 			const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
 			// Pin the token's egress to the gateway host so no consumer can send this

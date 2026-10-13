@@ -51,6 +51,9 @@ function isSameStoredServer(stored: McpRegistryServer, fetched: McpRegistryServe
 
 @Service()
 export class McpRegistryService {
+	/** Whether Gateway credits were enabled when the loader last built the node types. */
+	private aiGatewayEnabledAtLoad: boolean | undefined;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: McpRegistryServerRepository,
@@ -186,11 +189,16 @@ export class McpRegistryService {
 		}
 
 		const updatedServers = [...registryUpdates, ...n8nConnectUpdates];
-		if (updatedServers.length === 0) {
+		// The loader drops n8n Connect rows while Gateway credits are disabled, so a
+		// license change needs a rebuild even when no row changed.
+		const aiGatewayStateChanged =
+			this.aiGatewayEnabledAtLoad !== undefined &&
+			this.aiGatewayEnabledAtLoad !== this.aiGatewayService.isEnabled();
+		if (updatedServers.length === 0 && !aiGatewayStateChanged) {
 			this.logger.debug('MCP registry is up to date');
 		} else {
 			signal?.throwIfAborted();
-			await this.saveServers(updatedServers, fetchedAt);
+			if (updatedServers.length > 0) await this.saveServers(updatedServers, fetchedAt);
 			await this.refreshRegistryNodeTypes(true);
 			this.notifyNodeDescriptionsUpdated();
 			await this.publishReloadCommand();
@@ -297,6 +305,7 @@ export class McpRegistryService {
 			return;
 		}
 
+		this.aiGatewayEnabledAtLoad = this.aiGatewayService.isEnabled();
 		const servers = await this.getAll({ includeDeprecated: true });
 		loader.setServers(servers);
 		await loader.loadAll();

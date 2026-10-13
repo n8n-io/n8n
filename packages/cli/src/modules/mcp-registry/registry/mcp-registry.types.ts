@@ -30,6 +30,14 @@ export const N8N_CONNECT_MCP_SLUG_PREFIX = 'n8n-connect-';
  */
 export const N8N_CONNECT_MCP_CAPABILITY = 'n8n-connect';
 
+export const mcpRegistryIconMimeTypeSchema = z.enum([
+	'image/png',
+	'image/jpeg',
+	'image/jpg',
+	'image/svg+xml',
+	'image/webp',
+]);
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 
@@ -105,9 +113,7 @@ const mcpRegistryServerBaseSchema = z.object({
 	icons: z.array(
 		z.object({
 			src: z.string(),
-			mimeType: optionalField(
-				z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']),
-			),
+			mimeType: optionalField(mcpRegistryIconMimeTypeSchema),
 			theme: optionalField(z.enum(['light', 'dark'])),
 		}),
 	),

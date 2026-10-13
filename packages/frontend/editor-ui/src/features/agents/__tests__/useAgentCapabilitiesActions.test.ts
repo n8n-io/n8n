@@ -4,6 +4,10 @@ import { computed, ref, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
@@ -142,6 +146,161 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		modalData.onConfirm({ tools: [], mcpServers: [] });
 
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+});
+
+describe('useAgentCapabilitiesActions — open MCP server from list', () => {
+	const registryTypeName = '@n8n/mcp-registry.firecrawl';
+
+	function makeNodeType(name: string): INodeTypeDescription {
+		return {
+			name,
+			displayName: name,
+			description: '',
+			version: 1,
+			group: [],
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+		};
+	}
+
+	function makeServer(name: string, nodeTypeName?: string): AgentJsonMcpServerConfig {
+		return {
+			name,
+			url: `https://${name}.example.com/mcp`,
+			transport: 'streamableHttp',
+			authentication: 'none',
+			...(nodeTypeName ? { metadata: { nodeTypeName } } : {}),
+		};
+	}
+
+	function createDeferred() {
+		let resolve!: () => void;
+		let reject!: (error: unknown) => void;
+		const promise = new Promise<void>((res, rej) => {
+			resolve = res;
+			reject = rej;
+		});
+		return { promise, resolve, reject };
+	}
+
+	function setupMcp(servers: AgentJsonMcpServerConfig[]) {
+		const context = setup();
+		context.localConfig.value = makeConfig({ mcpServers: servers });
+		const nodeTypesStore = useNodeTypesStore();
+		const openModalWithData = vi.spyOn(context.uiStore, 'openModalWithData');
+		return { ...context, nodeTypesStore, openModalWithData };
+	}
+
+	function openedServerNames(openModalWithData: { mock: { calls: unknown[][] } }) {
+		return openModalWithData.mock.calls.map(
+			([payload]) =>
+				(payload as { data: { mcpServer: AgentJsonMcpServerConfig } }).data.mcpServer.name,
+		);
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('loads node types and opens the server with its registry node type', async () => {
+		const { actions, nodeTypesStore, openModalWithData } = setupMcp([
+			makeServer('firecrawl', registryTypeName),
+		]);
+		const load = createDeferred();
+		const getNodeTypes = vi.spyOn(nodeTypesStore, 'getNodeTypes').mockReturnValue(load.promise);
+
+		actions.onOpenToolFromList({ kind: 'mcpServer', serverName: 'firecrawl' });
+		expect(getNodeTypes).toHaveBeenCalledTimes(1);
+		expect(openModalWithData).not.toHaveBeenCalled();
+
+		nodeTypesStore.setNodeTypes([makeNodeType(registryTypeName)]);
+		load.resolve();
+		await flushPromises();
+
+		expect(openModalWithData).toHaveBeenCalledTimes(1);
+		const { data } = openModalWithData.mock.calls[0][0] as {
+			data: { initialNode: { type: string } };
+		};
+		expect(data.initialNode.type).toBe(registryTypeName);
+		expect(showMessageSpy).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the generic MCP node type only after the load', async () => {
+		const { actions, nodeTypesStore, openModalWithData } = setupMcp([
+			makeServer('firecrawl', registryTypeName),
+		]);
+		// The generic type is present before the load, but must not be used yet.
+		nodeTypesStore.setNodeTypes([makeNodeType(AI_MCP_TOOL_NODE_TYPE)]);
+		const load = createDeferred();
+		vi.spyOn(nodeTypesStore, 'getNodeTypes').mockReturnValue(load.promise);
+
+		actions.onOpenToolFromList({ kind: 'mcpServer', serverName: 'firecrawl' });
+		expect(openModalWithData).not.toHaveBeenCalled();
+
+		load.resolve();
+		await flushPromises();
+
+		expect(openModalWithData).toHaveBeenCalledTimes(1);
+		const { data } = openModalWithData.mock.calls[0][0] as {
+			data: { initialNode: { type: string } };
+		};
+		expect(data.initialNode.type).toBe(AI_MCP_TOOL_NODE_TYPE);
+	});
+
+	it('opens only the latest requested server when an earlier load finishes last', async () => {
+		const { actions, nodeTypesStore, openModalWithData } = setupMcp([
+			makeServer('first', '@n8n/mcp-registry.first'),
+			makeServer('second', '@n8n/mcp-registry.second'),
+		]);
+		const firstLoad = createDeferred();
+		const secondLoad = createDeferred();
+		vi.spyOn(nodeTypesStore, 'getNodeTypes')
+			.mockReturnValueOnce(firstLoad.promise)
+			.mockReturnValueOnce(secondLoad.promise);
+
+		actions.onOpenToolFromList({ kind: 'mcpServer', serverName: 'first' });
+		actions.onOpenToolFromList({ kind: 'mcpServer', serverName: 'second' });
+
+		nodeTypesStore.setNodeTypes([
+			makeNodeType('@n8n/mcp-registry.first'),
+			makeNodeType('@n8n/mcp-registry.second'),
+		]);
+		secondLoad.resolve();
+		await flushPromises();
+		firstLoad.resolve();
+		await flushPromises();
+
+		expect(openedServerNames(openModalWithData)).toEqual(['second']);
+		expect(showMessageSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not report a load failure after the agent changed', async () => {
+		const { actions, nodeTypesStore, agentId } = setupMcp([
+			makeServer('firecrawl', registryTypeName),
+		]);
+		const load = createDeferred();
+		vi.spyOn(nodeTypesStore, 'getNodeTypes').mockReturnValue(load.promise);
+
+		actions.onOpenToolFromList({ kind: 'mcpServer', serverName: 'firecrawl' });
+		agentId.value = 'inline:node-2';
+		load.reject(new Error('Network error'));
+		await flushPromises();
+
+		expect(showErrorSpy).not.toHaveBeenCalled();
+	});
+
+	it('reports a load failure for the current request', async () => {
+		const { actions, nodeTypesStore } = setupMcp([makeServer('firecrawl', registryTypeName)]);
+		const error = new Error('Network error');
+		vi.spyOn(nodeTypesStore, 'getNodeTypes').mockRejectedValue(error);
+
+		actions.onOpenToolFromList({ kind: 'mcpServer', serverName: 'firecrawl' });
+		await flushPromises();
+
+		expect(showErrorSpy).toHaveBeenCalledWith(error, 'agents.builder.loadError');
 	});
 });
 

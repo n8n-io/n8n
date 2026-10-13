@@ -31,6 +31,8 @@ export interface McpRegistrySearchResult {
 		url: string;
 		transport: 'streamableHttp' | 'sse';
 		authentication: 'none';
+		// From the gateway row, not the registry row: the gateway may serve fewer tools.
+		tools: McpRegistrySearchResult['tools'];
 		metadata: { nodeTypeName: string; connectionMode: typeof AI_GATEWAY_MCP_CONNECTION_MODE };
 	};
 	/** `url` is an unresolved `$self`-expression, not a literal endpoint. Consumers
@@ -101,6 +103,7 @@ export function listMcpRegistryServers(
 				url: aiGatewayResult.url,
 				transport: aiGatewayResult.transport,
 				authentication: 'none',
+				tools: aiGatewayResult.tools,
 				metadata: {
 					nodeTypeName: result.metadata.nodeTypeName,
 					connectionMode: AI_GATEWAY_MCP_CONNECTION_MODE,

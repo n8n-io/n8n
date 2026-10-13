@@ -13,7 +13,10 @@ import {
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
-import type { McpRegistryServer } from '../registry/mcp-registry.types';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	type McpRegistryServer,
+} from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
 	gmailDirectExtendMockServer,
@@ -448,6 +451,87 @@ describe('McpRegistryNodeLoader', () => {
 					}
 				).value.headers,
 			).not.toHaveProperty('User-Agent');
+		});
+	});
+
+	describe('Gateway credits pairing', () => {
+		const gatewayUrl = 'https://gateway.example.com/v1/gateway/mcp/notion';
+
+		function gatewayServerFor(server: McpRegistryServer): McpRegistryServer {
+			return {
+				...notionMockServer,
+				slug: `n8n-connect-${server.slug}`,
+				title: server.title,
+				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+				remotes: [{ type: 'streamable-http', url: gatewayUrl }],
+			};
+		}
+
+		it('adds a gateway authentication option to the official node and hides the gateway node', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([notionMockServer, gatewayServerFor(notionMockServer)]);
+
+			await loader.loadAll();
+
+			const officialNode = loader.types.nodes.find(({ name }) => name === 'notion');
+			const authProperty = officialNode?.properties.find(({ name }) => name === 'authentication');
+			expect(authProperty?.options).toEqual([
+				{ name: 'OAuth2', value: 'oAuth2' },
+				{ name: 'Gateway credits', value: 'gateway' },
+			]);
+			expect(officialNode?.credentials).toContainEqual({
+				name: 'n8nConnectNotionMcpGatewayApi',
+				required: true,
+				displayOptions: { show: { authentication: ['gateway'] } },
+			});
+
+			const gatewayNode = loader.types.nodes.find(({ name }) => name === 'n8nConnectNotion');
+			expect(gatewayNode?.hidden).toBe(true);
+			expect(loader.getPairedSlugs()).toEqual(new Set(['notion']));
+		});
+
+		it('routes the official node connection by authentication selector', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([notionMockServer, gatewayServerFor(notionMockServer)]);
+
+			await loader.loadAll();
+
+			expect(loader.getConnection('@n8n/mcp-registry.notion', 'gateway')).toMatchObject({
+				nodeTypeName: '@n8n/mcp-registry.notion',
+				endpointUrl: gatewayUrl,
+				credentialBindings: [
+					{ credentialType: 'n8nConnectNotionMcpGatewayApi', selector: 'gateway' },
+				],
+			});
+			expect(loader.getConnection('@n8n/mcp-registry.notion', 'oAuth2')).toMatchObject({
+				nodeTypeName: '@n8n/mcp-registry.notion',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				credentialBindings: [{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' }],
+			});
+		});
+
+		it('does not pair a server that already has a "gateway" authentication option', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['githubOAuth2Api', 'githubApi'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			const official: McpRegistryServer = {
+				...githubUsesCredentialsMockServer,
+				usesCredentials: [
+					{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+					{ credentialType: 'githubApi', name: 'Access Token', value: 'gateway' },
+				],
+			};
+			loader.setServers([official, gatewayServerFor(official)]);
+
+			await loader.loadAll();
+
+			expect(loader.getPairedSlugs().size).toBe(0);
+			const gatewayNode = loader.types.nodes.find(({ name }) => name === 'n8nConnectGitHub');
+			expect(gatewayNode).toBeDefined();
+			expect(gatewayNode?.hidden).toBeUndefined();
 		});
 	});
 

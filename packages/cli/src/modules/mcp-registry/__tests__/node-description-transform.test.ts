@@ -1,5 +1,6 @@
 import { deepCopy, type INodeTypeDescription } from 'n8n-workflow';
 
+import { getMcpRegistryGatewayCredentialTypeName } from '../mcp-registry-connection';
 import {
 	getMcpRegistryCredentialTypeName,
 	serverToNodeDescription,
@@ -853,10 +854,6 @@ describe('serverToCredentialDescription', () => {
 });
 
 describe('getMcpRegistryCredentialTypeName', () => {
-	it('suffixes by auth type so the runtime picks the right auth strategy', () => {
-		expect(getMcpRegistryCredentialTypeName(notionMockServer)).toBe('notionMcpOAuth2Api');
-	});
-
 	it.each([
 		{ slug: 'notion', expected: 'notionMcpOAuth2Api' },
 		{ slug: 'linear', expected: 'linearMcpOAuth2Api' },
@@ -865,5 +862,16 @@ describe('getMcpRegistryCredentialTypeName', () => {
 		expect(
 			getMcpRegistryCredentialTypeName({ ...notionMockServer, slug } as McpRegistryServer),
 		).toBe(expected);
+	});
+});
+
+describe('getMcpRegistryGatewayCredentialTypeName', () => {
+	it('maps the slug to a Gateway credits credential type', () => {
+		expect(
+			getMcpRegistryGatewayCredentialTypeName({
+				...notionMockServer,
+				slug: 'n8n-connect-firecrawl',
+			} as McpRegistryServer),
+		).toBe('n8nConnectFirecrawlMcpGatewayApi');
 	});
 });

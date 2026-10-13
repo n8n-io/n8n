@@ -130,6 +130,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { showError, showMessage } = useToast();
+	// A slow node type load must not open its MCP server over a later selection.
+	let latestMcpServerOpenRequest = 0;
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -224,15 +226,20 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		if (!mcpServer) return;
 
 		const targetAgentId = agentId.value;
-		const openMcpServer = () => {
+		const requestId = ++latestMcpServerOpenRequest;
+		const isCurrentRequest = () =>
+			requestId === latestMcpServerOpenRequest && agentId.value === targetAgentId;
+		// The generic MCP node is a fallback only after the load: before it, a
+		// registry node type can still be on its way.
+		const openMcpServer = (allowGenericFallback: boolean) => {
 			if (agentId.value !== targetAgentId) return false;
 			const currentServers = localConfig.value?.mcpServers ?? [];
 			const currentIndex = currentServers.findIndex((server) => server.name === mcpServer.name);
 			const currentServer = currentServers[currentIndex];
 			if (!currentServer) return false;
-			const nodeType = nodeTypesStore.getNodeType(
-				currentServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE,
-			);
+			const nodeType =
+				nodeTypesStore.getNodeType(currentServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE) ??
+				(allowGenericFallback ? nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE) : null);
 			if (!nodeType) return false;
 
 			telemetry?.trackOpenedToolFromList?.('mcpServer');
@@ -259,15 +266,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			return true;
 		};
 
-		if (openMcpServer()) return;
+		if (openMcpServer(false)) return;
 		void nodeTypesStore
 			.getNodeTypes()
 			.then(() => {
-				if (agentId.value === targetAgentId && !openMcpServer()) {
+				if (isCurrentRequest() && !openMcpServer(true)) {
 					showMessage({ type: 'error', title: locale.baseText('agents.builder.loadError') });
 				}
 			})
-			.catch((error: unknown) => showError(error, locale.baseText('agents.builder.loadError')));
+			.catch((error: unknown) => {
+				if (isCurrentRequest()) showError(error, locale.baseText('agents.builder.loadError'));
+			});
 	}
 
 	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill; enabled?: boolean }>>(

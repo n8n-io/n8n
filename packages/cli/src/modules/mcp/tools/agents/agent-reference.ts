@@ -199,9 +199,10 @@ slackApp.requestUrl to the user instead of reporting the channel as ready.
 The top-level \`mcpServers\` config array connects external MCP tool catalogs to the Agent. Discover
 registry-backed servers with discover_agent_assets kind=mcpServers, or use a URL the user provides.
 If a result includes aiGateway, Gateway credits are available. Use its url, transport,
-authentication, and metadata with the result's name when the user selects that choice. Do not
-request a stored credential for it. Keep metadata.connectionMode in the config entry so the Agent
-uses the gateway.
+authentication, tools, and metadata with the result's name when the user selects that choice. Do
+not request a stored credential for it. Keep metadata.connectionMode in the config entry so the
+Agent uses the gateway. If the user did not choose, call list_credentials for the result's
+credentialType: use an accessible own credential when one exists, and Gateway credits otherwise.
 When the server requires authentication, resolve an accessible credential ID with list_credentials
 first; the same ID is passed to verification and stored in the config entry. Credentials cannot be
 created through these tools — when none exists, ask the user to create one in n8n.

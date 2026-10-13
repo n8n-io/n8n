@@ -542,15 +542,19 @@ describe('aiGateway.store', () => {
 		// Gateway-hosted MCP servers are not in `credentialTypes`: the registry
 		// synthesizes a type per server, and only for a `gateway` entry, which is
 		// withheld from unlicensed instances.
-		it('should return true for a synthesized MCP Gateway credential type', () => {
+		it('should return true for a synthesized MCP Gateway credential type', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
 			const store = useAiGatewayStore();
+			await store.fetchConfig();
 
 			expect(store.isCredentialTypeSupported('firecrawlMcpGatewayApi')).toBe(true);
 			expect(store.canServeCredentialType('firecrawlMcpGatewayApi')).toBe(true);
 		});
 
-		it('should not offer Gateway credits for an MCP server the user authorizes', () => {
+		it('should not offer Gateway credits for an MCP server the user authorizes', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
 			const store = useAiGatewayStore();
+			await store.fetchConfig();
 
 			expect(store.isCredentialTypeSupported('notionMcpOAuth2Api')).toBe(false);
 			expect(store.canServeCredentialType('notionMcpOAuth2Api')).toBe(false);

@@ -222,15 +222,20 @@ export function nodeTypeToNewMcpServer(nodeType: INodeTypeDescription): AgentJso
 	const connectionMode =
 		toStringValue(defaults.authentication) ??
 		(isAiGatewayOnly ? AI_GATEWAY_MCP_CONNECTION_MODE : undefined);
-	const selectedCredential = nodeType.credentials?.find((credential) =>
-		credential.displayOptions?.show?.authentication?.includes(connectionMode ?? ''),
-	);
+	// Only a registry node stores the credential type as `authentication`. The
+	// generic MCP node stores the option value itself (for example `bearerAuth`).
+	const isRegistryNode = isMcpRegistryNodeType(nodeType.name);
+	const selectedCredential = isRegistryNode
+		? nodeType.credentials?.find((credential) =>
+				credential.displayOptions?.show?.authentication?.includes(connectionMode ?? ''),
+			)
+		: undefined;
 	const authentication =
 		connectionMode === AI_GATEWAY_MCP_CONNECTION_MODE
 			? 'none'
 			: (selectedCredential?.name ?? resolveDefaultAuthentication(nodeType, defaults));
 	const serverTransport = defaults.serverTransport;
-	const metadata = isMcpRegistryNodeType(nodeType.name)
+	const metadata = isRegistryNode
 		? {
 				nodeTypeName: nodeType.name,
 				...(connectionMode && (selectedCredential || isAiGatewayOnly) ? { connectionMode } : {}),
@@ -271,7 +276,7 @@ function resolveAiGatewayCredentialType(nodeType: INodeTypeDescription): string 
 
 /** Whether the MCP server node runs on Gateway credits rather than a user credential. */
 export function isGatewayMcpNodeType(nodeType: INodeTypeDescription): boolean {
-	return resolveGatewayCredentialType(nodeType) !== undefined;
+	return resolveAiGatewayCredentialType(nodeType) !== undefined;
 }
 
 export function mcpServerToNode(
