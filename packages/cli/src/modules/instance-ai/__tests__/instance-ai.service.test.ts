@@ -826,18 +826,16 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				snapshotMode,
 				instanceContextEnabled,
 				boundGates: undefined as ContextGates | undefined,
-				resumeAgentBuild: false,
 			})),
 		),
 		...[true, false].map((enabled) => ({
 			snapshotMode: 'off',
 			instanceContextEnabled: !enabled,
 			boundGates: { instanceContextEnabled: enabled, nodeUsageEnabled: !enabled },
-			resumeAgentBuild: enabled,
 		})),
 	];
 	it.each(environmentGates)('starts with gates %j', async (gates) => {
-		const { snapshotMode, instanceContextEnabled, boundGates, resumeAgentBuild } = gates;
+		const { snapshotMode, instanceContextEnabled, boundGates } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -849,7 +847,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				proxyRunConfig?: undefined,
 				instanceContextGates?: ContextGates,
 				experimentGates?: undefined,
-				resumeAgentBuild?: boolean,
 			) => Promise<{
 				instanceContextEnabled: boolean;
 				nodeUsageEnabled: boolean;
@@ -1037,15 +1034,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createSandbox as Mock).mockResolvedValue(sandbox);
 		(createWorkspace as Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
-		const agentsModuleActive = snapshotMode === 'seeded';
-		const getFromContainer = Container.get.bind(Container);
-		const containerGet = vi
-			.spyOn(Container, 'get')
-			.mockImplementation(((token: unknown) =>
-				token === ModuleRegistry
-					? { isActive: (name: string) => name !== 'agents' || agentsModuleActive }
-					: getFromContainer(token as never)) as typeof Container.get);
-		onTestFinished(() => containerGet.mockRestore());
+		const agentBuildingAvailable = snapshotMode === 'seeded';
+		if (agentBuildingAvailable) {
+			service.adapterService.createContext.mockReturnValue({ builderDelegate: {} });
+		}
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1056,12 +1048,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			undefined,
 			undefined,
 			boundGates,
-			undefined,
-			resumeAgentBuild,
 		);
-		// The Agents module skills follow the module registry, not an env variable.
+		// The agent-building skills follow whether the context has a builder delegate.
 		expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(
-			expect.objectContaining({ agentsModuleEnabled: agentsModuleActive }),
+			expect.objectContaining({ agentBuildingEnabled: agentBuildingAvailable }),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
@@ -1074,7 +1064,6 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				...expectedGates,
 				configEvalsEnabled: true,
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
-				resumeAgentBuild,
 			}),
 		);
 		expect(service.settingsService.getPermissions).toHaveBeenCalled();
@@ -2987,7 +2976,6 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 				undefined,
 				'group-1',
 				expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-				toolName === 'build-agent',
 			);
 			expect(service.processResumedStream).toHaveBeenCalledWith(
 				rebuiltAgent,
@@ -3092,7 +3080,6 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			undefined,
 			'group-1',
 			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-			false,
 		);
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			rebuiltAgent,
@@ -3226,7 +3213,6 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			runHandoff: { handoffReason?: string } | undefined,
 			messageGroupId?: string,
 			instanceContextGates?: { instanceContextEnabled: boolean; nodeUsageEnabled: boolean },
-			resumeAgentBuild?: boolean,
 		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
 		buildFreshInstanceAgent: Mock;
 		threadPushRef: { get: Mock };
@@ -3265,7 +3251,6 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			undefined,
 			'group-1',
 			gates,
-			enabled,
 		);
 
 		expect(service.createExecutionEnvironment).toHaveBeenCalledWith(
@@ -3277,8 +3262,6 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			undefined,
 			undefined,
 			gates,
-			undefined,
-			enabled,
 		);
 	});
 
@@ -7712,8 +7695,6 @@ describe('InstanceAiService — instance-context turn event', () => {
 					undefined,
 					undefined,
 					saved.instanceContext,
-					undefined,
-					false,
 				);
 				expect(checkpoint.persistence?.hostMetadata?.buildMode).toBe('default');
 				instanceContext = restored.state.instanceContext!;

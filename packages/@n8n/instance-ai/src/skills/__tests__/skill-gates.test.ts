@@ -1,5 +1,5 @@
 import {
-	AGENTS_MODULE_SKILL_IDS,
+	AGENT_BUILDING_SKILL_IDS,
 	CONFIG_EVAL_PLAYBOOK_SKILL_ID,
 	CONFIG_EVALS_SKILL_ID,
 	INSTANCE_AWARENESS_SKILL_ID,
@@ -11,7 +11,7 @@ describe('disabledInstanceAiSkillIds', () => {
 		const disabled = disabledInstanceAiSkillIds({
 			configEvalsEnabled: true,
 			instanceContextEnabled: true,
-			agentsModuleEnabled: true,
+			agentBuildingEnabled: true,
 		});
 		expect(disabled).toEqual([]);
 	});
@@ -20,7 +20,7 @@ describe('disabledInstanceAiSkillIds', () => {
 		const disabled = disabledInstanceAiSkillIds({
 			configEvalsEnabled: enabled,
 			instanceContextEnabled: true,
-			agentsModuleEnabled: true,
+			agentBuildingEnabled: true,
 		});
 		expect(disabled.includes(CONFIG_EVALS_SKILL_ID)).toBe(!enabled);
 		expect(disabled.includes(CONFIG_EVAL_PLAYBOOK_SKILL_ID)).toBe(!enabled);
@@ -31,7 +31,7 @@ describe('disabledInstanceAiSkillIds', () => {
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: false,
-				agentsModuleEnabled: true,
+				agentBuildingEnabled: true,
 			}),
 		).toEqual([INSTANCE_AWARENESS_SKILL_ID]);
 	});
@@ -41,7 +41,7 @@ describe('disabledInstanceAiSkillIds', () => {
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: true,
-				agentsModuleEnabled: true,
+				agentBuildingEnabled: true,
 			}),
 		).toEqual([]);
 	});
@@ -51,8 +51,8 @@ describe('disabledInstanceAiSkillIds', () => {
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: true,
-				agentsModuleEnabled: false,
+				agentBuildingEnabled: false,
 			}),
-		).toEqual([...AGENTS_MODULE_SKILL_IDS]);
+		).toEqual([...AGENT_BUILDING_SKILL_IDS]);
 	});
 });

@@ -10,7 +10,7 @@ import {
 	warmRuntimeSkills,
 } from '../runtime-skills';
 import {
-	AGENTS_MODULE_SKILL_IDS,
+	AGENT_BUILDING_SKILL_IDS,
 	CONFIG_EVALS_SKILL_ID,
 	disabledInstanceAiSkillIds,
 } from '../skill-gates';
@@ -272,14 +272,14 @@ describe('Instance AI runtime skills', () => {
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: false,
 				instanceContextEnabled: true,
-				agentsModuleEnabled: true,
+				agentBuildingEnabled: true,
 			}),
 		).toContain(CONFIG_EVALS_SKILL_ID);
 		expect(
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: true,
-				agentsModuleEnabled: true,
+				agentBuildingEnabled: true,
 			}),
 		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
@@ -307,11 +307,11 @@ describe('Instance AI runtime skills', () => {
 			disabledInstanceAiSkillIds({
 				configEvalsEnabled: true,
 				instanceContextEnabled: true,
-				agentsModuleEnabled: false,
+				agentBuildingEnabled: false,
 			}),
 		);
 
-		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
 			expect(source.registry.skills).not.toContainEqual(expect.objectContaining({ id: skillId }));
 			await expect(source.loadSkill(skillId)).resolves.toBeNull();
 		}
@@ -321,7 +321,7 @@ describe('Instance AI runtime skills', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const loadTool = createSkillLoadTool(source);
 
-		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
 			expect(source.registry.skills).toContainEqual(expect.objectContaining({ id: skillId }));
 			await expect(source.loadSkill(skillId)).resolves.toMatchObject({ name: skillId });
 
@@ -335,7 +335,7 @@ describe('Instance AI runtime skills', () => {
 		const withoutAgents = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
 
 		expect(withoutAgents.registry.skillsHash).toBe(unset.registry.skillsHash);
-		for (const skillId of AGENTS_MODULE_SKILL_IDS) {
+		for (const skillId of AGENT_BUILDING_SKILL_IDS) {
 			expect(unset.registry.skills).toContainEqual(expect.objectContaining({ id: skillId }));
 		}
 	});
