@@ -110,7 +110,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] Identifiers go through **`escape.tableName(...)` / `escape.columnName(...)`**. Never hand-write `n8n_table` prefixes. — [Always escape identifiers](#always-escape-identifiers)
 - [ ] **Match column type to value semantics.** Native `uuid` for UUIDs, `timestampTimezone()` for timestamps, a numeric type for numbers, `bool` for booleans, `json` for structured data. Never `varchar` as a catch-all. — [Column types](#column-types)
 - [ ] **Pick the narrowest sane type within that category:** `int`/`smallint` not `bigint` when range allows; `text` not `varchar(255)` for unbounded strings; never `double` for version numbers. — [Column types](#column-types)
-- [ ] **New tables use an integer PK** (`int.primary.autoGenerate2`). A UUID PK uses UUIDv7. For a UUID or string PK, write the reason in the PR description. — [Primary Keys](#primary-keys)
+- [ ] **A generated `id` key is an integer** (`int.primary.autoGenerate2`). A UUID key is a UUIDv7. For a UUID or string key, write the reason in the PR description. A join table uses its foreign-key columns as the key, not an `id` column. — [Primary Keys](#primary-keys)
 - [ ] **Default `notNull`**, relax only when justified. PK is implicitly NOT NULL. Migration's `notNull` matches the entity's nullability. — [NOT NULL and entity parity](#not-null-and-entity-parity)
 - [ ] **Enum-like columns** carry `.withEnumCheck([...])` AND `.comment('explains values')`. Opaque IDs / unix timestamps / JSON shapes also get `.comment()`. — [Constrain enum-like strings](#constrain-enum-like-strings), [Add comments on columns](#add-comments-on-columns)
 - [ ] **Every reference column has an explicit FK** with deliberate `onDelete`. Name FKs explicitly when SQLite recreate cycles risk duplicating them. Avoid polymorphic `(typeCol, idCol)` patterns. — [Foreign Key Constraints](#foreign-key-constraints), [General Design Guidance](#general-design-guidance)
@@ -440,28 +440,32 @@ Don't set the default of a `status` column to a terminal value — `"running"` m
 
 ### Primary Keys
 
-Every table needs a primary key. **Use an integer key by default.** Read the options below in order. Use the first option that fits. Do not choose a later option only because you prefer it.
+Every table needs a primary key. **Use an integer key by default.** Read the options below in order. Use the first option that fits. Do not skip an option only because you like a later one better.
 
-1. **Integer (default)** — `column('id').int.primary.autoGenerate2`. Use this for every new table, unless a condition in option 2 or 3 is true. Integer keys are small, make joins fast, and sort in insert order. `autoGenerate2` uses Postgres `IDENTITY`. Do not use `autoGenerate`. It uses `serial`, which is deprecated.
+1. **Integer (default)** — `column('id').int.primary.autoGenerate2`. Use this for every new table. Use a different option only when one of its conditions is true. Integer keys are small and make joins fast. `autoGenerate2` uses Postgres `IDENTITY`. Do not use `autoGenerate`. It uses `serial`, which is deprecated.
 2. **UUID** — `column('id').uuid.primary`. Use this only when one of these conditions is true:
    - The application must know the ID before the insert. For example, the client makes the ID.
-   - The ID is in a URL or a public API. A sequential ID would show how many rows exist, or let users guess other IDs.
+   - The ID is in a URL or a public API. Users must not see how many rows exist. Users must not guess other IDs.
 
-   **You must use UUIDv7.** Make the ID in application code with the `uuid` package: `import { v7 as uuidv7 } from 'uuid'`. A UUIDv7 starts with a timestamp, so the IDs sort in creation order and new rows go to the end of the index. A UUIDv4 is random, for example `randomUUID()` from `node:crypto`. It puts new rows at random positions in the index. This splits index pages and makes the index larger.
+   **You must use UUIDv7.** Make the ID in application code with the `uuid` package: `import { v7 as uuidv7 } from 'uuid'`.
 
-   Do **not** chain `.autoGenerate2` on `.uuid`. The DSL throws an error. The database default would make a UUIDv4, and `uuid_generate_v4()` needs the `uuid-ossp` extension, which managed Postgres services such as Supabase do not always have. Use `.uuid`, not `.varchar(36)`.
+   Why: a UUIDv7 starts with a timestamp. Thus, new rows go near the end of the index. A UUIDv4 is random, for example `randomUUID()` from `node:crypto`. New rows go to random positions in the index. This splits index pages and makes the index larger.
+
+   A UUIDv7 does not give an exact creation order. Two IDs made in the same millisecond can sort in the wrong order. Clock differences between hosts can also cause this. If you need the exact order, sort by a timestamp column.
+
+   Do **not** chain `.autoGenerate2` on `.uuid`. The DSL throws an error. The database default makes a UUIDv4. Also, `uuid_generate_v4()` needs the `uuid-ossp` extension. Some managed Postgres services, such as Supabase, do not have it. Use `.uuid`, not `.varchar(36)`.
 3. **String** — `column('id').varchar(36).primary`. Use this only when one of these conditions is true:
-   - The ID must match a format that is not a UUID and that the entity already uses. For example, the public API or the UI already shows nanoid IDs for this entity.
-   - The UI shows the ID to users, so the ID must be short and easy to read. A UUID is too long to read, copy, or type.
+   - The entity already uses IDs in a format that is not a UUID. For example, the public API or the UI already shows nanoid IDs for this entity.
+   - The UI shows the ID to users. A UUID is too long to read, copy, or type.
 
-   By convention, entity IDs are nanoids with 16 characters.
+   Entity IDs are usually nanoids with 16 characters.
 
-**Give a reason for every key that is not an integer.** If you choose UUID or string, write the reason in the PR description. Reviewers will ask for it. These reasons are not sufficient alone:
+**Give a reason for every key that is not an integer.** Write the reason in the PR description. Reviewers will ask for it. These reasons are not sufficient:
 - "Other tables use string IDs."
 - "This module already does it this way."
 - "We might need it later."
 
-**This order applies to a generated `id` column.** A join table that only links other tables can use its FK columns as a composite key (see below). An FK column always uses the type of the key that it references.
+**These options apply to a generated `id` column only.** A join table that only links other tables does not need an `id` column. Use its foreign-key columns as a composite key (see below). A foreign-key column always has the same type as the key that it refers to.
 
 **Keep ID-column types consistent across related tables.** Mixing `uuid` and `varchar(36)` for what is "the same kind of ID" creates JOIN footguns.
 
