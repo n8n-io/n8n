@@ -157,6 +157,7 @@ describe('CreateSkillsHubTables migration', () => {
 		const projectId = await insertProject();
 		const agentId = await insertAgent(projectId);
 		const agentVersionId = await insertAgentVersion(agentId);
+		const agentSkill = await insertSkill({ agentId });
 		const { skillId, versionId } = await insertSkill({ projectId });
 		await insertRow('agent_skill_dependency', { agentId, skillId, skillVersionId: versionId });
 		await insertRow('agent_version_skill_dependency', {
@@ -173,6 +174,8 @@ describe('CreateSkillsHubTables migration', () => {
 		expect(await countRows('skill_file', 'skillVersionId', versionId)).toBe(0);
 		expect(await countRows('agent_skill_dependency', 'skillId', skillId)).toBe(0);
 		expect(await countRows('agent_version_skill_dependency', 'skillId', skillId)).toBe(0);
+		// An agent skill has no projectId and goes through the agent.
+		expect(await countRows('skill', 'id', agentSkill.skillId)).toBe(0);
 	});
 
 	/** One agent with a published version, both pinning the same skill version. */
@@ -218,7 +221,7 @@ describe('CreateSkillsHubTables migration', () => {
 		const projectId = await insertProject();
 		const agentId = await insertAgent(projectId);
 		const agentVersionId = await insertAgentVersion(agentId);
-		const own = await insertSkill({ projectId, agentId });
+		const own = await insertSkill({ agentId });
 		const shared = await insertSkill({ projectId });
 		for (const { skillId, versionId } of [own, shared]) {
 			await insertRow('agent_skill_dependency', { agentId, skillId, skillVersionId: null });
@@ -241,11 +244,11 @@ describe('CreateSkillsHubTables migration', () => {
 		await deleteRow('project', 'id', projectId);
 	});
 
-	it('rejects an agent skill without a project', async () => {
+	it('rejects an agent skill that also has a project', async () => {
 		const projectId = await insertProject();
 		const agentId = await insertAgent(projectId);
 
-		await expect(insertSkill({ agentId })).rejects.toThrow();
+		await expect(insertSkill({ projectId, agentId })).rejects.toThrow();
 
 		await deleteRow('project', 'id', projectId);
 	});

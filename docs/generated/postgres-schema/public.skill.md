@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Set when only this agent can use the skill. projectId is then the agent project |
+| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Set when only this agent can use the skill. projectId is then NULL: the agent holds the project |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
@@ -16,7 +16,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_skill_agent_in_project | CHECK | CHECK ((("agentId" IS NULL) OR ("projectId" IS NOT NULL))) |
+| CHK_skill_single_target | CHECK | CHECK ((("agentId" IS NULL) OR ("projectId" IS NULL))) |
 | CHK_skill_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['ui'::character varying, 'agent'::character varying])::text[]))) |
 | FK_402ed37bff0d3134f6e782455ed | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_4de4501583cd1fcd6f5ea85f547 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |

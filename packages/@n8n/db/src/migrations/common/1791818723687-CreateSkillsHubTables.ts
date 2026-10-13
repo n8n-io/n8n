@@ -9,7 +9,7 @@ const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
  * A skill belongs to one target: a project (team or personal, for its agents), one agent
- * in a project (only that agent can use it), or the instance (neither set). Its name and
+ * (only that agent can use it; its project is the agent's), or the instance (neither set). Its name and
  * content live in numbered, immutable versions: a Save that changes the content creates
  * the next one, agents read the latest, and agent publishes pin the one they ran.
  */
@@ -45,7 +45,7 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 				column('agentId')
 					.varchar(36)
 					.comment(
-						'Set when only this agent can use the skill. projectId is then the agent project',
+						'Set when only this agent can use the skill. projectId is then NULL: the agent holds the project',
 					),
 				column('source')
 					.varchar(16)
@@ -73,9 +73,11 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
+			// One target. An agent skill takes its project from the agent, so the two cannot
+			// disagree, and the skill follows the agent if the agent moves.
 			.withCheck(
-				`CHK_${tablePrefix}skill_agent_in_project`,
-				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NOT NULL`,
+				`CHK_${tablePrefix}skill_single_target`,
+				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
 			);
 	}
 

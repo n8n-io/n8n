@@ -6,8 +6,8 @@ export type SkillSource = 'ui' | 'agent';
 
 /**
  * A skill in the skills hub, identified by its id only. One target: `projectId` (a team
- * or personal project, used by its agents), `agentId` with that agent's `projectId` (only
- * that agent can use it), or neither (the instance).
+ * or personal project, used by its agents), `agentId` (only that agent can use it; the
+ * project is the agent's), or neither (the instance).
  * The name and content live in `SkillVersion` rows.
  */
 @Entity({ name: 'skill' })
