@@ -34,8 +34,6 @@ Run a fresh dispatch on the same commit to measure warm caches. GitHub retries c
 The profiles use standard Namespace images with toolchain and action caching.
 `setup-nodejs` mounts `node_modules` on the cache volume and keeps the pnpm store inside that mount for hardlinks.
 Each job clears installed dependencies before installation. Nested setup retains the installed tools.
-Blacksmith control runs use the same layout on a sticky disk (`n8n-io/n8n-pnpm-deps-v1-*`), so both providers restore dependencies the same way.
-If sticky disk branch protection is on, only default-branch jobs commit a disk. Check `blacksmith stickydisk list --repo n8n-io/n8n --search pnpm-deps` after the first control run.
 Native Turbo caching shares build outputs across jobs.
 
 The profiles separate the full build, checks, E2E, and partial tooling installs into different cache volumes.
