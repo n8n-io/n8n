@@ -63,7 +63,10 @@ describe('Google Calendar Node', () => {
 			);
 		});
 
-		it('should update replace attendees', async () => {
+		it.each([
+			{ attendees: ['email1@mail.com'], expectedAttendees: [{ email: 'email1@mail.com' }] },
+			{ attendees: [], expectedAttendees: [] },
+		])('should update replace attendees: $attendees', async ({ attendees, expectedAttendees }) => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('event');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('update');
@@ -76,7 +79,7 @@ describe('Google Calendar Node', () => {
 				attendeesUi: {
 					values: {
 						mode: 'replace',
-						attendees: ['email1@mail.com'],
+						attendees,
 					},
 				},
 			});
@@ -86,7 +89,7 @@ describe('Google Calendar Node', () => {
 			expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 				'PATCH',
 				'/calendar/v3/calendars/undefined/events/myEvent',
-				{ attendees: [{ email: 'email1@mail.com' }] },
+				{ attendees: expectedAttendees },
 				{},
 			);
 		});
@@ -128,33 +131,19 @@ describe('Google Calendar Node', () => {
 			);
 		});
 
-		it.each([
-			{
-				version: 1.1,
-				mode: 'legacy',
-				updateFields: { attendees: [{ email: 'alice@example.com' }] },
-			},
-			{
-				version: 1.2,
-				mode: 'replace',
-				updateFields: {
-					attendeesUi: {
-						values: { mode: 'replace', attendees: [{ email: 'alice@example.com' }] },
-					},
-				},
-			},
-			{
-				version: 1.3,
-				mode: 'add',
-				updateFields: {
-					attendeesUi: {
-						values: { mode: 'add', attendees: [{ email: 'alice@example.com' }] },
-					},
-				},
-			},
-		])(
-			'should report a node error for an attendee object in version $version ($mode)',
-			async ({ version, updateFields }) => {
+		describe.each([
+			{ version: 1.1, mode: 'legacy' },
+			{ version: 1.2, mode: 'replace' },
+			{ version: 1.3, mode: 'add' },
+		])('attendee validation in version $version ($mode)', ({ version, mode }) => {
+			it.each([
+				{ attendees: [{ email: 'alice@example.com' }] },
+				{ attendees: [''] },
+				{ attendees: [' \t '] },
+				{ attendees: ['alice@example.com,'] },
+			])('should report a node error for invalid attendees: $attendees', async ({ attendees }) => {
+				const updateFields =
+					mode === 'legacy' ? { attendees } : { attendeesUi: { values: { mode, attendees } } };
 				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: version }));
 				mockExecuteFunctions.getNodeParameter
@@ -177,8 +166,8 @@ describe('Google Calendar Node', () => {
 					context: { itemIndex: 0 },
 				});
 				expect(genericFunctions.googleApiRequest).not.toHaveBeenCalled();
-			},
-		);
+			});
+		});
 
 		describe('all-day <-> timed conversion', () => {
 			const setupUpdate = (updateFields: IDataObject) => {

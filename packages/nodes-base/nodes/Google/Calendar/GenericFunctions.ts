@@ -24,7 +24,14 @@ export function parseAttendees(
 	attendees: unknown,
 	itemIndex: number,
 ): Array<{ email: string }> {
-	if (!Array.isArray(attendees) || !attendees.every((attendee) => typeof attendee === 'string')) {
+	if (
+		!Array.isArray(attendees) ||
+		!attendees.every(
+			(attendee: unknown): attendee is string =>
+				typeof attendee === 'string' &&
+				attendee.split(',').every((email) => email.trim().length > 0),
+		)
+	) {
 		throw new NodeOperationError(this.getNode(), 'Invalid attendee value', {
 			description:
 				'Set each attendee to an email address string. To include multiple addresses in one entry, separate them with commas.',

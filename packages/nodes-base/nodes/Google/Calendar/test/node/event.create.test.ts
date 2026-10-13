@@ -66,6 +66,40 @@ describe('Google Calendar > Event > Create', () => {
 		);
 	});
 
+	it('should create an event with an empty attendee list', async () => {
+		setupCreate({ attendees: [] });
+
+		await googleCalendar.execute.call(executeFunctions);
+
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/calendar/v3/calendars/primary/events',
+			expect.objectContaining({ attendees: [] }),
+			{},
+		);
+	});
+
+	it.each([
+		{ attendees: [''] },
+		{ attendees: [' \t\n '] },
+		{ attendees: ['alice@example.com,'] },
+		{ attendees: [',alice@example.com'] },
+		{ attendees: ['alice@example.com,,bob@example.com'] },
+		{ attendees: ['alice@example.com, \t ,bob@example.com'] },
+		{ attendees: ['alice@example.com', ''] },
+	])('should report a node error for blank attendee entries: $attendees', async ({ attendees }) => {
+		setupCreate({ attendees });
+
+		const execution = googleCalendar.execute.call(executeFunctions);
+
+		await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(execution).rejects.toMatchObject({
+			message: 'Invalid attendee value',
+			context: { itemIndex: 0 },
+		});
+		expect(genericFunctions.googleApiRequest).not.toHaveBeenCalled();
+	});
+
 	it('should report a node error when an attendee expression returns an object', async () => {
 		// NODE-5494: An attendee expression can return an object instead of an email string.
 		setupCreate({ attendees: [{ email: 'alice@example.com' }] });
