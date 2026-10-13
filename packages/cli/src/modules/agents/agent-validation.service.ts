@@ -665,9 +665,13 @@ export class AgentValidationService {
 			// Only a node tool names a node type, and only a node tool can embed an inline agent.
 			if (tool.type !== 'node') continue;
 
+			const own = toPolicedNodes([tool]);
+			const ownViolation = firstDenied(own);
 			// An inline agent's own tools run under the tool that embeds them, so the parent carries
-			// the lock: a violation names a type, never the entry that holds it.
-			const violation = firstDenied(withInlineAgentToolNodes(toPolicedNodes([tool])));
+			// the issue: a violation names a type, never the entry that holds it. It reads as its own
+			// reason, because the tool itself stays usable and editable — the fix is to open it and
+			// drop the embedded tool.
+			const violation = ownViolation ?? firstDenied(withInlineAgentToolNodes(own));
 			if (!violation) continue;
 
 			toolIndexes.add(index);
@@ -676,7 +680,7 @@ export class AgentValidationService {
 					'restricted_node_type',
 					`tools.${index}.node.nodeType`,
 					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
-					restrictionReason(violation),
+					ownViolation ? restrictionReason(ownViolation) : 'restricted_by_inline_tool',
 				),
 			);
 		}

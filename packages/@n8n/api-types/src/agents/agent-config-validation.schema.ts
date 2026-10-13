@@ -54,8 +54,10 @@ export const agentConfigValidationIssueSchema = z.object({
 	 * (e.g. `'incompatible_nodes'`, `'no_supported_trigger'`, `'not_published'`
 	 * for workflow tools), and for `restricted_node_type` the level that denied
 	 * the type (`'restricted_by_instance'`, `'restricted_by_project'`), absent
-	 * when the level is unknown. Values are qualified by their code because
-	 * frontends resolve this field before the code.
+	 * when the level is unknown. `'restricted_by_inline_tool'` instead means the
+	 * entry itself is allowed and embeds an agent that holds a denied type.
+	 * Values are qualified by their code because frontends resolve this field
+	 * before the code.
 	 * Frontends map this to a reason-specific i18n key; never display it raw.
 	 */
 	reason: z.string().optional(),

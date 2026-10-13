@@ -1749,8 +1749,39 @@ describe('AgentValidationService — restricted node types', () => {
 			code: 'restricted_node_type',
 			path: 'tools.0.node.nodeType',
 			capability: { kind: 'tool', id: 'Ask the billing agent', index: 0, toolType: 'node' },
-			reason: 'restricted_by_project',
+			// Its own type is allowed, so the reason names the embedded tool rather than a scope:
+			// the tool stays editable, because removing that tool is the fix.
+			reason: 'restricted_by_inline_tool',
 		});
+	});
+
+	it('reports the scope when the embedding tool is itself denied', async () => {
+		const messageAnAgent = {
+			type: 'node',
+			name: 'Ask the billing agent',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgentTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: { config: { tools: [slackTool] } },
+				},
+			},
+		} as const;
+		const { service } = setUpDenied({ ...runnableConfig, tools: [messageAnAgent] }, [
+			deny('n8n-nodes-base.messageAnAgentTool', 'instance'),
+			deny('n8n-nodes-base.slackTool', 'project'),
+		]);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: 'restricted_node_type', reason: 'restricted_by_instance' }),
+		);
 	});
 
 	it('reports an MCP server whose client node type is denied', async () => {
