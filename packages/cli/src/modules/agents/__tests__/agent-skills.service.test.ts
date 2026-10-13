@@ -273,7 +273,9 @@ describe('AgentSkillsService', () => {
 					[skill, { ...skill, name: 'summarize_notes' }],
 					context,
 				),
-			).rejects.toThrow('Agent already has a skill with a name like "summarize_notes".');
+			).rejects.toThrow(
+				'The new skills "Summarize Notes", "summarize_notes" are hard to tell apart.',
+			);
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 

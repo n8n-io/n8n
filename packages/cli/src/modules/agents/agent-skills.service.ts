@@ -26,7 +26,7 @@ import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import type { AgentSkillRefs } from './json-config/agent-document';
 import { AgentRepository } from './repositories/agent.repository';
-import { findIntroducedNameClashes } from './skills/skill-names';
+import { findIntroducedNameClashes, findNameClashGroups } from './skills/skill-names';
 import { SkillService } from './skills/skill.service';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
@@ -434,14 +434,18 @@ export class AgentSkillsService {
 
 	/** New names must be easy to tell apart from the agent's skills and from each other. */
 	private assertNoNameClashes(existing: Record<string, AgentSkill>, added: AgentSkill[]): void {
-		const clashes = findIntroducedNameClashes(
-			Object.values(existing).map((skill) => skill.name),
-			added.map((skill) => skill.name),
-		);
+		const quote = (names: string[]) => names.map((name) => name.trim()).join('", "');
+		const existingNames = Object.values(existing).map((skill) => skill.name);
+		const clashes = added
+			.map((skill) => skill.name)
+			.filter((name) => findIntroducedNameClashes(existingNames, [name]).length > 0);
 		if (clashes.length > 0) {
-			throw new UserError(
-				`Agent already has a skill with a name like "${clashes.map((name) => name.trim()).join('", "')}".`,
-			);
+			throw new UserError(`Agent already has a skill with a name like "${quote(clashes)}".`);
+		}
+		// Two new skills of one batch can also clash with each other.
+		const inBatch = findNameClashGroups(added.map((skill) => skill.name));
+		if (inBatch.length > 0) {
+			throw new UserError(`The new skills "${quote(inBatch[0])}" are hard to tell apart.`);
 		}
 	}
 }
