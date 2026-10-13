@@ -257,6 +257,7 @@ describe('POST /n8n-packages/import', () => {
 			credentials: {
 				matched: [],
 				stubbed: [],
+				seeded: [],
 			},
 			dataTables: {
 				matched: 0,
@@ -343,6 +344,19 @@ describe('POST /n8n-packages/import', () => {
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
+	});
+
+	test('accepts credentialMissingMode=create-with-values through the OpenAPI request validator', async () => {
+		const tarBuffer = await buildImportPackage();
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('credentialMissingMode', 'create-with-values')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.credentials).toMatchObject({ seeded: [] });
 	});
 
 	test('rejects an unsupported dataTableMissingMode value', async () => {
@@ -515,6 +529,7 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.body.credentials).toEqual({
 			matched: [],
 			stubbed: ['missing-credential'],
+			seeded: [],
 		});
 		expect(response.body.bindings.credentials).toEqual({
 			'missing-credential': expect.any(String),

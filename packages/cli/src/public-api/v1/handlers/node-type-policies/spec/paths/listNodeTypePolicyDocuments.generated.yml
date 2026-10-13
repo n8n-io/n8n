@@ -1,8 +1,11 @@
 operationId: listNodeTypePolicyDocuments
 tags:
   - NodeTypePolicy
-summary: List node type policy documents
-description: Returns a cursor-paginated list of reusable policy documents.
+summary: 'Beta: List node type policy documents'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns a cursor-paginated list of reusable policy documents.
 x-required-scope: nodeTypePolicy:manage
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

@@ -78,6 +78,7 @@ describe('useAgentChannelSetup', () => {
 
 		expect(fetchProject).toHaveBeenCalledWith('project-1');
 		expect(fetchStatus).toHaveBeenCalledWith(['example']);
+		expect(fetchCredentials).toHaveBeenCalledWith({ projectId: 'project-1', forAgent: true });
 		expect(setup.credentialPermissions.value.create).toBe(true);
 		expect(setup.getCredentials('example')).toEqual([
 			expect.objectContaining({ id: 'credential-1', name: 'Example credential' }),

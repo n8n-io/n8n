@@ -56,7 +56,8 @@ type TemplateName =
 	| 'mcp-client-revoked'
 	| 'email-change-requested'
 	| 'email-change-completed'
-	| 'agent-budget-alert';
+	| 'agent-budget-alert'
+	| 'migration-findings';
 
 @Service()
 export class UserManagementMailer {
@@ -203,6 +204,38 @@ export class UserManagementMailer {
 				agentName: data.agentName,
 				agentUrl: data.agentUrl,
 				percent: data.alertThresholdPercent,
+			}),
+		});
+	}
+
+	/** Asks the owner of the listed workflows to resolve one migration finding on them. */
+	async migrationFindings(data: {
+		email: string;
+		firstName?: string | null;
+		notifierName: string;
+		ruleTitle: string;
+		targetVersion: string;
+		workflows: Array<{ id: string; name: string }>;
+		reportUrl: string;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('migration-findings');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: `Your workflows need changes before the upgrade to n8n ${data.targetVersion}`,
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				notifierName: data.notifierName,
+				ruleTitle: data.ruleTitle,
+				targetVersion: data.targetVersion,
+				workflows: data.workflows.map((workflow) => ({
+					name: workflow.name,
+					url: `${baseUrl}/workflow/${workflow.id}`,
+				})),
+				reportUrl: data.reportUrl,
 			}),
 		});
 	}

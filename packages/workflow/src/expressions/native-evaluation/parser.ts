@@ -12,6 +12,9 @@ import {
 	NODE_REF_MEMBERS,
 	NODE_REF_METHODS,
 	RESERVED_NAMES,
+	TIME_MEMBERS,
+	TIME_METHODS,
+	TIME_ROOTS,
 	UNARY_OPS,
 	isOneOf,
 	type Literal,
@@ -141,6 +144,16 @@ function parseNodeRef(node: AstNode): NodeRef | null {
 	return null;
 }
 
+type TimeRef = Extract<SimpleNode, { kind: 'timeRoot' }>;
+
+// `$now` or `$today` in object/receiver position. As with parseNodeRef, only
+// the member and call parsers ask, so the DateTime never stands alone.
+function parseTimeRoot(node: AstNode): TimeRef | null {
+	if (node.type !== 'Identifier' || !isOneOf(TIME_ROOTS, node.name)) return null;
+
+	return { kind: 'timeRoot', name: node.name };
+}
+
 // Only static keys are representable. Dynamic keys ($json[$json.key]) need
 // the sandbox's PrototypeSanitizer, so they stay on the engine. String keys
 // are vetted at parse time (isSafeObjectProperty), which keeps prototype
@@ -158,6 +171,13 @@ function parseMember(node: namedTypes.MemberExpression, parse: ParseChild): Simp
 		if (typeof key !== 'string' || !allowed.has(key)) return null;
 
 		return { kind: 'member', object: ref, key, optional: node.optional === true };
+	}
+
+	const time = parseTimeRoot(node.object);
+	if (time !== null) {
+		if (typeof key !== 'string' || !TIME_MEMBERS.has(key)) return null;
+
+		return { kind: 'member', object: time, key, optional: node.optional === true };
 	}
 
 	const object = parse(node.object);
@@ -240,6 +260,16 @@ function parseCall(
 
 		const optional = node.optional === true || callee.optional === true;
 		return { kind: 'call', receiver: ref, method: property.name, args: [], optional };
+	}
+
+	// `$now.toMillis()` and friends: Luxon's own primitive-returning methods,
+	// no arguments.
+	const time = parseTimeRoot(callee.object);
+	if (time !== null) {
+		if (!TIME_METHODS.has(property.name) || node.arguments.length > 0) return null;
+
+		const optional = node.optional === true || callee.optional === true;
+		return { kind: 'call', receiver: time, method: property.name, args: [], optional };
 	}
 
 	const method = property.name;

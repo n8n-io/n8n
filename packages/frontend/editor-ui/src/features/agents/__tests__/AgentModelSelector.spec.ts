@@ -51,6 +51,8 @@ const restrictedCredentialTypes = vi.hoisted(() => ({
 	value: {} as Record<string, 'instance' | 'project'>,
 }));
 const openNewCredential = vi.hoisted(() => vi.fn());
+const fetchUsableCredentials = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const showError = vi.hoisted(() => vi.fn());
 const closeMenu = vi.hoisted(() => vi.fn());
 const openModalWithData = vi.hoisted(() => vi.fn());
 const aiGatewayState = vi.hoisted(() => ({
@@ -102,6 +104,10 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText,
 	}),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
 }));
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
@@ -178,8 +184,10 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 			Object.values(credentialsByType.value)
 				.flat()
 				.find((credential) => credential.id === id),
-		getCredentialsByType: (type: string) => credentialsByType.value[type] ?? [],
+		getUsableCredentialByType: (type: string) => credentialsByType.value[type] ?? [],
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
+		fetchUsableCredentials,
+		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 
@@ -234,6 +242,18 @@ vi.mock('../composables/useModelCatalog', () => ({
 }));
 
 const modelsByProvider: AgentModelsByProvider = {
+	'google-vertex': {
+		models: [
+			{
+				provider: 'google-vertex',
+				model: 'gemini-3-flash-preview',
+				name: 'Gemini 3 Flash Preview',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			},
+		],
+	},
 	anthropic: {
 		models: [
 			{
@@ -817,6 +837,32 @@ describe('AgentModelSelector', () => {
 		expect(modelsHeader?.label).toBe('Models');
 	});
 
+	it('offers only Vertex AI credentials and selects a model without a separate project', async () => {
+		credentialsByType.value = {
+			googleApi: [{ id: 'service-account', name: 'Service account', type: 'googleApi' }],
+			googlePalmApi: [{ id: 'gemini', name: 'Gemini', type: 'googlePalmApi' }],
+			googleVertexAiApi: [{ id: 'vertex', name: 'Vertex', type: 'googleVertexAiApi' }],
+		};
+		const wrapper = await mountSelector({ 'google-vertex': 'vertex' }, { selectedModel: null });
+		const children = getProviderItem(wrapper, 'google-vertex')?.children ?? [];
+
+		expect(
+			children.filter((item) => item.id.includes('::select::')).map((item) => item.id),
+		).toEqual(['google-vertex::select::vertex']);
+		expect(children.filter((item) => item.header).map((item) => item.label)).toEqual([
+			'Connect to Google Vertex AI',
+			'Models',
+		]);
+		expect(children.some((item) => item.id === 'google-vertex::configure::googleVertexAiApi')).toBe(
+			true,
+		);
+
+		getDropdown(wrapper).vm.$emit('select', 'google-vertex::model::gemini-3-flash-preview');
+		expect(wrapper.emitted('change')).toEqual([
+			[{ provider: 'google-vertex', model: 'gemini-3-flash-preview' }],
+		]);
+	});
+
 	it('checks the active credential row', async () => {
 		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
 		const credentialItem = getMenuItemByLabel(
@@ -854,12 +900,53 @@ describe('AgentModelSelector', () => {
 		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
 		expect(onCredentialCreated).toBeTypeOf('function');
 
-		onCredentialCreated?.({ id: 'new-anthropic-credential' });
+		await onCredentialCreated?.({ id: 'new-anthropic-credential' });
 
 		expect(wrapper.emitted('selectCredential')).toEqual([
 			['anthropic', 'new-anthropic-credential'],
 		]);
 		expect(wrapper.emitted('change')).toBeUndefined();
+	});
+
+	it('refetches the usable credential list before it selects a created credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const order: string[] = [];
+		fetchUsableCredentials.mockImplementationOnce(async () => {
+			order.push('fetch');
+			return [];
+		});
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+		const pending = onCredentialCreated?.({ id: 'new-anthropic-credential' });
+		order.push(wrapper.emitted('selectCredential') ? 'select' : 'no-select');
+		await pending;
+
+		expect(fetchUsableCredentials).toHaveBeenCalledWith({ projectId: 'project-1', forAgent: true });
+		expect(order).toEqual(['fetch', 'no-select']);
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+	});
+
+	it('reports a failed usable credential refetch and still selects the created credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const error = new Error('network');
+		fetchUsableCredentials.mockRejectedValueOnce(error);
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+
+		await expect(
+			onCredentialCreated?.({ id: 'new-anthropic-credential' }),
+		).resolves.toBeUndefined();
+
+		expect(showError).toHaveBeenCalledWith(error, 'agents.builder.credentials.refreshError');
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
 	});
 
 	it('does not replace the selected model after creating a credential', async () => {
@@ -868,7 +955,7 @@ describe('AgentModelSelector', () => {
 
 		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
 		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
-		onCredentialCreated?.({ id: 'new-anthropic-credential' });
+		await onCredentialCreated?.({ id: 'new-anthropic-credential' });
 
 		expect(wrapper.emitted('selectCredential')).toEqual([
 			['anthropic', 'new-anthropic-credential'],

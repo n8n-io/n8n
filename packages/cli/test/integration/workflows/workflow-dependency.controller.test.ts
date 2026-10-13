@@ -25,6 +25,7 @@ import { createDataTable } from '../shared/db/data-tables';
 import { createFolder } from '../shared/db/folders';
 import { createMember, createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
@@ -85,13 +86,13 @@ async function seedIndexedAgent(
 	const agent = agentRepo.create({
 		name,
 		projectId: project.id,
-		schema: {
+		schema: storedAgentConfig({
 			name,
 			model: 'openai/gpt-4.1-mini',
 			instructions: 'Help the user',
 			skills: [],
 			...schema,
-		},
+		}),
 		integrations: [],
 		tools: {},
 		skills: {},

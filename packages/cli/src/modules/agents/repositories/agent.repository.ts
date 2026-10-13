@@ -3,6 +3,7 @@ import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types'
 import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
@@ -38,10 +39,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * upsert, so an id minted by the client that already names a row would
 	 * update that row instead of colliding on the primary key.
 	 */
-	async insertNew(agent: Agent): Promise<void> {
+	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
-		await this.insert(agent as QueryDeepPartialEntity<Agent>);
+		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
 	async hasRevision(id: string, revision: number): Promise<boolean> {
@@ -642,5 +643,61 @@ export class AgentRepository extends BaseRepository<Agent> {
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * A skill that these agents follow got a new saved version. Give each agent that is in
+	 * sync with its published version a new draft version id, so it shows unpublished
+	 * changes. One conditional UPDATE per agent and no read first, so a concurrent draft
+	 * edit cannot make the skill save fail. `revision` does not move: a draft edit also
+	 * moves `versionId` away from `activeVersionId`, so neither write undoes the other.
+	 * Returns the agents it changed.
+	 */
+	async markDraftChangedIfInSync(
+		agentIds: string[],
+		ctx: OperationContext = {},
+	): Promise<string[]> {
+		const changed: string[] = [];
+		for (const id of agentIds) {
+			const result = await this.managerFor(ctx)
+				.createQueryBuilder()
+				.update(Agent)
+				.set({ versionId: randomUUID() })
+				.where('id = :id', { id })
+				.andWhere('"versionId" = "activeVersionId"')
+				.execute();
+			if ((result.affected ?? 0) > 0) changed.push(id);
+		}
+		return changed;
+	}
+
+	/** The project of each agent, to send an update push to the right project. */
+	async findProjectIdsByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+		return await this.managerFor(ctx).find(Agent, {
+			where: { id: In(ids) },
+			select: ['id', 'projectId'],
+		});
+	}
+
+	/**
+	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
+	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
+	 * write does not check `revision`: call it only in the same transaction as a
+	 * won `saveDraftFenced`.
+	 */
+	async updateDraftSchema(
+		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
 	}
 }

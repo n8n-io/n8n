@@ -10,6 +10,10 @@ export const AI_PREFERENCES_DEFAULT_PAGE_SIZE = 50;
 export const AI_PREFERENCES_MAX_IDS_FILTER = AI_PREFERENCES_MAX_PAGE_SIZE;
 const UUID_LENGTH = 36;
 
+export const AI_PREFERENCES_SORT_OPTIONS = ['updatedAt:asc', 'updatedAt:desc'] as const;
+
+export type AiPreferenceSortOption = (typeof AI_PREFERENCES_SORT_OPTIONS)[number];
+
 export class AiPreferenceListQueryDto extends Z.class({
 	skip: paginationSchema.skip,
 	// TypeORM reads the whole table for a `take` of 0.
@@ -44,4 +48,9 @@ export class AiPreferenceListQueryDto extends Z.class({
 				.max(AI_PREFERENCES_MAX_IDS_FILTER)
 				.optional(),
 		),
+	sortBy: z
+		.enum(AI_PREFERENCES_SORT_OPTIONS, {
+			message: `sortBy must be one of: ${AI_PREFERENCES_SORT_OPTIONS.join(', ')}`,
+		})
+		.optional(),
 }) {}

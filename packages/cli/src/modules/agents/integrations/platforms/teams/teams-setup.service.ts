@@ -24,6 +24,8 @@ interface AgentScope {
 interface BotIdentity {
 	clientId: string;
 	tenantId: string;
+	/** Written by the recommended setup, so a hand-made credential lacks it. */
+	provisionedForAgentId?: string;
 }
 
 @Service()
@@ -64,6 +66,7 @@ export class TeamsSetupService {
 					? this.armTemplateService.buildDeployUrl(scope.projectId, scope.agentId, credentialId)
 					: null,
 			credentialClaimedBy: claimedBy,
+			provisionedByN8n: identity?.provisionedForAgentId === agent.id,
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -182,6 +185,50 @@ export class TeamsSetupService {
 		return { defaultDisplayName: displayName, defaultDescription: description };
 	}
 
+	/** The name the provisioned Entra app and Teams app are built from. */
+	async agentNameFor(projectId: string, agentId: string): Promise<string> {
+		const agent = await this.getAgent({ projectId, agentId });
+		return agent.name;
+	}
+
+	/**
+	 * What the bot has to be created against: the Entra app it signs as, and
+	 * where Teams should deliver to. Both are read here so the provisioned bot
+	 * and the Deploy to Azure template agree on every value.
+	 */
+	async botIdentityFor(
+		user: User,
+		scope: AgentScope,
+		credentialId: string,
+	): Promise<{
+		clientId: string;
+		tenantId: string;
+		messagingEndpoint: string;
+		agentName: string;
+	}> {
+		const agent = await this.getAgent(scope);
+		const identity = await this.readIdentity(agent.projectId, credentialId, user);
+		if (!identity) {
+			throw new BadRequestError('Create the Teams app before deploying the bot.');
+		}
+
+		// An Azure bot carries one messaging endpoint. Creating one against a
+		// credential another agent holds re-points that agent's bot at this
+		// endpoint, so its messages would arrive here instead.
+		const claimedBy = await this.credentialClaimedBy(agent.id, credentialId);
+		if (claimedBy) {
+			throw new BadRequestError(
+				`This credential already backs the Teams channel of "${claimedBy}". Pick a different one.`,
+			);
+		}
+
+		return {
+			...identity,
+			messagingEndpoint: this.messagingEndpointUrl(scope),
+			agentName: agent.name,
+		};
+	}
+
 	private async getAgent(scope: AgentScope): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(scope.agentId, scope.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${scope.agentId}" not found`);
@@ -221,7 +268,8 @@ export class TeamsSetupService {
 				);
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
-		return clientId && tenantId ? { clientId, tenantId } : null;
+		const provisionedForAgentId = stringProperty(data, 'provisionedForAgentId');
+		return clientId && tenantId ? { clientId, tenantId, provisionedForAgentId } : null;
 	}
 
 	private messagingEndpointUrl(scope: AgentScope): string {

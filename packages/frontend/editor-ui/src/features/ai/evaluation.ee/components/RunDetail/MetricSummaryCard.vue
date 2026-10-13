@@ -98,7 +98,7 @@ const valueTooltip = computed(() =>
 .value {
 	font-size: var(--font-size--2xl);
 	line-height: 1;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--tight);
 }
 
