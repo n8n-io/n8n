@@ -103,6 +103,36 @@ describe('HomeAssistant Node', () => {
 			);
 		});
 
+		it('should keep the existing attributes when the attribute list is empty', async () => {
+			// Adding attribute rows and deleting them again stores an empty list
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string) =>
+					({ ...noAttributesParams, stateAttributes: { attributes: [] } })[paramName],
+			);
+
+			const existingAttributes = { unit_of_measurement: '°C', friendly_name: 'Test Sensor' };
+			mockHomeAssistantApiRequest
+				.mockResolvedValueOnce({
+					entity_id: 'sensor.test',
+					state: 'on',
+					attributes: existingAttributes,
+				})
+				.mockResolvedValueOnce({ entity_id: 'sensor.test', state: 'off' });
+
+			await homeAssistant.execute.call(mockExecuteFunctions);
+
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(1, 'GET', '/states/sensor.test');
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
+				2,
+				'POST',
+				'/states/sensor.test',
+				{
+					state: 'off',
+					attributes: existingAttributes,
+				},
+			);
+		});
+
 		it('should not send attributes when the entity does not exist yet', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(paramName: string) => noAttributesParams[paramName],

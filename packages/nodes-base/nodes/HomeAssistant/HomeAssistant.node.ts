@@ -258,7 +258,7 @@ export class HomeAssistant implements INodeType {
 							state,
 						};
 
-						if (stateAttributes.attributes !== undefined) {
+						if (stateAttributes.attributes?.length) {
 							const attributes: IDataObject = {};
 							stateAttributes.attributes.forEach((attribute) => {
 								setSafeObjectProperty(attributes, attribute.name as string, attribute.value);
