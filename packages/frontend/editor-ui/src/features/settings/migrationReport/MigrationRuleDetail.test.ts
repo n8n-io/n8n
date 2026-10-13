@@ -6,6 +6,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -22,6 +23,7 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	updateFindingStatuses: vi.fn(),
 	assignWorkflowOwner: vi.fn(),
 	unassignWorkflowOwner: vi.fn(),
+	notifyFindingOwners: vi.fn(),
 }));
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	getUsers: vi.fn(),
@@ -34,14 +36,15 @@ const grace = {
 	email: 'grace@example.com',
 };
 
-const { showError, resolveRoute } = vi.hoisted(() => ({
+const { showError, showMessage, resolveRoute } = vi.hoisted(() => ({
 	showError: vi.fn(),
+	showMessage: vi.fn(),
 	resolveRoute: vi.fn(() => ({ href: '/workflow/workflow-1' })),
 }));
 
 vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
 	...(await importOriginal<object>()),
-	useToast: () => ({ showError }),
+	useToast: () => ({ showError, showMessage }),
 }));
 
 // The test renderer has no router. The open link needs `resolve` to build the workflow URL.
@@ -151,6 +154,7 @@ describe('MigrationRuleDetail', () => {
 		};
 		uiStore = mockedStore(useUIStore);
 		rbacStore = mockedStore(useRBACStore);
+		mockedStore(useSettingsStore).isSmtpSetup = true;
 		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
 		vi.mocked(usersApi.getUsers).mockResolvedValue({ count: 1, items: [grace] });
 
@@ -1468,6 +1472,135 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 				expect(screen.getByTestId('migration-rule-filters')).toHaveTextContent(/^Filters$/);
 			});
+		});
+	});
+	describe('notify owner', () => {
+		const getRow = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return row;
+		};
+
+		it('should offer to notify only a row with an owner, and remind once notified', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			const button = within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button');
+			expect(button).toHaveTextContent('Notify owner');
+			expect(
+				within(getRow('Test Workflow 2')).queryByTestId('migration-notify-owner-button'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should mark the row notified after the email went out and keep it in the affected count', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: ['workflow-1'],
+				skipped: [],
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => {
+				const row = getRow('Test Workflow 1');
+				expect(within(row).getByTestId('migration-finding-state-select')).toHaveTextContent(
+					'Notified',
+				);
+				expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
+				expect(within(row).getByTestId('migration-notify-owner-button')).toHaveTextContent(
+					'Remind',
+				);
+			});
+			expect(screen.getByText('2 affected')).toBeInTheDocument();
+			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-1'],
+			);
+		});
+
+		it('should send the email again when the user clicks Remind', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: ['workflow-1'],
+				skipped: [],
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							status: 'notified',
+							notifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+						},
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+			const row = getRow('Test Workflow 1');
+			expect(within(row).getByTestId('migration-workflow-notified-at')).not.toHaveTextContent(
+				'just now',
+			);
+
+			await userEvent.click(within(row).getByTestId('migration-notify-owner-button'));
+
+			await waitFor(() => {
+				expect(
+					within(getRow('Test Workflow 1')).getByTestId('migration-workflow-notified-at'),
+				).toHaveTextContent('just now');
+			});
+			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledTimes(1);
+			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-1'],
+			);
+		});
+
+		it('should not offer to notify an owner without an email', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, owner: { ...mockWorkflowWithIssue.owner, email: null } },
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			expect(screen.queryByTestId('migration-notify-owner-button')).not.toBeInTheDocument();
+		});
+
+		it('should leave the row as it is and show the reason when the server skips it', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: [],
+				skipped: [{ workflowId: 'workflow-1', reason: 'send_failed' }],
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => expect(showMessage).toHaveBeenCalled());
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', message: expect.stringContaining('SMTP') }),
+			);
+			expect(
+				within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+			).toHaveTextContent('Open');
+		});
+
+		it('should hide the notify action when SMTP is not set up', async () => {
+			mockedStore(useSettingsStore).isSmtpSetup = false;
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(screen.queryByTestId('migration-notify-owner-button')).not.toBeInTheDocument();
 		});
 	});
 });
