@@ -1,5 +1,5 @@
-import { createNode } from '../../__tests__/test-helpers';
-import { AI_TRANSFORM_NODE_TYPE } from '../../rules/v3/ai-transform-deprecated.rule';
+import { createNode } from '../../../__tests__/test-helpers';
+import { AI_TRANSFORM_NODE_TYPE } from '../../../rules/v3/ai-transform-deprecated.rule';
 import { aiTransformToCode } from '../ai-transform-to-code.migration';
 
 describe('aiTransformToCode migration', () => {

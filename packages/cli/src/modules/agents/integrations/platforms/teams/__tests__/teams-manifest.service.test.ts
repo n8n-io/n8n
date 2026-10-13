@@ -148,7 +148,12 @@ describe('TeamsManifestService', () => {
 					options({ settings: { teamChannels: true, readAllChannelMessages: true } }),
 				);
 
-				expect(manifest.webApplicationInfo).toEqual({ id: BOT_ID });
+				// `resource` does nothing for a resource-specific grant, but Microsoft
+				// answers with an error when it is absent.
+				expect(manifest.webApplicationInfo).toEqual({
+					id: BOT_ID,
+					resource: 'https://RscBasedStoreApp',
+				});
 			});
 
 			it('drops a read permission whose surface is off, so it cannot read as in effect', () => {

@@ -38,10 +38,6 @@ import { getModelRecommendationsSection } from './agents-builder-model-recommend
 import { buildBuilderPrompt, buildBuilderSessionContext } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, type BuilderTools } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
-import {
-	BUILDER_PLANNER_TODOS_DESCRIPTION,
-	BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
-} from './prompts/planner-todos.prompt';
 import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -376,16 +372,10 @@ export class AgentsBuilderService {
 		agentId: string,
 		session: InstanceAiBuilderSessionOptions,
 	): Promise<void> {
-		const { createPlannerTodosTool } = await import('@n8n/agents');
-		const plannerTodosTool = createPlannerTodosTool({
-			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
-			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
-		});
 		const reportRequiredArtifactTool = await this.createRequiredArtifactTool(session);
 		const builderTools = [
 			...tools.json,
 			...tools.shared,
-			plannerTodosTool,
 			...(reportRequiredArtifactTool ? [reportRequiredArtifactTool] : []),
 		];
 		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));

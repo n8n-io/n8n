@@ -78,9 +78,7 @@ tags:
   - name: Workflow
     description: Operations about workflows
 
-paths:
-  /n8n-packages/export:
-    $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
+paths: {}
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

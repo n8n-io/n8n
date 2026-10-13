@@ -2,11 +2,13 @@
 
 import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
+import type { IWorkflowDataProxyData } from '../src/interfaces';
 import { ExpressionExtensions } from '../src/extensions';
 import {
 	evaluateNatively,
 	isNativelyEvaluable,
 	CALLABLE_METHODS,
+	TIME_METHODS,
 	ITERATOR_METHODS,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
@@ -22,6 +24,7 @@ import {
 	ERROR_CORPUS,
 	HANDLED_CORPUS,
 	RUNTIME_BAILOUT_CORPUS,
+	TIME_CORPUS,
 } from './native-evaluation-corpus';
 
 // The expression corpora live in native-evaluation-corpus.ts.
@@ -202,6 +205,54 @@ describe('Expression - fast native evaluation parity', () => {
 				false,
 			);
 			expect(nativeOutcome('={{ $json.item.names.concat($json.item.names) }}').handled).toBe(true);
+		});
+	});
+
+	// Each side reads its own clock, so the values are compared as instants
+	// within a minute of each other; everything else must match exactly.
+	describe('time root expressions match the engine result', () => {
+		const asInstant = (value: unknown): number | null => {
+			if (typeof value === 'number') return value;
+			if (typeof value !== 'string') return null;
+
+			const instant = DateTime.fromISO(value.replace(/^since /, ''));
+			return instant.isValid ? instant.toMillis() : null;
+		};
+
+		test.each(TIME_CORPUS)('%s', (expr) => {
+			expect(isNativelyEvaluable(expr.slice(1))).toBe(true);
+			expect(nativeOutcome(expr).handled).toBe(true);
+
+			const engineResult = evaluate(expr, false);
+			const nativeResult = evaluate(expr, true);
+			expect(typeof nativeResult).toBe(typeof engineResult);
+
+			const engineInstant = asInstant(engineResult);
+			const nativeInstant = asInstant(nativeResult);
+			if (engineInstant === null || nativeInstant === null) {
+				expect(nativeResult).toStrictEqual(engineResult);
+				return;
+			}
+
+			// Milliseconds, seconds (toSeconds, toUnixInteger), or a calendar
+			// getter, which must match exactly.
+			const tolerance = engineInstant > 1e11 ? 60_000 : engineInstant > 1e8 ? 60 : 0;
+			expect(Math.abs(nativeInstant - engineInstant)).toBeLessThanOrEqual(tolerance);
+		});
+
+		test('a time root that is not a Luxon DateTime hands off to the engine', () => {
+			const dataWith = (value: unknown) => ({ $now: value }) as unknown as IWorkflowDataProxyData;
+
+			expect(evaluateNatively('{{ $now.toMillis() }}', dataWith(new Date()))).toEqual({
+				handled: false,
+			});
+			expect(evaluateNatively('{{ $now.year }}', dataWith({ year: 2026 }))).toEqual({
+				handled: false,
+			});
+			expect(evaluateNatively('{{ $now.year }}', dataWith(DateTime.now()))).toEqual({
+				handled: true,
+				value: DateTime.now().year,
+			});
 		});
 	});
 
@@ -598,7 +649,7 @@ describe('Expression - fast native evaluation parity', () => {
 		const extensionNames = new Set(
 			ExpressionExtensions.flatMap((extension) => Object.keys(extension.functions)),
 		);
-		for (const method of [...CALLABLE_METHODS, ...ITERATOR_METHODS]) {
+		for (const method of [...CALLABLE_METHODS, ...ITERATOR_METHODS, ...TIME_METHODS.keys()]) {
 			expect(extensionNames.has(method)).toBe(false);
 		}
 	});
