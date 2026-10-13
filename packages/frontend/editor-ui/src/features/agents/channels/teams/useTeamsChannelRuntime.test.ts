@@ -271,13 +271,15 @@ describe('useTeamsChannelRuntime', () => {
 		const firstCheckFlags = () =>
 			vi.mocked(getTeamsAzureSubscriptions).mock.calls.map((call) => call[4]);
 
+		// What has been reported outlives a runtime, so each case signs in as an
+		// account of its own. Sharing one would make these depend on their order.
 		beforeEach(() => {
 			vi.mocked(getTeamsAzureSubscriptions).mockResolvedValue([]);
 		});
 
 		it('asks for a report on the first read only', async () => {
 			const runtime = buildRuntime();
-			runtime.managerCredentialId.value = 'cred-1';
+			runtime.managerCredentialId.value = 'report-once';
 
 			await runtime.loadSubscriptions();
 			await runtime.loadSubscriptions();
@@ -287,13 +289,31 @@ describe('useTeamsChannelRuntime', () => {
 
 		it('asks again once the setup moves to another sign-in', async () => {
 			const runtime = buildRuntime();
-			runtime.managerCredentialId.value = 'cred-1';
+			runtime.managerCredentialId.value = 'report-switch-a';
 
 			await runtime.loadSubscriptions();
-			runtime.managerCredentialId.value = 'cred-2';
+			runtime.managerCredentialId.value = 'report-switch-b';
 			await runtime.loadSubscriptions();
 
 			expect(firstCheckFlags()).toEqual([true, true]);
+		});
+
+		/**
+		 * The dialog is unmounted when it closes, taking its runtimes with it.
+		 * Reopening is the same setup reaching the same rung, and the commonest
+		 * way to ask twice.
+		 */
+		it('stays quiet when the dialog is closed and opened again', async () => {
+			const before = buildRuntime();
+			before.managerCredentialId.value = 'report-reopen';
+			await before.loadSubscriptions();
+
+			// A second runtime, as the dialog builds on every open.
+			const after = buildRuntime();
+			after.managerCredentialId.value = 'report-reopen';
+			await after.loadSubscriptions();
+
+			expect(firstCheckFlags()).toEqual([true, false]);
 		});
 	});
 });

@@ -25,6 +25,14 @@ import {
 
 const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
 
+/**
+ * The setups the bot rung has already been reported for, keyed like every
+ * reply. Held here rather than in the runtime: the dialog is unmounted when it
+ * closes and its runtimes are built again when it opens, so a key kept inside
+ * one would be lost on every close and would report the same setup again.
+ */
+const reportedRouteFor = new Set<string>();
+
 export type TeamsSetupKind = 'managed' | 'manual';
 
 export interface TeamsChannelRuntime extends AgentChannelRuntime {
@@ -82,8 +90,6 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	const botSetupState = ref<TeamsAgentSetupState | null>(null);
 	const provisionedBot = ref<TeamsProvisionedBotSummary | null>(null);
 	const subscriptions = ref<TeamsAzureSubscription[]>([]);
-	/** The setup the bot rung was already reported for, keyed like every reply. */
-	let reportedRouteFor: string | null = null;
 
 	/** Every provisioning call needs a finished sign-in to act with. */
 	function requireManagerCredential(): string {
@@ -240,10 +246,10 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		// again on every remount and every change of sign-in, and a tenant with no
 		// Azure subscription is the ordinary case, so reporting each read would
 		// count the dialog being opened rather than the rung being reached.
-		const firstCheck = reportedRouteFor !== requestedFor;
+		const firstCheck = !reportedRouteFor.has(requestedFor);
 		// Marked before the reply, because the server reports when it answers:
 		// waiting would let a second read for the same setup report again.
-		if (firstCheck) reportedRouteFor = requestedFor;
+		if (firstCheck) reportedRouteFor.add(requestedFor);
 		const available = await getTeamsAzureSubscriptions(
 			rootStore.restApiContext,
 			context.projectId.value,
