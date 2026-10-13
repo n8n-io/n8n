@@ -16,7 +16,7 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		const activation = enabled === undefined ? {} : { enabled };
 		const config = {
 			...minimalConfig,
-			skills: [{ type: 'skill', id: 'notes', ...activation }],
+			skills: [{ type: 'skill', id: 'notes' }],
 			tools: [
 				{ type: 'custom', id: 'search', requireApproval: true, ...activation },
 				{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', ...activation },
@@ -41,7 +41,7 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({
 				...minimalConfig,
-				skills: [{ type: 'skill', id: 'notes', enabled: 'false' }],
+				tools: [{ type: 'custom', id: 'search', enabled: 'false' }],
 			}).success,
 		).toBe(false);
 	});
