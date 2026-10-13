@@ -210,9 +210,10 @@ describe('TeamsCredentialCheckService', () => {
 
 	describe('checkFileAccess', () => {
 		const tokenWithRoles = (roles: string[]) =>
-			['header', Buffer.from(JSON.stringify({ roles })).toString('base64url'), 'signature'].join(
-				'.',
-			);
+			[{ alg: 'RS256' }, { roles }]
+				.map((part) => Buffer.from(JSON.stringify(part)).toString('base64url'))
+				.concat('signature')
+				.join('.');
 
 		it('reports approved when the Graph token carries Files.Read.All', async () => {
 			withCredential(workingCredential);

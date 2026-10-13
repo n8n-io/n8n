@@ -32,6 +32,7 @@ import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import {
 	availabilityFrom,
 	entraApiPermissionsUrl,
+	readsSharedConversations as readsShared,
 	TEAMS_PACKAGE_FILENAME,
 	type TeamsAvailability,
 } from './constants';
@@ -204,10 +205,7 @@ const installProgress = computed(() => {
  */
 const installDone = computed(() => published.value);
 
-/** Files in a shared conversation live in SharePoint or OneDrive, which DMs do not need. */
-const readsSharedConversations = computed(
-	() => availability.value.teamChannels || availability.value.groupChats,
-);
+const readsSharedConversations = computed(() => readsShared(availability.value));
 
 /** Without a consent link the instance has no address Entra accepts to return to. */
 const fileAccessUrl = computed(() => {

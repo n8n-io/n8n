@@ -1,3 +1,5 @@
+import type { TeamsFileAccessConsentState } from '@n8n/api-types';
+
 /**
  * Where Microsoft sends an administrator after they approve the app's
  * permissions: the agent's page in n8n. Entra accepts only HTTPS, or plain
@@ -15,8 +17,6 @@ export function adminConsentRedirectUri(
 	if (url.protocol !== 'https:' && !(url.protocol === 'http:' && localhost)) return undefined;
 	return url.href;
 }
-
-import type { TeamsFileAccessConsentState } from '@n8n/api-types';
 
 const CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
 

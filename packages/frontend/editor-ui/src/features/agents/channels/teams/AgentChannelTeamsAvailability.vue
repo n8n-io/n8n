@@ -22,6 +22,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	ENTRA_APP_REGISTRATIONS_URL,
 	entraApiPermissionsUrl,
+	readsSharedConversations as readsShared,
 	type TeamsAvailability,
 } from './constants';
 
@@ -110,13 +111,15 @@ const rows = computed(() => [
 	...(value.value.groupChats ? [READ_GROUPS] : []),
 ]);
 
+const readsSharedConversations = computed(() => readsShared(value.value));
+
 /**
  * Files attached in a shared conversation live in SharePoint or OneDrive, which
  * only an app permission that an administrator grants can read.
  */
 const fileAccess = computed(() => {
 	if (props.hideFileAccess) return null;
-	if (!value.value.teamChannels && !value.value.groupChats) return null;
+	if (!readsSharedConversations.value) return null;
 	if (props.fileAccessStatus === 'approved' || props.fileAccessStatus === 'checking') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
@@ -139,7 +142,6 @@ const fileAccess = computed(() => {
 	};
 });
 
-const readsSharedConversations = computed(() => value.value.teamChannels || value.value.groupChats);
 const fileAccessApproved = computed(
 	() => readsSharedConversations.value && props.fileAccessStatus === 'approved',
 );

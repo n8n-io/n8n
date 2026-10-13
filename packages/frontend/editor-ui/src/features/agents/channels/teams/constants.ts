@@ -16,6 +16,11 @@ export interface TeamsAvailability {
 	readAllGroupMessages: boolean;
 }
 
+/** Files shared there live in SharePoint or OneDrive, which needs an admin's approval to read. */
+export function readsSharedConversations(availability: TeamsAvailability): boolean {
+	return availability.teamChannels || availability.groupChats;
+}
+
 /** The settings a saved channel runs on, defaulted for a channel with none. */
 export function availabilityFrom(saved?: Partial<TeamsAvailability>): TeamsAvailability {
 	return {

@@ -316,7 +316,11 @@ export class TeamsEntraProvisioningService {
 		objectId: string,
 		redirectUri: string | undefined,
 	): Promise<boolean> {
-		const current = await this.graph.request(token, 'GET', `/applications/${objectId}`);
+		const current = await this.graph.request(
+			token,
+			'GET',
+			`/applications/${objectId}?$select=requiredResourceAccess,web`,
+		);
 		if (!current.ok) return false;
 		const app = isRecord(current.body) ? current.body : {};
 		const web = isRecord(app.web) ? app.web : {};

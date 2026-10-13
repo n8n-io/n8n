@@ -55,6 +55,7 @@ describe('TeamsEntraProvisioningService', () => {
 			}),
 			'POST /servicePrincipals': ok({ id: 'sp-1' }),
 			[`GET /applications/${OBJECT_ID}`]: ok({ appId: APP_ID, displayName: 'Support Bot (n8n)' }),
+			[`GET /applications/${OBJECT_ID}?$select=requiredResourceAccess,web`]: ok({}),
 			[`PATCH /applications/${OBJECT_ID}`]: ok({}),
 			...overrides,
 		};
@@ -146,8 +147,7 @@ describe('TeamsEntraProvisioningService', () => {
 	it("keeps the app's other permissions and return addresses", async () => {
 		const otherPermission = { id: 'other-role', type: 'Scope' };
 		routeGraph({
-			[`GET /applications/${OBJECT_ID}`]: ok({
-				appId: APP_ID,
+			[`GET /applications/${OBJECT_ID}?$select=requiredResourceAccess,web`]: ok({
 				requiredResourceAccess: [
 					{ resourceAppId: 'another-api', resourceAccess: [otherPermission] },
 					{

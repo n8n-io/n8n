@@ -3,6 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment } from 'chat';
 
 import { InboundAttachmentAccessError } from '../../agent-chat-integration';
+import { stringProperty } from '../../integration-helpers';
 
 const GRAPH_ORIGIN = 'https://graph.microsoft.com';
 const GRAPH_V1 = `${GRAPH_ORIGIN}/v1.0`;
@@ -45,11 +46,6 @@ function isHostedContentUrl(src: string): boolean {
 	}
 }
 
-function stringAt(record: unknown, key: string): string | undefined {
-	const value = isRecord(record) ? record[key] : undefined;
-	return typeof value === 'string' ? value : undefined;
-}
-
 interface GraphMessagePaths {
 	message: string;
 	filesFolder?: string;
@@ -61,8 +57,8 @@ interface GraphMessagePaths {
  */
 export function graphMessagePaths(activity: unknown): GraphMessagePaths | undefined {
 	if (!isRecord(activity) || !isRecord(activity.conversation)) return;
-	const messageId = stringAt(activity, 'id');
-	const conversationId = stringAt(activity.conversation, 'id');
+	const messageId = stringProperty(activity, 'id');
+	const conversationId = stringProperty(activity.conversation, 'id');
 	if (!messageId || !conversationId) return;
 	const enc = encodeURIComponent;
 
@@ -72,8 +68,8 @@ export function graphMessagePaths(activity: unknown): GraphMessagePaths | undefi
 	}
 	if (type !== 'channel' || !isRecord(activity.channelData)) return;
 
-	const teamId = stringAt(activity.channelData.team, 'aadGroupId');
-	const channelId = stringAt(activity.channelData.channel, 'id');
+	const teamId = stringProperty(activity.channelData.team, 'aadGroupId');
+	const channelId = stringProperty(activity.channelData.channel, 'id');
 	if (!teamId || !channelId) return;
 	const rootId = /;messageid=([^;]+)/.exec(conversationId)?.[1] ?? messageId;
 	const channel = `/teams/${enc(teamId)}/channels/${enc(channelId)}`;
@@ -132,27 +128,21 @@ const DOWNLOAD = {
 async function downloadSharedFile(
 	http: GraphHttp,
 	contentUrl: string,
-	paths: GraphMessagePaths,
+	channelDriveId: () => Promise<string | undefined>,
 	senderId: string | undefined,
 ): Promise<Buffer> {
-	const item = await getOrExplain(
-		http,
-		`${GRAPH_V1}/shares/${shareIdOf(contentUrl)}/driveItem?$select=id,parentReference`,
-		FILE_ACCESS_DENIED,
-	);
-	const itemId = stringAt(item, 'id');
-	const driveId = isRecord(item) ? stringAt(item.parentReference, 'driveId') : undefined;
+	const [item, channelDrive] = await Promise.all([
+		getOrExplain(
+			http,
+			`${GRAPH_V1}/shares/${shareIdOf(contentUrl)}/driveItem?$select=id,parentReference`,
+			FILE_ACCESS_DENIED,
+		),
+		channelDriveId(),
+	]);
+	const itemId = stringProperty(item, 'id');
+	const driveId = isRecord(item) ? stringProperty(item.parentReference, 'driveId') : undefined;
 	if (!itemId || !driveId) throw new Error('Microsoft Graph did not say where the file is');
 
-	const inChannelFiles = async () => {
-		if (!paths.filesFolder) return false;
-		const folder = await getOrExplain(
-			http,
-			`${GRAPH_V1}${paths.filesFolder}?$select=parentReference`,
-			FILE_ACCESS_DENIED,
-		);
-		return isRecord(folder) && stringAt(folder.parentReference, 'driveId') === driveId;
-	};
 	const ownedBySender = async () => {
 		if (!senderId) return false;
 		const drive = await getOrExplain(
@@ -161,10 +151,12 @@ async function downloadSharedFile(
 			FILE_ACCESS_DENIED,
 		);
 		return (
-			isRecord(drive) && isRecord(drive.owner) && stringAt(drive.owner.user, 'id') === senderId
+			isRecord(drive) &&
+			isRecord(drive.owner) &&
+			stringProperty(drive.owner.user, 'id') === senderId
 		);
 	};
-	if (!(await inChannelFiles()) && !(await ownedBySender())) {
+	if (channelDrive !== driveId && !(await ownedBySender())) {
 		throw new InboundAttachmentAccessError(FOREIGN_FILE);
 	}
 
@@ -185,22 +177,34 @@ export async function fetchTeamsMessageFiles(
 	if (!paths) return [];
 	const message = await getOrExplain(http, `${GRAPH_V1}${paths.message}`, MESSAGE_ACCESS_DENIED);
 	if (!isRecord(message)) return [];
-	const senderId = isRecord(message.from) ? stringAt(message.from.user, 'id') : undefined;
+	const senderId = isRecord(message.from) ? stringProperty(message.from.user, 'id') : undefined;
+	// The same folder for every file on the message, so it is read once.
+	let channelDrive: Promise<string | undefined> | undefined;
+	const channelDriveId = async () =>
+		await (channelDrive ??= paths.filesFolder
+			? getOrExplain(
+					http,
+					`${GRAPH_V1}${paths.filesFolder}?$select=parentReference`,
+					FILE_ACCESS_DENIED,
+				).then((folder) =>
+					isRecord(folder) ? stringProperty(folder.parentReference, 'driveId') : undefined,
+				)
+			: Promise.resolve(undefined));
 
 	const files: Attachment[] = [];
 	for (const attachment of Array.isArray(message.attachments) ? message.attachments : []) {
-		const contentUrl = stringAt(attachment, 'contentUrl');
-		if (stringAt(attachment, 'contentType') !== 'reference' || !contentUrl) continue;
+		const contentUrl = stringProperty(attachment, 'contentUrl');
+		if (stringProperty(attachment, 'contentType') !== 'reference' || !contentUrl) continue;
 		files.push({
 			type: 'file',
-			name: stringAt(attachment, 'name'),
+			name: stringProperty(attachment, 'name'),
 			url: contentUrl,
-			fetchData: async () => await downloadSharedFile(http, contentUrl, paths, senderId),
+			fetchData: async () => await downloadSharedFile(http, contentUrl, channelDriveId, senderId),
 		});
 	}
 
 	// Hosted content needs only the message read permission, not Files.Read.All.
-	const body = stringAt(message.body, 'content') ?? '';
+	const body = stringProperty(message.body, 'content') ?? '';
 	for (const [, src] of body.matchAll(/<img[^>]+src="([^"]+)"/g)) {
 		if (!isHostedContentUrl(src)) continue;
 		files.push({

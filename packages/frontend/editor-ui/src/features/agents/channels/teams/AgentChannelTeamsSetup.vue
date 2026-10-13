@@ -23,7 +23,12 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
-import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
+import {
+	availabilityFrom,
+	readsSharedConversations as readsShared,
+	TEAMS_PACKAGE_FILENAME,
+	type TeamsAvailability,
+} from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { fileAccessJustApproved } from './fileAccessConsent';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
@@ -408,13 +413,10 @@ async function refreshForCredential() {
 watch(credentialId, refreshForCredential, { immediate: true });
 
 const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(null);
-const readsSharedConversations = computed(
-	() => availability.value.teamChannels || availability.value.groupChats,
-);
+const readsSharedConversations = computed(() => readsShared(availability.value));
 
 // Microsoft can take a minute or two to apply an approval just given.
 const FILE_ACCESS_RECHECK_MS = 10_000;
-const FILE_ACCESS_FIRST_CHECK_AFTER_APPROVAL_MS = 10_000;
 const FILE_ACCESS_RECHECKS = 18;
 let fileAccessRecheck: ReturnType<typeof setTimeout> | undefined;
 onBeforeUnmount(() => clearTimeout(fileAccessRecheck));
@@ -429,15 +431,16 @@ async function loadFileAccess() {
 	const id = credentialId.value;
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
 	fileAccessStatus.value = 'checking';
-	if (fileAccessJustApproved.value) {
-		fileAccessJustApproved.value = false;
+	const justApproved = fileAccessJustApproved.value;
+	fileAccessJustApproved.value = false;
+	if (justApproved) {
 		fileAccessRecheck = setTimeout(
 			() => void checkFileAccess(id, FILE_ACCESS_RECHECKS),
-			FILE_ACCESS_FIRST_CHECK_AFTER_APPROVAL_MS,
+			FILE_ACCESS_RECHECK_MS,
 		);
-		return;
+	} else {
+		await checkFileAccess(id, FILE_ACCESS_RECHECKS);
 	}
-	await checkFileAccess(id, FILE_ACCESS_RECHECKS);
 }
 
 async function checkFileAccess(id: string, rechecksLeft: number) {

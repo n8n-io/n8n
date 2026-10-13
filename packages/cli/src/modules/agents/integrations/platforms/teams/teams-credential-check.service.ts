@@ -4,7 +4,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse } from 'n8n-workflow';
+import jwt from 'jsonwebtoken';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
@@ -64,20 +64,11 @@ export class TeamsCredentialCheckService {
 			return { status: 'failed', reason: 'cloud' };
 		}
 
-		// Trimmed the way the channel trims them, so the check does not refuse a
-		// credential that would actually work.
-		const tenantId = stringProperty(data, 'tenantId')?.trim();
-		const clientId = stringProperty(data, 'clientId')?.trim();
-		const clientSecret = stringProperty(data, 'clientSecret')?.trim();
-		if (!tenantId || !clientId || !clientSecret) {
-			return { status: 'failed', reason: 'incomplete' };
-		}
+		const secret = clientSecretOf(data);
+		if (!secret) return { status: 'failed', reason: 'incomplete' };
 
 		try {
-			const response = await this.requestToken(
-				{ tenantId, clientId, clientSecret },
-				BOT_FRAMEWORK_SCOPE,
-			);
+			const response = await this.requestToken(secret, BOT_FRAMEWORK_SCOPE);
 			if (response.token) return { status: 'ok' };
 
 			this.logger.debug('[TeamsCredentialCheck] Microsoft refused the credential', {
@@ -105,13 +96,11 @@ export class TeamsCredentialCheckService {
 			credentialId,
 			TEAMS_CREDENTIAL_TYPE,
 		);
-		const tenantId = stringProperty(data, 'tenantId')?.trim();
-		const clientId = stringProperty(data, 'clientId')?.trim();
-		const clientSecret = stringProperty(data, 'clientSecret')?.trim();
-		if (!tenantId || !clientId || !clientSecret) return { status: 'unknown' };
+		const secret = clientSecretOf(data);
+		if (!secret) return { status: 'unknown' };
 
 		try {
-			const { token } = await this.requestToken({ tenantId, clientId, clientSecret }, GRAPH_SCOPE);
+			const { token } = await this.requestToken(secret, GRAPH_SCOPE);
 			if (!token) return { status: 'unknown' };
 			return { status: rolesOf(token).includes(FILES_READ_ALL) ? 'approved' : 'notApproved' };
 		} catch (error) {
@@ -121,11 +110,7 @@ export class TeamsCredentialCheckService {
 	}
 
 	private async requestToken(
-		{
-			tenantId,
-			clientId,
-			clientSecret,
-		}: { tenantId: string; clientId: string; clientSecret: string },
+		{ tenantId, clientId, clientSecret }: ClientSecret,
 		scope: string,
 	): Promise<{ statusCode: number; token?: string }> {
 		const response = await this.outboundHttp
@@ -154,15 +139,26 @@ export class TeamsCredentialCheckService {
 	}
 }
 
+interface ClientSecret {
+	tenantId: string;
+	clientId: string;
+	clientSecret: string;
+}
+
+/** Trimmed the way the channel trims them, so a working credential is not refused. */
+function clientSecretOf(data: unknown): ClientSecret | undefined {
+	const tenantId = stringProperty(data, 'tenantId')?.trim();
+	const clientId = stringProperty(data, 'clientId')?.trim();
+	const clientSecret = stringProperty(data, 'clientSecret')?.trim();
+	return tenantId && clientId && clientSecret ? { tenantId, clientId, clientSecret } : undefined;
+}
+
 /**
  * The token comes straight from Microsoft over TLS, so its payload is read
  * without verifying the signature.
  */
 function rolesOf(token: string): string[] {
-	const payload: unknown = jsonParse(
-		Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
-		{ fallbackValue: {} },
-	);
+	const payload = jwt.decode(token);
 	const roles = isRecord(payload) ? payload.roles : undefined;
 	return Array.isArray(roles)
 		? roles.filter((role): role is string => typeof role === 'string')
