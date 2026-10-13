@@ -102,7 +102,20 @@ jobs:
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
+      # The Namespace E2E profile image has Chromium preinstalled (.github/namespace/Dockerfile.e2e).
+      # Use it only when its Playwright version matches the repository.
+      - name: Use preinstalled browsers
+        id: preinstalled-browsers
+        if: startsWith(runner.name, 'nsc-runner-')
+        run: |
+          expected="$(cat packages/quality/testing/playwright/.playwright-version)"
+          if [ "$(cat /opt/ms-playwright/.playwright-version 2>/dev/null)" = "$expected" ]; then
+            ln -s /opt/ms-playwright "$PLAYWRIGHT_BROWSERS_PATH"
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Browsers
+        if: steps.preinstalled-browsers.outputs.hit != 'true'
         run: pnpm turbo run install-browsers --filter=n8n-playwright
 
       - name: Load n8n image from cache

@@ -69,3 +69,12 @@ nsc github profile update --profile_id "$PROFILE_ID" --dockerfile .github/namesp
 ```
 
 Wait for the custom image to become ready before starting CI. The setup action detects preloaded tools and verifies their versions.
+
+The E2E profile uses `Dockerfile.e2e`, which preinstalls Chromium and its system packages:
+
+```bash
+nsc github profile update --profile_id "$E2E_PROFILE_ID" --dockerfile .github/namespace/Dockerfile.e2e -o json
+```
+
+E2E shards link those browsers when the image's Playwright version matches `.playwright-version`. Otherwise they install browsers as usual.
+Update `PLAYWRIGHT_VERSION` in `Dockerfile.e2e` and rebuild the image when Playwright changes.
