@@ -2,9 +2,9 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import { SCOPE_LABEL_KEY } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -57,7 +57,13 @@ const reasons = computed(() => (props.invalid ? props.invalidReasons : props.war
 const showAlertIcon = computed(
 	() => !props.deactivated && !props.restricted && (props.invalid || props.warning),
 );
-const chipRef = ref<HTMLElement | null>(null);
+/** The scope line the ticket asks for, or the embedded-tool reason when the type is allowed. */
+const restrictionText = computed(() => {
+	if (props.restrictedMessage) return props.restrictedMessage;
+	const scopeKey = props.restrictedScope && SCOPE_LABEL_KEY[props.restrictedScope];
+	const scope = scopeKey ? i18n.baseText(scopeKey) : '';
+	return [props.restrictedTypeLabel, scope].filter(Boolean).join(' — ');
+});
 
 defineSlots<{
 	icon?: () => unknown;
@@ -71,7 +77,6 @@ const emit = defineEmits<{
 
 <template>
 	<button
-		ref="chipRef"
 		type="button"
 		:class="[
 			$style.chip,
@@ -105,26 +110,23 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
-		<!-- The lock explains the chip; it must not also open what the chip opens. -->
-		<span v-if="props.restricted" :class="$style.lock" @click.stop>
-			<N8nTooltip v-if="props.restrictedMessage" placement="top">
+		<!--
+			A tooltip, not the node popover: the popover's trigger is focusable, and interactive
+			content inside a button is invalid HTML and adds a tab stop that cannot activate the
+			chip. The ticket asks for a tooltip with the scope line, which this is.
+		-->
+		<N8nTooltip v-if="props.restricted" placement="top">
+			<!-- The lock explains the chip; it must not also open what the chip opens. -->
+			<span :class="$style.lock" @click.stop>
 				<N8nIcon
 					icon="lock"
 					size="xsmall"
 					:class="$style.lockIcon"
-					data-test-id="agent-chip-inline-restricted-icon"
+					data-test-id="node-restricted-icon"
 				/>
-				<template #content>{{ props.restrictedMessage }}</template>
-			</N8nTooltip>
-			<RestrictedNodePopover
-				v-else
-				:node-type-name="props.restrictedTypeLabel"
-				:scope="props.restrictedScope"
-				:anchor="chipRef"
-				side="top"
-				marker-size="xsmall"
-			/>
-		</span>
+			</span>
+			<template #content>{{ restrictionText }}</template>
+		</N8nTooltip>
 		<N8nTooltip v-if="showAlertIcon" :disabled="reasons.length === 0" placement="top">
 			<N8nIcon
 				icon="triangle-alert"
@@ -188,7 +190,8 @@ const emit = defineEmits<{
 
 // Matches the dimming of a restricted row in the tool pickers.
 .restricted {
-	.icon,
+	// `.iconWrapper` too: a tool chip supplies its node icon through the slot, so it has no `.icon`.
+	.iconWrapper,
 	.text {
 		opacity: 0.45;
 	}

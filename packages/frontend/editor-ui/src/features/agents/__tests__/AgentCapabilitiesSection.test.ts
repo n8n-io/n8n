@@ -37,11 +37,9 @@ const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
 	isNodeTypeRestricted: (name: string) => storeRestrictions.has(name),
-	RestrictedNodePopover: {
-		name: 'RestrictedNodePopover',
-		props: ['nodeTypeName', 'scope', 'anchor', 'side', 'markerSize'],
-		template:
-			'<span data-testid="node-restricted-icon" :data-scope="scope" :data-node-type="nodeTypeName" />',
+	SCOPE_LABEL_KEY: {
+		instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
+		project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
 	},
 }));
 
@@ -1530,6 +1528,14 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
 	});
 
+	/** The text of every rendered tooltip; a restricted chip suppresses the error one. */
+	function lockText(w: ReturnType<typeof mountSection>): string {
+		return w
+			.findAll('[data-testid="stub-tooltip-content"]')
+			.map((node) => node.text())
+			.join(' ');
+	}
+
 	const restrictedToolIssue = (index: number, reason: string) => ({
 		code: 'restricted_node_type' as const,
 		reason,
@@ -1547,10 +1553,9 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		const lock = wrapper.find('[data-testid="node-restricted-icon"]');
-		expect(lock.exists()).toBe(true);
-		expect(lock.attributes('data-scope')).toBe(scope);
-		expect(lock.attributes('data-node-type')).toBe('Slack');
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain(`typeAvailabilityPolicies.restrictedNode.scope.${scope}`);
+		expect(lockText(wrapper)).toContain('Slack');
 	});
 
 	it('dims the restricted chip', async () => {
@@ -1571,7 +1576,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
 	});
 
@@ -1582,7 +1587,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(false);
 	});
 
 	it('locks the grouped chip when the tools of a restricted type are grouped', async () => {
@@ -1603,12 +1608,12 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		await flushPromises();
 
 		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
-		expect(wrapper.findAll('[data-testid="node-restricted-icon"]')).toHaveLength(1);
+		expect(wrapper.findAll('[data-test-id="node-restricted-icon"]')).toHaveLength(1);
 	});
 
 	it('locks the restricted member rows of an open group menu', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
-		const wrapper = mountSection(
+		mountSection(
 			[slackTool('send_message'), slackTool('read_messages')],
 			{},
 			null,
@@ -1627,8 +1632,11 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		await fireEvent.click(screen.getByRole('button', { name: /2 Slack/ }));
 		await flushPromises();
 
+		// The menu teleports out of the component root, so assert against the document.
+		// One lock on the group chip plus one on each member row, and no error icon anywhere.
+		expect(document.querySelectorAll('[data-test-id="node-restricted-icon"]')).toHaveLength(3);
 		expect(
-			wrapper.findAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
+			document.querySelectorAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
 		).toHaveLength(0);
 	});
 
@@ -1639,7 +1647,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		await wrapper.find('[data-testid="node-restricted-icon"]').trigger('click');
+		await wrapper.find('[data-test-id="node-restricted-icon"]').trigger('click');
 
 		expect(wrapper.emitted('open-tool')).toBeUndefined();
 	});
@@ -1653,9 +1661,8 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		const lock = wrapper.find('[data-testid="node-restricted-icon"]');
-		expect(lock.exists()).toBe(true);
-		expect(lock.attributes('data-scope')).toBe('project');
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('typeAvailabilityPolicies.restrictedNode.scope.project');
 	});
 
 	it('prefers the scope the publish gate reported over the store verdict', async () => {
@@ -1666,9 +1673,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="node-restricted-icon"]').attributes('data-scope')).toBe(
-			'instance',
-		);
+		expect(lockText(wrapper)).toContain('typeAvailabilityPolicies.restrictedNode.scope.instance');
 	});
 
 	it('labels an inline restriction with plain text, not the node popover', async () => {
@@ -1678,9 +1683,10 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		// Plain text, because naming the tool's own node type in the popover would be wrong.
-		expect(wrapper.find('[data-test-id="agent-chip-inline-restricted-icon"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(false);
+		// The embedded reason, not a scope line that would claim this tool's own type is denied.
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
+		expect(lockText(wrapper)).not.toContain('typeAvailabilityPolicies.restrictedNode.scope');
 	});
 
 	it('keeps a restricted tool out of the group of its allowed same-type siblings', async () => {
@@ -1699,7 +1705,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		const chips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
 		expect(chips).toHaveLength(2);
 		expect(
-			chips.filter((c) => c.find('[data-test-id="agent-chip-inline-restricted-icon"]').exists()),
+			chips.filter((c) => c.find('[data-test-id="node-restricted-icon"]').exists()),
 		).toHaveLength(1);
 	});
 
@@ -1734,8 +1740,40 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		const wrapper = mountSection([embedding], {}, null, [], [], { validationIssues: [] });
 		await flushPromises();
 
-		expect(wrapper.find('[data-test-id="agent-chip-inline-restricted-icon"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
+	});
+
+	it('names the denied type, not the one the entry displays', async () => {
+		// A registry MCP server stays allowed on its own type and is denied as the MCP client.
+		getNodeType.mockImplementation((name: string) =>
+			name === '@n8n/n8n-nodes-langchain.mcpClientTool'
+				? createNodeType(name, 'MCP Client Tool')
+				: createNodeType('@n8n/mcp-registry.github', 'GitHub MCP'),
+		);
+		const config = configWithMcpServers([
+			{
+				name: 'GitHub',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp',
+				authentication: 'none',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+		]);
+		const wrapper = mountSection([], {}, config, [], [], {
+			validationIssues: [
+				{
+					code: 'restricted_node_type',
+					reason: 'restricted_by_instance',
+					path: 'mcpServers.0',
+					capability: { kind: 'mcpServer', id: 'GitHub', index: 0 },
+					subject: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				},
+			],
+		});
+		await flushPromises();
+
+		expect(lockText(wrapper)).toContain('MCP Client');
 	});
 
 	it('locks an MCP server chip whose node type a policy denies', async () => {
@@ -1762,8 +1800,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		const lock = wrapper.find('[data-testid="node-restricted-icon"]');
-		expect(lock.exists()).toBe(true);
-		expect(lock.attributes('data-scope')).toBe('project');
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('typeAvailabilityPolicies.restrictedNode.scope.project');
 	});
 });
