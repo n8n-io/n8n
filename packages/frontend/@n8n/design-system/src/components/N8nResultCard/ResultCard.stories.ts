@@ -247,6 +247,19 @@ export const AllCardsDark: StoryFn = () => ({
 	template: `<div data-theme="dark" style="background: var(--color--background); padding: 16px;">${galleryTemplate()}</div>`,
 });
 
+/**
+ * What the canvas renders beside a node: the card and its node icons, no
+ * workflow footer. Cards whose body already prints the eyebrow (weather) lose
+ * the header row entirely and start with their own hero, as the reference does.
+ */
+export const OnCanvas: StoryFn = () => ({
+	components: { N8nResultCard },
+	setup: () => ({ entries: GALLERY }),
+	template: grid(
+		'<N8nResultCard v-for="(entry, index) in entries" :key="index" :card="entry.card" :icons="entry.icons" />',
+	),
+});
+
 /** Every card in its final state — no entrance motion (what tests and visual snapshots see). */
 export const Static: StoryFn = () => ({
 	components: { N8nResultCard },

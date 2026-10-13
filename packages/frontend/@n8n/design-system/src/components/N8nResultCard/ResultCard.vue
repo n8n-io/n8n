@@ -69,7 +69,13 @@ const cover = computed(() =>
 	props.card.cover && isSafeCoverSrc(props.card.cover.src) ? props.card.cover : undefined,
 );
 
-const topLine = computed(() => props.footer?.workflowName ?? merged.value.eyebrow ?? '');
+/** Bodies that print the eyebrow themselves (the weather day line); the header must not repeat it. */
+const BODY_EYEBROW = new Set(['weather']);
+const topLine = computed(
+	() =>
+		props.footer?.workflowName ??
+		(BODY_EYEBROW.has(props.card.type) ? '' : (merged.value.eyebrow ?? '')),
+);
 const statusLabel = computed(() => merged.value.statusLabel ?? '');
 const STATUS_TONE: Record<ResultCardStatus, string> = {
 	success: 'ok',
@@ -78,6 +84,13 @@ const STATUS_TONE: Record<ResultCardStatus, string> = {
 	info: 'info',
 };
 const statusTone = computed(() => STATUS_TONE[merged.value.status ?? 'info']);
+
+/** The header row only exists when it has something to say; a lone dot is not a header. */
+const hasHeader = computed(
+	() =>
+		Boolean(topLine.value || statusLabel.value || props.footer?.time) ||
+		(hasSwitcher.value && control.value === 'menu'),
+);
 
 /** Bodies that carry their own hero (a number, a place, a date tile) leave the shell title out. */
 const SHELL_HERO = new Set(['message', 'records', 'list', 'keyValue']);
@@ -116,7 +129,12 @@ const accentStyle = computed(() => ({
 	<article
 		:class="[
 			$style.card,
-			{ [$style.animated]: animated, 'rc-animated': animated, [$style.onSky]: onSky },
+			{
+				[$style.animated]: animated,
+				'rc-animated': animated,
+				[$style.onSky]: onSky,
+				[$style.headless]: !hasHeader,
+			},
 		]"
 		:style="accentStyle"
 		:data-tone="tone.id"
@@ -130,7 +148,7 @@ const accentStyle = computed(() => ({
 			<img :src="cover.src" :alt="cover.alt ?? ''" />
 		</div>
 
-		<header :class="$style.top">
+		<header v-if="hasHeader" :class="$style.top">
 			<span
 				:class="[$style.dot, card.status ? $style[`dot-${card.status}`] : '']"
 				aria-hidden="true"
@@ -484,6 +502,12 @@ const accentStyle = computed(() => ({
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+}
+/* without a header row the body takes the header's top inset (bodies add their own 8px) */
+.headless > .body:first-child,
+.headless > .hero:first-child,
+.headless > .topSwitcher:first-child {
+	padding-top: 16px;
 }
 
 /* ---- switcher at the bottom ---- */

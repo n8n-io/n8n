@@ -135,6 +135,30 @@ describe('N8nResultCard shell', () => {
 		expect(withoutFooter.getByTestId('result-card-top')).toHaveTextContent('Gmail · Email sent');
 	});
 
+	it('weather: the body prints the eyebrow as the day line, so the header never repeats it', () => {
+		// on the canvas (no footer, no status label) the card starts with its own hero, as the reference does
+		const onCanvas = renderCard({ card: DEMO_CARDS.weather });
+		expect(onCanvas.queryByTestId('result-card-top')).not.toBeInTheDocument();
+		expect(onCanvas.getAllByText('Monday')).toHaveLength(1);
+		expect(onCanvas.getByTestId('result-card-weather-day')).toHaveTextContent('Monday');
+		onCanvas.unmount();
+
+		// a status label still earns a header row, but the eyebrow stays out of it
+		const withStatus = renderCard({ card: DEMO_CARDS.weatherSources });
+		expect(withStatus.getByTestId('result-card-top')).toHaveTextContent('');
+		expect(withStatus.getByTestId('result-card-status')).toHaveTextContent('Live');
+		expect(withStatus.getAllByText('Now · Fri 12:40')).toHaveLength(1);
+		withStatus.unmount();
+
+		// in chat (footer) the header carries the workflow name and the time, not the eyebrow
+		const inChat = renderCard({
+			card: DEMO_CARDS.weather,
+			footer: { workflowName: 'Weather check', time: '12:40' },
+		});
+		expect(inChat.getByTestId('result-card-top')).toHaveTextContent('Weather check');
+		expect(inChat.getAllByText('Monday')).toHaveLength(1);
+	});
+
 	it('resolves the tone from the explicit tone, the service or the archetype', () => {
 		const cases: Array<[ResultCardData, string]> = [
 			[DEMO_CARDS.email, 'paper'],

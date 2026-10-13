@@ -195,14 +195,21 @@ const flakes = Array.from({ length: 18 }, (_, index) => ({
 </template>
 
 <style lang="scss" module>
+/*
+ * Deliberately not positioned: the sky backdrop below is `position: absolute;
+ * inset: 0`, and the nearest positioned ancestor must be the card shell
+ * (`.card` is relative + isolated), so the sky runs under the shell's header,
+ * the day tabs and the footer — the whole card is the sky, as in the
+ * reference. Positioning this element would clip the sky to the body and
+ * leave the shell's white-on-sky chrome on a white surface.
+ */
 .weather {
-	position: relative;
 	color: #fff;
 	--wx-muted: rgba(255, 255, 255, 0.8);
 	--wx-sun: #ffd75e;
 }
 
-/* ---- sky backdrop: spans the whole card (the body is not positioned) ---- */
+/* ---- sky backdrop: spans the whole card ---- */
 .bg {
 	position: absolute;
 	inset: 0;
