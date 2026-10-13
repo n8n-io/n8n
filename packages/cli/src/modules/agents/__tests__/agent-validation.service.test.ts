@@ -1661,6 +1661,7 @@ describe('AgentValidationService — restricted node types', () => {
 			path: 'tools.0.node.nodeType',
 			capability: { kind: 'tool', id: 'Post message', index: 0, toolType: 'node' },
 			reason,
+			subject: 'n8n-nodes-base.slackTool',
 		});
 	});
 
@@ -1679,6 +1680,7 @@ describe('AgentValidationService — restricted node types', () => {
 			code: 'restricted_node_type',
 			path: 'tools.0.node.nodeType',
 			capability: { kind: 'tool', id: 'Post message', index: 0, toolType: 'node' },
+			subject: 'n8n-nodes-base.slackTool',
 		});
 	});
 
@@ -1765,6 +1767,8 @@ describe('AgentValidationService — restricted node types', () => {
 			// Its own type is allowed, so the reason names the embedded tool rather than a scope:
 			// the tool stays editable, because removing that tool is the fix.
 			reason: 'restricted_by_inline_tool',
+			// The denied type, not the one this tool runs as.
+			subject: 'n8n-nodes-base.slackTool',
 		});
 	});
 
@@ -1824,6 +1828,7 @@ describe('AgentValidationService — restricted node types', () => {
 			path: 'mcpServers.0',
 			capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
 			reason: 'restricted_by_instance',
+			subject: '@n8n/n8n-nodes-langchain.mcpClientTool',
 		});
 	});
 
