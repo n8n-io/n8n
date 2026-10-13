@@ -51,6 +51,7 @@ E2E profiles also cache container image pulls.
 On Namespace, the prep job pushes the CI images to the workspace registry (`n8n-ci/n8n` and `n8n-ci/runners`). E2E shards pull them.
 Each image tag is `ci-<variant>-<sha>`. A re-run of the same commit reuses the pushed images.
 The remote builders do not keep layers between runs, so the build also reads and writes a registry layer cache (`n8n-ci/buildcache-<variant>`).
+To measure that cache, run a new commit. A re-run of the same commit skips the build.
 Set a short expiry on those repositories once per workspace:
 
 ```bash
