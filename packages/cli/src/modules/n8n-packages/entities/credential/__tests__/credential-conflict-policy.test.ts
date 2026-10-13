@@ -181,7 +181,12 @@ describe('differingCredentials', () => {
 		expect(
 			differingCredentials([
 				candidate({ usedBy: [{ kind: 'workflow', id: 'wf-2' }] }),
-				candidate({ usedBy: [{ kind: 'workflow', id: 'wf-2' }, { kind: 'workflow', id: 'wf-1' }] }),
+				candidate({
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-2' },
+						{ kind: 'workflow', id: 'wf-1' },
+					],
+				}),
 				candidate({ targetId: 'target-2', targetName: 'Second' }),
 			]),
 		).toEqual([
