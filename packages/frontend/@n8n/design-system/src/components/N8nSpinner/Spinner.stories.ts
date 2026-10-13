@@ -8,7 +8,7 @@ const meta = {
 	argTypes: {
 		type: {
 			control: 'select',
-			options: ['dots', 'ring', 'grid', 'blocks'],
+			options: ['dots', 'ring', 'grid'],
 		},
 		size: {
 			control: 'select',
@@ -37,14 +37,14 @@ export const Default: Story = {
 		template: '<N8nSpinner v-bind="args" />',
 	}),
 	args: {
-		type: 'dots',
+		type: 'grid',
 		size: 'medium',
 	},
 };
 
 const sizes = ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'] as const;
 
-function renderSizes(type: 'dots' | 'ring' | 'grid' | 'blocks') {
+function renderSizes(type: 'dots' | 'ring' | 'grid') {
 	return {
 		components: { N8nSpinner },
 		setup() {
@@ -71,8 +71,4 @@ export const Ring: Story = {
 
 export const Grid: Story = {
 	render: () => renderSizes('grid'),
-};
-
-export const Blocks: Story = {
-	render: () => renderSizes('blocks'),
 };

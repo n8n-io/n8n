@@ -1,10 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { render } from '@testing-library/vue';
 
 import { i18n } from '../../locale';
 import Spinner from './Spinner.vue';
-
-const source = readFileSync('src/components/N8nSpinner/Spinner.vue', 'utf8');
 
 describe('Spinner', () => {
 	afterEach(() => {
@@ -18,40 +15,57 @@ describe('Spinner', () => {
 
 	it('uses the configured translation for the accessible loading label', () => {
 		i18n((key) => (key === 'spinner.loading' ? 'Chargement…' : key));
-		const { getByRole } = render(Spinner);
+		const { getByRole } = render(Spinner, { props: { type: 'grid' } });
 		expect(getByRole('status', { name: 'Chargement…' })).toBeInTheDocument();
 	});
 
-	it('renders nine blocks at medium size by default', () => {
-		const { container, getByRole } = render(Spinner);
-		expect(getByRole('status').classList.contains('blocks-spinner--medium')).toBe(true);
-		expect(container.querySelectorAll('.blocks-spinner__block')).toHaveLength(9);
+	it('lets callers override the accessible loading label without nesting statuses', () => {
+		const { getByRole, getAllByRole } = render(Spinner, {
+			attrs: { role: 'status', 'aria-label': 'Loading options' },
+		});
+		expect(getByRole('status', { name: 'Loading options' })).toBeInTheDocument();
+		expect(getAllByRole('status')).toHaveLength(1);
 	});
 
-	it.each(['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'] as const)(
-		'renders blocks at %s size',
-		(size) => {
-			const { container, getByRole } = render(Spinner, { props: { type: 'blocks', size } });
-			expect(getByRole('status').classList.contains(`blocks-spinner--${size}`)).toBe(true);
-			expect(container.querySelectorAll('.blocks-spinner__block')).toHaveLength(9);
-		},
-	);
+	it('lets callers hide decorative grid spinners', () => {
+		const { container, queryByRole } = render(Spinner, { attrs: { 'aria-hidden': 'true' } });
+		expect(container.querySelector('.n8n-spinner')).toHaveAttribute('aria-hidden', 'true');
+		expect(queryByRole('status')).toBeNull();
+	});
 
-	it('keeps grid tracks within the size after gaps', () => {
-		expect(source).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
-		expect(source).toContain('grid-template-rows: repeat(3, minmax(0, 1fr))');
-		expect(source).not.toContain('calc(var(--n8n-spinner-block--size) / 3)');
+	it('renders the grid at medium size by default', () => {
+		const { container } = render(Spinner);
+		const svg = container.querySelector('[data-spinner="grid"]');
+		expect(svg).toHaveAttribute('width', '14');
+		expect(svg).toHaveAttribute('height', '14');
+		expect(container.querySelectorAll('path')).toHaveLength(4);
+	});
+
+	it.each([
+		['xsmall', 10],
+		['small', 12],
+		['medium', 14],
+		['large', 16],
+		['xlarge', 20],
+		['xxlarge', 40],
+	] as const)('renders the grid at %s size', (size, pixels) => {
+		const { container } = render(Spinner, { props: { type: 'grid', size } });
+		const svg = container.querySelector('svg');
+		expect(svg).toHaveAttribute('width', String(pixels));
+		expect(svg).toHaveAttribute('height', String(pixels));
+		expect(svg?.style.width).toBe(`${pixels}px`);
+		expect(svg?.style.height).toBe(`${pixels}px`);
 	});
 
 	it('still renders the ring and dots variants', () => {
 		const ring = render(Spinner, { props: { type: 'ring' } });
 		expect(ring.container.querySelectorAll('.lds-ring > div')).toHaveLength(4);
 		const dots = render(Spinner, { props: { type: 'dots' } });
-		expect(dots.container.querySelector('.blocks-spinner')).toBeNull();
+		expect(dots.container.querySelector('[data-spinner="grid"]')).toBeNull();
 		expect(dots.container.querySelector('.n8n-icon')).not.toBeNull();
 	});
 
-	it('should render grid blocks in left-to-right row order', () => {
+	it('renders grid paths in left-to-right row order', () => {
 		const { container } = render(Spinner, { props: { type: 'grid' } });
 		const svg = container.querySelector('svg');
 		const paths = Array.from(container.querySelectorAll('path'));
@@ -69,22 +83,5 @@ describe('Spinner', () => {
 			expect(path.style.getPropertyValue('--spinner-step')).toBe(String(index));
 			expect(path.hasAttribute('class')).toBe(false);
 		});
-	});
-
-	it('should apply the grid size', () => {
-		const { container } = render(Spinner, { props: { type: 'grid', size: 'xxlarge' } });
-		const svg = container.querySelector('svg');
-
-		expect(svg?.getAttribute('width')).toBe('40');
-		expect(svg?.getAttribute('height')).toBe('40');
-		expect(svg?.style.width).toBe('40px');
-		expect(svg?.style.height).toBe('40px');
-	});
-
-	it('should keep the ring option', () => {
-		const { container } = render(Spinner, { props: { type: 'ring' } });
-
-		expect(container.querySelectorAll('.lds-ring > div')).toHaveLength(4);
-		expect(container.querySelector('[data-spinner="grid"]')).toBeNull();
 	});
 });
