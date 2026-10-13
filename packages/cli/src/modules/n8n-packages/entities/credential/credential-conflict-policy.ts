@@ -22,7 +22,9 @@ export function resolveCredentialConflictPolicy(
 
 /**
  * A credential owned by any destination project of the import can change. A global credential
- * can change only in a full import: a selection import acts on its selection only.
+ * can change only in a full import: a selection import acts on its selection only. Its owner does
+ * not count, because a global credential is usually in a personal project, and a package never
+ * contains personal projects.
  */
 export function credentialUpdateScope(
 	destinationProjectIds: string[],
