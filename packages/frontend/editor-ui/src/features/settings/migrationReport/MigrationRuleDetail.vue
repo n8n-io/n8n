@@ -7,6 +7,7 @@ import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
 	BreakingChangeWorkflowOwner,
+	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -305,7 +306,7 @@ const openCount = computed(
 const savingWorkflowIds = ref<Set<string>>(new Set());
 
 // The state is a shallow ref, so replace the list to make the table update.
-function setFindingStatuses(statuses: Map<string, MigrationFindingTriageStatus>) {
+function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>) {
 	state.value = {
 		...state.value,
 		affectedWorkflows: state.value.affectedWorkflows.map((workflow) => {
@@ -498,7 +499,7 @@ const onSearchInput = (value: string) => {
 };
 
 // A migrated row shows as resolved, so it does not count as open.
-function findingState(workflow: AffectedWorkflow): MigrationFindingTriageStatus | 'migrated' {
+function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus | 'migrated' {
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
