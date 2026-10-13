@@ -1503,13 +1503,10 @@ describe('Telemetry', () => {
 					'project:personalOwner': 0,
 					'project:viewer': 0,
 				},
-				main_count: 1,
-				worker_count: 1,
-				webhook_count: 0,
-				engine_count: 0,
-				cluster_cpu_limit: 2,
-				cluster_memory_limit: 2048,
-				unlimited_process_count: 1,
+				processes: [
+					{ type: 'main', cpu: 2, memory_kib: 2048, version: '1.0.0', count: 1 },
+					{ type: 'worker', cpu: null, memory_kib: null, version: '1.0.0', count: 1 },
+				],
 			});
 		});
 
