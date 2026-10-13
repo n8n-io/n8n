@@ -1,25 +1,11 @@
 <script setup lang="ts">
-/**
- * Configure a workflow-type tool on an agent.
- *
- * Workflow tools have a very different shape from node tools — no node
- * parameters, no credentials — so we render a small dedicated form instead
- * of reusing `NodeToolSettingsContent`. The LLM-facing fields are:
- *   - workflowId (the target workflow's stable lookup key)
- *   - workflow (the target workflow's display name and legacy lookup key)
- *   - name (edited in the modal header's inline-text widget)
- *   - description (what the LLM reads to understand when to use the tool)
- *   - allOutputs (`true` returns every node output; `false` = last node only)
- *   - inputs (optional AI vs fixed bindings for Execute Workflow Trigger fields)
- *
- * The underlying workflow's runtime input schema is inferred by
- * `WorkflowToolFactory.inferInputSchema` at invocation time; this form only
- * lets the user pin fixed values so the LLM is not asked for them.
- */
-import { computed, onMounted, ref, watch } from 'vue';
+/** Configure a workflow tool without changing its trigger. */
+import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import dateformat from 'dateformat';
 import {
+	N8nButton,
 	N8nCallout,
+	N8nIcon,
 	N8nIconButton,
 	N8nInput,
 	N8nOption,
@@ -28,23 +14,19 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { BaseTextKey } from '@n8n/i18n';
-import type { AgentJsonWorkflowToolInputField } from '@n8n/api-types';
 import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
-import {
-	formatWorkflowToolFixedValue,
-	listWorkflowToolInputFields,
-	parseWorkflowToolFixedValue,
-} from '../utils/workflowToolInputFields';
+import { listWorkflowToolInputFields } from '../utils/workflowToolInputFields';
+import WorkflowToolInputs from './WorkflowToolInputs.vue';
 import { workflowToolTriggerLabel } from '../utils/workflowToolTriggers';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
 	projectId?: string;
+	submitCount?: number;
 }>();
 
 const emit = defineEmits<{
@@ -64,17 +46,23 @@ const allOutputs = ref(props.initialRef.allOutputs ?? false);
 const workflow = ref(props.initialRef.workflow ?? '');
 const workflowId = ref<string | undefined>(props.initialRef.workflowId);
 const inputs = ref<NonNullable<WorkflowToolRef['inputs']>>({
-	...(props.initialRef.inputs ?? {}),
+	...toRaw(props.initialRef.inputs ?? {}),
 });
 const isLoadingWorkflows = ref(true);
+const workflowsLoaded = ref(false);
+const inputsValid = ref(true);
+const advancedExpanded = ref(false);
 const mode = ref<'list' | 'id'>('list');
 const enteredId = ref('');
 const isIdUnresolvable = ref(false);
 
-onMounted(async () => {
-	await loadWorkflows(props.projectId);
+async function reloadWorkflows() {
+	isLoadingWorkflows.value = true;
+	workflowsLoaded.value = await loadWorkflows(props.projectId);
 	isLoadingWorkflows.value = false;
-});
+}
+
+onMounted(reloadWorkflows);
 
 watch(
 	() => props.initialRef,
@@ -84,28 +72,11 @@ watch(
 		allOutputs.value = updated.allOutputs ?? false;
 		workflow.value = updated.workflow ?? '';
 		workflowId.value = updated.workflowId;
-		inputs.value = { ...(updated.inputs ?? {}) };
+		inputs.value = { ...toRaw(updated.inputs ?? {}) };
 		mode.value = 'list';
 		enteredId.value = '';
 		isIdUnresolvable.value = false;
 	},
-);
-
-// Validity gate: target, name and description are required — the description
-// is what the LLM reads to decide when to invoke the tool, and executing
-// without one fails. Only allOutputs is free to stay false.
-watch(
-	[name, description, workflow],
-	([nameValue, descriptionValue, workflowValue]) => {
-		emit(
-			'update:valid',
-			nameValue.trim().length > 0 &&
-				descriptionValue.trim().length > 0 &&
-				workflowValue.trim().length > 0,
-		);
-		emit('update:node-name', nameValue);
-	},
-	{ immediate: true },
 );
 
 function matchesReference(candidate: { id: string; name: string }) {
@@ -130,6 +101,7 @@ const targetWorkflow = computed(() => {
 /** Target is gone from the project entirely — deleted, moved, or inaccessible. */
 const isMissing = computed(
 	() =>
+		workflowsLoaded.value &&
 		!isLoadingWorkflows.value &&
 		workflow.value.length > 0 &&
 		matchingProjectWorkflows.value.length === 0,
@@ -138,6 +110,7 @@ const isMissing = computed(
 /** Target still exists but is archived or holds a node that can't run as a tool. */
 const isUnusable = computed(
 	() =>
+		workflowsLoaded.value &&
 		!isLoadingWorkflows.value &&
 		!isMissing.value &&
 		workflow.value.length > 0 &&
@@ -152,6 +125,7 @@ const isAmbiguous = computed(
 /** Target works in preview, but the published agent cannot call it until it is published. */
 const isUnpublished = computed(
 	() =>
+		workflowsLoaded.value &&
 		!isLoadingWorkflows.value &&
 		!isUnusable.value &&
 		targetWorkflow.value?.activeVersionId === null,
@@ -182,87 +156,34 @@ const selectedOptionId = computed(
 
 const declaredInputFields = computed(() => listWorkflowToolInputFields(targetWorkflow.value));
 
-function fieldBinding(fieldName: string): AgentJsonWorkflowToolInputField {
-	return inputs.value[fieldName] ?? { mode: 'ai' };
-}
+const inputSchemaLoaded = computed(
+	() =>
+		workflowsLoaded.value &&
+		!isLoadingWorkflows.value &&
+		Array.isArray(targetWorkflow.value?.nodes),
+);
+const hasInputErrors = computed(
+	() => inputSchemaLoaded.value && declaredInputFields.value.length > 0 && !inputsValid.value,
+);
 
-function fieldMode(fieldName: string): 'ai' | 'fixed' {
-	return fieldBinding(fieldName).mode;
-}
+watch(
+	[name, description, workflow, hasInputErrors],
+	([nameValue, descriptionValue, workflowValue]) => {
+		emit(
+			'update:valid',
+			nameValue.trim().length > 0 &&
+				descriptionValue.trim().length > 0 &&
+				workflowValue.trim().length > 0 &&
+				!hasInputErrors.value,
+		);
+		emit('update:node-name', nameValue);
+	},
+	{ immediate: true },
+);
 
-function fieldType(fieldName: string): string | undefined {
-	return declaredInputFields.value.find((field) => field.name === fieldName)?.type;
-}
-
-function fieldFixedValue(fieldName: string): string {
-	const binding = fieldBinding(fieldName);
-	if (binding.mode !== 'fixed') return '';
-	return formatWorkflowToolFixedValue(binding.value);
-}
-
-// The trigger's declared field type only matters once the user types a fixed
-// value, so it surfaces as the input placeholder instead of a label.
-const FIXED_VALUE_PLACEHOLDER_KEYS: Record<string, BaseTextKey> = {
-	string: 'agents.toolConfig.workflow.inputs.value.placeholder.string',
-	number: 'agents.toolConfig.workflow.inputs.value.placeholder.number',
-	boolean: 'agents.toolConfig.workflow.inputs.value.placeholder.boolean',
-	array: 'agents.toolConfig.workflow.inputs.value.placeholder.array',
-	object: 'agents.toolConfig.workflow.inputs.value.placeholder.object',
-};
-
-function fieldFixedValuePlaceholder(fieldName: string): string {
-	return i18n.baseText(
-		FIXED_VALUE_PLACEHOLDER_KEYS[fieldType(fieldName) ?? ''] ??
-			'agents.toolConfig.workflow.inputs.value.placeholder',
-	);
-}
-
-// Raw text being typed per field. While editing, the input shows this
-// uncoerced text so fractional numbers (and in-progress JSON) survive
-// each keystroke. On blur the text is parsed and committed to `inputs`.
-const fieldInputText = ref<Record<string, string>>({});
-
-function fieldInputDisplay(fieldName: string): string {
-	return fieldInputText.value[fieldName] ?? fieldFixedValue(fieldName);
-}
-
-function handleFieldInput(fieldName: string, value: string | number) {
-	fieldInputText.value = { ...fieldInputText.value, [fieldName]: String(value) };
-}
-
-function commitFieldFixedValue(fieldName: string) {
-	const raw = fieldInputText.value[fieldName];
-	if (raw === undefined) return;
-	setFieldFixedValue(fieldName, raw);
-	const next = { ...fieldInputText.value };
-	delete next[fieldName];
-	fieldInputText.value = next;
-}
-
-function setFieldMode(fieldName: string, nextMode: string) {
-	if (nextMode !== 'ai' && nextMode !== 'fixed') return;
-	// Discard any in-progress text when the mode changes.
-	const nextText = { ...fieldInputText.value };
-	delete nextText[fieldName];
-	fieldInputText.value = nextText;
-	if (nextMode === 'ai') {
-		const next = { ...inputs.value };
-		delete next[fieldName];
-		inputs.value = next;
-		return;
-	}
-	setFieldFixedValue(fieldName, fieldFixedValue(fieldName));
-}
-
-function setFieldFixedValue(fieldName: string, value: string | number) {
-	inputs.value = {
-		...inputs.value,
-		[fieldName]: {
-			mode: 'fixed',
-			value: parseWorkflowToolFixedValue(String(value), fieldType(fieldName)),
-		},
-	};
-}
+watch([() => props.submitCount, hasInputErrors], ([submitCount, hasErrors]) => {
+	if (submitCount && hasErrors) advancedExpanded.value = true;
+});
 
 function handleChangeName(newName: string) {
 	name.value = newName;
@@ -327,16 +248,13 @@ function getWorkflowId() {
 }
 
 function getInputs(): WorkflowToolRef['inputs'] {
-	// Commit any in-progress text so the value isn't lost when the user
-	// confirms the modal without blurring the field first.
-	for (const fieldName of Object.keys(fieldInputText.value)) {
-		commitFieldFixedValue(fieldName);
-	}
-	if (Object.keys(inputs.value).length === 0) return undefined;
+	const bindings = toRaw(inputs.value);
+	if (Object.keys(bindings).length === 0) return undefined;
+	if (!inputSchemaLoaded.value) return bindings;
 	// Drop bindings for fields that no longer exist on the selected workflow.
 	const allowed = new Set(declaredInputFields.value.map((field) => field.name));
 	const pruned: NonNullable<WorkflowToolRef['inputs']> = {};
-	for (const [key, binding] of Object.entries(inputs.value)) {
+	for (const [key, binding] of Object.entries(bindings)) {
 		if (allowed.has(key)) pruned[key] = binding;
 	}
 	return Object.keys(pruned).length > 0 ? pruned : undefined;
@@ -513,76 +431,77 @@ defineExpose({
 			</N8nText>
 		</div>
 
-		<div
-			v-if="declaredInputFields.length > 0"
-			:class="$style.field"
-			data-test-id="agent-workflow-tool-inputs"
-		>
-			<label :class="$style.label">
-				{{ i18n.baseText('agents.toolConfig.workflow.inputs') }}
-			</label>
-			<N8nText size="xsmall" color="text-light">
-				{{ i18n.baseText('agents.toolConfig.workflow.inputs.hint') }}
-			</N8nText>
-			<div :class="$style.inputFields">
-				<div
-					v-for="field in declaredInputFields"
-					:key="field.name"
-					:class="$style.field"
-					:data-test-id="`agent-workflow-tool-input-${field.name}`"
-				>
-					<N8nText size="small" :bold="true" :class="$style.inputName">{{ field.name }}</N8nText>
-					<div :class="$style.controlRow">
-						<N8nSelect
-							:model-value="fieldMode(field.name)"
-							:class="fieldMode(field.name) === 'fixed' ? $style.inputMode : $style.controlInput"
-							:data-test-id="`agent-workflow-tool-input-mode-${field.name}`"
-							@update:model-value="setFieldMode(field.name, $event)"
-						>
-							<N8nOption
-								value="ai"
-								:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.ai')"
-							/>
-							<N8nOption
-								value="fixed"
-								:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.fixed')"
-							/>
-						</N8nSelect>
-						<N8nInput
-							v-if="fieldMode(field.name) === 'fixed'"
-							:model-value="fieldInputDisplay(field.name)"
-							:class="$style.controlInput"
-							:placeholder="fieldFixedValuePlaceholder(field.name)"
-							:data-test-id="`agent-workflow-tool-input-value-${field.name}`"
-							@update:model-value="handleFieldInput(field.name, $event)"
-							@blur="commitFieldFixedValue(field.name)"
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div :class="$style.toggleRow">
-			<div :class="$style.toggleText">
-				<N8nText size="small" :bold="true">
-					{{ i18n.baseText('agents.toolConfig.workflow.allOutputs') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
-				</N8nText>
-			</div>
-			<N8nSwitch2
-				:model-value="allOutputs"
-				data-test-id="agent-workflow-tool-all-outputs"
-				@update:model-value="allOutputs = $event"
-			/>
-		</div>
-
 		<slot name="commonSettings" />
+
+		<div :class="$style.field">
+			<button
+				type="button"
+				:class="$style.advancedTrigger"
+				:aria-expanded="advancedExpanded"
+				aria-controls="workflow-tool-advanced"
+				data-test-id="agent-workflow-tool-advanced"
+				@click="advancedExpanded = !advancedExpanded"
+			>
+				<N8nText size="small" bold>{{
+					i18n.baseText('agents.toolConfig.workflow.advanced')
+				}}</N8nText>
+				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="small" />
+			</button>
+			<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
+				<div :class="$style.toggleRow">
+					<div :class="$style.toggleText">
+						<N8nText size="small" :bold="true">
+							{{ i18n.baseText('agents.toolConfig.workflow.allOutputs') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
+						</N8nText>
+					</div>
+					<N8nSwitch2
+						:model-value="allOutputs"
+						data-test-id="agent-workflow-tool-all-outputs"
+						@update:model-value="allOutputs = $event"
+					/>
+				</div>
+
+				<N8nText size="small" bold>{{
+					i18n.baseText('agents.toolConfig.workflow.inputs')
+				}}</N8nText>
+				<N8nText v-if="isLoadingWorkflows" size="small" color="text-light" role="status">
+					{{ i18n.baseText('agents.toolConfig.workflow.inputs.loading') }}
+				</N8nText>
+				<template v-else-if="!workflowsLoaded">
+					<N8nText size="small" color="danger" role="alert">
+						{{ i18n.baseText('agents.toolConfig.workflow.inputs.loadError') }}
+					</N8nText>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:label="i18n.baseText('generic.retry')"
+						@click="reloadWorkflows"
+					/>
+				</template>
+				<template v-else-if="inputSchemaLoaded">
+					<N8nText v-if="!declaredInputFields.length" size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.toolConfig.workflow.inputs.empty') }}
+					</N8nText>
+					<WorkflowToolInputs
+						v-else
+						:key="targetWorkflowId"
+						v-model="inputs"
+						:fields="declaredInputFields"
+						:tool-name="name"
+						:submitted="(submitCount ?? 0) > 0"
+						@update:valid="inputsValid = $event"
+					/>
+				</template>
+			</div>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
 .container {
 	display: flex;
 	flex-direction: column;
@@ -659,18 +578,24 @@ defineExpose({
 	text-overflow: ellipsis;
 }
 
-.inputFields {
+.advancedTrigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--3xs) 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
+}
+
+.advancedContent {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	padding-top: var(--spacing--3xs);
-}
-
-.inputName {
-	text-transform: capitalize;
-}
-
-.inputMode {
-	flex: 0 0 180px;
 }
 </style>

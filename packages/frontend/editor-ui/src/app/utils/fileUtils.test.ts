@@ -1,4 +1,8 @@
-import { convertFileToBinaryData, getBinaryDataFileName } from '@/app/utils/fileUtils';
+import {
+	base64ToFile,
+	convertFileToBinaryData,
+	getBinaryDataFileName,
+} from '@/app/utils/fileUtils';
 
 describe('getBinaryDataFileName', () => {
 	it('keeps a name that already carries the extension', () => {
@@ -73,5 +77,18 @@ describe('convertFileToBinaryData', () => {
 		await expect(convertFileToBinaryData(new File([], 'README'))).rejects.toThrow(
 			'Failed to convert file to binary data',
 		);
+	});
+});
+
+describe('base64ToFile', () => {
+	it('round-trips the bytes, name, and type of a file', async () => {
+		const original = new File(['héllo, world'], 'note.txt', { type: 'text/plain' });
+		const encoded = await convertFileToBinaryData(original);
+
+		const decoded = base64ToFile(encoded.data, 'note.txt', 'text/plain');
+
+		expect(decoded.name).toBe('note.txt');
+		expect(decoded.type).toBe('text/plain');
+		expect((await convertFileToBinaryData(decoded)).data).toBe(encoded.data);
 	});
 });

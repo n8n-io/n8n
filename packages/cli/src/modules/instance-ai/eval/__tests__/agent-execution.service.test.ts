@@ -13,6 +13,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
+import type { AgentRunSource } from '@/modules/agents/utils/agent-published-snapshot';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -107,13 +108,23 @@ const makeGenerateResult = (overrides: Partial<GenerateResult> = {}): GenerateRe
 		...overrides,
 	}) as unknown as GenerateResult;
 
-function buildService(overrides: { queueMode?: boolean; agentsActive?: boolean } = {}) {
+function buildService(
+	overrides: {
+		queueMode?: boolean;
+		agentsActive?: boolean;
+		mcpRegistryActive?: boolean;
+	} = {},
+) {
 	const executionsConfig = mock<ExecutionsConfig>();
 	Object.defineProperty(executionsConfig, 'mode', {
 		get: () => (overrides.queueMode ? 'queue' : 'regular'),
 	});
 	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(overrides.agentsActive ?? true);
+	moduleRegistry.isActive.mockImplementation((moduleName) => {
+		if (moduleName === 'agents') return overrides.agentsActive ?? true;
+		if (moduleName === 'mcp-registry') return overrides.mcpRegistryActive ?? true;
+		return true;
+	});
 	return new EvalAgentExecutionService(
 		logger,
 		executionsConfig,
@@ -289,7 +300,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		// The runtime was built with the eval instrumentation, uncached.
 		const call = reconstructFromAgentEntity.mock.calls[0] as [
-			AgentEntity,
+			AgentRunSource,
 			unknown,
 			string,
 			string | undefined,
@@ -298,7 +309,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			...unknown[],
 		];
 		const [entityArg, , runType, integrationType, userArg, instrumentation] = call;
-		expect(entityArg.id).toBe('agent-1');
+		expect(entityArg.agent.id).toBe('agent-1');
 		expect(runType).toBe('test');
 		expect(integrationType).toBeUndefined();
 		expect(userArg).toBe(user);
@@ -459,6 +470,46 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		]);
 	});
 
+	it('uses explicit non-blocked tools as the canonical catalog when both categories are blocked', async () => {
+		const config = {
+			...baseConfig,
+			mcpServers: [
+				{
+					name: 'Restricted MCP',
+					url: 'https://custom.example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'blocked', write: 'blocked' },
+						tools: {
+							search: 'always_allow',
+							update: 'require_approval',
+							delete: 'blocked',
+						},
+					},
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		findByIdAndProjectId.mockResolvedValue(makeEntity(config));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		await buildService({ mcpRegistryActive: false }).executeWithLlmMock('agent-1', user, request);
+
+		expect(createMcpMockFetch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				knownToolsByServer: {
+					'Restricted MCP': [
+						{ name: 'search', description: 'search' },
+						{ name: 'update', description: 'update' },
+					],
+				},
+			}),
+		);
+	});
+
 	it('prunes unmockable features and reports them', async () => {
 		const fullConfig = {
 			...baseConfig,
@@ -481,12 +532,29 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			'memory',
 			'vectorStores',
 		]);
-		const rebuiltEntity = reconstructFromAgentEntity.mock.calls[0][0] as AgentEntity;
+		const rebuiltEntity = (reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource).agent;
 		expect(rebuiltEntity.schema?.memory).toBeUndefined();
 		expect(rebuiltEntity.schema?.mcpServers).toBeUndefined();
 		// Configured sub-agents are kept — the delegated child inherits the
 		// instrumentation and its config is pruned via the transform hook.
 		expect(rebuiltEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'child-1' }] });
+	});
+
+	it('keeps the draft skill refs through pruning', async () => {
+		const skillRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+		];
+		findByIdAndProjectId.mockResolvedValue(makeEntity({ ...baseConfig, skills: skillRefs }));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const runSource = reconstructFromAgentEntity.mock.calls[0][0] as AgentRunSource;
+		expect(runSource.skillRefs).toEqual(skillRefs);
 	});
 
 	it('serves fallback web search and configured sub-agents through the instrumentation', async () => {

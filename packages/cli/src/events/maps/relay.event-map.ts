@@ -1,4 +1,10 @@
-import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
+import type {
+	AuthenticationMethod,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+	ProjectRelation,
+	RedactionFloor,
+} from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
@@ -140,6 +146,7 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -151,6 +158,7 @@ export type RelayEventMap = {
 	'n8n-package-export-failed': {
 		user: UserLike;
 		reason: PackageFailureReason;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -938,7 +946,7 @@ export type RelayEventMap = {
 	'expression-mapping-roles-resolved': {
 		userId: string;
 		userEmail: string;
-		provider: 'oidc' | 'saml' | 'ldap';
+		provider: 'oidc' | 'saml' | 'ldap' | 'oauth2';
 		instanceRole: {
 			role: string;
 			previousRole: string;
@@ -983,6 +991,26 @@ export type RelayEventMap = {
 		ruleType: 'instance' | 'project';
 		count: number;
 		reason: 'strategy-switch';
+	};
+
+	// #endregion
+
+	// #region Trusted sources
+
+	'trusted-source-identity-linked': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		provenance: 'claim-match';
+	};
+
+	'trusted-source-user-provisioned': {
+		userId: string;
+		sourceId: string;
+		issuer: string;
+		subject: string;
+		role: string;
 	};
 
 	// #endregion
@@ -1103,6 +1131,19 @@ export type RelayEventMap = {
 	// #endregion
 
 	// #region workflow history compaction
+	// #region Migration report
+
+	/** The overview was served to a user. `report` is what they saw; telemetry keeps its counts only. */
+	'migration-report-viewed': {
+		user: UserLike;
+		targetVersion: BreakingChangeVersion;
+		/** The request was a Refresh click, which re-scanned every workflow first. */
+		refreshed: boolean;
+		report: BreakingChangeLightReportResult;
+	};
+
+	// #endregion
+
 	'history-compacted': {
 		workflowsProcessed: number;
 		totalVersionsSeen: number;

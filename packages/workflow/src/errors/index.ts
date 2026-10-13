@@ -46,4 +46,5 @@ export { ExpressionClassExtensionError } from './expression-class-extension.erro
 export { ExpressionReservedVariableError } from './expression-reserved-variable.error';
 export { ExpressionWithStatementError } from './expression-with-statement.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
+export { hasPolicyRefusalMarker } from './policy-refusal';
 export { IsolateError } from '@n8n/errors';

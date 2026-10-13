@@ -41,16 +41,30 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('policy-infrastructure');
 	});
 
+	it('should list inbound-auth-core before the modules that inject its contracts', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		const core = eligible.indexOf('inbound-auth-core');
+
+		expect(core).toBeGreaterThanOrEqual(0);
+		for (const consumer of ['oauth-server', 'mcp', 'token-exchange'] as const) {
+			expect(eligible).toContain(consumer);
+			expect(eligible.indexOf(consumer)).toBeGreaterThan(core);
+		}
+	});
+
 	it('should allow opting out of policy-infrastructure via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'policy-infrastructure';
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
-	it.each(['instance-ai', 'agents'])('should include %s by default', (moduleName) => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
-	});
+	it.each(['instance-ai', 'agents', 'agent-evals'])(
+		'should include %s by default',
+		(moduleName) => {
+			expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+		},
+	);
 
-	it.each(['instance-ai', 'agents'])(
+	it.each(['instance-ai', 'agents', 'agent-evals'])(
 		'should allow opting out of the default %s module via env var',
 		(moduleName) => {
 			process.env.N8N_DISABLED_MODULES = moduleName;
@@ -62,6 +76,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
+			'inbound-auth-core',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -92,7 +107,8 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
-			'inbound-auth-core',
+			'agent-evals',
+			'scim',
 		]);
 	});
 
@@ -100,6 +116,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
+			'inbound-auth-core',
 			'insights',
 			'external-secrets',
 			'community-packages',
@@ -131,7 +148,8 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
-			'inbound-auth-core',
+			'agent-evals',
+			'scim',
 			'type-availability-policies',
 		]);
 	});

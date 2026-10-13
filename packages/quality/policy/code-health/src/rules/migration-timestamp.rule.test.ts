@@ -140,14 +140,57 @@ describe('MigrationTimestampRule', () => {
 
 			const violations = await rule.analyze(context([a, b, head]));
 
-			// `a` and `b` are below the new head — they violate ordering.
-			// This is intentional and expected for a multi-migration PR: each
-			// added migration must be greater than every other migration
-			// including the others added in the same PR. Authors should
-			// instead order them so each is strictly the head at the time
-			// of its conceptual insertion.
-			const violatingFiles = violations.map((v) => path.basename(v.file)).sort();
-			expect(violatingFiles).toEqual(['1799000000001-A.ts', '1799000000002-B.ts']);
+			expect(violations).toEqual([]);
+		});
+
+		it('accepts multiple added migrations when no existing migrations exist', async () => {
+			const a = writeMigration(tmpDir, COMMON_DIR, '1777000000000-A.ts');
+			const b = writeMigration(tmpDir, POSTGRES_DIR, '1777000000001-B.ts');
+			const c = writeMigration(tmpDir, SQLITE_DIR, '1777000000002-C.ts');
+
+			const violations = await rule.analyze(context([c, a, b]));
+
+			expect(violations).toEqual([]);
+		});
+
+		it('checks every added migration against the existing head', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Old.ts');
+			writeMigration(tmpDir, POSTGRES_DIR, '1777000000000-Head.ts');
+			const below = writeMigration(tmpDir, COMMON_DIR, '1750000000000-Below.ts');
+			const above = writeMigration(tmpDir, SQLITE_DIR, '1777000000001-Above.ts');
+			const head = writeMigration(tmpDir, COMMON_DIR, '1777000000002-NewHead.ts');
+
+			const violations = await rule.analyze(context([below, above, head]));
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].file).toBe(path.join(tmpDir, below));
+			expect(violations[0].message).toContain('1777000000000');
+		});
+
+		it('does not use added migrations to extend the future timestamp ceiling', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Existing.ts');
+			const a = writeMigration(tmpDir, COMMON_DIR, '1820000000000-A.ts');
+			const b = writeMigration(tmpDir, COMMON_DIR, '1820000000001-B.ts');
+
+			const violations = await rule.analyze(context([a, b]));
+
+			expect(violations).toHaveLength(2);
+			for (const violation of violations) {
+				expect(violation.message).toContain('future timestamp');
+			}
+		});
+
+		it('checks all added migrations against the same ceiling buffer', async () => {
+			writeMigration(tmpDir, COMMON_DIR, `${NOW}-Existing.ts`);
+			const a = writeMigration(tmpDir, COMMON_DIR, `${NOW + 1}-A.ts`);
+			const b = writeMigration(tmpDir, COMMON_DIR, `${NOW + 1000}-B.ts`);
+			const above = writeMigration(tmpDir, COMMON_DIR, `${NOW + 1001}-Above.ts`);
+
+			const violations = await rule.analyze(context([a, b, above]));
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].file).toBe(path.join(tmpDir, above));
+			expect(violations[0].message).toContain('future timestamp');
 		});
 
 		it('flags a newly-added migration that exactly ties the head', async () => {
@@ -220,6 +263,20 @@ describe('MigrationTimestampRule', () => {
 			expect(violations).toEqual([]);
 		});
 
+		it('keeps an existing dialect file as the floor for other added migrations', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Old.ts');
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
+			const override = writeMigration(tmpDir, SQLITE_DIR, '1777000000000-Head.ts');
+			const below = writeMigration(tmpDir, POSTGRES_DIR, '1750000000000-Below.ts');
+			const above = writeMigration(tmpDir, COMMON_DIR, '1777000000001-Above.ts');
+
+			const violations = await rule.analyze(context([override, below, above]));
+
+			expect(violations).toHaveLength(1);
+			expect(violations[0].file).toBe(path.join(tmpDir, below));
+			expect(violations[0].message).toContain('1777000000000');
+		});
+
 		it('still flags two unrelated migrations colliding on the same timestamp', async () => {
 			// Same timestamp + DIFFERENT suffix = genuine collision. Override
 			// pairing must be by filename, not just by timestamp.
@@ -231,12 +288,12 @@ describe('MigrationTimestampRule', () => {
 
 			const files = violations.map((v) => path.basename(v.file)).sort();
 			expect(files).toEqual(['1777000000000-Bar.ts', '1777000000000-Foo.ts']);
+			for (const violation of violations) {
+				expect(violation.message).toContain('shares its timestamp');
+			}
 		});
 
 		it('still flags a sub-floor override file', async () => {
-			// An override pair below the head is still out of order — the
-			// floor is computed from non-self slots, so the pair shares one
-			// slot at the override timestamp but is still below the head.
 			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
 			const commonLate = writeMigration(tmpDir, COMMON_DIR, '1700000000000-Override.ts');
 			const sqliteLate = writeMigration(tmpDir, SQLITE_DIR, '1700000000000-Override.ts');
@@ -273,17 +330,19 @@ describe('MigrationTimestampRule', () => {
 		});
 
 		it('scans every configured migration directory', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Existing.ts');
 			const common = writeMigration(tmpDir, COMMON_DIR, '1700000000000-Common.ts');
 			const postgres = writeMigration(tmpDir, POSTGRES_DIR, '1750000000000-Postgres.ts');
 			const sqlite = writeMigration(tmpDir, SQLITE_DIR, '1755000000000-Sqlite.ts');
 
 			const violations = await rule.analyze(context([common, postgres, sqlite]));
 
-			// Common and Postgres are below Sqlite's head — both trip
-			// ordering, proving every directory is scanned and addedFiles
-			// matches across directories.
 			const files = violations.map((v) => path.basename(v.file)).sort();
-			expect(files).toEqual(['1700000000000-Common.ts', '1750000000000-Postgres.ts']);
+			expect(files).toEqual([
+				'1700000000000-Common.ts',
+				'1750000000000-Postgres.ts',
+				'1755000000000-Sqlite.ts',
+			]);
 		});
 	});
 });

@@ -1,14 +1,20 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
-import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
+import type {
+	ClaimedTask,
+	DispatchDecision,
+	DispatchReporter,
+	TaskHandler,
+	TaskRun,
+} from '@n8n/scheduler';
 import type { Tracing } from 'n8n-core';
 
 import { observeSystemTaskRun } from './system-task-run-observer';
 
 /**
- * Runs one durable occurrence of a system task, handing it `shutdownSignal` so
- * it can stop early when the instance shuts down.
+ * Runs one durable occurrence of a system task. The signal aborts on shutdown,
+ * and when the run reaches its timeout. Lease loss or expiry also aborts it.
  *
  * Errors propagate: the executor is what retries the occurrence or gives up on
  * it, following the attempt limit carried by the occurrence's job row.
@@ -23,16 +29,18 @@ export class SystemTaskHandler implements TaskHandler {
 		private readonly onRunError: (error: unknown) => void,
 	) {}
 
-	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
-		const decision =
-			this.systemTask.effects === 'non-idempotent' ? report.dispatched() : report.notDispatched();
-
+	async execute(
+		task: ClaimedTask,
+		report: DispatchReporter,
+		{ signal: leaseSignal }: TaskRun,
+	): Promise<DispatchDecision> {
 		const outcome = await observeSystemTaskRun(
 			this.eventService,
 			this.tracing,
 			this.systemTask,
 			'durable',
 			this.shutdownSignal,
+			leaseSignal,
 		);
 		if (outcome.rejected) {
 			// An aborted run is not reported, but its rejection still propagates so
@@ -43,12 +51,17 @@ export class SystemTaskHandler implements TaskHandler {
 			throw outcome.error;
 		}
 
+		// A clean stop after lease loss or a timeout must reject so the executor decides the occurrence's fate.
+		// A clean stop on shutdown still completes.
+		leaseSignal.throwIfAborted();
+
 		this.logger.debug('Ran a system task occurrence', {
 			name: this.systemTask.name,
 			taskId: task.id,
 			jobId: task.jobId,
 		});
 
-		return decision;
+		// The marker is stamped only after the run, so a thrown run is recorded as failed.
+		return report.dispatched();
 	}
 }

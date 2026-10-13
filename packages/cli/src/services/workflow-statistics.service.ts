@@ -264,17 +264,10 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		userId: string | null,
 		activatedAt: number,
 	): Promise<void> {
-		const alreadyActivated = await this.settingsRepository.findByKey(
+		await this.settingsRepository.insertIfAbsent(
 			INSTANCE_ACTIVATED_SETTINGS_KEY,
+			JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
 		);
-
-		if (alreadyActivated) return;
-
-		await this.settingsRepository.save({
-			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
-			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
-			loadOnStartup: false,
-		});
 	}
 
 	private async emitInstanceFirstProductionWorkflowFailed(
@@ -302,16 +295,18 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		owner ??= await this.ownershipService.getInstanceOwner();
 
-		await this.settingsRepository.save({
-			key: 'instance.firstProductionFailure',
-			value: JSON.stringify({
+		const isFirstFailure = await this.settingsRepository.insertIfAbsent(
+			'instance.firstProductionFailure',
+			JSON.stringify({
 				workflowId,
 				projectId: project.id,
 				userId: owner.id,
 				timestamp: timestampMs,
 			}),
-			loadOnStartup: false,
-		});
+		);
+		if (!isFirstFailure) {
+			return;
+		}
 
 		this.eventService.emit('instance-first-production-workflow-failed', {
 			projectId: project.id,

@@ -1,7 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
-import { AgentApprovalSchema, AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -15,14 +15,15 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
 import { jsonValueSchema } from '../schemas/json-value.schema';
+import { mcpToolPermissionsSchema } from '../schemas/mcp-tool-permissions.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
 export const AgentModelSchema = z.string().min(1).regex(
 	/**
 	 * [a-z0-9-]+: Provider name (e.g. "anthropic")
-	 * (?:[a-z0-9._:-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
-	 * [a-z0-9._:-]+: Model name (e.g. "claude-sonnet-4-5")
+	 * (?:[a-z0-9._:@-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+	 * [a-z0-9._:@-]+: Model name (e.g. "claude-fable-5@default")
 	 */
 	AGENT_MODEL_STRING_REGEX,
 	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
@@ -265,26 +266,11 @@ export const McpServerConfigSchema = z
 			.describe(
 				'Server-generated metadata. Do not set this manually; only copy it from an MCP discovery result when present',
 			),
-		toolFilter: z
-			.discriminatedUnion('mode', [
-				z
-					.object({
-						mode: z.literal('allow'),
-						tools: z.array(z.string().min(1)).default([]),
-					})
-					.strict(),
-				z
-					.object({
-						mode: z.literal('exclude'),
-						tools: z.array(z.string().min(1)).default([]),
-					})
-					.strict(),
-			])
+		toolPermissions: mcpToolPermissionsSchema
 			.optional()
-			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
-		approval: AgentApprovalSchema.optional().describe(
-			'Human-in-the-loop approval. Absent = no approval required',
-		),
+			.describe(
+				'Optional read/write category permissions with exact-name tool overrides. Omission allows all tools without approval',
+			),
 		connectionTimeoutMs: z
 			.number()
 			.int()
@@ -378,16 +364,23 @@ const CustomToolJsonConfigSchema = z.object({
 
 /**
  * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
- * - `ai`: field is advertised to the LLM and must be supplied at call time.
+ * - `ai`: field is advertised to the LLM with optional input guidance.
  * - `fixed`: field is omitted from the LLM schema and injected at invoke time.
+ * - `expression`: field is omitted from the LLM schema and resolved at invoke time.
  */
 export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
-	z.object({ mode: z.literal('ai') }).strict(),
+	z.object({ mode: z.literal('ai'), description: z.string().optional() }).strict(),
 	z
 		.object({
 			mode: z.literal('fixed'),
 			// Reject missing/undefined — fixed bindings must pin a concrete value.
 			value: jsonValueSchema,
+		})
+		.strict(),
+	z
+		.object({
+			mode: z.literal('expression'),
+			value: z.string().regex(/^=\s*\S/, 'Enter an expression that starts with ='),
 		})
 		.strict(),
 ]);
@@ -579,6 +572,29 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+
+declare const storedSkillRefsBrand: unique symbol;
+
+/**
+ * Opaque type of the legacy `skills` key in a stored config. Only the skill
+ * refs seam reads or writes this key.
+ */
+export interface OpaqueStoredSkillRefs {
+	readonly [storedSkillRefsBrand]: true;
+}
+
+/**
+ * Agent config as the backend stores it on the agent draft and on each
+ * published version. Its `skills` key is opaque: read and write skill refs
+ * through `AgentSkillRefsService`. `AgentJsonConfig` (with `skills`) stays the
+ * document format of REST, MCP and the agent builder.
+ *
+ * Because the `skills` key is opaque, a stored config is not assignable to
+ * `AgentJsonConfig`. To get a document, compose one with the skill refs.
+ */
+export type StoredAgentConfig = Omit<AgentJsonConfig, 'skills'> & {
+	readonly skills?: OpaqueStoredSkillRefs;
+};
 export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
 
 /** In-memory monthly spend for one agent. This process only. */

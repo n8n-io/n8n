@@ -479,4 +479,8 @@ describe('McpProtectedResource', () => {
 			});
 		});
 	});
+
+	it('is served on the instance-mcp surface', () => {
+		expect(resource.surface).toBe('instance-mcp');
+	});
 });

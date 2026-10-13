@@ -40,10 +40,7 @@ import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provide
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
-import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -419,10 +416,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.server.start();
-
-		Container.get(ExecutionsPruningService).init();
-		Container.get(WorkflowHistoryCompactionService).init();
-		Container.get(WorkflowStatisticsRollupService).init();
 
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.

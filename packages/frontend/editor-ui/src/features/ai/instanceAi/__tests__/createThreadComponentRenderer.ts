@@ -121,6 +121,7 @@ export const InstanceAiInputStub = defineComponent({
 		mentionArtifacts: { type: Array, required: false },
 		mentionActiveWorkflowId: { type: String, required: false },
 		reservedAttachmentCount: { type: Number, required: false },
+		isOutOfCredits: { type: Boolean, required: false },
 	},
 	emits: [
 		'submit',
@@ -194,6 +195,11 @@ export const InstanceAiInputStub = defineComponent({
 					props.placeholderKey ?? 'unset',
 				),
 				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
+					String(Boolean(props.isOutOfCredits)),
+				),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attachments' },

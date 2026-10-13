@@ -1279,11 +1279,6 @@ const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
 	() => workflowDocumentStore.value.allNodes,
 );
 
-/**
- * Ctrl+Enter reaches `runEntireWorkflow` straight from the canvas keymap, past
- * the button's own disabled state, so it has to ask the same question. There is
- * nothing to hover, so the reason is shown as a toast instead of a tooltip.
- */
 function onRunWorkflowShortcut() {
 	if (unusableCredentialReason.value) {
 		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
@@ -1295,7 +1290,7 @@ function onRunWorkflowShortcut() {
 
 const isExecutionDisabled = computed(() => {
 	// A run is checked against the person it acts as, so a credential this user
-	// cannot use stops the workflow. The backend refuses it either way.
+	// cannot use stops the workflow.
 	if (unusableCredentialReason.value) {
 		return true;
 	}

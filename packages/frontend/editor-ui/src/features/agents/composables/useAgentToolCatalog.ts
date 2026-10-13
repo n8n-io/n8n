@@ -130,7 +130,7 @@ export function useAgentToolCatalog() {
 			}),
 	);
 
-	async function loadWorkflows(projectId?: string): Promise<void> {
+	async function loadWorkflows(projectId?: string): Promise<boolean> {
 		try {
 			// Fetch all project workflows (not just those with a supported trigger)
 			// so unsupported ones can be shown greyed-out with a reason in the picker.
@@ -150,8 +150,10 @@ export function useAgentToolCatalog() {
 					'updatedAt',
 				],
 			});
+			return true;
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);
+			return false;
 		}
 	}
 

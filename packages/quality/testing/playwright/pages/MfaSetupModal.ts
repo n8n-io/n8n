@@ -27,6 +27,10 @@ export class MfaSetupModal extends BasePage {
 		await this.clickByTestId('mfa-secret-button');
 	}
 
+	async clickContinue(): Promise<void> {
+		await this.container.getByTestId('mfa-continue-button').click();
+	}
+
 	async clickDownloadRecoveryCodes(): Promise<void> {
 		await this.clickByTestId('mfa-recovery-codes-button');
 	}

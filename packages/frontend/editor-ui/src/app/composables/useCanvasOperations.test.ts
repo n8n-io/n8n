@@ -276,6 +276,7 @@ describe('useCanvasOperations', () => {
 		vi.mocked(workflowDocumentStoreInstance.getWorkflowObjectAccessorSnapshot).mockReturnValue({
 			id: workflowDocumentStoreInstance.workflowId,
 			connectionsBySourceNode: workflowDocumentStoreInstance.connectionsBySourceNode,
+			connectionsByDestinationNode: workflowDocumentStoreInstance.connectionsByDestinationNode,
 			pinData: workflowDocumentStoreInstance.pinnedDataByNodeName as IPinData,
 			expression: workflowDocumentStoreInstance.getExpressionHandler(),
 			getNode: workflowDocumentStoreInstance.getNodeByName,

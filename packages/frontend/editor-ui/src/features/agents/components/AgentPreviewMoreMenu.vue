@@ -123,6 +123,7 @@ const triggerLabel = computed(() => {
 		return i18n.baseText('agentSessions.origin.preview');
 	}
 	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
+	if (source === 'n8n_chat_production') return i18n.baseText('agentSessions.origin.n8nChat');
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -132,6 +133,7 @@ const triggerIcon = computed<IconName>(() => {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'whatsapp':
 		case 'teams':
 		case 'mcp':
 		case 'workflow':
@@ -139,6 +141,8 @@ const triggerIcon = computed<IconName>(() => {
 			return sessionMetadata.value.source;
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}

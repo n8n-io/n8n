@@ -1335,6 +1335,129 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
+	describe('updateCredentialsOauthTokenData after the credential was read', () => {
+		const nodeCredentials: INodeCredentialsDetails = { id: 'cred-cas', name: 'Acme OAuth2' };
+		const additionalData = {} as IWorkflowExecuteAdditionalData;
+		const mintedToken = { access_token: 'tok-for-app-one', token_type: 'bearer' };
+
+		const storedRow = (data: ICredentialDataDecryptedObject) =>
+			({
+				id: 'cred-cas',
+				name: 'Acme OAuth2',
+				type: 'oAuth2Api',
+				data: cipher.encryptWithInstanceKey(data),
+				isResolvable: false,
+				usageScope: 'project',
+			}) as CredentialsEntity;
+
+		/** Reads the credential the way an execution does, then mints a token into that object. */
+		async function readAndMint(row: CredentialsEntity) {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(row);
+			const decrypted = await credentialsHelper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'oAuth2Api',
+				'internal',
+				undefined,
+				true,
+			);
+			decrypted.oauthTokenData = mintedToken;
+			return decrypted;
+		}
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			credentialsRepository.updateDataIfUnchanged.mockResolvedValue(true);
+		});
+
+		test('writes the token only while the row still holds the ciphertext that was read', async () => {
+			const row = storedRow({ grantType: 'clientCredentials', clientId: 'app-one' });
+			const decrypted = await readAndMint(row);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+
+			expect(credentialsRepository.updateDataIfUnchanged).toHaveBeenCalledExactlyOnceWith(
+				'cred-cas',
+				'oAuth2Api',
+				row.data,
+				expect.any(String),
+			);
+			expect(credentialsRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('drops a token minted for a client that a save replaced in the meantime', async () => {
+			const decrypted = await readAndMint(
+				storedRow({ grantType: 'clientCredentials', clientId: 'app-one' }),
+			);
+			// The user saved a new client after the read, so the row now holds other ciphertext.
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				storedRow({ grantType: 'clientCredentials', clientId: 'app-two' }),
+			);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+
+			expect(credentialsRepository.updateDataIfUnchanged).not.toHaveBeenCalled();
+			expect(credentialsRepository.update).not.toHaveBeenCalled();
+		});
+
+		test('compares a later write in the same execution against the ciphertext it wrote', async () => {
+			const row = storedRow({ grantType: 'clientCredentials', clientId: 'app-one' });
+			const decrypted = await readAndMint(row);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+			const [, , , writtenData] = credentialsRepository.updateDataIfUnchanged.mock.calls[0];
+			credentialsRepository.findOneByOrFail.mockResolvedValue({
+				...row,
+				data: writtenData,
+			} as CredentialsEntity);
+
+			decrypted.oauthTokenData = { ...mintedToken, access_token: 'tok-for-app-one-refreshed' };
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				decrypted,
+				additionalData,
+			);
+
+			expect(credentialsRepository.updateDataIfUnchanged).toHaveBeenCalledTimes(2);
+			expect(credentialsRepository.updateDataIfUnchanged.mock.calls[1][2]).toBe(writtenData);
+		});
+
+		test('keeps the unconditional write for token data that was not read through getDecrypted', async () => {
+			credentialsRepository.findOneByOrFail.mockResolvedValue(
+				storedRow({ grantType: 'clientCredentials', clientId: 'app-one' }),
+			);
+
+			await credentialsHelper.updateCredentialsOauthTokenData(
+				nodeCredentials,
+				'oAuth2Api',
+				{ oauthTokenData: mintedToken },
+				additionalData,
+			);
+
+			expect(credentialsRepository.update).toHaveBeenCalledExactlyOnceWith(
+				{ id: 'cred-cas', type: 'oAuth2Api' },
+				{ data: expect.any(String), updatedAt: expect.any(Date) },
+			);
+			expect(credentialsRepository.updateDataIfUnchanged).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getDecrypted - AI Gateway managed credentials', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();

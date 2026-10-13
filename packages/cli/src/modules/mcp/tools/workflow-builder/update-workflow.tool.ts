@@ -3,8 +3,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+import {
+	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
+	type ClearedSubnodeInput,
+} from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import type { IWorkflowSettings } from 'n8n-workflow';
+import { NodeConnectionTypes, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -27,6 +32,7 @@ import {
 	staticErrorWorkflowId,
 	type ErrorWorkflowValidationService,
 } from '@/workflows/error-workflow-validation.service';
+import { assertExecutionTimeoutWithinMax } from '@/workflows/execution-timeout-validation';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -456,28 +462,6 @@ function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): 
 }
 
 /**
- * Reject an executionTimeout that exceeds the instance maximum. The schema
- * already enforces a positive integer; this adds the instance-specific upper
- * bound, which isn't knowable statically. A non-positive `maxTimeout` means the
- * instance sets no cap, so nothing is enforced.
- */
-function assertExecutionTimeoutWithinMax(
-	executionTimeout: number | undefined,
-	maxTimeout: number,
-): void {
-	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
-	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) {
-		return;
-	}
-
-	if (executionTimeout > maxTimeout) {
-		throw new Error(
-			`executionTimeout (${executionTimeout}s) exceeds this instance's maximum of ${maxTimeout}s. Set executionTimeout to ${maxTimeout} or less.`,
-		);
-	}
-}
-
-/**
  * The dependencies these guards need. Separated from the per-call data so a call site
  * shows what is being validated, not the plumbing it takes to validate it. Note
  * the leaf guards above still take primitives rather than `globalConfig` — this
@@ -728,6 +712,26 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 	op.type === 'addTags' || op.type === 'removeTags';
 
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
+
+/**
+ * Operations that cannot leave a required subnode input unsatisfied: they touch
+ * neither connections nor the parameters a conditional `inputs` expression reads.
+ * Node-level execution settings qualify, since `inputs` only sees `$parameter`.
+ */
+const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
+	'addTags',
+	'removeTags',
+	'setNodeSettings',
+	'setWorkflowSettings',
+	'setWorkflowMetadata',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeGroups',
+	'setNodePosition',
+]);
+
+const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.has(op.type);
 
 /**
  * Rejects operations this instance cannot serve, before anything is loaded or
@@ -1160,6 +1164,29 @@ export const createUpdateWorkflowTool = (
 					throw new Error(result.error);
 				}
 
+				// Setting a parameter can make a subnode input required without wiring it.
+				// Skip inputs this batch disconnected, or removeConnection is a no-op.
+				// Names are carried through later renames, since the pass runs against
+				// the final graph.
+				const clearedInputs: ClearedSubnodeInput[] = [];
+				for (const op of strictOperations) {
+					if (op.type === 'removeConnection') {
+						clearedInputs.push({
+							nodeName: op.target,
+							connectionType: op.connectionType ?? NodeConnectionTypes.Main,
+						});
+					} else if (op.type === 'renameNode') {
+						for (const cleared of clearedInputs) {
+							if (cleared.nodeName === op.oldName) cleared.nodeName = op.newName;
+						}
+					}
+				}
+				// A tag, settings or layout edit cannot create an unsatisfied input, and
+				// wiring one off the back of such an update would be a surprise.
+				const addedSubnodeLinks = strictOperations.some(touchesGraph)
+					? connectRequiredSubnodeInputs(result.workflow, nodeTypes, { clearedInputs })
+					: [];
+
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
 					resolveNodeGroupViolations(result, nodeTypes);
 
@@ -1247,6 +1274,10 @@ export const createUpdateWorkflowTool = (
 					existingWorkflow,
 					nodeTypes,
 				);
+
+				for (const link of addedSubnodeLinks) {
+					validationWarnings.push(describeAddedSubnodeConnection(link));
+				}
 
 				validationWarnings.push(
 					...(await buildUninstalledNodeWarnings(

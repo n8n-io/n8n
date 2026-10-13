@@ -34,12 +34,18 @@ import { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
+import { AgentDefinitionService } from './agent-definition.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
+import {
+	getAgentDefinitionContent,
+	type AgentDefinition,
+	type PendingSkillRefs,
+} from './utils/agent-definition';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
-import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
@@ -85,12 +91,12 @@ function agentIssue(
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentTaskRepository: AgentTaskRepository,
-		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
+		private readonly definitionService: AgentDefinitionService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -154,23 +160,30 @@ export class AgentValidationService {
 		);
 	}
 
+	/** `pending`: skill refs that the caller is about to save, in place of the stored refs. */
 	async validateLoadedAgentConfiguration(
 		agent: Agent,
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
+		pending?: PendingSkillRefs,
 	): Promise<AgentConfigValidationResponse> {
-		const tasks =
-			scope === 'publish'
-				? new Map(
-						(await this.agentTaskRepository.findByAgentId(agent.id)).map((task) => [task.id, task]),
-					)
-				: new Map<string, TaskBody>();
-
-		return await this.validateAgentEntityConfiguration(
-			agent,
+		if (scope === 'runtime') {
+			return await this.validateAgentEntityConfiguration(
+				agent,
+				pending ? pending.skillRefs : await this.agentSkillRefs.refsForDraft(agent, {}),
+				projectId,
+				new Map(),
+				credentialProvider,
+				scope,
+			);
+		}
+		const definition = await this.definitionService.readDraft(agent, {}, pending);
+		return await this.validateDefinition(
+			agent.id,
 			projectId,
-			tasks,
+			definition,
+			agent.integrations ?? [],
 			credentialProvider,
 			scope,
 		);
@@ -187,22 +200,18 @@ export class AgentValidationService {
 	 */
 	async validateAgentEntityConfiguration(
 		agent: Agent,
+		skillRefs: AgentSkillRefs,
 		projectId: string,
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
-		return await this.runValidation(
-			{
-				agentId: agent.id,
-				projectId,
-				config: agent.schema,
-				skills: agent.skills ?? {},
-				customTools: agent.tools ?? {},
-				integrations: agent.integrations ?? [],
-				tasks,
-				credentialProvider,
-			},
+		return await this.validateDefinition(
+			agent.id,
+			projectId,
+			{ ...getAgentDefinitionContent(agent, skillRefs), tasks },
+			agent.integrations ?? [],
+			credentialProvider,
 			scope,
 		);
 	}
@@ -220,24 +229,37 @@ export class AgentValidationService {
 		currentIntegrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
 	): Promise<AgentConfigValidationResponse> {
-		const tasks = new Map(
-			(await this.agentTaskSnapshotRepository.findByVersionId(history.versionId)).map(
-				(snapshot) => [snapshot.taskId, snapshot],
-			),
+		const definition = await this.definitionService.readVersion(history);
+		return await this.validateDefinition(
+			agentId,
+			projectId,
+			definition,
+			currentIntegrations,
+			credentialProvider,
+			'publish',
 		);
+	}
 
+	private async validateDefinition(
+		agentId: string,
+		projectId: string,
+		definition: AgentDefinition,
+		integrations: AgentIntegrationConfig[],
+		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope,
+	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
 				agentId,
 				projectId,
-				config: history.schema,
-				skills: history.skills ?? {},
-				customTools: history.tools ?? {},
-				integrations: currentIntegrations,
-				tasks,
+				config: definition.schema,
+				skills: definition.skills,
+				customTools: definition.tools,
+				tasks: definition.tasks,
+				integrations,
 				credentialProvider,
 			},
-			'publish',
+			scope,
 		);
 	}
 
@@ -279,6 +301,7 @@ export class AgentValidationService {
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
+		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
@@ -400,6 +423,48 @@ export class AgentValidationService {
 		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
 	}
 
+	private async collectVertexModelIssues(
+		config: AgentJsonConfig,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		type ModelSlot = Pick<AgentJsonConfig, 'model' | 'credential'>;
+		const slots: Array<[string, ModelSlot | undefined]> = [
+			...Object.entries(config.subAgents?.modelsByDifficulty ?? {}).map(
+				([difficulty, model]): [string, ModelSlot] => [
+					`subAgents.modelsByDifficulty.${difficulty}.`,
+					model,
+				],
+			),
+		];
+		if (config.memory?.enabled) {
+			const observational = config.memory.observationalMemory;
+			if (observational?.enabled !== false) {
+				slots.push(
+					['memory.observationalMemory.observerModel.', observational?.observerModel],
+					['memory.observationalMemory.reflectorModel.', observational?.reflectorModel],
+				);
+			}
+			const episodic = config.memory.episodicMemory;
+			if (episodic?.enabled) {
+				slots.push(['memory.episodicMemory.reflectorModel.', episodic.reflectorModel]);
+			}
+		}
+		for (const [path, model] of slots) {
+			if (!model || getProviderPrefix(model.model) !== 'google-vertex') continue;
+			if (!model.credential?.trim()) {
+				issues.push(agentIssue('missing_credential', `${path}credential`));
+				continue;
+			}
+			const credential = await this.findCredentialSafe(findCredential, model.credential.trim());
+			if (!credential) {
+				issues.push(agentIssue('invalid_credential', `${path}credential`));
+			} else if (!this.credentialSupportsModel(credential.type, model.model)) {
+				issues.push(agentIssue('incompatible_credential', `${path}credential`));
+			}
+		}
+	}
+
 	private collectSubAgentRefIssues(
 		ctx: ConfigurationValidationContext,
 		agentsById: Map<string, Pick<Agent, 'id'>>,
@@ -433,7 +498,7 @@ export class AgentValidationService {
 		skills: Record<string, AgentSkill>,
 		issues: AgentConfigValidationIssue[],
 	) {
-		for (const skillId of getMissingSkillIds(config, skills)) {
+		for (const skillId of getMissingSkillIds(config.skills, skills)) {
 			issues.push(issue('missing_reference', `skill:${skillId}`, { kind: 'skill', id: skillId }));
 		}
 	}

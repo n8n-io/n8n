@@ -2,6 +2,7 @@ import { toValue, type MaybeRefOrGetter } from 'vue';
 import type { InstanceAiThreadSource } from '@n8n/api-types';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentAssistantCredentialHelp } from '@/features/agents/composables/useAgentAssistantCredentialHelp';
 import type { InstanceAiCredentialHelpHandler } from '@/app/composables/useInstanceAiEditorCapability';
 import { useInstanceAiAvailable } from './useInstanceAiAvailability';
 import {
@@ -32,17 +33,28 @@ export function useInstanceAiCredentialHelp(
 	const projectsStore = useProjectsStore();
 	const instanceAiAvailable = useInstanceAiAvailable();
 	const { startThread } = useInstanceAiHandoff();
+	const { isAgentUi, getCredentialHelp } = useAgentAssistantCredentialHelp();
 
 	return () => {
+		if (isAgentUi.value) {
+			const agentHelp = getCredentialHelp();
+			if (!agentHelp) return undefined;
+			return async (credential) => {
+				const serviceName = toValue(options.serviceName);
+				return await agentHelp(
+					serviceName ? { ...credential, displayName: serviceName } : credential,
+				);
+			};
+		}
 		if (!instanceAiAvailable.value) return undefined;
 		return async (credential) => {
+			const serviceName = toValue(options.serviceName);
+			const subject = serviceName ? { ...credential, displayName: serviceName } : credential;
 			const projectId =
 				toValue(options.projectId) ??
 				projectsStore.currentProject?.id ??
 				projectsStore.personalProject?.id;
 			if (!projectId) return false;
-			const serviceName = toValue(options.serviceName);
-			const subject = serviceName ? { ...credential, displayName: serviceName } : credential;
 			await startThread(
 				projectId,
 				buildInstanceAiCredentialQuestion(subject),

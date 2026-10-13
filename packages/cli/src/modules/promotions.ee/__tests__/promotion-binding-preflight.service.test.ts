@@ -4,6 +4,8 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
+import type { DataTableImporter } from '@/modules/n8n-packages/entities/data-table/data-table-importer';
+import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
 import type {
 	InventoryCredential,
@@ -21,11 +23,14 @@ const credentialTypes = mock<CredentialTypes>();
 const credentialsRepository = mock<CredentialsRepository>();
 const variablesRepository = mock<VariablesRepository>();
 const projectRepository = mock<ProjectRepository>();
+const dataTableImporter = mock<DataTableImporter>();
 
 const service = new PromotionBindingPreflightService(
 	mock<PackageImportConfig>(),
 	inventoryReader,
 	new VariableRequirementsExtractor(),
+	new DataTableRequirementsExtractor(),
+	dataTableImporter,
 	credentialTypes,
 	credentialsRepository,
 	variablesRepository,
@@ -117,6 +122,7 @@ function useInventory(inventory: Partial<PackageDirectoryInventory>) {
 		workflows: [],
 		credentials: [],
 		variables: [],
+		dataTables: [],
 		...inventory,
 	});
 }
@@ -160,6 +166,7 @@ describe('PromotionBindingPreflightService', () => {
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
+		dataTableImporter.findDestructiveChanges.mockResolvedValue([]);
 		projectRepository.findTypesByIds.mockResolvedValue(
 			[PROJECT_A, PROJECT_B, PROJECT_C].map(({ id }) => ({ id, type: 'team' })),
 		);
@@ -237,6 +244,34 @@ describe('PromotionBindingPreflightService', () => {
 			['REGION'],
 			[PROJECT_A.id],
 		);
+	});
+
+	it('checks an inventory the caller already read without reading the package again', async () => {
+		const inventory: PackageDirectoryInventory = {
+			projects: [{ path: 'projects/proj-a', ...PROJECT_A }],
+			workflows: [
+				inventoryWorkflow('wf-1', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-1')]),
+				inventoryWorkflow('wf-2', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-2')]),
+			],
+			credentials: [
+				inventoryCredential('cred-1', PROJECT_A.id),
+				inventoryCredential('cred-2', PROJECT_A.id),
+			],
+			variables: [],
+			dataTables: [],
+		};
+		const selection = { selectedProjectId: PROJECT_A.id, selectedWorkflowIds: ['wf-1'] };
+		inventoryReader.read.mockResolvedValue(inventory);
+		const fromDirectory = await service.checkDirectory({ sourceDir: '/checkout', selection });
+		inventoryReader.read.mockClear();
+
+		const fromInventory = await service.checkInventory({ inventory, selection });
+
+		expect(inventoryReader.read).not.toHaveBeenCalled();
+		expect(fromInventory).toEqual(fromDirectory);
+		expect(fromInventory.missingBindings).toEqual([
+			expect.objectContaining({ kind: 'credential', sourceId: 'cred-1' }),
+		]);
 	});
 
 	it('returns nothing when every credential is usable and every variable exists in its source project', async () => {

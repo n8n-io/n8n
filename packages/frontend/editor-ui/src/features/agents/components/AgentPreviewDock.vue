@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
@@ -266,7 +266,7 @@ defineExpose({ clearBudgetStops });
 					/>
 					<KeyboardShortcutTooltip
 						placement="bottom"
-						:label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+						:label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 					>
 						<N8nIconButton
@@ -274,7 +274,7 @@ defineExpose({ clearBudgetStops });
 							variant="ghost"
 							size="small"
 							icon-size="large"
-							:aria-label="i18n.baseText('agents.builder.preview.hide' as BaseTextKey)"
+							:aria-label="i18n.baseText('agents.builder.preview.close.ariaLabel')"
 							data-testid="agent-preview-close-btn"
 							@click="close"
 						/>

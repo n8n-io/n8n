@@ -8,6 +8,7 @@
 	},
 	"include": ["src/**/*.ts"],
 	"references": [
+		{ "path": "../api-types/tsconfig.build.json" },
 		{ "path": "../permissions/tsconfig.build.json" },
 		{ "path": "../../workflow/tsconfig.build.esm.json" }
 	]

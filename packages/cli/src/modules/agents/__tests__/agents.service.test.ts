@@ -3,10 +3,10 @@
 import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ProjectRelationRepository, User } from '@n8n/db';
+import type { ProjectRelationRepository, TransactionRunner, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -25,9 +25,18 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { AgentPolicyService } from '../agent-policy.service';
+import { createAgentSkillRefsService, storedSkillRefs } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
+const actor = { kind: 'user', user: { id: 'user-1' } } as const;
 const projectId = 'project-1';
+
+/** Mirror `Repository.create`: the returned entity holds the fields that `create` got. */
+function mockCreateReturning(agentRepository: MockProxy<AgentRepository>, entity: Agent) {
+	agentRepository.create.mockImplementation(((fields: Partial<Agent>) =>
+		Object.assign(entity, fields)) as never);
+}
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
@@ -61,8 +70,10 @@ function makeService() {
 	const credentialsService = mock<CredentialsService>();
 	const projectScopeService = mock<ProjectScopeService>();
 	const agentsSettingsService = mock<AgentsSettingsService>();
+	const agentPolicyService = mock<AgentPolicyService>();
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
+	agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
@@ -73,6 +84,9 @@ function makeService() {
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	Container.set(AgentTaskService, agentTaskService);
 	Container.set(ChatIntegrationService, chatIntegrationService);
+
+	const transactionRunner = mock<TransactionRunner>();
+	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 
 	const service = new AgentsService(
 		mockLogger(),
@@ -89,10 +103,14 @@ function makeService() {
 		credentialsService,
 		projectScopeService,
 		agentsSettingsService,
+		agentPolicyService,
+		createAgentSkillRefsService(agentRepository),
+		transactionRunner,
 	);
 
 	return {
 		service,
+		agentPolicyService,
 		agentRepository,
 		projectRelationRepository,
 		agentKnowledgeService,
@@ -124,9 +142,9 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 
-		await expect(service.create(projectId, 'Support Agent')).resolves.toBe(saved);
+		await expect(service.create(projectId, 'Support Agent', { actor })).resolves.toBe(saved);
 		expect(agentRepository.create).toHaveBeenCalledWith({
 			name: 'Support Agent',
 			projectId,
@@ -135,7 +153,6 @@ describe('AgentsService', () => {
 				model: '',
 				instructions: '',
 				tools: [],
-				skills: [],
 				// A renderable icon name, not an emoji: the builder copies the idiom
 				// it reads, and the icon tile can only render registered icon names.
 				personalisation: {
@@ -146,14 +163,18 @@ describe('AgentsService', () => {
 			versionId: expect.any(String),
 			availableInMCP: false,
 		});
+		// The skill refs of the new draft go through the skill refs seam.
+		expect(storedSkillRefs(saved)).toEqual([]);
+		expect(agentRepository.updateDraftSchema).toHaveBeenCalledWith(saved, expect.anything());
 	});
 
 	it('creates an agent with a resolved default model and credential', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			defaultModel: {
 				model: 'openai/gpt-5-mini',
 				credential: 'managed',
@@ -174,10 +195,11 @@ describe('AgentsService', () => {
 		// would restore an agent whose integrations silently vanished.
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 		const integrations = [{ type: 'slack' as const, credentialId: 'cred-slack-1' }];
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -195,9 +217,10 @@ describe('AgentsService', () => {
 	it('omits the integrations column when the seeded config declares none', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: { name: 'Support Agent', model: '', instructions: '' },
 		});
 
@@ -211,12 +234,13 @@ describe('AgentsService', () => {
 		// is runnable without a follow-up write.
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 		const tools = {
 			refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } },
 		};
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -236,12 +260,13 @@ describe('AgentsService', () => {
 	it('seeds skill bodies onto the entity alongside their schema refs', async () => {
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
-		agentRepository.create.mockReturnValue(saved);
+		mockCreateReturning(agentRepository, saved);
 		const skills = {
 			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
 		};
 
 		await service.create(projectId, 'Support Agent', {
+			actor,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -255,6 +280,35 @@ describe('AgentsService', () => {
 		expect(entity.skills).toEqual(skills);
 	});
 
+	it('stores the skill refs of a seeded config in order, with the enabled flags', async () => {
+		const { service, agentRepository } = makeService();
+		const saved = makeAgent();
+		mockCreateReturning(agentRepository, saved);
+		const skillRefs = [
+			{ type: 'skill' as const, id: 'zeta' },
+			{ type: 'skill' as const, id: 'alpha', enabled: false },
+			{ type: 'skill' as const, id: 'mid', enabled: true },
+		];
+
+		await service.create(projectId, 'Support Agent', {
+			actor,
+			schema: {
+				name: 'Support Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage tickets.',
+				skills: skillRefs,
+			},
+		});
+
+		const [entity] = agentRepository.create.mock.calls[0];
+		expect(entity.schema).not.toHaveProperty('skills');
+		expect(storedSkillRefs(saved)).toEqual(skillRefs);
+		// The insert and the skill refs write share one transaction.
+		const [[, insertCtx]] = agentRepository.insertNew.mock.calls;
+		const [[, refsCtx]] = agentRepository.updateDraftSchema.mock.calls;
+		expect(refsCtx).toBe(insertCtx);
+	});
+
 	describe('duplicate path (user-driven create-with-schema)', () => {
 		const user = { id: 'user-1' } as unknown as User;
 
@@ -264,9 +318,10 @@ describe('AgentsService', () => {
 			// Drafts (credentialId '') are skipped by that check and show needs-setup.
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -289,13 +344,14 @@ describe('AgentsService', () => {
 		it('blanks inaccessible non-channel credentials and keeps accessible ones', async () => {
 			const { service, agentRepository, credentialsService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 			// The duplicating user can use cred-model-1 but not cred-model-2.
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 				{ id: 'cred-model-1', name: 'OpenAI', type: 'openaiApi' } as never,
 			]);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'openai/gpt-5-mini',
@@ -332,9 +388,10 @@ describe('AgentsService', () => {
 		it('emits agent-saved for the duplicate (creation is tracked by the frontend "User duplicated agent" event)', async () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -349,9 +406,9 @@ describe('AgentsService', () => {
 		it('stays silent on an empty-draft create (no user) — no event', async () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
-			await service.create(projectId, 'Support Agent');
+			await service.create(projectId, 'Support Agent', { actor });
 
 			expect(eventService.emit).not.toHaveBeenCalledWith('agent-saved', expect.anything());
 		});
@@ -359,9 +416,10 @@ describe('AgentsService', () => {
 		it('stays silent on eval seeding (schema but no user)', async () => {
 			const { service, agentRepository, eventService } = makeService();
 			const saved = makeAgent();
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
 			await service.create(projectId, 'Support Agent', {
+				actor,
 				schema: {
 					name: 'Support Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -377,6 +435,50 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('policy', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		const dateTimeTool = {
+			type: 'node' as const,
+			name: 'Current date',
+			node: { nodeType: 'n8n-nodes-base.dateTime', nodeTypeVersion: 2, nodeParameters: {} },
+		};
+
+		it('polices the seeded node tools as a create, with no stored draft to grandfather', async () => {
+			const { service, agentRepository, agentPolicyService } = makeService();
+			const saved = makeAgent();
+			mockCreateReturning(agentRepository, saved);
+
+			await service.create(projectId, 'Support Agent', {
+				actor,
+				schema: { name: 'Support Agent', model: '', instructions: '', tools: [dateTimeTool] },
+				user,
+			});
+
+			expect(agentPolicyService.enforceSave).toHaveBeenCalledWith(
+				projectId,
+				null,
+				expect.objectContaining({ tools: [expect.objectContaining(dateTimeTool)] }),
+				null,
+				actor,
+			);
+		});
+
+		it('saves nothing when a policy refuses the seeded config', async () => {
+			const { service, agentRepository, agentPolicyService } = makeService();
+			agentPolicyService.enforceSave.mockRejectedValue(new Error('Blocked by policy'));
+
+			await expect(
+				service.create(projectId, 'Support Agent', {
+					actor,
+					schema: { name: 'Support Agent', model: '', instructions: '', tools: [dateTimeTool] },
+				}),
+			).rejects.toThrow('Blocked by policy');
+
+			expect(agentRepository.insertNew).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('create with a client-minted id', () => {
 		const mintedId = 'aBcDeFgHiJkLmNoP';
 		const uniqueViolation = () =>
@@ -389,9 +491,9 @@ describe('AgentsService', () => {
 		it('persists the agent under the supplied id', async () => {
 			const { service, agentRepository } = makeService();
 			const saved = makeAgent({ id: mintedId });
-			agentRepository.create.mockReturnValue(saved);
+			mockCreateReturning(agentRepository, saved);
 
-			await service.create(projectId, 'Support Agent', { id: mintedId });
+			await service.create(projectId, 'Support Agent', { actor, id: mintedId });
 
 			expect(agentRepository.create).toHaveBeenCalledWith(
 				expect.objectContaining({ id: mintedId }),
@@ -405,12 +507,13 @@ describe('AgentsService', () => {
 				schema: { name: 'Support Agent', model: '', instructions: '' },
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(raced);
+			mockCreateReturning(agentRepository, raced);
 			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(raced);
 
 			await expect(
 				service.create(projectId, 'Support Agent', {
+					actor,
 					id: mintedId,
 					adoptOnCollision: true,
 				}),
@@ -424,12 +527,12 @@ describe('AgentsService', () => {
 				schema: { name: 'Support Agent', model: '', instructions: '' },
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(raced);
+			mockCreateReturning(agentRepository, raced);
 			agentRepository.insertNew.mockRejectedValue(uniqueViolation());
 
-			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toThrow(
-				ConflictError,
-			);
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, id: mintedId }),
+			).rejects.toThrow(ConflictError);
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
@@ -453,6 +556,7 @@ describe('AgentsService', () => {
 
 			await expect(
 				service.create(projectId, 'New Agent', {
+					actor,
 					id: mintedId,
 					adoptOnCollision: true,
 				}),
@@ -469,6 +573,7 @@ describe('AgentsService', () => {
 
 			await expect(
 				service.create(projectId, 'Support Agent', {
+					actor,
 					id: mintedId,
 					adoptOnCollision: true,
 				}),
@@ -481,9 +586,9 @@ describe('AgentsService', () => {
 			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
 			agentRepository.insertNew.mockRejectedValue(error);
 
-			await expect(service.create(projectId, 'Support Agent', { id: mintedId })).rejects.toBe(
-				error,
-			);
+			await expect(
+				service.create(projectId, 'Support Agent', { actor, id: mintedId }),
+			).rejects.toBe(error);
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 	});
@@ -635,6 +740,7 @@ describe('AgentsService', () => {
 						model: 'm',
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
+						description: 'Answers billing questions.',
 					},
 				},
 			} as never);
@@ -673,9 +779,35 @@ describe('AgentsService', () => {
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1'],
 				options,
-				{ withProject: true },
+				{ withProject: true, usageCounts: undefined },
 			);
 			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
+		});
+
+		it('fetches usage counts only when sorted by usage', async () => {
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+			const counts = new Map([['agent-1', 3]]);
+			agentExecutionService.countN8nChatThreadsByAgent.mockResolvedValue(counts);
+			const options = {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat: true },
+				sortBy: 'usage:desc',
+			} as never;
+
+			await service.findChatReachableByUserPaginated(user, options);
+
+			expect(agentExecutionService.countN8nChatThreadsByAgent).toHaveBeenCalledWith('user-1', [
+				'project-1',
+			]);
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
+				['project-1'],
+				options,
+				{ withProject: true, usageCounts: counts },
+			);
 		});
 
 		it('answers with the narrow chat item, never the agent config', async () => {
@@ -702,7 +834,9 @@ describe('AgentsService', () => {
 							icon: 'bot',
 							gradient: { from: '#000000', to: '#FFFFFF' },
 						},
+						description: 'Answers billing questions.',
 						project: { id: 'project-1', name: 'Support Team' },
+						attachments: { image: false, pdf: false, audio: false },
 					},
 				],
 			});
@@ -738,6 +872,7 @@ describe('AgentsService', () => {
 			} as never);
 
 			expect(result.data[0]).not.toHaveProperty('personalisation');
+			expect(result.data[0]).not.toHaveProperty('description');
 		});
 
 		it('passes a null project scope through, so a global role sees every project', async () => {
@@ -750,7 +885,252 @@ describe('AgentsService', () => {
 
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options, {
 				withProject: true,
+				usageCounts: undefined,
 			});
+		});
+	});
+
+	describe('findChatReachableAgentForUser', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		function makeReachableAgent(schemaOverrides: Record<string, unknown> = {}) {
+			return makeAgent({
+				id: 'agent-1',
+				name: 'Support',
+				projectId: 'project-1',
+				project: { id: 'project-1', name: 'Support Team' },
+				activeVersion: {
+					schema: {
+						name: 'Support',
+						model: 'anthropic/claude-sonnet-4-5',
+						instructions: 'published instructions',
+						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
+						description: 'Answers billing questions.',
+						...schemaOverrides,
+					},
+				},
+			} as never);
+		}
+
+		it('scopes to agent:execute, the scope the production chat route requires', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(makeReachableAgent());
+
+			await service.findChatReachableAgentForUser('agent-1', user);
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:execute']);
+			expect(agentRepository.findChatReachableById).toHaveBeenCalledWith('agent-1', ['project-1']);
+		});
+
+		it('passes a null project scope through, so a global role reaches every project', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+			agentRepository.findChatReachableById.mockResolvedValue(makeReachableAgent());
+
+			await service.findChatReachableAgentForUser('agent-1', user);
+
+			expect(agentRepository.findChatReachableById).toHaveBeenCalledWith('agent-1', null);
+		});
+
+		it('answers with the narrow chat item plus attachments and sub-agents, never the agent config', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(makeReachableAgent());
+
+			const result = await service.findChatReachableAgentForUser('agent-1', user);
+
+			expect(result).toEqual({
+				id: 'agent-1',
+				name: 'Support',
+				personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
+				description: 'Answers billing questions.',
+				project: { id: 'project-1', name: 'Support Team' },
+				attachments: { image: true, pdf: true, audio: false },
+				subAgents: [],
+			});
+			expect(result).not.toHaveProperty('schema');
+			expect(JSON.stringify(result)).not.toContain('published instructions');
+		});
+
+		it.each(['', 'unknown-provider/some-model'])(
+			'reports no attachment support for model "%s"',
+			async (model) => {
+				const { service, agentRepository, projectScopeService } = makeService();
+				projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+				agentRepository.findChatReachableById.mockResolvedValue(makeReachableAgent({ model }));
+
+				const result = await service.findChatReachableAgentForUser('agent-1', user);
+
+				expect(result?.attachments).toEqual({ image: false, pdf: false, audio: false });
+			},
+		);
+
+		it('resolves sub-agent names from the same project, including disabled ones, skipping repeated and unresolved entries', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(
+				makeReachableAgent({
+					subAgents: {
+						agents: [
+							{ agentId: 'sub-1' },
+							{ agentId: 'sub-1' },
+							{ agentId: 'sub-2', enabled: false },
+							{ agentId: 'sub-3' },
+						],
+					},
+				}),
+			);
+			agentRepository.findByIdsAndProjectId.mockResolvedValue([
+				{ id: 'sub-1', name: 'Researcher' } as never,
+				{ id: 'sub-2', name: 'Retired' } as never,
+			]);
+
+			const result = await service.findChatReachableAgentForUser('agent-1', user);
+
+			expect(agentRepository.findByIdsAndProjectId).toHaveBeenCalledWith(
+				['sub-1', 'sub-2', 'sub-3'],
+				'project-1',
+			);
+			expect(result?.subAgents).toEqual([
+				{ id: 'sub-1', name: 'Researcher' },
+				{ id: 'sub-2', name: 'Retired' },
+			]);
+		});
+
+		it('returns null when the repository finds no reachable agent', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(null);
+
+			await expect(service.findChatReachableAgentForUser('agent-1', user)).resolves.toBeNull();
+		});
+	});
+
+	describe('findN8nChatThreadsForUser', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		it('scopes agent reachability to agent:execute, then narrows to chat-reachable agents', async () => {
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableIds.mockResolvedValue(['agent-1']);
+			const response = { data: [], nextCursor: null };
+			agentExecutionService.findN8nChatThreadsForAgents.mockResolvedValue(response);
+
+			const result = await service.findN8nChatThreadsForUser(user, {
+				limit: 20,
+				cursor: 'cursor-1',
+				search: 'refund',
+			});
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:execute']);
+			expect(agentRepository.findChatReachableIds).toHaveBeenCalledWith(['project-1']);
+			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith(
+				'user-1',
+				['agent-1'],
+				{ limit: 20, cursor: 'cursor-1', search: 'refund' },
+			);
+			expect(result).toBe(response);
+		});
+
+		it('never asks for threads under an agent the user can no longer reach over n8n Chat', async () => {
+			// A thread's agent dropping out of `findChatReachableIds` (project
+			// removed, channel unpublished, agent deleted) must drop its threads
+			// from the list too, even though nothing here filters per-thread.
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableIds.mockResolvedValue([]);
+			agentExecutionService.findN8nChatThreadsForAgents.mockResolvedValue({
+				data: [],
+				nextCursor: null,
+			});
+
+			await service.findN8nChatThreadsForUser(user, { limit: 20 });
+
+			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith('user-1', [], {
+				limit: 20,
+			});
+		});
+
+		it('narrows to one agent when agentId is reachable', async () => {
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(makeAgent({ id: 'agent-2' }));
+			agentExecutionService.findN8nChatThreadsForAgents.mockResolvedValue({
+				data: [],
+				nextCursor: null,
+			});
+
+			await service.findN8nChatThreadsForUser(user, { limit: 20, agentId: 'agent-2' });
+
+			expect(agentRepository.findChatReachableById).toHaveBeenCalledWith('agent-2', ['project-1']);
+			expect(agentRepository.findChatReachableIds).not.toHaveBeenCalled();
+			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith(
+				'user-1',
+				['agent-2'],
+				{ limit: 20, agentId: 'agent-2' },
+			);
+		});
+
+		it('returns an empty page, not an error, when agentId is unreachable', async () => {
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableById.mockResolvedValue(null);
+			agentExecutionService.findN8nChatThreadsForAgents.mockResolvedValue({
+				data: [],
+				nextCursor: null,
+			});
+
+			await service.findN8nChatThreadsForUser(user, { limit: 20, agentId: 'agent-unreachable' });
+
+			expect(agentExecutionService.findN8nChatThreadsForAgents).toHaveBeenCalledWith('user-1', [], {
+				limit: 20,
+				agentId: 'agent-unreachable',
+			});
+		});
+	});
+
+	describe('findN8nChatThreadForUser', () => {
+		const user = { id: 'user-1' } as unknown as User;
+
+		it('scopes agent reachability to agent:execute, then narrows to chat-reachable agents', async () => {
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableIds.mockResolvedValue(['agent-1']);
+			const summary = { id: 'thread-1', title: 'Refund status' };
+			agentExecutionService.findN8nChatThreadForAgents.mockResolvedValue(summary as never);
+
+			const result = await service.findN8nChatThreadForUser(user, 'thread-1');
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:execute']);
+			expect(agentRepository.findChatReachableIds).toHaveBeenCalledWith(['project-1']);
+			expect(agentExecutionService.findN8nChatThreadForAgents).toHaveBeenCalledWith(
+				'user-1',
+				['agent-1'],
+				'thread-1',
+			);
+			expect(result).toBe(summary);
+		});
+
+		it('returns null when the thread falls outside the reachable agents', async () => {
+			const { service, agentRepository, agentExecutionService, projectScopeService } =
+				makeService();
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findChatReachableIds.mockResolvedValue([]);
+			agentExecutionService.findN8nChatThreadForAgents.mockResolvedValue(null);
+
+			await expect(service.findN8nChatThreadForUser(user, 'thread-1')).resolves.toBeNull();
+
+			expect(agentExecutionService.findN8nChatThreadForAgents).toHaveBeenCalledWith(
+				'user-1',
+				[],
+				'thread-1',
+			);
 		});
 	});
 

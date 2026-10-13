@@ -1,7 +1,7 @@
 import type { BuiltTool, CreateDelegateSubAgentToolOptions, ToolContext } from '@n8n/agents';
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import { SUB_AGENT_TASK_DIFFICULTIES, type SubAgentSource } from '@n8n/api-types';
+import type { SubAgentSource } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
@@ -44,148 +44,90 @@ function threadIdOf(ctx: ToolContext): string | undefined {
 	return ctx.persistence?.threadId;
 }
 
-export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOptions): BuiltTool {
-	const roster = options.availableSubAgents
-		.map((agent) => `- ${agent.id}: ${agent.name}${agent.useWhen ? ` — ${agent.useWhen}` : ''}`)
-		.join('\n');
+export function createBackgroundSubAgentHandler(
+	options: BackgroundJobToolsOptions,
+): NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']> {
+	return async (input, ctx) => {
+		// Background job titles must fit the stored varchar(255) value.
+		if (input.taskName.length > 255) {
+			return { status: 'rejected', note: 'Background task names must not exceed 255 characters.' };
+		}
+		const parentThreadId = threadIdOf(ctx);
+		const parentResourceId = ctx.persistence?.resourceId;
+		if (!parentThreadId || !parentResourceId) {
+			return {
+				status: 'rejected',
+				note: 'Background jobs need a persisted conversation thread; none is active.',
+			};
+		}
+		// Task sessions have no chat identity, so a wake cannot deliver their job results.
+		if (isTaskRunMemoryResourceId(parentResourceId)) {
+			return {
+				status: 'rejected',
+				note: 'Background jobs are unavailable in task sessions.',
+			};
+		}
 
-	return new Tool('spawn_background_subagent')
-		.description(
-			'Dispatch a sub-agent as a detached background job. Returns a receipt immediately; the ' +
-				'sub-agent keeps working after your turn ends. Use delegate_subagent in the foreground by ' +
-				'default. Use background mode for clear parallel work, a clearly long task, or an ' +
-				'explicit user request for background mode. Pass "inline" as subAgentId to spawn a ' +
-				'copy of yourself for a self-contained subtask.' +
-				(roster ? ` Available configured sub-agents:\n${roster}` : ''),
-		)
-		.systemInstruction(
-			'When delegation is appropriate, use delegate_subagent in the foreground by default. ' +
-				'Use spawn_background_subagent when independent work benefits from parallel execution, ' +
-				'when the task will clearly take substantial time, or when the user explicitly requests ' +
-				'background mode. If any of these conditions applies, choose spawn_background_subagent ' +
-				'instead of delegate_subagent. For example, run independent research workstreams as ' +
-				'separate background jobs, even when you need all their results for the final synthesis. ' +
-				'Broad research across many sources or several slow steps can indicate ' +
-				'a long task. A clearly long task can run in the background even if you have no other ' +
-				'work. If the duration is uncertain and no other background condition applies, use ' +
-				'foreground mode. A background child can request tool approval through this conversation. ' +
-				'Pass all context the child needs. After a successful ' +
-				'launch, continue independent work that does not overlap with the child, or end your turn ' +
-				'with a short message that work continues in the background. Completion triggers a ' +
-				'follow-up. A launch receipt does not mean the task is complete. Do not check jobs just ' +
-				'to wait for them, and do not sleep or poll for completion. The final answer is the ' +
-				'contract; never expect the full trace. Instruct ' +
-				'sub-agents producing large outputs to write them to the shared workspace and return a ' +
-				'summary.',
-		)
-		.input(
-			z.object({
-				subAgentId: z
-					.string()
-					.describe(
-						'Id of a configured sub-agent from the roster, or "inline" for a copy of yourself',
-					),
-				// min/max mirror the varchar(255) title column — an oversized value
-				// would otherwise surface as a raw DB error.
-				taskName: z
-					.string()
-					.min(1)
-					.max(255)
-					.describe('Short label for the job, echoed in status checks'),
-				goal: z.string().describe('What the sub-agent should accomplish'),
-				context: z.string().optional().describe('Background information the sub-agent needs'),
-				expectedOutput: z.string().optional().describe('Shape of the answer to return'),
-				difficulty: z
-					.enum(SUB_AGENT_TASK_DIFFICULTIES)
-					.optional()
-					.describe('Inline spawns only: picks the model tier configured for this difficulty'),
-			}),
-		)
-		.output(
-			z.object({
-				status: z.enum(['started', 'limit-reached', 'rejected']),
-				jobId: z.string().optional(),
-				note: z.string().optional(),
-			}),
-		)
-		.handler(async (input, ctx) => {
-			const parentThreadId = threadIdOf(ctx);
-			const parentResourceId = ctx.persistence?.resourceId;
-			if (!parentThreadId || !parentResourceId) {
-				return {
-					status: 'rejected',
-					note: 'Background jobs need a persisted conversation thread; none is active.',
-				};
-			}
-			// Task sessions have no chat identity, so a wake cannot deliver their job results.
-			if (isTaskRunMemoryResourceId(parentResourceId)) {
-				return {
-					status: 'rejected',
-					note: 'Background jobs are unavailable in task sessions.',
-				};
-			}
+		// Self-delegation runs a copy of this agent: the parent's own id is the
+		// source, resolved to its draft or published version by run type.
+		const isSelfDelegation = input.subAgentId === INLINE_SUB_AGENT_ID;
+		const source = isSelfDelegation
+			? { agentId: options.parentAgentId }
+			: options.sourcesById[input.subAgentId];
+		if (!source) {
+			const ids = [...options.availableSubAgents.map((agent) => agent.id), 'inline'].join(', ');
+			return {
+				status: 'rejected',
+				note: `No sub-agent matched "${input.subAgentId}". Available: ${ids}.`,
+			};
+		}
 
-			// Self-delegation runs a copy of this agent: the parent's own id is the
-			// source, resolved to its draft or published version by run type.
-			const isSelfDelegation = input.subAgentId === INLINE_SUB_AGENT_ID;
-			const source = isSelfDelegation
-				? { agentId: options.parentAgentId }
-				: options.sourcesById[input.subAgentId];
-			if (!source) {
-				const ids = [...options.availableSubAgents.map((agent) => agent.id), 'inline'].join(', ');
-				return {
-					status: 'rejected',
-					note: `No sub-agent matched "${input.subAgentId}". Available: ${ids}.`,
-				};
-			}
+		const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
+		if (!sandboxScope || sandboxScope.projectId !== options.projectId) {
+			return {
+				status: 'rejected',
+				note: 'Background jobs need a valid parent identity; none is active.',
+			};
+		}
+		const receipt = await options.backgroundRunner.spawn(
+			{
+				subAgentId: source.agentId,
+				source,
+				taskName: input.taskName,
+				goal: input.goal,
+				context: input.context,
+				expectedOutput: input.expectedOutput,
+				...(isSelfDelegation && input.difficulty !== undefined
+					? { difficulty: input.difficulty }
+					: {}),
+				parentThreadId,
+				parentResourceId,
+				parentSandboxPrincipalHash: sandboxScope.principalHash,
+				parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
+			},
+			{
+				projectId: options.projectId,
+				parentAgentId: options.parentAgentId,
+				...options.runContext,
+			},
+		);
 
-			const sandboxScope = decodeAgentSandboxHostMetadata(ctx.persistence?.hostMetadata);
-			if (!sandboxScope || sandboxScope.projectId !== options.projectId) {
-				return {
-					status: 'rejected',
-					note: 'Background jobs need a valid parent identity; none is active.',
-				};
-			}
-			const receipt = await options.backgroundRunner.spawn(
-				{
-					subAgentId: source.agentId,
-					source,
-					taskName: input.taskName,
-					goal: input.goal,
-					context: input.context,
-					expectedOutput: input.expectedOutput,
-					...(isSelfDelegation && input.difficulty !== undefined
-						? { difficulty: input.difficulty }
-						: {}),
-					parentThreadId,
-					parentResourceId,
-					parentSandboxPrincipalHash: sandboxScope.principalHash,
-					parentMessageContext: readIntegrationMessageContext(ctx.persistence) ?? null,
-				},
-				{
-					projectId: options.projectId,
-					parentAgentId: options.parentAgentId,
-					...options.runContext,
-				},
-			);
-
-			if (receipt.status === 'started') {
-				// A Stop can race the job insert. A disconnected chat does not cancel children.
-				if (ctx.abortSignal?.reason === PARENT_TASK_CANCELLED_REASON) {
-					await options.jobService.cancel(parentThreadId, receipt.jobId);
-				}
-				return {
-					status: 'started',
-					jobId: receipt.jobId,
-					note: 'Job dispatched. Continue independent work or end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or poll for completion.',
-				};
+		if (receipt.status === 'started') {
+			// A Stop can race the job insert. A disconnected chat does not cancel children.
+			if (ctx.abortSignal?.reason === PARENT_TASK_CANCELLED_REASON) {
+				await options.jobService.cancel(parentThreadId, receipt.jobId);
 			}
 			return {
-				status: 'limit-reached',
-				note: 'This conversation already has the maximum number of running background jobs. Wait for one to finish or cancel one.',
+				status: 'started',
+				jobId: receipt.jobId,
+				note: 'Job dispatched. Continue independent work or end this turn with a short progress message. Completion triggers a follow-up. Do not wait, sleep, or poll for completion.',
 			};
-		})
-		.build();
+		}
+		return {
+			status: 'limit-reached',
+			note: 'This conversation already has the maximum number of running background jobs. Wait for one to finish or cancel one.',
+		};
+	};
 }
 
 export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobService): BuiltTool {
@@ -253,10 +195,10 @@ export function createResumeBackgroundJobsTool(
 ): BuiltTool {
 	return new Tool('resume_background_jobs')
 		.description(
-			'Resume user-paused background sub-agents in this Preview conversation from their saved state.',
+			'Resume paused sub-agents and identify cancelled workflows from the latest stop group in this conversation.',
 		)
 		.systemInstruction(
-			'Call resume_background_jobs only when the latest user message explicitly asks to continue stopped tasks. Do not call it for an unrelated message or an automatic notification. Never replace paused jobs with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. Continuing does not approve pending tools.',
+			'Call resume_background_jobs first when the latest user message explicitly asks to continue stopped tasks. Continue applies only to the latest stop group. Do not restart tasks from older stop groups unless the user explicitly asks for that work. Do not call this tool for an unrelated message or an automatic notification. Never replace paused sub-agents with new jobs. If stopping is still in progress, ask the user to wait for the combined report and ask again. Do not poll or remember an early request for automatic continuation. The tool returns cancelled workflow references separately. It does not restart those workflows. Check conversation history and current jobs before repeating a workflow call, including repeated Continue requests. Call the normal workflow tool with inputs from the conversation only when a new execution is still needed. A new execution uses current configuration and starts from the beginning. Earlier actions can repeat and webhook URLs change. Continuing does not approve pending tools or bypass permissions.',
 		)
 		.input(z.object({}))
 		.handler(async (_input, ctx) => {
@@ -271,7 +213,7 @@ export function createResumeBackgroundJobsTool(
 			) {
 				return {
 					status: 'unavailable',
-					note: 'Resuming needs an explicit user request in Preview.',
+					note: 'Resuming needs an explicit user request in this conversation.',
 				};
 			}
 			const candidates = await options.jobService.preparePausedResume(
@@ -310,12 +252,13 @@ export function createResumeBackgroundJobsTool(
 					),
 				);
 				return {
-					status: 'resumed',
+					status: candidates.jobs.length > 0 ? 'resumed' : 'ready',
 					jobs: results.map((result, index) => ({
 						jobId: candidates.jobs[index].id,
 						status: result.status === 'fulfilled' ? 'resumed' : 'failed',
 						...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
 					})),
+					workflowsToRestart: candidates.workflowsToRestart,
 				};
 			} finally {
 				await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);

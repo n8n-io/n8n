@@ -63,9 +63,9 @@ const isReattempt = computed(
 		workflowDocumentStore.value.publicationStatus === 'failed',
 );
 
-const nodesWithValidationIssues = computed(
-	() => workflowDocumentStore.value.nodesWithValidationIssues,
-);
+// The nodes that actually block publishing, so this list and the Publish button
+// cannot disagree about what needs fixing.
+const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.publishBlockingNodes);
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 

@@ -6,13 +6,15 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
+import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
+import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
 /** Stable hash of a rule set. The order of `ruleIds` does not change the result. */
@@ -43,8 +45,9 @@ export class MigrationFindingSyncService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
+		private readonly ownerSuggestionService: MigrationOwnerSuggestionService,
+		private readonly ownerRepository: MigrationWorkflowOwnerRepository,
 		private readonly txRunner: TransactionRunner,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
@@ -54,8 +57,6 @@ export class MigrationFindingSyncService {
 	/**
 	 * Syncs when the table has never been filled for the version, or when the
 	 * registered rule set changed since the last sync (for example after an upgrade).
-	 * A follower never writes, so on a follower this is a no-op and the table
-	 * shows the last leader sync.
 	 */
 	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<void> {
 		// A read during a sync waits for it, so the table is never read mid-sync.
@@ -77,14 +78,6 @@ export class MigrationFindingSyncService {
 	}
 
 	async sync(targetVersion: BreakingChangeVersion): Promise<void> {
-		// Only the leader writes, so followers in a multi-main setup do not race on the table.
-		if (!this.instanceSettings.isLeader) {
-			this.logger.debug('Skipping migration finding sync on a non-leader instance', {
-				targetVersion,
-			});
-			return;
-		}
-
 		const ongoing = this.ongoingSyncs.get(targetVersion);
 		if (ongoing) {
 			this.logger.debug('Reusing ongoing migration finding sync', { targetVersion });
@@ -104,7 +97,7 @@ export class MigrationFindingSyncService {
 		this.logger.debug('Starting migration finding sync', { targetVersion });
 
 		// The record is written again only after every batch succeeded. A sync that stops
-		// early (failed batch, lost leadership, error) leaves none, so the next read syncs again.
+		// early (failed batch, error) leaves none, so the next read syncs again.
 		await this.syncRepository.deleteForVersion(targetVersion, {});
 
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
@@ -131,18 +124,9 @@ export class MigrationFindingSyncService {
 		let failedBatches = 0;
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
-
-			// The scan can take long. A follower must not write, so leadership is
-			// checked again before every batch; the sync record stays cleared.
-			if (!this.instanceSettings.isLeader) {
-				this.logger.info('Stopping migration finding sync, this instance is no longer the leader', {
-					targetVersion,
-				});
-				return;
-			}
-
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
+				await this.refreshSuggestedOwners(targetVersion, workflowIds);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record stays cleared
 				// below, so the next read syncs and visits this batch again.
@@ -181,9 +165,9 @@ export class MigrationFindingSyncService {
 
 	/**
 	 * Re-checks one workflow and updates its findings in one transaction.
-	 * It runs on whichever main handled the save, so it is not leader-gated: the
-	 * write is small and scoped to one workflow, and a later full sync corrects
-	 * any drift. The sync record marks a full scan, so this path never writes it.
+	 * It runs on whichever main handled the save. The write is small and scoped
+	 * to one workflow, and a later full sync corrects any drift. The sync record
+	 * marks a full scan, so this path never writes it.
 	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
 	 */
 	async syncWorkflow(workflowId: string): Promise<void> {
@@ -222,12 +206,40 @@ export class MigrationFindingSyncService {
 				groupByWorkflow(hits),
 				groupByWorkflow([...failedChecks, ...batchRulePairs]),
 			);
+			await this.refreshSuggestedOwners(targetVersion, [workflowId]);
 		} catch (error) {
 			this.logger.warn('Migration finding sync for one workflow failed', {
 				targetVersion,
 				workflowId,
 			});
 			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+		}
+	}
+
+	/**
+	 * Stores the heuristic's owner for each workflow in the batch that has an open
+	 * finding, and drops the suggestion of the others. An owner a person assigned
+	 * is kept. Owners are a hint, so a failure here does not fail the finding sync.
+	 */
+	private async refreshSuggestedOwners(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[],
+	): Promise<void> {
+		try {
+			const affectedIds = await this.findingRepository.listWorkflowIdsWithOpenFindings(
+				targetVersion,
+				workflowIds,
+				{},
+			);
+			const suggestions =
+				affectedIds.length > 0 ? await this.ownerSuggestionService.suggestOwners(affectedIds) : [];
+			await this.ownerRepository.replaceSuggestions(workflowIds, suggestions, {});
+		} catch (error) {
+			this.logger.warn('Refreshing the suggested owners failed, the findings are unaffected', {
+				targetVersion,
+				batchStart: workflowIds[0],
+			});
+			this.errorReporter.error(error, { extra: { targetVersion, batchStart: workflowIds[0] } });
 		}
 	}
 

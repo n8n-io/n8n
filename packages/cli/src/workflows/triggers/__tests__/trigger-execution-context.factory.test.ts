@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -119,7 +118,6 @@ describe('TriggerExecutionContextFactory', () => {
 			ownershipService,
 			nodeTypes,
 			pollCursorService,
-			mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
 			engineV2ActiveTriggers,
 			workflowPublisherService,
 		);
@@ -159,6 +157,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					undefined,
+					'none',
 				);
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
@@ -222,6 +221,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
+					'none',
 				);
 			});
 
@@ -264,6 +264,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
+					'none',
 				);
 			});
 
@@ -297,6 +298,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
+					'none',
 				);
 			});
 
@@ -327,6 +329,52 @@ describe('TriggerExecutionContextFactory', () => {
 
 				expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith('exec-123');
 				await expect(donePromise.promise).resolves.toBe(runResult);
+				// The node waits for the run's end, so the run must not be parked at worker shutdown.
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					[[]],
+					expect.anything(),
+					mode,
+					undefined,
+					undefined,
+					'completion',
+				);
+			});
+
+			test('marks a run as awaited for its response when the trigger passes only a response promise', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+				const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+
+				context.emit([[]], responsePromise);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					[[]],
+					expect.anything(),
+					mode,
+					responsePromise,
+					undefined,
+					'response',
+				);
 			});
 
 			test('does not emit workflow-executed on DuplicateExecutionError', async () => {
@@ -720,6 +768,8 @@ describe('TriggerExecutionContextFactory', () => {
 					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
+					undefined,
+					'none',
 				);
 			});
 
@@ -769,6 +819,8 @@ describe('TriggerExecutionContextFactory', () => {
 					expect.objectContaining({ userId: 'publisher-of-live-version' }),
 					'trigger',
 					undefined,
+					undefined,
+					'none',
 				);
 			});
 
@@ -808,6 +860,8 @@ describe('TriggerExecutionContextFactory', () => {
 					expect.objectContaining({ userId: undefined }),
 					'trigger',
 					undefined,
+					undefined,
+					'none',
 				);
 			});
 
@@ -1132,9 +1186,42 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'a' },
 				responsePromise,
 				undefined,
+				'response',
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
+
+		test.each([
+			{ hasResponse: false, hasDone: false, callerAwaitsOutcome: 'none' },
+			{ hasResponse: false, hasDone: true, callerAwaitsOutcome: 'completion' },
+			{ hasResponse: true, hasDone: true, callerAwaitsOutcome: 'completion' },
+		])(
+			'passes $callerAwaitsOutcome for a cursor-backed poll with response=$hasResponse and done=$hasDone',
+			async ({ hasResponse, hasDone, callerAwaitsOutcome }) => {
+				const responsePromise = hasResponse
+					? createDeferredPromise<IExecuteResponsePromiseData>()
+					: undefined;
+				const donePromise = hasDone ? createDeferredPromise<IRun>() : undefined;
+
+				await context.__runPoll(async () => {
+					context.getWorkflowStaticData('node').lastItemId = 'a';
+					context.__emit(pollData, responsePromise, donePromise);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledWith(
+					expect.anything(),
+					node,
+					pollData,
+					expect.anything(),
+					mode,
+					{ lastItemId: 'a' },
+					responsePromise,
+					undefined,
+					callerAwaitsOutcome,
+				);
+			},
+		);
 
 		test('routes to runPolledWorkflowV2, not the transactional runPolledWorkflow, on engine v2', async () => {
 			engineV2Dispatcher.handlesWorkflow.mockReturnValue(true);
@@ -1252,14 +1339,16 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 
 		describe('getPollBudgetMs', () => {
+			const NOW = 1_000_000;
+
+			beforeEach(() => {
+				vi.spyOn(performance, 'now').mockReturnValue(NOW);
+			});
+
 			const buildBudgetContext = (
-				pollTimeoutSeconds: number,
-				leaseDurationSeconds: number,
-				fence?: { taskId: string; leaseEpoch: number },
+				timeoutSeconds?: number,
+				deadline = NOW + (timeoutSeconds ?? 0) * 1_000,
 			) => {
-				const globalConfig = mock<GlobalConfig>({
-					scheduler: { pollTimeoutSeconds, leaseDurationSeconds },
-				});
 				const budgetFactory = new TriggerExecutionContextFactory(
 					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
 					errorReporter,
@@ -1274,7 +1363,6 @@ describe('TriggerExecutionContextFactory', () => {
 					ownershipService,
 					nodeTypes,
 					pollCursorService,
-					globalConfig,
 					engineV2ActiveTriggers,
 					mock(),
 				);
@@ -1284,34 +1372,50 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
-					fence,
+					timeoutSeconds === undefined
+						? undefined
+						: {
+								fence: { taskId: 'task-1', leaseEpoch: 1 },
+								timeoutSeconds,
+								remainingMs: () => deadline - performance.now(),
+							},
 				);
 				return getPollFunctions(workflow, node, additionalData, mode, activation);
 			};
 
-			const fence = { taskId: 'task-1', leaseEpoch: 1 };
-
-			// Budget = min(poll timeout, lease duration) minus a margin of
-			// max(20%, 5s), so a node that exhausts it still finishes its
-			// in-flight batch before the engine abandons the tick.
+			// Budget = the timeout of the occurrence minus a margin of max(20%, 5s), so
+			// a node that exhausts it still finishes its in-flight batch before the
+			// executor aborts the run. The lease is renewed, so it does not cap it.
 			test.each([
-				{ pollTimeoutSeconds: 45, leaseDurationSeconds: 60, expected: 36_000 },
-				{ pollTimeoutSeconds: 100, leaseDurationSeconds: 60, expected: 48_000 },
+				{ timeoutSeconds: 45, expected: 36_000 },
+				{ timeoutSeconds: 100, expected: 80_000 },
 				// The margin never eats more than half the ceiling, so a tiny (but
 				// schema-valid) timeout still yields a positive budget.
-				{ pollTimeoutSeconds: 4, leaseDurationSeconds: 60, expected: 2_000 },
+				{ timeoutSeconds: 4, expected: 2_000 },
 			])(
-				'derives $expected ms from a $pollTimeoutSeconds s timeout under a $leaseDurationSeconds s lease',
-				({ pollTimeoutSeconds, leaseDurationSeconds, expected }) => {
-					const budgetContext = buildBudgetContext(pollTimeoutSeconds, leaseDurationSeconds, fence);
+				'derives $expected ms from an occurrence timeout of $timeoutSeconds s',
+				({ timeoutSeconds, expected }) => {
+					const budgetContext = buildBudgetContext(timeoutSeconds);
 					expect(budgetContext.getPollBudgetMs()).toBe(expected);
 				},
 			);
 
+			test('subtracts the time that setup used before the poll', () => {
+				const budgetContext = buildBudgetContext(45, NOW + 45_000);
+				vi.mocked(performance.now).mockReturnValue(NOW + 10_000);
+				expect(budgetContext.getPollBudgetMs()).toBe(26_000);
+			});
+
+			test('returns 0 once setup has used the whole budget', () => {
+				const budgetContext = buildBudgetContext(45, NOW + 45_000);
+				vi.mocked(performance.now).mockReturnValue(NOW + 40_000);
+				expect(budgetContext.getPollBudgetMs()).toBe(0);
+			});
+
 			test('keeps the generous PollContext default for a poll that runs without a lease', () => {
-				// The legacy in-memory path has no poll timeout and no lease, so the
+				// The legacy in-memory path has no occurrence and no lease, so the
 				// scheduler-derived budget must not apply there.
-				const budgetContext = buildBudgetContext(45, 60);
+				const budgetContext = buildBudgetContext();
 				expect(budgetContext.getPollBudgetMs()).toBe(300_000);
 			});
 		});
@@ -1371,6 +1475,7 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'first-only' },
 				undefined,
 				undefined,
+				'none',
 			);
 		});
 
@@ -1577,7 +1682,7 @@ describe('TriggerExecutionContextFactory', () => {
 				mode,
 				activation,
 				async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
-				fence,
+				{ fence, timeoutSeconds: 45, remainingMs: () => 45_000 },
 			);
 			const fencedContext = getPollFunctions(
 				workflow,
@@ -1602,6 +1707,7 @@ describe('TriggerExecutionContextFactory', () => {
 				{ lastItemId: 'a' },
 				undefined,
 				fence,
+				'none',
 			);
 
 			await fencedContext.__runPoll(async () => {
@@ -1689,9 +1795,13 @@ describe('TriggerExecutionContextFactory', () => {
 			const getExecutePollFunctionsSpy = vi
 				.spyOn(factory, 'getExecutePollFunctions')
 				.mockReturnValue(getPollFunctions as unknown as IGetExecutePollFunctions);
-			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+			const leasedPoll = {
+				fence: { taskId: 'task-1', leaseEpoch: 3 },
+				timeoutSeconds: 45,
+				remainingMs: () => 45_000,
+			};
 
-			await factory.createPollExecutionContext(workflowData, pollNode, fence);
+			await factory.createPollExecutionContext(workflowData, pollNode, leasedPoll);
 
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
@@ -1699,7 +1809,7 @@ describe('TriggerExecutionContextFactory', () => {
 				'trigger',
 				'update',
 				expect.any(Function),
-				fence,
+				leasedPoll,
 				undefined,
 			);
 		});
@@ -1714,10 +1824,14 @@ describe('TriggerExecutionContextFactory', () => {
 			const getExecutePollFunctionsSpy = vi
 				.spyOn(factory, 'getExecutePollFunctions')
 				.mockReturnValue(getPollFunctions as unknown as IGetExecutePollFunctions);
-			const fence = { taskId: 'task-1', leaseEpoch: 3 };
+			const leasedPoll = {
+				fence: { taskId: 'task-1', leaseEpoch: 3 },
+				timeoutSeconds: 45,
+				remainingMs: () => 45_000,
+			};
 			const prefetched = { lastItemId: 'prefetched' };
 
-			await factory.createPollExecutionContext(workflowData, pollNode, fence, prefetched);
+			await factory.createPollExecutionContext(workflowData, pollNode, leasedPoll, prefetched);
 
 			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
 				workflowData,
@@ -1725,7 +1839,7 @@ describe('TriggerExecutionContextFactory', () => {
 				'trigger',
 				'update',
 				expect.any(Function),
-				fence,
+				leasedPoll,
 				prefetched,
 			);
 		});

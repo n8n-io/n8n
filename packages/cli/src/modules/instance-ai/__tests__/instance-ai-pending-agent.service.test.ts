@@ -83,6 +83,7 @@ describe('InstanceAiPendingAgentService', () => {
 		const result = await service.persistAndBind(user, THREAD_ID, payload);
 
 		expect(agentsService.create).toHaveBeenCalledWith(PROJECT_ID, 'New Agent', {
+			actor: { kind: 'user', user },
 			id: AGENT_ID,
 			adoptOnCollision: true,
 		});

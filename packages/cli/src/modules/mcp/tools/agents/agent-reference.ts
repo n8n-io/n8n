@@ -58,9 +58,10 @@ a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 
 call_agent verifies the draft Agent's behavior through built-in Preview chat, not configured channel
 triggers, platform context, message delivery, or replies. Real tools and credentials are used, so
-side effects are possible. If the test exposes errors, report them and ask whether to fix them rather
-than mutating the Agent automatically. Every approval decision must come from the human; resume each
-returned approval individually.
+side effects are possible. Omit sessionId to start a new test conversation. To continue one, pass the
+exact sessionId from an earlier call_agent result; never make one up. If the test exposes errors,
+report them and ask whether to fix them rather than mutating the Agent automatically. Every approval
+decision must come from the human; resume each returned approval individually.
 
 ## Publication approval
 
@@ -205,10 +206,10 @@ Before writing an entry into mcpServers, call verify_agent_mcp_server with the s
 transport, authentication, and credential. The server does not need to be attached to the Agent
 first: verification opens a temporary connection and returns the server's live tools. validate_agent
 never performs this handshake, so an unverified entry can pass validation and still fail at runtime.
-Confirm the returned tools cover the requested capability and use the list to populate toolFilter
-instead of guessing tool names. If verification fails, report the error and resolve it with the user
-instead of persisting a broken server. Only when the user cannot supply the URL or credential yet,
-persist the known fields without inventing values and skip verification.
+Confirm the returned tools cover the requested capability and use the verified list instead of
+guessing tool names. If verification fails, report the error and resolve it with the user instead of
+persisting a broken server. Only when the user cannot supply the URL or credential yet, persist the
+known fields without inventing values and skip verification.
 `;
 
 export const AGENT_BUILDER_REFERENCE = `${AGENT_BUILDER_GUIDE}

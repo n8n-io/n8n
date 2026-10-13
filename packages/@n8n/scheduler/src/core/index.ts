@@ -27,8 +27,21 @@ export {
 } from './clock-skew';
 export type { ClockSkew, ClockSkewOptions } from './clock-skew';
 
-export { provision, deprovision, createJobProvisioner, scheduleFingerprint } from './provisioning';
+export {
+	provision,
+	deprovision,
+	createJobProvisioner,
+	scheduleFingerprint,
+	findOutdatedJobs,
+	resolveCoreRunOptions,
+} from './provisioning';
 export type {
+	MisfireGraceAdjustment,
+	OutdatedJobIds,
+	RequestedRunOptions,
+	ResolvedRunOptions,
+	RunOptionDefaults,
+	RunOptions,
 	JobProvisioner,
 	JobProvisionerDeps,
 	OwnedScope,
@@ -51,6 +64,7 @@ export { createDispatchReporter, backoff } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
+	TaskRun,
 	DispatchReporter,
 	DispatchDecision,
 	BackoffOptions,
@@ -97,6 +111,9 @@ export {
 	UnregisteredOwnerTypeError,
 	InvalidOwnerIdError,
 	InvalidOwnerMemberIdError,
+	InvalidRunOptionError,
+	LeaseLostError,
+	TaskTimeoutError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 

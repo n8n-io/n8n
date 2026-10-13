@@ -20,6 +20,7 @@ import {
 	resolveSubAgentName,
 } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
+import { isRecoverablePlanError } from '../utils/agent-plan';
 import {
 	countIncompleteTodos,
 	isWriteTodosTool,
@@ -55,6 +56,7 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
+		if (isRecoverablePlanError(toolCall)) continue;
 
 		const error = toolStepError(toolCall)?.trim();
 		if (!error) continue;
@@ -173,11 +175,16 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 }
 
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
 	return formatToolData(tc.output);
+}
+
+function hideToolErrorCallout(tc: ToolCall): boolean {
+	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
 }
 
 function emitFixWithAssistant() {
@@ -218,7 +225,7 @@ function hasActiveToolCall(): boolean {
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
-						:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+						:hide-error-callout="hideToolErrorCallout(tc)"
 						:has-content="view.expandable"
 					>
 						<div
@@ -281,7 +288,7 @@ function hasActiveToolCall(): boolean {
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
-					:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
@@ -343,6 +350,7 @@ function hasActiveToolCall(): boolean {
 			<N8nCallout
 				v-if="fixableErrorTexts.length > 0"
 				theme="danger"
+				:class="$style.fixCallout"
 				data-test-id="agent-chat-tool-fix-with-assistant-callout"
 			>
 				<template v-if="fixableErrorTexts.length === 1">
@@ -355,6 +363,7 @@ function hasActiveToolCall(): boolean {
 					<N8nButton
 						size="small"
 						variant="subtle"
+						:class="$style.fixCalloutButton"
 						data-test-id="agent-chat-tool-fix-with-assistant"
 						@click="emitFixWithAssistant"
 					>
@@ -370,6 +379,26 @@ function hasActiveToolCall(): boolean {
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
+}
+
+.fixCallout {
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.fixCallout > :first-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.fixCallout :global(.n8n-text) {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.fixCalloutButton {
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .errorList {

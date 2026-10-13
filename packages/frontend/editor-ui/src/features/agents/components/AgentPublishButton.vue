@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -39,6 +39,7 @@ const props = withDefaults(
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(() => props.projectId);
 
 const emit = defineEmits<{
+	'publish-ready': [ready: boolean];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -101,6 +102,8 @@ const isPublishDisabled = computed(
 		isConfigInvalid.value,
 );
 
+watch(isPublishDisabled, (disabled) => emit('publish-ready', !disabled), { immediate: true });
+
 const dropdownActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
 		{
@@ -147,6 +150,8 @@ useKeybindings({
 		run: onPublishClick,
 	},
 });
+
+defineExpose({ publish: onPublishClick });
 
 async function onDropdownSelect(action: string) {
 	if (action === 'publish') {

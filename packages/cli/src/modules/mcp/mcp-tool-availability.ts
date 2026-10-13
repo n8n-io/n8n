@@ -1,8 +1,7 @@
 import { CONTEXT_PREFERENCES_ENABLED_VARIANT, CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
 import type { FeatureFlags } from 'n8n-workflow';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -60,7 +59,7 @@ export function isCommunityNodeInstallAvailable(
 		>;
 	},
 	mcpConfig: Pick<McpConfig, 'communityNodeDiscoveryEnabled'>,
-	user: User,
+	user: AuthPrincipal,
 ): boolean {
 	return (
 		globalConfig.endpoints.mcpBuilderEnabled &&
