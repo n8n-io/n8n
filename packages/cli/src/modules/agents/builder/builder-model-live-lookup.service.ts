@@ -190,7 +190,11 @@ export class BuilderModelLiveLookupService {
 
 			return {
 				status: 'success',
-				models: models.map((model) => ({ name: model.name, value: model.id })),
+				models: models.map((model) => ({
+					name: model.name,
+					value: model.id,
+					...(model.priority !== undefined ? { priority: model.priority } : {}),
+				})),
 				policy,
 			};
 		} catch (error) {
