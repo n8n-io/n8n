@@ -224,6 +224,49 @@ describe('executeResumableStream', () => {
 		},
 	);
 
+	it.each(['activity', 'publish', 'cleanup'] as const)(
+		'propagates %s failures and closes the stream',
+		async (source) => {
+			const failure = new Error('Processing failed');
+			const closed = vi.fn();
+			const eventBus = createEventBus();
+			const fail = () => {
+				throw failure;
+			};
+			if (source === 'publish') eventBus.publish.mockImplementationOnce(fail);
+			if (source === 'cleanup') closed.mockImplementationOnce(fail);
+			async function* stream() {
+				try {
+					yield textChunk('Working...');
+					yield textChunk('More work');
+				} finally {
+					closed();
+				}
+			}
+
+			await expect(
+				executeResumableStream({
+					agent: {},
+					stream: { runId: 'agent-run-1', fullStream: stream() },
+					context: {
+						threadId: 'thread-1',
+						runId: 'run-1',
+						agentId: 'agent-1',
+						eventBus,
+						signal: new AbortController().signal,
+						logger: createLogger(),
+						onActivity: source === 'activity' ? fail : undefined,
+						stopSignal: () =>
+							source === 'cleanup' ? { reason: 'planned-tasks-scheduled' } : undefined,
+					},
+					control: { mode: 'manual' },
+				}),
+			).rejects.toBe(failure);
+			expect(closed).toHaveBeenCalledTimes(1);
+			expect(eventBus.publish).toHaveBeenCalledTimes(source === 'activity' ? 0 : 1);
+		},
+	);
+
 	it('buffers the confirmation event in manual mode', async () => {
 		const eventBus = createEventBus();
 

@@ -300,6 +300,39 @@ interface StreamPassResult {
 	nativeStepIndex: number;
 }
 
+/** Convert stream read failures to error chunks. Processing errors still propagate. */
+async function* readStreamChunks(stream: AsyncIterable<unknown>, context: ResumableStreamContext) {
+	const iterator = stream[Symbol.asyncIterator]();
+	let finished = false;
+	try {
+		while (true) {
+			let next: IteratorResult<unknown, unknown>;
+			try {
+				next = await iterator.next();
+			} catch (error) {
+				finished = true;
+				if (context.signal.aborted) {
+					context.logger.debug('Instance AI abort drain ended early', {
+						threadId: context.threadId,
+						runId: context.runId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				} else {
+					yield { type: 'error', error };
+				}
+				return;
+			}
+			if (next.done) {
+				finished = true;
+				return;
+			}
+			yield next.value;
+		}
+	} finally {
+		if (!finished) await iterator.return?.();
+	}
+}
+
 /**
  * Consume one stream until it ends (or is cancelled), publishing events,
  * accumulating usage/work, and capturing the first suspension. Returns the pass
@@ -340,124 +373,104 @@ async function consumeStreamPass(args: {
 	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
 
-	try {
-		for await (const chunk of activeStream) {
-			usageAccumulator.observe(chunk);
-			if (isRecord(chunk) && chunk.type === 'finish') {
-				finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
-				structuredOutput = chunk.structuredOutput;
-			}
-			// Drain cancelled streams for terminal output and billing, without publishing events.
-			if (options.context.signal.aborted) continue;
-
-			options.context.onActivity?.();
-
-			if (isRecord(chunk) && chunk.type === 'start-step') {
-				nativeStepIndex += 1;
-				const responseRunId = activeAgentRunId || options.context.runId;
-				currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
-				syntheticSegmentId = undefined;
-			}
-
-			const parsedSuspension = parseSuspension(chunk);
-			if (parsedSuspension) {
-				const recorded = recordSuspension(
-					parsedSuspension,
-					suspension,
-					options.control,
-					options.context,
-				);
-				suspension = recorded.suspension;
-				if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
-			}
-
-			if (isErrorChunk(chunk)) {
-				hasError = true;
-				// A quota error was already surfaced this run — swallow later error
-				// chunks (usage was still observed above) to avoid a confusing second
-				// callout. Do this before overwriting `error` so `result.error` stays the
-				// quota error the user saw, rather than the swallowed follow-on — otherwise
-				// telemetry would log a failure the user was never shown.
-				if (quotaErrorPublished) continue;
-				error = chunk.error;
-				if (isQuotaExhaustedError(chunk.error)) quotaErrorPublished = true;
-			}
-
-			const isDeltaChunk =
-				isRecord(chunk) && (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta');
-			if (isDeltaChunk && !currentResponseId && !syntheticSegmentId) {
-				syntheticSegmentId = `${activeAgentRunId || options.context.runId}:seg:${randomUUID()}`;
-			}
-
-			const mappedEvent = mapAgentChunkToEvent(
-				options.context.runId,
-				options.context.agentId,
-				chunk,
-				currentResponseId ?? syntheticSegmentId,
-			);
-
-			// A segment boundary ends the synthetic segment; the next delta mints a
-			// fresh id so two different segments can never share one. finish-step
-			// maps to no event but is still a boundary — left sticky, a provider
-			// that never emits start-step would leak one id across steps, and the
-			// reducer's id-keyed replace could then drop an earlier block on replay.
-			const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
-			if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
-
-			const events = mappedEvent ? [mappedEvent] : [];
-
-			const published = publishEvents(events, {
-				suspension,
-				confirmationEvent,
-				confirmationEventPublished,
-				control: options.control,
-				context: options.context,
-				workSummaryAccumulator,
-			});
-			confirmationEvent = published.confirmationEvent;
-			confirmationEventPublished = published.confirmationEventPublished;
-
-			if (options.control.mode === 'auto' && options.control.drainCorrections) {
-				const corrections = options.control.drainCorrections();
-				publishCorrections(options.context, corrections);
-				drainedCorrectionsForResume.push(...corrections);
-			}
-
-			const stopSignal = options.context.stopSignal?.();
-			if (stopSignal) {
-				return {
-					cancelled: false,
-					stopReason: stopSignal.reason,
-					finishReason,
-					structuredOutput,
-					suspension,
-					hasError,
-					error,
-					pendingConfirmation,
-					confirmationEvent,
-					drainedCorrectionsForResume,
-					currentResponseId,
-					nativeStepIndex,
-				};
-			}
+	for await (const chunk of readStreamChunks(activeStream, options.context)) {
+		usageAccumulator.observe(chunk);
+		if (isRecord(chunk) && chunk.type === 'finish') {
+			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
+			structuredOutput = chunk.structuredOutput;
 		}
-	} catch (streamError) {
-		if (options.context.signal.aborted) {
-			options.context.logger.debug('Instance AI abort drain ended early', {
-				threadId: options.context.threadId,
-				runId: options.context.runId,
-				error: streamError instanceof Error ? streamError.message : String(streamError),
-			});
-		} else {
+		// Drain cancelled streams for terminal output and billing, without publishing events.
+		if (options.context.signal.aborted) continue;
+
+		options.context.onActivity?.();
+
+		if (isRecord(chunk) && chunk.type === 'start-step') {
+			nativeStepIndex += 1;
+			const responseRunId = activeAgentRunId || options.context.runId;
+			currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
+			syntheticSegmentId = undefined;
+		}
+
+		const parsedSuspension = parseSuspension(chunk);
+		if (parsedSuspension) {
+			const recorded = recordSuspension(
+				parsedSuspension,
+				suspension,
+				options.control,
+				options.context,
+			);
+			suspension = recorded.suspension;
+			if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
+		}
+
+		if (isErrorChunk(chunk)) {
 			hasError = true;
-			if (!quotaErrorPublished) {
-				error = streamError;
-				const event = mapAgentChunkToEvent(options.context.runId, options.context.agentId, {
-					type: 'error',
-					error: streamError,
-				});
-				if (event) options.context.eventBus.publish(options.context.threadId, event);
-			}
+			// A quota error was already surfaced this run — swallow later error
+			// chunks (usage was still observed above) to avoid a confusing second
+			// callout. Do this before overwriting `error` so `result.error` stays the
+			// quota error the user saw, rather than the swallowed follow-on — otherwise
+			// telemetry would log a failure the user was never shown.
+			if (quotaErrorPublished) continue;
+			error = chunk.error;
+			if (isQuotaExhaustedError(chunk.error)) quotaErrorPublished = true;
+		}
+
+		const isDeltaChunk =
+			isRecord(chunk) && (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta');
+		if (isDeltaChunk && !currentResponseId && !syntheticSegmentId) {
+			syntheticSegmentId = `${activeAgentRunId || options.context.runId}:seg:${randomUUID()}`;
+		}
+
+		const mappedEvent = mapAgentChunkToEvent(
+			options.context.runId,
+			options.context.agentId,
+			chunk,
+			currentResponseId ?? syntheticSegmentId,
+		);
+
+		// A segment boundary ends the synthetic segment; the next delta mints a
+		// fresh id so two different segments can never share one. finish-step
+		// maps to no event but is still a boundary — left sticky, a provider
+		// that never emits start-step would leak one id across steps, and the
+		// reducer's id-keyed replace could then drop an earlier block on replay.
+		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
+		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
+
+		const events = mappedEvent ? [mappedEvent] : [];
+
+		const published = publishEvents(events, {
+			suspension,
+			confirmationEvent,
+			confirmationEventPublished,
+			control: options.control,
+			context: options.context,
+			workSummaryAccumulator,
+		});
+		confirmationEvent = published.confirmationEvent;
+		confirmationEventPublished = published.confirmationEventPublished;
+
+		if (options.control.mode === 'auto' && options.control.drainCorrections) {
+			const corrections = options.control.drainCorrections();
+			publishCorrections(options.context, corrections);
+			drainedCorrectionsForResume.push(...corrections);
+		}
+
+		const stopSignal = options.context.stopSignal?.();
+		if (stopSignal) {
+			return {
+				cancelled: false,
+				stopReason: stopSignal.reason,
+				finishReason,
+				structuredOutput,
+				suspension,
+				hasError,
+				error,
+				pendingConfirmation,
+				confirmationEvent,
+				drainedCorrectionsForResume,
+				currentResponseId,
+				nativeStepIndex,
+			};
 		}
 	}
 
