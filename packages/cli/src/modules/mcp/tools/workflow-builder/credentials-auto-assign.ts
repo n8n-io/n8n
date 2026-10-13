@@ -4,10 +4,12 @@ import type { INode, INodeParameters, INodeTypeDescription, IWorkflowBase } from
 import {
 	NodeHelpers,
 	getCredentialActivationParameters,
+	isMcpGatewayAuthentication,
 	resolveSupportedCredentialActivation,
 } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { NodeTypes } from '@/node-types';
 import {
 	checkAiGatewayEligibility,
@@ -58,6 +60,24 @@ function setManagedCredential(
 			...getCredentialActivationParameters(credentialDescription.displayOptions),
 		};
 	}
+}
+
+/**
+ * Whether `credentialType` is the Gateway credits slot of a registry MCP node.
+ * The gateway config lists no registry MCP node, so `checkAiGatewayEligibility`
+ * never accepts this slot. The node declares the type only when the registry
+ * serves the server on Gateway credits.
+ */
+function isRegistryMcpGatewaySlot(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+	credentialType: string,
+): boolean {
+	return (
+		node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`) &&
+		isMcpGatewayAuthentication(credentialType) &&
+		(nodeTypeDescription.credentials?.some(({ name }) => name === credentialType) ?? false)
+	);
 }
 
 /** `setManagedCredential` plus the assignment/outcome bookkeeping shared by both assign sites. */
@@ -161,6 +181,7 @@ export function reconcileAiGatewayMarkers(
 
 		for (const credentialType of markerTypes) {
 			if (
+				isRegistryMcpGatewaySlot(node, nodeTypeDescription, credentialType) ||
 				checkAiGatewayEligibility(node, credentialType, aiGatewayConfig, nodeParameters).eligible
 			) {
 				setManagedCredential(node, nodeTypeDescription, credentialType, nodeParameters);
@@ -324,7 +345,10 @@ export async function autoPopulateNodeCredentials(
 					aiGatewayConfig,
 					nodeParametersWithDefaults,
 				);
-				if (eligibility.eligible) {
+				if (
+					eligibility.eligible ||
+					isRegistryMcpGatewaySlot(node, nodeTypeDescription, credDesc.name)
+				) {
 					assignAiGatewayCredential(
 						node,
 						nodeTypeDescription,
