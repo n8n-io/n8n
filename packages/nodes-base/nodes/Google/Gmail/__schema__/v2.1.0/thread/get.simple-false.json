@@ -45,6 +45,9 @@
 				"body": {
 					"type": "object",
 					"properties": {
+						"attachmentId": {
+							"type": "string"
+						},
 						"data": {
 							"type": "string"
 						},
@@ -257,6 +260,9 @@
 							"body": {
 								"type": "object",
 								"properties": {
+									"attachmentId": {
+										"type": "string"
+									},
 									"data": {
 										"type": "string"
 									},

@@ -136,6 +136,21 @@ describe.each(['v2.1.0', 'v2.2.0'])('Gmail thread get output schemas %s', (versi
 		});
 	});
 
+	it('describes the attachment ID of the message body, at the root and in the envelope', () => {
+		const schema = readThreadSchema(version, 'get.simple-false.json') as unknown as {
+			properties: Record<string, SchemaNode> & { messages: { items: SchemaNode } };
+		};
+		const rootBody = schema.properties.payload?.properties?.body;
+		const envelopeBody = schema.properties.messages.items.properties?.payload?.properties?.body;
+
+		expect(Object.keys(rootBody?.properties ?? {})).toEqual(
+			expect.arrayContaining(['size', 'data', 'attachmentId']),
+		);
+		expect(Object.keys(envelopeBody?.properties ?? {})).toEqual(
+			expect.arrayContaining(['size', 'data', 'attachmentId']),
+		);
+	});
+
 	it('describes the nested parts of a full message down to three levels', () => {
 		const { properties } = readThreadSchema(version, 'get.simple-false.json').properties.messages
 			.items;
