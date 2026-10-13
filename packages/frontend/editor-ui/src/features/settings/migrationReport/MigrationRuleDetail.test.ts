@@ -183,7 +183,7 @@ describe('MigrationRuleDetail', () => {
 			await waitFor(() => {
 				// Title, impact tag, and affected count
 				expect(screen.getByText('Test Rule')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 				expect(screen.getByText('2 affected')).toBeInTheDocument();
 
 				// Description
@@ -495,6 +495,54 @@ describe('MigrationRuleDetail', () => {
 			);
 		});
 
+		it('should open the migrate modal with the selected workflows', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue({
+				...mockRuleResult,
+				migratable: true,
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-migrate-button'));
+
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			expect(data.ruleId).toBe('rule-1');
+			expect(
+				(data.workflows as Array<{ id: string }>).map((workflow) => workflow.id).sort(),
+			).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('should drop a migrated row from the selection', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue({
+				...mockRuleResult,
+				migratable: true,
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-migrate-button'));
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			(data.eventBus as EventBus).emit('migrated', { workflowId: 'workflow-1' });
+
+			await waitFor(() =>
+				expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected'),
+			);
+		});
+
+		it('should not offer a bulk migration when the rule is not migratable', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+
+			await screen.findByTestId('selected-items-info');
+			expect(screen.queryByTestId('migration-bulk-migrate-button')).not.toBeInTheDocument();
+		});
+
 		it('should not offer selection to a user without the migrate scope', async () => {
 			rbacStore.hasScope.mockReturnValue(false);
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
@@ -692,7 +740,7 @@ describe('MigrationRuleDetail', () => {
 					name: MIGRATE_WORKFLOW_MODAL_KEY,
 					data: expect.objectContaining({
 						ruleId: 'rule-1',
-						workflow: expect.objectContaining({ id: mockWorkflowWithIssue.id }),
+						workflows: [expect.objectContaining({ id: mockWorkflowWithIssue.id })],
 					}),
 				}),
 			);
@@ -1025,7 +1073,7 @@ describe('MigrationRuleDetail', () => {
 	describe('impact display', () => {
 		it.each([
 			{ impact: 'upgradeBlocked', label: 'Upgrade blocked' },
-			{ impact: 'executionsFail', label: 'Executions fail' },
+			{ impact: 'executionsFail', label: 'Executions will fail' },
 			{ impact: 'behaviorChanges', label: 'Behavior changes' },
 			{ impact: 'capabilityRemoved', label: 'Capability removed' },
 		] as const)('should display $impact impact correctly', async ({ impact, label }) => {

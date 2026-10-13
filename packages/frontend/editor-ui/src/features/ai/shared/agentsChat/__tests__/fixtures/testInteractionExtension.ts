@@ -56,3 +56,29 @@ export const testInteractionExtension: AgentsChatInteractionExtension<TestCardIn
 export const testInteractionExtensions: readonly AgentsChatInteractionExtension[] = [
 	testInteractionExtension,
 ];
+
+/** Test-only tool whose finished result the host renders. */
+export const TEST_RESULT_TOOL_NAME = 'save_note';
+
+export const TEST_RESULT_EXTENSION_KEY = 'test_result';
+
+export const TestToolResult = defineComponent({
+	name: 'TestToolResult',
+	props: {
+		toolCall: { type: Object as PropType<ToolCall>, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', { 'data-testid': 'test-tool-result' }, [
+				h('span', props.toolCall.toolCallId),
+				h('pre', JSON.stringify(props.toolCall.output)),
+			]);
+	},
+});
+
+/** A host extension that only renders tool results. It has no card fields. */
+export const testToolResultExtension: AgentsChatInteractionExtension = {
+	key: TEST_RESULT_EXTENSION_KEY,
+	matchToolResult: (toolCall) => toolCall.tool === TEST_RESULT_TOOL_NAME,
+	resultComponent: TestToolResult,
+};

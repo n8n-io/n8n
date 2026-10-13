@@ -109,6 +109,24 @@ describe('AiPreferenceRepository', () => {
 				}),
 			);
 		});
+
+		it('orders the page by the requested sort', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: [],
+				allUsers: false,
+				skip: 0,
+				take: 10,
+				sortBy: 'updatedAt:desc',
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({ order: { updatedAt: 'DESC', id: 'DESC' } }),
+			);
+		});
 	});
 
 	/**

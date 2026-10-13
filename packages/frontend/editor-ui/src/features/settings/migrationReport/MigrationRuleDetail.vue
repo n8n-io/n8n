@@ -270,16 +270,20 @@ const migratedWorkflowIds = ref<Set<string>>(new Set());
 // The modal runs the migration (confirm → progress → result) and emits back when a
 // workflow was migrated so the row can reflect it.
 const migrateModalBus = createEventBus();
+// A migrated row cannot be selected, so it also leaves the selection.
 migrateModalBus.on('migrated', ({ workflowId }: { workflowId: string }) => {
 	migratedWorkflowIds.value = new Set(migratedWorkflowIds.value).add(workflowId);
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+		(selectedId) => selectedId !== workflowId,
+	);
 });
 
-function openMigrateModal(workflow: AffectedWorkflow) {
+function openMigrateModal(workflows: AffectedWorkflow[]) {
 	uiStore.openModalWithData({
 		name: MIGRATE_WORKFLOW_MODAL_KEY,
 		data: {
 			ruleId: props.migrationRuleId,
-			workflow,
+			workflows,
 			recommendations: state.value.recommendations,
 			eventBus: migrateModalBus,
 		},
@@ -874,7 +878,7 @@ const sortedWorkflows = computed(() => {
 							size="small"
 							:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
 							data-test-id="migrate-workflow-button"
-							@click="openMigrateModal(item)"
+							@click="openMigrateModal([item])"
 						/>
 					</template>
 					<N8nLink
@@ -896,6 +900,13 @@ const sortedWorkflows = computed(() => {
 				@clear-selection="selectedWorkflowIds = []"
 			>
 				<template #actions>
+					<N8nButton
+						v-if="showMigrate"
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.detail.bulk.migrate')"
+						data-test-id="migration-bulk-migrate-button"
+						@click="openMigrateModal(selectedWorkflows)"
+					/>
 					<N8nButton
 						variant="subtle"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"

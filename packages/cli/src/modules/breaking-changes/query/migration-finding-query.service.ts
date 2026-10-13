@@ -134,8 +134,7 @@ export class MigrationFindingQueryService {
 
 		return {
 			report: {
-				// Before the first sync there is nothing to date, so the read time stands in.
-				generatedAt: sync?.syncedAt ?? new Date(),
+				generatedAt: sync?.syncedAt,
 				targetVersion,
 				currentVersion: N8N_VERSION,
 				instanceResults,
