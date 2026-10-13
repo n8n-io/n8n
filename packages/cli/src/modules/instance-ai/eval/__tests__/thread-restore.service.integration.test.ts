@@ -1,5 +1,6 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedWorkflowRepository,
@@ -15,6 +16,7 @@ import { DataTableValidationError } from '@/modules/data-table/errors/data-table
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { FolderService } from '@/services/folder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -53,6 +55,8 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
 			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
 		);
 	});
 
@@ -136,6 +140,8 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
 			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
 		);
 	});
 
@@ -232,6 +238,8 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 			Container.get(PolicyEnforcementService),
 			mock<WorkflowHistoryService>(),
 			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
 		);
 	});
 
@@ -242,7 +250,11 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 	});
 
 	it('persists the seed workflow at its id and makes the project its owner', async () => {
-		const created = await service.restoreWorkflows([seed('wf-seeded-1', 'Allowed')], project.id);
+		const created = await service.restoreWorkflows(
+			[seed('wf-seeded-1', 'Allowed')],
+			project.id,
+			mock<User>(),
+		);
 
 		expect(created).toEqual(['wf-seeded-1']);
 		const stored = await workflowRepository.findById('wf-seeded-1');
@@ -256,6 +268,7 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 		const restore = service.restoreWorkflows(
 			[seed('wf-seeded-ok', 'Allowed'), seed('wf-seeded-blocked', 'Blocked')],
 			project.id,
+			mock<User>(),
 		);
 
 		await expect(restore).rejects.toThrow(PolicyViolationError);

@@ -3,8 +3,16 @@ export type {
 	BuiltProviderTool,
 	BuiltAgent,
 	BuiltMemory,
+	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	GuardrailDecision,
+	GuardrailModelCallContext,
+	GuardrailModelCallSource,
+	GuardrailStop,
+	GuardrailToolCallContext,
+	GuardrailsOptions,
+	ModelGuardrail,
 	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
@@ -18,6 +26,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	CheckpointStore,
@@ -41,17 +50,17 @@ export type {
 	TitleGenerationConfig,
 	Thread,
 	EpisodicMemoryConfig,
-	EpisodicMemoryCursor,
+	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureKind,
+	EpisodicMemoryCaptureMethods,
+	EpisodicMemoryCaptureStatus,
 	EpisodicMemoryEmbeddingProviderOptions,
 	EpisodicMemoryEntry,
 	EpisodicMemoryEntrySource,
-	EpisodicMemoryExtractFn,
-	EpisodicMemoryExtraction,
-	EpisodicMemoryExtractionCandidate,
-	EpisodicMemoryExtractorInput,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflectResult,
 	EpisodicMemoryReflection,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
@@ -63,7 +72,7 @@ export type {
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
-	NewEpisodicMemoryCursor,
+	NewEpisodicMemoryCaptureCandidate,
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
@@ -75,9 +84,12 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentInputBoundary,
 	SmoothStreamOptions,
 	TokenUsage,
 	AgentExecutionCounter,
+	SideCallTask,
+	SideCallUsageReport,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
@@ -93,8 +105,10 @@ export type {
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
+	ObservationLogObserveResult,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
+	ObservationLogReflectResult,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
 	ObservationLogStatus,
@@ -105,7 +119,7 @@ export type {
 export { FINISH_REASONS, isFinishReason } from './types';
 export type { ProviderOptions } from '@ai-sdk/provider-utils';
 export { AgentEvent } from './types';
-export type { AgentEventData, AgentEventHandler } from './types';
+export type { AgentEventData, AgentEventHandler, ForwardedChildChunk } from './types';
 export {
 	OBSERVATION_LOG_MARKERS,
 	OBSERVATION_LOG_STATUSES,
@@ -151,6 +165,13 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
+export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
+export type {
+	BudgetGuardrailOptions,
+	SpendEntry,
+	SpendLedger,
+	SpendTotal,
+} from './runtime/guardrails/budget-guardrail';
 export {
 	redactText,
 	redactDeep,
@@ -197,6 +218,7 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
@@ -219,6 +241,8 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
@@ -265,6 +289,7 @@ export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
+	getCreatedAt,
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
@@ -292,6 +317,12 @@ export type {
 
 export { createModel } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
+export {
+	hasAzureApiKey,
+	hasAzureEntraToken,
+	isAzureEntraCredential,
+	type AzureOpenAiAuthFields,
+} from './runtime/model/provider-credentials';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
@@ -334,6 +365,7 @@ export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/wri
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -352,28 +384,33 @@ export {
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
 	hashEpisodicMemoryEvidence,
+	hasEpisodicMemoryCaptureStore,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
 	rankEpisodicMemoryEntries,
-	runEpisodicMemoryIndexer,
 	withEpisodicMemoryDefaults,
 } from './runtime/memory/episodic-memory';
 export {
+	FLAG_MEMORY_TOOL_NAME,
+	createFlagMemoryTool,
+	runEpisodicMemoryCandidateProcessor,
+} from './runtime/memory/episodic-memory-capture';
+export type {
+	RunEpisodicMemoryCandidateProcessorOpts,
+	RunEpisodicMemoryCandidateProcessorResult,
+	EpisodicMemoryUsageReport,
+} from './runtime/memory/episodic-memory-capture';
+export {
+	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	buildEpisodicMemoryExtractorPrompt,
 	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
 } from './runtime/memory/episodic-memory-defaults';
-export type {
-	CreateEpisodicMemoryExtractFnOptions,
-	CreateEpisodicMemoryReflectFnOptions,
-} from './runtime/memory/episodic-memory-defaults';
+export type { CreateEpisodicMemoryReflectFnOptions } from './runtime/memory/episodic-memory-defaults';
 export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,

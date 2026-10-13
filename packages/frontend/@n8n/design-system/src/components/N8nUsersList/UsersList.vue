@@ -95,7 +95,7 @@ const onUserAction = (user: UserType, action: string) =>
 				:is-saml-login-enabled="isSamlLoginEnabled"
 			/>
 			<div :class="$style.badgeContainer">
-				<N8nBadge v-if="user.isOwner" theme="tertiary" bold>
+				<N8nBadge v-if="user.isOwner" variant="outline">
 					{{ t('nds.auth.roles.owner') }}
 				</N8nBadge>
 				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />

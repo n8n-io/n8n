@@ -10,10 +10,12 @@ import type {
 import type { DesiredJob, ProvisionSummary, ScheduleDefinition } from '@n8n/scheduler';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Tracing } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
+import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 
 const CLOCK = new Date('2026-01-05T09:00:00.000Z');
@@ -33,23 +35,32 @@ const desiredJob = (
 	firstRunAt: Date | null = CLOCK,
 ): DesiredJob => ({ name, schedule, firstRunAt });
 
-/** A stored cron job row; override the fields a test cares about. */
-const jobRow = (over: Partial<ScheduledJob> = {}): ScheduledJob =>
-	mock<ScheduledJob>({
-		id: 10,
-		name: 'wf:node:0',
-		kind: 'cron',
-		cronExpression: '0 0 9 * * *',
-		timezone: 'UTC',
-		recurrenceUnit: null,
-		recurrenceSize: null,
-		intervalSeconds: null,
-		fireAt: null,
-		nextRunAt: CLOCK,
-		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		misfireGraceSeconds: 90,
-		...over,
-	});
+/**
+ * A stored cron job row; override the fields a test cares about. The payload is
+ * assigned after the mock is built so it stays a plain object rather than a proxy.
+ */
+const jobRow = ({ payload = {}, ...over }: Partial<ScheduledJob> = {}): ScheduledJob =>
+	Object.assign(
+		mock<ScheduledJob>({
+			id: 10,
+			name: 'wf:node:0',
+			kind: 'cron',
+			cronExpression: '0 0 9 * * *',
+			timezone: 'UTC',
+			recurrenceUnit: null,
+			recurrenceSize: null,
+			intervalSeconds: null,
+			fireAt: null,
+			nextRunAt: CLOCK,
+			maxAttempts: 5,
+			timeoutSeconds: 300,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			misfireGraceSeconds: 90,
+			concurrencyLimit: null,
+			...over,
+		}),
+		{ payload },
+	);
 
 describe('DurableJobProvisioner', () => {
 	const manager = mock<EntityManager>();
@@ -59,6 +70,7 @@ describe('DurableJobProvisioner', () => {
 	const tracing = mock<Tracing>();
 	const workflowOwner = mock<WorkflowScheduledJobOwner>();
 	const agentOwner = mock<AgentScheduledJobOwner>();
+	const systemTaskOwner = new SystemTaskScheduledJobOwner(jobs);
 
 	let provisioner: DurableJobProvisioner;
 	let logger: Logger;
@@ -73,6 +85,7 @@ describe('DurableJobProvisioner', () => {
 				executorIntervalSeconds: 5,
 				maxAttempts: 5,
 				misfireGraceSeconds: 90,
+				taskTimeoutSeconds: 300,
 				...scheduler,
 			},
 			generic: { timezone: 'UTC' },
@@ -85,6 +98,7 @@ describe('DurableJobProvisioner', () => {
 			globalConfig,
 			workflowOwner,
 			agentOwner,
+			systemTaskOwner,
 			tracing,
 		);
 	};
@@ -114,6 +128,46 @@ describe('DurableJobProvisioner', () => {
 			desired,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: misfireGraceSeconds as number | undefined,
+		});
+
+	/** Provision one job with a request-supplied retry ceiling. */
+	const provisionWithAttempts = async (
+		maxAttempts: number | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			maxAttempts,
+		});
+
+	const provisionWithTimeout = async (
+		timeoutSeconds: number | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			timeoutSeconds,
+		});
+
+	const provisionWithConcurrencyLimit = async (
+		concurrencyLimit: number | null | undefined,
+		desired: DesiredJob[] = [desiredJob('wf:node:0')],
+	): Promise<ProvisionSummary> =>
+		await provisioner.provision({
+			owner: OWNER,
+			taskType: 'schedule-trigger',
+			payload: {},
+			desired,
+			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+			concurrencyLimit,
 		});
 
 	beforeEach(() => {
@@ -164,8 +218,10 @@ describe('DurableJobProvisioner', () => {
 					fireAt: null,
 					nextRunAt: CLOCK,
 					maxAttempts: 5,
+					timeoutSeconds: 300,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
+					concurrencyLimit: null,
 				},
 			]);
 			expect(summary.inserted).toEqual([{ id: 100, name: 'wf:node:0' }]);
@@ -184,8 +240,39 @@ describe('DurableJobProvisioner', () => {
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, []);
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('rewrites the payload of a job whose stored payload differs, keeping its schedule', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ payload: { n8nVersion: '1.0.0' } })]);
+
+			const summary = await provision(
+				'system:prune',
+				{ n8nVersion: '2.0.0' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [10], { n8nVersion: '2.0.0' });
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.unchanged).toEqual([{ id: 10, name: 'wf:node:0' }]);
+		});
+
+		it('leaves the payload of a job alone when it already matches', async () => {
+			jobs.findManyByOwner.mockResolvedValue([
+				jobRow({ payload: { workflowId: 'wf', nodeId: 'node' } }),
+			]);
+
+			await provision(
+				'schedule-trigger',
+				{ workflowId: 'wf', nodeId: 'node' },
+				[desiredJob('wf:node:0')],
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updatePayload).toHaveBeenCalledWith(manager, [], expect.anything());
 		});
 
 		it('reconciles the policy of a job whose schedule is unchanged', async () => {
@@ -198,9 +285,12 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			// The schedule is untouched, so the job keeps its queued tasks.
 			expect(jobs.updateDefinition).not.toHaveBeenCalled();
@@ -218,7 +308,7 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Skip,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], expect.anything());
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], expect.anything());
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
 		});
 
@@ -232,9 +322,12 @@ describe('DurableJobProvisioner', () => {
 				ScheduledJobMisfirePolicy.Coalesce,
 			);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 		});
 
@@ -291,8 +384,11 @@ describe('DurableJobProvisioner', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
 			});
 			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [10]);
 			expect(summary.redefined).toEqual([{ id: 10, name: 'wf:node:0' }]);
@@ -390,95 +486,11 @@ describe('DurableJobProvisioner', () => {
 			);
 		});
 
-		it('raises a node-supplied grace equal to the executor interval to one second above the interval', async () => {
-			provisioner = makeProvisioner({
-				executorIntervalSeconds: 120,
-				materializationWindowSeconds: 60,
-			});
-
-			await provisionWithGrace(120);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 121 }),
-			]);
-		});
-
-		// A grace the node did not really supply falls back to the instance value, not
-		// to a floor: below-one values (including `null`, which coerces to zero) and
-		// values that are not a finite number at all.
-		it.each([
-			{ name: 'zero', grace: 0 },
-			{ name: 'null', grace: null },
-			{ name: 'a negative value', grace: -5 },
-			{ name: 'a fraction below one', grace: 0.5 },
-			{ name: 'NaN', grace: Number.NaN },
-			{ name: 'undefined', grace: undefined },
-			{ name: 'Infinity', grace: Number.POSITIVE_INFINITY },
-			{ name: 'a non-numeric string', grace: 'not-a-number' },
-		])(
-			'resolves $name to the instance-configured grace rather than to a floor',
-			async ({ grace }) => {
-				await provisionWithGrace(grace);
-
-				expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-					expect.objectContaining({ misfireGraceSeconds: 90 }),
-				]);
-			},
-		);
-
-		it('truncates a fractional node-supplied grace to whole seconds before writing it', async () => {
-			await provisionWithGrace(300.5);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 300 }),
-			]);
-		});
-
-		it('leaves an instance-configured grace below the floors unclamped', async () => {
-			provisioner = makeProvisioner({ misfireGraceSeconds: 10 });
-
-			await provision(
-				'schedule-trigger',
-				{},
-				[desiredJob('wf:node:0')],
-				ScheduledJobMisfirePolicy.Coalesce,
-			);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 10 }),
-			]);
-		});
-
-		it('resolves a node-supplied grace given as a numeric string to that number', async () => {
-			await provisionWithGrace('300');
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 300 }),
-			]);
-		});
-
-		it('accepts a node-supplied grace of one second, raising it to the floor', async () => {
-			await provisionWithGrace(1);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: 60 }),
-			]);
-		});
-
 		it('leaves a node-supplied grace sitting exactly on the floor unclamped, and does not warn', async () => {
 			await provisionWithGrace(60);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
 				expect.objectContaining({ misfireGraceSeconds: 60 }),
-			]);
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-
-		it('leaves a node-supplied grace sitting exactly on the thirty-day cap unclamped, and does not warn', async () => {
-			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
 			]);
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
@@ -512,64 +524,6 @@ describe('DurableJobProvisioner', () => {
 			);
 		});
 
-		it('warns about a fractional grace just above the thirty-day cap, whose truncation alone lands it on the cap', async () => {
-			await provisionWithGrace(THIRTY_DAYS_IN_SECONDS + 0.5);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
-			]);
-			expect(logger.warn).toHaveBeenCalledWith(
-				"Lowered a node's misfire grace to the scheduler's maximum",
-				{
-					...OWNER,
-					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 0.5,
-					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
-				},
-			);
-		});
-
-		it('raises a node-supplied grace to the thirty-day cap when the configured floors exceed the cap, and warns that it raised it', async () => {
-			provisioner = makeProvisioner({
-				materializationWindowSeconds: THIRTY_DAYS_IN_SECONDS + 1000,
-			});
-
-			await provisionWithGrace(300);
-
-			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-				expect.objectContaining({ misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS }),
-			]);
-			expect(logger.warn).toHaveBeenCalledWith(
-				"Raised a node's misfire grace to the scheduler's minimum",
-				{
-					...OWNER,
-					requestedMisfireGraceSeconds: 300,
-					misfireGraceSeconds: THIRTY_DAYS_IN_SECONDS,
-				},
-			);
-		});
-
-		it.each([
-			{
-				name: 'the materialisation window',
-				config: { materializationWindowSeconds: undefined as unknown as number },
-			},
-			{
-				name: 'the executor interval',
-				config: { executorIntervalSeconds: undefined as unknown as number },
-			},
-		])(
-			'falls back to the instance-configured grace when $name is not configured',
-			async ({ config }) => {
-				provisioner = makeProvisioner(config);
-
-				await provisionWithGrace(300);
-
-				expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
-					expect.objectContaining({ misfireGraceSeconds: 90 }),
-				]);
-			},
-		);
-
 		it('treats a row already stored at the clamped grace as unchanged, leaving its queued tasks alone', async () => {
 			jobs.findManyByOwner.mockResolvedValue([jobRow({ misfireGraceSeconds: 60 })]);
 
@@ -583,9 +537,12 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(30);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
+				concurrencyLimit: null,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 60);
 		});
@@ -597,11 +554,221 @@ describe('DurableJobProvisioner', () => {
 
 			await provisionWithGrace(300);
 
-			expect(jobs.updateMisfirePolicy).toHaveBeenCalledWith(manager, [10], {
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 300,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 300,
+				concurrencyLimit: null,
 			});
 			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [10], 300);
+		});
+	});
+
+	describe('attempts resolution', () => {
+		it('stamps a request-supplied ceiling onto the inserted row, in place of the configured one', async () => {
+			await provisionWithAttempts(1);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 1 }),
+			]);
+		});
+
+		it('stamps the configured ceiling onto the inserted row when the request omits one', async () => {
+			await provisionWithAttempts(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ maxAttempts: 5 }),
+			]);
+		});
+
+		it("writes a request-supplied ceiling onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithAttempts(1, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ maxAttempts: 1 }),
+			);
+		});
+
+		it('reconciles the ceiling of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 5 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 1,
+				timeoutSeconds: 300,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			// The grace is unchanged, so queued tasks keep their deadline.
+			expect(tasks.updateMissedAfterForJobs).toHaveBeenCalledWith(manager, [], 90);
+		});
+
+		it('leaves a job already stored at the requested ceiling out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ maxAttempts: 1 })]);
+
+			await provisionWithAttempts(1);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+	});
+
+	describe('timeout resolution', () => {
+		it('stamps a request-supplied timeout onto the inserted row, in place of the configured one', async () => {
+			await provisionWithTimeout(45);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ timeoutSeconds: 45 }),
+			]);
+		});
+
+		it('stamps the configured timeout onto the inserted row when the request omits one', async () => {
+			provisioner = makeProvisioner({ taskTimeoutSeconds: 120 });
+
+			await provisionWithTimeout(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ timeoutSeconds: 120 }),
+			]);
+		});
+
+		it("writes a request-supplied timeout onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithTimeout(45, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ timeoutSeconds: 45 }),
+			);
+		});
+
+		it('reconciles the timeout of a job and its pending occurrences when its schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ timeoutSeconds: 300 })]);
+
+			await provisionWithTimeout(600);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 600,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: null,
+			});
+			expect(tasks.updateTimeoutForPendingJobs).toHaveBeenCalledWith(manager, [10], 600);
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+		});
+
+		it('leaves a job already stored at the requested timeout and its occurrences alone', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ timeoutSeconds: 600 })]);
+
+			await provisionWithTimeout(600);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+			expect(tasks.updateTimeoutForPendingJobs).toHaveBeenCalledWith(manager, [], 600);
+		});
+
+		it('rejects an out-of-range timeout with a user error', async () => {
+			await expect(provisionWithTimeout(0)).rejects.toThrow(UserError);
+			expect(jobs.insertMany).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('concurrency limit resolution', () => {
+		it('stamps a request-supplied limit onto the inserted row', async () => {
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: 2 }),
+			]);
+		});
+
+		it('leaves the inserted row unlimited when the request omits a limit', async () => {
+			await provisionWithConcurrencyLimit(undefined);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({ concurrencyLimit: null }),
+			]);
+		});
+
+		it("writes a request-supplied limit onto a redefined job's row", async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow()]);
+
+			await provisionWithConcurrencyLimit(2, [
+				desiredJob('wf:node:0', {
+					kind: 'cron',
+					cronExpression: '0 0 18 * * *',
+					timezone: 'UTC',
+				}),
+			]);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				10,
+				expect.objectContaining({ concurrencyLimit: 2 }),
+			);
+		});
+
+		it('reconciles the limit of a job whose schedule is unchanged', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 1 })]);
+
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [10], {
+				maxAttempts: 5,
+				timeoutSeconds: 300,
+				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
+				misfireGraceSeconds: 90,
+				concurrencyLimit: 2,
+			});
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+		});
+
+		it('lifts the limit of a job the request no longer limits', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 2 })]);
+
+			await provisionWithConcurrencyLimit(undefined);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(
+				manager,
+				[10],
+				expect.objectContaining({ concurrencyLimit: null }),
+			);
+		});
+
+		it('leaves a job already stored at the requested limit out of the reconciliation', async () => {
+			jobs.findManyByOwner.mockResolvedValue([jobRow({ concurrencyLimit: 2 })]);
+
+			await provisionWithConcurrencyLimit(2);
+
+			expect(jobs.updateRunOptions).toHaveBeenCalledWith(manager, [], expect.anything());
+		});
+
+		it('rejects an out-of-range limit with a user error', async () => {
+			await expect(provisionWithConcurrencyLimit(0)).rejects.toThrow(UserError);
+
+			expect(jobs.insertMany).not.toHaveBeenCalled();
+			expect(dataSource.transaction).not.toHaveBeenCalled();
 		});
 	});
 
@@ -629,6 +796,7 @@ describe('DurableJobProvisioner', () => {
 				taskType: 'schedule-trigger',
 				payload: {},
 				maxAttempts: 1,
+				timeoutSeconds: 45,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			}) as unknown as ScheduledJob;
@@ -643,6 +811,7 @@ describe('DurableJobProvisioner', () => {
 				scheduledFor: at(30),
 				runAt: at(30),
 				maxAttempts: 1,
+				timeoutSeconds: 45,
 				// Its own instant plus the job's 60s grace.
 				missedAfter: at(90),
 			},
@@ -653,6 +822,7 @@ describe('DurableJobProvisioner', () => {
 				scheduledFor: at(60),
 				runAt: at(60),
 				maxAttempts: 1,
+				timeoutSeconds: 45,
 				missedAfter: at(120),
 			},
 		];
@@ -806,8 +976,10 @@ describe('DurableJobProvisioner', () => {
 					fireAt: null,
 					nextRunAt: CLOCK,
 					maxAttempts: 5,
+					timeoutSeconds: 300,
 					misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 					misfireGraceSeconds: 90,
+					concurrencyLimit: null,
 					...columns,
 				},
 			]);
@@ -964,6 +1136,21 @@ describe('DurableJobProvisioner', () => {
 			);
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({ removed: 5 });
+		});
+
+		it('deletes one job as it was read, inside a transaction, and reports the count', async () => {
+			jobs.deleteIfPayloadUnchanged.mockResolvedValue(1);
+
+			const result = await provisioner.deprovisionUnchangedJob({
+				id: 10,
+				payload: { n8nVersion: '1.0.0' },
+			});
+
+			expect(jobs.deleteIfPayloadUnchanged).toHaveBeenCalledWith(manager, 10, {
+				n8nVersion: '1.0.0',
+			});
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 1 });
 		});
 
 		it('deprovisions an owner type with no registered resolver, so cleanup is never blocked', async () => {

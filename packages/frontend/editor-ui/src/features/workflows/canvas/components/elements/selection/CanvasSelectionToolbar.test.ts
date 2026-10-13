@@ -10,10 +10,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const isSelectionGroupableMock = vi.fn();
 const isSelectionExtractableMock = vi.fn();
+const isSubworkflowConversionDisabledMock = vi.fn();
 const expandSelectionWithSubNodesMock = vi.fn((nodeIds: string[]) => nodeIds);
 // Composes the two mocks above (like the real implementation does, minus id
 // resolution) so tests keep customizing those as knobs.
@@ -37,6 +37,7 @@ vi.mock('@/app/composables/useSelectionValidation', () => ({
 	useSelectionValidation: () => ({
 		isSelectionGroupable: isSelectionGroupableMock,
 		isSelectionExtractable: isSelectionExtractableMock,
+		isSubworkflowConversionDisabled: isSubworkflowConversionDisabledMock,
 		expandSelectionWithSubNodes: expandSelectionWithSubNodesMock,
 		resolveGroupableNodeIds: resolveGroupableNodeIdsMock,
 	}),
@@ -79,6 +80,7 @@ describe('CanvasSelectionToolbar', () => {
 		setActivePinia(createPinia());
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 		isSelectionGroupableMock.mockImplementation(getDefaultGroupableResult);
+		isSubworkflowConversionDisabledMock.mockReturnValue(false);
 		isSelectionExtractableMock.mockImplementation((nodeIds: string[]) =>
 			nodeIds.length < 2
 				? { valid: false, reason: 'invalid-subgraph' }
@@ -189,7 +191,7 @@ describe('CanvasSelectionToolbar', () => {
 	});
 
 	it('hides Extract when executeWorkflow is excluded', () => {
-		vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+		isSubworkflowConversionDisabledMock.mockReturnValue(true);
 
 		const wrapper = render({ selectedNodes: [makeNode('a'), makeNode('b')] });
 

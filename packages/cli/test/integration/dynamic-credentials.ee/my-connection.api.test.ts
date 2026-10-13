@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -8,7 +9,6 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,

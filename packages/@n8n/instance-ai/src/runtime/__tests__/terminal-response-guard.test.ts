@@ -103,7 +103,12 @@ describe('InstanceAiTerminalResponseGuard', () => {
 
 	it('emits text fallback for silent completed runs with structured work counts only', () => {
 		const decision = guard().evaluateTerminal([runStart()], 'completed', {
-			workSummary: { totalToolCalls: 3, totalToolErrors: 1, toolCalls: [] },
+			workSummary: {
+				totalToolCalls: 3,
+				totalToolErrors: 1,
+				toolCalls: [],
+				askedClarifyingQuestion: false,
+			},
 		});
 
 		expect(decision.action).toBe('emit');
@@ -115,7 +120,12 @@ describe('InstanceAiTerminalResponseGuard', () => {
 
 	it('does not emit completed fallback when silence is expected and an agent already produced text', () => {
 		const decision = guard().evaluateTerminal([runStart(), childText()], 'completed', {
-			workSummary: { totalToolCalls: 3, totalToolErrors: 0, toolCalls: [] },
+			workSummary: {
+				totalToolCalls: 3,
+				totalToolErrors: 0,
+				toolCalls: [],
+				askedClarifyingQuestion: false,
+			},
 			suppressCompletedFallback: true,
 		});
 

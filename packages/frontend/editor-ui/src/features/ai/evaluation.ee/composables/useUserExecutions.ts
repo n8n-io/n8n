@@ -1,3 +1,4 @@
+import type { SerializedCursor } from '@n8n/api-types';
 import type { ExecutionSummary } from 'n8n-workflow';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -26,7 +27,7 @@ export function useUserExecutions() {
 	const executionsStore = useExecutionsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	// Walk successful executions newest-first, one page at a time via `lastId`,
+	// Walk successful executions newest-first, one page at a time via `cursor`,
 	// invoking `onPage` until it returns a value or the history is exhausted.
 	// Evaluation runs can fill many pages, so a single page isn't enough to know
 	// whether a user run exists.
@@ -35,23 +36,24 @@ export function useUserExecutions() {
 	): Promise<T | undefined> {
 		const workflowId = workflowDocumentStore.value?.workflowId;
 		if (!workflowId) return undefined;
-		let lastId: string | undefined;
+		let cursor: SerializedCursor | undefined;
 		let seen = 0;
 		for (let page = 0; page < MAX_PAGES; page++) {
-			const list = await executionsStore.fetchExecutions(
+			// A page of its own: this scan must not replace the executions list the
+			// user is looking at.
+			const list = await executionsStore.fetchExecutionsPage(
 				{ status: ['success'], workflowId },
-				lastId,
+				cursor,
 			);
 			const rows = list.results;
 			if (rows.length === 0) return undefined;
 			seen += rows.length;
 			const hit = onPage(rows.filter(isUserExecution));
 			if (hit !== undefined) return hit;
-			const oldest = rows[rows.length - 1]?.id;
 			// Consumed the whole history, no total to page against, or no cursor to
 			// advance — stop.
-			if (!list.count || seen >= list.count || !oldest || oldest === lastId) return undefined;
-			lastId = oldest;
+			if (!list.count || seen >= list.count || !list.nextCursor) return undefined;
+			cursor = list.nextCursor;
 		}
 		return undefined;
 	}

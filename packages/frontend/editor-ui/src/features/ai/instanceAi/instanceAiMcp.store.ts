@@ -14,13 +14,13 @@ import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
+import { fetchMcpRegistryCatalog } from '@/features/shared/toolsConnection/mcpRegistry.api';
 import {
 	createMcpConnection,
 	deleteMcpConnection,
 	fetchAllMcpConnectionTools,
 	fetchMcpConnectionTools,
 	fetchMcpConnections,
-	fetchMcpRegistryServers,
 	updateMcpConnection,
 	type CreateMcpConnectionBody,
 	type UpdateMcpConnectionBody,
@@ -28,6 +28,7 @@ import {
 
 export type InstanceAiMcpConnection = InstanceAiMcpConnectionResponse & {
 	status: 'connecting' | InstanceAiMcpConnectionToolsResponse['status'];
+	failureReason?: InstanceAiMcpConnectionFailureReason;
 };
 
 export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
@@ -92,7 +93,8 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	async function loadCatalog(): Promise<void> {
 		isLoadingCatalog.value = true;
 		try {
-			catalog.value = await fetchMcpRegistryServers(rootStore.restApiContext);
+			const servers = await fetchMcpRegistryCatalog(rootStore.restApiContext);
+			catalog.value = servers.filter((server) => !server.isTemplated);
 		} catch (error) {
 			catalogLoad = null;
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchCatalog'));
@@ -106,14 +108,26 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		inFlightConnectionToolsById.delete(id);
 	}
 
-	function setConnectionStatus(id: string, status: InstanceAiMcpConnection['status']): void {
-		connections.value = connections.value.map((connection) =>
-			connection.id === id ? { ...connection, status } : connection,
-		);
+	function setConnectionStatus(
+		id: string,
+		status: InstanceAiMcpConnection['status'],
+		failureReason?: InstanceAiMcpConnectionFailureReason,
+	): void {
+		connections.value = connections.value.map((connection) => {
+			if (connection.id !== id) return connection;
+			const next = { ...connection, status };
+			delete next.failureReason;
+			if (status === 'disconnected') next.failureReason = failureReason ?? 'unknown';
+			return next;
+		});
 	}
 
 	function applyToolsResult(result: InstanceAiMcpConnectionToolsResponse): void {
-		setConnectionStatus(result.id, result.status);
+		setConnectionStatus(
+			result.id,
+			result.status,
+			result.status === 'disconnected' ? result.failureReason : undefined,
+		);
 		if (result.status === 'connected') {
 			connectionToolsById.set(result.id, result.tools);
 		} else {
@@ -157,6 +171,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 			connections.value = connections.value.map((connection) => ({
 				...connection,
 				status: connection.status === 'connecting' ? 'disconnected' : connection.status,
+				...(connection.status === 'connecting' ? { failureReason: 'unknown' as const } : {}),
 			}));
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.checkConnections'));
 		}
@@ -177,7 +192,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 			}
 		} catch {
 			if (isCurrent()) {
-				setConnectionStatus(id, 'disconnected');
+				setConnectionStatus(id, 'disconnected', 'unknown');
 				connectionToolsById.delete(id);
 				showConnectionError('unknown');
 			}

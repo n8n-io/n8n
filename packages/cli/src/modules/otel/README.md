@@ -12,72 +12,161 @@ Given OTEL often involves events triggered from elsewhere within the n8n system 
 ### Attributes
 All attributes are listed in `otel.constants.ts`
 
+### Global API ownership
+
+`OtelService` starts a `NodeTracerProvider` and hands out tracers through `getTracer()`.
+The module's own spans never depend on the global `@opentelemetry/api` registry.
+
+At start, the service checks whether another library already registered a global tracer
+provider. Sentry does this in `ErrorReporter.init`. A user SDK loaded with `--require` does
+it too.
+
+- The slot is free: the service registers its provider, an `AsyncLocalStorageContextManager`
+  and the default W3C propagators. A restart swaps only the tracer provider. Shutdown leaves
+  the globals in place.
+- The slot is taken: the service keeps its provider private and logs one info line. It never
+  disables or replaces the other library's globals.
+
+Consequences:
+
+- Workflow spans go to the module exporter only. To get them into Sentry, point the OTel
+  settings at Sentry's OTLP endpoint.
+- Workflow root spans start on `ROOT_CONTEXT`. They never join a trace that is active in the
+  process, such as a Sentry request span or an HTTP server span from a user SDK. An inbound
+  `traceparent` header still sets the parent.
+- Persisted trace context and outbound headers always use the W3C `traceparent` and
+  `tracestate` format, whoever owns the global propagator. `OTEL_PROPAGATORS` has no effect
+  on them. Outbound headers never carry `baggage`.
+- The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
+  no effect.
+
+### Execution identity
+
+Workflow and node spans carry `n8n.execution.id`, `n8n.workflow.id`, `n8n.workflow.name`,
+`n8n.project.id` and `n8n.project.name`. Only team projects get a name, because a personal
+project name holds the user's name and email.
+
+- `ExecutionLevelTracer` builds the identity once for each execution segment and puts it in
+  the parent context under a private context key.
+- `ExecutionIdentitySpanProcessor` copies the identity from that key to each span at start.
+  It never reads baggage: a caller can send `n8n.*` entries in an inbound `baggage` header,
+  but cannot write the private key.
+- The tracer never makes this context active. `getActiveContext` returns the span only.
+- Each segment of an execution builds the identity from the current workflow name and
+  project, because a workflow can be renamed or moved during a wait. A later segment runs
+  the workflow saved at the start, so it reads the current name from the database.
+- The identity is saved as an object in `tracingContext.identity`. A resume reads it only
+  when the project lookup fails. A reconstructed crash span reads it, so it shows the
+  identity of the last segment.
+
+This key is n8n's single source of truth for the execution identity. Inbound and outbound
+baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
+
+### Start marker spans
+
+A span leaves n8n only when it ends. A marker span tells a trace backend that an execution
+or a node started, before the real span ends.
+
+| Environment variable                       | Default | Marker                                       |
+| ------------------------------------------ | ------- | -------------------------------------------- |
+| `N8N_OTEL_TRACES_EMIT_WORKFLOW_START_SPAN` | `false` | `workflow.execute.started` under each workflow span |
+| `N8N_OTEL_TRACES_EMIT_NODE_START_SPAN`     | `false` | `node.execute.started` under each node span   |
+
+- A marker is a child of the span that it announces. Its duration is 0 ms.
+- A marker has the start attributes of its parent and the execution identity. The node
+  marker does not have node custom tags, because n8n sets them when the node ends.
+- Each `workflow.execute` span gets one workflow marker. A resume after a Wait node starts a
+  new segment with its own `workflow.execute` span.
+- In queue mode, main and the worker each send a `workflow.execute` span for each segment,
+  so each segment gets two workflow markers. The marker from main shows when main queued the
+  execution. The marker from the worker shows when the worker started it. The resource
+  attribute `n8n.instance.role` (`main` or `worker`) tells them apart.
+- The node marker follows the rules of `node.execute`. With
+  `N8N_OTEL_TRACES_INCLUDE_NODE_SPANS=false`, no node marker exists. The node flag doubles
+  the number of node spans.
+- Both flags follow `N8N_OTEL_TRACES_PRODUCTION_ONLY`. Set them on workers too.
+- A marker that fails logs a warning. It does not stop the real span or the execution.
+
 ### Module architecture
 ```mermaid
- graph TD
-      subgraph Module Layer
-          MOD["OtelModule
-          @BackendModule"]
-      end
+graph TD
+    subgraph Module Layer
+        MOD["OtelModule
+        @BackendModule on main, worker and webhook"]
+    end
 
-      subgraph Configuration
-          CFG["OtelConfig
-          env vars to typed config"]
-      end
+    subgraph Configuration
+        CFG["OtelConfig
+        env vars to typed config"]
+        SET["OtelSettingsService
+        DB row merged with config, env vars win"]
+        CTRL["OtelSettingsController
+        main only: GET and PUT settings, POST test trace"]
+    end
 
-      subgraph SDK Layer
-          SVC["OtelService
-          owns NodeSDK lifecycle"]
-          SDK["OpenTelemetry NodeSDK
-          exporter, sampler, resource"]
-      end
+    subgraph SDK Layer
+        SVC["OtelService
+        owns the NodeTracerProvider, getTracer()"]
+        SDK["NodeTracerProvider
+        OTLP exporter, sampler, resource"]
+        API["Global @opentelemetry/api
+        registered only when the slot is free"]
+    end
 
-      subgraph Instrumentation Layer
-          INST["N8nWorkflowInstrumentation
-          @OnLifecycleEvent listeners"]
-          REG["SpanRegistry
-          Map of executionId to Span"]
-      end
+    subgraph Instrumentation Layer
+        LCH["OtelLifecycleHandler
+        @OnLifecycleEvent and @OnPubSubEvent"]
+        ELT["ExecutionLevelTracer
+        span maps by execution id, W3C propagator"]
+        TCS["TraceContextService
+        trace context and identity on the execution row"]
+    end
 
-      subgraph Handler Layer
-          IFC{{"SpanHandler interface"}}
-          WS["WorkflowStartHandler"]
-          WE["WorkflowEndHandler"]
-      end
+    subgraph n8n Core
+        LC(("Lifecycle events
+        workflowExecuteBefore, Resume, After
+        nodeExecuteBefore, After"))
+        PUB(("Pub/Sub
+        reload-otel-config"))
+        REQ["Request helpers
+        module context injectTraceHeaders"]
+        AGT["AgentRunTracingService
+        AgentWorkflowExecutionService"]
+    end
 
-      subgraph n8n Core
-          LC(("Lifecycle Events
-          workflowExecuteBefore
-          workflowExecuteAfter"))
-      end
+    COL[("OTLP collector")]
 
-      MOD -- "1. check enabled" --> CFG
-      MOD -- "2. init SDK" --> SVC
-      SVC -- "creates" --> SDK
-      MOD -- "3. register listeners" --> INST
+    MOD -- "1. load settings" --> SET
+    SET --> CFG
+    MOD -- "2. start provider" --> SVC
+    SVC -- "creates" --> SDK
+    SVC -. "registers when free" .-> API
+    MOD -- "3. import handler" --> LCH
+    MOD -- "4. main only" --> CTRL
+    CTRL -- "save, then publish" --> PUB
+    PUB -. "fires" .-> LCH
+    LCH -- "restart()" --> SVC
 
-      LC -. "fires event" .-> INST
-      INST -- "dispatches to" --> IFC
-      IFC -. "implemented by" .-> WS
-      IFC -. "implemented by" .-> WE
+    LC -. "fires" .-> LCH
+    LCH -- "start and end workflow and node spans" --> ELT
+    LCH -- "persist and read" --> TCS
+    ELT -- "getTracer()" --> SVC
+    REQ -- "outbound traceparent" --> ELT
+    AGT -- "getActiveContext()" --> ELT
+    AGT -- "getTracer()" --> SVC
+    SDK -. "exports spans" .-> COL
 
-      WS -- "startSpan, store" --> REG
-      WE -- "retrieve, enrich, end" --> REG
-      REG -. "spans exported via" .-> SDK
+    classDef module fill:#4a9eff,color:#fff
+    classDef config fill:#f5a623,color:#fff
+    classDef sdk fill:#7b68ee,color:#fff
+    classDef inst fill:#50c878,color:#fff
+    classDef core fill:#888,color:#fff
 
-      classDef module fill:#4a9eff,color:#fff
-      classDef config fill:#f5a623,color:#fff
-      classDef sdk fill:#7b68ee,color:#fff
-      classDef inst fill:#50c878,color:#fff
-      classDef handler fill:#ff6b6b,color:#fff
-      classDef core fill:#888,color:#fff
-
-      class MOD module
-      class CFG config
-      class SVC,SDK sdk
-      class INST,REG inst
-      class IFC,WS,WE handler
-      class LC core
+    class MOD module
+    class CFG,SET,CTRL config
+    class SVC,SDK,API sdk
+    class LCH,ELT,TCS inst
+    class LC,PUB,REQ,AGT,COL core
 ```
 
 #### Manual validation

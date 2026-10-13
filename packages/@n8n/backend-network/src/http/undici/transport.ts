@@ -1,13 +1,35 @@
+import type { LookupFunction } from 'node:net';
 import type { Dispatcher } from 'undici';
 import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
-import type { SsrfBridge } from '../../ssrf';
-import type { ProxyOption, SsrfOption } from '../node-agents';
+import type { ProxyOption } from '../node-agents';
 
 /**
  * Drop-in replacement type for the global `fetch`.
  */
 export type CustomFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Structural SSRF policy for the dispatcher path: the subset of `SsrfBridge`
+ * this transport core consumes. Kept structural (and dependency-free) so
+ * DI-less callers can satisfy it with their own policy object.
+ */
+export interface TransportSsrfPolicy {
+	/** Pre-flight validation of a dispatched target (the initial request and every redirect hop). */
+	validateUrl(url: string | URL): Promise<{ ok: true } | { ok: false; error: Error }>;
+	/** Validation of a connection host no DNS lookup will see (e.g. an IP-literal proxy host). */
+	validateConnectionHost(host: string): { ok: true } | { ok: false; error: Error };
+	/** DNS lookup drop-in that pins the validated address to the socket at connect time. */
+	createSecureLookup(): LookupFunction;
+}
+
+/**
+ * Resolved SSRF policy for the dispatcher path: the policy to enforce, or
+ * `'disabled'` when none applies (instance protection off, no egress filter in
+ * the calling context, or an `'unsafe'` opt-out already resolved upstream).
+ * Intent is expressed at the client layer (`UseDefaultSsrfPolicy`), not here.
+ */
+export type TransportSsrfOption = TransportSsrfPolicy | 'disabled';
 
 /**
  * Per-request authorization gate run against the target of every dispatched request
@@ -45,11 +67,13 @@ export interface CreateDispatcherTransportOptions {
 	/** Proxy routing. Defaults to `'env'` (HTTP(S)_PROXY / NO_PROXY). */
 	proxy?: ProxyOption;
 	/** SSRF policy. Defaults to `'disabled'`. */
-	ssrf?: SsrfOption;
+	ssrf?: TransportSsrfOption;
 	/** Undici agent timeout overrides. */
 	timeouts?: TransportTimeoutOptions;
 	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check */
 	authorize?: RequestAuthorizer;
+	/** When set, `asCustomFetch()` bounds each response body to this decoded-byte limit. */
+	responseSizeLimit?: ResponseSizeLimit;
 }
 
 /**
@@ -85,7 +109,7 @@ export interface BuildDispatcherOptions {
  */
 export function buildDispatcher(
 	proxy: ProxyOption,
-	ssrf: SsrfOption,
+	ssrf: TransportSsrfOption,
 	options: BuildDispatcherOptions = {},
 ): Dispatcher {
 	let dispatcher = buildDispatcherFromProxy(proxy, ssrf, options?.timeouts);
@@ -100,7 +124,7 @@ export function buildDispatcher(
 
 function buildDispatcherFromProxy(
 	proxy: ProxyOption,
-	ssrf: SsrfOption,
+	ssrf: TransportSsrfOption,
 	timeouts?: TransportTimeoutOptions,
 ): Dispatcher {
 	const agentOptions = toAgentTimeoutOptions(timeouts);
@@ -127,7 +151,7 @@ function buildDispatcherFromProxy(
  * A caller's `connect` does not reach it: `ProxyAgent` overwrites that with its own
  * tunnel handshake.
  */
-function secureProxyConnect(ssrf: SsrfOption) {
+function secureProxyConnect(ssrf: TransportSsrfOption) {
 	return ssrf === 'disabled' ? {} : { proxyTls: { lookup: ssrf.createSecureLookup() } };
 }
 
@@ -135,7 +159,7 @@ function secureProxyConnect(ssrf: SsrfOption) {
  * Catches an IP-literal proxy host, which no lookup sees.
  * Applies to an explicit proxy URI, the one form that can come from a request.
  */
-function assertProxyHostAllowed(ssrf: SsrfOption, proxyUri: string): void {
+function assertProxyHostAllowed(ssrf: TransportSsrfOption, proxyUri: string): void {
 	if (ssrf === 'disabled') {
 		return;
 	}
@@ -162,7 +186,7 @@ function proxyHostname(uri: string): string | undefined {
  * It pins the validated IP to the socket, so a hostname that passed the interceptor's pre-flight
  * `validateUrl` cannot be rebound to a private IP before undici resolves it again at connect time (DNS-rebinding / TOCTOU).
  */
-function secureConnect(ssrf: SsrfOption) {
+function secureConnect(ssrf: TransportSsrfOption) {
 	return ssrf === 'disabled' ? {} : { connect: { lookup: ssrf.createSecureLookup() } };
 }
 
@@ -194,12 +218,16 @@ export function createDispatcherTransport(
 	const ssrf = options?.ssrf ?? 'disabled';
 	const timeouts = options?.timeouts;
 	const authorize = options?.authorize;
+	const responseSizeLimit = options?.responseSizeLimit;
 
 	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, { timeouts, authorize }));
 
 	return {
+		// `getDispatcher()` returns a bare dispatcher, which sees only wire bytes;
+		// the response-size limit is a decoded-body concern, so it is applied here
+		// on the fetch path where the body is already decompressed.
 		asCustomFetch: () => async (input, init) =>
-			await dispatchedFetch(lazyDispatcher(), input, init),
+			await dispatchedFetch(lazyDispatcher(), input, init, responseSizeLimit),
 		getDispatcher: () => lazyDispatcher(),
 	};
 }
@@ -207,6 +235,17 @@ export function createDispatcherTransport(
 function lazyValue<T>(factory: () => T): () => T {
 	let cached: { value: T } | undefined;
 	return () => (cached ??= { value: factory() }).value;
+}
+
+/**
+ * Derives the target URL of a dispatch from the request target `opts.path`, which is an absolute
+ * URI behind a forward proxy and path-only otherwise. A path-only target that starts with `//` is
+ * not a protocol-relative URL, so the authority always comes from `opts.origin`, whose own
+ * re-parse keeps any userinfo out of the URL we hand to the caller.
+ */
+function resolveTargetUrl(opts: Dispatcher.DispatchOptions): URL {
+	if (!opts.origin || !opts.path.startsWith('/')) return new URL(opts.path);
+	return new URL(new URL(opts.origin).origin + opts.path);
 }
 
 /**
@@ -222,14 +261,12 @@ function lazyValue<T>(factory: () => T): () => T {
  * That host is fixed for the dispatcher rather than per request, so
  * {@link buildDispatcherFromProxy} decides it where the dispatcher is built.
  */
-export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
+export function createSsrfInterceptor(
+	bridge: Pick<TransportSsrfPolicy, 'validateUrl'>,
+): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
-		let targetUrl: URL;
 		try {
-			// `opts.path` is the request target.
-			// Behind a forward proxy it can be an absolute URI, otherwise it is path-only and resolved against the origin.
-			// Either form yields the final target URL.
-			targetUrl = new URL(opts.path, opts.origin?.toString());
+			const targetUrl = resolveTargetUrl(opts);
 			bridge.validateUrl(targetUrl).then(
 				(result) => {
 					if (result.ok) {
@@ -262,9 +299,8 @@ export function createAuthorizationInterceptor(
 	authorize: RequestAuthorizer,
 ): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
-		let targetUrl: URL;
 		try {
-			targetUrl = new URL(opts.path, opts.origin?.toString());
+			const targetUrl = resolveTargetUrl(opts);
 			authorize(targetUrl).then(
 				() => dispatch(opts, handler),
 				(error: unknown) => failDispatch(handler, ensureError(error)),
@@ -309,14 +345,77 @@ function failDispatch(handler: FailableDispatchHandler, error: Error): void {
 	}
 }
 
-/** Performs a `fetch` bound to the given undici dispatcher (the engine behind `asCustomFetch`). */
+/**
+ * Response-size limit for {@link dispatchedFetch} and {@link limitResponseBody}.
+ * `maxBytes <= 0` disables the limit.
+ *
+ * The count is of *decoded* bytes: `fetch` reverses any `Content-Encoding`
+ * before the body reaches this stream, so a compressed payload cannot expand
+ * past the cap. `createError` lets a caller supply its own error type (n8n's
+ * `OperationalError`, say) without this pure subpath importing `n8n-workflow`.
+ */
+export interface ResponseSizeLimit {
+	maxBytes: number;
+	createError?: (maxBytes: number) => Error;
+}
+
+function defaultResponseSizeError(maxBytes: number): Error {
+	return new Error(`Response body exceeded the maximum allowed size of ${maxBytes} bytes`);
+}
+
+/**
+ * A `TransformStream` that throws once the decoded bytes pass `maxBytes`. This
+ * rejects the whole response; it does not truncate the body to `maxBytes`. Its
+ * own function so it can be unit-tested without a live response.
+ */
+export function createResponseSizeLimit({
+	maxBytes,
+	createError = defaultResponseSizeError,
+}: ResponseSizeLimit): TransformStream<Uint8Array, Uint8Array> {
+	let received = 0;
+	return new TransformStream({
+		transform(chunk, controller) {
+			received += chunk.byteLength;
+			if (received > maxBytes) throw createError(maxBytes);
+			controller.enqueue(chunk);
+		},
+	});
+}
+
+/**
+ * Wraps a fetch `Response` so that reading its body throws once the decoded
+ * size passes `limit.maxBytes`. The response is rejected in full, not truncated
+ * to the cap. Returns the response unchanged when the limit is disabled
+ * (`maxBytes <= 0`) or the body is empty.
+ */
+export function limitResponseBody(response: Response, limit: ResponseSizeLimit): Response {
+	if (limit.maxBytes <= 0 || !response.body) return response;
+	const body = response.body.pipeThrough(createResponseSizeLimit(limit));
+	// `new Response(body, response)` drops these read-only fields; restore them.
+	return Object.defineProperties(new Response(body, response), {
+		url: { value: response.url },
+		redirected: { value: response.redirected },
+		type: { value: response.type },
+	});
+}
+
+/**
+ * Performs a `fetch` bound to the given undici dispatcher (the engine behind `asCustomFetch`).
+ * Without a dispatcher it falls through to this undici's default dispatcher.
+ *
+ * Pass `responseSizeLimit` to reject a response whose decoded body passes the
+ * cap: reading the body then throws, rather than the body being truncated. It
+ * is opt-in; without it the response streams unchanged.
+ */
 export async function dispatchedFetch(
-	dispatcher: Dispatcher,
+	dispatcher: Dispatcher | undefined,
 	input: RequestInfo | URL,
 	init?: RequestInit,
+	responseSizeLimit?: ResponseSizeLimit,
 ): Promise<Response> {
-	return (await undiciFetch(
+	const response = (await undiciFetch(
 		input as Parameters<typeof undiciFetch>[0],
 		{ ...(init ?? {}), dispatcher } as Parameters<typeof undiciFetch>[1],
 	)) as unknown as Response;
+	return responseSizeLimit ? limitResponseBody(response, responseSizeLimit) : response;
 }

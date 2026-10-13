@@ -4,8 +4,6 @@ import { AssertionError } from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
-import { CipherAes256CBC } from '@/encryption/aes-256-cbc';
-import { CipherAes256GCM } from '@/encryption/aes-256-gcm';
 import { Cipher } from '@/encryption/cipher';
 import { EncryptionKeyProxy } from '@/encryption/encryption-key-proxy';
 import type { InstanceSettings } from '@/instance-settings';
@@ -19,8 +17,6 @@ describe('Credentials', () => {
 	const encryptionKeyProxy = new EncryptionKeyProxy();
 	const cipher = new Cipher(
 		mock<InstanceSettings>({ encryptionKey: 'password' }),
-		new CipherAes256GCM(),
-		new CipherAes256CBC(),
 		encryptionKeyProxy,
 	);
 	Container.set(Cipher, cipher);
@@ -107,7 +103,7 @@ describe('Credentials', () => {
 
 		test('should throw an error when JSON parsing fails', async () => {
 			const credentials = new Credentials(nodeCredentials, credentialType);
-			credentials.data = cipher.encrypt('invalid-json-string');
+			credentials.data = cipher.encryptWithInstanceKey('invalid-json-string');
 
 			await expect(credentials.getData()).rejects.toThrow(CREDENTIAL_ERRORS.INVALID_JSON);
 
@@ -150,7 +146,7 @@ describe('Credentials', () => {
 			const credentials = new Credentials(
 				nodeCredentials,
 				credentialType,
-				cipher.encrypt({
+				cipher.encryptWithInstanceKey({
 					username: 'olduser',
 					password: 'oldpass',
 					apiKey: 'oldkey',
@@ -170,7 +166,7 @@ describe('Credentials', () => {
 			const credentials = new Credentials(
 				nodeCredentials,
 				credentialType,
-				cipher.encrypt({
+				cipher.encryptWithInstanceKey({
 					username: 'testuser',
 					password: 'testpass',
 					apiKey: 'testkey',
@@ -188,7 +184,7 @@ describe('Credentials', () => {
 			const credentials = new Credentials(
 				nodeCredentials,
 				credentialType,
-				cipher.encrypt({
+				cipher.encryptWithInstanceKey({
 					username: 'olduser',
 					password: 'oldpass',
 					apiKey: 'oldkey',

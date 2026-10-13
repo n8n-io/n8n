@@ -63,22 +63,47 @@ describe('ToolCredentialPicker', () => {
 		expect(queryByTestId('tool-credential-picker-trigger-connected')).toBeNull();
 	});
 
-	it('shows the Connected pill for a connected item', () => {
+	it('shows the selected credential name for a connected item', () => {
 		const item = { ...baseMcpItem, status: 'connected' as const };
-		const { getByTestId, queryByTestId } = render(item, [
-			{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' },
-		]);
-		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeTruthy();
+		const { getByTestId, queryByTestId } = render(
+			item,
+			[{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+			[{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }],
+		);
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toHaveTextContent(
+			'My Notion account',
+		);
 		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+	});
+
+	it('hides the connected checkmark for a temporary connection', () => {
+		const item = { ...baseMcpItem, status: 'connected' as const };
+		const { getByTestId } = renderPicker({
+			props: {
+				item,
+				credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+				adapter: makeAdapter([{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }]),
+				showConnectedIcon: false,
+			},
+			pinia: createTestingPinia(),
+		});
+
+		const trigger = getByTestId('tool-credential-picker-trigger-connected');
+		expect(trigger).toHaveTextContent('My Notion account');
+		expect(trigger.querySelector('[data-icon="check"]')).toBeNull();
 	});
 
 	it('distinguishes a disconnected connection from a tool that was never added', () => {
 		const disconnectedItem = { ...baseMcpItem, status: 'disconnected' as const };
-		const disconnected = render(disconnectedItem, [{ authType: 'mcpOAuth2Api' }]);
+		const disconnected = render(
+			disconnectedItem,
+			[{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+			[{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }],
+		);
 
 		expect(
 			disconnected.getByTestId('tool-credential-picker-trigger-disconnected'),
-		).toHaveTextContent('Reconnect');
+		).toHaveTextContent('My Notion account');
 		expect(disconnected.queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
 		disconnected.unmount();
 
@@ -189,5 +214,37 @@ describe('ToolCredentialPicker', () => {
 			'githubOAuth2Api',
 			'githubApi',
 		]);
+	});
+
+	it('prefers the prop adapter over the injected adapter', async () => {
+		const propAdapter = makeAdapter([
+			{ id: 'prop-credential', name: 'Prop account', type: 'mcpOAuth2Api' },
+		]);
+		propAdapter.openExistingCredential = vi.fn();
+		const injectedAdapter = makeAdapter([
+			{ id: 'injected-credential', name: 'Injected account', type: 'mcpOAuth2Api' },
+		]);
+
+		const { getByTestId, findByTestId } = renderPicker({
+			props: {
+				item: { ...baseMcpItem, status: 'connected' },
+				credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'prop-credential' }],
+				adapter: propAdapter,
+			},
+			pinia: createTestingPinia(),
+			global: {
+				provide: {
+					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: injectedAdapter,
+				},
+			},
+		});
+
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toHaveTextContent(
+			'Prop account',
+		);
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connected'));
+		await fireEvent.click(await findByTestId('tool-credential-picker-edit'));
+
+		expect(propAdapter.openExistingCredential).toHaveBeenCalledWith('prop-credential');
 	});
 });

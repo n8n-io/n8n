@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// Runs on each codespace start. Installs the skills marketplace, starts the worker.
+// Runs on each Codespace start. Installs the skills and harness, then starts the worker.
 import { execFileSync } from 'node:child_process';
-import { rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { installAgentHarness } from '../../scripts/agent-harness.mjs';
+import { codespaceSecret } from '../../scripts/codespace-env.mjs';
 import { MARKETPLACE, PLUGINS } from './plugins.mjs';
 
 const STATUS_FILE = '/tmp/post-start-status.json';
@@ -48,6 +50,42 @@ function addMarketplace() {
 	return add('marketplace add (retry)');
 }
 
+// Claude Code reads the Flaky token when it connects. An env reference such as
+// ${FLAKY_MCP_TOKEN} fails in processes that did not load the secrets file, for
+// example the desktop app's SSH server. The helper reads the file on each connect,
+// so it also gets a rotated token. The token is not copied into ~/.claude.json.
+const FLAKY_HEADERS_HELPER =
+	'. /usr/local/lib/codespaces-env.sh; printf %s "{\\"Authorization\\":\\"Bearer $FLAKY_MCP_TOKEN\\"}"';
+
+function registerFlakyMcp() {
+	// Forks have no repository secrets.
+	const url = codespaceSecret('FLAKY_MCP_URL');
+	if (!url || !codespaceSecret('FLAKY_MCP_TOKEN')) return;
+
+	let current;
+	try {
+		current = JSON.parse(readFileSync(join(homedir(), '.claude.json'), 'utf8')).mcpServers?.flaky;
+	} catch {
+		// No readable config yet: register the server below.
+	}
+	if (current?.url === url && current.headersHelper === FLAKY_HEADERS_HELPER && !current.headers) {
+		return;
+	}
+
+	if (current) tryRun('flaky mcp remove', 'claude', ['mcp', 'remove', '--scope', 'user', 'flaky']);
+	const config = { type: 'http', url, headersHelper: FLAKY_HEADERS_HELPER };
+	tryRun('flaky mcp add', 'claude', [
+		'mcp',
+		'add-json',
+		'--scope',
+		'user',
+		'flaky',
+		JSON.stringify(config),
+	]);
+}
+
+registerFlakyMcp();
+
 tryRun('skills repo reachable', 'git', ['ls-remote', `https://github.com/${MARKETPLACE}`, 'HEAD']);
 
 const installed = [];
@@ -61,19 +99,33 @@ if (addMarketplace()) {
 	failed.push(...PLUGINS);
 }
 
-writeFileSync(STATUS_FILE, JSON.stringify({ installed, failed }, null, 2));
-
 // A skipped install is otherwise invisible until someone misses a skill mid-session.
 if (failed.length > 0) {
 	console.error(`\n!! SKILLS NOT INSTALLED: ${failed.join(', ')}`);
 	console.error('!! Sessions start without them. Retry with:');
 	console.error('!!   node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs\n');
 }
+let harness;
+try {
+	const result = installAgentHarness();
+	harness = { status: 'active', version: result.version, cacheHit: result.cacheHit };
+} catch (error) {
+	harness = { status: 'unavailable', error: error.message };
+	console.error(`agent harness: ${error.message}`);
+}
 
-tryRun('worker start', 'tmux', [
-	'new-session',
-	'-d',
-	'-s',
-	'agent-worker',
-	'bash -lc ". /usr/local/lib/codespaces-env.sh; export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1"',
-]);
+const workerStarted =
+	harness.status === 'active' &&
+	tryRun('worker start', 'tmux', [
+		'new-session',
+		'-d',
+		'-s',
+		'agent-worker',
+		'bash -lc ". /usr/local/lib/codespaces-env.sh; export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; node /workspaces/n8n/.devcontainer/codespaces/agent-worker.mjs >> /tmp/agent-worker.log 2>&1"',
+	]);
+
+if (!workerStarted && harness.status !== 'active') {
+	console.error('worker start: skipped because the pinned agent harness is unavailable');
+}
+
+writeFileSync(STATUS_FILE, JSON.stringify({ installed, failed, harness, workerStarted }, null, 2));

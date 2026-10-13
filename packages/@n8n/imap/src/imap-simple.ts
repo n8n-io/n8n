@@ -1,24 +1,21 @@
 import { sleep } from '@n8n/utils/sleep';
-import Imap, { type ImapMessage } from 'imap';
-
-import { toImapOptions, type ImapConnectionOptions } from './connection-options';
 import {
-	ConnectionClosedError,
-	ConnectionEndedError,
-	ConnectionLostError,
-	ConnectionTimeoutError,
-} from './errors';
-import { getMessage } from './helpers/get-message';
-import { attachmentParts, bodyPart, getParts } from './message';
-import { PartData } from './part-data';
-import type { Message, MessagePart, SearchCriteria } from './types';
+	ImapFlow,
+	type FetchMessageObject,
+	type FetchQueryObject,
+	type FlagsEvent,
+	type ListResponse,
+	type MailboxObject,
+	type SearchObject,
+} from 'imapflow';
 
-/** The IMAP error codes worth reacting to arrive on the Error itself, not in its message. */
-export const imapErrorCode = (error: Error): string =>
-	'code' in error && typeof error.code === 'string' ? error.code.toUpperCase() : 'UNKNOWN';
+import { toImapFlowOptions, type ImapConnectionOptions } from './connection-options';
+import { ConnectionLostError, ReconnectTimeoutError } from './errors';
+import { attachmentPartIDs, bodyPartID } from './message';
 
 const LOGOUT_GRACE_PERIOD = 2000;
 
+/** How long one attempt at restoring the connection may take before it is abandoned. */
 const DEFAULT_RECONNECT_TIMEOUT = 45_000;
 
 /** Tries at getting a transport back before a drop counts as one nothing could be done about. */
@@ -27,7 +24,12 @@ const RESTORE_ATTEMPTS = 6;
 /** Doubled per try, so the attempts span roughly the half minute a restarting server is away. */
 const RESTORE_BACKOFF = 1000;
 
-/** `ended`: the caller asked. `error`: a failure preceded it. `dropped`: neither, and unrecoverable. */
+/**
+ * Why a connection stopped for good:
+ * - `ended`  the caller asked for it, through `end()`
+ * - `error`  an error was reported first, and the close is its consequence
+ * - `dropped` the server or socket went away, and could not be restored
+ */
 export type CloseReason = 'ended' | 'error' | 'dropped';
 
 /** New mail worth looking at. The mailbox itself is the source of truth; this is the doorbell. */
@@ -36,34 +38,24 @@ export interface Arrival {
 	count: number | 'unknown';
 }
 
-export interface FlagsEvent {
-	seqNo: number;
-	info: { num?: number | undefined; text: unknown };
-}
-
 /** The driver surface a connection runs on. The real client satisfies it; tests supply their own. */
 export type ImapTransport = Pick<
-	Imap,
+	ImapFlow,
 	| 'connect'
-	| 'end'
-	| 'destroy'
+	| 'close'
+	| 'logout'
 	| 'on'
 	| 'once'
-	| 'removeListener'
 	| 'removeAllListeners'
+	| 'usable'
 	| 'search'
 	| 'fetch'
-	| 'addFlags'
-	| 'getBoxes'
-	| 'openBox'
+	| 'download'
+	| 'downloadMany'
+	| 'messageFlagsAdd'
+	| 'list'
+	| 'mailboxOpen'
 >;
-
-export interface Attachment {
-	/** As the disposition carries it; MIME encoding is the caller's to undo. */
-	filename?: string;
-	/** Transfer-encoding already decoded. */
-	content: Buffer;
-}
 
 export interface ReconnectOptions {
 	/** Reopened on every fresh connection, so a caller keeps watching the box it asked for. */
@@ -82,7 +74,7 @@ const withTimeout = async <T>(operation: Promise<T>, ms: number): Promise<T> => 
 		return await Promise.race([
 			operation,
 			new Promise<never>((_, reject) => {
-				timer = setTimeout(() => reject(new ConnectionTimeoutError(ms)), ms);
+				timer = setTimeout(() => reject(new ReconnectTimeoutError()), ms);
 			}),
 		]);
 	} finally {
@@ -90,85 +82,32 @@ const withTimeout = async <T>(operation: Promise<T>, ms: number): Promise<T> => 
 	}
 };
 
-/** node-imap reports readiness through events, and a failed attempt through any of three others. */
-const connectTransport = async (client: ImapTransport): Promise<void> => {
-	await new Promise<void>((resolve, reject) => {
-		const cleanUp = () => {
-			client.removeListener('ready', onReady);
-			client.removeListener('error', onError);
-			client.removeListener('close', onClose);
-			client.removeListener('end', onEnd);
-		};
+/** imapflow issues one sequential partial FETCH per chunk; its 64 KB default is a lot of round trips. */
+const DOWNLOAD_CHUNK_SIZE = 1024 * 1024;
 
-		const onReady = () => {
-			cleanUp();
-			resolve();
-		};
-
-		const onError = (error: Error & { source?: string }) => {
-			cleanUp();
-			reject(error.source === 'timeout-auth' ? new ConnectionTimeoutError() : error);
-		};
-
-		const onClose = () => {
-			cleanUp();
-			reject(new ConnectionClosedError());
-		};
-
-		const onEnd = () => {
-			cleanUp();
-			reject(new ConnectionEndedError());
-		};
-
-		client.once('ready', onReady);
-		client.once('error', onError);
-		client.once('close', onClose);
-		client.once('end', onEnd);
-
-		client.connect();
-	});
-};
+export interface Attachment {
+	/** MIME-decoded, and falling back to the Content-Type name when the disposition carries none. */
+	filename?: string;
+	contentType?: string;
+	/** Transfer-encoding already decoded. */
+	content: Buffer;
+}
 
 /**
- * node-imap abandons its request queue on a close without calling back, so a SELECT the drop cut
- * short is let go here — left to the driver it never settles, and neither does its connection.
- */
-const selectMailbox = async (client: ImapTransport, boxName: string): Promise<Imap.Box> =>
-	await new Promise((resolve, reject) => {
-		const cleanUp = () => {
-			client.removeListener('close', onLost);
-			client.removeListener('end', onLost);
-		};
-
-		const onLost = () => {
-			cleanUp();
-			reject(new ConnectionLostError());
-		};
-
-		client.once('close', onLost);
-		client.once('end', onLost);
-
-		client.openBox(boxName, (error, box) => {
-			cleanUp();
-			if (error) reject(error);
-			else resolve(box);
-		});
-	});
-
-/**
- * One long-lived IMAP connection. Configured with `reconnect` it restores itself after a drop and
- * can pre-empt one on a schedule, replacing the transport underneath while its own identity holds,
- * so a caller attaches its listeners once and never sees the swap.
+ * One long-lived IMAP connection. When `reconnect` is configured it restores itself after a drop
+ * and can pre-empt one on a schedule, replacing the transport underneath while its own identity
+ * holds — so a caller attaches its listeners once and never sees the swap. `close` then means the
+ * connection is gone for good.
  */
 export class ImapSimple {
 	static async connect(
 		options: ImapConnectionOptions,
 		reconnect?: ReconnectOptions,
 		/** Called again for every reconnect, so a fake transport stays a fake. */
-		createTransport: () => ImapTransport = () => new Imap(toImapOptions(options)),
+		createTransport: () => ImapTransport = () => new ImapFlow(toImapFlowOptions(options)),
 	): Promise<ImapSimple> {
 		const connection = new ImapSimple(createTransport, reconnect);
-		await connection.open();
+		await connection.start();
 		if (reconnect?.interval !== undefined) connection.scheduleReplace(reconnect.interval);
 
 		return connection;
@@ -182,7 +121,7 @@ export class ImapSimple {
 	/** The error reported, if any; the close that follows is its consequence, not a separate event. */
 	private failure: Error | undefined;
 
-	/** Why an unrecoverable drop gave up, for the close it reports. */
+	/** Why an unrecoverable drop gave up, for the close it reports and for a `start` that raced it. */
 	private dropCause: Error | undefined;
 
 	/** `close` was emitted; the connection is spent and stays silent from here on. */
@@ -193,6 +132,7 @@ export class ImapSimple {
 
 	private queue: Promise<unknown> = Promise.resolve();
 
+	/** Arrivals that landed before a handler was registered. */
 	private readonly pending: Arrival[] = [];
 
 	/** Bumped on every swap, so work cut short by one can be told apart from work that just failed. */
@@ -200,8 +140,6 @@ export class ImapSimple {
 
 	/** Distinguishes the attempt that is still wanted from one that timed out and kept running. */
 	private attempt = 0;
-
-	private abandon: ((error: Error) => void) | undefined;
 
 	private timer: NodeJS.Timeout | undefined;
 
@@ -218,10 +156,13 @@ export class ImapSimple {
 
 	private constructor(
 		private readonly createTransport: () => ImapTransport,
-		private readonly reconnectOptions: ReconnectOptions | undefined,
+		private readonly reconnectOptions?: ReconnectOptions,
 	) {}
 
-	/** Serialised, because a handler that reads the mailbox and acts on it cannot overlap itself. */
+	/**
+	 * Handles new mail. Runs are serialised, because a handler that reads the mailbox and then
+	 * acts on what it read cannot overlap with itself.
+	 */
 	onArrival(handler: (arrival: Arrival) => Promise<void> | void): this {
 		this.handlers.arrival = handler;
 
@@ -233,6 +174,7 @@ export class ImapSimple {
 		return this;
 	}
 
+	/** Handles a failure the connection could not recover from. */
 	onError(handler: (error: Error) => void): this {
 		this.handlers.error = handler;
 		return this;
@@ -248,6 +190,12 @@ export class ImapSimple {
 	onReconnect(handler: () => void): this {
 		this.handlers.reconnect = handler;
 		return this;
+	}
+
+	catchUp(): void {
+		// What landed while the connection was down never reaches it as an event, so the count
+		// is honestly unknowable; the caller finds out by looking.
+		this.enqueue({ count: 'unknown' });
 	}
 
 	onFlags(handler: (event: FlagsEvent) => void): this {
@@ -273,6 +221,8 @@ export class ImapSimple {
 	private reportClose(): void {
 		if (this.closed) return;
 		this.closed = true;
+		// An armed replace would otherwise still fire and log in to the server.
+		clearTimeout(this.timer);
 		this.report('close', (handler) => handler(this.closeReason(), this.dropCause));
 	}
 
@@ -291,53 +241,60 @@ export class ImapSimple {
 		return this.failure ? 'error' : 'dropped';
 	}
 
-	/** The first transport. What the mailbox already holds is not an arrival; see `reopen`. */
-	private async open(): Promise<void> {
-		this.install(await this.dial());
-	}
+	private async start(): Promise<void> {
+		const client = await this.open();
 
-	/**
-	 * A transport that is up and watching the mailbox, or none at all. Bounded, so a server that
-	 * answers the handshake and then goes quiet cannot leave a caller waiting for good.
-	 */
-	private async dial(): Promise<ImapTransport> {
-		const client = this.createTransport();
-
-		try {
-			await withTimeout(this.handshake(client), this.reconnectTimeout);
-		} catch (error) {
-			// Left connected it keeps the handlers `handshake` wired to it, and its later close
-			// would start a restore of a connection that never came up.
+		// The transport can drop during the first SELECT: the close was already reported, and a
+		// connection that never came up is not installed behind the caller's back.
+		if (this.closed) {
 			this.discard(client);
-			throw error;
+			throw this.failure ?? this.dropCause ?? new ConnectionLostError();
 		}
 
-		return client;
+		this.install(client);
 	}
 
-	private async handshake(client: ImapTransport): Promise<void> {
-		await connectTransport(client);
+	private async open(): Promise<ImapTransport> {
+		const client = this.createTransport();
+		await client.connect();
 
 		// Wired before the SELECT, so a transport that drops under it is still recovered from.
-		client.on('error', (error: Error) => this.onTransportError(error));
+		client.on('error', (error: Error) => this.onTransportError(error, client));
 		client.on('close', () => this.onTransportClose(client));
 
 		const mailbox = this.reconnectOptions?.mailbox;
-		if (mailbox !== undefined) await selectMailbox(client, mailbox);
+		if (mailbox !== undefined) {
+			try {
+				this.assertRan(await client.mailboxOpen(mailbox), 'SELECT', client);
+			} catch (error) {
+				this.discard(client);
+				throw error;
+			}
+		}
+
+		return client;
 	}
 
 	private install(client: ImapTransport): void {
 		this.client = client;
 		this.installed = true;
 
-		client.on('mail', (count: number) => this.enqueue({ count }));
-		client.on('update', (seqNo: number, info: FlagsEvent['info']) =>
-			this.report('flags', (handler) => handler({ seqNo, info })),
-		);
+		// An `exists` that only reports expunged messages is not an arrival.
+		client.on('exists', ({ count, prevCount }) => {
+			if (count > prevCount) this.enqueue({ count: count - prevCount });
+		});
+		client.on('flags', (data) => this.report('flags', (handler) => handler(data)));
 	}
 
-	private onTransportError(error: Error): void {
+	private onTransportError(error: Error, client: ImapTransport): void {
+		// A transport still being dialled surfaces its failure through the SELECT it interrupts;
+		// losing the installed connection over it would cut short work the drop never touched.
+		if (this.installed && client !== this.client) return;
+
+		// imapflow rejects its in-flight commands as the connection dies, and that reaches a
+		// handler before the `close` does, so the transport is spent from this first error.
 		this.lose();
+
 		// A connection that restores itself reports the failure it could not recover from, not
 		// every one on the way there — `restore` reports if it runs out of road.
 		if (this.canRestore()) return;
@@ -360,13 +317,9 @@ export class ImapSimple {
 		void this.restore();
 	}
 
-	/**
-	 * Gives up on the current transport. A handler waiting on one of its commands is let go
-	 * explicitly, because node-imap abandons its request queue on a close without calling back.
-	 */
+	/** Gives up on the current transport, so work still running against it counts as stale. */
 	private lose(): void {
 		this.generation += 1;
-		this.abandon?.(new ConnectionLostError());
 	}
 
 	private canRestore(): boolean {
@@ -384,23 +337,24 @@ export class ImapSimple {
 			const attempt = this.attempt;
 
 			try {
-				await this.reopen(attempt);
+				await withTimeout(this.reopen(attempt), this.reconnectTimeout);
 				return;
 			} catch (error) {
 				// Another restore has taken over, or the caller is gone: either way this one is
 				// no longer the connection anyone is waiting on.
 				if (attempt !== this.attempt || !this.canRestore()) return;
 
-				if (tries + 1 === RESTORE_ATTEMPTS) {
-					// A drop nothing could be done about, so the close carries `dropped` and the
-					// attempt that failed. Reporting an error first would relabel it as one the
-					// caller can read.
-					this.dropCause = error instanceof Error ? error : new Error(String(error));
-					this.reportClose();
+				if (tries + 1 < RESTORE_ATTEMPTS) {
+					if (await this.waitToTryAgain(tries, attempt)) continue;
 					return;
 				}
 
-				if (!(await this.waitToTryAgain(tries, attempt))) return;
+				// A drop nothing could be done about, so the close carries `dropped` and the
+				// attempt that failed. Reporting an error first would relabel it as one the
+				// caller can read.
+				this.dropCause = error instanceof Error ? error : new Error(String(error));
+				this.reportClose();
+				return;
 			}
 		}
 	}
@@ -420,10 +374,10 @@ export class ImapSimple {
 		// A scheduled replacement tears the transport down itself, so no `close` reaches us.
 		this.lose();
 		this.discard(this.client);
-		const client = await this.dial();
+		const client = await this.open();
 
-		// Another attempt may have taken over while this one dialled, so it discards the transport
-		// it built itself: reading `this.client` would tear down whichever one won the race.
+		// A timed-out attempt keeps running, so it discards the transport it built itself: reading
+		// `this.client` would tear down whichever transport won the race instead.
 		if (attempt !== this.attempt || this.ended || this.closed) {
 			this.discard(client);
 			return;
@@ -434,25 +388,14 @@ export class ImapSimple {
 		this.catchUp();
 	}
 
-	/**
-	 * Mail that landed while the connection was down is already in the mailbox by the time it is
-	 * reopened, so the server never reports it as an arrival — and how much there is, nothing can
-	 * say. The caller is asked to go looking.
-	 */
-	private catchUp(): void {
-		this.enqueue({ count: 'unknown' });
-	}
-
 	/** Silences a transport being thrown away and tears it down; failing to close is immaterial. */
 	private discard(client: ImapTransport | undefined): void {
 		if (client === undefined) return;
 
 		client.removeAllListeners();
-		// node-imap emits ECONNRESET while disconnecting, and has no upstream fix:
-		// https://github.com/mscdex/node-imap/issues/391
 		client.on('error', () => {});
 		try {
-			client.end();
+			client.close();
 		} catch {
 			// The transport is being abandoned either way.
 		}
@@ -479,163 +422,154 @@ export class ImapSimple {
 		}
 
 		const queuedOn = this.generation;
-		this.queue = this.queue.then(async () => {
+		const done = this.queue.then(async () => {
 			if (this.generation !== queuedOn) return;
 
-			const lost = new Promise<never>((_, reject) => (this.abandon = reject));
 			try {
-				await Promise.race([handler(arrival), lost]);
+				await handler(arrival);
 			} catch (error) {
-				// Work a drop or a swap cut short belongs to a transport that no longer exists:
-				// `restore` reports if it cannot recover, and reopening rescans what was missed.
+				// Work a swap cut short belongs to a transport that no longer exists, and the
+				// reconnect is reported on its own; there is nothing here worth repeating.
 				if (this.generation !== queuedOn) return;
 				this.reportError(error);
-			} finally {
-				this.abandon = undefined;
 			}
 		});
+		this.queue = done;
 	}
 
-	/** Matching messages, with any `HEADER` part parsed into an object. */
-	async search(searchCriteria: SearchCriteria[], fetchOptions: Imap.FetchOptions, limit?: number) {
-		return await new Promise<Message[]>((resolve, reject) => {
-			this.client.search(searchCriteria, (e, uids) => {
-				if (e) {
-					reject(e);
-					return;
-				}
-
-				if (uids.length === 0) {
-					resolve([]);
-					return;
-				}
-
-				const uidsToFetch = limit && limit > 0 ? uids.slice(0, limit) : uids;
-
-				const fetch = this.client.fetch(uidsToFetch, fetchOptions);
-				let messagesRetrieved = 0;
-				const messages: Message[] = [];
-
-				const fetchOnMessage = async (message: Imap.ImapMessage, seqNo: number) => {
-					const msg: Message = await getMessage(message);
-					msg.seqNo = seqNo;
-					messages.push(msg);
-
-					messagesRetrieved++;
-					if (messagesRetrieved === uidsToFetch.length) {
-						resolve(messages.filter((m) => !!m));
-					}
-				};
-
-				const fetchOnError = (error: Error) => {
-					fetch.removeListener('message', fetchOnMessage);
-					fetch.removeListener('end', fetchOnEnd);
-					reject(error);
-				};
-
-				const fetchOnEnd = () => {
-					fetch.removeListener('message', fetchOnMessage);
-					fetch.removeListener('error', fetchOnError);
-					// A fetch can still emit ECONNRESET after `end`, and an unhandled one is fatal.
-					fetch.on('error', () => {});
-				};
-
-				fetch.on('message', fetchOnMessage);
-				fetch.once('error', fetchOnError);
-				fetch.once('end', fetchOnEnd);
-			});
-		});
+	/**
+	 * imapflow settles some commands with a falsy value rather than rejecting when
+	 * the connection dies under them, which would otherwise read as an empty result.
+	 */
+	private assertRan<T>(
+		result: T | false | null | undefined,
+		command: string,
+		/** The transport the command ran on, which during `open` is not yet `this.client`. */
+		client: ImapTransport = this.client,
+	): T {
+		if (result === false || result === null || result === undefined) {
+			if (!client.usable) throw new ConnectionLostError();
+			throw new Error(`IMAP ${command} did not complete`);
+		}
+		return result;
 	}
 
-	/** One part of a message: a slice of the body, or an attachment. */
-	private async getPartData(message: Message, part: MessagePart) {
-		return await new Promise<PartData>((resolve, reject) => {
-			const fetch = this.client.fetch(message.attributes.uid, {
-				bodies: [part.partID],
-				struct: true,
-			});
+	async search(
+		criteria: SearchObject,
+		query: FetchQueryObject,
+		/** Fetch at most this many of the oldest matches. */
+		limit?: number,
+	): Promise<FetchMessageObject[]> {
+		const client = this.client;
+		const found = await client.search(criteria, { uid: true });
+		const uids = this.assertRan(Array.isArray(found) ? found : undefined, 'SEARCH', client);
+		if (uids.length === 0) return [];
 
-			const fetchOnMessage = async (msg: ImapMessage) => {
-				const result = await getMessage(msg);
-				if (result.parts.length !== 1) {
-					reject(new Error('Got ' + result.parts.length + ' parts, should get 1'));
-					return;
-				}
+		// oldest first, because imapflow returns SEARCH results in ascending UID order
+		const wanted = limit && limit > 0 ? uids.slice(0, limit) : uids;
+		const messages: FetchMessageObject[] = [];
 
-				const data = result.parts[0].body as string;
-				// Some providers (e.g. iCloud) omit a part's encoding; 7BIT is the IMAP
-				// default and leaves the body untransformed.
-				const encoding = (part.encoding || '7BIT').toUpperCase();
-				resolve(PartData.fromData(data, encoding, part.params?.charset));
-			};
+		for await (const fetched of client.fetch(wanted, query, { uid: true })) {
+			messages.push(fetched);
+		}
 
-			const fetchOnError = (error: Error) => {
-				fetch.removeListener('message', fetchOnMessage);
-				fetch.removeListener('end', fetchOnEnd);
-				reject(error);
-			};
+		// `fetch` yields nothing at all when the mailbox went away under it, which
+		// would otherwise read as "no new mail" and lose the batch silently.
+		if (messages.length === 0 && !client.usable) throw new ConnectionLostError();
 
-			const fetchOnEnd = () => {
-				fetch.removeListener('message', fetchOnMessage);
-				fetch.removeListener('error', fetchOnError);
-				fetch.on('error', () => {});
-			};
-
-			fetch.once('message', fetchOnMessage);
-			fetch.once('error', fetchOnError);
-			fetch.once('end', fetchOnEnd);
-		});
+		return messages;
 	}
 
-	/** The message body in the wanted form, or an empty string when it holds none. */
-	async downloadText(message: Message, subtype: string): Promise<string> {
-		const struct = message.attributes.struct;
-		if (!struct) return '';
+	/** The `text/<subtype>` body, or `''` when the message has none the server will hand over. */
+	async downloadText(message: FetchMessageObject, subtype: string): Promise<string> {
+		const partID = message.bodyStructure && bodyPartID(message.bodyStructure, subtype);
+		if (!partID) return '';
 
-		const part = bodyPart(getParts(struct), subtype);
-		if (!part) return '';
-
+		const client = this.client;
 		try {
-			const data = await this.getPartData(message, part);
-			return data.toString();
-		} catch {
-			// A body that cannot be fetched or decoded is reported as an absent one.
+			return (await this.downloadPart(message.uid, partID)).content.toString('utf8');
+		} catch (error) {
+			if (error instanceof ConnectionLostError) throw error;
+			if (!client.usable) throw new ConnectionLostError();
 			return '';
 		}
 	}
 
-	async downloadAttachments(message: Message): Promise<Attachment[]> {
-		const struct = message.attributes.struct;
-		if (!struct) return [];
+	/** In canonical part-number order. */
+	async downloadAttachments(message: FetchMessageObject): Promise<Attachment[]> {
+		const structure = message.bodyStructure;
+		const partIDs = structure ? attachmentPartIDs(structure) : [];
+		if (!structure || partIDs.length === 0) return [];
 
-		return await Promise.all(
-			attachmentParts(getParts(struct)).map(async (part) => {
-				const data = await this.getPartData(message, part);
+		// A message that is itself the attachment has no part number of its own, so `partIDOf`
+		// supplied one. Only `download` resolves that to TEXT; `downloadMany` would ask for
+		// BODY[1] and can come back empty, aborting the batch instead of yielding the attachment.
+		if (structure.childNodes === undefined) {
+			return [await this.downloadPart(message.uid, partIDs[0])];
+		}
 
-				return {
-					filename: part.disposition?.params?.filename,
-					content: data.buffer,
-				};
-			}),
-		);
-	}
+		const downloaded = await this.client.downloadMany(String(message.uid), partIDs, { uid: true });
 
-	async addFlags(uid: number[], flags: string | string[]) {
-		return await new Promise<void>((resolve, reject) => {
-			this.client.addFlags(uid, flags, (e) => (e ? reject(e) : resolve()));
+		return partIDs.map((partID) => {
+			const part = downloaded[partID];
+			return {
+				filename: part?.meta?.filename,
+				contentType: part?.meta?.contentType,
+				content: this.assertRan(part?.content, 'FETCH'),
+			};
 		});
 	}
 
-	/** Returns a list of mailboxes (folders). */
-	async getBoxes() {
-		return await new Promise<Imap.MailBoxes>((resolve, reject) => {
-			this.client.getBoxes((e, boxes) => (e ? reject(e) : resolve(boxes)));
+	/**
+	 * One part at a time, because it is `download` rather than `downloadMany` that converts the
+	 * charset to UTF-8, resolves `format=flowed`, and knows a single-part message answers on
+	 * TEXT rather than on part 1. imapflow decodes the transfer-encoding as it streams.
+	 */
+	private async downloadPart(
+		uid: number,
+		partID: string,
+	): Promise<{ content: Buffer; filename?: string; contentType?: string }> {
+		const client = this.client;
+		const downloaded = await client.download(String(uid), partID, {
+			uid: true,
+			chunkSize: DOWNLOAD_CHUNK_SIZE,
 		});
+
+		const content = this.assertRan(downloaded?.content, 'FETCH', client);
+
+		const chunks: Buffer[] = [];
+		for await (const chunk of content) {
+			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+		}
+
+		if (!client.usable) throw new ConnectionLostError();
+
+		return {
+			content: Buffer.concat(chunks),
+			filename: downloaded?.meta?.filename,
+			contentType: downloaded?.meta?.contentType,
+		};
 	}
 
-	/** Open a mailbox */
-	async openBox(boxName: string): Promise<Imap.Box> {
-		return await selectMailbox(this.client, boxName);
+	async addFlags(uids: number[], flags: string[]): Promise<void> {
+		if (uids.length === 0) return;
+
+		const applied = await this.client.messageFlagsAdd(uids.join(','), flags, { uid: true });
+
+		// A matching-nothing STORE still reports true, so `false` is always a refusal —
+		// a read-only mailbox, or one whose PERMANENTFLAGS omits the flag.
+		this.assertRan(applied || undefined, 'STORE');
+	}
+
+	async openBox(boxName: string): Promise<MailboxObject> {
+		const opened = await this.client.mailboxOpen(boxName);
+		return this.assertRan(opened || undefined, 'SELECT');
+	}
+
+	async list(): Promise<ListResponse[]> {
+		const boxes = await this.client.list();
+		if (boxes.length === 0 && !this.client.usable) throw new ConnectionLostError();
+		return boxes;
 	}
 
 	/** Disconnects for good. Returns immediately; the connection is gone shortly after. */
@@ -648,18 +582,20 @@ export class ImapSimple {
 		const client = this.client;
 		client.removeAllListeners();
 
-		// LOGOUT goes unanswered on a half-open socket, so the wait for `close` is bounded.
-		const teardown = setTimeout(() => client.destroy(), LOGOUT_GRACE_PERIOD);
-		teardown.unref();
-
-		client.once('close', () => {
-			clearTimeout(teardown);
-			this.reportClose();
-		});
-		// node-imap emits ECONNRESET while disconnecting, and has no upstream fix:
-		// https://github.com/mscdex/node-imap/issues/391
+		client.once('close', () => this.reportClose());
 		client.on('error', () => {});
 
-		client.end();
+		const teardown = setTimeout(() => client.close(), LOGOUT_GRACE_PERIOD);
+		teardown.unref();
+
+		void client
+			.logout()
+			.catch(() => client.close())
+			.finally(() => {
+				clearTimeout(teardown);
+				// The transport a restore already discarded emits no `close` of its own, so the
+				// settled LOGOUT is what says the connection is gone.
+				this.reportClose();
+			});
 	}
 }

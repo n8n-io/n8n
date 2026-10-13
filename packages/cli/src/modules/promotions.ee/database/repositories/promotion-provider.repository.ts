@@ -1,6 +1,11 @@
-import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
+import {
+	BaseRepository,
+	isForeignKeyConstraintError,
+	type OperationContext,
+	TransactionRunner,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, QueryFailedError } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { PromotionProvider } from '../entities/promotion-provider.entity';
 import { PromotionConflictError } from '../promotion-conflict.error';
@@ -30,6 +35,26 @@ export class PromotionProviderRepository extends BaseRepository<PromotionProvide
 		changes: Partial<Pick<PromotionProvider, 'name' | 'config' | 'auth'>>,
 	): Promise<void> {
 		await this.update({ id }, changes);
+	}
+
+	async updateProviderIfUnchanged(
+		id: string,
+		expected: Pick<PromotionProvider, 'config' | 'auth'>,
+		changes: Partial<Pick<PromotionProvider, 'name' | 'config' | 'auth'>>,
+	): Promise<boolean> {
+		// PostgreSQL json needs jsonb equality. SQLite stores serialized JSON text.
+		const configUnchanged =
+			this.manager.connection.options.type === 'postgres'
+				? 'CAST("config" AS jsonb) = CAST(:expectedConfig AS jsonb)'
+				: '"config" = :expectedConfig';
+		const result = await this.createQueryBuilder()
+			.update(PromotionProvider)
+			.set(changes)
+			.where('"id" = :id', { id })
+			.andWhere('"auth" = :expectedAuth', { expectedAuth: expected.auth })
+			.andWhere(configUnchanged, { expectedConfig: JSON.stringify(expected.config) })
+			.execute();
+		return result.affected === 1;
 	}
 
 	/**
@@ -62,24 +87,4 @@ export class PromotionProviderRepository extends BaseRepository<PromotionProvide
 		});
 		return { count, data };
 	}
-}
-
-/** Mirrors `isUniqueConstraintError` in `@n8n/db`, for foreign keys. */
-function isForeignKeyConstraintError(error: unknown): boolean {
-	if (!(error instanceof QueryFailedError)) return false;
-
-	// TypeORM types `driverError` as `any`, so narrow it via `unknown`.
-	const driverError: unknown = error.driverError;
-	if (typeof driverError !== 'object' || driverError === null) return false;
-
-	const code =
-		'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
-
-	// PostgreSQL: 23503 = foreign_key_violation.
-	if (code === '23503') return true;
-
-	// SQLite: the extended code is unambiguous; the base code covers every
-	// constraint kind, so disambiguate via the message.
-	if (code === 'SQLITE_CONSTRAINT_FOREIGNKEY') return true;
-	return code === 'SQLITE_CONSTRAINT' && /FOREIGN KEY constraint/i.test(error.message);
 }

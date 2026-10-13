@@ -35,6 +35,10 @@ export type ToolCallData = {
 		messageLog?: AIMessage[];
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
 		type: string | number | true | object;
+		/** True when the user denied this call in a Human-in-the-Loop node, so the tool never ran */
+		hitlDenied?: boolean;
+		/** True when the tool run failed, so the observation is an error and not a result */
+		errored?: boolean;
 	};
 	observation: string;
 };
@@ -184,6 +188,8 @@ export interface ToolMetadata extends Record<string, unknown> {
 	originalSchema?: ZodType;
 	/** Whether this tool came from a toolkit (vs. a standalone tool node) */
 	isFromToolkit?: boolean;
+	/** Text the agent appends to its final reply when this tool was called during the run */
+	attribution?: string;
 }
 
 /**

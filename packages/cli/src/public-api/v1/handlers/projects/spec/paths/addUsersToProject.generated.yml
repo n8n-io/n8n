@@ -1,0 +1,58 @@
+operationId: addUsersToProject
+tags:
+  - Projects
+summary: Add one or more users to a project
+description: Add one or more users to a project on your instance.
+x-required-scope: project:manageMembers
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          relations:
+            type: array
+            items:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  minLength: 1
+                  description: The unique identifier of the user.
+                  example: 91765f0d-3b29-45df-adb9-35b23937eb92
+                role:
+                  type: string
+                  minLength: 1
+                  description: The role assigned to the user in the project.
+                  example: project:viewer
+              required:
+                - userId
+                - role
+            minItems: 1
+            description: A list of userIds and roles to add to the project.
+        required:
+          - relations
+responses:
+  '201':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

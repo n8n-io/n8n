@@ -19,6 +19,7 @@ import {
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTraceModelId,
 	setTracePromptVersion,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
@@ -599,6 +600,44 @@ describe('createInstanceAiTraceContext', () => {
 		await telemetry.provider?.shutdown();
 	});
 
+	it('stamps model_id on root and actor runs and native telemetry metadata', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+		const actorRun = await startForegroundActor(tracing!);
+		setTraceModelId(tracing, {
+			modelId: 'kimi-k3',
+			config: { provider: 'moonshotai.chat' },
+		});
+
+		const telemetryOrBuilder = tracing!.getTelemetry!({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+		});
+		const telemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
+
+		expect(telemetry.metadata).toEqual(
+			expect.objectContaining({
+				model_id: 'moonshotai/kimi-k3',
+			}),
+		);
+		expect(tracing?.rootRun.metadata).toHaveProperty('model_id', 'moonshotai/kimi-k3');
+		expect(actorRun.metadata).toHaveProperty('model_id', 'moonshotai/kimi-k3');
+		for (const run of [tracing!.rootRun, actorRun]) {
+			const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+			expect(span?.attributes).toHaveProperty('langsmith.metadata.model_id', 'moonshotai/kimi-k3');
+		}
+
+		await telemetry.provider?.shutdown();
+	});
+
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {
 			attributes: {
@@ -1144,6 +1183,66 @@ describe('createInstanceAiTraceContext', () => {
 		// spans to flush — only the provider shuts down.
 		expect(provider.forceFlush).not.toHaveBeenCalled();
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the trace open for a background operation that outlives the root run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-background-op',
+			messageId: 'message-background-op',
+			runId: 'run-background-op',
+			userId: 'user-background-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		const provider = agentsMock.getProvider();
+
+		const acquired = createDeferredPromise<undefined>();
+		const operation = tracing!.withActiveSpan(tracing!.actorRun, async () => {
+			await withCurrentTraceSpan({ name: 'sandbox: acquire' }, async () => await acquired.promise);
+			await withCurrentTraceSpan({ name: 'sandbox: sync-skills' }, async () => {});
+		});
+		tracing!.keepOpenUntilSettled?.(operation);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+		expect(tracing?.isLive?.()).toBe(true);
+
+		acquired.resolve(undefined);
+		await operation;
+		await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+		const spans = agentsMock.getSpans();
+		const acquireSpan = spans.find((span) => span.name === 'sandbox: acquire');
+		expect(acquireSpan?.ended).toBe(true);
+		expect(acquireSpan?.status?.message).toBeUndefined();
+		expect(spans.find((span) => span.name === 'sandbox: sync-skills')?.ended).toBe(true);
+		expect(tracing?.isLive?.()).toBe(false);
+	});
+
+	it('releases the trace after a time limit when a background operation does not settle', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-stuck-op',
+			messageId: 'message-stuck-op',
+			runId: 'run-stuck-op',
+			userId: 'user-stuck-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		vi.useFakeTimers();
+		try {
+			tracing!.keepOpenUntilSettled?.(new Promise<void>(() => {}));
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+			expect(provider.shutdown).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+			expect(provider.shutdown).toHaveBeenCalledTimes(1);
+			expect(tracing?.isLive?.()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('keeps the provider alive for a queued memory task until it releases, then exports its span and shuts down', async () => {

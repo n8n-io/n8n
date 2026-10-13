@@ -10,6 +10,7 @@
 import type {
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalLlmUsage,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -19,9 +20,12 @@ import { z } from 'zod';
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
 import type { WorkflowResponse } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { isAgentArtifact } from '../harness/artifacts/agent-artifact';
 import { EVAL_ATTRIBUTIONS, type EvalAttribution } from '../harness/attribution';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
+	AgentArtifact,
+	BuildTimeout,
 	BuildTrace,
 	BuildExpectationResult,
 	ExecutionScenarioResult,
@@ -52,11 +56,20 @@ export const expectationResultsSchema = z.array(
 	}),
 );
 
+const buildTimeoutSchema = z.object({
+	kind: z.enum(['turn', 'conversation', 'inactivity']),
+	turn: z.number(),
+	elapsedMs: z.number(),
+});
+
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
 	passed: z.boolean().default(false),
 	score: z.number().default(0),
 	reasoning: z.string().default(''),
+	/** The budget that ended the conversation, when one did (harness/timeouts.ts).
+	 *  Repeats on every row of the case's build. */
+	buildTimeout: buildTimeoutSchema.optional(),
 	workflowId: z.string().optional(),
 	scenarioWorkflowId: z.string().optional(),
 	/** Set when the scenario ran against a built first-class Agent instead of a workflow. */
@@ -76,6 +89,8 @@ const targetOutputSchema = z.object({
 	agentEvalResult: z.unknown().optional(),
 	/** Rendered agent config + skills — attached to every agent row, deduped on reshape (first write wins). */
 	agentContext: z.string().optional(),
+	/** Structured, redacted agent preview. Persistence validates and caps it for export. */
+	agentArtifact: z.unknown().optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),
 	/** `claude` build spend in USD (--build-via-mcp only). Repeats on every row
@@ -96,10 +111,11 @@ const targetOutputSchema = z.object({
 
 export type TargetOutput = Omit<
 	z.infer<typeof targetOutputSchema>,
-	'evalResult' | 'agentEvalResult' | 'workflowJson' | 'buildTrace'
+	'evalResult' | 'agentEvalResult' | 'agentArtifact' | 'workflowJson' | 'buildTrace'
 > & {
 	evalResult?: InstanceAiEvalExecutionResult;
 	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
+	agentArtifact?: AgentArtifact;
 	workflowJson?: WorkflowResponse;
 	buildTrace?: BuildTrace;
 };
@@ -161,6 +177,9 @@ export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 		evalResult: isEvalResult(parsed.data.evalResult) ? parsed.data.evalResult : undefined,
 		agentEvalResult: isAgentEvalResult(parsed.data.agentEvalResult)
 			? parsed.data.agentEvalResult
+			: undefined,
+		agentArtifact: isAgentArtifact(parsed.data.agentArtifact)
+			? parsed.data.agentArtifact
 			: undefined,
 		workflowJson: isWorkflowResponse(parsed.data.workflowJson)
 			? parsed.data.workflowJson
@@ -244,6 +263,8 @@ export function reshapeLangSmithRuns(
 	buildExpectationsByKey: Map<string, BuildExpectationResult[]>,
 	n8nBaseUrl: string | undefined,
 	runDebugByThreadId: Map<string, InstanceAiRunDebugResponse[]> = new Map(),
+	/** Keyed by the build-cache key (`iteration:fileSlug`). */
+	harnessUsageByKey: Map<string, InstanceAiEvalLlmUsage[]> = new Map(),
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
@@ -264,6 +285,7 @@ export function reshapeLangSmithRuns(
 			let workflowId: string | undefined;
 			let agentId: string | undefined;
 			let agentArtifactContext: string | undefined;
+			let agentArtifact: AgentArtifact | undefined;
 			let buildError: string | undefined;
 			let threadId: string | undefined;
 			let workflowChecks: CheckOutcome[] | undefined;
@@ -271,6 +293,7 @@ export function reshapeLangSmithRuns(
 			let buildTrace: BuildTrace | undefined;
 			let buildCostUsd: number | undefined;
 			let buildTurns: number | undefined;
+			let buildTimeout: BuildTimeout | undefined;
 
 			for (const scenario of testCase.executionScenarios ?? []) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -297,6 +320,7 @@ export function reshapeLangSmithRuns(
 				if (output.agentId && !agentId) agentId = output.agentId;
 				if (output.agentContext && !agentArtifactContext)
 					agentArtifactContext = output.agentContext;
+				if (output.agentArtifact && !agentArtifact) agentArtifact = output.agentArtifact;
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
 				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
@@ -305,6 +329,7 @@ export function reshapeLangSmithRuns(
 				// Every row of the case repeats the build's spend — first defined wins.
 				buildCostUsd ??= output.buildCostUsd;
 				buildTurns ??= output.buildTurns;
+				buildTimeout ??= output.buildTimeout;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -330,6 +355,7 @@ export function reshapeLangSmithRuns(
 					workflowId = output.workflowId;
 					agentId = output.agentId;
 					agentArtifactContext = output.agentContext;
+					agentArtifact = output.agentArtifact;
 					threadId = output.threadId;
 					if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
 					workflowChecks = output.workflowChecks;
@@ -337,11 +363,13 @@ export function reshapeLangSmithRuns(
 					buildTrace = output.buildTrace;
 					buildCostUsd = output.buildCostUsd;
 					buildTurns = output.buildTurns;
+					buildTimeout = output.buildTimeout;
 				}
 			}
 
 			const transcript = threadId ? transcriptByThreadId.get(threadId) : undefined;
-			const buildExpectationResults = buildExpectationsByKey.get(`${String(iter)}:${fileSlug}`);
+			const buildKey = `${String(iter)}:${fileSlug}`;
+			const buildExpectationResults = buildExpectationsByKey.get(buildKey);
 			runResults.push({
 				testCase,
 				fileSlug,
@@ -349,8 +377,10 @@ export function reshapeLangSmithRuns(
 				workflowId,
 				agentId,
 				agentArtifactContext,
+				agentArtifact,
 				executionScenarioResults,
 				buildError,
+				buildTimeout,
 				threadId,
 				transcript,
 				buildExpectationResults,
@@ -361,6 +391,7 @@ export function reshapeLangSmithRuns(
 				buildTurns,
 				n8nBaseUrl,
 				runDebug: threadId ? runDebugByThreadId.get(threadId) : undefined,
+				harnessUsage: harnessUsageByKey.get(buildKey),
 			});
 		}
 		allRunResults.push(runResults);

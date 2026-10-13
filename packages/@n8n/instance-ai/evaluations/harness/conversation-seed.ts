@@ -3,7 +3,11 @@
 // `mode: 'replay'` reconstructs one from a LangSmith trace at run time (see
 // langsmith-seed.ts). Either way the shape below is what reaches restore-thread.
 
-import { instanceAiEvalSeedAgentSchema } from '@n8n/api-types';
+import {
+	instanceAiEvalSeedAgentSchema,
+	instanceAiEvalSeedArtifactIdSchema,
+	instanceAiEvalSeedFolderSchema,
+} from '@n8n/api-types';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
@@ -31,6 +35,10 @@ const SeedWorkflowSchema = z.object({
 	connections: z.record(z.unknown()),
 	/** Restore it published (see `instanceAiEvalSeedWorkflowSchema`). */
 	published: z.boolean().optional(),
+	/** The `folders[].id` this workflow is created in. Omit for the project root.
+	 *  Must name a declared folder — checked at the case level, which sees both
+	 *  arrays (`findSeedFolderIssues`). */
+	parentFolderId: instanceAiEvalSeedArtifactIdSchema.optional(),
 });
 
 /** A project seeded before the live turn. Only the name is authored: the
@@ -167,6 +175,15 @@ export const ConversationSeedSchema = z.object({
 		),
 	/** Data tables the history references, recreated (and id-rewritten) on restore. */
 	dataTables: z.array(SeedDataTableSchema).default([]),
+	/** Folders created in the thread's project before the live turn, so a case can
+	 *  grade how the agent finds a folder's contents. Seeded by `restore-thread`,
+	 *  which generates the ids: like data tables, they are carried through the
+	 *  remap untouched. Names are created verbatim (no seed suffix) because the
+	 *  live turn names the folder the way a user would; a leftover of the same
+	 *  name at the project root is evicted first. Unique ids, parent references
+	 *  and workflow placement are checked at the case level (`findSeedFolderIssues`),
+	 *  the one place that sees both arrays. */
+	folders: z.array(instanceAiEvalSeedFolderSchema).max(20).default([]),
 	/** Agents the history built, recreated (and bound to the thread) on restore, so
 	 *  the live turn edits one that already exists. */
 	agents: z.array(instanceAiEvalSeedAgentSchema).default([]),
@@ -392,9 +409,13 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		...seed.workflows.map((workflow) => workflow.id),
 		...seed.agents.map((agent) => agent.id),
 	]);
+	// `parentFolderId` stays out of the blob: it names a folder id, which is not in
+	// the id space the replace below rewrites, so a workflow id that happens to be a
+	// substring of a folder id would otherwise corrupt the reference. Re-attached
+	// by index after the parse, unchanged.
 	let serialized = JSON.stringify({
 		messages: seed.messages,
-		workflows: seed.workflows,
+		workflows: seed.workflows.map(({ parentFolderId: _placement, ...workflow }) => workflow),
 		agents: seed.agents,
 	});
 	// Longest id first, for the same reason the name pass below sorts: if one id were a
@@ -429,9 +450,10 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	// Uniquify names after the id pass, so the rename can't perturb id matching.
-	const workflows = remapped.workflows.map((workflow) => ({
+	const workflows = remapped.workflows.map((workflow, index) => ({
 		...workflow,
 		name: uniquifySeedName(workflow.name, freshSeedNameSuffix()),
+		parentFolderId: seed.workflows[index].parentFolderId,
 	}));
 
 	// Any mention in the seeded history follows the workflow, so the agent's own
@@ -476,11 +498,11 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		},
 	}));
 
-	// Data table ids are remapped server-side on restore (id is generated, not
-	// pinnable), so carry them through untouched here. `projects` likewise: the
-	// serialized blob above covers only the id-bearing artifacts, so anything not
-	// re-attached here comes back as the schema's `[]` default — silently dropping
-	// the fixture instead of failing.
+	// Data table and folder ids are remapped server-side on restore (the id is
+	// generated, not pinnable), so carry them through untouched here. `projects`
+	// likewise: the serialized blob above covers only the id-bearing artifacts, so
+	// anything not re-attached here comes back as the schema's `[]` default —
+	// silently dropping the fixture instead of failing.
 	return {
 		...remapped,
 		messages,
@@ -488,6 +510,7 @@ export function remapSeedArtifactIds(seed: ConversationSeed): ConversationSeed {
 		agents,
 		source: seed.source,
 		dataTables: seed.dataTables,
+		folders: seed.folders,
 		projects: seed.projects,
 	};
 }

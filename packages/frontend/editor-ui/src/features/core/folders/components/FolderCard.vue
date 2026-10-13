@@ -232,7 +232,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ data.name }}
 						</N8nHeading>
-						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+						<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
 					</div>

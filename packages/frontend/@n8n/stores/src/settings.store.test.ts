@@ -6,6 +6,30 @@ import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
 
+it.each([
+	{ active: true, enabled: true, expected: true },
+	{ active: true, enabled: undefined, expected: true },
+	{ active: true, enabled: false, expected: false },
+	{ active: false, enabled: true, expected: false },
+])(
+	'gates Agents and its features (active=$active, enabled=$enabled)',
+	({ active, enabled, expected }) => {
+		setActivePinia(createPinia());
+		const store = useSettingsStore();
+		store.settings.activeModules = active ? ['agents'] : [];
+		store.moduleSettings.agents = {
+			enabled,
+			modules: ['tasks'],
+			knowledgeBaseEnabled: true,
+			proxyEnabled: false,
+		};
+
+		expect(store.isAgentsEnabled).toBe(expected);
+		expect(store.isAgentModuleActive('tasks')).toBe(expected);
+		expect(store.isAgentsKnowledgeBaseFeatureEnabled).toBe(expected);
+	},
+);
+
 const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
@@ -143,74 +167,6 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isAutosaveEnabled).toBe(true);
-		});
-	});
-
-	describe('isExecuteWorkflowNodeExcluded', () => {
-		it('should return true when executeWorkflow is in excludeNodes', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflow'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(true);
-		});
-
-		it('should return false when executeWorkflow is not excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-
-		it('should return false when only executeWorkflowTrigger is excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-	});
-
-	describe('isSubworkflowConversionDisabled', () => {
-		it.each([
-			[['n8n-nodes-base.executeWorkflow']],
-			[['n8n-nodes-base.executeWorkflowTrigger']],
-			[['n8n-nodes-base.executeWorkflow', 'n8n-nodes-base.executeWorkflowTrigger']],
-		])('should return true when %j is excluded', async (excludeNodes) => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes,
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(true);
-		});
-
-		it('should return false when both sub-workflow nodes are available', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(false);
 		});
 	});
 

@@ -20,6 +20,14 @@ export const appAliases = (editorUiDir: string): Alias[] => [
 ];
 
 export const editorUiAliases = (editorUiDir: string, packagesDir: string): Alias[] => [
+	// Allow direct import of the runtime IIFE bundle (for ?raw use in editor-ui).
+	// Must precede the @n8n/expression-runtime stub in appAliases, or the stub
+	// (which matches the sub-path too) would intercept it. The regex preserves the
+	// ?raw query suffix so rolldown treats the import as a raw string asset.
+	{
+		find: /^@n8n\/expression-runtime\/runtime-bundle\.iife\.js(\?.*)?$/,
+		replacement: `${resolve(packagesDir, '@n8n', 'expression-runtime', 'dist', 'bundle', 'runtime.iife.js')}$1`,
+	},
 	...appAliases(editorUiDir),
 	...shellAliases(packagesDir),
 ];

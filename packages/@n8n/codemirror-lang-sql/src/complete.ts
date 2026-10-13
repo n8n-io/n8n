@@ -35,7 +35,7 @@ function pathFor(doc: Text, id: SyntaxNode) {
 }
 
 function parentsFor(doc: Text, node: SyntaxNode | null) {
-	for (let path: string[] = []; ; ) {
+	for (const path: string[] = []; ; ) {
 		if (node?.name !== '.') return path;
 		const name = tokenBefore(node);
 		if (!plainID(name)) return path;

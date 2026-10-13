@@ -1,11 +1,14 @@
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+import { MCP_JSON_NUDGE_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility';
 import {
 	MCP_JSON_NUDGE_MODAL_KEY,
 	type McpJsonNudgeSurface,
 } from '@/experiments/mcpJsonNudge/constants';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 export type McpJsonNudgeAction = () => void | Promise<void>;
 
@@ -13,6 +16,7 @@ export function useMcpJsonNudgeTrigger() {
 	const uiStore = useUIStore();
 	const eligibility = useMcpJsonNudgeEligibility();
 	const telemetry = useTelemetry();
+	const posthogStore = usePostHog();
 
 	/**
 	 * Runs `action` (the export or import) behind the nudge. When the nudge is
@@ -25,7 +29,21 @@ export function useMcpJsonNudgeTrigger() {
 		// action, so let the new one through untouched.
 		const nudgeAlreadyOpen = uiStore.isModalActiveById[MCP_JSON_NUDGE_MODAL_KEY];
 
-		if (nudgeAlreadyOpen || !eligibility.canShow()) {
+		if (nudgeAlreadyOpen) {
+			await action();
+			return;
+		}
+
+		// The flag is a multivariate experiment, and PostHog reads exposure from
+		// `$feature_flag_called`. Report it for everyone who would see the nudge but
+		// for their arm, so the control arm has a baseline; keying it off the modal
+		// opening would only ever expose the test arm. The store dedupes per
+		// flag+variant and skips users outside the rollout.
+		if (eligibility.isEligibleApartFromExperiment()) {
+			posthogStore.trackExposure(MCP_JSON_NUDGE_EXPERIMENT.name);
+		}
+
+		if (!eligibility.canShow()) {
 			await action();
 			return;
 		}

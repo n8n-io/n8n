@@ -82,6 +82,35 @@ describe('validateEntrySchemas', () => {
 		expect(errors).toEqual([]);
 	});
 
+	it('accepts a union of object schemas', () => {
+		const UNION_FIXTURE = defineTelemetryEvents({
+			USER_FINISHED_ACTION: {
+				name: 'User finished action',
+				description: 'Fires when an action ends.',
+				properties: z.discriminatedUnion('status', [
+					z.object({ status: z.literal('success'), count: z.number() }),
+					z.object({ status: z.literal('error'), reason: z.string() }),
+				]),
+			},
+		});
+
+		expect(validateEntrySchemas({ ACTIONS: UNION_FIXTURE })).toEqual([]);
+	});
+
+	it('rejects a union with a non-object member', () => {
+		const UNION_FIXTURE = defineTelemetryEvents({
+			USER_FINISHED_ACTION: {
+				name: 'User finished action',
+				description: 'Fires when an action ends.',
+				properties: z.union([z.object({ count: z.number() }), z.string()]),
+			},
+		});
+
+		expect(validateEntrySchemas({ ACTIONS: UNION_FIXTURE })).toEqual([
+			expect.stringContaining('must be a zod object schema or a union of object schemas'),
+		]);
+	});
+
 	it('rejects an entry whose properties are not an object schema', () => {
 		const BROKEN_FIXTURE = defineTelemetryEvents({
 			BAD_ENTRY: {

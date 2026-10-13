@@ -21,10 +21,16 @@ export type McpRegistryServerData = {
 	tools: Array<{
 		name: string;
 		title?: string;
-		annotations?: { readOnlyHint?: boolean };
+		annotations?: {
+			readOnlyHint?: boolean;
+			destructiveHint?: boolean;
+			idempotentHint?: boolean;
+			openWorldHint?: boolean;
+		};
 	}>;
 	websiteUrl?: string;
 	tags?: string[];
+	requiredCapabilities?: string[];
 	extendsCredential?: {
 		extends: string;
 		authUrl?: string | null;

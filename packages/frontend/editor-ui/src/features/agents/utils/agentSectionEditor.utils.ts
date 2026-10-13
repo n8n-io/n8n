@@ -1,6 +1,12 @@
-import { deepCopy } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { toRaw } from 'vue';
 
 import type { AgentJsonConfig } from '../types';
+
+/** Copy JSON config without removing input names or reading Vue proxy methods. */
+export function copyAgentConfig(config: AgentJsonConfig): AgentJsonConfig {
+	return jsonParse<AgentJsonConfig>(JSON.stringify(config, (_key, value: unknown) => toRaw(value)));
+}
 
 export function tryParseConfig(text: string): { ok: true; value: AgentJsonConfig } | { ok: false } {
 	try {
@@ -41,7 +47,7 @@ export function getSlice(cfg: AgentJsonConfig | null, path: string | null | unde
 
 /** Non-mutating write — returns a new config with `slice` placed at `path`. */
 export function setSlice(cfg: AgentJsonConfig, path: string, slice: unknown): AgentJsonConfig {
-	const next = deepCopy(cfg);
+	const next = copyAgentConfig(cfg);
 	const parts = splitPath(path);
 	if (parts.length === 0) return slice as AgentJsonConfig;
 	let cur: unknown = next;

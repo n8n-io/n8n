@@ -66,6 +66,10 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.cancelled',
 ] as const;
 export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
+export const eventNamesInstanceReporting = [
+	'n8n.instanceReporting.success',
+	'n8n.instanceReporting.failed',
+] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export const eventNamesExecution = [
 	'n8n.execution.throttled',
@@ -166,6 +170,7 @@ export const eventNamesAudit = [
 	'n8n.audit.node-type-policy.document.updated',
 	'n8n.audit.node-type-policy.document.deleted',
 	'n8n.audit.node-type-policy.attachments.updated',
+	'n8n.audit.policy.decision.blocked',
 ] as const;
 
 // Instance MCP server events. Kept as their own list and message class because the payload
@@ -183,6 +188,7 @@ export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
 export type EventNamesExecutionType = (typeof eventNamesExecution)[number];
 export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
+export type EventNamesInstanceReportingType = (typeof eventNamesInstanceReporting)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
@@ -190,6 +196,7 @@ export type EventNamesTypes =
 	| EventNamesNodeType
 	| EventNamesExecutionType
 	| EventNamesGenericType
+	| EventNamesInstanceReportingType
 	| EventNamesAiNodesType
 	| EventNamesRunnerType
 	| EventNamesQueueType
@@ -201,6 +208,7 @@ export const eventNamesAll = [
 	...eventNamesWorkflow,
 	...eventNamesNode,
 	...eventNamesGeneric,
+	...eventNamesInstanceReporting,
 	...eventNamesAiNodes,
 	...eventNamesRunner,
 	...eventNamesQueue,

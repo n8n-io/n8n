@@ -158,7 +158,7 @@ describe('POST /auth/oauth/token', () => {
 		);
 
 		// Issued token is valid and has correct claims
-		const decoded = jwtService.verify<IssuedJwtPayload>(body.access_token);
+		const decoded = jwtService.verify<IssuedJwtPayload>('tokenExchange', body.access_token);
 		expect(decoded.iss).toBe(TOKEN_EXCHANGE_ISSUER);
 		expect(decoded.sub).toEqual(expect.any(String));
 		expect(decoded.act).toBeUndefined();
@@ -211,9 +211,11 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decodedA = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(responseA.body as TokenExchangeSuccessResponse).access_token,
 		);
 		const decodedB = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(responseB.body as TokenExchangeSuccessResponse).access_token,
 		);
 
@@ -256,6 +258,7 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decoded = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(response.body as TokenExchangeSuccessResponse).access_token,
 		);
 
@@ -288,6 +291,7 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decoded = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(response.body as TokenExchangeSuccessResponse).access_token,
 		);
 		expect(decoded.scope).toBe('workflow:read');

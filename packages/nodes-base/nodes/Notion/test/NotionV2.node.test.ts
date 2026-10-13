@@ -93,6 +93,30 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 		expect(result[0]).toHaveLength(150);
 	});
 
+	it('encodes a block ID as one URL path segment', async () => {
+		mockNotionApiRequestAllItems.mockResolvedValueOnce([]);
+
+		const context = createMockExecuteFunction({
+			resource: 'block',
+			operation: 'getAll',
+			'blockId.value': 'parent/child',
+			blockId: { __rl: true, mode: 'id', value: 'parent/child' },
+			returnAll: false,
+			limit: 1,
+			fetchNestedBlocks: false,
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
+			'results',
+			'GET',
+			'/blocks/parent%2Fchild/children',
+			{},
+			{ page_size: 1, limit: 1 },
+		);
+	});
+
 	it('database getAll: should paginate with limit and slice results', async () => {
 		const mockData = Array.from({ length: 150 }, (_, i) => ({
 			object: 'database',

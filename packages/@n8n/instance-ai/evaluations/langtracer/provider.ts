@@ -3,7 +3,7 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { LangTracerClient, type ExportedSuite } from './client';
+import { findLangTracerSuite, LangTracerClient, type ExportedSuite } from './client';
 import { resolveLangTracerConfig } from './config';
 import { normalizeExportedCase } from './normalize';
 import { type WorkflowTestCaseWithFile } from '../data/workflows';
@@ -117,7 +117,7 @@ export async function loadTestCasesFromLangTracer(
 ): Promise<WorkflowTestCaseWithFile[]> {
 	const client = new LangTracerClient(resolveLangTracerConfig());
 	const suites = await client.listSuites();
-	const match = suites.find((s) => s.slug === opts.suite || String(s.id) === opts.suite);
+	const match = findLangTracerSuite(suites, opts.suite);
 	if (!match) {
 		const known = suites
 			.map((s) => s.slug)

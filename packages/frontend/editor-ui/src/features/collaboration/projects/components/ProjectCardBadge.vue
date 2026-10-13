@@ -161,7 +161,7 @@ const projectLocation = computed(() => {
 });
 </script>
 <template>
-	<div :class="{ [$style.wrapper]: true, [$style['no-border']]: showBadgeBorder }" v-bind="$attrs">
+	<div :class="$style.wrapper" v-bind="$attrs">
 		<N8nTooltip
 			v-if="badgeText"
 			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject !== 0"
@@ -169,21 +169,20 @@ const projectLocation = computed(() => {
 		>
 			<N8nBadge
 				:class="[$style.badge, $style.projectBadge, projectLocation && $style.link]"
-				theme="tertiary"
+				:variant="showBadgeBorder ? 'outline' : 'ghost'"
 				data-test-id="card-badge"
-				:show-border="showBadgeBorder"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<RouterLink v-if="projectLocation" :to="projectLocation">
 					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 				</RouterLink>
 				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+				<slot />
 			</N8nBadge>
 			<template #content>
 				{{ badgeTooltip }}
 			</template>
 		</N8nTooltip>
-		<slot />
 
 		<N8nTooltip v-if="global" placement="top">
 			<div
@@ -224,32 +223,26 @@ const projectLocation = computed(() => {
 .wrapper {
 	display: flex;
 	align-items: center;
-	border: var(--border);
-	border-radius: var(--radius);
-
-	&.no-border {
-		border: none;
-	}
+	min-width: 0;
 }
 
 .badge {
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: var(--color--background--light-3);
-	border-color: var(--color--foreground);
+	border: var(--border);
 
-	z-index: 1;
-	position: relative;
-	height: 23px;
 	:global(.n8n-text),
 	a {
 		color: var(--color--text);
+		font-size: var(--font-size--xs);
+		font-weight: var(--font-weight--medium);
 	}
 }
 
 .projectBadge {
 	& > span {
 		display: flex;
-		gap: var(--spacing--3xs);
+		gap: var(--n8n-badge--gap);
+		justify-content: center;
+		align-items: center;
 	}
 }
 

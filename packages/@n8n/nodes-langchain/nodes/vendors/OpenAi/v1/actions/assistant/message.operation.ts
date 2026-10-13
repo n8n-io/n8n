@@ -14,6 +14,7 @@ import {
 	BaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	OperationalError,
 	updateDisplayOptions,
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
@@ -25,7 +26,7 @@ import { getTracingConfig } from '@utils/tracing';
 import { assertOpenAiCredentialAllowsUrl } from '../../../helpers/credentials';
 import { formatToOpenAIAssistantTool, getChatMessages } from '../../../helpers/utils';
 import { assistantRLC } from '../descriptions';
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
 
@@ -195,11 +196,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		maxRetries: options.maxRetries ?? 2,
 		timeout: timeout ?? 10000,
 		baseURL,
+		fetch: aiClientFetch,
 		fetchOptions: {
-			dispatcher: getProxyAgent(baseURL, {
-				headersTimeout: timeout,
-				bodyTimeout: timeout,
-			}),
+			dispatcher: getProxyAgent(
+				baseURL,
+				{
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				},
+				this.helpers.getSecureEgressFilter(),
+			),
 		},
 		defaultHeaders,
 	});
@@ -309,7 +315,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		// Remove configuration properties and runId added by Langchain that are not relevant to the user
 		filteredResponse = omit(response, ['signal', 'timeout', 'content', 'runId']) as IDataObject;
 	} catch (error) {
-		if (!(error instanceof BaseError)) {
+		// An OperationalError (e.g. the response-size cap) must surface, not be
+		// swallowed into an empty success like the other BaseError cases.
+		if (!(error instanceof BaseError) || error instanceof OperationalError) {
 			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
 		}
 	}

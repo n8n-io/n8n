@@ -14,7 +14,7 @@ export class LicenseConfig {
 	@Env('N8N_LICENSE_ACTIVATION_KEY')
 	activationKey: string = '';
 
-	/** Whether to release floating entitlements back to the pool when the instance shuts down. */
+	/** Whether to release floating entitlements back to the pool when the instance shuts down. Ignored in multi-main, where all mains share one seat. */
 	@Env('N8N_LICENSE_DETACH_FLOATING_ON_SHUTDOWN')
 	detachFloatingOnShutdown: boolean = true;
 

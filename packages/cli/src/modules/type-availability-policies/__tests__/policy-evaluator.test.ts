@@ -1,5 +1,13 @@
-import { evaluateComposedType, evaluateType, type ScopePolicy } from '../policy-evaluator';
-import type { PolicyAttachment } from '../policy-rule.types';
+import {
+	evaluateComposedType,
+	evaluateType,
+	partitionTypesByAction,
+	type PolicedType,
+	type ScopePolicy,
+} from '../policy-evaluator';
+import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
+
+const type = (name: string, baseName = name): PolicedType => ({ name, baseName });
 
 const attachment = (overrides: Partial<PolicyAttachment>): PolicyAttachment => ({
 	policyId: 'policy-1',
@@ -39,11 +47,11 @@ describe('evaluateType', () => {
 			}),
 		];
 
-		expect(evaluateType(attachments, 'deny', 'n8n-nodes-base.code')).toEqual({
+		expect(evaluateType(attachments, 'deny', type('n8n-nodes-base.code'))).toEqual({
 			action: 'deny',
 			matchedRuleId: 'deny-code',
 		});
-		expect(evaluateType(attachments, 'deny', 'n8n-nodes-base.slack')).toEqual({
+		expect(evaluateType(attachments, 'deny', type('n8n-nodes-base.slack'))).toEqual({
 			action: 'allow',
 			matchedRuleId: 'allow-package',
 		});
@@ -60,7 +68,7 @@ describe('evaluateType', () => {
 				}),
 			];
 
-			expect(evaluateType(attachments, defaultAction, 'n8n-nodes-base.gmail')).toEqual({
+			expect(evaluateType(attachments, defaultAction, type('n8n-nodes-base.gmail'))).toEqual({
 				action: defaultAction,
 				matchedRuleId: null,
 			});
@@ -81,16 +89,16 @@ describe('evaluateType', () => {
 				}),
 			],
 			'allow',
-			'n8n-nodes-base.slack',
+			type('n8n-nodes-base.slack'),
 		);
-		const defaultAllow = evaluateType([], 'allow', 'n8n-nodes-base.slack');
+		const defaultAllow = evaluateType([], 'allow', type('n8n-nodes-base.slack'));
 
 		expect(explicitAllow).toEqual({ action: 'allow', matchedRuleId: 'r1' });
 		expect(defaultAllow).toEqual({ action: 'allow', matchedRuleId: null });
 	});
 
 	it('returns the default action with no attachments at all', () => {
-		expect(evaluateType([], 'deny', 'n8n-nodes-base.slack')).toEqual({
+		expect(evaluateType([], 'deny', type('n8n-nodes-base.slack'))).toEqual({
 			action: 'deny',
 			matchedRuleId: null,
 		});
@@ -122,7 +130,7 @@ describe('evaluateType', () => {
 			}),
 		];
 
-		expect(evaluateType(attachments, 'allow', 'n8n-nodes-base.slack')).toEqual({
+		expect(evaluateType(attachments, 'allow', type('n8n-nodes-base.slack'))).toEqual({
 			action: 'deny',
 			matchedRuleId: 'floor-rule',
 		});
@@ -152,7 +160,7 @@ describe('evaluateType', () => {
 			}),
 		];
 
-		expect(evaluateType(attachments, 'allow', 'n8n-nodes-base.slack')).toEqual({
+		expect(evaluateType(attachments, 'allow', type('n8n-nodes-base.slack'))).toEqual({
 			action: 'deny',
 			matchedRuleId: 'earlier',
 		});
@@ -174,7 +182,7 @@ describe('evaluateType', () => {
 			}),
 		];
 
-		expect(evaluateType(attachments, 'deny', 'n8n-nodes-base.slack')).toEqual({
+		expect(evaluateType(attachments, 'deny', type('n8n-nodes-base.slack'))).toEqual({
 			action: 'allow',
 			matchedRuleId: 'r2',
 		});
@@ -190,25 +198,169 @@ describe('evaluateType', () => {
 				}),
 			];
 
-			expect(evaluateType(attachments, 'allow', 'n8n-nodes-base.slackTrigger')).toEqual({
+			expect(evaluateType(attachments, 'allow', type('n8n-nodes-base.slackTrigger'))).toEqual({
 				action: 'allow',
 				matchedRuleId: null,
 			});
 		});
+
+		describe('tool variants', () => {
+			const GMAIL = 'n8n-nodes-base.gmail';
+			const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+			const denyGmail: PolicyRule = {
+				id: 'deny-gmail',
+				action: 'deny',
+				selector: { kind: 'name', value: GMAIL },
+			};
+			const allowGmailTool: PolicyRule = {
+				id: 'allow-gmail-tool',
+				action: 'allow',
+				selector: { kind: 'name', value: GMAIL_TOOL },
+			};
+
+			it('lets a rule for the base node match its synthetic tool variant', () => {
+				const attachments = [attachment({ rules: [denyGmail] })];
+
+				expect(evaluateType(attachments, 'allow', type(GMAIL_TOOL, GMAIL))).toEqual({
+					action: 'deny',
+					matchedRuleId: 'deny-gmail',
+				});
+			});
+
+			it('does not let a rule for the variant reach the base node', () => {
+				const attachments = [attachment({ rules: [allowGmailTool] })];
+
+				expect(evaluateType(attachments, 'deny', type(GMAIL))).toEqual({
+					action: 'deny',
+					matchedRuleId: null,
+				});
+			});
+
+			it('lets rule order decide between a base-node rule and a variant rule', () => {
+				const baseFirst = [attachment({ rules: [denyGmail, allowGmailTool] })];
+				const variantFirst = [attachment({ rules: [allowGmailTool, denyGmail] })];
+
+				expect(evaluateType(baseFirst, 'allow', type(GMAIL_TOOL, GMAIL))).toEqual({
+					action: 'deny',
+					matchedRuleId: 'deny-gmail',
+				});
+				expect(evaluateType(variantFirst, 'allow', type(GMAIL_TOOL, GMAIL))).toEqual({
+					action: 'allow',
+					matchedRuleId: 'allow-gmail-tool',
+				});
+			});
+		});
+	});
+});
+
+describe('extends selector', () => {
+	const SHEETS: PolicedType = {
+		name: 'googleSheetsOAuth2Api',
+		baseName: 'googleSheetsOAuth2Api',
+		ancestors: ['googleOAuth2Api', 'oAuth2Api'],
+	};
+	const GENERIC: PolicedType = { name: 'oAuth2Api', baseName: 'oAuth2Api', ancestors: [] };
+	const denyOAuth2Family: PolicyRule = {
+		id: 'deny-oauth2-family',
+		action: 'deny',
+		selector: { kind: 'extends', value: 'oAuth2Api' },
+	};
+	const allowSheets: PolicyRule = {
+		id: 'allow-sheets',
+		action: 'allow',
+		selector: { kind: 'name', value: 'googleSheetsOAuth2Api' },
+	};
+
+	it('matches a type built on the named base, through every step of the chain', () => {
+		const attachments = [attachment({ rules: [denyOAuth2Family] })];
+
+		expect(evaluateType(attachments, 'allow', SHEETS)).toEqual({
+			action: 'deny',
+			matchedRuleId: 'deny-oauth2-family',
+		});
 	});
 
-	describe('package selector', () => {
-		it('matches only the segment before the first dot, not a substring anywhere in the name', () => {
-			const attachments = [
-				attachment({
-					rules: [{ id: 'r1', action: 'deny', selector: { kind: 'package', value: 'nodes-base' } }],
-				}),
-			];
+	it('matches the named base itself', () => {
+		const attachments = [attachment({ rules: [denyOAuth2Family] })];
 
-			expect(evaluateType(attachments, 'allow', 'n8n-nodes-base.slack')).toEqual({
-				action: 'allow',
-				matchedRuleId: null,
-			});
+		expect(evaluateType(attachments, 'allow', GENERIC).action).toBe('deny');
+	});
+
+	it('does not match a type outside the family', () => {
+		const attachments = [attachment({ rules: [denyOAuth2Family] })];
+
+		expect(evaluateType(attachments, 'allow', type('slackApi'))).toEqual({
+			action: 'allow',
+			matchedRuleId: null,
+		});
+	});
+
+	it('leaves a name rule on the base exact, so derived types stay allowed', () => {
+		const attachments = [
+			attachment({
+				rules: [
+					{ id: 'deny-generic', action: 'deny', selector: { kind: 'name', value: 'oAuth2Api' } },
+				],
+			}),
+		];
+
+		expect(evaluateType(attachments, 'allow', SHEETS).action).toBe('allow');
+		expect(evaluateType(attachments, 'allow', GENERIC).action).toBe('deny');
+	});
+
+	it('lets rule order decide between a derived-type allow and a family deny', () => {
+		const allowFirst = [attachment({ rules: [allowSheets, denyOAuth2Family] })];
+		const denyFirst = [attachment({ rules: [denyOAuth2Family, allowSheets] })];
+
+		expect(evaluateType(allowFirst, 'allow', SHEETS)).toEqual({
+			action: 'allow',
+			matchedRuleId: 'allow-sheets',
+		});
+		expect(evaluateType(denyFirst, 'allow', SHEETS)).toEqual({
+			action: 'deny',
+			matchedRuleId: 'deny-oauth2-family',
+		});
+	});
+
+	it('keeps an instance family deny over a project allow of the derived type', () => {
+		const verdict = evaluateComposedType(
+			scopePolicy({ attachments: [attachment({ rules: [denyOAuth2Family] })] }),
+			scopePolicy({ attachments: [attachment({ rules: [allowSheets] })] }),
+			SHEETS,
+		);
+
+		expect(verdict).toEqual({
+			action: 'deny',
+			scope: 'instance',
+			matchedRuleId: 'deny-oauth2-family',
+			optInAvailable: false,
+		});
+	});
+
+	it('satisfies an instance delegate on a derived type with a project family allow', () => {
+		const verdict = evaluateComposedType(
+			scopePolicy({ defaultAction: 'delegate' }),
+			scopePolicy({
+				attachments: [
+					attachment({
+						rules: [
+							{
+								id: 'allow-family',
+								action: 'allow',
+								selector: { kind: 'extends', value: 'oAuth2Api' },
+							},
+						],
+					}),
+				],
+			}),
+			SHEETS,
+		);
+
+		expect(verdict).toEqual({
+			action: 'allow',
+			scope: 'project',
+			matchedRuleId: 'allow-family',
+			optInAvailable: false,
 		});
 	});
 });
@@ -224,7 +376,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ attachments: [denyRule('instance-deny')] });
 		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'deny',
 			scope: 'instance',
 			matchedRuleId: 'instance-deny',
@@ -236,7 +388,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ defaultAction: 'delegate' });
 		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'allow',
 			scope: 'project',
 			matchedRuleId: 'project-allow',
@@ -248,7 +400,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ defaultAction: 'delegate' });
 		const project = scopePolicy();
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'deny',
 			scope: 'instance',
 			matchedRuleId: null,
@@ -260,7 +412,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ defaultAction: 'delegate' });
 		const project = scopePolicy({ defaultAction: 'allow' });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'deny',
 			scope: 'instance',
 			matchedRuleId: null,
@@ -272,7 +424,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ defaultAction: 'delegate' });
 		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'deny',
 			scope: 'project',
 			matchedRuleId: 'project-deny',
@@ -284,7 +436,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ defaultAction: 'delegate' });
 		const project = scopePolicy({ defaultAction: 'deny' });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'deny',
 			scope: 'project',
 			matchedRuleId: null,
@@ -296,7 +448,7 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy({ attachments: [allowRule('instance-allow')] });
 		const project = scopePolicy({ attachments: [denyRule('project-deny')] });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'deny',
 			scope: 'project',
 			matchedRuleId: 'project-deny',
@@ -305,7 +457,7 @@ describe('evaluateComposedType', () => {
 	});
 
 	it('allows and attributes to the instance when neither scope is configured', () => {
-		expect(evaluateComposedType(scopePolicy(), scopePolicy(), TYPE)).toEqual({
+		expect(evaluateComposedType(scopePolicy(), scopePolicy(), type(TYPE))).toEqual({
 			action: 'allow',
 			scope: 'instance',
 			matchedRuleId: null,
@@ -317,11 +469,90 @@ describe('evaluateComposedType', () => {
 		const instance = scopePolicy();
 		const project = scopePolicy({ attachments: [allowRule('project-allow')] });
 
-		expect(evaluateComposedType(instance, project, TYPE)).toEqual({
+		expect(evaluateComposedType(instance, project, type(TYPE))).toEqual({
 			action: 'allow',
 			scope: 'project',
 			matchedRuleId: 'project-allow',
 			optInAvailable: false,
+		});
+	});
+});
+
+describe('partitionTypesByAction', () => {
+	const rule = (id: string, action: PolicyRule['action'], selector: PolicyRule['selector']) => ({
+		id,
+		action,
+		selector,
+	});
+
+	const TYPES = [
+		'n8n-nodes-base.code',
+		'n8n-nodes-base.executeCommand',
+		'@acme/n8n-nodes-acme.thing',
+	];
+	const POLICED_TYPES = TYPES.map((name) => type(name));
+
+	it('falls every type back to the default action when no rule matches', () => {
+		expect(partitionTypesByAction([], 'deny', POLICED_TYPES)).toEqual({
+			allow: [],
+			deny: TYPES,
+			delegate: [],
+		});
+	});
+
+	it('expands a package selector across every type in that package', () => {
+		const rules = [rule('r1', 'deny', { kind: 'package', value: 'n8n-nodes-base' })];
+
+		expect(partitionTypesByAction(rules, 'allow', POLICED_TYPES)).toEqual({
+			allow: ['@acme/n8n-nodes-acme.thing'],
+			deny: ['n8n-nodes-base.code', 'n8n-nodes-base.executeCommand'],
+			delegate: [],
+		});
+	});
+
+	it('keeps first-match order, so an earlier name rule survives a later package rule', () => {
+		const rules = [
+			rule('r1', 'allow', { kind: 'name', value: 'n8n-nodes-base.code' }),
+			rule('r2', 'deny', { kind: 'package', value: 'n8n-nodes-base' }),
+		];
+
+		expect(partitionTypesByAction(rules, 'allow', POLICED_TYPES)).toEqual({
+			allow: ['n8n-nodes-base.code', '@acme/n8n-nodes-acme.thing'],
+			deny: ['n8n-nodes-base.executeCommand'],
+			delegate: [],
+		});
+	});
+
+	it('separates delegated types from allowed and denied ones', () => {
+		const rules = [rule('r1', 'delegate', { kind: 'name', value: 'n8n-nodes-base.code' })];
+
+		expect(partitionTypesByAction(rules, 'allow', POLICED_TYPES)).toEqual({
+			allow: ['n8n-nodes-base.executeCommand', '@acme/n8n-nodes-acme.thing'],
+			deny: [],
+			delegate: ['n8n-nodes-base.code'],
+		});
+	});
+
+	it('buckets a tool variant under its own name when a base-node rule decides it', () => {
+		const rules = [rule('r1', 'deny', { kind: 'name', value: 'n8n-nodes-base.code' })];
+		const types = [
+			type('n8n-nodes-base.code'),
+			type('n8n-nodes-base.codeTool', 'n8n-nodes-base.code'),
+			type('n8n-nodes-base.executeCommand'),
+		];
+
+		expect(partitionTypesByAction(rules, 'allow', types)).toEqual({
+			allow: ['n8n-nodes-base.executeCommand'],
+			deny: ['n8n-nodes-base.code', 'n8n-nodes-base.codeTool'],
+			delegate: [],
+		});
+	});
+
+	it('returns empty buckets when the instance knows no types', () => {
+		expect(partitionTypesByAction([], 'deny', [])).toEqual({
+			allow: [],
+			deny: [],
+			delegate: [],
 		});
 	});
 });

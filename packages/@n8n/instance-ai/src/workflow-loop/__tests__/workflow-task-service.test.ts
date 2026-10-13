@@ -138,7 +138,12 @@ describe('WorkflowTaskCoordinator', () => {
 				workflowTaskService: coordinator,
 				logger: mock<OrchestrationContext['logger']>(),
 				domainContext: mock<InstanceAiContext>({
-					executionService: mock<InstanceAiContext['executionService']>({ run }),
+					executionService: mock<InstanceAiContext['executionService']>({
+						run,
+						getResolvedNodeParameters: vi
+							.fn()
+							.mockRejectedValue(new Error('No saved parameter data')),
+					}),
 					workflowService: mock<InstanceAiContext['workflowService']>({
 						getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [], connections: {} }),
 					}),

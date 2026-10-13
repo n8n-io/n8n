@@ -29,6 +29,7 @@ const mockCredentialsService = (
 			const data = await impl(id);
 			return {
 				name: 'MockCredentialsService',
+				description: null,
 				type: 'mock',
 				shared: [] as SharedCredentials[],
 				isManaged: false,
@@ -37,6 +38,7 @@ const mockCredentialsService = (
 				usageScope: 'project',
 				resolverId: null,
 				resolvableAllowFallback: false,
+				pendingAuthorizationExpiresAt: null,
 				id,
 				// Methods present on entities via WithTimestampsAndStringId mixin
 				generateId() {},

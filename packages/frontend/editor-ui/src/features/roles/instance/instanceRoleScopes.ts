@@ -8,8 +8,15 @@
  */
 
 import { type BaseTextKey } from '@n8n/i18n';
-import { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS, type Scope } from '@n8n/permissions';
+import {
+	BASELINE_INSTANCE_SCOPES,
+	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
+	isMandatoryInstanceOption,
+	type Scope,
+	withMandatoryInstanceScopes,
+} from '@n8n/permissions';
 export { GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS as INSTANCE_SCOPE_GROUPS } from '@n8n/permissions';
+export { withMandatoryInstanceScopes } from '@n8n/permissions';
 
 export type InstanceResource = keyof typeof GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS;
 
@@ -20,6 +27,8 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'role',
 	'apiKey',
 	'tag',
+	'variable',
+	'credential',
 	'project',
 	'insights',
 ];
@@ -31,6 +40,8 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	role: 'instanceRoles.resource.role',
 	apiKey: 'instanceRoles.resource.apiKey',
 	tag: 'instanceRoles.resource.tag',
+	variable: 'instanceRoles.resource.variable',
+	credential: 'instanceRoles.resource.credential',
 	project: 'instanceRoles.resource.project',
 	insights: 'instanceRoles.resource.insights',
 };
@@ -41,6 +52,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
  */
 export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	View: 'instanceRoles.option.view',
+	Use: 'instanceRoles.option.use',
 	Create: 'instanceRoles.option.create',
 	Manage: 'instanceRoles.option.manage',
 	'Manage own': 'instanceRoles.option.manageOwn',
@@ -91,7 +103,19 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		'Manage own': 'instanceRoles.description.apiKey.manageOwn',
 		'Manage all': 'instanceRoles.description.apiKey.manageAll',
 	},
-	tag: { Manage: 'instanceRoles.description.tag.manage' },
+	tag: {
+		View: 'instanceRoles.description.tag.view',
+		Manage: 'instanceRoles.description.tag.manage',
+	},
+	variable: {
+		View: 'instanceRoles.description.variable.view',
+		Manage: 'instanceRoles.description.variable.manage',
+	},
+	credential: {
+		View: 'instanceRoles.description.credential.view',
+		Use: 'instanceRoles.description.credential.use',
+		Manage: 'instanceRoles.description.credential.manage',
+	},
 	project: { Create: 'instanceRoles.description.project.create' },
 	insights: { View: 'instanceRoles.description.insights.view' },
 };
@@ -99,6 +123,7 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 /** Display order of options within a resource group. */
 export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
+	'Use',
 	'Create',
 	'Manage project roles',
 	'Mcp use',
@@ -151,26 +176,41 @@ export const INSTANCE_SCOPE_GROUP_LIST: InstanceScopeGroup[] = INSTANCE_RESOURCE
 	},
 );
 
+/**
+ * Every scope the editor may save: the option scopes plus the baseline scopes
+ * every instance role carries without a checkbox. The form filters stored roles
+ * through this list, so the baseline survives a save untouched.
+ */
 export const ALL_INSTANCE_SCOPES: Scope[] = [
-	...new Set(INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes))),
+	...new Set<Scope>([
+		...INSTANCE_SCOPE_GROUP_LIST.flatMap((g) => g.options.flatMap((o) => o.scopes)),
+		...BASELINE_INSTANCE_SCOPES,
+	]),
 ];
 
 /**
- * "Users: View" is baseline behavior every instance role carries — the default
- * Member role already has it — not something a custom role can opt out of.
- * Rendered checked and disabled in the editor. `withMandatoryInstanceScopes`
- * is applied to the form (and on save), not the persisted snapshot, so a
- * stored role that is missing these scopes stays unsaved until the next save.
+ * Tooltip overrides for the mandatory options declared in `@n8n/permissions`.
+ * The wording that explains *why* an option is locked lives here because
+ * `@n8n/permissions` must stay free of i18n types.
  */
-export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
-	return resource === 'user' && option.key === 'View';
+const MANDATORY_OPTION_TOOLTIP_KEYS: Partial<
+	Record<InstanceResource, Record<string, BaseTextKey>>
+> = {
+	user: { View: 'instanceRoles.option.mandatory' },
+	// tag View falls back to instanceRoles.description.tag.view
+};
+
+/** Tooltip key for a mandatory option, or undefined when the option is not mandatory. */
+export function mandatoryOptionTooltipKey(
+	resource: InstanceResource,
+	option: InstanceScopeOption,
+): BaseTextKey | undefined {
+	if (!isOptionMandatory(resource, option)) return undefined;
+	return MANDATORY_OPTION_TOOLTIP_KEYS[resource]?.[option.key] ?? option.descriptionKey;
 }
 
-const MANDATORY_INSTANCE_SCOPES: readonly Scope[] = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View;
-
-/** Unions in the mandatory scopes (see `isOptionMandatory`) on top of an already-filtered scope list. */
-export function withMandatoryInstanceScopes(scopes: readonly string[]): string[] {
-	return [...new Set([...scopes, ...MANDATORY_INSTANCE_SCOPES])];
+export function isOptionMandatory(resource: InstanceResource, option: InstanceScopeOption) {
+	return isMandatoryInstanceOption(resource, option.key);
 }
 
 export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
@@ -180,27 +220,71 @@ export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
  * resource group. If the superseding option is fully checked, the superseded
  * option is implied — it should render as disabled ✔︎ with an explanatory
  * tooltip rather than as an independently active selection.
+ *
+ * Option labels are shared across resources, so the map is keyed by option label
+ * alone. Groups sit at different heights on the same ladder — `credential` has
+ * View, Use and Manage while `tag` has only View and Manage — which the
+ * transitive walk below handles: it steps over the rungs a group does not
+ * declare, so tag's View still resolves to its Manage.
  */
 export const SUPERSEDED_BY: Partial<Record<string, string>> = {
 	'Manage own': 'Manage all',
 	'Manage project roles': 'Manage',
-	View: 'Manage',
+	View: 'Use',
+	Use: 'Manage',
+	'Mcp use': 'Mcp manage',
+	'AiAssistant use': 'AiAssistant manage',
 };
+
+/** The option one rung above `optionKey` on the ladder, if any. */
+export function supersedingKey(optionKey: string): string | undefined {
+	return SUPERSEDED_BY[optionKey];
+}
+
+/**
+ * The chain of options that supersede `optionKey`, nearest first. Walking the
+ * whole chain is what lets one flat map serve groups of different heights, and
+ * `chain.includes` guards against a mis-declared cycle.
+ */
+function supersedingChain(optionKey: string): string[] {
+	const chain: string[] = [];
+	let current = supersedingKey(optionKey);
+	while (current && !chain.includes(current)) {
+		chain.push(current);
+		current = supersedingKey(current);
+	}
+	return chain;
+}
+
+/**
+ * The option that implies `option` — the nearest one up the ladder that this group
+ * actually declares and that is fully checked. The caller should render an implied
+ * option as disabled with a tooltip naming this one.
+ */
+export function impliedByOption(
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+	roleScopes: readonly string[],
+): InstanceScopeOption | undefined {
+	for (const key of supersedingChain(option.key)) {
+		const superseding = groupOptions.find((o) => o.key === key);
+		if (superseding && getOptionState(roleScopes, superseding.scopes) === 'checked') {
+			return superseding;
+		}
+	}
+	return undefined;
+}
 
 /**
  * Returns true when another option in the same group is fully checked and
- * supersedes this option. The caller should render implied options as disabled
- * with a tooltip explaining they are included in the superseding option.
+ * supersedes this option, directly or transitively.
  */
 export function isOptionImplied(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 	roleScopes: readonly string[],
 ): boolean {
-	const supersededByKey = SUPERSEDED_BY[option.key];
-	if (!supersededByKey) return false;
-	const superseding = groupOptions.find((o) => o.key === supersededByKey);
-	return !!superseding && getOptionState(roleScopes, superseding.scopes) === 'checked';
+	return !!impliedByOption(option, groupOptions, roleScopes);
 }
 
 /**
@@ -220,58 +304,85 @@ export function getOptionState(
 	return 'indeterminate';
 }
 
+function isStrictSubset(subset: readonly string[], superset: readonly string[]): boolean {
+	return (
+		subset.length > 0 &&
+		subset.length < superset.length &&
+		subset.every((scope) => superset.includes(scope))
+	);
+}
+
 /**
- * When option A is a strict superset of option B (B is superseded by A), and B
- * is fully checked, A will appear indeterminate via raw scope arithmetic because
- * B's scopes are already present. That indeterminate is misleading — the user
- * selected B only, not A. This function returns 'unchecked' in that case.
+ * Options in the same group that `option` covers: the ones SUPERSEDED_BY declares
+ * subordinate to it, plus every sibling whose scopes are a strict subset of its
+ * own. The latter is the select-all case — "Manage all settings" over the MCP and
+ * n8n Assistant options — which stays out of SUPERSEDED_BY on purpose, so those
+ * options remain toggleable while the select-all is checked.
+ */
+export function getCoveredOptions(
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+): InstanceScopeOption[] {
+	return groupOptions.filter(
+		(other) =>
+			other.key !== option.key &&
+			(SUPERSEDED_BY[other.key] === option.key || isStrictSubset(other.scopes, option.scopes)),
+	);
+}
+
+/**
+ * Resolve the state of an option against a saved flat scope list.
  *
- * The guard only fires when a sub-option is *fully* checked, so genuine partial
- * selections (e.g. API-created roles with an arbitrary subset) still show
- * indeterminate correctly.
+ * An implied option (see SUPERSEDED_BY) renders checked even when the role does
+ * not list its own scopes: Admin holds role:manage but not role:manageProject,
+ * yet "Manage project roles" is granted through "Manage all roles".
+ *
+ * When option A covers option B and B is fully checked, A appears indeterminate
+ * via raw scope arithmetic because B's scopes are already present. That
+ * indeterminate is misleading — the user selected B only, not A — so this
+ * returns 'unchecked' when every present scope of A belongs to a fully-checked
+ * covered option. Genuine partial selections (e.g. API-created roles with an
+ * arbitrary subset) still show indeterminate.
  */
 export function resolveOptionState(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 	roleScopes: readonly string[],
 ): OptionState {
+	if (isOptionImplied(option, groupOptions, roleScopes)) return 'checked';
+
 	const base = getOptionState(roleScopes, option.scopes);
 	if (base !== 'indeterminate') return base;
 
-	// Collect scopes that belong to fully-checked sub-options of this option.
-	const fullyCheckedSubScopes = new Set(
-		groupOptions
-			.filter(
-				(other) =>
-					SUPERSEDED_BY[other.key] === option.key &&
-					getOptionState(roleScopes, other.scopes) === 'checked',
-			)
-			.flatMap((o) => o.scopes),
+	const coveredCheckedScopes = new Set(
+		getCoveredOptions(option, groupOptions)
+			.filter((other) => getOptionState(roleScopes, other.scopes) === 'checked')
+			.flatMap((other) => other.scopes),
 	);
+	if (coveredCheckedScopes.size === 0) return base;
 
-	if (fullyCheckedSubScopes.size === 0) return base;
-
-	// If every present scope in this option is already accounted for by a
-	// fully-checked sub-option, the indeterminate is an artifact — show unchecked.
-	const presentScopes = option.scopes.filter((s) => roleScopes.includes(s));
-	return presentScopes.every((s) => fullyCheckedSubScopes.has(s)) ? 'unchecked' : base;
+	const presentScopes = option.scopes.filter((scope) => roleScopes.includes(scope));
+	return presentScopes.every((scope) => coveredCheckedScopes.has(scope)) ? 'unchecked' : base;
 }
 
 /**
- * Find the option that `option` supersedes within its group, if any. SUPERSEDED_BY
- * maps a sub-option to its superseding option, so the subordinate of a superseding
- * option is the key that points back to it. Different resources can reuse the same
- * superseding key (e.g. "Manage" backs both role's "Manage project roles" and user's
- * "View"), so the reverse lookup must only consider keys present in this group.
+ * Find the option `option` supersedes most closely within its group — the one
+ * whose superseding chain reaches `option` in the fewest steps. Distance decides
+ * it because a group can hold several rungs below one option: credential Manage
+ * supersedes Use and View both, and unchecking it must fall back to Use rather
+ * than skip a rung down to View.
  */
 export function findSubordinateOption(
 	option: InstanceScopeOption,
 	groupOptions: InstanceScopeOption[],
 ): InstanceScopeOption | undefined {
-	const subordinateKey = Object.keys(SUPERSEDED_BY).find(
-		(key) => SUPERSEDED_BY[key] === option.key && groupOptions.some((o) => o.key === key),
-	);
-	return subordinateKey ? groupOptions.find((o) => o.key === subordinateKey) : undefined;
+	let nearest: { option: InstanceScopeOption; distance: number } | undefined;
+	for (const candidate of groupOptions) {
+		const distance = supersedingChain(candidate.key).indexOf(option.key);
+		if (distance === -1) continue;
+		if (!nearest || distance < nearest.distance) nearest = { option: candidate, distance };
+	}
+	return nearest?.option;
 }
 
 /**
@@ -305,6 +416,22 @@ export function toggleOptionInGroup(
 	return [...next];
 }
 
+/**
+ * Scopes a preset copies from a system role: the full scope set of every option
+ * the role grants in full, plus the mandatory scopes. Options the role covers only
+ * in part (Member holds four of the five Tags scopes) and scopes the editor does
+ * not expose (e.g. chatHub agents) are left out, so a preset never produces a
+ * half-checked box the user could not set themselves.
+ */
+export function getPresetScopes(roleScopes: readonly string[]): string[] {
+	const granted = INSTANCE_SCOPE_GROUP_LIST.flatMap((group) =>
+		group.options
+			.filter((option) => getOptionState(roleScopes, option.scopes) === 'checked')
+			.flatMap((option) => option.scopes),
+	);
+	return withMandatoryInstanceScopes(granted);
+}
+
 const userViewScopes: ReadonlySet<Scope> = new Set(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View);
 
 /**
@@ -322,6 +449,15 @@ export const ESCALATION_WARNING_SCOPES: Partial<
 				(scope: Scope) => !userViewScopes.has(scope),
 			),
 			messageKey: 'instanceRoles.warning.manageMembers',
+		},
+	],
+	credential: [
+		{
+			// Manage's `credential:update` also unlocks plaintext decrypt, because
+			// decryption is gated on `credential:read` + `credential:update`. View and
+			// Use hold neither, so they are not an escalation on their own.
+			scopes: ['credential:update'],
+			messageKey: 'instanceRoles.warning.manageCredentials',
 		},
 	],
 	role: [
@@ -354,12 +490,12 @@ export const TOTAL_INSTANCE_PERMISSIONS = INSTANCE_SCOPE_GROUP_LIST.reduce(
 	0,
 );
 
-/** Count how many permission options a saved flat scope list fully grants. */
+/** Count how many permission options a saved flat scope list grants, implied options included. */
 export function countGrantedInstancePermissions(scopes: readonly string[]): number {
 	let count = 0;
 	for (const group of INSTANCE_SCOPE_GROUP_LIST) {
 		for (const option of group.options) {
-			if (getOptionState(scopes, option.scopes) === 'checked') count++;
+			if (resolveOptionState(option, group.options, scopes) === 'checked') count++;
 		}
 	}
 	return count;

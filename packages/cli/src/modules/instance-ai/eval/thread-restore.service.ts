@@ -1,10 +1,14 @@
 import {
 	AgentJsonConfigSchema,
+	getAgentModelProviderCredentialTypes,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type AgentJsonConfig,
 	type InstanceAiEvalSeedAgent,
 	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
 	type InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CredentialsRepository,
 	SharedWorkflowRepository,
@@ -15,15 +19,23 @@ import {
 } from '@n8n/db';
 import type { PolicedWorkflow, PolicyCleared } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, type IConnections, type INode, type INodeCredentials } from 'n8n-workflow';
+import {
+	jsonParse,
+	PROJECT_ROOT,
+	type IConnections,
+	type INode,
+	type INodeCredentials,
+} from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
+import { FolderService } from '@/services/folder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -62,8 +74,9 @@ function blankCredentialValues(value: unknown): unknown {
 	);
 }
 
-/** Recreates the data tables, workflows and agents a conversation seed references,
- *  so a restored message history's ids resolve. Used by the eval restore endpoint. */
+/** Recreates the folders, data tables, workflows and agents a conversation seed
+ *  references, so a restored message history's ids resolve. Used by the eval
+ *  restore endpoint. */
 @Service()
 export class EvalThreadRestoreService {
 	constructor(
@@ -75,7 +88,113 @@ export class EvalThreadRestoreService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowService: WorkflowService,
+		private readonly folderService: FolderService,
+		private readonly licenseState: LicenseState,
 	) {}
+
+	/**
+	 * Create each seed folder in the project, parents before children, and map
+	 * its seed id to the created one (the id is server-generated, like a data
+	 * table's). Names are created VERBATIM, with no seed suffix: the live turn
+	 * names the folder the way a user would, so the name has to match exactly.
+	 * Rolls back the folders already created if a later one fails.
+	 *
+	 * Folders are licensed (`feat:folders`). An unlicensed instance fails the
+	 * restore instead of seeding without the folder, because the case would then
+	 * grade the agent against a folder that does not exist.
+	 */
+	async restoreFolders(
+		folders: InstanceAiEvalSeedFolder[],
+		projectId: string,
+		user: User,
+	): Promise<Map<string, string>> {
+		const idMap = new Map<string, string>();
+		if (folders.length === 0) return idMap;
+		if (!this.licenseState.isFoldersLicensed()) {
+			throw new BadRequestError(
+				'Seeding folders requires the `feat:folders` license feature, which this instance does not have. ' +
+					'CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT. ' +
+					'Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so re-enable it after seeding the owner: ' +
+					'PATCH /rest/e2e/feature {"feature":"feat:folders","enabled":true}',
+			);
+		}
+		try {
+			// Parents first: a child needs its parent's created id. The endpoint's
+			// `findSeedFolderIssues` pass guarantees every chain ends at a root.
+			const pending = [...folders];
+			while (pending.length > 0) {
+				const index = pending.findIndex(
+					(folder) => folder.parentFolderId === undefined || idMap.has(folder.parentFolderId),
+				);
+				// Guards the loop against a caller that skipped the reference check,
+				// where `splice(-1)` would silently create the last folder at the root.
+				if (index === -1) {
+					throw new BadRequestError(
+						`Seed folders ${pending.map((folder) => `"${folder.id}"`).join(', ')} have no creatable parent`,
+					);
+				}
+				const [folder] = pending.splice(index, 1);
+				const created = await this.folderService.createFolder(
+					{
+						name: folder.name,
+						parentFolderId:
+							folder.parentFolderId === undefined ? undefined : idMap.get(folder.parentFolderId),
+					},
+					projectId,
+				);
+				idMap.set(folder.id, created.id);
+			}
+		} catch (error) {
+			await this.deleteFolders(folders, idMap, projectId, user);
+			throw error;
+		}
+		return idMap;
+	}
+
+	/**
+	 * Best-effort delete (rollback of a failed restore), through the product's
+	 * own folder delete with the contents transferred to the project root.
+	 * Nothing inside is archived or cascaded away: a re-applied seed workflow
+	 * (one this restore moved into the folder but did not create) survives at
+	 * the root, which is where the rollback leaves it in every other respect.
+	 *
+	 * Children before parents, and a parent whose child could not be deleted is
+	 * kept: deleting it would move that child to the root under a name nothing
+	 * evicts, while the kept parent still carries the seed name the next run's
+	 * eviction matches. Folders the map does not know (never created) are skipped.
+	 */
+	async deleteFolders(
+		folders: InstanceAiEvalSeedFolder[],
+		idMap: Map<string, string>,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		const depth = (folder: InstanceAiEvalSeedFolder): number => {
+			let level = 0;
+			let parentId = folder.parentFolderId;
+			while (parentId !== undefined && level < folders.length) {
+				level += 1;
+				parentId = folders.find((candidate) => candidate.id === parentId)?.parentFolderId;
+			}
+			return level;
+		};
+		const failed = new Set<string>();
+		for (const folder of [...folders].sort((a, b) => depth(b) - depth(a))) {
+			const createdId = idMap.get(folder.id);
+			if (createdId === undefined) continue;
+			if (folders.some((child) => child.parentFolderId === folder.id && failed.has(child.id))) {
+				failed.add(folder.id);
+				continue;
+			}
+			try {
+				await this.folderService.deleteFolder(user, createdId, projectId, {
+					transferToFolderId: PROJECT_ROOT,
+				});
+			} catch {
+				failed.add(folder.id); // best-effort
+			}
+		}
+	}
 
 	/**
 	 * Recreate each seed data table and map its seed id to the freshly created
@@ -166,7 +285,9 @@ export class EvalThreadRestoreService {
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
+		allowedCredentialIds?: Set<string>,
 	): Promise<string[]> {
 		if (agents.length === 0) return [];
 		const agentsService = this.agentsService();
@@ -183,11 +304,17 @@ export class EvalThreadRestoreService {
 						`Seed agent ${agent.id} config became invalid after blanking its credentials`,
 					);
 				}
+				const schema = await this.bindModelCredentials(
+					config.data,
+					projectId,
+					allowedCredentialIds,
+				);
 				// `create` refuses a colliding id rather than overwriting, so a seed can
 				// never clobber an agent that already exists.
-				await agentsService.create(projectId, config.data.name, {
+				await agentsService.create(projectId, schema.name, {
+					actor: { kind: 'user', user },
 					id: agent.id,
-					schema: config.data,
+					schema,
 					...(agent.skills ? { skills: agent.skills } : {}),
 				});
 				created.push(agent.id);
@@ -197,6 +324,40 @@ export class EvalThreadRestoreService {
 			throw error;
 		}
 		return created;
+	}
+
+	/** Point each model at the thread project's one credential of its provider's
+	 *  type (among those the allowlist admits), as `resolveNodeCredentials` does
+	 *  for a node. Zero or several candidates keep the blank: the case declared no
+	 *  LLM credential, or any pick would be a guess. */
+	private async bindModelCredentials(
+		config: AgentJsonConfig,
+		projectId: string,
+		allowedCredentialIds?: Set<string>,
+	): Promise<AgentJsonConfig> {
+		const resolve = async (model: string) => {
+			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(model));
+			if (types.length === 0) return undefined;
+			const candidates = (
+				await this.credentialsRepo.findByTypesInProject([...types], projectId)
+			).filter((c) => allowedCredentialIds?.has(c.id) ?? true);
+			return candidates.length === 1 ? candidates[0].id : undefined;
+		};
+
+		const bound = { ...config };
+		const credential = config.model ? await resolve(config.model) : undefined;
+		if (credential) bound.credential = credential;
+		const byDifficulty = config.subAgents?.modelsByDifficulty;
+		if (byDifficulty) {
+			const rebound = { ...byDifficulty };
+			for (const level of SUB_AGENT_TASK_DIFFICULTIES) {
+				const entry = rebound[level];
+				const id = entry && (await resolve(entry.model));
+				if (entry && id) rebound[level] = { ...entry, credential: id };
+			}
+			bound.subAgents = { ...config.subAgents, modelsByDifficulty: rebound };
+		}
+		return bound;
 	}
 
 	/** Rewrite the seed's authored data-table ids to the ones the restore just
@@ -241,8 +402,10 @@ export class EvalThreadRestoreService {
 	async restoreWorkflows(
 		workflows: InstanceAiEvalSeedWorkflow[],
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string> = new Map(),
 		allowedCredentialIds?: Set<string>,
+		folderIdMap: Map<string, string> = new Map(),
 	): Promise<string[]> {
 		const created: string[] = [];
 		try {
@@ -250,8 +413,10 @@ export class EvalThreadRestoreService {
 				const isNew = await this.createWorkflowPinnedToId(
 					workflow,
 					projectId,
+					user,
 					dataTableIdMap,
 					allowedCredentialIds,
+					folderIdMap,
 				);
 				if (isNew) created.push(workflow.id);
 			}
@@ -352,11 +517,26 @@ export class EvalThreadRestoreService {
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
+		user: User,
 		dataTableIdMap: Map<string, string>,
-		allowedCredentialIds?: Set<string>,
+		allowedCredentialIds: Set<string> | undefined,
+		folderIdMap: Map<string, string>,
 	): Promise<boolean> {
 		const remapDataTableIds = (value: unknown): unknown =>
 			this.remapDataTableIds(value, dataTableIdMap);
+
+		// Resolved before any write, so a stale reference fails the restore
+		// instead of landing the workflow at the root of a case that grades
+		// folder membership. The seed's placement is authoritative, root included:
+		// a re-applied seed without `parentFolderId` moves its stored row to the
+		// root, the same way it overwrites the row's nodes.
+		const parentFolderId =
+			workflow.parentFolderId === undefined ? null : folderIdMap.get(workflow.parentFolderId);
+		if (parentFolderId === undefined) {
+			throw new BadRequestError(
+				`Seed workflow ${workflow.id} is placed in folder "${workflow.parentFolderId}", which this restore did not create`,
+			);
+		}
 
 		const nodes: INode[] = [];
 		for (const [index, node] of workflow.nodes.entries()) {
@@ -405,15 +585,17 @@ export class EvalThreadRestoreService {
 			connections,
 			active: false,
 			versionId: randomUUID(),
+			parentFolder: parentFolderId === null ? null : { id: parentFolderId },
 		});
-		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId);
+		const cleared = await this.enforceSeedWorkflowSave(workflow, entity, stored, projectId, user);
 
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
-				const { name, nodes, connections, active, versionId } = entity;
+				// oxlint-disable-next-line typescript/no-deprecated
+				const { name, nodes, connections, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,
-					{ name, nodes, connections, active, versionId },
+					{ name, nodes, connections, active, versionId, parentFolder },
 					ctx,
 				);
 			} else {
@@ -482,13 +664,17 @@ export class EvalThreadRestoreService {
 		entity: WorkflowEntity,
 		stored: PolicedWorkflow | null,
 		projectId: string,
+		user: User,
 	): Promise<PolicyCleared<'workflowSave'>> {
 		try {
-			return await this.policyEnforcementService.enforceWorkflowSave({
-				workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
-				storedWorkflow: stored,
-				projectId,
-			});
+			return await this.policyEnforcementService.enforceWorkflowSave(
+				{
+					workflow: { id: stored?.id ?? null, name: entity.name, nodes: entity.nodes },
+					storedWorkflow: stored,
+					projectId,
+				},
+				{ kind: 'user', user },
+			);
 		} catch (error) {
 			if (error instanceof PolicyViolationError && hasViolations(error.violations)) {
 				throw new PolicyViolationError(

@@ -17,6 +17,7 @@ const {
 	mockToast,
 	mockI18n,
 	mockSettingsStore,
+	mockClearPendingActivationModal,
 } = vi.hoisted(() => ({
 	mockWorkflowsListStore: {
 		fetchWorkflow: vi.fn(),
@@ -39,6 +40,11 @@ const {
 	mockSettingsStore: {
 		isWorkflowPublicationServiceEnabled: true,
 	},
+	mockClearPendingActivationModal: vi.fn(),
+}));
+
+vi.mock('@/app/composables/workflowPublicationConfirmation', () => ({
+	clearPendingActivationModal: mockClearPendingActivationModal,
 }));
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -111,6 +117,22 @@ describe('workflowPartiallyActivated', () => {
 			{ nodeId: 'node-1', nodeName: 'Webhook', errorMessage: 'Path conflict' },
 			{ nodeId: 'node-2', nodeName: 'Schedule', errorMessage: 'Registration failed' },
 		]);
+	});
+
+	// ADO-4969: a partial publication gets its own warning toast; the success
+	// modal deferred by the publish flow must never show next to it.
+	it('clears a pending activation success modal intent', async () => {
+		mockWorkflowsListStore.fetchWorkflow.mockResolvedValue({ id: 'wf-123', checksum: 'abc' });
+
+		await workflowPartiallyActivated(makeEvent(), options);
+
+		expect(mockClearPendingActivationModal).toHaveBeenCalledWith('wf-123');
+	});
+
+	it('clears the pending intent even when viewing another workflow', async () => {
+		await workflowPartiallyActivated(makeEvent({ workflowId: 'wf-other' }), options);
+
+		expect(mockClearPendingActivationModal).toHaveBeenCalledWith('wf-other');
 	});
 
 	it('does NOT set publicationStatus when flag is off', async () => {

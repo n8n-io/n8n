@@ -21,8 +21,8 @@ import {
 	rateLimitExceeded,
 } from './integration-helpers';
 import type {
-	IntegrationAction,
 	IntegrationActionExecutor,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
@@ -73,15 +73,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult> {
+	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (params.action === 'do_not_respond') {
@@ -123,11 +115,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
-			type: params.descriptor.integration.type,
-			credentialId,
-		});
-		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+		const chat = await this.chatIntegrationService.getChatInstanceForTools(
 			params.descriptor.agentId,
 			params.descriptor.integration,
 		);
@@ -178,7 +166,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	 * End the turn without posting anything. Allowed only when the latest
 	 * inbound message marked the reply as optional.
 	 */
-	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+	private doNotRespond(params: IntegrationActionParams): IntegrationActionResult {
 		if (params.currentMessageContext?.replyExpectation !== 'optional') {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
@@ -195,7 +183,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async addReactionToMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
 		if (!supportsAddReaction(adapter)) {
@@ -246,7 +234,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -284,7 +272,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendDirectMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		const thread = await chat.openDM(input.userId);
@@ -308,7 +296,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async editMessageInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = editMessageInputSchema.parse(params.input);
 		const currentMessageContext = params.currentMessageContext;
@@ -346,7 +334,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendChannelMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
 		const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
@@ -451,16 +439,6 @@ function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'edi
 
 function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
 	return isRecord(adapter) && typeof adapter.addReaction === 'function';
-}
-
-interface ExecuteParams {
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	awaitResponse: boolean;
-	runId?: string;
-	toolCallId?: string;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 function buildMessageContextFromSentMessage(params: {

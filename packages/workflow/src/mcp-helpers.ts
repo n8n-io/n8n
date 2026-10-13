@@ -14,6 +14,8 @@ interface McpRegistryConnectionBase {
 	credentialBindings: readonly McpRegistryCredentialBinding[];
 	/** Extra headers configured on the registry row (e.g. a partner User-Agent), sent as-is on every request. */
 	headers?: Record<string, string>;
+	/** Attribution text the registry row requires on every tool result it returns. */
+	attribution?: string;
 }
 
 export interface McpRegistryCredentialBinding {

@@ -95,9 +95,13 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 			return;
 		}
 
-		credentials.forEach(async (credential) => {
-			await this.deleteCredential(user, credential.id);
-		});
+		const deletionResults = await Promise.allSettled(
+			credentials.map(async (credential) => await this.deleteCredential(user, credential.id)),
+		);
+		const failedDeletion = deletionResults.find((result) => result.status === 'rejected');
+		if (failedDeletion) {
+			throw failedDeletion.reason;
+		}
 
 		this.logger.info(`All credentials with type ${credentialType} successfully uninstalled`);
 	}

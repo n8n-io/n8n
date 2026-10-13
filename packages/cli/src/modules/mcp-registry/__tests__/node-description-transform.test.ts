@@ -585,6 +585,12 @@ describe('serverToCredentialDescription', () => {
 						default: '',
 					},
 					{
+						displayName: 'customScopes',
+						name: 'customScopes',
+						type: 'hidden',
+						default: false,
+					},
+					{
 						displayName: 'Allowed HTTP Request Domains',
 						name: 'allowedHttpRequestDomains',
 						type: 'hidden',
@@ -712,7 +718,7 @@ describe('serverToCredentialDescription', () => {
 
 			expect(description).toEqual({
 				name: 'databricksGenieMcpOAuth2Api',
-				displayName: 'Databricks Genie MCP OAuth2',
+				displayName: 'Databricks Genie One MCP OAuth2',
 				extends: ['databricksOAuth2Api'],
 				icon: 'node:@n8n/mcp-registry.databricksGenie',
 				properties: [

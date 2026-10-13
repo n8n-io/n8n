@@ -164,6 +164,16 @@ export const verificationClaimLevelSchema = z.enum(['verified', 'partial', 'unpr
 export type VerificationClaimLevel = z.infer<typeof verificationClaimLevelSchema>;
 
 /**
+ * Where a verified change actually runs. Verification always executes the
+ * draft, so a fix to a published workflow stays out of production until the
+ * workflow is published again. `live-stale` is the state that must never be
+ * reported as a working live workflow — see INS-1311.
+ */
+export const verificationLiveStateSchema = z.enum(['unpublished', 'live-current', 'live-stale']);
+
+export type VerificationLiveState = z.infer<typeof verificationLiveStateSchema>;
+
+/**
  * The deterministic verdict from verification evidence. Backend-only: it shapes
  * the tool result the model reads and gates the publish offer. It is
  * deliberately not sent to the client — see INS-1308.
@@ -188,6 +198,16 @@ export const verificationClaimSchema = z.object({
 	pendingTriggers: z.array(z.string()).optional(),
 	publishReady: z.boolean(),
 	liveTestRecommended: z.boolean(),
+	/**
+	 * Publish state when the run happened. Optional: absent when the lookup
+	 * failed and on claims stored before INS-1311. Unknown never means stale.
+	 */
+	liveState: verificationLiveStateSchema.optional(),
+	/**
+	 * Draft version the run executed. Names the version a retest applies to,
+	 * and the version a publish would make live.
+	 */
+	verifiedVersionId: z.string().optional(),
 });
 
 export type VerificationClaim = z.infer<typeof verificationClaimSchema>;
@@ -334,6 +354,21 @@ export const waitGateScriptSchema = z.object({
 
 export type WaitGateScript = z.infer<typeof waitGateScriptSchema>;
 
+/**
+ * What the build did about node groups, on the saved (post-drop) shape. A NEW
+ * OPTIONAL FIELD for the same rollback reason as `executionIntent`.
+ */
+export const groupingOutcomeSchema = z.object({
+	topLevelItemCount: z.number().int().min(0),
+	ceiling: z.number().int().min(1),
+	groupCount: z.number().int().min(0),
+	droppedGroupCount: z.number().int().min(0),
+	decision: z.enum(['grouped', 'not_warranted', 'under_ceiling', 'missing']),
+	reason: z.string().optional(),
+});
+
+export type GroupingOutcome = z.infer<typeof groupingOutcomeSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -422,6 +457,8 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Deterministic setup handoff verdict for post-verification workflow setup. */
 	setupRequirement: workflowSetupRequirementSchema.optional(),
 	remediation: remediationMetadataSchema.optional(),
+	/** Node-group result of this build; absent on outcomes stored before the field existed. */
+	grouping: groupingOutcomeSchema.optional(),
 	/** Count of verify-built-workflow runs for this build; capped by MAX_VERIFY_ATTEMPTS. */
 	verifyAttempts: z.number().int().min(0).optional(),
 	/** Successful verification runs by trigger. A failed rerun removes that trigger's entry. */

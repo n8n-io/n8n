@@ -17,6 +17,7 @@ import {
 } from '../runtime/loop/agent-runtime';
 import { ensureUniqueMcpToolNames } from '../runtime/mcp/mcp-tool-resolver';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import { FLAG_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory-capture';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import { AgentMessageList } from '../runtime/model/message-list';
 import type { FetchFn } from '../runtime/model/model-factory';
@@ -92,6 +93,7 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
 
 const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	FLAG_MEMORY_TOOL_NAME,
 	RECALL_MEMORY_TOOL_NAME,
 	WRITE_TODOS_TOOL_NAME,
 ]);
@@ -835,6 +837,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
+	async resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.resumePaused(options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
 	/**
 	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
 	 * step checkpoint after a process crash. There is no pending tool call to
@@ -1083,7 +1099,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
-			await this.skillSource.prepare?.();
 			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
 		if (this.workspaceInstance) {

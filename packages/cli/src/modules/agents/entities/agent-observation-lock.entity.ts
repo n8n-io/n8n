@@ -1,7 +1,6 @@
+import type { ObservationLogTaskKind } from '@n8n/agents';
 import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
-
-export type ObservationTaskKind = 'observer' | 'reflector';
 
 @Entity({ name: 'agents_observation_locks' })
 @Index(['observationScopeId'])
@@ -13,7 +12,7 @@ export class AgentObservationLockEntity extends WithTimestamps {
 	observationScopeId: string;
 
 	@PrimaryColumn({ type: 'varchar', length: 20 })
-	taskKind: ObservationTaskKind;
+	taskKind: ObservationLogTaskKind;
 
 	@Column({ type: 'varchar', length: 64 })
 	holderId: string;

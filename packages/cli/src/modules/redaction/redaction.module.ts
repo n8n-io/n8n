@@ -15,6 +15,10 @@ export class RedactionModule implements ModuleInterface {
 		// Import side-effect registers RedactionContextHook.
 		await import('./redaction-context-hook.js');
 
+		// Import side-effect registers DynamicCredentialsContextHook, which stamps
+		// the private-credential flag at execution start (unconditional of license).
+		await import('./dynamic-credentials-context-hook.js');
+
 		// Importing the service here registers its @OnPubSubEvent handler with the
 		// pubsub metadata before PubSubRegistry.init() wires up the listeners.
 		// The decorator runs at class-evaluation (import) time, so the import

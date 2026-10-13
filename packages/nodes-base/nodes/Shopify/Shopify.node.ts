@@ -173,7 +173,7 @@ export class Shopify implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'order') {
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#create-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#post-orders
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const discount = additionalFields.discountCodesUi as IDataObject;
@@ -243,13 +243,13 @@ export class Shopify implements INodeType {
 						});
 						responseData = responseData.order;
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#destroy-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#delete-orders-order-id
 					if (operation === 'delete') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
 						responseData = await shopifyApiRequest.call(this, 'DELETE', `/orders/${orderId}.json`);
 						responseData = { success: true };
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#show-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#get-orders-order-id?fields=id,line-items,name,total-price
 					if (operation === 'get') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
 						const options = this.getNodeParameter('options', i);
@@ -265,7 +265,7 @@ export class Shopify implements INodeType {
 						);
 						responseData = responseData.order;
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#get-orders?status=any
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
@@ -324,7 +324,7 @@ export class Shopify implements INodeType {
 							responseData = responseData.orders;
 						}
 					}
-					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#update-2019-10
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#put-orders-order-id
 					if (operation === 'update') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -358,7 +358,7 @@ export class Shopify implements INodeType {
 				} else if (resource === 'product') {
 					const productId = this.getNodeParameter('productId', i, '') as string;
 					let body: IProduct = {};
-					//https://shopify.dev/docs/admin-api/rest/reference/products/product#create-2020-04
+					//https://shopify.dev/docs/api/admin-rest/latest/resources/product#post-products
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 
@@ -385,7 +385,7 @@ export class Shopify implements INodeType {
 						responseData = responseData.product;
 					}
 					if (operation === 'delete') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product#destroy-2020-04
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#delete-products-product-id
 						responseData = await shopifyApiRequest.call(
 							this,
 							'DELETE',
@@ -394,7 +394,7 @@ export class Shopify implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#get-products-product-id
 						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 						Object.assign(qs, additionalFields);
 						responseData = await shopifyApiRequest.call(
@@ -407,7 +407,7 @@ export class Shopify implements INodeType {
 						responseData = responseData.product;
 					}
 					if (operation === 'getAll') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#get-products?ids=632910392,921728736
 						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -430,7 +430,7 @@ export class Shopify implements INodeType {
 						}
 					}
 					if (operation === 'update') {
-						//https://shopify.dev/docs/admin-api/rest/reference/products/product?api[version]=2020-07#update-2020-07
+						//https://shopify.dev/docs/api/admin-rest/latest/resources/product#put-products-product-id
 						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						if (updateFields.productOptions) {

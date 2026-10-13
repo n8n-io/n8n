@@ -68,7 +68,9 @@ describe('WorkflowToolWorkflowLoader', () => {
 		const { service, workflowRepository } = makeService();
 		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
 			makeWorkflow({
+				versionId: 'draft-version',
 				activeVersion: {
+					versionId: 'published-version',
 					nodes: [{ id: 'published-node' }],
 					connections: { Published: {} },
 				},
@@ -85,6 +87,7 @@ describe('WorkflowToolWorkflowLoader', () => {
 			{ withActiveVersion: true },
 		);
 		expect(workflow).toMatchObject({
+			versionId: 'published-version',
 			nodes: [{ id: 'published-node' }],
 			connections: { Published: {} },
 		});
@@ -113,10 +116,13 @@ describe('WorkflowToolWorkflowLoader', () => {
 		const { service, workflowRepository, workflowPublishedDataService } = makeService({
 			useWorkflowPublicationService: true,
 		});
-		workflowRepository.findOneByAgentToolReference.mockResolvedValue(makeWorkflow());
+		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+			makeWorkflow({ versionId: 'draft-version' }),
+		);
 		workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
 			workflow: makeWorkflow(),
 			publishedVersion: {
+				versionId: 'published-version',
 				nodes: [{ id: 'published-node' }],
 				connections: { Published: {} },
 			},
@@ -129,6 +135,9 @@ describe('WorkflowToolWorkflowLoader', () => {
 		expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith(
 			'workflow-1',
 		);
-		expect(workflow).toMatchObject({ nodes: [{ id: 'published-node' }] });
+		expect(workflow).toMatchObject({
+			versionId: 'published-version',
+			nodes: [{ id: 'published-node' }],
+		});
 	});
 });

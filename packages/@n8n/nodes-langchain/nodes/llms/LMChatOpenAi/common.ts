@@ -2,7 +2,9 @@ import type { OpenAIClient } from '@langchain/openai';
 import type { ChatOpenAIToolType } from '@langchain/openai/dist/utils/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
-import { isObjectEmpty, jsonParse } from 'n8n-workflow';
+import { isObjectEmpty } from 'n8n-workflow';
+
+import { parseJsonParameter } from '@utils/helpers';
 
 import type {
 	BuiltInTools,
@@ -70,12 +72,8 @@ export const formatBuiltInTools = (builtInTools: BuiltInTools) => {
 			const filters = get(builtInTools.fileSearch, 'filters', '{}');
 			tools.push({
 				type: 'file_search',
-				vector_store_ids: jsonParse(vectorStoreIds, {
-					errorMessage: 'Failed to parse vector store IDs',
-				}),
-				filters: filters
-					? jsonParse(filters, { errorMessage: 'Failed to parse filters' })
-					: undefined,
+				vector_store_ids: parseJsonParameter(vectorStoreIds, 'Failed to parse vector store IDs'),
+				filters: filters ? parseJsonParameter(filters, 'Failed to parse filters') : undefined,
 				max_num_results: get(builtInTools.fileSearch, 'maxResults') as number,
 			});
 		}
@@ -96,9 +94,7 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 	}
 
 	if (options.metadata) {
-		body.metadata = jsonParse(options.metadata, {
-			errorMessage: 'Failed to parse metadata',
-		});
+		body.metadata = parseJsonParameter(options.metadata, 'Failed to parse metadata');
 	}
 
 	if (options.promptConfig) {
@@ -107,9 +103,7 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 			id: prompt.promptId,
 			version: prompt.version,
 			...(prompt.variables && {
-				variables: jsonParse(prompt.variables, {
-					errorMessage: 'Failed to parse prompt variables',
-				}),
+				variables: parseJsonParameter(prompt.variables, 'Failed to parse prompt variables'),
 			}),
 		});
 	}
@@ -123,9 +117,7 @@ export const prepareAdditionalResponsesParams = (options: ModelOptions) => {
 			textConfig.format = {
 				type: textOptions.type,
 				name: textOptions.name as string,
-				schema: jsonParse(textOptions.schema as string, {
-					errorMessage: 'Failed to parse schema',
-				}),
+				schema: parseJsonParameter(textOptions.schema, 'Failed to parse schema'),
 			};
 		} else {
 			textConfig.format = {

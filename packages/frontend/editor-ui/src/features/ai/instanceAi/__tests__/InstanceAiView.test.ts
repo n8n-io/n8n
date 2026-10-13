@@ -50,12 +50,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 const renderView = createComponentRenderer(InstanceAiView, {
 	global: {
 		stubs: {
-			InstanceAiThreadList: { template: '<div data-test-id="thread-list-stub" />' },
 			InstanceAiOnboardingView: {
 				emits: ['completed'],
 				template: '<button data-test-id="onboarding-view-stub" @click="$emit(\'completed\')" />',
 			},
-			N8nResizeWrapper: { template: '<div><slot /></div>' },
 		},
 	},
 });
@@ -134,6 +132,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -164,6 +163,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -189,6 +189,7 @@ describe('InstanceAiView', () => {
 		appSettingsStore.moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,

@@ -95,6 +95,9 @@
                 },
                 "username": {
                     "type": "string"
+                },
+                "vad_colors": {
+                    "type": "null"
                 }
             }
         },
@@ -120,6 +123,35 @@
                     },
                     "description": {
                         "type": "string"
+                    },
+                    "thumbnail": {
+                        "type": "object",
+                        "properties": {
+                            "content_type": {
+                                "type": "string"
+                            },
+                            "flags": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
+                            "proxy_url": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
                     },
                     "timestamp": {
                         "type": "string"
@@ -194,6 +226,9 @@
                     },
                     "username": {
                         "type": "string"
+                    },
+                    "vad_colors": {
+                        "type": "null"
                     }
                 }
             }
@@ -211,5 +246,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }

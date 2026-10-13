@@ -9,6 +9,8 @@ interface SandboxCommandResult {
 export interface RunInSandboxOptions {
 	cwd?: string;
 	abortSignal?: AbortSignal;
+	/** Command timeout in milliseconds. The provider enforces this limit. */
+	timeout?: number;
 }
 
 export interface SandboxCommandTarget {
@@ -17,12 +19,12 @@ export interface SandboxCommandTarget {
 		executeCommand?: (
 			command: string,
 			args?: string[],
-			options?: { cwd?: string; abortSignal?: AbortSignal },
+			options?: RunInSandboxOptions,
 		) => Promise<SandboxCommandResult>;
 		processes?: {
 			spawn: (
 				command: string,
-				options?: { cwd?: string; abortSignal?: AbortSignal },
+				options?: RunInSandboxOptions,
 			) => Promise<{ wait: () => Promise<SandboxCommandResult> }>;
 		};
 	};
@@ -45,18 +47,12 @@ export async function runInSandbox(
 	if (!sandbox) throw new Error('Workspace has no sandbox');
 
 	if (sandbox.executeCommand) {
-		const result = await sandbox.executeCommand(command, [], {
-			cwd: options.cwd,
-			abortSignal: options.abortSignal,
-		});
+		const result = await sandbox.executeCommand(command, [], options);
 		return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
 	}
 
 	if (sandbox.processes) {
-		const handle = await sandbox.processes.spawn(command, {
-			cwd: options.cwd,
-			abortSignal: options.abortSignal,
-		});
+		const handle = await sandbox.processes.spawn(command, options);
 		const result = await raceWithAbort(async () => await handle.wait(), options.abortSignal);
 		return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
 	}

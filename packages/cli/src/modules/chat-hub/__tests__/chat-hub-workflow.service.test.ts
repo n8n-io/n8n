@@ -7,7 +7,9 @@ import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workfl
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
@@ -38,6 +40,7 @@ describe('ChatHubWorkflowService', () => {
 
 	const mockCipher = mock<Cipher>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -72,6 +75,7 @@ describe('ChatHubWorkflowService', () => {
 			workflowFinderService,
 			mockCipher,
 			policyEnforcementService,
+			deprecatedNodesValidationService,
 		);
 
 		// Mock repository methods
@@ -130,6 +134,7 @@ describe('ChatHubWorkflowService', () => {
 
 			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ storedWorkflow: null, projectId: 'project-789' }),
+				{ kind: 'user', user: { id: 'user-123' } },
 			);
 			expect(workflowRepository.createContent).toHaveBeenCalledWith(
 				expect.anything(),
@@ -161,6 +166,32 @@ describe('ChatHubWorkflowService', () => {
 			expect(workflowRepository.createContent).not.toHaveBeenCalled();
 		});
 
+		it('writes nothing when the workflow contains a deprecated node', async () => {
+			deprecatedNodesValidationService.validateOnCreate.mockImplementationOnce(() => {
+				throw new DeprecatedNodesError('deprecated', { violations: [] });
+			});
+
+			await expect(
+				service.createChatWorkflow(
+					'user-123',
+					'session-456',
+					'project-789',
+					[],
+					'Hello',
+					[],
+					{},
+					{ provider: 'openai', model: 'gpt-4' },
+					undefined,
+					[],
+					'UTC',
+					null,
+					defaultExecutionMetadata,
+				),
+			).rejects.toThrow(DeprecatedNodesError);
+
+			expect(workflowRepository.createContent).not.toHaveBeenCalled();
+		});
+
 		it('enforces the save for the title-generation workflow', async () => {
 			await service.createTitleGenerationWorkflow(
 				'user-123',
@@ -174,6 +205,7 @@ describe('ChatHubWorkflowService', () => {
 
 			expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: 'project-789' }),
+				{ kind: 'user', user: { id: 'user-123' } },
 			);
 			expect(workflowRepository.createContent).toHaveBeenCalledWith(
 				expect.anything(),
@@ -207,6 +239,7 @@ describe('ChatHubWorkflowService', () => {
 					workflow: expect.objectContaining({ id: 'workflow-1' }),
 					projectId: 'project-1',
 				}),
+				{ kind: 'user', user: expect.objectContaining({ id: 'user-1' }) },
 			);
 			expect(workflowRepository.createContent).toHaveBeenCalledWith(
 				expect.anything(),
@@ -1089,6 +1122,25 @@ describe('ChatHubWorkflowService', () => {
 			});
 		});
 
+		it('should normalize the legacy wildcard mime type', () => {
+			const nodes = [
+				makeNode({
+					options: {
+						allowFileUploads: true,
+						allowedFilesMimeTypes: '*',
+					},
+				}),
+			];
+
+			expect(service.resolveWorkflowAttachmentPolicy(nodes)).toEqual({
+				allowFileUploads: true,
+				allowedFilesMimeTypes: '*/*',
+			});
+			expect(
+				service.parseInputModalities({ allowFileUploads: true, allowedFilesMimeTypes: '*' }),
+			).toEqual(['text', 'image', 'audio', 'video', 'file']);
+		});
+
 		it('should return wildcard mime types when allowFileUploads is true and mime types is not set', () => {
 			const nodes = [
 				makeNode({
@@ -1341,6 +1393,7 @@ describe('ChatHubWorkflowService', () => {
 				workflowFinderService,
 				mockCipher,
 				policyEnforcementService,
+				deprecatedNodesValidationService,
 			);
 
 			const mockTrx = mock<EntityManager>();

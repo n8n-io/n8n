@@ -1,11 +1,22 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
+import { ensureUrlPathSuffix, isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
 import {
+	createGoogleVertexModel,
+	isGoogleVertexAnthropicModel,
+	parseGoogleVertexAuthOptions,
+} from './google-vertex';
+import {
+	endpointRouteKey,
+	guardOpenAiRoutes,
+	withChatCompletionsFallback,
+} from './openai-api-style';
+import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
+	isAzureEntraCredential,
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
@@ -38,6 +49,12 @@ function isLanguageModel(config: unknown): config is LanguageModel {
  * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
  * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
+/**
+ * Resolves `globalThis.fetch` per request, the same way the SDK does when no
+ * `fetch` is passed, so a transport installed after the model was built is used.
+ */
+const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
+
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
@@ -74,33 +91,72 @@ type OpenAiCompatibleCreds = {
 };
 
 /**
- * Parse a Vertex service-account JSON string into `googleAuthOptions`.
- * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
- * Returns undefined when unset so ADC can take over.
+ * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
+ * `AZURE_OPENAI_SCOPE` and the `resource` claim the reference impl sends in the
+ * client-credentials token request.
  */
-function parseGoogleVertexAuthOptions(
-	googleCredentials: string | undefined,
-): { credentials: Record<string, unknown> } | undefined {
-	if (!googleCredentials?.trim()) return undefined;
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(googleCredentials);
-	} catch {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
-		);
-	}
-	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
-		);
-	}
-	const credentials = { ...(parsed as Record<string, unknown>) };
-	// SA keys often arrive with literal `\n` escapes when pasted into env files.
-	if (typeof credentials.private_key === 'string') {
-		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-	}
-	return { credentials };
+const AZURE_OPENAI_ENTRA_RESOURCE = 'https://cognitiveservices.azure.com/';
+
+/**
+ * Builds a `() => Promise<string>` bearer-token provider for an Azure Entra
+ * OAuth2 credential. Ports `N8nOAuth2TokenCredential.getToken` from the
+ * LangChain Azure node: mints a fresh token on every call via
+ * `@n8n/client-oauth2`'s client-credentials flow, gated on a stored
+ * `oauthTokenData.access_token` (proof the credential was connected).
+ *
+ * `@ai-sdk/azure`'s `createAzure` accepts this shape directly as `tokenProvider`;
+ * it must not be paired with `apiKey`.
+ */
+function createEntraTokenProvider(creds: {
+	oauthClientId?: string;
+	oauthClientSecret?: string;
+	oauthAccessTokenUrl?: string;
+	oauthScope?: string;
+	oauthAuthentication?: 'body' | 'header';
+	oauthTokenData?: { access_token: string } & Record<string, unknown>;
+}): () => Promise<string> {
+	const {
+		oauthClientId,
+		oauthClientSecret,
+		oauthAccessTokenUrl,
+		oauthScope,
+		oauthAuthentication,
+		oauthTokenData,
+	} = creds;
+	return async () => {
+		if (!oauthTokenData?.access_token) {
+			throw new Error('Azure Entra OAuth2 credential is not connected');
+		}
+		if (!oauthClientId || !oauthAccessTokenUrl) {
+			throw new Error('Azure Entra OAuth2 credential is missing clientId or accessTokenUrl');
+		}
+		const { ClientOAuth2 } = require('@n8n/client-oauth2') as typeof import('@n8n/client-oauth2');
+		const client = new ClientOAuth2({
+			clientId: oauthClientId,
+			clientSecret: oauthClientSecret,
+			accessTokenUri: oauthAccessTokenUrl,
+			scopes: oauthScope?.split(' '),
+			authentication: oauthAuthentication,
+			additionalBodyProperties: { resource: AZURE_OPENAI_ENTRA_RESOURCE },
+		});
+		const token = await client.credentials.getToken();
+		return (token.data as { access_token: string }).access_token;
+	};
+}
+
+/**
+ * Wraps a `fetch` so each request carries an `Authorization: Bearer <token>`
+ * header resolved from a token provider. Used for Foundry Entra, where
+ * `buildOpenAiCompatible` has no `tokenProvider` slot.
+ */
+function withBearerAuth(fetch: FetchFn | undefined, tokenProvider: () => Promise<string>): FetchFn {
+	const base = fetch ?? globalFetch;
+	return async (input, init) => {
+		const token = await tokenProvider();
+		const headers = new Headers(init?.headers);
+		headers.set('Authorization', `Bearer ${token}`);
+		return await base(input, { ...init, headers });
+	};
 }
 
 /**
@@ -140,7 +196,9 @@ export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 
 /** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
 export function supportsSplitSystemMessages(model: ModelConfig): boolean {
-	switch (getModelIdString(model).split('/')[0]) {
+	const modelId = getModelIdString(model);
+	if (isGoogleVertexAnthropicModel(modelId)) return true;
+	switch (modelId.split('/')[0]) {
 		case 'anthropic':
 		case 'google-vertex-anthropic':
 		case 'openrouter':
@@ -181,18 +239,35 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
-			const provider = createOpenAI({ ...providerCreds, fetch });
-			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
-			// vLLM, Ollama), which speaks /chat/completions; the provider's default
-			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. OpenAI credentials also carry the official
-			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
-			// explicitly support one API or the other.
-			const useChat =
-				apiStyle === 'chat' ||
-				(apiStyle === undefined &&
-					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
-			return useChat ? provider.chat(model) : provider(model);
+			const { baseURL } = providerCreds;
+			// The official API serves /responses, which the provider's default model
+			// targets. OpenAI credentials also carry that base URL. `isOpenAiCustomEndpoint`
+			// reads the model-discovery host list, so a host added there to fix a model
+			// dropdown also stops this endpoint from being probed.
+			if (baseURL === undefined || !isOpenAiCustomEndpoint(baseURL)) {
+				const provider = createOpenAI({ ...providerCreds, fetch });
+				return apiStyle === 'chat' ? provider.chat(model) : provider(model);
+			}
+			// A custom baseURL can sit behind a reverse proxy whose catch-all answers
+			// 200 with an HTML page, which the SDK stream parser accepts as an empty
+			// stream. Every route through such an endpoint runs on the guarded
+			// transport, whichever API the user pinned.
+			const guarded = createOpenAI({
+				...providerCreds,
+				fetch: guardOpenAiRoutes(fetch ?? globalFetch),
+			});
+			// `apiStyle` is the explicit override and wins over the automatic choice:
+			// it pins the route, so a refusal on it surfaces instead of falling back.
+			if (apiStyle === 'chat') return guarded.chat(model);
+			if (apiStyle === 'responses') return guarded(model);
+			// Without it, only the endpoint knows whether it is a proxy for real
+			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
+			// transport and the first answer decides.
+			return withChatCompletionsFallback(
+				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
+				guarded(model),
+				guarded.chat(model),
+			);
 		},
 	},
 	custom: {
@@ -247,6 +322,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				: creds.baseURL;
 			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
+	},
+	'google-vertex': {
+		build: createGoogleVertexModel,
 	},
 	xai: {
 		build: (creds, model, fetch) => {
@@ -325,6 +403,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+			const isEntra = isAzureEntraCredential(creds);
 
 			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
 			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
@@ -333,6 +412,18 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
 			// so the configured base is used verbatim.
 			if (endpointType === 'foundry') {
+				if (isEntra) {
+					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
+					// transport to inject `Authorization: Bearer <token>` per request.
+					const tokenProvider = createEntraTokenProvider(creds);
+					return buildOpenAiCompatible(
+						'azure-openai',
+						undefined,
+						{ baseURL },
+						model,
+						withBearerAuth(fetch, tokenProvider),
+					);
+				}
 				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
 			}
 
@@ -357,13 +448,17 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
+			// `@ai-sdk/azure` rejects `apiKey + tokenProvider` together, so pass
+			// exactly one. Entra mints a Bearer via the token provider; apiKey
+			// drives the `api-key` header path.
+			const auth = isEntra ? { tokenProvider: createEntraTokenProvider(creds) } : { apiKey };
 			return createAzure({
 				resourceName,
-				apiKey,
 				baseURL: normalizedBaseURL,
 				apiVersion,
 				useDeploymentBasedUrls: true,
 				fetch,
+				...auth,
 			}).chat(deploymentName ?? model);
 		},
 	},

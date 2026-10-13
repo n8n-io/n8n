@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 import { AUTORENEWAL_INTERVAL } from '@n8n_io/license-sdk';
 
 import { License } from '@/license';
@@ -13,18 +13,22 @@ import { License } from '@/license';
 export class LicenseRenewalTask implements SystemTask {
 	readonly name = 'license-renewal';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: AUTORENEWAL_INTERVAL / Time.seconds.toMilliseconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(AUTORENEWAL_INTERVAL);
 
-	/** The SDK logs a failed pass and resolves, so the runner never sees a failure to retry. */
-	readonly effects: SystemTaskEffects = 'non-idempotent';
-
-	readonly durable = false;
-
-	/** A new leader may inherit a due renewal whose window closes before the next interval. */
-	readonly runOnTakeover = true;
+	readonly target = clusterTarget({
+		scheduler: {
+			/** A retry after a failed renewal resends a token the server may have rotated already. */
+			retryOnFailure: false,
+			/** Kept well under one interval, so two checks are never claimable at once. */
+			missedAfterSeconds: 5 * Time.minutes.toSeconds,
+			/** A check that missed its grace window still runs once, late. */
+			catchUp: true,
+		},
+		leaderTimer: {
+			/** A new leader may inherit a due renewal whose window closes before the next interval. */
+			runOnTakeover: true,
+		},
+	});
 
 	constructor(private readonly license: License) {}
 

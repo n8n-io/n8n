@@ -69,6 +69,7 @@ const startWithAi = async () => {
 		i18n.baseText('instanceAi.launch.template.message', {
 			interpolate: { name: template.value.name, id: templateId.value },
 		}),
+		{ kind: 'prefill', prefillType: 'template_adjustment' },
 		{
 			source: 'template-view',
 			origin: 'internal',
