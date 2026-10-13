@@ -327,6 +327,22 @@ describe('AgentSkillsService', () => {
 		expect(agent.skills.old).toMatchObject({ name: 'Old', instructions: 'Updated.' });
 	});
 
+	it('refuses a rename onto the name of an unreferenced body while the skills hub is off', async () => {
+		Object.assign(skillRefs, { usesSkillsHub: false });
+		givenAgent({
+			schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+			skills: {
+				skill_a: skill,
+				old: { ...skill, name: 'Old' },
+				older: { ...skill, name: 'Older' },
+			},
+		});
+
+		await expect(
+			service.updateSkill(agentId, projectId, 'old', { name: 'older' }, context),
+		).rejects.toThrow('Agent already has a skill with a name like "older".');
+	});
+
 	it('lists the skills the draft runs', async () => {
 		skillRefs.bodies.skill_a = skill;
 		givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });

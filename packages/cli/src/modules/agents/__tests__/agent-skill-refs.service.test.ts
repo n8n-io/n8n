@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { AgentJsonSkillConfig, StoredAgentConfig } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 

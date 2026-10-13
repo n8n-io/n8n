@@ -385,11 +385,8 @@ export class AgentSkillsService {
 		projectId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<AgentSkillMutationResponse> {
-		const { [skillId]: _self, ...others } = await this.agentSkillRefs.skillsForRefs(
-			entity,
-			skillRefs,
-			{},
-		);
+		// Every body on the agent row counts, with or without a ref, as on master.
+		const { [skillId]: _self, ...others } = entity.skills ?? {};
 		this.assertNoNameClashes(others, [updated]);
 		const snapshot = captureAgentMutation(entity, skillRefs);
 		entity.skills = { ...entity.skills, [skillId]: updated };
