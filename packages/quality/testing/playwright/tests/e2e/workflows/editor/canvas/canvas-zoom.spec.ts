@@ -20,7 +20,7 @@ const ZOOM_TOLERANCE = 0.2; // Acceptable variance for floating-point zoom compa
 test.describe(
 	'Canvas Zoom Functionality',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

@@ -22,7 +22,7 @@ async function expectExecuteButtonRightOfControls(n8n: n8nPage) {
 
 test.describe(
 	'ADO-5630: Execute workflow button layout',
-	{ annotation: [{ type: 'owner', description: 'Adore' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		test.beforeEach(async ({ n8n, setupRequirements }) => {
 			await setupRequirements(aiEnabledRequirements);
