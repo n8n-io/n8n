@@ -73,7 +73,10 @@ beforeAll(async () => {
 		const skillId = `${draft.id}_skill`;
 		const { allowedTools: _dropped, ...draftSkill } = draft.skills['shared-skill'];
 		draft.skills = { [skillId]: draftSkill };
-		draft.config = { ...AgentJsonConfigSchema.parse(draft.config), skills: [{ type: 'skill', id: skillId }] };
+		draft.config = {
+			...AgentJsonConfigSchema.parse(draft.config),
+			skills: [{ type: 'skill', id: skillId }],
+		};
 		const published = structuredClone(draft);
 		published.config = {
 			...AgentJsonConfigSchema.parse(published.config),
