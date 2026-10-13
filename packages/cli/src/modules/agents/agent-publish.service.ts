@@ -441,6 +441,9 @@ export class AgentPublishService {
 		await this.enforceRevertPolicy(agent, context.user, version.schema);
 
 		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		// With the hub on, the refs carry their pins. With it off, a revert can keep the ids
+		// and change the bodies, so compare the bodies too.
+		const previousSkills = structuredClone(agent.skills ?? {});
 		const previousSchema = agent.schema ? toAgentDocument(agent.schema, previousSkillRefs) : null;
 		const previousTools = agent.tools ?? {};
 		const { tasksChanged, nextSchema, nextSkillRefs } = await this.transactionRunner.run(
@@ -469,7 +472,9 @@ export class AgentPublishService {
 				by: context.modifiedBy,
 				changedParts: diffAgentConfigParts(previousSchema, nextSchema, integrations, integrations, {
 					tools: !isEqual(previousTools, agent.tools),
-					skills: !isEqual(previousSkillRefs, nextSkillRefs),
+					skills:
+						!isEqual(previousSkillRefs, nextSkillRefs) ||
+						(!this.agentSkillRefs.usesSkillsHub && !isEqual(previousSkills, agent.skills ?? {})),
 					tasks: tasksChanged,
 				}),
 				wasUnconfigured: false,
