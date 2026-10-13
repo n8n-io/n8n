@@ -20,7 +20,6 @@ const CANONICAL_OWNERS = new Set([
 	'Developer Platform',
 	'NODES',
 	'Payday',
-	'Adore',
 	'Context',
 	'Knowledge',
 	'AI',
