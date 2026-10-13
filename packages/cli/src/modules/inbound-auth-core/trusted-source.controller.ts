@@ -135,6 +135,15 @@ export class TrustedSourceController {
 	) {
 		const current = await this.require(id);
 		const { clearBindings = false, config, ...rest } = dto;
+		// An empty patch changes nothing, so it writes no row and emits no audit event.
+		if (
+			rest.name === undefined &&
+			rest.issuer === undefined &&
+			config === undefined &&
+			!clearBindings
+		) {
+			return redact(current);
+		}
 		await wrapConflict(
 			async () =>
 				await this.store.update(

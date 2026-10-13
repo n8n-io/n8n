@@ -172,6 +172,7 @@ describe('POST /trusted-sources', () => {
 			/300/,
 		],
 		['an issuer that is not a URL', { issuer: 'acme' }, ['issuer'], /url/i],
+		['an http issuer', { issuer: 'http://acme.example.com' }, ['issuer'], /https/],
 	])(
 		'refuses %s with the offending path and writes nothing',
 		async (_, overrides, path, message) => {
@@ -335,6 +336,18 @@ describe('PATCH /trusted-sources/:id', () => {
 			sourceId: id,
 			issuer: ISSUER,
 		});
+	});
+
+	it('answers an empty body with the current source, writes nothing and emits nothing', async () => {
+		const { id } = await createSource();
+		const update = vi.spyOn(store, 'update');
+
+		const response = await ownerAgent.patch(`/trusted-sources/${id}`).send({});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ id, name: 'Acme', issuer: ISSUER });
+		expect(update).not.toHaveBeenCalled();
+		expect(emit).not.toHaveBeenCalledWith('trusted-source-updated', expect.anything());
 	});
 
 	it('keeps the stored secret when the config carries the blanking value', async () => {
