@@ -439,7 +439,7 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 			'Collect everything still needed to finish the initial build in ONE guided flow: open ' +
 				'questions (including the model choice), credential slots, and chat-channel ' +
 				'setup. Call it at most once, only in the trailing step of an initial build ' +
-				'when only blocked tasks remain, and never together with another interactive tool. ' +
+				'when only pending setup remains, and never together with another interactive tool. ' +
 				'It shows setup cards back-to-back without returning control between them: questions, ' +
 				'then credentials, then one card per requested channel. Channel cards always run last ' +
 				'after every credential phase, including when earlier setup was skipped or dismissed. Pass ' +
