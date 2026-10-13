@@ -42,6 +42,8 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
 	restricted_by_instance: 'agents.builder.validation.issue.restrictedByInstance' as BaseTextKey,
 	restricted_by_project: 'agents.builder.validation.issue.restrictedByProject' as BaseTextKey,
+	restricted_by_inline_tool:
+		'agents.builder.validation.issue.restrictedByInlineTool' as BaseTextKey,
 };
 
 export function resolveAgentValidationIssueMessageKey(

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nText } from '@n8n/design-system';
 import {
+	isNodeTypeRestricted,
 	RestrictedToolCallout,
 	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
@@ -21,6 +22,7 @@ import {
 	updateWorkflowToolRef,
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
+import { inlineAgentToolTypes } from '../utils/inlineAgentToolTypes';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
@@ -193,6 +195,17 @@ watch(title, (value) => emit('update:title', value), { immediate: true });
 
 const currentNode = computed(() => draftNode.value ?? initialNode.value);
 
+/**
+ * The tool itself is allowed but the agent it embeds holds a denied node type. Read from the
+ * draft rather than from a validation issue: the form edits a working copy the server has not
+ * validated yet, and the picker opens it before anything is saved. The form stays editable on
+ * purpose — removing that embedded tool is the only fix, so locking it would strand the agent.
+ */
+const embedsRestrictedTool = computed(() =>
+	inlineAgentToolTypes(currentNode.value?.type, currentNode.value?.parameters).some((type) =>
+		isNodeTypeRestricted(type),
+	),
+);
 const hasHttpRequestUrlIssue = computed(() => {
 	const data = toolModalData.value;
 	if (data?.toolRef.type !== 'node') return false;
@@ -339,6 +352,13 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 			:node-type-name="restrictedToolName"
 			:scope="restrictionScope"
 		/>
+		<N8nCallout
+			v-else-if="embedsRestrictedTool"
+			theme="warning"
+			data-test-id="inline-restricted-tool-callout"
+		>
+			{{ i18n.baseText('agents.toolConfig.restrictedInlineTool' as BaseTextKey) }}
+		</N8nCallout>
 		<N8nText
 			v-if="submitCount && !canSave"
 			size="small"
