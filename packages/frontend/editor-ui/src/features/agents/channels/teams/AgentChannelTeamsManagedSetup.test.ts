@@ -61,9 +61,9 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 	botSetupState: ref(null),
 	provisionedBot: ref(null),
 	subscriptions: ref([]),
-	provisionApp: vi.fn(),
-	loadSubscriptions: vi.fn(),
-	provisionBot: vi.fn(),
+	provisionApp: vi.fn().mockResolvedValue(true),
+	loadSubscriptions: vi.fn().mockResolvedValue(true),
+	provisionBot: vi.fn().mockResolvedValue(true),
 	...overrides,
 });
 
@@ -517,8 +517,9 @@ describe('AgentChannelTeamsManagedSetup', () => {
 		it('asks Azure before deciding anything, on a setup reopened later', async () => {
 			// Held open, so the state before Azure answers is observable at all.
 			let answer: () => void = () => {};
+			// Resolves `true`: the step waits for an answer that was kept.
 			const loadSubscriptions = vi.fn(
-				async () => await new Promise<void>((resolve) => (answer = resolve)),
+				async () => await new Promise<boolean>((resolve) => (answer = () => resolve(true))),
 			);
 			const { getByTestId, queryByTestId } = render(
 				signedIn({

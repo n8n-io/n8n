@@ -232,5 +232,68 @@ describe('useTeamsChannelRuntime', () => {
 
 			expect(runtime.subscriptions.value).toEqual([]);
 		});
+
+		/**
+		 * Resolving says the call finished, not that its answer was kept. A step
+		 * that reads the two as the same thing goes on to describe a tenant that
+		 * was never successfully asked.
+		 */
+		it('says a dropped reply was not applied', async () => {
+			const runtime = buildRuntime();
+			runtime.managerCredentialId.value = 'cred-1';
+			vi.mocked(getTeamsAzureSubscriptions).mockImplementation(async () => {
+				runtime.managerCredentialId.value = 'cred-2';
+				return [{ id: 'sub-1', name: 'Production' }];
+			});
+
+			await expect(runtime.loadSubscriptions()).resolves.toBe(false);
+		});
+
+		it('says a reply for the sign-in still selected was applied', async () => {
+			const runtime = buildRuntime();
+			runtime.managerCredentialId.value = 'cred-1';
+			vi.mocked(getTeamsAzureSubscriptions).mockResolvedValue([
+				{ id: 'sub-1', name: 'Production' },
+			]);
+
+			await expect(runtime.loadSubscriptions()).resolves.toBe(true);
+			expect(runtime.subscriptions.value).toEqual([{ id: 'sub-1', name: 'Production' }]);
+		});
+	});
+
+	/**
+	 * The bot rung is counted once for each setup. This runs again on every
+	 * remount and every change of sign-in, and a tenant with no Azure
+	 * subscription is the ordinary case, so asking the server to report each
+	 * read would count the dialog being opened.
+	 */
+	describe('reporting which bot rung the setup reached', () => {
+		const firstCheckFlags = () =>
+			vi.mocked(getTeamsAzureSubscriptions).mock.calls.map((call) => call[4]);
+
+		beforeEach(() => {
+			vi.mocked(getTeamsAzureSubscriptions).mockResolvedValue([]);
+		});
+
+		it('asks for a report on the first read only', async () => {
+			const runtime = buildRuntime();
+			runtime.managerCredentialId.value = 'cred-1';
+
+			await runtime.loadSubscriptions();
+			await runtime.loadSubscriptions();
+
+			expect(firstCheckFlags()).toEqual([true, false]);
+		});
+
+		it('asks again once the setup moves to another sign-in', async () => {
+			const runtime = buildRuntime();
+			runtime.managerCredentialId.value = 'cred-1';
+
+			await runtime.loadSubscriptions();
+			runtime.managerCredentialId.value = 'cred-2';
+			await runtime.loadSubscriptions();
+
+			expect(firstCheckFlags()).toEqual([true, true]);
+		});
 	});
 });

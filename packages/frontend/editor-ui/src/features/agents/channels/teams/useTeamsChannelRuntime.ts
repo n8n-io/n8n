@@ -40,9 +40,15 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	botSetupState: Ref<TeamsAgentSetupState | null>;
 	provisionedBot: Ref<TeamsProvisionedBotSummary | null>;
 	subscriptions: Ref<TeamsAzureSubscription[]>;
-	provisionApp: () => Promise<void>;
-	loadSubscriptions: () => Promise<void>;
-	provisionBot: (subscriptionId: string) => Promise<void>;
+	/**
+	 * Each reports whether its reply was applied. A reply for an agent or a
+	 * sign-in the setup has moved on from is dropped, and a caller that read a
+	 * dropped call as a finished one would draw a conclusion from state that was
+	 * never written.
+	 */
+	provisionApp: () => Promise<boolean>;
+	loadSubscriptions: () => Promise<boolean>;
+	provisionBot: (subscriptionId: string) => Promise<boolean>;
 }
 
 export function isTeamsChannelRuntime(
@@ -76,6 +82,8 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	const botSetupState = ref<TeamsAgentSetupState | null>(null);
 	const provisionedBot = ref<TeamsProvisionedBotSummary | null>(null);
 	const subscriptions = ref<TeamsAzureSubscription[]>([]);
+	/** The setup the bot rung was already reported for, keyed like every reply. */
+	let reportedRouteFor: string | null = null;
 
 	/** Every provisioning call needs a finished sign-in to act with. */
 	function requireManagerCredential(): string {
@@ -187,7 +195,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		}
 	}
 
-	async function provisionApp() {
+	async function provisionApp(): Promise<boolean> {
 		// Before the agent is written: refusing after it would leave a draft
 		// persisted for a step that never ran.
 		const managerCredentialId = requireManagerCredential();
@@ -203,7 +211,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 			context.agentId.value,
 			managerCredentialId,
 		);
-		if (requestedFor !== contextKey()) return;
+		if (requestedFor !== contextKey()) return false;
 		provisionedApp.value = app;
 
 		// The Entra app is what names the organisation, so the Connect summary
@@ -221,23 +229,34 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 			context.agentId.value,
 			app.credentialId,
 		);
-		if (readFor !== contextKey()) return;
+		if (readFor !== contextKey()) return false;
 		botSetupState.value = setupState;
+		return true;
 	}
 
-	async function loadSubscriptions() {
+	async function loadSubscriptions(): Promise<boolean> {
 		const requestedFor = contextKey();
+		// Which rung the setup landed on is counted once for each setup. This runs
+		// again on every remount and every change of sign-in, and a tenant with no
+		// Azure subscription is the ordinary case, so reporting each read would
+		// count the dialog being opened rather than the rung being reached.
+		const firstCheck = reportedRouteFor !== requestedFor;
+		// Marked before the reply, because the server reports when it answers:
+		// waiting would let a second read for the same setup report again.
+		if (firstCheck) reportedRouteFor = requestedFor;
 		const available = await getTeamsAzureSubscriptions(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
 			requireManagerCredential(),
+			firstCheck,
 		);
-		if (requestedFor !== contextKey()) return;
+		if (requestedFor !== contextKey()) return false;
 		subscriptions.value = available;
+		return true;
 	}
 
-	async function provisionBot(subscriptionId: string) {
+	async function provisionBot(subscriptionId: string): Promise<boolean> {
 		const requestedFor = contextKey();
 		const bot = await provisionTeamsBot(
 			rootStore.restApiContext,
@@ -249,8 +268,9 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 				subscriptionId,
 			},
 		);
-		if (requestedFor !== contextKey()) return;
+		if (requestedFor !== contextKey()) return false;
 		provisionedBot.value = bot;
+		return true;
 	}
 
 	function editManagerCredential(credentialId: string) {

@@ -323,7 +323,7 @@ async function connect(credentialId?: string) {
 
 const provisionApp = async () =>
 	await run('create-app', async () => {
-		await props.runtime.provisionApp();
+		if (!(await props.runtime.provisionApp())) return;
 		const credentialId = props.runtime.provisionedApp.value?.credentialId;
 		if (credentialId) emit('provisioned', credentialId);
 	});
@@ -341,8 +341,10 @@ const provisionApp = async () =>
 async function checkSubscriptions() {
 	subscriptionsChecking.value = true;
 	try {
-		await props.runtime.loadSubscriptions();
-		subscriptionsChecked.value = true;
+		// Only on an answer that was kept. A reply for a sign-in the setup has
+		// moved on from is dropped, and marking the step checked on one would put
+		// the manual ladder behind an account Azure was never asked about.
+		if (await props.runtime.loadSubscriptions()) subscriptionsChecked.value = true;
 	} catch (error) {
 		// Left unchecked on purpose: Azure never answered, so neither branch of
 		// the step is the truth and the error stands in their place. It runs from
