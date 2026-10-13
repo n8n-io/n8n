@@ -8,13 +8,9 @@
 import { computed, ref } from 'vue';
 import { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch2 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { TeamsAvailability } from './constants';
 
-export interface TeamsAvailability {
-	teamChannels: boolean;
-	groupChats: boolean;
-	readAllChannelMessages: boolean;
-	readAllGroupMessages: boolean;
-}
+export type { TeamsAvailability } from './constants';
 
 const value = defineModel<TeamsAvailability>({ required: true });
 

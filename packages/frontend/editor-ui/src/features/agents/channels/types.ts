@@ -31,6 +31,12 @@ export interface AgentChannelViewExpose {
 	afterSave?: () => Promise<void>;
 	/** Keeps the modal open after connecting. The view emits `done` to close it. */
 	keepOpenAfterConnect?: boolean;
+	/**
+	 * Whether a setup that outlives the connect can be left now. The modal puts
+	 * the Done button in its own footer, where it is reachable without scrolling
+	 * to the end of a flow whose last step often waits on someone else.
+	 */
+	canFinish?: boolean;
 }
 
 export interface AgentChannelRuntimeContext {

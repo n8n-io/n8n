@@ -33,6 +33,7 @@ const dto = (overrides: Partial<AiPreferenceDto> = {}): AiPreferenceDto => ({
 	projectId: null,
 	project: null,
 	source: 'ui',
+	createdBy: null,
 	scopes: ['aiPreference:read', 'aiPreference:update', 'aiPreference:delete'],
 	createdAt: '2026-09-21T10:00:00.000Z',
 	updatedAt: '2026-09-21T10:00:00.000Z',

@@ -1,5 +1,5 @@
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
-import { resolveSystemTaskRunOptions } from '@n8n/decorators';
+import { resolveSystemTask } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
@@ -18,13 +18,15 @@ describe('TelemetryPulseTask', () => {
 	it('should send one packet for the whole cluster every 6 hours', () => {
 		expect(task.name).toBe('telemetry-pulse');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 21600 });
-		expect(task.effects).toBe('non-idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: false, missedAfterSeconds: 3600, catchUp: true },
+		});
 	});
 
 	it('should keep a missed occurrence for an hour, coalesce a longer backlog and never retry a failed one', () => {
-		expect(task.misfireGraceSeconds).toBe(3600);
-		expect(resolveSystemTaskRunOptions(task)).toEqual({
+		expect(task.target.scheduler?.missedAfterSeconds).toBe(3600);
+		expect(resolveSystemTask(task).runOptions).toEqual({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 3600,
 			maxAttempts: 1,
