@@ -164,6 +164,26 @@ describe('AgentSkillsService', () => {
 			expect(result.configHash).toBe(getAgentConfigHash(composeJsonConfig(agent, refs)));
 		});
 
+		it('keeps allowed tools on the agent row when the skills hub is off', async () => {
+			Object.assign(skillRefs, { usesSkillsHub: false });
+			givenAgent({ schema: baseConfig });
+
+			await service.createAndAttachSkill(
+				agentId,
+				projectId,
+				{ ...skill, allowedTools: ['search'] },
+				context,
+			);
+
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(
+				expect.anything(),
+				[{ ...skill, allowedTools: ['search'] }],
+				'user-1',
+				'project',
+				{},
+			);
+		});
+
 		it('drops allowed tools from the stored skill', async () => {
 			givenAgent({ schema: baseConfig });
 
@@ -326,6 +346,27 @@ describe('AgentSkillsService', () => {
 
 			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
 			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('sets and clears allowed tools on the agent row when the skills hub is off', async () => {
+			Object.assign(skillRefs, { usesSkillsHub: false });
+			const agent = givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+			});
+
+			await service.updateSkill(
+				agentId,
+				projectId,
+				'skill_a',
+				{ allowedTools: ['search'] },
+				context,
+				getAgentSkillHash(skill),
+			);
+			expect(agent.skills.skill_a).toEqual({ ...skill, allowedTools: ['search'] });
+
+			skillRefs.bodies.skill_a = { ...skill, allowedTools: ['search'] };
+			await service.updateSkill(agentId, projectId, 'skill_a', { allowedTools: [] }, context);
+			expect(agent.skills.skill_a).toEqual(skill);
 		});
 
 		it('updates the body on the agent row when the skills hub is off', async () => {

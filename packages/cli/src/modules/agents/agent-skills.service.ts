@@ -132,7 +132,11 @@ export class AgentSkillsService {
 		);
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		const bodies = skills.map((skill) => toStoredSkill(this.validateSkill(skill)));
+		// With the hub off, skills keep `allowedTools` as on master. Hub skills ignore it.
+		const bodies = skills.map((skill) => {
+			const validated = this.validateSkill(skill);
+			return this.agentSkillRefs.usesSkillsHub ? toStoredSkill(validated) : validated;
+		});
 		if (this.agentSkillRefs.usesSkillsHub) {
 			await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
 		}
@@ -214,8 +218,13 @@ export class AgentSkillsService {
 			throw new ConflictError('Skill was changed elsewhere; reload to get the latest version');
 		}
 
-		const { allowedTools: _ignored, ...changes } = updates;
+		// With the hub off, an update still sets or clears `allowedTools`, as on master.
+		const { allowedTools, ...changes } = updates;
 		const updated: AgentSkill = { ...existing, ...changes };
+		if (!this.agentSkillRefs.usesSkillsHub && 'allowedTools' in updates) {
+			if (allowedTools?.length) updated.allowedTools = allowedTools;
+			else delete updated.allowedTools;
+		}
 		if (instructionEdits?.length) {
 			if (updates.instructions !== undefined) {
 				throw new UserError('Pass either instructions or instructionEdits, not both.');
