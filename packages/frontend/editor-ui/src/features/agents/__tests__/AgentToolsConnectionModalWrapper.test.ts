@@ -1328,6 +1328,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(fetchForProject).toHaveBeenCalledWith(PROJECT_ID);
 		});
 
+		it('refetches the policy on open, so a policy changed since the builder loaded still applies', async () => {
+			const reload = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'reload')
+				.mockResolvedValue(undefined);
+
+			render([], vi.fn(), [], PROJECT_ID);
+			await flushPromises();
+
+			expect(reload).toHaveBeenCalled();
+		});
+
 		it('flags a restricted tool so the modal can lock it and list it last', async () => {
 			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
 
