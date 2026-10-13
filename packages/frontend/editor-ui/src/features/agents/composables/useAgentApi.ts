@@ -733,6 +733,21 @@ export const updateAgentSkill = async (
 	);
 };
 
+export const updateAgentSkillAvailability = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+	availableTo: AgentSkillAvailability,
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
+		{ availableTo },
+	);
+};
+
 export const listAttachableSkills = async (
 	context: IRestApiContext,
 	projectId: string,

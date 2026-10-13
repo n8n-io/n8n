@@ -14,7 +14,7 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill, getHubSkill } from './useAgentApi';
+import { createAgentSkill, getHubSkill, updateAgentSkillAvailability } from './useAgentApi';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -345,6 +345,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(id),
 				hubSkillsEnabled: hubSkillsEnabled.value,
 				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
 				onUseLatestVersion: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					void useLatestSkillVersion(skillId);
@@ -353,7 +354,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
 				},
-				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
+				onConfirm: ({
+					id: skillId,
+					skill: updatedSkill,
+					availableTo,
+				}: {
+					id?: string;
+					skill: AgentSkill;
+					availableTo?: AgentSkillAvailability;
+				}) => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
@@ -376,6 +385,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						},
 					};
 					scheduleSkillSave({ skillId, skill: sanitizedSkill });
+					if (availableTo && hubSkillsEnabled.value) {
+						void changeSkillAvailability(skillId, availableTo);
+					}
 				},
 			},
 		});
@@ -469,7 +481,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				}: {
 					id?: string;
 					skill: AgentSkill;
-					availableTo: AgentSkillAvailability;
+					availableTo?: AgentSkillAvailability;
 				}) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
@@ -550,6 +562,20 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				},
 			},
 		});
+	}
+
+	async function changeSkillAvailability(skillId: string, availableTo: AgentSkillAvailability) {
+		try {
+			await updateAgentSkillAvailability(
+				rootStore.restApiContext,
+				projectId.value,
+				agentId.value,
+				skillId,
+				availableTo,
+			);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.availableTo.error'));
+		}
 	}
 
 	async function attachHubSkill(

@@ -9,7 +9,15 @@ import {
 	type SkillListItem,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -47,7 +55,7 @@ export type AgentSkillModalData = {
 	onConfirm: (payload: {
 		id?: string;
 		skill: AgentSkill;
-		availableTo: AgentSkillAvailability;
+		availableTo?: AgentSkillAvailability;
 	}) => void;
 	outdated?: boolean;
 	onUseLatestVersion?: (id: string) => void;
@@ -98,7 +106,6 @@ const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
 );
 const isImporting = ref(false);
 const availableTo = ref<AgentSkillAvailability>('project');
-const showAvailabilitySelect = computed(() => !isEditing.value && !!props.data.hubSkillsEnabled);
 
 const librarySkills = ref<SkillListItem[]>([]);
 const libraryLoading = ref(false);
@@ -133,12 +140,9 @@ const previewLoading = ref(false);
 const previewIsAdded = computed(
 	() => !!previewSkill.value && attachedSkillIds.value.has(previewSkill.value.id),
 );
-const footerLeftContent = computed<'remove' | 'availability' | undefined>(() => {
-	if (step.value === 'preview') {
-		return previewIsAdded.value && props.data.onRemove ? 'remove' : undefined;
-	}
-	if (isEditing.value && props.data.onRemove) return 'remove';
-	return showAvailabilitySelect.value ? 'availability' : undefined;
+const showRemove = computed(() => {
+	if (!props.data.onRemove) return false;
+	return step.value === 'preview' ? previewIsAdded.value : isEditing.value;
 });
 const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
@@ -159,6 +163,25 @@ const isReadOnly = computed(
 	() => skillAccessLoading.value || skillAccess.value?.canEdit === false || isOutdated.value,
 );
 const cannotEdit = computed(() => skillAccess.value?.canEdit === false || isOutdated.value);
+const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
+	if (!skillAccess.value) return undefined;
+	if (skillAccess.value.agentId) return 'agent';
+	return skillAccess.value.scope === 'instance' ? 'instance' : 'project';
+});
+const usedByOtherAgents = computed(() => {
+	const usage = skillAccess.value?.usedBy;
+	if (!usage) return false;
+	const isOtherAgent = ({ agentId }: { agentId: string }) => agentId !== props.data.agentId;
+	return usage.hiddenAgents > 0 || usage.drafts.some(isOtherAgent) || usage.pins.some(isOtherAgent);
+});
+const showAvailabilitySelect = computed(() => {
+	if (!props.data.hubSkillsEnabled || step.value === 'preview') return false;
+	if (!isEditing.value) return true;
+	return !!savedTarget.value && !cannotEdit.value;
+});
+const showInstanceTarget = computed(
+	() => !!props.data.canCreateInstanceSkills || savedTarget.value === 'instance',
+);
 const footerHint = computed(() => {
 	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
 	if (step.value === 'edit' && isOutdated.value) {
@@ -265,6 +288,7 @@ async function loadSkillAccess(skillId: string) {
 	skillAccessLoading.value = true;
 	try {
 		skillAccess.value = await getHubSkill(rootStore.restApiContext, skillId);
+		availableTo.value = savedTarget.value ?? 'project';
 	} catch {
 		skillAccess.value = null;
 	} finally {
@@ -417,10 +441,11 @@ function onSave() {
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
+	const targetChanged = !isEditing.value || availableTo.value !== savedTarget.value;
 	props.data.onConfirm({
 		id: props.data.skillId,
 		skill: payload,
-		availableTo: availableTo.value,
+		...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 	});
 	closeModal();
 }
@@ -553,42 +578,51 @@ function onRemove() {
 			</div>
 		</template>
 
-		<template v-if="footerLeftContent" #footerLeft>
-			<N8nButton
-				v-if="footerLeftContent === 'remove'"
-				variant="ghost"
-				data-testid="agent-skill-remove"
-				@click="onRemove"
-			>
-				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-				{{ i18n.baseText('agents.builder.skills.remove') }}
-			</N8nButton>
-			<label v-else :class="$style.availabilityField">
-				<span :class="$style.availabilityLabel">{{
-					i18n.baseText('agents.builder.skills.availableTo.label')
-				}}</span>
-				<N8nSelect
-					v-model="availableTo"
-					size="small"
-					:teleported="false"
-					:class="$style.availabilitySelect"
-					data-testid="agent-skill-availability-select"
+		<template v-if="showRemove || showAvailabilitySelect" #footerLeft>
+			<div :class="$style.footerLeft">
+				<N8nButton
+					v-if="showRemove"
+					variant="ghost"
+					data-testid="agent-skill-remove"
+					@click="onRemove"
 				>
-					<N8nOption
-						value="project"
-						:label="i18n.baseText('agents.builder.skills.availableTo.project')"
-					/>
-					<N8nOption
-						value="agent"
-						:label="i18n.baseText('agents.builder.skills.availableTo.agent')"
-					/>
-					<N8nOption
-						v-if="data.canCreateInstanceSkills"
-						value="instance"
-						:label="i18n.baseText('agents.builder.skills.availableTo.instance')"
-					/>
-				</N8nSelect>
-			</label>
+					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+					{{ i18n.baseText('agents.builder.skills.remove') }}
+				</N8nButton>
+				<label v-if="showAvailabilitySelect" :class="$style.availabilityField">
+					<span :class="$style.availabilityLabel">{{
+						i18n.baseText('agents.builder.skills.availableTo.label')
+					}}</span>
+					<N8nTooltip
+						:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
+						:disabled="!usedByOtherAgents"
+						placement="top"
+					>
+						<N8nSelect
+							v-model="availableTo"
+							size="small"
+							:teleported="false"
+							:disabled="usedByOtherAgents"
+							:class="$style.availabilitySelect"
+							data-testid="agent-skill-availability-select"
+						>
+							<N8nOption
+								value="project"
+								:label="i18n.baseText('agents.builder.skills.availableTo.project')"
+							/>
+							<N8nOption
+								value="agent"
+								:label="i18n.baseText('agents.builder.skills.availableTo.agent')"
+							/>
+							<N8nOption
+								v-if="showInstanceTarget"
+								value="instance"
+								:label="i18n.baseText('agents.builder.skills.availableTo.instance')"
+							/>
+						</N8nSelect>
+					</N8nTooltip>
+				</label>
+			</div>
 		</template>
 		<template v-if="footerHint" #footerBeforeCancel>
 			<N8nText
@@ -646,6 +680,12 @@ function onRemove() {
 
 .footerHint {
 	text-align: right;
+}
+
+.footerLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 }
 
 .availabilityField {

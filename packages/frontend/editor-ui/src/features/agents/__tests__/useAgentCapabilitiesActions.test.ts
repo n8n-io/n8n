@@ -8,7 +8,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { createAgentSkill, getHubSkill } from '../composables/useAgentApi';
+import {
+	createAgentSkill,
+	getHubSkill,
+	updateAgentSkillAvailability,
+} from '../composables/useAgentApi';
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
@@ -37,6 +41,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
 	getHubSkill: vi.fn(),
+	updateAgentSkillAvailability: vi.fn(),
 }));
 
 const { hasScopeSpy } = vi.hoisted(() => ({
@@ -73,6 +78,7 @@ function setup(
 
 	const localConfig = ref<AgentJsonConfig | null>(makeConfig());
 	const scheduleConfigUpdate = vi.fn();
+	const scheduleSkillSave = vi.fn();
 	const agentId = overrides.agentId ?? ref('inline:node-1');
 	const projectId = overrides.projectId ?? ref('project-1');
 
@@ -83,11 +89,19 @@ function setup(
 		agentId: computed(() => agentId.value),
 		connectedTriggers: ref([]),
 		scheduleConfigUpdate,
-		scheduleSkillSave: vi.fn(),
+		scheduleSkillSave,
 		...overrides,
 	});
 
-	return { uiStore, actions, scheduleConfigUpdate, localConfig, agentId, projectId };
+	return {
+		uiStore,
+		actions,
+		scheduleConfigUpdate,
+		scheduleSkillSave,
+		localConfig,
+		agentId,
+		projectId,
+	};
 }
 
 type ToolsModalData = {
@@ -838,6 +852,56 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
 		expect(editData.skill).toEqual(latest);
 		expect(editData.outdated).toBe(false);
+	});
+
+	function openEdit(options: { skillsHubEnabled?: boolean } = {}) {
+		const result = setupHub(options);
+		result.actions.onOpenSkillFromList('tone');
+		const editData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+			.data as unknown as SkillModalData;
+		return { ...result, editData };
+	}
+
+	it('saves the content and changes the target of an edited skill', async () => {
+		vi.mocked(updateAgentSkillAvailability).mockResolvedValue(
+			{} as Awaited<ReturnType<typeof updateAgentSkillAvailability>>,
+		);
+		const { editData, scheduleSkillSave } = openEdit();
+
+		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'agent' });
+		await flushPromises();
+
+		expect(scheduleSkillSave).toHaveBeenCalledWith({ skillId: 'tone', skill: supportTone });
+		expect(updateAgentSkillAvailability).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			'tone',
+			'agent',
+		);
+	});
+
+	it('does not change the target when the edit keeps it or the skills hub is off', async () => {
+		openEdit().editData.onConfirm({ id: 'tone', skill: supportTone });
+		openEdit({ skillsHubEnabled: false }).editData.onConfirm({
+			id: 'tone',
+			skill: supportTone,
+			availableTo: 'agent',
+		});
+		await flushPromises();
+
+		expect(updateAgentSkillAvailability).not.toHaveBeenCalled();
+	});
+
+	it('reports a refused target change', async () => {
+		const conflict = new Error('Other agents use this skill.');
+		vi.mocked(updateAgentSkillAvailability).mockRejectedValue(conflict);
+		const { editData } = openEdit();
+
+		editData.onConfirm({ id: 'tone', skill: supportTone, availableTo: 'instance' });
+		await flushPromises();
+
+		expect(showErrorSpy).toHaveBeenCalledWith(conflict, 'agents.builder.skills.availableTo.error');
 	});
 
 	it('tells the edit modal to check the edit permission', () => {

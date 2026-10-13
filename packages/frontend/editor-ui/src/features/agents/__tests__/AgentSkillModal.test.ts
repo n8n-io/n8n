@@ -261,7 +261,6 @@ describe('AgentSkillModal', () => {
 				description: 'Use for research',
 				instructions: 'Research',
 			},
-			availableTo: 'project',
 		});
 	});
 
@@ -386,7 +385,6 @@ describe('AgentSkillModal', () => {
 				description: 'Use for research',
 				instructions: 'Main instructions',
 			},
-			availableTo: 'project',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -423,7 +421,6 @@ describe('AgentSkillModal', () => {
 				instructions: 'Read the guide',
 				references: [{ path: 'references/guide.md', content: '# Guide' }],
 			},
-			availableTo: 'project',
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
@@ -448,7 +445,9 @@ describe('AgentSkillModal', () => {
 		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
 		await fireEvent.click(getByTestId('agent-skill-create-save'));
 
-		expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ availableTo: 'project' }));
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.not.objectContaining({ availableTo: expect.anything() }),
+		);
 		expect(listAttachableSkills).not.toHaveBeenCalled();
 		expect(getHubSkill).not.toHaveBeenCalled();
 	});
@@ -755,6 +754,94 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-skill-remove'));
 			expect(onRemove).toHaveBeenCalledWith('sql');
+		});
+
+		describe('where an existing skill can be added', () => {
+			const tone = {
+				name: 'Support tone',
+				description: 'Use for replies',
+				instructions: 'Be kind',
+			};
+
+			async function renderEdit(detail: SkillDetail, onConfirm = vi.fn()) {
+				getHubSkill.mockResolvedValue(detail);
+				const result = renderModal({
+					hubSkillsEnabled: true,
+					skillId: detail.id,
+					skill: tone,
+					onConfirm,
+					onRemove: vi.fn(),
+				});
+				await result.findByTestId('agent-skill-availability-select');
+				return result;
+			}
+
+			it('changes the target of a skill that no other agent uses', async () => {
+				const onConfirm = vi.fn();
+				const { getByTestId, findByText } = await renderEdit(
+					{
+						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+						usedBy: {
+							drafts: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1' }],
+							pins: [{ agentId: 'a1', agentName: 'This agent', projectId: 'p1', version: 1 }],
+							hiddenAgents: 0,
+						},
+					},
+					onConfirm,
+				);
+
+				const select = getByTestId('agent-skill-availability-select');
+				await fireEvent.click(select.querySelector('.select-trigger')!);
+				await fireEvent.click(await findByText('agents.builder.skills.availableTo.agent'));
+				await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+				expect(onConfirm).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'tone', availableTo: 'agent' }),
+				);
+			});
+
+			it('does not send a target when the user keeps it', async () => {
+				const onConfirm = vi.fn();
+				const { getByTestId } = await renderEdit(
+					makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', agentId: 'a1' }),
+					onConfirm,
+				);
+
+				await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+				expect(onConfirm).toHaveBeenCalledWith(
+					expect.not.objectContaining({ availableTo: expect.anything() }),
+				);
+			});
+
+			it.each([
+				[
+					'a draft of another agent',
+					{
+						drafts: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1' }],
+						pins: [],
+						hiddenAgents: 0,
+					},
+				],
+				[
+					'a pin of another agent',
+					{
+						drafts: [],
+						pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: null }],
+						hiddenAgents: 0,
+					},
+				],
+				['an agent the user cannot see', { drafts: [], pins: [], hiddenAgents: 1 }],
+			])('locks the target when %s uses the skill', async (_case, usedBy) => {
+				const { getByTestId } = await renderEdit({
+					...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+					usedBy,
+				});
+
+				expect(
+					getByTestId('agent-skill-availability-select').querySelector('.is-disabled, [disabled]'),
+				).not.toBeNull();
+			});
 		});
 
 		it('shows a skill on an older version as read-only with a switch to the latest version', async () => {

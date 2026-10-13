@@ -237,8 +237,10 @@ actions return to the picker. Do not edit a skill from the picker.
 `Create skill` opens the upload screen, and Back returns to the picker. The user
 selects `Where can this skill be added` at the bottom left of the editor:
 `This project`, `This agent only`, or `Global`. Only a user who can create
-global skills sees `Global`. Do not show the selector when the skills hub
-is off. Then `Add skill` creates the skill on the Agent, without the picker.
+global skills sees `Global`. An existing skill that the user can edit shows
+the same selector, after `Remove skill`. Disable it, with a tooltip that gives
+the reason, when another Agent uses the skill. Do not show the selector when the
+skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the
