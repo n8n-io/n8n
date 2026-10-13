@@ -70,6 +70,7 @@ describe('useTeamsChannelRuntime', () => {
 			managerCredentials: [],
 			adminConsentUrl: null,
 		});
+		vi.mocked(getTeamsSetupState).mockResolvedValue({ botId: null } as never);
 	});
 
 	/**
@@ -90,6 +91,24 @@ describe('useTeamsChannelRuntime', () => {
 
 		await pending;
 		expect(runtime.loading.value).toBe(false);
+	});
+
+	it('reads the agent identity on load, before any app exists', async () => {
+		vi.mocked(getTeamsSetupState).mockResolvedValue({
+			defaultDisplayName: 'Support Agent',
+		} as never);
+		const runtime = buildRuntime();
+
+		await runtime.load();
+
+		await vi.waitFor(() =>
+			expect(runtime.botSetupState.value).toMatchObject({ defaultDisplayName: 'Support Agent' }),
+		);
+		expect(getTeamsSetupState).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(String),
+			expect.any(String),
+		);
 	});
 
 	it('stops reporting loading when the setup state cannot be read', async () => {

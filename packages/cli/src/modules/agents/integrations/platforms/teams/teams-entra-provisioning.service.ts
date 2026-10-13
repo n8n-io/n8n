@@ -195,7 +195,9 @@ export class TeamsEntraProvisioningService {
 		if (!tenantId) {
 			// A personal Microsoft account has no directory behind it.
 			throw withTeamsFailure(
-				new UserError('Sign in with a work or school account. A personal account cannot be used.'),
+				new UserError(
+					'Teams apps need a work or school account. Sign in again with your organization’s account.',
+				),
 				'personal_account',
 			);
 		}
@@ -441,7 +443,7 @@ export class TeamsEntraProvisioningService {
 		if (statusCode === 403 || code === 'Authorization_RequestDenied') {
 			return withTeamsFailure(
 				new UserError(
-					'This account is not allowed to register applications in the organisation. Ask an administrator, or use the manual setup.',
+					'This organization doesn’t let you register apps. Ask an admin to register the app.',
 				),
 				'cannot_register_apps',
 			);

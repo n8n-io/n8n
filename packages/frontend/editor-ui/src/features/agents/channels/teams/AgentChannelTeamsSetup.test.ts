@@ -583,13 +583,12 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(emitted().connect).toBeFalsy();
 		});
 
-		it('names the download step and what the package is built from', async () => {
+		it('names the download step', async () => {
 			const { getByText } = renderComponent({ props: props() });
 
 			await waitFor(() =>
 				expect(getByText('agents.channels.teams.setup.download.title')).toBeVisible(),
 			);
-			expect(getByText('agents.channels.teams.setup.download.description')).toBeVisible();
 		});
 
 		it('reports a failed download and does not connect', async () => {
@@ -903,7 +902,7 @@ describe('AgentChannelTeamsSetup', () => {
 
 			await waitFor(() =>
 				expect(getByTestId('teams-availability-field')).toHaveTextContent(
-					'agents.channels.teams.settings.availabilityLabel',
+					'agents.channels.teams.setup.availability.title',
 				),
 			);
 			expect(getByTestId('teams-identity-field')).toHaveTextContent(

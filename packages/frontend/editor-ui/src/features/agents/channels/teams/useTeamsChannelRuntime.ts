@@ -140,6 +140,19 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		const isCurrent = () =>
 			requestedFor === [context.projectId.value, context.agentId.value].join('|');
 		loading.value = true;
+		// Without a credential, so the install card has the agent's name before any
+		// app exists. Skipped once set: provisioning's read is for its credential.
+		if (!botSetupState.value) {
+			void getTeamsSetupState(
+				rootStore.restApiContext,
+				context.projectId.value,
+				context.agentId.value,
+			)
+				.then((state) => {
+					if (isCurrent() && !botSetupState.value) botSetupState.value = state;
+				})
+				.catch(() => {});
+		}
 		try {
 			const state = await getTeamsManagedSetup(
 				rootStore.restApiContext,

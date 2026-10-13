@@ -23,6 +23,7 @@ import type { AgentCredentialOption } from '../../components/AgentCredentialSele
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { useTeamsUploadInstruction } from './useTeamsUploadInstruction';
 import {
 	availabilityFrom,
 	AZURE_BOTS_URL,
@@ -360,25 +361,7 @@ const availabilityLocked = computed(
 
 const canFinish = computed(() => downloadedFor.value === credentialId.value && props.connected);
 
-function addToText(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
-	if (scopes?.teamChannels && scopes.groupChats)
-		return i18n.baseText('agents.channels.teams.setup.install.addTo.both');
-	if (scopes?.teamChannels) return i18n.baseText('agents.channels.teams.setup.install.addTo.teams');
-	if (scopes?.groupChats) return i18n.baseText('agents.channels.teams.setup.install.addTo.chats');
-	return null;
-}
-
-function uploadInstruction(scopes?: { teamChannels?: boolean; groupChats?: boolean }) {
-	const upload = i18n.baseText('agents.channels.teams.setup.install.description');
-	const addTo = addToText(scopes);
-	// Composed through a key rather than joined here, so a locale owns both the
-	// separator and the order of the two sentences.
-	return addTo
-		? i18n.baseText('agents.channels.teams.setup.install.descriptionWithScope', {
-				interpolate: { upload, addTo },
-			})
-		: upload;
-}
+const uploadInstruction = useTeamsUploadInstruction();
 
 // The modal clears the error when the credential changes. A conflict is about
 // the credential itself, so it stays in step 2.
@@ -527,7 +510,6 @@ const steps = computed(() => [
 	{
 		id: 'download',
 		title: i18n.baseText('agents.channels.teams.setup.download.title'),
-		description: i18n.baseText('agents.channels.teams.setup.download.description'),
 	},
 	{
 		id: 'install',
@@ -878,9 +860,10 @@ defineExpose({
 							{{ i18n.baseText('agents.channels.teams.setup.publishNotice') }}
 						</N8nText>
 						<N8nButton
-							variant="solid"
+							variant="outline"
 							size="medium"
 							:disabled="!canFinish"
+							:loading="loading"
 							data-testid="teams-done"
 							@click="emit('done')"
 						>
@@ -894,7 +877,16 @@ defineExpose({
 		<div v-else :class="$style.formContent">
 			<div :class="$style.field" data-testid="teams-availability-field">
 				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.channels.teams.settings.availabilityLabel') }}
+					{{ i18n.baseText('agents.channels.teams.setup.availability.title') }}
+				</N8nText>
+				<N8nText size="small" color="text-light">
+					{{
+						i18n.baseText(
+							offerManagedApp
+								? 'agents.channels.teams.managed.availability.description'
+								: 'agents.channels.teams.setup.availability.description',
+						)
+					}}
 				</N8nText>
 				<AgentChannelTeamsAvailability
 					:model-value="availability"
