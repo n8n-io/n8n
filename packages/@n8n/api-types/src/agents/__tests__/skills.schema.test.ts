@@ -29,24 +29,26 @@ describe('ListSkillsQueryDto', () => {
 		expect(ListSkillsQueryDto.parse({ attachableTo: 'p1' })).toMatchObject({ attachableTo: 'p1' });
 	});
 
-	it('rejects an unknown scope', () => {
-		expect(ListSkillsQueryDto.safeParse({ scope: 'team' }).success).toBe(false);
+	it.each(['team', 'user'])('rejects the unknown scope %s', (scope) => {
+		expect(ListSkillsQueryDto.safeParse({ scope }).success).toBe(false);
 	});
 });
 
 describe('CreateSkillDto', () => {
 	const skill = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
-	it.each([[{ scope: 'user' }], [{ scope: 'project', projectId: 'p1' }], [{ scope: 'instance' }]])(
-		'accepts %o',
-		(target) => {
-			expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
-		},
-	);
+	it.each([
+		[{ scope: 'project', projectId: 'p1' }],
+		[{ scope: 'agent', agentId: 'a1' }],
+		[{ scope: 'instance' }],
+	])('accepts %o', (target) => {
+		expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+	});
 
 	it('rejects a skill without instructions', () => {
 		expect(
-			CreateSkillDto.safeParse({ scope: 'user', skill: { ...skill, instructions: '' } }).success,
+			CreateSkillDto.safeParse({ scope: 'instance', skill: { ...skill, instructions: '' } })
+				.success,
 		).toBe(false);
 	});
 });
