@@ -1,7 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { IWorkflowSettings } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -22,43 +21,6 @@ export type ErrorWorkflowProblem =
 	| { reason: 'not-published'; name: string }
 	| { reason: 'no-error-trigger'; name: string; errorTriggerType: string }
 	| { reason: 'caller-policy'; name: string };
-
-/**
- * True when the setting holds an n8n expression.
- *
- * Nothing ever evaluates it. `executeErrorWorkflow` reads `settings.errorWorkflow`
- * and passes it to the error-workflow lookup verbatim, so a stored `=…` string is
- * used as a literal workflow id and can never match one — the handler silently
- * never runs. The editor's setting is a workflow picker and cannot produce this;
- * only a caller that writes settings directly (API, MCP) can. Such callers should
- * reject it rather than save a reference that is dead on arrival.
- */
-export function isExpressionErrorWorkflowId(
-	errorWorkflow: IWorkflowSettings['errorWorkflow'],
-): boolean {
-	return typeof errorWorkflow === 'string' && errorWorkflow.startsWith('=');
-}
-
-/**
- * The workflow id `settings.errorWorkflow` actually points at, or undefined when
- * the setting names no concrete workflow: cleared (`DEFAULT`), or an expression.
- *
- * An expression yields undefined because there is no id to validate, NOT because
- * it is a usable value — see {@link isExpressionErrorWorkflowId}.
- */
-export function staticErrorWorkflowId(
-	errorWorkflow: IWorkflowSettings['errorWorkflow'],
-): string | undefined {
-	if (
-		typeof errorWorkflow !== 'string' ||
-		errorWorkflow === '' ||
-		errorWorkflow === 'DEFAULT' ||
-		isExpressionErrorWorkflowId(errorWorkflow)
-	) {
-		return undefined;
-	}
-	return errorWorkflow;
-}
 
 /**
  * Validates a `settings.errorWorkflow` reference at write time.
