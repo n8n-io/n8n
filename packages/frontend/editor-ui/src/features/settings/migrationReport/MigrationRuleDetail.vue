@@ -378,11 +378,15 @@ function isSelectable(workflow: AffectedWorkflow): boolean {
 	return !migratedWorkflowIds.value.has(workflow.id);
 }
 
-/** The selected rows that a bulk change to `status` would change. */
+/**
+ * The selected rows that a bulk change to `status` would change. A notified
+ * row counts as changeable to open, like in the row's own select: reopening
+ * drops the notified mark.
+ */
 function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
 	return selectedWorkflows.value.filter(
 		(workflow) =>
-			!hasState(workflow, status) &&
+			findingState(workflow) !== status &&
 			isSelectable(workflow) &&
 			!savingWorkflowIds.value.has(workflow.id),
 	);

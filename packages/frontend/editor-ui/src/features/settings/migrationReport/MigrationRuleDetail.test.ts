@@ -484,6 +484,36 @@ describe('MigrationRuleDetail', () => {
 			);
 		});
 
+		it('should reopen a selected notified row and drop its notified date', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							status: 'notified',
+							notifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+						},
+					],
+				}),
+			);
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			expect(screen.getByTestId('migration-bulk-reopen-button')).toBeEnabled();
+			await userEvent.click(screen.getByTestId('migration-bulk-reopen-button'));
+
+			await waitFor(() => expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open'));
+			expect(screen.queryByTestId('migration-workflow-notified-at')).not.toBeInTheDocument();
+			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-1'],
+				'open',
+			);
+		});
+
 		it('should disable an action that would change none of the selected rows', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await screen.findByText('2 affected');
