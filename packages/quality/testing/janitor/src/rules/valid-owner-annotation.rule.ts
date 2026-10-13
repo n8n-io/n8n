@@ -19,7 +19,6 @@ const CANONICAL_OWNERS = new Set([
 	'Catalysts',
 	'NODES',
 	'Payday',
-	'Adore',
 	'Context',
 	'Knowledge',
 	'AI',
