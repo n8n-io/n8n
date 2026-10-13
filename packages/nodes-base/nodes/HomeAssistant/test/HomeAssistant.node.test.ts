@@ -7,12 +7,18 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { HomeAssistant } from '../HomeAssistant.node';
 import type { MockedFunction } from 'vitest';
 
 vi.mock('../GenericFunctions');
+
+const attribute = (name: string, value: IDataObject[keyof IDataObject]): IDataObject => ({
+	name,
+	value,
+});
 
 describe('HomeAssistant Node', () => {
 	let homeAssistant: HomeAssistant;
@@ -61,44 +67,87 @@ describe('HomeAssistant Node', () => {
 	});
 
 	describe('State resource - upsert', () => {
-		it('should not send an attributes property when no attributes are set', async () => {
-			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, unknown> = {
-					resource: 'state',
-					operation: 'upsert',
-					entityId: 'sensor.test',
-					state: 'on',
-					stateAttributes: {},
-				};
-				return params[paramName];
-			});
+		const noAttributesParams: IDataObject = {
+			resource: 'state',
+			operation: 'upsert',
+			entityId: 'sensor.test',
+			state: 'off',
+			stateAttributes: {},
+		};
 
-			mockHomeAssistantApiRequest.mockResolvedValue({ entity_id: 'sensor.test', state: 'on' });
+		it('should keep the existing attributes when no attributes are set', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string) => noAttributesParams[paramName],
+			);
+
+			const existingAttributes = { unit_of_measurement: '°C', friendly_name: 'Test Sensor' };
+			mockHomeAssistantApiRequest
+				.mockResolvedValueOnce({
+					entity_id: 'sensor.test',
+					state: 'on',
+					attributes: existingAttributes,
+				})
+				.mockResolvedValueOnce({ entity_id: 'sensor.test', state: 'off' });
 
 			await homeAssistant.execute.call(mockExecuteFunctions);
 
-			expect(mockHomeAssistantApiRequest).toHaveBeenCalledWith(
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(1, 'GET', '/states/sensor.test');
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
+				2,
 				'POST',
 				'/states/sensor.test',
-				{ state: 'on' },
+				{
+					state: 'off',
+					attributes: existingAttributes,
+				},
 			);
-			// The request body must not carry an (empty) attributes property when none are provided,
-			// otherwise existing attributes on the entity would be wiped.
-			const sentBody = mockHomeAssistantApiRequest.mock.calls[0][2] as IDataObject;
-			expect(sentBody).not.toHaveProperty('attributes');
+		});
+
+		it('should not send attributes when the entity does not exist yet', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string) => noAttributesParams[paramName],
+			);
+
+			mockHomeAssistantApiRequest
+				.mockRejectedValueOnce(new NodeApiError(mockNode, { httpCode: '404' }))
+				.mockResolvedValueOnce({ entity_id: 'sensor.test', state: 'off' });
+
+			await homeAssistant.execute.call(mockExecuteFunctions);
+
+			expect(mockHomeAssistantApiRequest).toHaveBeenNthCalledWith(
+				2,
+				'POST',
+				'/states/sensor.test',
+				{
+					state: 'off',
+				},
+			);
+		});
+
+		it('should rethrow errors other than 404 when reading the current state', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string) => noAttributesParams[paramName],
+			);
+
+			mockHomeAssistantApiRequest.mockRejectedValueOnce(
+				new NodeApiError(mockNode, { httpCode: '401' }),
+			);
+
+			await expect(homeAssistant.execute.call(mockExecuteFunctions)).rejects.toThrow(NodeApiError);
+			expect(mockHomeAssistantApiRequest).toHaveBeenCalledTimes(1);
 		});
 
 		it('should send the provided attributes when they are set', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, unknown> = {
+				const params: IDataObject = {
 					resource: 'state',
 					operation: 'upsert',
 					entityId: 'sensor.test',
 					state: 'on',
 					stateAttributes: {
 						attributes: [
-							{ name: 'unit_of_measurement', value: '°C' },
-							{ name: 'friendly_name', value: 'Test Sensor' },
+							attribute('unit_of_measurement', '°C'),
+							attribute('friendly_name', 'Test Sensor'),
 						],
 					},
 				};
@@ -120,15 +169,15 @@ describe('HomeAssistant Node', () => {
 
 		it('should not write unsafe prototype-polluting attribute keys', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-				const params: Record<string, unknown> = {
+				const params: IDataObject = {
 					resource: 'state',
 					operation: 'upsert',
 					entityId: 'sensor.test',
 					state: 'on',
 					stateAttributes: {
 						attributes: [
-							{ name: '__proto__', value: { polluted: true } },
-							{ name: 'friendly_name', value: 'Test Sensor' },
+							attribute('__proto__', { polluted: true }),
+							attribute('friendly_name', 'Test Sensor'),
 						],
 					},
 				};
