@@ -148,10 +148,20 @@ describe('AgentTeamsIntegrationsController', () => {
 			};
 		};
 
-		const request = () =>
-			mock<AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>>({
+		const request = (firstCheck = true) =>
+			mock<
+				AuthenticatedRequest<
+					{ projectId: string },
+					{},
+					{},
+					{ managerCredentialId?: string; firstCheck?: string }
+				>
+			>({
 				params: { projectId: 'project-1' },
-				query: { managerCredentialId: 'manager-1' },
+				query: {
+					managerCredentialId: 'manager-1',
+					...(firstCheck ? { firstCheck: 'true' } : {}),
+				},
 				user: mock<User>({ id: 'user-1' }),
 			});
 
@@ -175,6 +185,21 @@ describe('AgentTeamsIntegrationsController', () => {
 			const { controller, setupTelemetry } = buildController([{ id: 'sub-1', name: 'Production' }]);
 
 			await controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1');
+
+			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
+		});
+
+		/**
+		 * The setup reads this again on every remount and every change of sign-in.
+		 * Counting each one would measure how often the dialog was opened, and a
+		 * tenant with no Azure subscription is the ordinary case.
+		 */
+		it('records the rung once for a setup, not once for a read', async () => {
+			const { controller, setupTelemetry } = buildController([]);
+
+			await expect(
+				controller.listAzureSubscriptions(request(false), mock<Response>(), 'agent-1'),
+			).resolves.toEqual([]);
 
 			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
 		});

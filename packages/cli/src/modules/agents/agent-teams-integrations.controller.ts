@@ -57,7 +57,12 @@ export class AgentTeamsIntegrationsController {
 	@Get('/:agentId/integrations/teams/azure-subscriptions')
 	@ProjectScope('agent:update')
 	async listAzureSubscriptions(
-		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			{},
+			{},
+			{ managerCredentialId?: string; firstCheck?: string }
+		>,
 		_res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<TeamsAzureSubscription[]> {
@@ -75,7 +80,13 @@ export class AgentTeamsIntegrationsController {
 		// The rung the whole ladder exists to measure. It is chosen here rather
 		// than in the browser: an empty answer is the only moment n8n knows the
 		// account cannot reach a subscription, and the browser reports no step.
-		if (subscriptions.length === 0) {
+		//
+		// Counted once for each setup rather than once for each read. This route
+		// answers again on every remount and every change of sign-in, and a tenant
+		// with no Azure subscription is the ordinary case, so counting every read
+		// would measure the dialog being opened. Only the browser knows which read
+		// is the first of a setup, so it is the browser that says so.
+		if (subscriptions.length === 0 && req.query.firstCheck === 'true') {
 			this.setupTelemetry.succeeded({
 				agentId,
 				projectId: req.params.projectId,
