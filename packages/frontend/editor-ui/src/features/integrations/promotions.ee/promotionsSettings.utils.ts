@@ -1,6 +1,7 @@
 import type {
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
+	PromotionConnectionTarget,
 	PromotionDirection,
 	PromotionProviderAuthType,
 	PromotionProviderType,
@@ -26,6 +27,20 @@ export type ProviderFormState = {
 	regenerateKey: boolean;
 };
 
+export type PromotionProviderChange = {
+	id: string;
+	hostChanged: boolean;
+	credentialsChanged: boolean;
+};
+
+export const isSamePromotionHostUrl = (current: string, next: string): boolean => {
+	try {
+		return new URL(current).href.replace(/\/$/, '') === new URL(next).href.replace(/\/$/, '');
+	} catch {
+		return false;
+	}
+};
+
 type DirectionFormState = {
 	enabled: boolean;
 	/** Keep this name when updating the settings. If absent, the API uses the direction label. */
@@ -36,6 +51,7 @@ export type ConnectionFormState = {
 	name: string;
 	providerId: string;
 	remoteUrl: string;
+	repositoryId?: string;
 	apply: DirectionFormState & { branchName: string };
 	promote: DirectionFormState & { baseBranchName: string; createBranchOnPromotion: boolean };
 };
@@ -71,6 +87,7 @@ export const emptyConnectionForm = (): ConnectionFormState => ({
 	name: '',
 	providerId: '',
 	remoteUrl: '',
+	repositoryId: undefined,
 	apply: { enabled: false, branchName: '' },
 	promote: { enabled: false, baseBranchName: '', createBranchOnPromotion: false },
 });
@@ -82,6 +99,7 @@ export const connectionFormFrom = (connection: PromotionConnection): ConnectionF
 		name: connection.name,
 		providerId: connection.provider.id,
 		remoteUrl: connection.target.remoteUrl,
+		repositoryId: connection.target.repositoryId,
 		apply: {
 			enabled: apply !== undefined,
 			name: apply?.name,
@@ -123,8 +141,7 @@ export const buildProviderCreatePayload = (
 			? { authType: 'ssh-key', keyType: form.keyType }
 			: {
 					authType: 'token',
-					username:
-						promotionProviderTypeCapabilities[form.type].tokenUsername ?? form.username.trim(),
+					...(form.type === 'git' && { username: form.username.trim() }),
 					password: form.password,
 				},
 });
@@ -138,18 +155,20 @@ export const buildProviderUpdatePayload = (
 
 	const name = form.name.trim();
 	if (name !== current.name) payload.name = name;
-	if ('baseUrl' in current.config && form.baseUrl.trim() !== current.config.baseUrl) {
+	if (
+		'baseUrl' in current.config &&
+		!isSamePromotionHostUrl(current.config.baseUrl, form.baseUrl)
+	) {
 		payload.config = { schemaVersion: 1, baseUrl: form.baseUrl.trim() };
 	}
-	const username =
-		promotionProviderTypeCapabilities[current.type].tokenUsername ?? form.username.trim();
+	const username = form.username.trim();
 
 	if (form.authType === 'ssh-key' && form.regenerateKey) {
 		payload.auth = { authType: 'ssh-key' };
-	} else if (form.authType === 'token' && username && form.password) {
+	} else if (form.authType === 'token' && form.password && (current.type !== 'git' || username)) {
 		payload.auth = {
 			authType: 'token',
-			username,
+			...(current.type === 'git' && { username }),
 			password: form.password,
 		};
 	}
@@ -157,13 +176,19 @@ export const buildProviderUpdatePayload = (
 	return payload;
 };
 
+const connectionTarget = (form: ConnectionFormState): PromotionConnectionTarget => ({
+	schemaVersion: 1,
+	remoteUrl: form.remoteUrl.trim(),
+	...(form.repositoryId && { repositoryId: form.repositoryId }),
+});
+
 export const buildConnectionCreatePayload = (
 	form: ConnectionFormState,
 ): CreatePromotionConnectionDto => ({
 	name: form.name.trim(),
 	scope: 'instance',
 	providerId: form.providerId,
-	target: { schemaVersion: 1, remoteUrl: form.remoteUrl.trim() },
+	target: connectionTarget(form),
 	configs: {
 		...(form.apply.enabled && { apply: applyConfigPayload(form) }),
 		...(form.promote.enabled && { promote: promoteConfigPayload(form) }),
@@ -182,8 +207,8 @@ export const planConnectionWrites = (
 	if (name !== current.name) payload.name = name;
 
 	const remoteUrl = form.remoteUrl.trim();
-	if (remoteUrl !== current.target.remoteUrl) {
-		payload.target = { schemaVersion: 1, remoteUrl };
+	if (remoteUrl !== current.target.remoteUrl || form.repositoryId !== current.target.repositoryId) {
+		payload.target = connectionTarget(form);
 	}
 
 	if (form.providerId !== current.provider.id) payload.providerId = form.providerId;

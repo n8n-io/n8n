@@ -27,7 +27,7 @@ it('ignores branch searches until a repository is selected', async () => {
 	});
 	const scope = effectScope();
 	try {
-		const discovery = scope.run(() => usePromotionGitHostDiscovery(context, vi.fn()));
+		const discovery = scope.run(() => usePromotionGitHostDiscovery(context));
 		if (!discovery) throw new Error('The discovery scope did not start');
 		discovery.onSearch('main');
 		expect(discovery.loading.value).toBe(false);

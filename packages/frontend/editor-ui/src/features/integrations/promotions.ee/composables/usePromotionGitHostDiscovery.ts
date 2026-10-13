@@ -12,15 +12,13 @@ type DiscoveryContext = {
 	providerId: string;
 	kind: 'repository' | 'branch';
 	repositoryId?: string;
+	revision?: number;
 };
 
 type DiscoveryOption = { value: string; label: string; repository?: PromotionRepository };
 
-/** Loads one searchable list. Saved-repository resolution has its own request lifecycle. */
-export function usePromotionGitHostDiscovery(
-	context: DiscoveryContext,
-	onRepositories: (repositories: PromotionRepository[]) => void,
-) {
+/** Loads one searchable list. */
+export function usePromotionGitHostDiscovery(context: DiscoveryContext) {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
 	const options = ref<DiscoveryOption[]>([]);
@@ -41,15 +39,13 @@ export function usePromotionGitHostDiscovery(
 			const query = { search: search.value || undefined, cursor, limit: 100 };
 			let pageOptions: DiscoveryOption[];
 			let continuation: string | null;
-			let repositories: PromotionRepository[] = [];
 			if (context.kind === 'repository') {
 				const page = await fetchPromotionRepositories(
 					rootStore.publicApiContext,
 					context.providerId,
 					query,
 				);
-				repositories = page.data;
-				pageOptions = repositories.map((repository) => ({
+				pageOptions = page.data.map((repository) => ({
 					value: repository.remoteUrl,
 					label: repository.fullPath,
 					repository,
@@ -69,7 +65,6 @@ export function usePromotionGitHostDiscovery(
 			const combined = cursor ? [...options.value, ...pageOptions] : pageOptions;
 			options.value = [...new Map(combined.map((option) => [option.value, option])).values()];
 			nextCursor.value = continuation;
-			if (context.kind === 'repository') onRepositories(repositories);
 		} catch (cause) {
 			if (requestGeneration !== generation) return;
 			error.value =
@@ -101,7 +96,7 @@ export function usePromotionGitHostDiscovery(
 	}
 
 	watch(
-		() => [context.providerId, context.repositoryId, context.kind],
+		() => [context.providerId, context.repositoryId, context.kind, context.revision],
 		() => {
 			cancel();
 			search.value = '';

@@ -35,7 +35,9 @@ import {
 	buildProviderCreatePayload,
 	buildProviderUpdatePayload,
 	emptyProviderForm,
+	isSamePromotionHostUrl,
 	providerFormFrom,
+	type PromotionProviderChange,
 	type ProviderFormState,
 } from '../promotionsSettings.utils';
 
@@ -46,7 +48,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	saved: [id: string];
+	saved: [change: PromotionProviderChange];
 	deleted: [id: string];
 }>();
 
@@ -82,6 +84,13 @@ watch(
 	},
 );
 
+watch(
+	() => [form.baseUrl, form.password],
+	() => {
+		saveError.value = undefined;
+	},
+);
+
 const title = computed(() => {
 	if (step.value === 'key') return i18n.baseText('settings.promotions.provider.dialog.title.key');
 	return i18n.baseText(
@@ -112,7 +121,9 @@ const hasUsername = computed(() => form.username.trim().length > 0);
 const hasPassword = computed(() => form.password.length > 0);
 const hasHostUrlChange = computed(() => {
 	const config = current.value?.config;
-	return config && 'baseUrl' in config && form.baseUrl.trim() !== config.baseUrl;
+	return config && 'baseUrl' in config
+		? !isSamePromotionHostUrl(config.baseUrl, form.baseUrl)
+		: false;
 });
 
 // Token credentials change as a pair. Empty edit fields keep the stored credentials.
@@ -203,10 +214,11 @@ async function submit() {
 	saveError.value = undefined;
 	try {
 		if (existing) {
+			const payload = buildProviderUpdatePayload(form, existing);
 			const updated = await updatePromotionProvider(
 				rootStore.publicApiContext,
 				existing.id,
-				buildProviderUpdatePayload(form, existing),
+				payload,
 			);
 			const rotatedKey =
 				'publicKey' in updated.config && updated.config.publicKey !== storedPublicKey.value
@@ -217,7 +229,11 @@ async function submit() {
 				title: i18n.baseText('settings.promotions.provider.toast.updated'),
 				type: 'success',
 			});
-			emit('saved', updated.id);
+			emit('saved', {
+				id: updated.id,
+				hostChanged: payload.config !== undefined,
+				credentialsChanged: payload.auth !== undefined,
+			});
 
 			if (rotatedKey) {
 				generatedPublicKey.value = rotatedKey;
@@ -235,7 +251,7 @@ async function submit() {
 				title: i18n.baseText('settings.promotions.provider.toast.created'),
 				type: 'success',
 			});
-			emit('saved', created.provider.id);
+			emit('saved', { id: created.provider.id, hostChanged: false, credentialsChanged: false });
 
 			if (created.publicKey) {
 				generatedPublicKey.value = created.publicKey;
@@ -250,7 +266,6 @@ async function submit() {
 			error instanceof Error
 				? error.message
 				: i18n.baseText('settings.promotions.provider.toast.error.save');
-		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.save'));
 	} finally {
 		isSubmitting.value = false;
 	}
