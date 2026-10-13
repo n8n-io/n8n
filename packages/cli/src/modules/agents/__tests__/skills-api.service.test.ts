@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { CreateSkillDto, ListSkillsQueryDto, UpdateAgentSkillDto } from '@n8n/api-types';
+import type { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
 import type { ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -404,7 +404,7 @@ describe('SkillsApiService', () => {
 	});
 
 	describe('update', () => {
-		const update = (fields: Partial<UpdateAgentSkillDto>) => fields as UpdateAgentSkillDto;
+		const update = (fields: Partial<SaveSkillDto>) => fields as SaveSkillDto;
 		const saved = {
 			versionId: 'v3',
 			version: 3,

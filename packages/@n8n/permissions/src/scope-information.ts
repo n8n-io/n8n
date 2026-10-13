@@ -29,11 +29,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'skill:read': {
 		displayName: 'Read Skills',
-		description: 'Allows reading instance skills and the skills of other users.',
+		description: 'Allows reading instance skills.',
 	},
 	'skill:update': {
 		displayName: 'Update Skills',
-		description: 'Allows editing and saving instance skills and the skills of other users.',
+		description: 'Allows editing and saving instance skills.',
 	},
 	'projectSkill:read': {
 		displayName: 'Read Project Skills',

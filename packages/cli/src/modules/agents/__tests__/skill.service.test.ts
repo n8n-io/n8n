@@ -236,7 +236,8 @@ describe('SkillService', () => {
 	describe('save', () => {
 		const skill = skillRow('skill_a', { projectId: PROJECT });
 
-		function givenLatest(latest: ResolvedSkillRow) {
+		/** Mocks the latest version and returns its hash, the base an editor sends back. */
+		function givenLatest(latest: ResolvedSkillRow): string {
 			skills.findLatestSaved.mockImplementation(async (ids) => {
 				const rows = new Map<string, ResolvedSkillRow>();
 				if (ids.includes('skill_a')) rows.set('skill_a', latest);
@@ -244,14 +245,15 @@ describe('SkillService', () => {
 			});
 			skills.nextVersionNumber.mockResolvedValue(3);
 			skills.insertSavedVersion.mockResolvedValue('new-version-id');
+			return getAgentSkillHash(toAgentSkill(latest));
 		}
 
 		it('creates nothing when the content matches the latest version', async () => {
-			givenLatest(versionRow(skill, 2));
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
 			const result = await service.save(
 				'skill_a',
-				{ instructions: 'Use short sentences.' },
+				{ baseSkillHash, instructions: 'Use short sentences.' },
 				user.id,
 			);
 
@@ -261,11 +263,15 @@ describe('SkillService', () => {
 		});
 
 		it('saves changed content as the next version under an edit lock', async () => {
-			givenLatest(versionRow(skill, 2));
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
 			const result = await service.save(
 				'skill_a',
-				{ instructions: 'new', references: [{ path: 'references/a.md', content: 'a' }] },
+				{
+					baseSkillHash,
+					instructions: 'new',
+					references: [{ path: 'references/a.md', content: 'a' }],
+				},
 				user.id,
 			);
 
@@ -286,19 +292,23 @@ describe('SkillService', () => {
 		});
 
 		it('removes references set to an empty list', async () => {
-			givenLatest(versionRow(skill, 2, {}, [{ path: 'references/a.md', content: 'a' }]));
+			const baseSkillHash = givenLatest(
+				versionRow(skill, 2, {}, [{ path: 'references/a.md', content: 'a' }]),
+			);
 
-			const result = await service.save('skill_a', { references: [] }, user.id);
+			const result = await service.save('skill_a', { baseSkillHash, references: [] }, user.id);
 
 			expect(result.skill).not.toHaveProperty('references');
 		});
 
 		it('ignores allowed tools in the update', async () => {
-			givenLatest(versionRow(skill, 2, { frontmatter: { 'allowed-tools': 'Read' } }));
+			const baseSkillHash = givenLatest(
+				versionRow(skill, 2, { frontmatter: { 'allowed-tools': 'Read' } }),
+			);
 
 			const result = await service.save(
 				'skill_a',
-				{ instructions: 'new', allowedTools: ['Bash'] },
+				{ baseSkillHash, instructions: 'new', allowedTools: ['Bash'] },
 				user.id,
 			);
 
@@ -313,11 +323,11 @@ describe('SkillService', () => {
 		});
 
 		it('keeps frontmatter keys the editor does not know', async () => {
-			givenLatest(
+			const baseSkillHash = givenLatest(
 				versionRow(skill, 2, { frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 			);
 
-			await service.save('skill_a', { instructions: 'new' }, user.id);
+			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
 			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
 				'skill_a',
@@ -330,13 +340,9 @@ describe('SkillService', () => {
 
 		it('accepts the hash of the latest version as the base', async () => {
 			const latest = versionRow(skill, 2);
-			givenLatest(latest);
+			const baseSkillHash = givenLatest(latest);
 
-			const result = await service.save(
-				'skill_a',
-				{ instructions: 'new', baseSkillHash: getAgentSkillHash(toAgentSkill(latest)) },
-				user.id,
-			);
+			const result = await service.save('skill_a', { instructions: 'new', baseSkillHash }, user.id);
 
 			expect(result.created).toBe(true);
 		});
@@ -355,25 +361,25 @@ describe('SkillService', () => {
 		});
 
 		it('refuses blank instructions', async () => {
-			givenLatest(versionRow(skill, 2));
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			await expect(service.save('skill_a', { instructions: ' ' }, user.id)).rejects.toThrow(
-				UserError,
-			);
+			await expect(
+				service.save('skill_a', { baseSkillHash, instructions: ' ' }, user.id),
+			).rejects.toThrow(UserError);
 		});
 
 		it('marks the following agents in the same transaction', async () => {
-			givenLatest(versionRow(skill, 2));
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			skills.findFollowingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
 
-			await service.save('skill_a', { instructions: 'new' }, user.id);
+			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
 			expect(skills.findFollowingAgentIds).toHaveBeenCalledWith(['skill_a'], TX_CTX);
 			expect(agents.markDraftChangedIfInSync).toHaveBeenCalledWith(['agent-1', 'agent-2'], TX_CTX);
 		});
 
 		it('clears the runtime and pushes an update for every following agent after the commit', async () => {
-			givenLatest(versionRow(skill, 2));
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
 			skills.findFollowingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
 			// agent-2 already had unpublished changes, so only agent-1 is marked.
 			agents.markDraftChangedIfInSync.mockResolvedValue(['agent-1']);
@@ -382,7 +388,7 @@ describe('SkillService', () => {
 				{ id: 'agent-2', projectId: PROJECT },
 			]);
 
-			await service.save('skill_a', { instructions: 'new' }, user.id);
+			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
 			expect(clearRuntimes.mock.calls).toEqual([['agent-1'], ['agent-2']]);
 			expect(broadcaster.notify).toHaveBeenCalledTimes(2);
@@ -417,8 +423,12 @@ describe('SkillService', () => {
 					),
 			);
 
+			const baseSkillHash = getAgentSkillHash(
+				toAgentSkill(versionRow(skillRow('skill_a'), 2, { name: 'Brand voice' })),
+			);
+
 			await expectError(
-				service.save('skill_a', { name: 'pricing' }, user.id),
+				service.save('skill_a', { baseSkillHash, name: 'pricing' }, user.id),
 				UserError,
 				'Cannot rename to "pricing": Sales bot already uses a skill with a name like that.',
 			);
@@ -426,17 +436,19 @@ describe('SkillService', () => {
 		});
 
 		it('allows a rename that clashes on no agent', async () => {
-			givenLatest(versionRow(skill, 2));
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			await expect(service.save('skill_a', { name: 'Tone' }, user.id)).resolves.toMatchObject({
+			await expect(
+				service.save('skill_a', { baseSkillHash, name: 'Tone' }, user.id),
+			).resolves.toMatchObject({
 				created: true,
 			});
 		});
 
 		it('throws NotFoundError for a missing skill', async () => {
-			await expect(service.save('skill_gone', { name: 'x' }, user.id)).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.save('skill_gone', { name: 'x', baseSkillHash: 'any' }, user.id),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -454,10 +466,7 @@ describe('SkillService', () => {
 			skills.findVersionsByIds.mockResolvedValue(new Map([[pinnedB.version.id, pinnedB]]));
 
 			const snapshot = await service.snapshotForPublish(
-				[
-					{ id: 'skill_a', enabled: false },
-					{ id: 'skill_b', versionId: pinnedB.version.id },
-				],
+				[{ id: 'skill_a' }, { id: 'skill_b', versionId: pinnedB.version.id }],
 				TX_CTX,
 			);
 			await service.pinForPublish('agent-version-1', snapshot.versionByRef, TX_CTX);
@@ -489,14 +498,11 @@ describe('SkillService', () => {
 			skills.findPinned.mockResolvedValue(new Map([['skill_a', v1]]));
 
 			const refs = await service.restoreFromVersion('agent-version-1', [
-				{ id: 'skill_a', enabled: true },
+				{ id: 'skill_a' },
 				{ id: 'skill_unpinned', versionId: 'stale' },
 			]);
 
-			expect(refs).toEqual([
-				{ id: 'skill_a', enabled: true, versionId: 'skill_a-v1' },
-				{ id: 'skill_unpinned' },
-			]);
+			expect(refs).toEqual([{ id: 'skill_a', versionId: 'skill_a-v1' }, { id: 'skill_unpinned' }]);
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 	});
@@ -555,16 +561,12 @@ describe('SkillService', () => {
 			expect(refs).toEqual([{ id: 'skill_old' }, { id: 'skill_new' }]);
 		});
 
-		it('drops a new ref to a missing skill unless it is disabled', async () => {
+		it('drops a new ref to a missing skill', async () => {
 			givenSkills([{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' }]);
 
-			const refs = await service.checkRefs(agent, [
-				{ id: 'skill_old' },
-				{ id: 'skill_gone' },
-				{ id: 'skill_off', enabled: false },
-			]);
+			const refs = await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_gone' }]);
 
-			expect(refs).toEqual([{ id: 'skill_old' }, { id: 'skill_off', enabled: false }]);
+			expect(refs).toEqual([{ id: 'skill_old' }]);
 		});
 
 		it('keeps a ref the agent already had even when its skill is gone', async () => {

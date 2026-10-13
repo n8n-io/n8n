@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { agentSkillSchema } from './agent-skill.schema';
+import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import type { AgentSkill } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
@@ -107,4 +107,16 @@ export class CreateSkillDto extends Z.class({
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
 	skill: agentSkillSchema,
+}) {}
+
+/**
+ * Saves the next version of a skill. `baseSkillHash` is the `skillHash` the editor
+ * started from: a save based on an older version is refused with 409.
+ */
+export class SaveSkillDto extends Z.class({
+	name: agentSkillShape.name.optional(),
+	description: agentSkillShape.description.optional(),
+	instructions: agentSkillShape.instructions.optional(),
+	references: agentSkillShape.references.optional(),
+	baseSkillHash: z.string().min(1),
 }) {}

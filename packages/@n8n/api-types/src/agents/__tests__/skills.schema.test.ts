@@ -1,4 +1,9 @@
-import { CreateSkillDto, ListSkillsQueryDto, SKILLS_MAX_PAGE_SIZE } from '../skills.schema';
+import {
+	CreateSkillDto,
+	ListSkillsQueryDto,
+	SaveSkillDto,
+	SKILLS_MAX_PAGE_SIZE,
+} from '../skills.schema';
 
 describe('ListSkillsQueryDto', () => {
 	it('leaves take unset when the client sends none, so the whole list comes back', () => {
@@ -51,4 +56,19 @@ describe('CreateSkillDto', () => {
 				.success,
 		).toBe(false);
 	});
+});
+
+describe('SaveSkillDto', () => {
+	it('accepts changed fields with the base hash', () => {
+		expect(SaveSkillDto.safeParse({ instructions: 'Be brief.', baseSkillHash: 'h1' }).success).toBe(
+			true,
+		);
+	});
+
+	it.each([[{ instructions: 'Be brief.' }], [{ instructions: 'Be brief.', baseSkillHash: '' }]])(
+		'rejects a save without a base hash: %o',
+		(payload) => {
+			expect(SaveSkillDto.safeParse(payload).success).toBe(false);
+		},
+	);
 });

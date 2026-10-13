@@ -120,7 +120,10 @@ describe('SkillsController', () => {
 				canDelete: true,
 			});
 			await outsider.get(`/skills/${id}`).expect(404);
-			await outsider.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(404);
+			await outsider
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'x', baseSkillHash: 'x' })
+				.expect(404);
 			await owner.get(`/skills/${id}`).expect(200);
 		});
 
@@ -140,7 +143,10 @@ describe('SkillsController', () => {
 
 			const read = await member.get(`/skills/${id}`).expect(200);
 			expect(read.body.data).toMatchObject({ scope: 'instance', canEdit: false, canDelete: false });
-			await member.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(403);
+			await member
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'x', baseSkillHash: 'x' })
+				.expect(403);
 			await member.delete(`/skills/${id}`).expect(403);
 		});
 
@@ -165,7 +171,10 @@ describe('SkillsController', () => {
 			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
 
 			await viewer.get(`/skills/${id}`).expect(200);
-			await viewer.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(403);
+			await viewer
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'x', baseSkillHash: 'x' })
+				.expect(403);
 			await outsider.get(`/skills/${id}`).expect(404);
 			await create(viewer, { scope: 'project', projectId: project.id, skill: body }, 403);
 			await create(outsider, { scope: 'project', projectId: project.id, skill: body }, 403);
@@ -276,7 +285,7 @@ describe('SkillsController', () => {
 				.expect(200);
 			const again = await editor
 				.patch(`/skills/${id}`)
-				.send({ instructions: 'Be very brief.' })
+				.send({ instructions: 'Be very brief.', baseSkillHash: saved.body.data.skillHash })
 				.expect(200);
 			const read = await editor.get(`/skills/${id}`).expect(200);
 
@@ -303,6 +312,12 @@ describe('SkillsController', () => {
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Second.', baseSkillHash: skillHash })
 				.expect(409);
+		});
+
+		it('refuses a save without a base hash', async () => {
+			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
+
+			await editor.patch(`/skills/${id}`).send({ instructions: 'Be very brief.' }).expect(400);
 		});
 
 		it('refuses blank instructions', async () => {
@@ -356,19 +371,6 @@ describe('SkillsController', () => {
 
 			expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
 			expect(read.body.data.latestVersion).toBe(2);
-		});
-
-		it('numbers two saves without a base one after the other', async () => {
-			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
-
-			const responses = await Promise.all(
-				['First.', 'Second.'].map(
-					async (instructions) => await editor.patch(`/skills/${id}`).send({ instructions }),
-				),
-			);
-
-			expect(responses.map((response) => response.status)).toEqual([200, 200]);
-			expect(responses.map((response) => response.body.data.version).sort()).toEqual([2, 3]);
 		});
 	});
 

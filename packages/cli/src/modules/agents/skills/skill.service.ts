@@ -23,10 +23,10 @@ import { skillContentHash, type SkillContent } from './skill-content-hash';
 import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
-export type SkillRef = { id: string; enabled?: boolean; versionId?: string };
+export type SkillRef = { id: string; versionId?: string };
 
 /** Fields to change, plus the hash of the version the editor started from. */
-export type SkillUpdate = Partial<AgentSkill> & { baseSkillHash?: string };
+export type SkillUpdate = Partial<AgentSkill> & { baseSkillHash: string };
 
 export type SkillSaveResult = {
 	versionId: string;
@@ -171,7 +171,7 @@ export class SkillService {
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
 			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
-			if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(current)) {
+			if (baseSkillHash !== getAgentSkillHash(current)) {
 				throw new ConflictError(
 					'The skill was changed somewhere else. Reload to get the latest version.',
 				);
@@ -257,7 +257,7 @@ export class SkillService {
 	// ---------------------------------------------------------------- publish and revert
 
 	/**
-	 * Publish, step 1: the version each ref resolves to, disabled refs included. Publish
+	 * Publish, step 1: the version each ref resolves to. Publish
 	 * creates no version. Needs the caller's transaction for the publish lock.
 	 */
 	async snapshotForPublish(
@@ -317,8 +317,8 @@ export class SkillService {
 
 	/**
 	 * The check an agent config save runs on the skill refs it gets. The agent's current
-	 * refs come from its dependency rows. Unknown ids are dropped unless disabled or
-	 * already attached. A ref keeps a pin only when the agent already had it. A new ref
+	 * refs come from its dependency rows. Unknown ids are dropped unless already
+	 * attached. A ref keeps a pin only when the agent already had it. A new ref
 	 * must be attachable and must not clash by name.
 	 */
 	async checkRefs(
@@ -339,7 +339,7 @@ export class SkillService {
 			).map((skill) => [skill.id, skill]),
 		);
 		const kept = refs
-			.filter((ref) => ref.enabled === false || existingIds.has(ref.id) || found.has(ref.id))
+			.filter((ref) => existingIds.has(ref.id) || found.has(ref.id))
 			.map(({ versionId, ...ref }) =>
 				versionId !== undefined && existingPins.get(ref.id) === versionId
 					? { ...ref, versionId }

@@ -5,8 +5,8 @@ import type {
 	SkillListItem,
 	SkillListResponse,
 	SkillSaveResponse,
+	SaveSkillDto,
 	SkillScope,
-	UpdateAgentSkillDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
@@ -79,11 +79,7 @@ export class SkillsApiService {
 	}
 
 	/** Saves the changes as the next version. Unchanged content creates nothing. */
-	async update(
-		user: User,
-		skillId: string,
-		payload: UpdateAgentSkillDto,
-	): Promise<SkillSaveResponse> {
+	async update(user: User, skillId: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
 		await this.requireAccess(user, skillId, 'update');
 		const saved = await this.skillService.save(skillId, { ...payload }, user.id);
 		return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
