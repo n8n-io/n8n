@@ -6,10 +6,7 @@ import type {
 } from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
 import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
@@ -260,8 +257,9 @@ export class AgentSkillRefsService {
 	 * skill. Both new skills belong to this agent only, so deleting the agent
 	 * deletes them. A new skill gets a new id, and the ref points to it. A ref
 	 * with neither is dropped, and so is a ref with only a body when no user
-	 * creates the skill. The creator needs `projectSkill:create` on the agent's
-	 * project to create a skill. Returns the refs that the draft now has.
+	 * creates the skill. The new skills need no skill scope: they are part of the
+	 * agent, and the caller already checked the agent permission. Returns the refs
+	 * that the draft now has.
 	 */
 	async createDraftRefs(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'updatedAt'>,
@@ -315,14 +313,8 @@ export class AgentSkillRefsService {
 			}
 			const source = copiesAgentSkill ? otherAgentBodies : bodies;
 			const body = Object.hasOwn(source, ref.id) ? source[ref.id] : undefined;
+			// The new skill belongs to this agent only, so creating the agent is enough.
 			if (!body || creator === null) continue;
-			if (
-				!(await userHasScopes(creator, ['projectSkill:create'], false, {
-					projectId: agent.projectId,
-				}))
-			) {
-				throw new ForbiddenError('You are not allowed to create skills for this project.');
-			}
 			const id = await this.skillService.create(
 				{
 					// An inline body or a copy becomes a skill of this agent only, as the startup

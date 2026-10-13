@@ -247,6 +247,23 @@ describe('AgentSkillsService', () => {
 			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
+		it('creates a skill for this agent only without a project skill scope', async () => {
+			givenAgent({ schema: baseConfig });
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+			skillRefs.createSkills.mockResolvedValue(['skill_new']);
+
+			await service.createAndAttachSkill(agentId, projectId, skill, context, 'agent');
+
+			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(
+				expect.anything(),
+				[skill],
+				'user-1',
+				'agent',
+				{},
+			);
+		});
+
 		it('rejects a name that is hard to tell apart from a skill of the agent', async () => {
 			skillRefs.bodies.existing = skill;
 			givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'existing' }] } });

@@ -359,7 +359,7 @@ describe('AgentSkillRefsService', () => {
 			);
 		});
 
-		it('refuses to create a skill when the user may not create project skills', async () => {
+		it('creates an agent skill without a project skill scope', async () => {
 			skillRepository.findByIds.mockResolvedValue([]);
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
@@ -371,11 +371,9 @@ describe('AgentSkillRefsService', () => {
 					user,
 					ctx,
 				),
-			).rejects.toThrow(ForbiddenError);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
-				projectId: 'project-1',
-			});
-			expect(skillService.create).not.toHaveBeenCalled();
+			).resolves.toEqual([{ type: 'skill', id: 'skill_created' }]);
+			// The skill is part of the agent, so the agent permission of the caller is enough.
+			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 
 		it('needs no skill permission for refs to hub skills', async () => {
