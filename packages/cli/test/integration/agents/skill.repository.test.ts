@@ -246,6 +246,7 @@ describe('SkillRepository', () => {
 			expect(await page({ scope: 'project' })).toEqual([team, otherTeam].sort());
 			expect(await page({ scope: 'agent' })).toEqual([agentSkill, otherAgentSkill].sort());
 			expect(await page({ projectId: project.id })).toEqual([team, agentSkill].sort());
+			expect(await page({ scope: 'project', projectId: project.id })).toEqual([team]);
 			expect(await page({ scope: 'agent', projectId: project.id })).toEqual([agentSkill]);
 			expect(await page({ scope: 'instance', projectId: project.id })).toEqual([]);
 		});
@@ -625,6 +626,22 @@ describe('SkillRepository', () => {
 				new Map([
 					[project.id, 'Team'],
 					[otherProject.id, 'Other team'],
+				]),
+			);
+		});
+	});
+
+	describe('findAgents', () => {
+		it('maps agent ids to their name and project, and skips unknown ids', async () => {
+			const support = await createAgent('Support');
+			const sales = await createAgent('Sales', { projectId: otherProject.id });
+
+			const agents = await skills.findAgents([support.id, support.id, sales.id, 'agent-gone']);
+
+			expect(agents).toEqual(
+				new Map([
+					[support.id, { name: 'Support', projectId: project.id }],
+					[sales.id, { name: 'Sales', projectId: otherProject.id }],
 				]),
 			);
 		});
