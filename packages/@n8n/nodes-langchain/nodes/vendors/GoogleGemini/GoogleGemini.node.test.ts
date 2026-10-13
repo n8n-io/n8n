@@ -130,7 +130,7 @@ describe('GoogleGemini Node', () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
 				switch (parameter) {
 					case 'modelId':
-						return 'models/gemini-2.5-flash';
+						return 'models/gemini-flash-latest';
 					case 'messages.values':
 						return [{ role: 'user', content: 'What is 6 * 7?' }];
 					case 'simplify':
@@ -174,7 +174,7 @@ describe('GoogleGemini Node', () => {
 			expect(apiRequestMock).toHaveBeenNthCalledWith(
 				2,
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				'/v1beta/models/gemini-flash-latest:generateContent',
 				expect.objectContaining({
 					body: expect.objectContaining({
 						contents: [
