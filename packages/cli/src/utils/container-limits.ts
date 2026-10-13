@@ -39,36 +39,40 @@ export type CpuLimit = {
 	weight: number | null;
 };
 
-function readPositiveInt(path: string): number | null {
-	try {
-		const value = Number(readFileSync(path, 'utf8').trim());
-		return Number.isInteger(value) && value > 0 ? value : null;
-	} catch {
-		return null;
-	}
-}
-
+/** CPU quota n8n was given. Tries cgroup v2 first, then cgroup v1. */
 export function getCpuLimit(): CpuLimit {
-	try {
-		const content = readFileSync('/sys/fs/cgroup/cpu.max', 'utf8').trim();
-		// A malformed file is unknown, not "no limit".
-		if (!/^(max|\d+) \d+$/.test(content)) throw new Error('Malformed cpu.max');
+	const cpuMax = readFile('/sys/fs/cgroup/cpu.max');
+	// A malformed file is unknown, not "no limit".
+	if (cpuMax !== null && /^(max|\d+) \d+$/.test(cpuMax)) {
 		return {
-			limit: parseCpuMax(content),
+			limit: parseCpuMax(cpuMax),
 			source: 'cgroup_v2',
 			weight: readPositiveInt('/sys/fs/cgroup/cpu.weight'),
 		};
-	} catch {}
-	try {
-		const quota = readFileSync('/sys/fs/cgroup/cpu/cpu.cfs_quota_us', 'utf8').trim();
-		const period = readFileSync('/sys/fs/cgroup/cpu/cpu.cfs_period_us', 'utf8').trim();
-		if (!/^-?\d+$/.test(quota) || !/^\d+$/.test(period)) throw new Error('Malformed cfs file');
+	}
+
+	const quota = readFile('/sys/fs/cgroup/cpu/cpu.cfs_quota_us');
+	const period = readFile('/sys/fs/cgroup/cpu/cpu.cfs_period_us');
+	if (quota !== null && period !== null && /^-?\d+$/.test(quota) && /^\d+$/.test(period)) {
 		return {
 			limit: parseCfs(quota, period),
 			source: 'cgroup_v1',
 			weight: readPositiveInt('/sys/fs/cgroup/cpu/cpu.shares'),
 		};
-	} catch {
-		return { limit: null, source: 'unreadable', weight: null };
 	}
+
+	return { limit: null, source: 'unreadable', weight: null };
+}
+
+function readFile(path: string): string | null {
+	try {
+		return readFileSync(path, 'utf8').trim();
+	} catch {
+		return null;
+	}
+}
+
+function readPositiveInt(path: string): number | null {
+	const value = Number(readFile(path));
+	return Number.isInteger(value) && value > 0 ? value : null;
 }
