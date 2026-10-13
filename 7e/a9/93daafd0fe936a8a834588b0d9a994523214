@@ -1,0 +1,19 @@
+packages/@n8n/permissions/src/utilities/__tests__/get-resource-permissions.test.ts
+  s_9d6e86e783864c::t_dd59a30da0602b 61,197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ea993daafd0fe936a8a834588b0d9a994523214",
+  "prompts": {},
+  "sessions": {
+    "s_9d6e86e783864c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82991bb8-d868-4063-a38b-36762cccb4c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

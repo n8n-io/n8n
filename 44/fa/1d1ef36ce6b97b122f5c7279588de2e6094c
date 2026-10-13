@@ -1,0 +1,26 @@
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  s_9d6e86e783864c::t_21e5cf43e1caf7 41
+packages/@n8n/api-types/src/dto/trusted-source/create-trusted-source.dto.ts
+  s_9d6e86e783864c::t_397dd3d1c8ab83 1,7-8
+packages/cli/src/modules/inbound-auth-core/trusted-source.controller.ts
+  s_9d6e86e783864c::t_6d99b6d0dda21b 138-146
+packages/cli/test/integration/inbound-auth-core/trusted-source.api.test.ts
+  s_9d6e86e783864c::t_cd839475bd6a22 175
+  s_9d6e86e783864c::t_470268ea8e0fbe 341-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44fa1d1ef36ce6b97b122f5c7279588de2e6094c",
+  "prompts": {},
+  "sessions": {
+    "s_9d6e86e783864c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82991bb8-d868-4063-a38b-36762cccb4c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
