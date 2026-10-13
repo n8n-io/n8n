@@ -40,11 +40,6 @@ export interface DiscoverOptions {
 
 let cachedEndpoints: EndpointInfo[] | undefined;
 
-function getEndpoints(): EndpointInfo[] {
-	cachedEndpoints ??= buildEndpoints();
-	return cachedEndpoints;
-}
-
 function buildEndpoints(): EndpointInfo[] {
 	return resolvePublicApiRoutes().map((route) => ({
 		method: route.method.toUpperCase(),
@@ -64,7 +59,11 @@ export async function buildDiscoverResponse(
 	callerScopes: readonly string[],
 	options?: DiscoverOptions,
 ): Promise<DiscoverDataPublic> {
-	const allEndpoints = getEndpoints();
+	if (!cachedEndpoints) {
+		cachedEndpoints = buildEndpoints();
+	}
+
+	const allEndpoints = cachedEndpoints;
 	const includeSchemas = options?.includeSchemas === true;
 
 	// Same any/all matching the registry enforces, so /discover shows exactly what the caller may call.

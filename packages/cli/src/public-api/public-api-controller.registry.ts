@@ -8,6 +8,7 @@ import type {
 	AccessScope,
 	ApiKeyScopeRequirement,
 	Controller,
+	DeprecationInfo,
 	RequestBodyMedia,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -35,7 +36,6 @@ import {
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
-import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
@@ -72,9 +72,10 @@ export class PublicApiControllerRegistry {
 			this.activateController(router, controllerClass, apiVersion);
 		}
 
-		// A known path with a method no controller serves. Registered after every controller, so it
-		// only runs when no route matched.
-		for (const path of new Set(resolvePublicApiRoutes().map((route) => route.path))) {
+		// A known path with a method no controller serves.
+		// Registered after every controller, so it only runs when no route matched.
+		const knownPaths = new Set(resolvePublicApiRoutes().map((route) => route.path));
+		for (const path of knownPaths) {
 			router.all(path, (req, res) => {
 				res.status(405).json({ message: `${req.method} method not allowed` });
 			});
@@ -159,7 +160,7 @@ export class PublicApiControllerRegistry {
 			const middlewares: RequestHandler[] = [];
 
 			if (route.deprecated) {
-				middlewares.push(deprecated(route.deprecated));
+				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
@@ -237,6 +238,19 @@ export class PublicApiControllerRegistry {
 				});
 			}
 
+			next();
+		};
+	}
+
+	/**
+	 * Sets the RFC 9745 `Deprecation` header. The wire format (`@<unix-seconds>`) is built here, so
+	 * call sites pass a `Date`. `since` is fixed per route, so the header is the same on every request.
+	 */
+	private createDeprecationMiddleware({ since }: DeprecationInfo): RequestHandler {
+		const deprecation = `@${Math.floor(since.getTime() / 1000)}`;
+
+		return (_req, res, next) => {
+			res.setHeader('Deprecation', deprecation);
 			next();
 		};
 	}
