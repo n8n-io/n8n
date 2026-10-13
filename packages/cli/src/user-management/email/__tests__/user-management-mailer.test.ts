@@ -283,6 +283,36 @@ describe('UserManagementMailer', () => {
 			});
 		});
 
+		it('should send a migration findings email with one link per workflow', async () => {
+			const result = await userManagementMailer.migrationFindings({
+				email,
+				firstName: 'Grace',
+				notifierName: 'Ada Lovelace',
+				ruleTitle: 'Removed nodes',
+				targetVersion: 'v3',
+				workflows: [
+					{ id: 'wf-1', name: 'Billing sync' },
+					{ id: 'wf-2', name: 'Lead intake' },
+				],
+				reportUrl: 'https://n8n.url/settings/migration-report/removed-nodes-v3',
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				body: expect.stringContaining(
+					'href="https://n8n.url/settings/migration-report/removed-nodes-v3"',
+				),
+				emailRecipients: email,
+				subject: 'Your workflows need changes before the upgrade to n8n v3',
+			});
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body;
+			expect(callBody).toContain('Hi Grace,');
+			expect(callBody).toContain('Ada Lovelace asked you');
+			expect(callBody).toContain('Removed nodes');
+			expect(callBody).toContain('<a href="https://n8n.url/workflow/wf-1">Billing sync</a>');
+			expect(callBody).toContain('<a href="https://n8n.url/workflow/wf-2">Lead intake</a>');
+		});
+
 		it('should send an agent budget alert email', async () => {
 			const result = await userManagementMailer.agentBudgetAlert({
 				email,

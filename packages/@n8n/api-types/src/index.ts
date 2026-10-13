@@ -344,6 +344,8 @@ export type {
 	MigrationFindingStatus,
 	MigrationFindingTriageStatus,
 	MigrationFindingListedStatus,
+	MigrationNotifyResult,
+	MigrationNotifySkipReason,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
@@ -354,6 +356,7 @@ export {
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
 	migrationFindingListedStatusSchema,
+	migrationNotifySkipReasonSchema,
 	migrationOwnerSourceSchema,
 } from './schemas/breaking-changes.schema';
 

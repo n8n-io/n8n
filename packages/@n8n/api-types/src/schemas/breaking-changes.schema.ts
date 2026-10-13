@@ -222,3 +222,16 @@ const workflowMigrationResultSchema = z.object({
 	republishable: z.boolean(),
 });
 export type WorkflowMigrationResult = z.infer<typeof workflowMigrationResultSchema>;
+
+/**
+ * Why a workflow was left out of a notification: it has no owner with an email,
+ * its finding is no longer open, or the email could not be sent.
+ */
+export const migrationNotifySkipReasonSchema = z.enum(['no_owner', 'no_finding', 'send_failed']);
+export type MigrationNotifySkipReason = z.infer<typeof migrationNotifySkipReasonSchema>;
+
+/** The outcome of notifying the owners of the findings of one rule. */
+export type MigrationNotifyResult = {
+	notifiedWorkflowIds: string[];
+	skipped: Array<{ workflowId: string; reason: MigrationNotifySkipReason }>;
+};

@@ -183,6 +183,7 @@ describe('GlobalConfig', () => {
 					'email-change-requested': '',
 					'email-change-completed': '',
 					'agent-budget-alert': '',
+					'migration-findings': '',
 				},
 			},
 		},
