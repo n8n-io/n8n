@@ -26,7 +26,6 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_068f21aefba31ae621482f396d | CREATE INDEX "IDX_068f21aefba31ae621482f396d" ON public.agent_skill_dependency USING btree ("skillId") |
-| IDX_7676571bd6f41d9e32f0d066fe | CREATE INDEX "IDX_7676571bd6f41d9e32f0d066fe" ON public.agent_skill_dependency USING btree ("skillVersionId") |
 | PK_18a54f60491d3e2aa2200b70f4a | CREATE UNIQUE INDEX "PK_18a54f60491d3e2aa2200b70f4a" ON public.agent_skill_dependency USING btree ("agentId", "skillId") |
 
 ## Relations
@@ -61,6 +60,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.skill" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

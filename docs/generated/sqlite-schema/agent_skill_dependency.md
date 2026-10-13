@@ -36,7 +36,6 @@ CREATE TABLE "agent_skill_dependency" ("agentId" varchar(36) NOT NULL, "skillId"
 | Name | Definition |
 | ---- | ---------- |
 | IDX_068f21aefba31ae621482f396d | CREATE INDEX "IDX_068f21aefba31ae621482f396d" ON "agent_skill_dependency" ("skillId")  |
-| IDX_7676571bd6f41d9e32f0d066fe | CREATE INDEX "IDX_7676571bd6f41d9e32f0d066fe" ON "agent_skill_dependency" ("skillVersionId")  |
 | sqlite_autoindex_agent_skill_dependency_1 | PRIMARY KEY (agentId, skillId) |
 
 ## Relations
@@ -71,6 +70,7 @@ erDiagram
   varchar_36_ versionId
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

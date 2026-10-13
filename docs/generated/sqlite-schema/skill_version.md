@@ -20,7 +20,7 @@ CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varch
 | createdById | varchar |  | true |  | [user](user.md) |  |
 | description | varchar(1024) |  | false |  |  |  |
 | frontmatter | TEXT |  | true |  |  |  |
-| id | varchar |  | false | [agent_history_skill](agent_history_skill.md) [agent_skill_dependency](agent_skill_dependency.md) [skill_file](skill_file.md) |  |  |
+| id | varchar |  | false | [agent_skill_dependency](agent_skill_dependency.md) [agent_version_skill_dependency](agent_version_skill_dependency.md) [skill_file](skill_file.md) |  |  |
 | instructions | TEXT |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | skillId | varchar(36) |  | false |  | [skill](skill.md) |  |
@@ -51,8 +51,8 @@ CREATE TABLE "skill_version" ("id" varchar PRIMARY KEY NOT NULL, "skillId" varch
 erDiagram
 
 "skill_version" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"agent_history_skill" }o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_skill_dependency" }o--o| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_version_skill_dependency" }o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "skill_file" |o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -86,14 +86,14 @@ erDiagram
   TEXT settings
   datetime_3_ updatedAt
 }
-"agent_history_skill" {
-  varchar_36_ agentVersionId PK
+"agent_skill_dependency" {
+  varchar_36_ agentId PK
   datetime_3_ createdAt
   varchar_36_ skillId PK
   varchar skillVersionId FK
 }
-"agent_skill_dependency" {
-  varchar_36_ agentId PK
+"agent_version_skill_dependency" {
+  varchar_36_ agentVersionId PK
   datetime_3_ createdAt
   varchar_36_ skillId PK
   varchar skillVersionId FK
@@ -106,6 +106,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

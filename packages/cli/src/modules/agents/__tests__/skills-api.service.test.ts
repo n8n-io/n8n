@@ -79,82 +79,86 @@ describe('SkillsApiService', () => {
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		vi.mocked(hasGlobalScope).mockReturnValue(false);
-		repository.findVisible.mockImplementation(async () => visible);
+		repository.findVisiblePage.mockImplementation(async () => ({
+			skills: visible,
+			count: visible.length,
+		}));
 		repository.findByIds.mockImplementation(async (ids) =>
 			visible.filter((s) => ids.includes(s.id)),
 		);
 		repository.findLatestSummaries.mockImplementation(
 			async (ids) =>
-				new Map(ids.map((id) => [id, { name: NAMES[id], description: `${NAMES[id]} desc` }])),
+				new Map(
+					visible
+						.filter((s) => ids.includes(s.id))
+						.map(({ id }) => {
+							const { name, description } = row(skill(id), 2).version;
+							return [id, { name, description, version: 2 }] as const;
+						}),
+				),
 		);
 		repository.findLatestSaved.mockImplementation(
 			async (ids) =>
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
 		repository.countUsingAgents.mockResolvedValue(new Map());
-		repository.findProjectNames.mockResolvedValue(new Map());
-		repository.findUsage.mockResolvedValue({ drafts: [], pins: [] });
+		repository.findProjectNames.mockImplementation(
+			async (ids) => new Map(ids.map((id) => [id, 'Team'] as const)),
+		);
+		repository.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 		skillService.canAccess.mockResolvedValue(true);
+		skillService.accessCheck.mockResolvedValue(() => true);
 	});
 
 	describe('list', () => {
-		it('returns every visible skill when no page size is given', async () => {
-			const result = await service.list(user, query());
+		it('passes the filters and the page to the repository', async () => {
+			const result = await service.list(
+				user,
+				query({ scope: 'project', projectId: 'project-1', search: 'rules', skip: 10, take: 5 }),
+			);
 
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				{ userId: user.id, allUsers: false, projectIds: ['project-1'] },
+				{ scope: 'project', projectId: 'project-1', search: 'rules', skip: 10, take: 5 },
+			);
 			expect(result.count).toBe(3);
-			expect(result.data.map(({ id }) => id)).toEqual(['skill_a', 'skill_b', 'skill_c']);
 		});
 
-		it('cuts the page after the filters, and counts the whole match', async () => {
+		it('passes the project an agent attaches skills for', async () => {
+			await service.list(user, query({ attachableTo: 'project-1', search: 'voice' }));
+
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ attachableTo: 'project-1', search: 'voice' }),
+			);
+		});
+
+		it.each([{ scope: 'user' as const }, { projectId: 'project-1' }])(
+			'refuses attachableTo together with %o',
+			async (filter) => {
+				await expect(
+					service.list(user, query({ attachableTo: 'project-1', ...filter })),
+				).rejects.toThrow(UserError);
+				expect(repository.findVisiblePage).not.toHaveBeenCalled();
+			},
+		);
+
+		it('shapes only the page into list items, from summaries', async () => {
+			visible = [skill('skill_b')];
+			repository.findVisiblePage.mockResolvedValue({ skills: visible, count: 3 });
+
 			const result = await service.list(user, query({ skip: 1, take: 1 }));
 
-			expect(result.count).toBe(3);
-			expect(result.data.map(({ id }) => id)).toEqual(['skill_b']);
-			// Only the page is shaped into list items.
-			expect(repository.findLatestSaved).toHaveBeenCalledWith(['skill_b']);
-		});
-
-		it('searches the latest version names and descriptions before paging', async () => {
-			// One per page: paging before the search would put skill_a on the page and find nothing.
-			const byName = await service.list(user, query({ search: 'RULES', take: 1 }));
-			const byDescription = await service.list(user, query({ search: 'sources desc' }));
-
-			expect(byName.count).toBe(1);
-			expect(byName.data.map(({ name }) => name)).toEqual(['Triage rules']);
-			expect(byDescription.data.map(({ id }) => id)).toEqual(['skill_b']);
-		});
-
-		it('answers an empty page past the end with the full count', async () => {
-			const result = await service.list(user, query({ skip: 10, take: 5 }));
-
-			expect(result).toEqual({ count: 3, data: [] });
-		});
-
-		it('filters by scope and project', async () => {
-			visible = [
-				skill('skill_a'),
-				skill('skill_b', { projectId: 'project-1' }),
-				skill('skill_c', { userId: user.id }),
-			];
-
-			const projects = await service.list(user, query({ scope: 'project' }));
-			const own = await service.list(user, query({ scope: 'user' }));
-			const inProject = await service.list(user, query({ projectId: 'project-1' }));
-
-			expect(projects.data.map(({ id }) => id)).toEqual(['skill_b']);
-			expect(own.data.map(({ id }) => id)).toEqual(['skill_c']);
-			expect(inProject.data.map(({ id }) => id)).toEqual(['skill_b']);
+			expect(result).toMatchObject({ count: 3, data: [{ id: 'skill_b', name: 'Cite sources' }] });
+			// Summaries carry no instructions or files.
+			expect(repository.findLatestSummaries).toHaveBeenCalledWith(['skill_b']);
+			expect(repository.findLatestSaved).not.toHaveBeenCalled();
 		});
 
 		it('asks for the projects the user may list skills of', async () => {
 			await service.list(user, query());
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:list']);
-			expect(repository.findVisible).toHaveBeenCalledWith({
-				userId: user.id,
-				allUsers: false,
-				projectIds: ['project-1'],
-			});
 		});
 
 		it('widens the list for a user with global scopes', async () => {
@@ -164,18 +168,17 @@ describe('SkillsApiService', () => {
 			await service.list(user, query());
 
 			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:list');
-			expect(repository.findVisible).toHaveBeenCalledWith({
-				userId: user.id,
-				allUsers: true,
-				projectIds: 'all',
-			});
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				{ userId: user.id, allUsers: true, projectIds: 'all' },
+				expect.anything(),
+			);
 		});
 
 		it('describes each skill', async () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			repository.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
 			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
-			skillService.canAccess.mockImplementation(async (_user, _skill, op) => op === 'update');
+			skillService.accessCheck.mockImplementation(async (_user, op) => () => op === 'update');
 
 			const [item] = (await service.list(user, query())).data;
 
@@ -196,6 +199,15 @@ describe('SkillsApiService', () => {
 				updatedAt: DATE.toISOString(),
 			});
 		});
+
+		it('checks edit and delete once for the page, not once per skill', async () => {
+			await service.list(user, query());
+
+			expect(skillService.accessCheck).toHaveBeenCalledTimes(2);
+			expect(skillService.accessCheck).toHaveBeenCalledWith(user, 'update');
+			expect(skillService.accessCheck).toHaveBeenCalledWith(user, 'delete');
+			expect(skillService.canAccess).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('get', () => {
@@ -203,10 +215,18 @@ describe('SkillsApiService', () => {
 			const usage = {
 				drafts: [{ agentId: 'agent-1', agentName: 'Support', projectId: 'project-1' }],
 				pins: [],
+				hiddenAgents: 1,
 			};
 			repository.findUsage.mockResolvedValue(usage);
-			repository.findLatestSaved.mockResolvedValue(
-				new Map([['skill_a', row(visible[0], 3, { instructions: 'saved' })]]),
+			const latest = row(visible[0], 3, { instructions: 'saved' });
+			repository.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
+			repository.findLatestSummaries.mockResolvedValue(
+				new Map([
+					[
+						'skill_a',
+						{ name: latest.version.name, description: latest.version.description, version: 3 },
+					],
+				]),
 			);
 
 			const detail = await service.get(user, 'skill_a');
@@ -215,6 +235,21 @@ describe('SkillsApiService', () => {
 			expect(detail.latestVersion).toBe(3);
 			expect(detail.skillHash).toBe(getAgentSkillHash(detail.skill));
 			expect(detail.usedBy).toEqual(usage);
+		});
+
+		it('limits the usage to the agents the user may read', async () => {
+			await service.get(user, 'skill_a');
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+			expect(repository.findUsage).toHaveBeenCalledWith('skill_a', ['project-1']);
+		});
+
+		it('shows the agents of every project to a user with the global agent scope', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+
+			await service.get(user, 'skill_a');
+
+			expect(repository.findUsage).toHaveBeenCalledWith('skill_a', 'all');
 		});
 
 		it('answers a skill the user cannot see like a missing one', async () => {
@@ -242,6 +277,7 @@ describe('SkillsApiService', () => {
 		it('returns the new skill to a creator who may not read it afterwards', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 			skillService.canAccess.mockResolvedValue(false);
+			skillService.accessCheck.mockResolvedValue(() => false);
 
 			const detail = await service.create(
 				user,
@@ -297,6 +333,18 @@ describe('SkillsApiService', () => {
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(service.create(user, payload({ scope, ...extra }))).rejects.toThrow(errorClass);
+			expect(skillService.create).not.toHaveBeenCalled();
+		});
+
+		// A global projectSkill:create passes the scope check for any project id.
+		it('refuses a project skill for a project that does not exist', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			repository.findProjectNames.mockResolvedValue(new Map());
+
+			await expect(
+				service.create(user, payload({ scope: 'project', projectId: 'project-gone' })),
+			).rejects.toThrow(NotFoundError);
+			expect(repository.findProjectNames).toHaveBeenCalledWith(['project-gone']);
 			expect(skillService.create).not.toHaveBeenCalled();
 		});
 	});
@@ -357,7 +405,21 @@ describe('SkillsApiService', () => {
 			await service.delete(user, 'skill_a');
 
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'delete');
-			expect(skillService.deleteSkill).toHaveBeenCalledWith('skill_a');
+			expect(skillService.deleteSkill).toHaveBeenCalledWith('skill_a', ['project-1']);
+		});
+
+		it('names the agents of the projects the user may read in a conflict', async () => {
+			await service.delete(user, 'skill_a');
+
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+		});
+
+		it('names every agent for a user with the global agent scope', async () => {
+			projectScopeService.getProjectIds.mockResolvedValue(null);
+
+			await service.delete(user, 'skill_a');
+
+			expect(skillService.deleteSkill).toHaveBeenCalledWith('skill_a', 'all');
 		});
 
 		it('refuses a user without it', async () => {

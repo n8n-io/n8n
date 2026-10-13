@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
+import type { ProjectScopeService } from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -91,7 +92,8 @@ describe('SkillService', () => {
 	const agents = mock<AgentRepository>();
 	const txRunner = mock<TransactionRunner>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
-	const service = new SkillService(mock(), skills, agents, txRunner, broadcaster);
+	const projectScope = mock<ProjectScopeService>();
+	const service = new SkillService(mock(), skills, agents, txRunner, broadcaster, projectScope);
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -719,6 +721,42 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('accessCheck', () => {
+		it('reads the projects of the operation once and checks project skills against them', async () => {
+			projectScope.getProjectIds.mockResolvedValue([PROJECT]);
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			const canUpdate = await service.accessCheck(user, 'update');
+
+			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }))).toBe(true);
+			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }))).toBe(false);
+			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(1);
+			expect(projectScope.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:update']);
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('allows every project skill when the global role grants the scope', async () => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+
+			const canDelete = await service.accessCheck(user, 'delete');
+
+			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }))).toBe(true);
+		});
+
+		it('applies the canAccess rules to "Just you" and instance skills', async () => {
+			projectScope.getProjectIds.mockResolvedValue([]);
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			const canUpdate = await service.accessCheck(user, 'update');
+			const canRead = await service.accessCheck(user, 'read');
+
+			expect(canUpdate(skillRow('skill_a', { userId: user.id }))).toBe(true);
+			expect(canUpdate(skillRow('skill_b', { userId: 'other' }))).toBe(false);
+			expect(canUpdate(skillRow('skill_c'))).toBe(false);
+			expect(canRead(skillRow('skill_c'))).toBe(true);
+		});
+	});
+
 	describe('assertCanEdit', () => {
 		it('names the skills the user cannot edit', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(false);
@@ -738,10 +776,11 @@ describe('SkillService', () => {
 	describe('deleteSkill', () => {
 		it('deletes a skill nobody uses, under an edit lock', async () => {
 			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
-			skills.findUsage.mockResolvedValue({ drafts: [], pins: [] });
+			skills.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
 
 			await service.deleteSkill('skill_a');
 
+			expect(skills.findUsage).toHaveBeenCalledWith('skill_a', 'all', TX_CTX);
 			expect(skills.lockForEdit).toHaveBeenCalledWith(['skill_a'], TX_CTX);
 			expect(skills.deleteSkill).toHaveBeenCalledWith('skill_a', TX_CTX);
 		});
@@ -754,27 +793,51 @@ describe('SkillService', () => {
 			skills.findUsage.mockResolvedValue({
 				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: PROJECT }],
 				pins: [
-					{
-						agentId: 'agent-2',
-						agentName: 'Sales bot',
-						agentVersionId: 'v-a',
-						version: 2,
-						isActive: true,
-					},
-					{
-						agentId: 'agent-2',
-						agentName: 'Sales bot',
-						agentVersionId: 'v-b',
-						version: 1,
-						isActive: false,
-					},
+					{ agentId: 'agent-2', agentName: 'Sales bot', projectId: PROJECT, version: 2 },
+					{ agentId: 'agent-3', agentName: 'Old bot', projectId: PROJECT, version: null },
 				],
+				hiddenAgents: 0,
 			});
 
 			await expectError(
 				service.deleteSkill('skill_a'),
 				ConflictError,
-				'Skill "Brand voice" is used by Support bot (draft), Sales bot (published v2, current), Sales bot (published v1) and cannot be deleted.',
+				'Skill "Brand voice" is used by Support bot (draft), Sales bot (published v2), Old bot (older published version) and cannot be deleted.',
+			);
+			expect(skills.deleteSkill).not.toHaveBeenCalled();
+		});
+
+		it('names only the agents of the given projects and counts the others', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
+			skills.findLatestSaved.mockResolvedValue(
+				new Map([['skill_a', versionRow(skillRow('skill_a'), 2)]]),
+			);
+			skills.findUsage.mockResolvedValue({
+				drafts: [{ agentId: 'agent-1', agentName: 'Support bot', projectId: PROJECT }],
+				pins: [],
+				hiddenAgents: 2,
+			});
+
+			await expectError(
+				service.deleteSkill('skill_a', [PROJECT]),
+				ConflictError,
+				'Skill "Brand voice" is used by Support bot (draft), 2 agents in other projects and cannot be deleted.',
+			);
+			expect(skills.findUsage).toHaveBeenCalledWith('skill_a', [PROJECT], TX_CTX);
+			expect(skills.deleteSkill).not.toHaveBeenCalled();
+		});
+
+		it('refuses when only agents the caller cannot read use the skill', async () => {
+			skills.findByIds.mockResolvedValue([skillRow('skill_a')]);
+			skills.findLatestSaved.mockResolvedValue(
+				new Map([['skill_a', versionRow(skillRow('skill_a'), 2)]]),
+			);
+			skills.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 1 });
+
+			await expectError(
+				service.deleteSkill('skill_a', []),
+				ConflictError,
+				'Skill "Brand voice" is used by 1 agent in other projects and cannot be deleted.',
 			);
 			expect(skills.deleteSkill).not.toHaveBeenCalled();
 		});

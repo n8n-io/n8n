@@ -408,6 +408,7 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

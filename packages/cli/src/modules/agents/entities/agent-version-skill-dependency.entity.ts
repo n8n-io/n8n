@@ -2,8 +2,8 @@ import { WithCreatedAt } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 /** Pins one skill version to one published agent version. */
-@Entity({ name: 'agent_history_skill' })
-export class AgentHistorySkill extends WithCreatedAt {
+@Entity({ name: 'agent_version_skill_dependency' })
+export class AgentVersionSkillDependency extends WithCreatedAt {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	agentVersionId: string;
 

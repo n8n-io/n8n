@@ -15,7 +15,6 @@ export class AgentSkillDependency extends WithCreatedAt {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	skillId: string;
 
-	@Index()
 	@Column({ type: 'uuid', nullable: true })
 	skillVersionId: string | null;
 }

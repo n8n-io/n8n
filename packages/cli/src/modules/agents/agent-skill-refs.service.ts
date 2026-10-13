@@ -22,7 +22,7 @@ export interface AgentSkillsSnapshot {
  * writes skill refs through this service.
  *
  * The refs of a draft are the `agent_skill_dependency` rows. The refs of a
- * published version are the `agent_history_skill` pins. Both are in attach
+ * published version are the `agent_version_skill_dependency` pins. Both are in attach
  * order. The skill bodies come from the skills hub. The stored `schema` JSON
  * holds no skill refs.
  */

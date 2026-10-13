@@ -37,7 +37,7 @@ export class AgentHistory extends WithTimestamps {
 	tools: Agent['tools'] | null;
 
 	// The `skills` column is not mapped. Published skill pins live in
-	// `agent_history_skill`. CONTEXT-232 drops the column.
+	// `agent_version_skill_dependency`. CONTEXT-232 drops the column.
 
 	/**
 	 * Runtime pointer to the publishing user. Auto-nulls when the user is

@@ -1,7 +1,7 @@
 /**
  * Agents read and write their skills through the skills hub (CONTEXT-225).
  * A draft keeps its skill refs in `agent_skill_dependency`, a published
- * version keeps its pins in `agent_history_skill`, and the skill text lives in
+ * version keeps its pins in `agent_version_skill_dependency`, and the skill text lives in
  * `skill_version`. These tests run the agent services against real rows.
  */
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';

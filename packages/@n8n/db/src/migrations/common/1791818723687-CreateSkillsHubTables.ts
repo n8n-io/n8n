@@ -4,27 +4,27 @@ const SKILL_TABLE = 'skill';
 const SKILL_VERSION_TABLE = 'skill_version';
 const SKILL_FILE_TABLE = 'skill_file';
 const AGENT_SKILL_DEPENDENCY_TABLE = 'agent_skill_dependency';
-const AGENT_HISTORY_SKILL_TABLE = 'agent_history_skill';
+const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
 
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
  * A skill belongs to one target: a user ("Just you", for the assistant only), a project
- * (team or personal, for its agents and its assistant sessions), or the instance (neither
- * set). Its name and content live in numbered, immutable versions: a Save that changes
+ * (team or personal, for its agents and its assistant sessions), one agent in a project
+ * (only that agent can use it), or the instance (neither set). Its name and content live in numbered, immutable versions: a Save that changes
  * the content creates the next one, agents read the latest, and agent publishes pin the
  * one they ran.
  */
-export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
+export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createSkillTable(context);
 		await this.createSkillVersionTable(context);
 		await this.createSkillFileTable(context);
 		await this.createAgentSkillDependencyTable(context);
-		await this.createAgentHistorySkillTable(context);
+		await this.createAgentVersionSkillDependencyTable(context);
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
-		await dropTable(AGENT_HISTORY_SKILL_TABLE);
+		await dropTable(AGENT_VERSION_SKILL_DEPENDENCY_TABLE);
 		await dropTable(AGENT_SKILL_DEPENDENCY_TABLE);
 		await dropTable(SKILL_FILE_TABLE);
 		await dropTable(SKILL_VERSION_TABLE);
@@ -46,14 +46,22 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 				column('projectId')
 					.varchar(36)
 					.comment('Set for a project skill, team or personal. NULL otherwise'),
+				column('agentId')
+					.varchar(36)
+					.comment(
+						'Set when only this agent can use the skill. projectId is then the agent project',
+					),
 				column('source')
 					.varchar(16)
-					.notNull.withEnumCheck(['ui', 'upload', 'agent'])
-					.comment('How the skill was created: "ui", "upload", or "agent"'),
+					.notNull.withEnumCheck(['ui', 'agent'])
+					.comment(
+						'How the skill was created: "ui" (the skills hub) or "agent" (the agent builder or the migration)',
+					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
 			.withTimestamps.withIndexOn(['userId'])
 			.withIndexOn(['projectId'])
+			.withIndexOn(['agentId'])
 			.withForeignKey('userId', {
 				tableName: 'user',
 				columnName: 'id',
@@ -61,6 +69,12 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			})
 			.withForeignKey('projectId', {
 				tableName: 'project',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			// An agent skill goes with its agent, as agent skills do today.
+			.withForeignKey('agentId', {
+				tableName: 'agents',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -72,6 +86,10 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			.withCheck(
 				`CHK_${tablePrefix}skill_single_target`,
 				`${escape.columnName('userId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
+			)
+			.withCheck(
+				`CHK_${tablePrefix}skill_agent_in_project`,
+				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NOT NULL`,
 			);
 	}
 
@@ -144,11 +162,10 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 				),
 			)
 			.withCreatedAt.withIndexOn(['skillId'])
-			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' })
 			.withForeignKey('skillId', { tableName: SKILL_TABLE, columnName: 'id', onDelete: 'CASCADE' })
-			// NO ACTION for the same reason as agent_history_skill: a user or project
-			// delete removes the skill together with the agents that pin it.
+			// NO ACTION keeps a pinned version from being deleted on its own. A skill delete
+			// removes these rows first, through the skillId cascade.
 			.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,
 				columnName: 'id',
@@ -156,30 +173,32 @@ export class CreateSkillsHubTables1791465484308 implements ReversibleMigration {
 			});
 	}
 
-	private async createAgentHistorySkillTable({
+	private async createAgentVersionSkillDependencyTable({
 		schemaBuilder: { createTable, column },
 	}: MigrationContext) {
-		await createTable(AGENT_HISTORY_SKILL_TABLE)
+		await createTable(AGENT_VERSION_SKILL_DEPENDENCY_TABLE)
 			.withColumns(
 				column('agentVersionId').varchar(36).primary,
 				column('skillId').varchar(36).primary,
 				column('skillVersionId').uuid.notNull,
 			)
 			.withCreatedAt.withIndexOn(['skillId'])
+			// This table grows with every publish, and "used by" reads it by version.
 			.withIndexOn(['skillVersionId'])
 			.withForeignKey('agentVersionId', {
 				tableName: 'agent_history',
 				columnName: 'versionId',
 				onDelete: 'CASCADE',
 			})
-			// NO ACTION, not RESTRICT: the check runs at the end of the statement, so a
-			// user or project delete can remove its skills together with the agents that
-			// pin them. The service refuses to delete a pinned skill on its own.
+			// CASCADE, as in agent_skill_dependency: a user or project delete removes a skill
+			// and the agents that pin it, and Postgres checks NO ACTION before the agent
+			// cascade runs. The service refuses to delete a skill that is in use.
 			.withForeignKey('skillId', {
 				tableName: SKILL_TABLE,
 				columnName: 'id',
-				onDelete: 'NO ACTION',
+				onDelete: 'CASCADE',
 			})
+			// NO ACTION keeps a pinned version from being deleted on its own.
 			.withForeignKey('skillVersionId', {
 				tableName: SKILL_VERSION_TABLE,
 				columnName: 'id',

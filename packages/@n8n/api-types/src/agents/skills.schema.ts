@@ -5,12 +5,6 @@ import type { AgentSkill } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
-/**
- * PostHog flag for the controlled rollout of skills. A user without it gets 404 from
- * `/rest/skills`. Not an experiment: the flag is on or off.
- */
-export const SKILLS_FLAG = '125_context_skills';
-
 export const SKILLS_MAX_PAGE_SIZE = 100;
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
@@ -28,7 +22,7 @@ export const skillScopeSchema = z.enum(['user', 'project', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
-export type SkillSource = 'ui' | 'upload' | 'agent';
+export type SkillSource = 'ui' | 'agent';
 
 /** One row of the skills list. Name and description come from the latest version. */
 export type SkillListItem = {
@@ -57,15 +51,20 @@ export type SkillListResponse = {
 	data: SkillListItem[];
 };
 
+/** The agents that use a skill, limited to the agents the caller may read. */
 export type SkillUsage = {
+	/** Agents whose draft references the skill. */
 	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
+	/** Agents with a published version that pins the skill, one row each. */
 	pins: Array<{
 		agentId: string;
 		agentName: string;
-		agentVersionId: string;
-		version: number;
-		isActive: boolean;
+		projectId: string;
+		/** The skill version the current published version runs. Null when only older ones pin it. */
+		version: number | null;
 	}>;
+	/** Agents in projects the caller may not read. */
+	hiddenAgents: number;
 };
 
 /** One skill with the content of its latest version. */
@@ -93,6 +92,11 @@ export class ListSkillsQueryDto extends Z.class({
 	search: z.string().trim().max(200).optional(),
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
+	/**
+	 * The skills an agent of this project may attach: the project's skills and instance
+	 * skills, never "Just you" skills. Not combined with `scope` or `projectId`.
+	 */
+	attachableTo: z.string().max(36).optional(),
 }) {}
 
 export class CreateSkillDto extends Z.class({

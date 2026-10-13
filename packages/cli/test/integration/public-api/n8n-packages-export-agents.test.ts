@@ -146,7 +146,7 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 		{
 			id: skillId,
 			target: { userId: null, projectId: project.id },
-			source: 'upload',
+			source: 'ui',
 			createdById: null,
 		},
 		toSkillContent(skill),

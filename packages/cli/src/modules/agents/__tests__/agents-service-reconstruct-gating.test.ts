@@ -60,6 +60,9 @@ import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import { storedRunSource } from './test-utils/stored-agent-config';
 
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
+
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
 builtAgent.hasCheckpointStorage.mockReturnValue(true); // skip checkpoint injection branch
@@ -682,8 +685,26 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
 		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'vertex-cred', name: 'Vertex', type: 'googleVertexAiApi' },
+		]);
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
+			if (credentialId === 'vertex-cred') {
+				return {
+					email: 'agent@example.test',
+					privateKey: 'private-key',
+					region: 'europe-west1',
+					project: 'child-project',
+				};
+			}
 			if (credentialId === 'low-cred') {
 				return { apiKey: 'low-key', url: 'https://low.example/v1' };
 			}
@@ -697,6 +718,10 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					medium: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'vertex-cred',
+					},
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
 				},
 			},
@@ -713,6 +738,14 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				id: 'openai/gpt-4o-mini',
 				apiKey: 'low-key',
 				baseURL: 'https://low.example/v1',
+			},
+			medium: {
+				id: 'google-vertex/gemini-3-flash-preview',
+				sdk: '@ai-sdk/google-vertex',
+				project: 'child-project',
+				location: 'europe-west1',
+				clientEmail: 'agent@example.test',
+				privateKey: 'private-key',
 			},
 			high: {
 				id: 'anthropic/claude-sonnet-4-5',

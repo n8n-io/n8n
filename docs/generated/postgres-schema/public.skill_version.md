@@ -9,7 +9,7 @@
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
 | description | varchar(1024) |  | false |  |  |  |
 | frontmatter | json |  | true |  |  | SKILL.md frontmatter fields other than name and description, e.g. allowed-tools |
-| id | uuid |  | false | [public.agent_history_skill](public.agent_history_skill.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.skill_file](public.skill_file.md) |  |  |
+| id | uuid |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_file](public.skill_file.md) |  |  |
 | instructions | text |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  | Free-text skill name, as it was when this version was saved |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
@@ -48,8 +48,8 @@
 erDiagram
 
 "public.skill_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.agent_history_skill" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
 "public.agent_skill_dependency" }o--o| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
+"public.agent_version_skill_dependency" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
 "public.skill_file" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id) ON DELETE CASCADE"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 
@@ -83,14 +83,14 @@ erDiagram
   json settings
   timestamp_3__with_time_zone updatedAt
 }
-"public.agent_history_skill" {
-  varchar_36_ agentVersionId FK
+"public.agent_skill_dependency" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ skillId FK
   uuid skillVersionId FK
 }
-"public.agent_skill_dependency" {
-  varchar_36_ agentId FK
+"public.agent_version_skill_dependency" {
+  varchar_36_ agentVersionId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ skillId FK
   uuid skillVersionId FK
@@ -103,6 +103,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.skill" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

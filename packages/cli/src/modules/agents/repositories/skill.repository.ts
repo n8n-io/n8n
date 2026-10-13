@@ -1,17 +1,19 @@
-import { BaseRepository, Project, TransactionRunner, type OperationContext } from '@n8n/db';
-import { Service } from '@n8n/di';
 import {
-	DataSource,
-	In,
-	IsNull,
-	Not,
-	type EntityManager,
-	type FindOptionsWhere,
-} from '@n8n/typeorm';
+	BaseRepository,
+	LIKE_ESCAPE_CLAUSE,
+	Project,
+	TransactionRunner,
+	chunkIds,
+	escapeLike,
+	type OperationContext,
+} from '@n8n/db';
+import { Service } from '@n8n/di';
+import { Brackets, DataSource, In, IsNull, type EntityManager } from '@n8n/typeorm';
+import type { SkillUsage } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
-import { AgentHistorySkill } from '../entities/agent-history-skill.entity';
+import { AgentVersionSkillDependency } from '../entities/agent-version-skill-dependency.entity';
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentSkillDependency } from '../entities/agent-skill-dependency.entity';
 import { Agent } from '../entities/agent.entity';
@@ -45,16 +47,21 @@ export type SkillVisibility = {
 	projectIds: string[] | 'all';
 };
 
-export type SkillUsage = {
-	drafts: Array<{ agentId: string; agentName: string; projectId: string }>;
-	pins: Array<{
-		agentId: string;
-		agentName: string;
-		agentVersionId: string;
-		version: number;
-		isActive: boolean;
-	}>;
+/** Narrows the visible skills of `findVisiblePage` and cuts one page. */
+export type SkillListFilter = {
+	scope?: 'user' | 'project' | 'instance';
+	projectId?: string;
+	/** Instance skills and the skills of this project: what its agents may attach. */
+	attachableTo?: string;
+	search?: string;
+	skip: number;
+	take?: number;
 };
+
+export type { SkillUsage } from '@n8n/api-types';
+
+/** Latest version of a skill without its content. */
+export type SkillSummary = { name: string; description: string; version: number };
 
 /** Persistence for skills, their versions and files, and the agent rows that use them. */
 @Service()
@@ -63,18 +70,82 @@ export class SkillRepository extends BaseRepository<Skill> {
 		super(Skill, dataSource.manager, transactionRunner);
 	}
 
-	/** Every skill the user may see, newest change first. */
-	async findVisible(visibility: SkillVisibility, ctx: OperationContext = {}): Promise<Skill[]> {
-		const where: Array<FindOptionsWhere<Skill>> = [{ userId: IsNull(), projectId: IsNull() }];
-		where.push(visibility.allUsers ? { userId: Not(IsNull()) } : { userId: visibility.userId });
-		if (visibility.projectIds === 'all') where.push({ projectId: Not(IsNull()) });
-		else if (visibility.projectIds.length > 0) where.push({ projectId: In(visibility.projectIds) });
-		return await this.managerFor(ctx).find(Skill, { where, order: { updatedAt: 'DESC' } });
+	/**
+	 * One page of the skills the user may see, newest change first, and the count of all
+	 * matches. The filters, the search and the page cut run in the query, so the read grows
+	 * with the page, not with the skills on the instance. The search matches the name or
+	 * the description of the latest version. Without `take` every match is returned.
+	 */
+	async findVisiblePage(
+		visibility: SkillVisibility,
+		filter: SkillListFilter,
+		ctx: OperationContext = {},
+	): Promise<{ skills: Skill[]; count: number }> {
+		const branches: string[] = [];
+		if (!filter.scope || filter.scope === 'instance') {
+			branches.push('skill.userId IS NULL AND skill.projectId IS NULL');
+		}
+		if (filter.attachableTo !== undefined) {
+			const { projectIds } = visibility;
+			if (projectIds === 'all' || projectIds.includes(filter.attachableTo)) {
+				branches.push('skill.projectId = :attachableTo');
+			}
+		} else {
+			if (!filter.scope || filter.scope === 'user') {
+				branches.push(visibility.allUsers ? 'skill.userId IS NOT NULL' : 'skill.userId = :userId');
+			}
+			if (!filter.scope || filter.scope === 'project') {
+				if (visibility.projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
+				else if (visibility.projectIds.length > 0) {
+					branches.push('skill.projectId IN (:...projectIds)');
+				}
+			}
+		}
+		if (branches.length === 0) return { skills: [], count: 0 };
+
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(Skill, 'skill')
+			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
+			.setParameters({
+				userId: visibility.userId,
+				projectIds: visibility.projectIds,
+				...(filter.attachableTo !== undefined && { attachableTo: filter.attachableTo }),
+			});
+		if (filter.projectId)
+			query.andWhere('skill.projectId = :projectId', { projectId: filter.projectId });
+		if (filter.search) {
+			query
+				.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id')
+				.andWhere((qb) => {
+					const highest = qb
+						.subQuery()
+						.select('MAX(later.version)')
+						.from(SkillVersion, 'later')
+						.where('later.skillId = skill.id')
+						.getQuery();
+					return `latest.version = ${highest}`;
+				})
+				.andWhere(
+					new Brackets((qb) =>
+						qb
+							.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
+							.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
+					),
+					{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
+				);
+		}
+		query.orderBy('skill.updatedAt', 'DESC').addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		const [skills, count] = await query.getManyAndCount();
+		return { skills, count };
 	}
 
 	async findByIds(ids: string[], ctx: OperationContext = {}): Promise<Skill[]> {
-		if (ids.length === 0) return [];
-		return await this.managerFor(ctx).find(Skill, { where: { id: In(unique(ids)) } });
+		const manager = this.managerFor(ctx);
+		return await inChunks(
+			ids,
+			async (chunk) => await manager.find(Skill, { where: { id: In(chunk) } }),
+		);
 	}
 
 	/** The highest version of each skill, keyed by skill id. A following ref reads it. */
@@ -82,29 +153,31 @@ export class SkillRepository extends BaseRepository<Skill> {
 		skillIds: string[],
 		ctx: OperationContext = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
-		if (skillIds.length === 0) return new Map();
-		const versions = await this.managerFor(ctx).find(SkillVersion, {
-			where: { skillId: In(unique(skillIds)) },
-			order: { version: 'DESC' },
-		});
-		return await this.resolveBySkill(latestPerSkill(versions), ctx);
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			skillIds,
+			async (chunk) => await latestVersionsQuery(manager, chunk).getMany(),
+		);
+		return await this.resolveBySkill(versions, ctx);
 	}
 
-	/** Name and description of the latest version, without files. */
+	/** Name, description and number of the latest version, without its content. */
 	async findLatestSummaries(
 		skillIds: string[],
 		ctx: OperationContext = {},
-	): Promise<Map<string, { name: string; description: string }>> {
-		if (skillIds.length === 0) return new Map();
-		const versions = await this.managerFor(ctx).find(SkillVersion, {
-			select: ['skillId', 'version', 'name', 'description'],
-			where: { skillId: In(unique(skillIds)) },
-			order: { version: 'DESC' },
-		});
+	): Promise<Map<string, SkillSummary>> {
+		const manager = this.managerFor(ctx);
+		const versions = await inChunks(
+			skillIds,
+			async (chunk) =>
+				await latestVersionsQuery(manager, chunk)
+					.select(['version.skillId', 'version.name', 'version.description', 'version.version'])
+					.getMany(),
+		);
 		return new Map(
-			latestPerSkill(versions).map((v) => [
+			versions.map((v) => [
 				v.skillId,
-				{ name: v.name, description: v.description },
+				{ name: v.name, description: v.description, version: v.version },
 			]),
 		);
 	}
@@ -130,7 +203,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		agentVersionId: string,
 		ctx: OperationContext = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
-		const pins = await this.managerFor(ctx).find(AgentHistorySkill, {
+		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
 			where: { agentVersionId },
 			order: { createdAt: 'ASC' },
 		});
@@ -200,7 +273,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		if (pins.length === 0) return;
 		const first = Date.now();
 		await this.managerFor(ctx).insert(
-			AgentHistorySkill,
+			AgentVersionSkillDependency,
 			pins.map((pin, index) => ({ ...pin, createdAt: new Date(first + index) })),
 		);
 	}
@@ -299,30 +372,64 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return unique(rows.map((row) => row.agentId));
 	}
 
-	/** "Used by": agent drafts that reference the skill, plus every pin, current or older. */
-	async findUsage(skillId: string, ctx: OperationContext = {}): Promise<SkillUsage> {
+	/**
+	 * "Used by": each agent that uses the skill once, as a draft ref, as a published pin, or
+	 * both. A pin row shows the version the agent's current published version runs, or
+	 * null when only older published versions use the skill. Agents outside `projectIds`
+	 * are only counted. The read grows with the agents, not with their publishes.
+	 */
+	async findUsage(
+		skillId: string,
+		projectIds: string[] | 'all' = 'all',
+		ctx: OperationContext = {},
+	): Promise<SkillUsage> {
 		const manager = this.managerFor(ctx);
-		const deps = await manager.find(AgentSkillDependency, { where: { skillId } });
-		const draftAgents = deps.length
-			? await manager.find(Agent, {
-					where: { id: In(deps.map((dep) => dep.agentId)) },
-					select: ['id', 'name', 'projectId'],
-				})
-			: [];
-		const pins = await this.findPinsWithAgents([skillId], manager);
+		const drafted = await manager
+			.createQueryBuilder(Agent, 'agent')
+			.innerJoin(AgentSkillDependency, 'dep', 'dep.agentId = agent.id')
+			.where('dep.skillId = :skillId', { skillId })
+			.select(['agent.id', 'agent.name', 'agent.projectId'])
+			.getMany();
+		const published = await manager
+			.createQueryBuilder(Agent, 'agent')
+			.where((qb) => {
+				const pinned = qb
+					.subQuery()
+					.select('history.agentId')
+					.from(AgentHistory, 'history')
+					.innerJoin(AgentVersionSkillDependency, 'pin', 'pin.agentVersionId = history.versionId')
+					.where('pin.skillId = :skillId')
+					.getQuery();
+				return `agent.id IN ${pinned}`;
+			})
+			.setParameter('skillId', skillId)
+			.select(['agent.id', 'agent.name', 'agent.projectId', 'agent.activeVersionId'])
+			.getMany();
+
+		const isVisible = (agent: Pick<Agent, 'projectId'>) =>
+			projectIds === 'all' || projectIds.includes(agent.projectId);
+		const hidden = new Set(
+			[...drafted, ...published].filter((agent) => !isVisible(agent)).map((agent) => agent.id),
+		);
+		const visiblePublished = published.filter(isVisible);
+		const activeVersions = await this.findActivePinVersions(
+			skillId,
+			visiblePublished.flatMap((agent) => (agent.activeVersionId ? [agent.activeVersionId] : [])),
+			manager,
+		);
 		return {
-			drafts: draftAgents.map((agent) => ({
+			drafts: drafted.filter(isVisible).map((agent) => ({
 				agentId: agent.id,
 				agentName: agent.name,
 				projectId: agent.projectId,
 			})),
-			pins: pins.map(({ pin, version, agent }) => ({
+			pins: visiblePublished.map((agent) => ({
 				agentId: agent.id,
 				agentName: agent.name,
-				agentVersionId: pin.agentVersionId,
-				version: version.version,
-				isActive: agent.activeVersionId === pin.agentVersionId,
+				projectId: agent.projectId,
+				version: activeVersions.get(agent.activeVersionId ?? '') ?? null,
 			})),
+			hiddenAgents: hidden.size,
 		};
 	}
 
@@ -331,17 +438,25 @@ export class SkillRepository extends BaseRepository<Skill> {
 		skillIds: string[],
 		ctx: OperationContext = {},
 	): Promise<Map<string, number>> {
-		if (skillIds.length === 0) return new Map();
 		const manager = this.managerFor(ctx);
-		const agentsBySkill = new Map<string, Set<string>>();
-		const add = (skillId: string, agentId: string) =>
-			agentsBySkill.set(skillId, (agentsBySkill.get(skillId) ?? new Set()).add(agentId));
-		const deps = await manager.find(AgentSkillDependency, {
-			where: { skillId: In(unique(skillIds)) },
+		const pairs = await inChunks(skillIds, async (chunk) => {
+			const drafts = await manager.find(AgentSkillDependency, {
+				select: ['skillId', 'agentId'],
+				where: { skillId: In(chunk) },
+			});
+			const pins = await manager
+				.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+				.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+				.where('pin.skillId IN (:...chunk)', { chunk })
+				.select('pin.skillId', 'skillId')
+				.addSelect('history.agentId', 'agentId')
+				.distinct(true)
+				.getRawMany<{ skillId: string; agentId: string }>();
+			return [...drafts, ...pins];
 		});
-		for (const dep of deps) add(dep.skillId, dep.agentId);
-		for (const { version, agent } of await this.findPinsWithAgents(skillIds, manager)) {
-			add(version.skillId, agent.id);
+		const agentsBySkill = new Map<string, Set<string>>();
+		for (const { skillId, agentId } of pairs) {
+			agentsBySkill.set(skillId, (agentsBySkill.get(skillId) ?? new Set()).add(agentId));
 		}
 		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
 	}
@@ -350,17 +465,18 @@ export class SkillRepository extends BaseRepository<Skill> {
 		projectIds: string[],
 		ctx: OperationContext = {},
 	): Promise<Map<string, string>> {
-		if (projectIds.length === 0) return new Map();
-		const projects = await this.managerFor(ctx).find(Project, {
-			where: { id: In(unique(projectIds)) },
-			select: ['id', 'name'],
-		});
+		const manager = this.managerFor(ctx);
+		const projects = await inChunks(
+			projectIds,
+			async (chunk) =>
+				await manager.find(Project, { where: { id: In(chunk) }, select: ['id', 'name'] }),
+		);
 		return new Map(projects.map((project) => [project.id, project.name]));
 	}
 
 	/**
-	 * Deletes the skill. Its versions, files and dependency rows go by cascade. A pin
-	 * blocks the delete at the database, so callers check usage first.
+	 * Deletes the skill. Its versions, files, dependency rows and pins go by cascade,
+	 * so callers check usage first.
 	 */
 	async deleteSkill(skillId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).delete(Skill, { id: skillId });
@@ -394,34 +510,25 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
-	private async findPinsWithAgents(skillIds: string[], manager: EntityManager) {
-		const versions = await manager.find(SkillVersion, {
-			select: ['id', 'skillId', 'version'],
-			where: { skillId: In(unique(skillIds)) },
-		});
-		if (versions.length === 0) return [];
-		const pins = await manager.find(AgentHistorySkill, {
-			where: { skillVersionId: In(versions.map((version) => version.id)) },
-		});
-		if (pins.length === 0) return [];
-		const histories = await manager.find(AgentHistory, {
-			select: ['versionId', 'agentId'],
-			where: { versionId: In(unique(pins.map((pin) => pin.agentVersionId))) },
-		});
-		const agents = await manager.find(Agent, {
-			select: ['id', 'name', 'activeVersionId'],
-			where: { id: In(unique(histories.map((history) => history.agentId))) },
-		});
-		const versionById = new Map(versions.map((version) => [version.id, version]));
-		const agentById = new Map(agents.map((agent) => [agent.id, agent]));
-		const agentByHistory = new Map(
-			histories.map((history) => [history.versionId, agentById.get(history.agentId)]),
+	/** The skill version number each of these published agent versions pins. */
+	private async findActivePinVersions(
+		skillId: string,
+		agentVersionIds: string[],
+		manager: EntityManager,
+	): Promise<Map<string, number>> {
+		const rows = await inChunks(
+			agentVersionIds,
+			async (chunk) =>
+				await manager
+					.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+					.innerJoin(SkillVersion, 'version', 'version.id = pin.skillVersionId')
+					.where('pin.skillId = :skillId', { skillId })
+					.andWhere('pin.agentVersionId IN (:...chunk)', { chunk })
+					.select('pin.agentVersionId', 'agentVersionId')
+					.addSelect('version.version', 'version')
+					.getRawMany<{ agentVersionId: string; version: number | string }>(),
 		);
-		return pins.flatMap((pin) => {
-			const version = versionById.get(pin.skillVersionId);
-			const agent = agentByHistory.get(pin.agentVersionId);
-			return version && agent ? [{ pin, version, agent }] : [];
-		});
+		return new Map(rows.map((row) => [row.agentVersionId, Number(row.version)]));
 	}
 
 	private async resolveBySkill(
@@ -443,9 +550,10 @@ export class SkillRepository extends BaseRepository<Skill> {
 			versions.map((version) => version.skillId),
 			ctx,
 		);
-		const files = await manager.find(SkillFile, {
-			where: { skillVersionId: In(versions.map((version) => version.id)) },
-		});
+		const files = await inChunks(
+			versions.map((version) => version.id),
+			async (chunk) => await manager.find(SkillFile, { where: { skillVersionId: In(chunk) } }),
+		);
 		const skillById = new Map(skills.map((skill) => [skill.id, skill]));
 		const filesByVersion = new Map<string, SkillFile[]>();
 		for (const file of files.sort((a, b) => compareSkillFilePaths(a.path, b.path))) {
@@ -465,13 +573,27 @@ function unique(values: string[]): string[] {
 	return [...new Set(values)];
 }
 
-/** The first row per skill of a list sorted by version, highest first. */
-function latestPerSkill(versions: SkillVersion[]): SkillVersion[] {
-	const latest = new Map<string, SkillVersion>();
-	for (const version of versions) {
-		if (!latest.has(version.skillId)) latest.set(version.skillId, version);
-	}
-	return [...latest.values()];
+/** Runs `read` over the distinct ids in chunks that stay under the bind limit. */
+async function inChunks<T>(ids: string[], read: (chunk: string[]) => Promise<T[]>): Promise<T[]> {
+	const results: T[] = [];
+	for (const chunk of chunkIds(unique(ids))) results.push(...(await read(chunk)));
+	return results;
+}
+
+/** The version rows of these skills that have the highest number of their skill. */
+function latestVersionsQuery(manager: EntityManager, skillIds: string[]) {
+	return manager
+		.createQueryBuilder(SkillVersion, 'version')
+		.where('version.skillId IN (:...skillIds)', { skillIds })
+		.andWhere((qb) => {
+			const highest = qb
+				.subQuery()
+				.select('MAX(later.version)')
+				.from(SkillVersion, 'later')
+				.where('later.skillId = version.skillId')
+				.getQuery();
+			return `version.version = ${highest}`;
+		});
 }
 
 async function insertVersion(

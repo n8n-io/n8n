@@ -86,7 +86,7 @@ beforeAll(async () => {
 			{
 				id: skillId,
 				target: { userId: null, projectId: project.id },
-				source: 'upload',
+				source: 'ui',
 				createdById: null,
 			},
 			toSkillContent(published.skills[skillId]),

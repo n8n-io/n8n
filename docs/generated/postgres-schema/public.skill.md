@@ -4,11 +4,12 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Set when only this agent can use the skill. projectId is then the agent project |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
-| id | varchar(36) |  | false | [public.agent_history_skill](public.agent_history_skill.md) [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
+| id | varchar(36) |  | false | [public.agent_skill_dependency](public.agent_skill_dependency.md) [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) [public.skill_version](public.skill_version.md) |  | skill_\<nanoid\>, the same format agents use |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | Set for a project skill, team or personal. NULL otherwise |
-| source | varchar(16) |  | false |  |  | How the skill was created: "ui", "upload", or "agent" |
+| source | varchar(16) |  | false |  |  | How the skill was created: "ui" (the skills hub) or "agent" (the agent builder or the migration) |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | userId | uuid |  | true |  | [public.user](public.user.md) | Set for a "Just you" skill, which agents never use. NULL otherwise |
 
@@ -16,10 +17,12 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_skill_agent_in_project | CHECK | CHECK ((("agentId" IS NULL) OR ("projectId" IS NOT NULL))) |
 | CHK_skill_single_target | CHECK | CHECK ((("userId" IS NULL) OR ("projectId" IS NULL))) |
-| CHK_skill_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['ui'::character varying, 'upload'::character varying, 'agent'::character varying])::text[]))) |
+| CHK_skill_source | CHECK | CHECK (((source)::text = ANY ((ARRAY['ui'::character varying, 'agent'::character varying])::text[]))) |
 | FK_402ed37bff0d3134f6e782455ed | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_4de4501583cd1fcd6f5ea85f547 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
+| FK_7d4fb6af107e507d9a86293cf9d | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_c08612011a88745a32784544b28 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
 | PK_a0d33334424e64fb78dc3ce7196 | PRIMARY KEY | PRIMARY KEY (id) |
 | skill_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -32,6 +35,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_402ed37bff0d3134f6e782455e | CREATE INDEX "IDX_402ed37bff0d3134f6e782455e" ON public.skill USING btree ("projectId") |
+| IDX_7d4fb6af107e507d9a86293cf9 | CREATE INDEX "IDX_7d4fb6af107e507d9a86293cf9" ON public.skill USING btree ("agentId") |
 | IDX_c08612011a88745a32784544b2 | CREATE INDEX "IDX_c08612011a88745a32784544b2" ON public.skill USING btree ("userId") |
 | PK_a0d33334424e64fb78dc3ce7196 | CREATE UNIQUE INDEX "PK_a0d33334424e64fb78dc3ce7196" ON public.skill USING btree (id) |
 
@@ -40,14 +44,16 @@
 ```mermaid
 erDiagram
 
+"public.skill" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
-"public.agent_history_skill" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id)"
 "public.agent_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.agent_version_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 
 "public.skill" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
@@ -55,6 +61,22 @@ erDiagram
   varchar_16_ source
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.agents" {
+  varchar_36_ activeVersionId FK
+  boolean availableInMCP
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  json integrations
+  varchar_128_ name
+  varchar_255_ projectId FK
+  integer revision
+  json schema
+  timestamp_3__with_time_zone setupCompletedAt
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt
@@ -73,14 +95,14 @@ erDiagram
   json settings
   timestamp_3__with_time_zone updatedAt
 }
-"public.agent_history_skill" {
-  varchar_36_ agentVersionId FK
+"public.agent_skill_dependency" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ skillId FK
   uuid skillVersionId FK
 }
-"public.agent_skill_dependency" {
-  varchar_36_ agentId FK
+"public.agent_version_skill_dependency" {
+  varchar_36_ agentVersionId FK
   timestamp_3__with_time_zone createdAt
   varchar_36_ skillId FK
   uuid skillVersionId FK

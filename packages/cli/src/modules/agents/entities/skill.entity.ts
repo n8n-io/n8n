@@ -1,12 +1,14 @@
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-export type SkillSource = 'ui' | 'upload' | 'agent';
+/** How a skill was created: `ui` in the skills hub, `agent` from the agent builder or the migration. */
+export type SkillSource = 'ui' | 'agent';
 
 /**
  * A skill in the skills hub, identified by its id only. One target: `userId` ("Just
  * you", used by the assistant only, never by agents), `projectId` (a team or personal
- * project, used by its agents and its assistant sessions), or neither (the instance).
+ * project, used by its agents and its assistant sessions), `agentId` with that agent's
+ * `projectId` (only that agent can use it), or none (the instance).
  * The name and content live in `SkillVersion` rows.
  */
 @Entity({ name: 'skill' })
@@ -21,6 +23,10 @@ export class Skill extends WithTimestamps {
 	@Index()
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	projectId: string | null;
+
+	@Index()
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
 
 	@Column({ type: 'varchar', length: 16 })
 	source: SkillSource;

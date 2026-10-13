@@ -1,5 +1,6 @@
 import type { AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -86,6 +87,7 @@ export class SkillService {
 		private readonly agentRepository: AgentRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	// ---------------------------------------------------------------- reads
@@ -401,6 +403,29 @@ export class SkillService {
 				projectId: skill.projectId,
 			});
 		}
+		return this.canAccessOutsideProjects(user, skill, operation);
+	}
+
+	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
+	async accessCheck(
+		user: User,
+		operation: 'read' | 'update' | 'delete',
+	): Promise<(skill: Pick<Skill, 'userId' | 'projectId'>) => boolean> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, [
+			`projectSkill:${operation}`,
+		]);
+		const allowed = projectIds === null ? null : new Set(projectIds);
+		return (skill) =>
+			skill.projectId
+				? allowed === null || allowed.has(skill.projectId)
+				: this.canAccessOutsideProjects(user, skill, operation);
+	}
+
+	private canAccessOutsideProjects(
+		user: User,
+		skill: Pick<Skill, 'userId'>,
+		operation: 'read' | 'update' | 'delete',
+	): boolean {
 		if (skill.userId === user.id) return true;
 		if (skill.userId === null && operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
@@ -433,22 +458,34 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- delete
 
-	/** Deletes a skill that no agent draft and no published agent version uses. */
-	async deleteSkill(skillId: string, ctx: OperationContext = {}): Promise<void> {
+	/**
+	 * Deletes a skill that no agent draft and no published agent version uses. The conflict
+	 * names the agents in `agentProjectIds` and only counts the others.
+	 */
+	async deleteSkill(
+		skillId: string,
+		agentProjectIds: string[] | 'all' = 'all',
+		ctx: OperationContext = {},
+	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 			if (!skill) throw new NotFoundError('Skill not found');
 			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const usage = await this.skillRepository.findUsage(skillId, txCtx);
-			if (usage.drafts.length > 0 || usage.pins.length > 0) {
+			const usage = await this.skillRepository.findUsage(skillId, agentProjectIds, txCtx);
+			if (usage.drafts.length > 0 || usage.pins.length > 0 || usage.hiddenAgents > 0) {
 				const name = (await this.latestNames([skillId], txCtx)).get(skillId) ?? skillId;
 				const users = [
 					...usage.drafts.map((draft) => `${draft.agentName} (draft)`),
 					...usage.pins.map(
 						(pin) =>
-							`${pin.agentName} (published v${pin.version}${pin.isActive ? ', current' : ''})`,
+							`${pin.agentName} (${pin.version === null ? 'older published version' : `published v${pin.version}`})`,
 					),
 				];
+				if (usage.hiddenAgents > 0) {
+					users.push(
+						`${usage.hiddenAgents} ${usage.hiddenAgents === 1 ? 'agent' : 'agents'} in other projects`,
+					);
+				}
 				throw new ConflictError(
 					`Skill "${name}" is used by ${[...new Set(users)].join(', ')} and cannot be deleted.`,
 				);

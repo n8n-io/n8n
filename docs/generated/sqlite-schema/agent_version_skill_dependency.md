@@ -1,4 +1,4 @@
-# agent_history_skill
+# agent_version_skill_dependency
 
 ## Description
 
@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skillId" varchar(36) NOT NULL, "skillVersionId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_b9bc0a61e01c457e1a9b272573d" FOREIGN KEY ("agentVersionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE, CONSTRAINT "FK_336f09ba4a2710fada5962dc51f" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE NO ACTION, CONSTRAINT "FK_a8179c556e4eda4c6b2a680eb30" FOREIGN KEY ("skillVersionId") REFERENCES "skill_version" ("id") ON DELETE NO ACTION, PRIMARY KEY ("agentVersionId", "skillId"))
+CREATE TABLE "agent_version_skill_dependency" ("agentVersionId" varchar(36) NOT NULL, "skillId" varchar(36) NOT NULL, "skillVersionId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_97472baf9196d914d9cd9de6201" FOREIGN KEY ("agentVersionId") REFERENCES "agent_history" ("versionId") ON DELETE CASCADE, CONSTRAINT "FK_c494292243a7e510acd0331c3d1" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_df63badfd7d3f2aa622ece471c4" FOREIGN KEY ("skillVersionId") REFERENCES "skill_version" ("id") ON DELETE NO ACTION, PRIMARY KEY ("agentVersionId", "skillId"))
 ```
 
 </details>
@@ -25,30 +25,30 @@ CREATE TABLE "agent_history_skill" ("agentVersionId" varchar(36) NOT NULL, "skil
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | agentVersionId | PRIMARY KEY | PRIMARY KEY (agentVersionId) |
 | skillId | PRIMARY KEY | PRIMARY KEY (skillId) |
-| sqlite_autoindex_agent_history_skill_1 | PRIMARY KEY | PRIMARY KEY (agentVersionId, skillId) |
+| sqlite_autoindex_agent_version_skill_dependency_1 | PRIMARY KEY | PRIMARY KEY (agentVersionId, skillId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_336f09ba4a2710fada5962dc51 | CREATE INDEX "IDX_336f09ba4a2710fada5962dc51" ON "agent_history_skill" ("skillId")  |
-| IDX_a8179c556e4eda4c6b2a680eb3 | CREATE INDEX "IDX_a8179c556e4eda4c6b2a680eb3" ON "agent_history_skill" ("skillVersionId")  |
-| sqlite_autoindex_agent_history_skill_1 | PRIMARY KEY (agentVersionId, skillId) |
+| IDX_c494292243a7e510acd0331c3d | CREATE INDEX "IDX_c494292243a7e510acd0331c3d" ON "agent_version_skill_dependency" ("skillId")  |
+| IDX_df63badfd7d3f2aa622ece471c | CREATE INDEX "IDX_df63badfd7d3f2aa622ece471c" ON "agent_version_skill_dependency" ("skillVersionId")  |
+| sqlite_autoindex_agent_version_skill_dependency_1 | PRIMARY KEY (agentVersionId, skillId) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"agent_history_skill" |o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_history_skill" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
-"agent_history_skill" }o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_version_skill_dependency" |o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_version_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_version_skill_dependency" }o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 
-"agent_history_skill" {
+"agent_version_skill_dependency" {
   varchar_36_ agentVersionId PK
   datetime_3_ createdAt
   varchar_36_ skillId PK
@@ -66,6 +66,7 @@ erDiagram
   varchar_36_ versionId PK
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK

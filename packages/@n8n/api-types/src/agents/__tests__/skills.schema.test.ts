@@ -25,6 +25,10 @@ describe('ListSkillsQueryDto', () => {
 		expect(ListSkillsQueryDto.safeParse({ take }).success).toBe(false);
 	});
 
+	it('parses the project an agent attaches skills for', () => {
+		expect(ListSkillsQueryDto.parse({ attachableTo: 'p1' })).toMatchObject({ attachableTo: 'p1' });
+	});
+
 	it('rejects an unknown scope', () => {
 		expect(ListSkillsQueryDto.safeParse({ scope: 'team' }).success).toBe(false);
 	});

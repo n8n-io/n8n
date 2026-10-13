@@ -22,6 +22,14 @@ import {
 import type { AgentJsonConfig } from '../types';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
 import { planMessage, planView } from './fixtures/agent-plan';
+import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import {
+	TEST_EXTENSION_KEY,
+	testInteractionExtension,
+	testInteractionExtensions,
+	type TestCardInput,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
 // A live panel from an earlier test retries its queued message when the shared mocks change.
 enableAutoUnmount(afterEach);
@@ -84,6 +92,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 let onAgentUnavailable: (() => void) | undefined;
+let streamInteractionExtensions: readonly AgentsChatInteractionExtension[] | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -253,32 +262,49 @@ vi.mock('../components/AgentChatEmptyState.vue', () => ({
 	default: { template: '<div data-testid="empty-state-stub" />' },
 }));
 
-vi.mock('../components/AgentChatMessageList.vue', () => ({
-	default: {
-		name: 'AgentChatMessageList',
-		// Renders the message-actions slot once, as the real list does for a finished reply.
-		template:
-			'<div data-testid="message-list-stub"><slot name="message-actions" :message="{ id: \'reply-1\' }" execution-id="exec-1" /></div>',
-		props: [
-			'messages',
-			'messagingState',
-			'canIncreaseBudget',
-			'budgetIncreasePending',
-			'retryMessageId',
-			'retryDisabled',
-		],
-		emits: ['send-to-assistant', 'increase-budget', 'retry'],
-	},
-}));
+vi.mock('../components/AgentChatMessageList.vue', async () => {
+	const { computed: vueComputed, inject } = await import('vue');
+	const { AGENTS_CHAT_INTERACTION_EXTENSIONS } = await import(
+		'@/features/ai/shared/agentsChat/interactionRegistry'
+	);
+	return {
+		default: {
+			name: 'AgentChatMessageList',
+			// Renders the message-actions slot once, as the real list does for a finished reply.
+			template:
+				'<div data-testid="message-list-stub" :data-extension-keys="extensionKeys"><slot name="message-actions" :message="{ id: \'reply-1\' }" execution-id="exec-1" /></div>',
+			props: [
+				'messages',
+				'messagingState',
+				'canIncreaseBudget',
+				'budgetIncreasePending',
+				'retryMessageId',
+				'retryDisabled',
+			],
+			emits: ['send-to-assistant', 'increase-budget', 'retry'],
+			setup() {
+				// The real list renders cards through InteractiveCard, which injects these.
+				const extensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+				return {
+					extensionKeys: vueComputed(
+						() => extensions?.value.map((extension) => extension.key).join(',') ?? '',
+					),
+				};
+			},
+		},
+	};
+});
 
 vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: {
 		channel?: { value: 'chat' | 'n8n-chat' };
 		onHistoryLoaded: (count: number) => void;
 		onAgentUnavailable?: () => void;
+		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		onAgentUnavailable = options.onAgentUnavailable;
+		streamInteractionExtensions = options.interactionExtensions;
 		return {
 			capabilities: computed(() => {
 				// Mirrors the composable: every capability is off on the n8n Chat channel.
@@ -358,6 +384,7 @@ describe('AgentChatPanel', () => {
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
 		onAgentUnavailable = undefined;
+		streamInteractionExtensions = undefined;
 	});
 
 	function mountPanel(
@@ -378,6 +405,7 @@ describe('AgentChatPanel', () => {
 			clientContext: () => Record<string, unknown> | undefined;
 			placeholder: string;
 			showAttachButton: boolean;
+			interactionExtensions: readonly AgentsChatInteractionExtension[];
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -600,6 +628,171 @@ describe('AgentChatPanel', () => {
 
 		expect(wrapper.emitted('first-user-message')?.at(-1)).toEqual(['Review my draft']);
 		wrapper.unmount();
+	});
+
+	describe('interactionExtensions', () => {
+		beforeEach(() => {
+			messagesMock.value = [{ id: 'm1', role: 'assistant', content: 'Hi' } as ChatMessage];
+		});
+
+		it('passes the extensions to the stream and to the cards of the message list', () => {
+			const wrapper = mountPanel({ interactionExtensions: testInteractionExtensions });
+
+			expect(streamInteractionExtensions).toEqual(testInteractionExtensions);
+			expect(
+				wrapper.get('[data-testid="message-list-stub"]').attributes('data-extension-keys'),
+			).toBe(TEST_EXTENSION_KEY);
+			wrapper.unmount();
+		});
+
+		it('uses no extensions by default', () => {
+			const wrapper = mountPanel();
+
+			expect(streamInteractionExtensions).toEqual([]);
+			expect(
+				wrapper.get('[data-testid="message-list-stub"]').attributes('data-extension-keys'),
+			).toBe('');
+			wrapper.unmount();
+		});
+
+		describe('composerResumeData', () => {
+			const composer = (wrapper: ReturnType<typeof mountPanel>) =>
+				wrapper.findComponent({ name: 'ChatInputBase' });
+
+			function openExtensionMessage(): ChatMessage {
+				return {
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: INTERACTION_EXTENSION_TOOL_NAME,
+						extensionKey: TEST_EXTENSION_KEY,
+						toolCallId: 'tc-ext',
+						runId: 'run-ext',
+						input: { question: 'Continue?', tool: 'ask_host' },
+					},
+				};
+			}
+
+			function withComposerResumeData(
+				composerResumeData: (input: TestCardInput, text: string) => unknown,
+			): readonly AgentsChatInteractionExtension[] {
+				return [{ ...testInteractionExtension, composerResumeData }];
+			}
+
+			it('answers the open extension card with the resume data of its extension', async () => {
+				messagesMock.value = [openExtensionMessage()];
+				resumeMock.mockResolvedValueOnce('sent');
+				const composerResumeData = vi.fn((_input: TestCardInput, text: string) => ({
+					approved: false,
+					feedback: text,
+				}));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'use Teams instead');
+				input.vm.$emit('submit');
+				await flushPromises();
+
+				expect(composerResumeData).toHaveBeenCalledWith(
+					{ question: 'Continue?', tool: 'ask_host' },
+					'use Teams instead',
+				);
+				expect(resumeMock).toHaveBeenCalledWith(
+					{
+						runId: 'run-ext',
+						toolCallId: 'tc-ext',
+						resumeData: { approved: false, feedback: 'use Teams instead' },
+					},
+					expect.any(Function),
+				);
+				expect(cancelAndSteerMock).not.toHaveBeenCalled();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+
+				resumeMock.mock.lastCall?.[1]?.();
+				await nextTick();
+				expect(input.props('modelValue')).toBe('');
+				wrapper.unmount();
+			});
+
+			it('keeps cancel-and-steer when composerResumeData returns undefined', async () => {
+				messagesMock.value = [openExtensionMessage()];
+				const composerResumeData = vi.fn(() => undefined);
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('go another direction');
+				await flushPromises();
+
+				expect(composerResumeData).toHaveBeenCalledOnce();
+				expect(resumeMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).toHaveBeenCalledWith(
+					'go another direction',
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			});
+
+			it('keeps cancel-and-steer for a built-in question card', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const composerResumeData = vi.fn(() => ({ approved: false }));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('go another direction');
+				await flushPromises();
+
+				expect(composerResumeData).not.toHaveBeenCalled();
+				expect(resumeMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).toHaveBeenCalledWith(
+					'go another direction',
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			});
+
+			it('does not answer a waiting card', async () => {
+				messagesMock.value = [openWaitMessage()];
+				sendMessageMock.mockResolvedValueOnce('sent');
+				const composerResumeData = vi.fn(() => ({ approved: false }));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('still there?');
+				await flushPromises();
+
+				expect(composerResumeData).not.toHaveBeenCalled();
+				expect(resumeMock).not.toHaveBeenCalled();
+				expect(sendMessageMock).toHaveBeenCalledOnce();
+				wrapper.unmount();
+			});
+
+			it('keeps a busy card answer as a draft and does not retry it', async () => {
+				messagesMock.value = [openExtensionMessage()];
+				isCancellingMock.value = true;
+				resumeMock.mockResolvedValueOnce('busy');
+				const composerResumeData = vi.fn(() => ({ approved: false }));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('use Teams');
+				await flushPromises();
+
+				isCancellingMock.value = false;
+				await flushPromises();
+
+				expect(resumeMock).toHaveBeenCalledOnce();
+				expect(composer(wrapper).props('modelValue')).toBe('use Teams');
+				wrapper.unmount();
+			});
+		});
 	});
 
 	describe('centerEmptyState', () => {
