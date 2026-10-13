@@ -29,7 +29,7 @@ It does not request user confirmation or start follow-up runs.
 The call returns technical `status`, finish information, credit and timing `usage`, and validated `output`
 when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
-The result can include a candidate reader for backend use.
+The result includes a candidate reader only when validated output names a candidate file.
 Unknown usage measurements stay null. The invocation claims measured credits once.
 Callers must not claim those credits again.
 
@@ -48,6 +48,8 @@ Read and persist accepted candidate data before workspace cleanup removes it.
 
 AST-1480 owns investigation admission, baseline capture, final candidate compilation,
 acceptance, and atomic completion. This invocation creates no result or suggestion record.
+When parameter sharing is disabled, candidate source omits node parameters.
+Final reconstruction must preserve those baseline values or reject the candidate before acceptance.
 There is no automatic trigger or public launch endpoint.
 
 ## Store a result

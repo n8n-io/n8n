@@ -1559,6 +1559,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		return Object.assign(
 			Object.create(InstanceAiService.prototype) as {
 				startSelfHealingRun: InstanceAiService['startSelfHealingRun'];
+				shutdown: InstanceAiService['shutdown'];
 				drainInFlightExecutions: (timeoutMs: number) => Promise<void>;
 			},
 			{
@@ -1568,13 +1569,21 @@ describe('InstanceAiService — self-healing launcher', () => {
 				},
 				runState: new RunStateRegistry<User>((user) => user.id),
 				liveness: {
+					shutdown: vi.fn(),
 					clearThreadState: vi.fn(),
 					consumeRunTimeout: vi.fn(() => ({ timedOut: false })),
 				},
 				instanceAiConfig: { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: 3 },
 				inFlightExecutions: new Set<Promise<unknown>>(),
-				logger: { warn: vi.fn() },
+				logger: { debug: vi.fn(), warn: vi.fn() },
 				eventService: { emit: vi.fn() },
+				eventBus: { clear: vi.fn() },
+				eventLog: { flushAll: vi.fn(async () => {}) },
+				backgroundTasks: { cancelAll: vi.fn(() => []) },
+				gatewayService: { disconnectAll: vi.fn() },
+				browserSessionService: { shutdown: vi.fn(async () => {}) },
+				domainAccessTrackersByThread: new Map(),
+				instanceAiErrorReporter: createInstanceAiErrorReporterMock(),
 				sandboxService: mock<InstanceAiSandboxService>(),
 				tracing: mock<InstanceAiTracingService>(),
 				publishRunFinish: vi.fn(),
@@ -1715,6 +1724,43 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
 	});
 
+	it.each(['completed', 'cancelled'] as const)(
+		'publishes one finish event when a %s run settles during shutdown tracing',
+		async (status) => {
+			const service = createLauncher();
+			const settle = Promise.withResolvers<undefined>();
+			service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+				await settle.promise;
+				const result = { ...completedRun(options), status };
+				options.onFinish(result, 'model-1');
+				return result;
+			});
+			const run = service.startSelfHealingRun(input, verifier);
+			service.tracing.finalizeRunTracing.mockImplementation(async () => {
+				settle.resolve(undefined);
+				await run;
+			});
+
+			await service.shutdown();
+			const result = await run;
+
+			expect(service.publishRunFinish).toHaveBeenCalledExactlyOnceWith(
+				result.threadId,
+				result.runId,
+				'cancelled',
+				'service_shutdown',
+				undefined,
+				undefined,
+				{ promptVersion: undefined },
+			);
+			expect(service.emitRunMetrics).toHaveBeenCalledExactlyOnceWith(
+				result.threadId,
+				status,
+				expect.objectContaining({ modelId: 'model-1' }),
+			);
+		},
+	);
+
 	it('uses the shared timeout classification for internal cancellation', async () => {
 		const service = createLauncher();
 		service.liveness.consumeRunTimeout.mockReturnValue({ timedOut: true });
@@ -1727,6 +1773,40 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(await service.startSelfHealingRun(input, verifier)).toMatchObject({
 			reason: INSTANCE_AI_RUN_TIMEOUT_REASON,
 		});
+	});
+
+	it('keeps the cancellation event when shutdown starts before the run settles', async () => {
+		const service = createLauncher();
+		const settle = Promise.withResolvers<undefined>();
+		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+			await settle.promise;
+			const result = {
+				...completedRun(options),
+				status: 'cancelled' as const,
+				reason: options.getAbortReason(),
+			};
+			options.onFinish(result, 'model-1');
+			return result;
+		});
+		const run = service.startSelfHealingRun(input, verifier);
+		const options = service.selfHealingAgent.execute.mock.calls[0][2];
+		service.runState.getActiveRun(options.threadId)?.abortController.abort();
+
+		const shutdown = service.shutdown();
+		settle.resolve(undefined);
+		await shutdown;
+		const result = await run;
+
+		expect(service.publishRunFinish).toHaveBeenCalledExactlyOnceWith(
+			result.threadId,
+			result.runId,
+			'cancelled',
+			'user_cancelled',
+			undefined,
+			fakeUser.id,
+			{ modelId: 'model-1', promptVersion: 'self-healing-v1' },
+		);
+		expect(service.emitRunMetrics).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([undefined, { selfHealing: { version: 99 }, profileVersion: 'unsupported' }])(

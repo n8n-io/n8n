@@ -273,9 +273,9 @@ export class SelfHealingAgentService {
 				});
 			}
 		}
-		if (workspace && stream) {
+		const filePath = result.output?.candidateFilePath;
+		if (workspace && filePath) {
 			const candidateWorkspace = workspace;
-			const filePath = result.output?.candidateFilePath ?? CANDIDATE_FILE_PATH;
 			result.candidate = {
 				filePath,
 				read: async () =>

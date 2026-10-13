@@ -278,11 +278,42 @@ describe('SelfHealingAgentService', () => {
 			stream.structuredOutput = output;
 			const result = await service.execute(input, verifier, options);
 			expect(result.output).toBeUndefined();
+			expect(result.candidate).toBeUndefined();
 			expect(result.validationError).toBeTruthy();
 			expect(result.status).toBe('completed');
 			expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
 		},
 	);
+
+	it.each(['could_not_fix', 'needs_you'])(
+		'omits the reader when %s has no candidate',
+		async (outcome) => {
+			const output = {
+				outcome,
+				summary: 'The investigation needs follow-up.',
+				report: 'No candidate is ready.',
+			};
+			stream.structuredOutput = output;
+			const result = await service.execute(input, verifier, options);
+
+			expect(result.output).toEqual(output);
+			expect(result.candidate).toBeUndefined();
+		},
+	);
+
+	it('returns the explicit partial candidate from needs_you output', async () => {
+		const filePath = 'self-healing/partial.workflow.ts';
+		files.set(`/workspace/${filePath}`, 'partial source');
+		stream.structuredOutput = {
+			...validOutput,
+			outcome: 'needs_you',
+			candidateFilePath: filePath,
+		};
+		const result = await service.execute(input, verifier, options);
+
+		expect(result.candidate?.filePath).toBe(filePath);
+		expect(await result.candidate?.read()).toBe('partial source');
+	});
 
 	it('preserves valid output when accounting throws', async () => {
 		const failure = new Error('Accounting unavailable');
@@ -330,6 +361,7 @@ describe('SelfHealingAgentService', () => {
 			reason: 'shutdown',
 			usage: { credits: 0.25 },
 		});
+		expect(result.candidate?.filePath).toBe(validOutput.candidateFilePath);
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
 			options.threadId,
@@ -352,6 +384,7 @@ describe('SelfHealingAgentService', () => {
 		stream.structuredOutput = undefined;
 		const result = await service.execute(input, verifier, options);
 		expect(result).toMatchObject({ status: 'suspended', reason: 'unexpected_suspension' });
+		expect(result.candidate).toBeUndefined();
 		expect(checkpoints.delete).toHaveBeenCalledWith('sdk-run');
 		expect(options.onFinish).toHaveBeenCalledWith(
 			expect.objectContaining({ reason: 'unexpected_suspension' }),

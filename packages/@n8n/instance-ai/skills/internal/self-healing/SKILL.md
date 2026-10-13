@@ -32,4 +32,5 @@ prepare a useful candidate. Include findings, checks, blockers, and the next
 step in the report. State uncertainty and incomplete checks clearly.
 
 Keep secrets and personal data out of summaries and reports. Do not copy raw
-execution inputs, credential values, or sensitive parameters into the report.
+execution inputs or outputs, credential values, or sensitive parameters into
+these texts. Describe affected nodes and fields instead.

@@ -1563,18 +1563,21 @@ export class InstanceAiService {
 				},
 				onFinish: (result, modelId, stream) => {
 					const status = result.status === 'suspended' ? 'errored' : result.status;
-					this.publishRunFinish(
-						threadId,
-						runId,
-						status,
-						result.reason ?? result.finishReason,
-						undefined,
-						input.user.id,
-						{
-							modelId,
-							promptVersion: SELF_HEALING_PROFILE_VERSION,
-						},
-					);
+					// Shutdown publishes its own finish event before aborting the run.
+					if (abortController.signal.reason !== 'service_shutdown') {
+						this.publishRunFinish(
+							threadId,
+							runId,
+							status,
+							result.reason ?? result.finishReason,
+							undefined,
+							input.user.id,
+							{
+								modelId,
+								promptVersion: SELF_HEALING_PROFILE_VERSION,
+							},
+						);
+					}
 					this.emitRunMetrics(threadId, status, {
 						modelId,
 						workSummary: stream?.workSummary,
@@ -2176,6 +2179,8 @@ export class InstanceAiService {
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
 		for (const run of activeRuns) {
+			// Already cancelled runs report their own completion during the shutdown drain.
+			if (run.abortController.signal.aborted) continue;
 			// Runs holding an inline HITL confirmation (`create-tasks`,
 			// sub-agent `ask-user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
@@ -2211,11 +2216,11 @@ export class InstanceAiService {
 				undefined,
 				{ promptVersion: run.promptVersion },
 			);
+			run.abortController.abort('service_shutdown');
 			await this.tracing.finalizeRunTracing(run.runId, run.tracing, {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
-			run.abortController.abort('service_shutdown');
 		}
 		for (const run of suspendedRuns) {
 			// Suspended runs are recoverable from the checkpoint store + pending
