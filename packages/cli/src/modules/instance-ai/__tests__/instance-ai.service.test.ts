@@ -1551,7 +1551,16 @@ describe('InstanceAiService — self-healing launcher', () => {
 			projectId: 'project-1',
 		}),
 		executionId: 'execution-1',
-		message: 'The execution failed.',
+		evidence: {
+			message: 'The execution failed.',
+			allowExecutionData: false,
+			execution: { executionId: 'execution-1', status: 'error', nodeTrace: [] },
+		},
+	};
+	const lifecycle = {
+		threadId: 'persisted-thread',
+		runId: 'persisted-run',
+		onComplete: vi.fn(),
 	};
 
 	function createLauncher() {
@@ -1612,7 +1621,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		const pending = createDeferredPromise<SelfHealingRunResult>();
 		service.selfHealingAgent.execute.mockReturnValue(pending.promise);
 
-		const run = service.startSelfHealingRun(input);
+		const run = service.startSelfHealingRun(input, lifecycle);
 		const options = service.selfHealingAgent.execute.mock.calls[0][1];
 		expect(service.runState.activeRunCountForUser(fakeUser.id)).toBe(1);
 		expect(service.inFlightExecutions.size).toBe(1);
@@ -1621,7 +1630,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(options.signal).toBe(
 			service.runState.getActiveRun(options.threadId)?.abortController.signal,
 		);
-		expect(options.threadId).toMatch(/^[a-f0-9-]{36}$/);
+		expect(options.threadId).toBe(lifecycle.threadId);
 
 		const result = completedRun(options);
 		pending.resolve(result);
@@ -1640,12 +1649,11 @@ describe('InstanceAiService — self-healing launcher', () => {
 		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
 			expect(options.onComplete).toBe(onComplete);
 			const result = completedRun(options);
-			await options.onComplete?.(result, options.signal);
+			await options.onComplete(result, options.signal);
 			return result;
 		});
 		const result = await service.startSelfHealingRun(input, {
-			threadId: 'persisted-thread',
-			runId: 'persisted-run',
+			...lifecycle,
 			onComplete,
 		});
 		expect(result).toMatchObject({ threadId: 'persisted-thread', runId: 'persisted-run' });
@@ -1658,7 +1666,9 @@ describe('InstanceAiService — self-healing launcher', () => {
 		service.instanceAiConfig.maxConcurrentRunsPerUser = 1;
 		service.runState.startRun({ threadId: 'existing', user: fakeUser });
 
-		await expect(service.startSelfHealingRun(input)).rejects.toThrow(InstanceAiRunLimitError);
+		await expect(service.startSelfHealingRun(input, lifecycle)).rejects.toThrow(
+			InstanceAiRunLimitError,
+		);
 
 		expect(service.selfHealingAgent.execute).not.toHaveBeenCalled();
 		expect(service.runState.activeRunCount()).toBe(1);
@@ -1670,7 +1680,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			throw new Error('Unavailable');
 		});
 
-		await expect(service.startSelfHealingRun(input)).rejects.toThrow('Unavailable');
+		await expect(service.startSelfHealingRun(input, lifecycle)).rejects.toThrow('Unavailable');
 
 		expect(service.runState.activeRunCount()).toBe(0);
 		expect(service.selfHealingAgent.execute).not.toHaveBeenCalled();
@@ -1680,7 +1690,9 @@ describe('InstanceAiService — self-healing launcher', () => {
 		const service = createLauncher();
 		service.selfHealingAgent.execute.mockRejectedValue(new Error('Storage unavailable'));
 
-		await expect(service.startSelfHealingRun(input)).rejects.toThrow('Storage unavailable');
+		await expect(service.startSelfHealingRun(input, lifecycle)).rejects.toThrow(
+			'Storage unavailable',
+		);
 		await service.drainInFlightExecutions(1000);
 
 		expect(service.runState.activeRunCount()).toBe(0);
@@ -1697,7 +1709,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			await cleanup.promise;
 			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
 		});
-		const run = service.startSelfHealingRun(input);
+		const run = service.startSelfHealingRun(input, lifecycle);
 		const { activeRuns } = service.runState.shutdown();
 		for (const active of activeRuns) active.abortController.abort('service_shutdown');
 		let drained = false;
@@ -1721,7 +1733,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			return result;
 		});
 
-		const result = await service.startSelfHealingRun(input);
+		const result = await service.startSelfHealingRun(input, lifecycle);
 
 		expect(service.publishRunFinish).toHaveBeenCalledWith(
 			result.threadId,
@@ -1749,7 +1761,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 				options.onFinish(result, 'model-1');
 				return result;
 			});
-			const run = service.startSelfHealingRun(input);
+			const run = service.startSelfHealingRun(input, lifecycle);
 			service.tracing.finalizeRunTracing.mockImplementation(async () => {
 				settle.resolve(undefined);
 				await run;
@@ -1784,7 +1796,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			reason: options.getAbortReason(),
 		}));
 
-		expect(await service.startSelfHealingRun(input)).toMatchObject({
+		expect(await service.startSelfHealingRun(input, lifecycle)).toMatchObject({
 			reason: INSTANCE_AI_RUN_TIMEOUT_REASON,
 		});
 	});
@@ -1802,7 +1814,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			options.onFinish(result, 'model-1');
 			return result;
 		});
-		const run = service.startSelfHealingRun(input);
+		const run = service.startSelfHealingRun(input, lifecycle);
 		const options = service.selfHealingAgent.execute.mock.calls[0][1];
 		service.runState.getActiveRun(options.threadId)?.abortController.abort();
 

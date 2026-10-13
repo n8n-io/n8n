@@ -81,7 +81,11 @@ const input: SelfHealingRunInput = {
 	user,
 	baseline,
 	executionId: '123',
-	message: 'The node failed.',
+	evidence: {
+		message: 'The node failed.',
+		allowExecutionData: false,
+		execution: { executionId: '123', status: 'error', nodeTrace: [] },
+	},
 };
 const validOutput = {
 	outcome: 'fix_ready',
@@ -158,12 +162,12 @@ describe('SelfHealingAgentService', () => {
 			assertCreditsAvailable: vi.fn().mockResolvedValue(undefined),
 			onActivity: vi.fn(),
 			onTracing: vi.fn(),
+			onComplete: vi.fn(),
 			getAbortReason: () => 'shutdown',
 			onFinish: vi.fn(),
 		};
 		suggestions.requireEditor.mockResolvedValue(user);
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
-		executions.getReference.mockResolvedValue({ status: 'available', id: '123' });
 		models.resolveAgentModelConfig.mockResolvedValue('test/model');
 		adapter.createContext.mockReturnValue(mock<InstanceAiContext>());
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(true);
@@ -205,7 +209,7 @@ describe('SelfHealingAgentService', () => {
 		vi.mocked(streamAgentRun).mockImplementation(async () => stream);
 	});
 
-	it('prepares the captured baseline, binds verification, and returns a readable candidate', async () => {
+	it('prepares the captured baseline and binds verification', async () => {
 		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
 			await factoryOptions.verifyCandidate({ filePath: validOutput.candidateFilePath });
 			return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
@@ -222,8 +226,8 @@ describe('SelfHealingAgentService', () => {
 			turns: null,
 			durationSeconds: expect.any(Number),
 		});
-		expect(await result.candidate?.read()).toContain('node-id');
-		expect(await result.candidate?.read()).toContain('original value');
+		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
+		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('original value');
 		expect(candidates.verify).toHaveBeenCalledWith(
 			expect.objectContaining({
 				user,
@@ -277,9 +281,11 @@ describe('SelfHealingAgentService', () => {
 
 	it('applies parameter redaction to the captured candidate', async () => {
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(false);
-		const result = await service.execute(input, options);
-		expect(await result.candidate?.read()).not.toContain('original value');
-		expect(await result.candidate?.read()).toContain('node-id');
+		await service.execute(input, options);
+		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).not.toContain(
+			'original value',
+		);
+		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
 	});
 
 	it('waits for accepted output storage with final usage and the original candidate context', async () => {
@@ -380,16 +386,11 @@ describe('SelfHealingAgentService', () => {
 	});
 
 	it('reads supplied evidence after pruning and checks access on each read', async () => {
-		const evidence = {
-			message: 'The node failed.',
-			allowExecutionData: false,
-			execution: { executionId: input.executionId, status: 'error', nodeTrace: [] },
-		} satisfies NonNullable<SelfHealingRunInput['evidence']>;
 		executions.getReference.mockResolvedValue({ status: 'unavailable' });
-		await service.execute({ ...input, evidence }, options);
+		await service.execute(input, options);
 		const context = vi.mocked(createSelfHealingAgent).mock.calls[0][0].context;
 		expect(await context.executionService.getDebugInfo(input.executionId)).toEqual(
-			evidence.execution,
+			input.evidence.execution,
 		);
 		expect(executions.validateReference).toHaveBeenCalledWith(
 			user,
@@ -412,11 +413,7 @@ describe('SelfHealingAgentService', () => {
 	});
 
 	it('uses bounded source reads when execution data sharing is authorized', async () => {
-		const evidence = {
-			message: 'The node failed.',
-			allowExecutionData: true,
-			execution: { executionId: input.executionId, status: 'error', nodeTrace: [] },
-		} satisfies NonNullable<SelfHealingRunInput['evidence']>;
+		const evidence = { ...input.evidence, allowExecutionData: true };
 		const source = mock<InstanceAiContext['executionService']>();
 		adapter.createContext.mockReturnValueOnce(
 			mock<InstanceAiContext>({ executionService: source }),
@@ -451,7 +448,7 @@ describe('SelfHealingAgentService', () => {
 	);
 
 	it.each(['could_not_fix', 'needs_you'])(
-		'omits the reader when %s has no candidate',
+		'omits the candidate when %s has no candidate file',
 		async (outcome) => {
 			const output = {
 				outcome,
@@ -468,7 +465,6 @@ describe('SelfHealingAgentService', () => {
 
 	it('returns the explicit partial candidate from needs_you output', async () => {
 		const filePath = 'self-healing/partial.workflow.ts';
-		files.set(`/workspace/${filePath}`, 'partial source');
 		stream.structuredOutput = {
 			...validOutput,
 			outcome: 'needs_you',
@@ -477,7 +473,8 @@ describe('SelfHealingAgentService', () => {
 		const result = await service.execute(input, options);
 
 		expect(result.candidate?.filePath).toBe(filePath);
-		expect(await result.candidate?.read()).toBe('partial source');
+		await result.candidate?.compile();
+		expect(compileCandidateWorkflow).toHaveBeenCalledWith(expect.objectContaining({ filePath }));
 	});
 
 	it('preserves valid output when accounting throws', async () => {
@@ -623,19 +620,20 @@ describe('SelfHealingAgentService', () => {
 	it.each([
 		['disabled actor', { ...input, user: mock<User>({ id: 'actor', disabled: true }) }],
 		['mismatched actor', { ...input, user: mock<User>({ id: 'someone-else' }) }],
-		['missing failure', { ...input, message: ' ' }],
+		['missing failure', { ...input, evidence: { ...input.evidence, message: ' ' } }],
+		['mismatched execution', { ...input, executionId: 'other-execution' }],
 	])('rejects %s before model work', async (_label, invalid) => {
 		await expect(service.execute(invalid, options)).rejects.toThrow();
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
 	});
 
-	it('rejects lost edit access, baseline changes, and unavailable execution input', async () => {
+	it('rejects lost edit access, baseline changes, and denied execution access', async () => {
 		suggestions.requireCurrentBaseline.mockRejectedValueOnce(new Error('No edit access'));
 		await expect(service.execute(input, options)).rejects.toThrow('edit access');
 		suggestions.requireCurrentBaseline.mockRejectedValueOnce(new Error('Stale baseline'));
 		await expect(service.execute(input, options)).rejects.toThrow('Stale baseline');
-		executions.getReference.mockResolvedValueOnce({ status: 'unavailable' });
-		await expect(service.execute(input, options)).rejects.toThrow('execution');
+		executions.validateReference.mockRejectedValueOnce(new Error('No execution access'));
+		await expect(service.execute(input, options)).rejects.toThrow('No execution access');
 		expect(models.resolveAgentModelConfig).not.toHaveBeenCalled();
 	});
 });

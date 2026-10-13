@@ -80,7 +80,6 @@ describe('SelfHealingCandidateService', () => {
 		source = candidateSource('Repaired process');
 		filesystem.readFile.mockImplementation(async () => source);
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
-		executions.getReference.mockResolvedValue({ status: 'available', id: 'failed-1' });
 		temporaryWorkflows.withTemporaryWorkflow.mockImplementation(async (_input, verify) => {
 			return await verify('temporary-1');
 		});
@@ -122,12 +121,7 @@ describe('SelfHealingCandidateService', () => {
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
-	it('verifies retained evidence after pruning and still checks execution access', async () => {
-		input.evidence = {
-			message: 'The execution failed.',
-			allowExecutionData: false,
-			execution: { executionId: input.executionId, status: 'error', nodeTrace: [] },
-		};
+	it('validates a candidate after pruning the failed execution and checks access', async () => {
 		executions.getReference.mockResolvedValue({ status: 'unavailable' });
 		const result = await service.verify({ ...input, validationOnly: true });
 		expect(result).toMatchObject({ validation: { success: true } });
@@ -136,8 +130,6 @@ describe('SelfHealingCandidateService', () => {
 			baseline.workflowId,
 			input.executionId,
 		);
-		executions.validateReference.mockRejectedValueOnce(new Error('Access removed'));
-		await expect(service.verify(input)).rejects.toThrow('Access removed');
 	});
 
 	it('returns compile diagnostics without creating or running a temporary workflow', async () => {
@@ -240,10 +232,10 @@ describe('SelfHealingCandidateService', () => {
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
-	it('rejects unavailable execution context before reading the candidate', async () => {
-		executions.getReference.mockResolvedValueOnce({ status: 'unavailable' });
+	it('rejects denied execution access before reading the candidate', async () => {
+		executions.validateReference.mockRejectedValueOnce(new Error('No execution access'));
 
-		await expect(service.verify(input)).rejects.toThrow('The failed execution is unavailable');
+		await expect(service.verify(input)).rejects.toThrow('No execution access');
 
 		expect(filesystem.readFile).not.toHaveBeenCalled();
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();

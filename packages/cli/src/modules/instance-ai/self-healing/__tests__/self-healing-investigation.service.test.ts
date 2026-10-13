@@ -117,7 +117,7 @@ describe('SelfHealingInvestigationService', () => {
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
 			execution = (async () => {
-				await lifecycle?.onComplete(run, controller.signal);
+				await lifecycle.onComplete(run, controller.signal);
 				return run;
 			})();
 			return await execution;
@@ -164,7 +164,6 @@ describe('SelfHealingInvestigationService', () => {
 			};
 			run.candidate = {
 				filePath: 'candidate.ts',
-				read: vi.fn(),
 				compile: vi.fn().mockResolvedValue({
 					success: true,
 					workflow: { nodes: [], connections: {} },
@@ -206,7 +205,6 @@ describe('SelfHealingInvestigationService', () => {
 		};
 		run.candidate = {
 			filePath: 'candidate.ts',
-			read: vi.fn(),
 			compile: vi.fn().mockResolvedValue({
 				success: true,
 				workflow: { nodes: [], connections: {} },

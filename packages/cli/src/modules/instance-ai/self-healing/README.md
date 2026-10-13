@@ -46,7 +46,7 @@ It does not request user confirmation or start follow-up runs.
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
 when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
-The result includes a candidate reader and compiler when validated output names a candidate file.
+The result includes a candidate compiler when validated output names a candidate file.
 Unknown usage measurements stay null. The invocation claims measured credits once.
 Callers must not claim those credits again.
 

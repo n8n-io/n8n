@@ -16,7 +16,6 @@ import {
 	createSelfHealingAgent,
 	getSelfHealingResourceId,
 	orchestratorAgentId,
-	readWorkspaceFile,
 	SELF_HEALING_PROFILE_VERSION,
 	selfHealingOutputSchema,
 	streamAgentRun,
@@ -59,8 +58,7 @@ export type SelfHealingRunInput = {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
 	executionId: string;
-	message: string;
-	evidence?: SelfHealingEvidence;
+	evidence: SelfHealingEvidence;
 };
 
 export type SelfHealingRunResult = {
@@ -76,7 +74,6 @@ export type SelfHealingRunResult = {
 	usage: SelfHealingResultUsage;
 	candidate?: {
 		filePath: string;
-		read: () => Promise<string | null>;
 		compile: () => Promise<CandidateWorkflowResult>;
 	};
 	verification?: Awaited<ReturnType<SelfHealingCandidateService['verify']>>;
@@ -109,7 +106,7 @@ export type SelfHealingRunOptions = {
 	assertCreditsAvailable: () => Promise<void>;
 	onActivity: () => void;
 	onTracing: (tracing: InstanceAiTraceContext) => void;
-	onComplete?: SelfHealingRunLifecycle['onComplete'];
+	onComplete: SelfHealingRunLifecycle['onComplete'];
 	getAbortReason: () => string;
 	onFinish: (
 		result: Pick<SelfHealingRunResult, 'status' | 'reason' | 'finishReason'>,
@@ -152,7 +149,7 @@ export class SelfHealingAgentService {
 		this.assertEnabled();
 		input = { ...input, baseline: structuredClone(input.baseline) };
 		const user = await this.validateInput(input);
-		const { baseline, executionId, message } = input;
+		const { baseline, executionId, evidence } = input;
 		const { threadId, runId, signal } = options;
 		const startedAt = Date.now();
 		const metadata: SelfHealingThreadMetadata = {
@@ -205,7 +202,7 @@ export class SelfHealingAgentService {
 				messageGroupId: options.messageGroupId,
 				userId: user.id,
 				modelId,
-				input: { message },
+				input: { message: evidence.message },
 				metadata,
 				proxyConfig: proxy.tracingProxyConfig,
 				n8nVersion: N8N_VERSION,
@@ -246,7 +243,6 @@ export class SelfHealingAgentService {
 				const filePath = output.data.candidateFilePath;
 				result.candidate = {
 					filePath,
-					read: async () => await readWorkspaceFile(workspace, filePath, { logger: this.logger }),
 					compile: async () => {
 						await this.suggestions.requireCurrentBaseline(baseline);
 						return await compileCandidateWorkflow({
@@ -285,7 +281,7 @@ export class SelfHealingAgentService {
 			if (signal.aborted) result.status = 'cancelled';
 			if (result.status === 'cancelled') result.reason = options.getAbortReason();
 			try {
-				await options.onComplete?.(result, signal);
+				await options.onComplete(result, signal);
 			} finally {
 				if (signal.aborted && result.status !== 'cancelled') {
 					result.status = 'cancelled';
@@ -305,29 +301,16 @@ export class SelfHealingAgentService {
 		return result;
 	}
 
-	private async validateInput({
-		user,
-		baseline,
-		executionId,
-		message,
-		evidence,
-	}: SelfHealingRunInput) {
+	private async validateInput({ user, baseline, executionId, evidence }: SelfHealingRunInput) {
 		if (user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
-		if (!message.trim()) throw new BadRequestError('A failure message is required.');
+		if (!evidence.message.trim()) throw new BadRequestError('A failure message is required.');
 		const actor = await this.suggestions.requireCurrentBaseline(baseline);
-		if (evidence) {
-			if (evidence.execution.executionId !== executionId) {
-				throw new BadRequestError('The evidence does not belong to the failed execution.');
-			}
-			await this.executions.validateReference(actor, baseline.workflowId, executionId);
-		} else {
-			const execution = await this.executions.getReference(actor, baseline.workflowId, executionId);
-			if (execution.status !== 'available') {
-				throw new BadRequestError('The failed execution is unavailable for this workflow.');
-			}
+		if (evidence.execution.executionId !== executionId) {
+			throw new BadRequestError('The evidence does not belong to the failed execution.');
 		}
+		await this.executions.validateReference(actor, baseline.workflowId, executionId);
 		return actor;
 	}
 
@@ -440,7 +423,6 @@ export class SelfHealingAgentService {
 
 	private bindExecutionReads(context: InstanceAiContext, input: SelfHealingRunInput): void {
 		const { evidence, baseline, executionId } = input;
-		if (!evidence) return;
 		const executionService = context.executionService;
 		const readEvidence = async (requestedId: string) => {
 			if (requestedId !== executionId) {
@@ -499,7 +481,7 @@ export class SelfHealingAgentService {
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
 	}) {
-		const { user, baseline, executionId, message } = input;
+		const { user, baseline, executionId, evidence } = input;
 		const { runId, threadId, signal } = options;
 		const { tracing } = context;
 		const resourceId = getSelfHealingResourceId(user.id);
@@ -521,7 +503,6 @@ export class SelfHealingAgentService {
 					user,
 					baseline,
 					executionId,
-					evidence: input.evidence,
 					context,
 					abortSignal: signal,
 				});
@@ -533,7 +514,7 @@ export class SelfHealingAgentService {
 		const consume = async () =>
 			await streamAgentRun(
 				agent,
-				`${message}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
+				`${evidence.message}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
 				{
 					maxIterations: MAX_STEPS.ORCHESTRATOR,
 					abortSignal: signal,

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
 	AgentDbMessage,
@@ -1533,15 +1532,15 @@ export class InstanceAiService {
 	/** Run one internal investigation under the normal host lifecycle. */
 	async startSelfHealingRun(
 		input: SelfHealingRunInput,
-		lifecycle?: SelfHealingRunLifecycle,
+		lifecycle: SelfHealingRunLifecycle,
 	): Promise<SelfHealingRunResult> {
 		this.selfHealingAgent.assertEnabled();
 		this.assertRunAdmissible(input.user);
-		const threadId = lifecycle?.threadId ?? randomUUID();
+		const { threadId } = lifecycle;
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
-			runId: lifecycle?.runId,
+			runId: lifecycle.runId,
 			user: input.user,
 		});
 		const execution = this.selfHealingAgent
@@ -1556,7 +1555,7 @@ export class InstanceAiService {
 				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
 				onActivity: () => this.runState.touchActiveRun(threadId),
 				onTracing: (tracing) => this.runState.attachTracing(threadId, tracing),
-				onComplete: lifecycle?.onComplete,
+				onComplete: lifecycle.onComplete,
 				getAbortReason: () => {
 					if (this.liveness.consumeRunTimeout(runId).timedOut)
 						return INSTANCE_AI_RUN_TIMEOUT_REASON;

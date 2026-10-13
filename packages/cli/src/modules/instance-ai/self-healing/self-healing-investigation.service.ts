@@ -140,7 +140,6 @@ export class SelfHealingInvestigationService {
 					user,
 					baseline: investigation.baseline,
 					executionId: investigation.executionId,
-					message: evidence.message,
 					evidence,
 				},
 				{
