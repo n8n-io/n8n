@@ -380,7 +380,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 						tone: 'paper',
 						useWhen: 'the user asks about the hotel, check-in, the rooms or the booking',
 						fields:
-							'title "Hotel · Memmo Alfama"; pairs: Check-in, Check-out, Rooms, Booking ref, Address, Breakfast; cover: the Lisbon tram photo with alt "Lisbon"',
+							'title "Memmo Alfama"; eyebrow "Hotel · Reservation"; status success, statusLabel "Confirmed"; pairs: Check-in, Check-out, Rooms, Booking ref, Address, Breakfast; cover: the Lisbon tram photo with alt "Lisbon"',
 					},
 				],
 			},
