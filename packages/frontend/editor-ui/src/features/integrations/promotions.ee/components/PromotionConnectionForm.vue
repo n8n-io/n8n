@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { PromotionConfigCheckout, PromotionDirection } from '@n8n/api-types';
+import {
+	isPromotionGitHostType,
+	type PromotionConfigCheckout,
+	type PromotionDirection,
+	type PromotionRepository,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -18,7 +23,7 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { usePromotionConnectionSave } from '../composables/usePromotionConnectionSave';
 import {
@@ -29,6 +34,7 @@ import {
 	type PromotionProviderSummary,
 } from '../promotionsSettings.api';
 import PromotionCheckoutStatus from './PromotionCheckoutStatus.vue';
+import PromotionGitHostSelect from './PromotionGitHostSelect.vue';
 import {
 	buildConnectionCreatePayload,
 	connectionFormFrom,
@@ -66,10 +72,55 @@ const form = reactive<ConnectionFormState>(
 );
 const baseline = ref(JSON.stringify(form));
 const isCreating = ref(false);
+const repository = ref<PromotionRepository>();
+const pickerVersion = ref(0);
+const selectedProvider = computed(
+	() =>
+		props.providers.find(({ id }) => id === form.providerId) ??
+		(current.value?.provider.id === form.providerId ? current.value.provider : undefined),
+);
+const hasHostApi = computed(
+	() => selectedProvider.value && isPromotionGitHostType(selectedProvider.value.type),
+);
+
+watch(
+	() => selectedProvider.value?.updatedAt,
+	() => {
+		repository.value = undefined;
+	},
+);
+
+watch(
+	() => form.providerId,
+	(id, previousId) => {
+		repository.value = undefined;
+		const previous = props.providers.find((provider) => provider.id === previousId);
+		const next = props.providers.find((provider) => provider.id === id);
+		if (
+			(previous && isPromotionGitHostType(previous.type)) ||
+			(next && isPromotionGitHostType(next.type))
+		) {
+			form.remoteUrl = '';
+			form.apply.branchName = '';
+			form.promote.baseBranchName = '';
+		}
+	},
+	{ flush: 'sync' },
+);
+
+function selectRepository(selected: PromotionRepository) {
+	if (repository.value?.id !== selected.id) {
+		form.apply.branchName = '';
+		form.promote.baseBranchName = '';
+	}
+	repository.value = selected;
+}
 
 const resetTo = (connection: PromotionConnection | null) => {
 	current.value = connection;
 	Object.assign(form, connection ? connectionFormFrom(connection) : emptyConnectionForm());
+	repository.value = undefined;
+	pickerVersion.value++;
 	baseline.value = JSON.stringify(form);
 	save.reset();
 };
@@ -294,6 +345,25 @@ defineExpose({ selectProvider });
 		</N8nInputLabel>
 
 		<N8nInputLabel
+			v-if="hasHostApi"
+			input-name="promotion-connection-repository"
+			:label="i18n.baseText('settings.promotions.discovery.repository.label')"
+			required
+		>
+			<PromotionGitHostSelect
+				:key="`${form.providerId}:${selectedProvider?.updatedAt}:${pickerVersion}`"
+				v-model="form.remoteUrl"
+				kind="repository"
+				input-id="promotion-connection-repository"
+				:provider-id="form.providerId"
+				:disabled="isSaving"
+				data-test-id="promotion-connection-repository-select"
+				@selected="selectRepository"
+				@resolved="repository = $event"
+			/>
+		</N8nInputLabel>
+		<N8nInputLabel
+			v-else
 			input-name="promotion-connection-remote-url"
 			:label="i18n.baseText('settings.promotions.connection.form.remoteUrl')"
 			required
@@ -332,10 +402,21 @@ defineExpose({ selectProvider });
 							required
 						>
 							<N8nInput
+								v-if="!hasHostApi"
 								id="promotion-connection-apply-branch"
 								v-model="form.apply.branchName"
 								:disabled="isSaving"
 								data-test-id="promotion-connection-apply-branch-input"
+							/>
+							<PromotionGitHostSelect
+								v-else
+								v-model="form.apply.branchName"
+								kind="branch"
+								input-id="promotion-connection-apply-branch"
+								:provider-id="form.providerId"
+								:repository-id="repository?.id"
+								:disabled="isSaving"
+								data-test-id="promotion-connection-apply-branch-select"
 							/>
 						</N8nInputLabel>
 						<PromotionCheckoutStatus
@@ -373,10 +454,21 @@ defineExpose({ selectProvider });
 							required
 						>
 							<N8nInput
+								v-if="!hasHostApi"
 								id="promotion-connection-promote-branch"
 								v-model="form.promote.baseBranchName"
 								:disabled="isSaving"
 								data-test-id="promotion-connection-promote-branch-input"
+							/>
+							<PromotionGitHostSelect
+								v-else
+								v-model="form.promote.baseBranchName"
+								kind="branch"
+								input-id="promotion-connection-promote-branch"
+								:provider-id="form.providerId"
+								:repository-id="repository?.id"
+								:disabled="isSaving"
+								data-test-id="promotion-connection-promote-branch-select"
 							/>
 						</N8nInputLabel>
 						<N8nSwitch
@@ -385,7 +477,7 @@ defineExpose({ selectProvider });
 							:label="i18n.baseText('settings.promotions.connection.promote.createBranch')"
 							data-test-id="promotion-connection-create-branch-toggle"
 						/>
-						<N8nText size="small" color="text-light">
+						<N8nText size="small" color="text-base">
 							{{ i18n.baseText('settings.promotions.connection.promote.createBranch.description') }}
 						</N8nText>
 						<PromotionCheckoutStatus

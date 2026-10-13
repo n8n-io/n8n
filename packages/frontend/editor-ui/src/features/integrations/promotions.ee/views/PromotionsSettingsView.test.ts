@@ -11,6 +11,8 @@ import PromotionsSettingsView from './PromotionsSettingsView.vue';
 
 const api = vi.hoisted(() => ({
 	fetchPromotionProviders: vi.fn<typeof PromotionsApi.fetchPromotionProviders>(),
+	fetchPromotionRepositories: vi.fn<typeof PromotionsApi.fetchPromotionRepositories>(),
+	fetchPromotionBranches: vi.fn<typeof PromotionsApi.fetchPromotionBranches>(),
 	fetchPromotionProvider: vi.fn<typeof PromotionsApi.fetchPromotionProvider>(),
 	createPromotionProvider: vi.fn<typeof PromotionsApi.createPromotionProvider>(),
 	updatePromotionProvider: vi.fn<typeof PromotionsApi.updatePromotionProvider>(),
@@ -88,6 +90,25 @@ const promoteConfig = (baseBranchName: string, createBranchOnPromotion = false) 
 	...timestamps,
 });
 
+const gitlabRepository = {
+	id: '42',
+	name: 'Workflows',
+	fullPath: 'team/workflows',
+	remoteUrl: 'https://gitlab.example.com/team/workflows.git',
+	defaultBranch: 'main',
+};
+
+const gitlabSummary = () =>
+	summaryOf(
+		sshProvider({
+			id: 'provider-gitlab',
+			name: 'GitLab',
+			type: 'gitlab',
+			authType: 'token',
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		}),
+	);
+
 const renderView = createComponentRenderer(PromotionsSettingsView);
 
 const renderReadyView = async () => {
@@ -105,6 +126,8 @@ const selectInDialog = async (select: HTMLElement, label: string) => {
 	await userEvent.click(within(select).getByRole('combobox'));
 	await userEvent.click(await within(select).findByText(label));
 };
+
+const selectedValue = (testId: string) => within(screen.getByTestId(testId)).getByRole('combobox');
 
 const selectProvider = async (name: string) => {
 	const items = await getDropdownItems(screen.getByTestId('promotion-connection-provider-select'));
@@ -132,9 +155,292 @@ describe('PromotionsSettingsView', () => {
 		api.fetchPromotionConnections.mockResolvedValue([]);
 		api.deletePromotionProvider.mockResolvedValue(undefined);
 		api.deletePromotionConfig.mockResolvedValue(undefined);
+		api.fetchPromotionRepositories.mockResolvedValue({
+			data: [gitlabRepository],
+			nextCursor: null,
+		});
+		api.fetchPromotionBranches.mockResolvedValue({
+			data: [
+				{ name: 'main', isDefault: true },
+				{ name: 'release/test', isDefault: false },
+			],
+			nextCursor: null,
+		});
+	});
+
+	it('creates a GitLab connection from repository and branch lists with branching required', async () => {
+		api.fetchPromotionProviders.mockResolvedValue([gitlabSummary()]);
+		const saved = instanceConnection({
+			provider: gitlabSummary(),
+			target: { schemaVersion: 1, remoteUrl: gitlabRepository.remoteUrl },
+			configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
+		});
+		api.createPromotionConnection.mockResolvedValue(saved);
+		await renderReadyView();
+		await selectProvider('GitLab');
+		expect(screen.queryByTestId('promotion-connection-remote-url-input')).not.toBeInTheDocument();
+		await userEvent.type(screen.getByTestId('promotion-connection-name-input'), 'Production');
+		const repoSelect = screen.getByTestId('promotion-connection-repository-select');
+		await selectInDialog(repoSelect, 'team/workflows');
+		await userEvent.click(screen.getByTestId('promotion-connection-apply-toggle'));
+		await selectInDialog(screen.getByTestId('promotion-connection-apply-branch-select'), 'main');
+		await userEvent.click(screen.getByTestId('promotion-connection-promote-toggle'));
+		await selectInDialog(
+			screen.getByTestId('promotion-connection-promote-branch-select'),
+			'release/test',
+		);
+		await userEvent.click(screen.getByTestId('promotion-connection-create-branch-toggle'));
+		await save();
+		await waitFor(() =>
+			expect(api.createPromotionConnection).toHaveBeenCalledWith(expect.anything(), {
+				name: 'Production',
+				scope: 'instance',
+				providerId: 'provider-gitlab',
+				target: { schemaVersion: 1, remoteUrl: gitlabRepository.remoteUrl },
+				configs: {
+					apply: { settings: { schemaVersion: 1, branchName: 'main' } },
+					promote: {
+						settings: {
+							schemaVersion: 1,
+							baseBranchName: 'release/test',
+							createBranchOnPromotion: true,
+						},
+					},
+				},
+			}),
+		);
+		expect(api.fetchPromotionBranches).toHaveBeenCalledWith(
+			expect.anything(),
+			'provider-gitlab',
+			'42',
+			expect.anything(),
+		);
+	});
+
+	it('selects a newly created GitLab provider without losing the connection draft', async () => {
+		const created = sshProvider({
+			...gitlabSummary(),
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		});
+		api.createPromotionProvider.mockResolvedValue({ provider: created, publicKey: null });
+		api.fetchPromotionProviders.mockResolvedValueOnce([]).mockResolvedValue([gitlabSummary()]);
+		await renderReadyView();
+		await userEvent.type(screen.getByTestId('promotion-connection-name-input'), 'Draft connection');
+		await userEvent.click(screen.getByTestId('promotion-connection-add-provider'));
+		await selectInDialog(screen.getByTestId('promotion-provider-type-select'), 'GitLab');
+		await userEvent.type(screen.getByTestId('promotion-provider-name-input'), 'GitLab');
+		await userEvent.type(
+			screen.getByTestId('promotion-provider-base-url-input'),
+			'https://gitlab.example.com',
+		);
+		await userEvent.type(screen.getByTestId('promotion-provider-password-input'), 'test-token');
+		await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+		await screen.findByTestId('promotion-connection-repository-select');
+		expect(screen.getByTestId('promotion-connection-name-input')).toHaveValue('Draft connection');
+		expect(api.fetchPromotionRepositories).toHaveBeenCalledWith(
+			expect.anything(),
+			'provider-gitlab',
+			expect.anything(),
+		);
+	});
+
+	it('clears branches when the GitLab repository changes and restores saved settings on discard', async () => {
+		const otherRepository = {
+			...gitlabRepository,
+			id: '43',
+			fullPath: 'team/other',
+			remoteUrl: 'https://gitlab.example.com/team/other.git',
+		};
+		api.fetchPromotionProviders.mockResolvedValue([gitlabSummary(), summaryOf(sshProvider())]);
+		api.fetchPromotionRepositories.mockResolvedValue({
+			data: [gitlabRepository, otherRepository],
+			nextCursor: null,
+		});
+		const saved = instanceConnection({
+			provider: gitlabSummary(),
+			target: { schemaVersion: 1, remoteUrl: gitlabRepository.remoteUrl },
+			configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
+		});
+		api.fetchPromotionConnections.mockResolvedValue([saved]);
+		api.fetchPromotionConnection.mockResolvedValue(saved);
+		await renderReadyView();
+		await waitFor(() => expect(api.fetchPromotionBranches).toHaveBeenCalled());
+		expect(selectedValue('promotion-connection-apply-branch-select')).toHaveValue('main');
+		expect(selectedValue('promotion-connection-promote-branch-select')).toHaveValue('release/test');
+		await selectInDialog(
+			screen.getByTestId('promotion-connection-repository-select'),
+			'team/other',
+		);
+		const bar = screen.getByTestId('promotion-connection-save-bar');
+		expect(within(bar).getByRole('button', { name: /save settings/i })).toBeDisabled();
+		expect(selectedValue('promotion-connection-apply-branch-select')).toHaveValue('');
+		expect(selectedValue('promotion-connection-promote-branch-select')).toHaveValue('');
+		await userEvent.click(within(bar).getByRole('button', { name: /discard/i }));
+		await waitFor(() =>
+			expect(selectedValue('promotion-connection-repository-select')).toHaveValue('team/workflows'),
+		);
+		expect(selectedValue('promotion-connection-apply-branch-select')).toHaveValue('main');
+		expect(selectedValue('promotion-connection-promote-branch-select')).toHaveValue('release/test');
+		await selectProvider('Production key');
+		expect(screen.getByTestId('promotion-connection-remote-url-input')).toHaveValue('');
+		expect(screen.getByTestId('promotion-connection-apply-branch-input')).toHaveValue('');
+		expect(screen.getByTestId('promotion-connection-promote-branch-input')).toHaveValue('');
+	});
+
+	it('enables saved branch pickers after retrying discovery with a selected fallback', async () => {
+		const saved = instanceConnection({
+			provider: gitlabSummary(),
+			target: { schemaVersion: 1, remoteUrl: gitlabRepository.remoteUrl },
+			configs: { apply: applyConfig('main'), promote: promoteConfig('release/test') },
+		});
+		api.fetchPromotionProviders.mockResolvedValue([gitlabSummary()]);
+		api.fetchPromotionConnections.mockResolvedValue([saved]);
+		api.fetchPromotionConnection.mockResolvedValue(saved);
+		api.fetchPromotionRepositories.mockRejectedValueOnce(new Error('GitLab is unavailable.'));
+		await renderReadyView();
+		await screen.findByRole('alert');
+		expect(selectedValue('promotion-connection-apply-branch-select')).toBeDisabled();
+		expect(selectedValue('promotion-connection-promote-branch-select')).toBeDisabled();
+		await selectInDialog(
+			screen.getByTestId('promotion-connection-repository-select'),
+			gitlabRepository.remoteUrl,
+		);
+		await userEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Retry' }));
+		await waitFor(() =>
+			expect(selectedValue('promotion-connection-apply-branch-select')).toBeEnabled(),
+		);
+		expect(selectedValue('promotion-connection-promote-branch-select')).toBeEnabled();
+		expect(selectedValue('promotion-connection-apply-branch-select')).toHaveValue('main');
+		expect(selectedValue('promotion-connection-promote-branch-select')).toHaveValue('release/test');
 	});
 
 	describe('providers', () => {
+		const gitlabProvider = (): PromotionProvider =>
+			sshProvider({
+				id: 'provider-gitlab',
+				name: 'Self-hosted GitLab',
+				type: 'gitlab',
+				authType: 'token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com/gitlab' },
+			});
+
+		it('creates a GitLab provider with an access token and reports validation errors before closing', async () => {
+			api.createPromotionProvider
+				.mockRejectedValueOnce(new Error('GitLab authentication failed. Check the access token.'))
+				.mockResolvedValue({ provider: gitlabProvider(), publicKey: null });
+			await renderReadyView();
+			await openProviderDialog();
+			await selectInDialog(screen.getByTestId('promotion-provider-type-select'), 'GitLab');
+			expect(screen.queryByTestId('promotion-provider-auth-type-select')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('promotion-provider-username-input')).not.toBeInTheDocument();
+			await userEvent.type(
+				screen.getByTestId('promotion-provider-name-input'),
+				'Self-hosted GitLab',
+			);
+			await userEvent.type(
+				screen.getByTestId('promotion-provider-base-url-input'),
+				'https://gitlab.example.com/gitlab',
+			);
+			expect(screen.getByTestId('promotion-provider-save-button')).toBeDisabled();
+			await userEvent.type(screen.getByTestId('promotion-provider-password-input'), 'test-token');
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+			expect(await screen.findByRole('alert')).toHaveTextContent('GitLab authentication failed');
+			expect(api.fetchPromotionProviders).toHaveBeenCalledTimes(1);
+			expect(screen.getByTestId('promotion-provider-password-input')).toHaveValue('test-token');
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+			await waitFor(() =>
+				expect(screen.queryByTestId('promotion-provider-dialog')).not.toBeInTheDocument(),
+			);
+			expect(api.createPromotionProvider).toHaveBeenLastCalledWith(expect.anything(), {
+				name: 'Self-hosted GitLab',
+				type: 'gitlab',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com/gitlab' },
+				auth: { authType: 'token', username: 'n8n', password: 'test-token' },
+			});
+		});
+
+		it('renames a GitLab provider without replacing its stored token', async () => {
+			api.fetchPromotionProviders.mockResolvedValue([summaryOf(gitlabProvider())]);
+			api.fetchPromotionProvider.mockResolvedValue(gitlabProvider());
+			api.updatePromotionProvider.mockResolvedValue(gitlabProvider());
+			await renderReadyView();
+			const row = screen.getByTestId('promotion-provider-row');
+			expect(row).toHaveTextContent('GitLab');
+			await openProviderDialog(row);
+			await screen.findByDisplayValue('https://gitlab.example.com/gitlab');
+			expect(screen.getByTestId('promotion-provider-password-input')).toHaveValue('');
+			expect(screen.getByTestId('promotion-provider-save-button')).toBeDisabled();
+			await userEvent.type(screen.getByTestId('promotion-provider-name-input'), ' renamed');
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+			await waitFor(() =>
+				expect(api.updatePromotionProvider).toHaveBeenCalledWith(
+					expect.anything(),
+					'provider-gitlab',
+					{
+						name: 'Self-hosted GitLab renamed',
+					},
+				),
+			);
+		});
+
+		it('requires a token when changing a GitLab base URL', async () => {
+			api.fetchPromotionProviders.mockResolvedValue([summaryOf(gitlabProvider())]);
+			api.fetchPromotionProvider.mockResolvedValue(gitlabProvider());
+			api.updatePromotionProvider.mockResolvedValue(gitlabProvider());
+			await renderReadyView();
+			await openProviderDialog(screen.getByTestId('promotion-provider-row'));
+			const url = await screen.findByDisplayValue('https://gitlab.example.com/gitlab');
+			await userEvent.clear(url);
+			await userEvent.type(url, 'https://gitlab.example.com/new');
+			expect(screen.getByTestId('promotion-provider-save-button')).toBeDisabled();
+			expect(screen.getByText('Enter an access token for the new GitLab URL')).toBeInTheDocument();
+			await userEvent.type(
+				screen.getByTestId('promotion-provider-password-input'),
+				'new-host-token',
+			);
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+			await waitFor(() =>
+				expect(api.updatePromotionProvider).toHaveBeenCalledWith(
+					expect.anything(),
+					'provider-gitlab',
+					{
+						config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com/new' },
+						auth: { authType: 'token', username: 'n8n', password: 'new-host-token' },
+					},
+				),
+			);
+		});
+
+		it('keeps failed GitLab token edits open and retries with the replacement token', async () => {
+			api.fetchPromotionProviders.mockResolvedValue([summaryOf(gitlabProvider())]);
+			api.fetchPromotionProvider.mockResolvedValue(gitlabProvider());
+			api.updatePromotionProvider
+				.mockRejectedValueOnce(new Error('GitLab authentication failed.'))
+				.mockResolvedValue(gitlabProvider());
+			await renderReadyView();
+			await openProviderDialog(screen.getByTestId('promotion-provider-row'));
+			await screen.findByDisplayValue('Self-hosted GitLab');
+			const token = screen.getByTestId('promotion-provider-password-input');
+			await userEvent.type(token, 'expired-token');
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+			expect(await screen.findByTestId('promotion-provider-save-error')).toHaveTextContent(
+				'GitLab authentication failed',
+			);
+			await userEvent.clear(token);
+			await userEvent.type(token, 'replacement-token');
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+			await waitFor(() =>
+				expect(screen.queryByTestId('promotion-provider-dialog')).not.toBeInTheDocument(),
+			);
+			expect(api.updatePromotionProvider).toHaveBeenLastCalledWith(
+				expect.anything(),
+				'provider-gitlab',
+				{
+					auth: { authType: 'token', username: 'n8n', password: 'replacement-token' },
+				},
+			);
+		});
+
 		it('adds an SSH provider and shows its deploy key', async () => {
 			api.createPromotionProvider.mockResolvedValue({
 				provider: sshProvider(),

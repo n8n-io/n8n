@@ -83,6 +83,7 @@ onMounted(async () => {
 });
 
 function authTypeLabel(provider: PromotionProviderSummary) {
+	if (provider.type === 'gitlab') return i18n.baseText('settings.promotions.providers.type.gitlab');
 	return i18n.baseText(
 		provider.authType === 'ssh-key'
 			? 'settings.promotions.providers.authType.sshKey'
@@ -107,8 +108,9 @@ function openEditDialog(id: string) {
 function onProviderSaved(id: string) {
 	providerToFocus.value = id;
 	if (selectAfterCreate.value) {
-		connectionForm.value?.selectProvider(id);
 		selectAfterCreate.value = false;
+		pendingLoad = load().then(() => connectionForm.value?.selectProvider(id));
+		return;
 	}
 	pendingLoad = load();
 }

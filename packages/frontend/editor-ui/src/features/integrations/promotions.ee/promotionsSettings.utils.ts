@@ -3,17 +3,21 @@ import type {
 	CreatePromotionProviderDto,
 	PromotionDirection,
 	PromotionProviderAuthType,
+	PromotionProviderType,
 	PromotionSshKeyType,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 } from '@n8n/api-types';
+import { promotionProviderTypeCapabilities } from '@n8n/api-types';
 
 import type { PromotionConnection, PromotionProvider } from './promotionsSettings.api';
 
 export type ProviderFormState = {
 	name: string;
+	type: PromotionProviderType;
+	baseUrl: string;
 	/** Cannot change after creation. */
 	authType: PromotionProviderAuthType;
 	keyType: PromotionSshKeyType;
@@ -44,6 +48,8 @@ export type ConnectionWrite =
 
 export const emptyProviderForm = (): ProviderFormState => ({
 	name: '',
+	type: 'git',
+	baseUrl: '',
 	authType: 'ssh-key',
 	keyType: 'ed25519',
 	username: '',
@@ -54,6 +60,8 @@ export const emptyProviderForm = (): ProviderFormState => ({
 export const providerFormFrom = (provider: PromotionProvider): ProviderFormState => ({
 	...emptyProviderForm(),
 	name: provider.name,
+	type: provider.type,
+	baseUrl: 'baseUrl' in provider.config ? provider.config.baseUrl : '',
 	authType: provider.authType,
 	keyType: 'keyType' in provider.config ? provider.config.keyType : 'ed25519',
 });
@@ -106,11 +114,19 @@ export const buildProviderCreatePayload = (
 	form: ProviderFormState,
 ): CreatePromotionProviderDto => ({
 	name: form.name.trim(),
-	type: 'git',
+	type: form.type,
+	...(promotionProviderTypeCapabilities[form.type].hasHostApi && {
+		config: { schemaVersion: 1, baseUrl: form.baseUrl.trim() },
+	}),
 	auth:
 		form.authType === 'ssh-key'
 			? { authType: 'ssh-key', keyType: form.keyType }
-			: { authType: 'token', username: form.username.trim(), password: form.password },
+			: {
+					authType: 'token',
+					username:
+						promotionProviderTypeCapabilities[form.type].tokenUsername ?? form.username.trim(),
+					password: form.password,
+				},
 });
 
 /** If credentials are absent, the API keeps them. SSH rotation keeps the key type. */
@@ -122,13 +138,18 @@ export const buildProviderUpdatePayload = (
 
 	const name = form.name.trim();
 	if (name !== current.name) payload.name = name;
+	if ('baseUrl' in current.config && form.baseUrl.trim() !== current.config.baseUrl) {
+		payload.config = { schemaVersion: 1, baseUrl: form.baseUrl.trim() };
+	}
+	const username =
+		promotionProviderTypeCapabilities[current.type].tokenUsername ?? form.username.trim();
 
 	if (form.authType === 'ssh-key' && form.regenerateKey) {
 		payload.auth = { authType: 'ssh-key' };
-	} else if (form.authType === 'token' && form.username.trim() && form.password) {
+	} else if (form.authType === 'token' && username && form.password) {
 		payload.auth = {
 			authType: 'token',
-			username: form.username.trim(),
+			username,
 			password: form.password,
 		};
 	}
