@@ -123,7 +123,9 @@ export class AgentSkillsService {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		const bodies = skills.map((skill) => toStoredSkill(this.validateSkill(skill)));
-		await this.assertCanCreateSkills(context.user, entity.projectId);
+		if (this.agentSkillRefs.usesSkillsHub) {
+			await this.assertCanCreateSkills(context.user, entity.projectId);
+		}
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
 		this.assertNoNameClashes(previous.skills, bodies);
@@ -132,20 +134,7 @@ export class AgentSkillsService {
 		markAgentDraftDirty(entity);
 		const { ids, skillRefs } = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
-			const created: string[] = [];
-			for (const skill of bodies) {
-				created.push(
-					await this.skillService.create(
-						{
-							target: { userId: null, projectId: entity.projectId },
-							skill,
-							source: 'agent',
-							createdById: context.user.id,
-						},
-						ctx,
-					),
-				);
-			}
+			const created = await this.agentSkillRefs.createSkills(entity, bodies, context.user.id, ctx);
 			const nextRefs: AgentJsonSkillConfig[] = [
 				...(previous.skillRefs ?? []),
 				...created.map((id) => ({ type: 'skill' as const, id })),
@@ -202,7 +191,7 @@ export class AgentSkillsService {
 		const skillRefs = (await this.agentSkillRefs.refsForDraft(entity, {})) ?? [];
 		const ref = skillRefs.find((candidate) => candidate.id === skillId);
 		if (!ref) throw new NotFoundError('Skill not found');
-		const existing = (await this.agentSkillRefs.skillsForRefs([ref], {}))[skillId];
+		const existing = (await this.agentSkillRefs.skillsForRefs(entity, [ref], {}))[skillId];
 		if (!existing) throw new NotFoundError('Skill not found');
 		if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(existing)) {
 			throw new ConflictError('Skill was changed elsewhere; reload to get the latest version');
@@ -228,10 +217,14 @@ export class AgentSkillsService {
 			};
 		}
 
+		if (!this.agentSkillRefs.usesSkillsHub) {
+			return await this.updateLegacySkill(entity, skillRefs, skillId, updated, projectId, context);
+		}
+
 		const pinned = ref.versionId !== undefined;
 		if (pinned) {
 			const latest = (
-				await this.agentSkillRefs.skillsForRefs([{ type: 'skill', id: skillId }], {})
+				await this.agentSkillRefs.skillsForRefs(entity, [{ type: 'skill', id: skillId }], {})
 			)[skillId];
 			if (!latest || getAgentSkillHash(latest) !== getAgentSkillHash(existing)) {
 				throw new UserError(
@@ -331,6 +324,39 @@ export class AgentSkillsService {
 		);
 
 		this.logger.debug('Detached agent skill', { agentId, projectId, skillId });
+	}
+
+	private async updateLegacySkill(
+		entity: Agent,
+		skillRefs: AgentJsonSkillConfig[],
+		skillId: string,
+		updated: AgentSkill,
+		projectId: string,
+		context: AgentMutationTelemetryContext,
+	): Promise<AgentSkillMutationResponse> {
+		const { [skillId]: _self, ...others } = await this.agentSkillRefs.skillsForRefs(
+			entity,
+			skillRefs,
+			{},
+		);
+		this.assertNoNameClashes(others, [updated]);
+		const snapshot = captureAgentMutation(entity, skillRefs);
+		entity.skills = { ...entity.skills, [skillId]: updated };
+		markAgentDraftDirty(entity);
+		await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
+		});
+		await this.saveCompletion.bodySaved(
+			buildAgentMutationEvent(entity, skillRefs, projectId, context, snapshot, { skills: true }),
+			context.pushRef,
+		);
+		this.logger.debug('Updated agent skill', { agentId: entity.id, projectId, skillId });
+		return {
+			id: skillId,
+			skill: updated,
+			skillHash: getAgentSkillHash(updated),
+			versionId: entity.versionId,
+		};
 	}
 
 	private validateSkill(skill: AgentSkill): AgentSkill {

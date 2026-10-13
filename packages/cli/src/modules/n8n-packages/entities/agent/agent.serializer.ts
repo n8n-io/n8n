@@ -19,6 +19,7 @@ type AgentPackageKeyHandling = {
 	schema: 'transform';
 	integrations: 'transform';
 	tools: 'transform';
+	skills: 'transform';
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';

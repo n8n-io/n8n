@@ -35,7 +35,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentPolicyService } from '../agent-policy.service';
 import {
 	type AgentFixtureOverrides,
-	AgentHistoryFixtureOverrides,
+	type AgentHistoryFixtureOverrides,
 	createAgentSkillRefsService,
 	storedSkillRefs,
 } from './test-utils/stored-agent-config';
@@ -561,6 +561,7 @@ describe('AgentPublishService', () => {
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],
 				},
 				tools: configuredTools,
+				skills: null,
 				publishedBy: user,
 			},
 			ctx,

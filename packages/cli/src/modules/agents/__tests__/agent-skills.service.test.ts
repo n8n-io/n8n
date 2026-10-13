@@ -119,7 +119,9 @@ describe('AgentSkillsService', () => {
 	describe('createAndAttachSkills', () => {
 		beforeEach(() => {
 			let next = 0;
-			skillService.create.mockImplementation(async () => `skill_new${++next}`);
+			skillRefs.createSkills.mockImplementation(async (_agent, skills) =>
+				skills.map(() => `skill_new${++next}`),
+			);
 		});
 
 		it('creates hub skills in the agent project and attaches them in one transaction, in input order', async () => {
@@ -140,15 +142,7 @@ describe('AgentSkillsService', () => {
 				['skill_new1', 'Summarize Notes'],
 				['skill_new2', 'Second Skill'],
 			]);
-			expect(skillService.create).toHaveBeenCalledWith(
-				{
-					target: { userId: null, projectId },
-					skill,
-					source: 'agent',
-					createdById: 'user-1',
-				},
-				{},
-			);
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(agent, [skill, second], 'user-1', {});
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
 				projectId,
 			});
@@ -175,7 +169,7 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(result.skill).toEqual(skill);
-			expect(skillService.create).toHaveBeenCalledWith(expect.objectContaining({ skill }), {});
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(expect.anything(), [skill], 'user-1', {});
 		});
 
 		it('rejects the batch without writing when the agent has no config yet', async () => {
@@ -184,7 +178,7 @@ describe('AgentSkillsService', () => {
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
 			).rejects.toThrow('Agent has no JSON config yet.');
-			expect(skillService.create).not.toHaveBeenCalled();
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
 		it('rejects an empty batch before loading anything', async () => {
@@ -201,7 +195,7 @@ describe('AgentSkillsService', () => {
 			await expect(
 				service.createAndAttachSkills(agentId, projectId, [skill], context),
 			).rejects.toThrow(ForbiddenError);
-			expect(skillService.create).not.toHaveBeenCalled();
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
 		it('rejects a name that is hard to tell apart from a skill of the agent', async () => {
@@ -216,7 +210,7 @@ describe('AgentSkillsService', () => {
 					context,
 				),
 			).rejects.toThrow('Agent already has a skill with a name like "summarize-notes".');
-			expect(skillService.create).not.toHaveBeenCalled();
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		});
 
@@ -231,7 +225,7 @@ describe('AgentSkillsService', () => {
 					context,
 				),
 			).rejects.toThrow('Agent already has a skill with a name like "summarize_notes".');
-			expect(skillService.create).not.toHaveBeenCalled();
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
 		it('rejects the whole batch when one item is invalid', async () => {
@@ -245,7 +239,7 @@ describe('AgentSkillsService', () => {
 					context,
 				),
 			).rejects.toThrow('Invalid agent skill');
-			expect(skillService.create).not.toHaveBeenCalled();
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 	});
 
@@ -262,6 +256,28 @@ describe('AgentSkillsService', () => {
 		beforeEach(() => {
 			skillRefs.bodies.skill_a = skill;
 			skillService.save.mockResolvedValue(saveResult());
+		});
+
+		it('updates the body on the agent row when the skills hub is off', async () => {
+			Object.assign(skillRefs, { usesSkillsHub: false });
+			const agent = givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+			});
+
+			const result = await service.updateSkill(
+				agentId,
+				projectId,
+				'skill_a',
+				{ instructions: 'New instructions.' },
+				context,
+				getAgentSkillHash(skill),
+			);
+
+			expect(agent.skills.skill_a).toEqual({ ...skill, instructions: 'New instructions.' });
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+			expect(result.skill.instructions).toBe('New instructions.');
+			expect(skillService.assertCanEdit).not.toHaveBeenCalled();
+			expect(skillService.save).not.toHaveBeenCalled();
 		});
 
 		it('saves the next version with the skill edit permission, then refreshes the agents that follow it', async () => {

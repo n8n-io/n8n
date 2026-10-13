@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { AgentJsonSkillConfig } from '@n8n/api-types';
+import type { AgentJsonSkillConfig, StoredAgentConfig } from '@n8n/api-types';
+import { AgentsConfig } from '@n8n/config';
 import type { OperationContext, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
@@ -8,7 +9,9 @@ import { mock } from 'vitest-mock-extended';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
+import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 import type { SkillFile } from '../entities/skill-file.entity';
 import type { SkillVersion } from '../entities/skill-version.entity';
 import type { Skill } from '../entities/skill.entity';
@@ -39,12 +42,21 @@ function row(skillId: string, versionId: string, name: string): ResolvedSkillRow
 describe('AgentSkillRefsService', () => {
 	let skillRepository: Mocked<SkillRepository>;
 	let skillService: Mocked<SkillService>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentsConfig: AgentsConfig;
 	let service: AgentSkillRefsService;
 
 	beforeEach(() => {
 		skillRepository = mock<SkillRepository>();
 		skillService = mock<SkillService>();
-		service = new AgentSkillRefsService(skillRepository, skillService);
+		agentRepository = mock<AgentRepository>();
+		agentsConfig = Object.assign(new AgentsConfig(), { skillsHubEnabled: true });
+		service = new AgentSkillRefsService(
+			skillRepository,
+			skillService,
+			agentRepository,
+			agentsConfig,
+		);
 		skillRepository.findDependencies.mockResolvedValue(new Map());
 		skillRepository.findPinned.mockResolvedValue(new Map());
 	});
@@ -84,7 +96,10 @@ describe('AgentSkillRefsService', () => {
 				]),
 			);
 
-			const result = await service.readVersion({ versionId: 'version-1' }, ctx);
+			const result = await service.readVersion(
+				{ versionId: 'version-1', schema: null, skills: null },
+				ctx,
+			);
 
 			expect(result.skillRefs).toEqual([
 				{ type: 'skill', id: 'zeta' },
@@ -108,7 +123,7 @@ describe('AgentSkillRefsService', () => {
 			];
 			skillService.resolveForAgentDraft.mockResolvedValue({});
 
-			await service.skillsForRefs(refs, ctx);
+			await service.skillsForRefs(agent, refs, ctx);
 
 			expect(skillService.resolveForAgentDraft).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
@@ -117,7 +132,7 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('reads nothing for a draft without skills', async () => {
-			await expect(service.skillsForRefs(undefined, ctx)).resolves.toEqual({});
+			await expect(service.skillsForRefs(agent, undefined, ctx)).resolves.toEqual({});
 			expect(skillService.resolveForAgentDraft).not.toHaveBeenCalled();
 		});
 	});
@@ -175,7 +190,7 @@ describe('AgentSkillRefsService', () => {
 
 		await service.restoreDraftRefs(
 			agent,
-			{ versionId: 'version-1' },
+			{ versionId: 'version-1', skills: null },
 			[{ type: 'skill', id: 'zeta' }],
 			ctx,
 		);
@@ -396,6 +411,114 @@ describe('AgentSkillRefsService', () => {
 			await service.pinDraftForPublish(agent, 'version-1', ctx);
 
 			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('with the skills hub off', () => {
+		const notes = { name: 'Notes', description: 'Take notes', instructions: 'Write.' };
+		const billing = { name: 'Billing', description: 'Bills', instructions: 'Bill.' };
+		const legacyAgent = (skills: unknown[], bodies = { notes, billing }) =>
+			({
+				id: 'agent-1',
+				projectId: 'project-1',
+				schema: { ...baseConfig, skills } as unknown as StoredAgentConfig,
+				skills: { ...bodies },
+			}) as unknown as Agent;
+
+		beforeEach(() => {
+			agentsConfig.skillsHubEnabled = false;
+		});
+
+		it('reads the refs and bodies from the agent row and hides disabled refs', async () => {
+			const draft = legacyAgent([
+				{ type: 'skill', id: 'notes' },
+				{ type: 'skill', id: 'billing', enabled: false },
+			]);
+
+			await expect(service.readDraft(draft, ctx)).resolves.toEqual({
+				skillRefs: [{ type: 'skill', id: 'notes' }],
+				skills: { notes },
+			});
+			expect(skillRepository.findDependencies).not.toHaveBeenCalled();
+		});
+
+		it('reads a published version from the agent_history row', async () => {
+			const version = {
+				versionId: 'version-1',
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'notes' }] },
+				skills: { notes },
+			} as unknown as AgentHistory;
+
+			await expect(service.readVersion(version, ctx)).resolves.toEqual({
+				skillRefs: [{ type: 'skill', id: 'notes' }],
+				skills: { notes },
+			});
+			expect(skillRepository.findPinned).not.toHaveBeenCalled();
+		});
+
+		it('writes the refs to the stored config and drops refs without a body', async () => {
+			const draft = legacyAgent([{ type: 'skill', id: 'notes' }]);
+
+			await service.replaceDraftRefs(
+				draft,
+				[
+					{ type: 'skill', id: 'billing', versionId: pinId },
+					{ type: 'skill', id: 'unknown' },
+				],
+				ctx,
+			);
+
+			expect(draft.schema?.skills).toEqual([{ type: 'skill', id: 'billing' }]);
+			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);
+			expect(skillService.checkRefs).not.toHaveBeenCalled();
+		});
+
+		it('creates skills as bodies on the agent row', async () => {
+			const draft = legacyAgent([], {} as never);
+
+			const ids = await service.createSkills(draft, [notes], 'user-1', ctx);
+
+			expect(draft.skills).toEqual({ [ids[0]]: notes });
+			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);
+			expect(skillService.create).not.toHaveBeenCalled();
+		});
+
+		it('restores the refs and bodies of a published version', async () => {
+			const draft = legacyAgent([{ type: 'skill', id: 'billing' }]);
+
+			await service.restoreDraftRefs(
+				draft,
+				{ versionId: 'version-1', skills: { notes } },
+				[{ type: 'skill', id: 'notes' }],
+				ctx,
+			);
+
+			expect(draft.schema?.skills).toEqual([{ type: 'skill', id: 'notes' }]);
+			expect(draft.skills).toEqual({ notes });
+			expect(skillService.restoreFromVersion).not.toHaveBeenCalled();
+		});
+
+		it('copies the refs and bodies into a new published version', () => {
+			const draft = legacyAgent([
+				{ type: 'skill', id: 'notes' },
+				{ type: 'skill', id: 'billing', enabled: false },
+			]);
+
+			expect(service.versionColumns(draft)).toEqual({ schema: draft.schema, skills: { notes } });
+		});
+
+		it('refuses to publish a ref without a body', () => {
+			const draft = legacyAgent([{ type: 'skill', id: 'gone' }]);
+
+			expect(() => service.versionColumns(draft)).toThrow(
+				'Cannot publish agent with missing skill bodies: gone',
+			);
+		});
+
+		it('reports no outdated skills', async () => {
+			await expect(
+				service.findOutdatedSkillIds([{ type: 'skill', id: 'notes', versionId: pinId }], {}, ctx),
+			).resolves.toEqual([]);
 		});
 	});
 });

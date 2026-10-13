@@ -46,7 +46,7 @@ import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { toAgentDocument, withoutLegacySkillRefs } from './json-config/agent-document';
+import { toAgentDocument } from './json-config/agent-document';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
@@ -694,19 +694,21 @@ export class AgentPublishService {
 		versionId: string,
 	) {
 		try {
+			const { schema, skills } = this.agentSkillRefs.versionColumns(agent);
 			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
 					agentId: agent.id,
-					schema: agent.schema
+					schema: schema
 						? {
-								...withoutLegacySkillRefs(agent.schema),
+								...schema,
 								integrations: (agent.integrations ?? []).filter(
 									(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
 								),
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+					skills,
 					publishedBy: user,
 				},
 				ctx,

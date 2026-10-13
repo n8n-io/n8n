@@ -13,6 +13,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -52,6 +53,7 @@ describe('Agent skills in the skills hub', () => {
 	const broadcaster = mockInstance(AgentUpdateBroadcaster);
 
 	beforeAll(async () => {
+		Container.get(AgentsConfig).skillsHubEnabled = true;
 		mockInstance(Telemetry);
 		mockInstance(AgentRuntimeCacheService);
 		mockInstance(AgentTaskService).requestReconcile.mockResolvedValue(undefined);
@@ -263,6 +265,43 @@ describe('Agent skills in the skills hub', () => {
 		await agentSkillsService.deleteSkill(agent.id, project.id, created.id, context);
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([]);
 		expect(await Container.get(SkillRepository).findByIds([created.id])).toHaveLength(1);
+	});
+
+	it('keeps skills on the agent row when the skills hub is off', async () => {
+		Container.get(AgentsConfig).skillsHubEnabled = false;
+		try {
+			const agent = await createAgent([]);
+			const context = { user: editor, modifiedBy: 'builder' as const };
+
+			const created = await agentSkillsService.createAndAttachSkill(
+				agent.id,
+				project.id,
+				body('Triage'),
+				context,
+			);
+			await agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				created.id,
+				{ instructions: 'Sort tickets by urgency.' },
+				context,
+				created.skillHash,
+			);
+			const published = (await publish(await reload(agent)))!;
+			await agentSkillsService.deleteSkill(agent.id, project.id, created.id, context);
+			await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
+
+			const row = await reload(agent);
+			expect(row.schema?.skills).toEqual([{ type: 'skill', id: created.id }]);
+			expect(row.skills[created.id]?.instructions).toBe('Sort tickets by urgency.');
+			expect(published.activeVersion?.skills?.[created.id]?.instructions).toBe(
+				'Sort tickets by urgency.',
+			);
+			expect(await Container.get(SkillRepository).findByIds([created.id])).toEqual([]);
+			expect(await skillRefs.refsForDraft(row, {})).toEqual([{ type: 'skill', id: created.id }]);
+		} finally {
+			Container.get(AgentsConfig).skillsHubEnabled = true;
+		}
 	});
 
 	it('shares the skills of a duplicated agent', async () => {

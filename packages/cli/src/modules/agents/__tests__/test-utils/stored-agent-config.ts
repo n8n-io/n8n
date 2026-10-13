@@ -10,7 +10,7 @@ import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import { composeJsonConfig } from '../../json-config/agent-config-composition';
-import type { AgentSkillRefs } from '../../json-config/agent-document';
+import { withoutLegacySkillRefs, type AgentSkillRefs } from '../../json-config/agent-document';
 import type { AgentRunSource } from '../../utils/agent-published-snapshot';
 
 /**
@@ -39,7 +39,11 @@ export function createAgentSkillRefsService(
 	bodies: Record<string, AgentSkill> = {},
 ): FakeAgentSkillRefsService {
 	const draftRefs = new Map<string, AgentJsonSkillConfig[]>();
-	const service = Object.assign(mock<AgentSkillRefsService>(), { bodies, draftRefs });
+	const service = Object.assign(mock<AgentSkillRefsService>(), {
+		bodies,
+		draftRefs,
+		usesSkillsHub: true,
+	});
 	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
 		draftRefs.get(agent.id) ?? storedSkillRefs(agent);
 	const pickBodies = (refs: AgentSkillRefs) =>
@@ -62,7 +66,7 @@ export function createAgentSkillRefsService(
 		const skillRefs = storedSkillRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
-	service.skillsForRefs.mockImplementation(async (refs) => pickBodies(refs));
+	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));
 	service.replaceDraftRefs.mockImplementation(async (agent, refs) => writeRefs(agent, refs));
 	service.restoreDraftRefs.mockImplementation(async (agent, _version, refs) =>
 		writeRefs(agent, refs),
@@ -79,6 +83,10 @@ export function createAgentSkillRefsService(
 			),
 		),
 	);
+	service.versionColumns.mockImplementation((agent) => ({
+		schema: agent.schema ? withoutLegacySkillRefs(agent.schema) : null,
+		skills: null,
+	}));
 	service.pinDraftForPublish.mockResolvedValue(undefined);
 	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;

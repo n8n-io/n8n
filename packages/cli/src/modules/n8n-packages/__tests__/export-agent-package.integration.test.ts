@@ -2,6 +2,7 @@ import { AgentJsonConfigSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -56,6 +57,7 @@ async function readSourceRecords() {
 }
 
 beforeAll(async () => {
+	Container.get(AgentsConfig).skillsHubEnabled = true;
 	await testModules.loadModules(['agents']);
 	await testDb.init();
 	agentRepository = Container.get(AgentRepository);

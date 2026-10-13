@@ -8,6 +8,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { InstanceSettings } from 'n8n-core';
@@ -50,6 +51,7 @@ let workflow: WorkflowEntity;
 let repository: AgentRepository;
 
 beforeAll(() => {
+	Container.get(AgentsConfig).skillsHubEnabled = true;
 	repository = Container.get(AgentRepository);
 	Container.get(InstanceSettings).markAsLeader();
 });

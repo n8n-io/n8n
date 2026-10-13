@@ -630,6 +630,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 				schema: agent.schema,
 				integrations: agent.integrations,
 				tools: agent.tools,
+				skills: agent.skills,
 				versionId: agent.versionId,
 				updatedAt,
 				revision: () => 'revision + 1',
@@ -688,6 +689,18 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * write does not check `revision`: call it only in the same transaction as a
 	 * won `saveDraftFenced`.
 	 */
+	async updateDraftSkills(
+		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, skills: agent.skills })
+			.where('id = :id', { id: agent.id })
+			.execute();
+	}
+
 	async updateDraftSchema(
 		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
 		ctx: OperationContext,
