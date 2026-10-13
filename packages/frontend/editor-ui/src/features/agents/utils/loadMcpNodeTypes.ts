@@ -1,7 +1,7 @@
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const requestedNodeTypes = new Set<string>();
 const failedNodeTypes = new Set<string>();

@@ -363,7 +363,14 @@ export async function autoPopulateNodeCredentials(
 				// Shown type not covered, but the node's default auth pointing at an
 				// unsupported type shouldn't block it: fall back to a supported sibling
 				// (unassigned, no stored user credential) and switch auth to match.
-				if (eligibility.reason === 'credentialTypeNotCovered') {
+				// A registry MCP node falls back to its Gateway credits slot only when
+				// the user has no credential for any of its own types.
+				const canUseRegistryGatewaySlot =
+					node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`) &&
+					!credentialDescriptions.some(
+						({ name }) => !isMcpGatewayAuthentication(name) && credentialsByType.get(name)?.length,
+					);
+				if (eligibility.reason === 'credentialTypeNotCovered' || canUseRegistryGatewaySlot) {
 					const activation = resolveSupportedCredentialActivation(
 						nodeTypeDescription,
 						{ typeVersion: node.typeVersion, parameters: nodeParametersWithDefaults },
@@ -371,12 +378,14 @@ export async function autoPopulateNodeCredentials(
 							credentialType !== credDesc.name &&
 							!node.credentials?.[credentialType]?.id &&
 							!credentialsByType.get(credentialType)?.length &&
-							checkAiGatewayEligibility(
-								node,
-								credentialType,
-								aiGatewayConfig,
-								nodeParametersWithDefaults,
-							).eligible,
+							((canUseRegistryGatewaySlot &&
+								isRegistryMcpGatewaySlot(node, nodeTypeDescription, credentialType)) ||
+								checkAiGatewayEligibility(
+									node,
+									credentialType,
+									aiGatewayConfig,
+									nodeParametersWithDefaults,
+								).eligible),
 					);
 					if (activation) {
 						assignAiGatewayCredential(

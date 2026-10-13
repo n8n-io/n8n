@@ -221,10 +221,13 @@ describe('useAgentCapabilitiesActions — open MCP server from list', () => {
 		await flushPromises();
 
 		expect(openModalWithData).toHaveBeenCalledTimes(1);
-		const { data } = openModalWithData.mock.calls[0][0] as {
-			data: { initialNode: { type: string } };
-		};
-		expect(data.initialNode.type).toBe(registryTypeName);
+		expect(openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					initialNode: expect.objectContaining({ type: registryTypeName }),
+				}),
+			}),
+		);
 		expect(showMessageSpy).not.toHaveBeenCalled();
 	});
 
@@ -244,10 +247,13 @@ describe('useAgentCapabilitiesActions — open MCP server from list', () => {
 		await flushPromises();
 
 		expect(openModalWithData).toHaveBeenCalledTimes(1);
-		const { data } = openModalWithData.mock.calls[0][0] as {
-			data: { initialNode: { type: string } };
-		};
-		expect(data.initialNode.type).toBe(AI_MCP_TOOL_NODE_TYPE);
+		expect(openModalWithData).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: expect.objectContaining({
+					initialNode: expect.objectContaining({ type: AI_MCP_TOOL_NODE_TYPE }),
+				}),
+			}),
+		);
 	});
 
 	it('opens only the latest requested server when an earlier load finishes last', async () => {

@@ -1045,6 +1045,109 @@ describe('autoPopulateNodeCredentials', () => {
 
 					expect(node.credentials?.[gatewayCredentialType]).toBeUndefined();
 				});
+
+				describe('on the default own-credential option', () => {
+					// Real displayOptions: the fallback evaluates them inside n8n-workflow.
+					const pairedDesc = makeNodeTypeDescription({
+						name: registryNodeType,
+						properties: [
+							{
+								displayName: 'Authentication',
+								name: 'authentication',
+								type: 'options',
+								options: [
+									{ name: 'OAuth2', value: 'oAuth2' },
+									{ name: 'Gateway credits', value: 'gateway' },
+								],
+								default: 'oAuth2',
+							},
+						],
+						credentials: [
+							makeCredentialDescription({
+								name: 'firecrawlMcpOAuth2Api',
+								displayOptions: { show: { authentication: ['oAuth2'] } },
+							}),
+							makeCredentialDescription({
+								name: gatewayCredentialType,
+								displayOptions: { show: { authentication: ['gateway'] } },
+							}),
+						],
+					});
+
+					test('switches to Gateway credits when the user has no own credential', async () => {
+						const node = makeNode({ type: registryNodeType });
+						const { credentialsService, nodeTypes } = createMocks({
+							nodeTypeDescriptions: new Map([[registryNodeType, pairedDesc]]),
+						});
+
+						const result = await autoPopulateNodeCredentials(
+							makeWorkflow([node]),
+							user,
+							nodeTypes,
+							credentialsService,
+							projectId,
+							makeAiGatewayService(true),
+						);
+
+						expect(node.parameters.authentication).toBe('gateway');
+						expect(node.credentials).toEqual({
+							[gatewayCredentialType]: {
+								id: null,
+								name: 'Gateway credits',
+								__aiGatewayManaged: true,
+							},
+						});
+						expect(result.assignments).toEqual([
+							expect.objectContaining({
+								credentialType: gatewayCredentialType,
+								source: 'aiGateway',
+							}),
+						]);
+					});
+
+					test('keeps the own-credential option when the user has a credential', async () => {
+						const node = makeNode({ type: registryNodeType });
+						const { credentialsService, nodeTypes } = createMocks({
+							usableCredentials: [
+								{ id: 'cred-1', name: 'Firecrawl account', type: 'firecrawlMcpOAuth2Api' },
+							],
+							nodeTypeDescriptions: new Map([[registryNodeType, pairedDesc]]),
+						});
+
+						await autoPopulateNodeCredentials(
+							makeWorkflow([node]),
+							user,
+							nodeTypes,
+							credentialsService,
+							projectId,
+							makeAiGatewayService(true),
+						);
+
+						expect(node.parameters.authentication).toBeUndefined();
+						expect(node.credentials).toEqual({
+							firecrawlMcpOAuth2Api: { id: 'cred-1', name: 'Firecrawl account' },
+						});
+					});
+
+					test('does not switch when Gateway credits are unavailable', async () => {
+						const node = makeNode({ type: registryNodeType });
+						const { credentialsService, nodeTypes } = createMocks({
+							nodeTypeDescriptions: new Map([[registryNodeType, pairedDesc]]),
+						});
+
+						await autoPopulateNodeCredentials(
+							makeWorkflow([node]),
+							user,
+							nodeTypes,
+							credentialsService,
+							projectId,
+							makeAiGatewayService(false),
+						);
+
+						expect(node.parameters.authentication).toBeUndefined();
+						expect(node.credentials).toBeUndefined();
+					});
+				});
 			});
 		});
 	});
