@@ -56,7 +56,7 @@ export interface OpenAIModelOptions {
 
 	/**
 	 * Should be set to `true` in tenancies with Zero Data Retention
-	 * @see https://platform.openai.com/docs/guides/your-data
+	 * @see https://developers.openai.com/api/docs/guides/your-data
 	 *
 	 * @default false
 	 */
@@ -71,7 +71,7 @@ export interface OpenAIModelOptions {
 	/**
 	 * Used by OpenAI to cache responses for similar requests to optimize your cache
 	 * hit rates. Replaces the `user` field.
-	 * [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
+	 * [Learn more](https://developers.openai.com/api/docs/guides/prompt-caching).
 	 */
 	promptCacheKey?: string;
 
@@ -109,7 +109,7 @@ export interface OpenAIModelOptions {
 	streamUsage?: boolean;
 
 	/** Holds any additional parameters that are valid to pass to {@link
-	 * https://platform.openai.com/docs/api-reference/completions/create |
+	 * https://developers.openai.com/api/reference/resources/completions/methods/create |
 	 * `openai.createCompletion`} that are not explicitly specified on this interface
 	 */
 	additionalParams?: Record<string, unknown>;
