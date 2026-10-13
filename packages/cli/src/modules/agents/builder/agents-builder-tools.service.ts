@@ -90,6 +90,7 @@ import type { ModelLookup } from './interactive/resolve-llm.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool, type McpCredentialApplyResult } from './verify-mcp-server.tool';
+import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
@@ -414,6 +415,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly agentContextAdapter: InstanceAiAgentContextAdapterService,
 		private readonly collaborationService: CollaborationService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -1306,7 +1308,7 @@ export class AgentsBuilderToolsService {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new Error('Agent not found');
 
-		const config = composeJsonConfig(agent);
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		return snapshotFromConfig(config);
 	}
 

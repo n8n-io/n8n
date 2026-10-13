@@ -24,7 +24,7 @@ export const generatedCasesSchema = z.object({
 
 // Bound the prompt so token cost stays predictable regardless of how large the
 // agent's own instructions/toolset are.
-const MAX_INSTRUCTIONS_CHARS = 4000;
+export const MAX_INSTRUCTIONS_CHARS = 4000;
 const MAX_TOOLS_IN_PROMPT = 30;
 const MAX_TOOL_DESCRIPTION_CHARS = 200;
 // Tool/skill/capability names are unbounded in the agent config schema; cap each
@@ -32,7 +32,7 @@ const MAX_TOOL_DESCRIPTION_CHARS = 200;
 const MAX_LABEL_CHARS = 100;
 // Revision and example fields are free-form feedback/input-output pairs, not
 // agent config — bounded on the same order as a single case's own fields.
-const MAX_CONTEXT_FIELD_CHARS = 2000;
+export const MAX_CONTEXT_FIELD_CHARS = 2000;
 
 /**
  * Feedback on a case that already ran, plus what it ran with. Asks the model
@@ -62,7 +62,7 @@ export interface AgentConfigSummary {
 	tools: Array<{ name: string; description?: string }>;
 }
 
-function truncate(text: string, max: number): string {
+export function truncate(text: string, max: number): string {
 	return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 

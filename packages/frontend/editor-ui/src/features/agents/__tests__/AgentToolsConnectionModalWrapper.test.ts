@@ -491,10 +491,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.searchPlaceholder ?? modalAttrs['search-placeholder']).toBe(
 			'Search workflows',
 		);
-		expect(modalAttrs.createAction ?? modalAttrs['create-action']).toMatchObject({
+		const createAction = modalAttrs.createAction ?? modalAttrs['create-action'];
+		expect(createAction).toMatchObject({
 			category: 'workflows',
 			label: 'Create workflow',
 		});
+		expect(createAction).not.toHaveProperty('description');
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
@@ -1057,6 +1059,32 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
 		});
+
+		it('shows the credits pill only on MCP servers that run on Gateway credits', async () => {
+			const gatewayMcp: INodeTypeDescription = {
+				...MCP_TOOL,
+				displayName: 'Firecrawl MCP',
+				name: '@n8n/mcp-registry.firecrawl',
+				credentials: [{ name: 'firecrawlMcpGatewayApi', required: true }],
+			};
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockImplementation((name: string) =>
+					[MCP_TOOL, gatewayMcp].find((nodeType) => nodeType.name === name),
+				);
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [MCP_TOOL.name, gatewayMcp.name],
+			};
+			render();
+			await flushPromises();
+
+			expect(getItems().find((item) => item.id === `nodeType:${gatewayMcp.name}`)).toMatchObject({
+				freeCredits: true,
+			});
+			expect(getItems().find((item) => item.id === `nodeType:${MCP_TOOL.name}`)?.freeCredits).toBe(
+				false,
+			);
+		});
 	});
 
 	describe('n8n Connect section', () => {
@@ -1259,6 +1287,22 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(connected).toMatchObject({
 				restriction: { available: false, scope: 'instance' },
 			});
+		});
+
+		it('opens the existing configuration of a connected restricted tool', async () => {
+			mockRestrictedNodeTypes({ [SLACK.name]: 'instance' });
+			const ref = toolRef(SLACK.name);
+
+			render([ref]);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitOpenDetail(connected!);
+			await flushPromises();
+
+			const data = getConfigData();
+			expect(data.kind !== 'mcpServer' && data.toolRef).toEqual(ref);
+			expect(data.onRemove).toBeDefined();
 		});
 
 		it('adds nothing when the installed community tool turns out to be restricted', async () => {

@@ -36,6 +36,7 @@ import { AgentIntegrationManagementService } from '@/modules/agents/agent-integr
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
+import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
@@ -456,6 +457,7 @@ export class McpAgentToolsService {
 		private readonly urlService: UrlService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly slackSetup: McpAgentSlackSetup,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	/**
@@ -631,7 +633,7 @@ export class McpAgentToolsService {
 								initialConfig,
 								user,
 								{
-									baseConfigHash: getAgentConfigHash(this.configFromEntity(agent)),
+									baseConfigHash: getAgentConfigHash(await this.configFromEntity(agent)),
 									modifiedBy: 'mcp',
 								},
 							);
@@ -686,7 +688,7 @@ export class McpAgentToolsService {
 						const agent = await this.resolveAgent(user, input.agentId);
 						const projectId = agent.projectId;
 						await this.assertScope(user, projectId, 'agent:update');
-						const config = this.configFromEntity(agent);
+						const config = await this.configFromEntity(agent);
 						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
 							return {
@@ -901,7 +903,7 @@ export class McpAgentToolsService {
 							agentId,
 							versionId: agent.versionId,
 							activeVersionId: agent.activeVersionId,
-							configHash: getAgentConfigHash(this.configFromEntity(agent)),
+							configHash: getAgentConfigHash(await this.configFromEntity(agent)),
 							url: this.getAgentUrl(projectId, agentId),
 						};
 					},
@@ -1113,7 +1115,7 @@ export class McpAgentToolsService {
 
 	private async getAgentSnapshot(user: User, agent: Agent) {
 		const { id: agentId, projectId } = agent;
-		const config = this.configFromEntity(agent);
+		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [runnable, skills, tasks] = await Promise.all([
 			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, credentialProvider),
@@ -1209,8 +1211,8 @@ export class McpAgentToolsService {
 		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
 	}
 
-	private configFromEntity(agent: Agent): AgentJsonConfig {
-		const config = composeJsonConfig(agent);
+	private async configFromEntity(agent: Agent): Promise<AgentJsonConfig> {
+		const config = composeJsonConfig(agent, await this.agentSkillRefs.refsForDraft(agent, {}));
 		if (!config) throw new UserError('Agent has no JSON config yet.');
 		return config;
 	}
@@ -1622,7 +1624,7 @@ export class McpAgentToolsService {
 	 */
 	private async validateAgent(user: User, agent: Agent) {
 		const projectId = agent.projectId;
-		const config = this.configFromEntity(agent);
+		const config = await this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [schema, configuration] = await Promise.all([
 			this.agentConfigService.validateConfig(config),
@@ -1796,7 +1798,7 @@ export class McpAgentToolsService {
 			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 	}
 
@@ -1903,7 +1905,7 @@ export class McpAgentToolsService {
 			connected: published,
 			published,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 	}
 
@@ -1934,7 +1936,7 @@ export class McpAgentToolsService {
 			configured: true,
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
-			configHash: getAgentConfigHash(this.configFromEntity(saved)),
+			configHash: getAgentConfigHash(await this.configFromEntity(saved)),
 		};
 		if (saved.activeVersionId === null) return { ...result, connected: false };
 		return {

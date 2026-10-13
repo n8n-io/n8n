@@ -438,6 +438,15 @@ export interface ICredentialType {
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
+	methods?: {
+		loadOptions?: {
+			[method: string]: (
+				credentials: ICredentialDataDecryptedObject,
+				filter?: string,
+				paginationToken?: string,
+			) => Promise<INodeListSearchResult>;
+		};
+	};
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
@@ -614,6 +623,8 @@ export interface IHttpRequestOptions {
 		protocol?: string;
 	};
 	timeout?: number;
+	/** Maximum decoded body size in bytes for buffered responses. Unset keeps the response unlimited. */
+	maxResponseBodyBytes?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
 	/**
@@ -3802,6 +3813,18 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
+	 * What, if anything, on the main that started this run awaits its outcome
+	 * and would act on a paused segment as if it were the result. A worker must
+	 * not park such a run at shutdown.
+	 * - `'response'`: a webhook caller is owed a response; satisfied once the run
+	 *   relays one.
+	 * - `'completion'`: a trigger node's done promise (Kafka, RabbitMQ, MQTT), an
+	 *   Instance AI run or a retry awaits the end of the run; never satisfied early.
+	 * - `'none'`: nothing waits, the run may be parked.
+	 * Absent (older main): treated as `'completion'`, the strictest reading.
+	 */
+	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
+	/**
 	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
 	 * minted it before the run starts: to subscribe to the run's answer, or because
 	 * the trigger node already stored files under it. Without it, the dispatcher
@@ -4448,7 +4471,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2 | 3;
+	version: 1 | 2 | 3 | 4;
 };
 
 export type FilterValue = {

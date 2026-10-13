@@ -116,6 +116,20 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		return total;
 	}
 
+	/** The given workflows that have at least one open finding for the version. */
+	async listWorkflowIdsWithOpenFindings(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[],
+		ctx: OperationContext,
+	): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+		const rows = await this.managerFor(ctx).find(MigrationFinding, {
+			select: { workflowId: true },
+			where: { targetVersion, status: 'open', workflowId: In(workflowIds) },
+		});
+		return [...new Set(rows.map((row) => row.workflowId))];
+	}
+
 	/**
 	 * Findings of one rule for the version in a status a user can set (open and
 	 * won't fix), each with its workflow's report columns. `workflowIds` limits
@@ -180,6 +194,31 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 			{ status, statusChangedAt: new Date() },
 		);
 		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Sets the status a user picked on the findings of one rule on many workflows.
+	 * Findings in a status only the scan sets, for example `fixed`, stay as they are.
+	 * `statusChangedAt` moves only on the findings whose status changes.
+	 */
+	async setTriageStatusForWorkflows(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		workflowIds: string[],
+		status: MigrationFindingTriageStatus,
+		ctx: OperationContext,
+	): Promise<void> {
+		const otherTriageStatuses = TRIAGE_STATUSES.filter((triageStatus) => triageStatus !== status);
+		// One transaction, so a failed chunk does not leave the earlier chunks changed.
+		await this.runInTransaction(ctx, async (manager) => {
+			for (const chunk of chunkIds(workflowIds)) {
+				await manager.update(
+					MigrationFinding,
+					{ targetVersion, ruleId, workflowId: In(chunk), status: In(otherTriageStatuses) },
+					{ status, statusChangedAt: new Date() },
+				);
+			}
+		});
 	}
 
 	/**

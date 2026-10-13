@@ -3,6 +3,7 @@ import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeVersion,
 	MigrationFindingTriageStatus,
+	MigrationWorkflowOwnerResponse,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 
@@ -38,6 +39,30 @@ export async function getReportForRule(
 	return (await get(context.baseUrl, `/breaking-changes/report/${ruleId}`)).data;
 }
 
+export async function assignWorkflowOwner(
+	context: IRestApiContext,
+	workflowId: string,
+	userId: string,
+): Promise<MigrationWorkflowOwnerResponse> {
+	return await makeRestApiRequest(
+		context,
+		'PUT',
+		`/breaking-changes/workflows/${workflowId}/owner`,
+		{ userId },
+	);
+}
+
+export async function unassignWorkflowOwner(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<MigrationWorkflowOwnerResponse> {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/breaking-changes/workflows/${workflowId}/owner`,
+	);
+}
+
 export async function migrateWorkflowForRule(
 	context: IRestApiContext,
 	ruleId: string,
@@ -62,4 +87,16 @@ export async function updateFindingStatus(
 		`/breaking-changes/report/${ruleId}/workflows/${workflowId}`,
 		{ status },
 	);
+}
+
+export async function updateFindingStatuses(
+	context: IRestApiContext,
+	ruleId: string,
+	workflowIds: string[],
+	status: MigrationFindingTriageStatus,
+): Promise<void> {
+	await makeRestApiRequest(context, 'PATCH', `/breaking-changes/report/${ruleId}/workflows`, {
+		workflowIds,
+		status,
+	});
 }
