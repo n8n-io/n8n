@@ -37,7 +37,7 @@ export async function generateValidatedJson<T>(
 ): Promise<ValidatedJsonResult<T>> {
 	let text: string;
 	try {
-		const { getCurrentHelperTelemetry } = await import('../tracing/langsmith-tracing');
+		const { getCurrentHelperTelemetry } = await import('../tracing/langsmith-tracing.js');
 		const llm = createEvalAgent(agentName, {
 			telemetry: getCurrentHelperTelemetry(agentName),
 			model: options.model,
