@@ -198,12 +198,19 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
 
 In langtracer mode, `--dataset` / `--baseline-prefix` default to a suite-scoped, eval-tagged name (`instance-ai-langtracer-<suite>`) so runs don't touch the shared `instance-ai-workflow-evals` cohort and re-runs of a suite upsert one stable dataset. `--filter` / `--exclude` / `--tier` still narrow within the suite. The MCP manifest builder (`eval:build-mcp-manifest`) accepts the same `--source langtracer --suite` flags.
 
+#### Pushing cases to a suite (`eval:langtracer-push`)
+
+`pnpm eval:langtracer-push --suite <slug|id> <slugs...> [--dry-run]` upserts on-disk cases into a suite: create missing, update changed, leave unchanged. Select with exact slugs, `--changed` (git-new or modified case files), `--filter <csv>` or `--tier <name>`. Validation is selective: exact slugs and `--changed` read only the named files, so an unrelated invalid file in `data/workflows` (a case authored on a newer branch) never blocks a push. `--filter` parses only the files whose slug matches; `--tier` reads the tier from inside each file, so it parses them all. An invalid file either one parses is reported as a warning and skipped. A file you named still fails the push when it is invalid.
+
 ### Outputs
 
 Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
+  `harnessUsagePerRun` gives the tokens of the eval's own model calls for each iteration of a case:
+  judges, simulated user, mocks, pin data and hints. Each entry is one agent on one model.
+  `uncachedInputTokens` excludes cache reads and writes. `null` means the iteration was not measured.
 - **`.data/workflow-eval-report.html`** — self-contained debugging view with a green/red stage review for prompt, planner, builder, and verifier behavior, generalized prompt-improvement suggestions for failures, per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
 
@@ -310,12 +317,13 @@ The harness remaps that ID and sends the normal chat request with the workflow
 attachment and structured handoff context. The transcript records the Execute
 action so process expectations can check the response.
 
-Start each panel eval instance with `N8N_INSTANCE_AI_SETUP_PANEL_ENABLED=true`.
+Start each panel eval instance with
+`N8N_FEATURE_FLAG_OVERRIDES='{"118_instance_ai_setup_overhaul":"variant"}'`.
 Set this variable on the n8n server process or in the lane's environment file.
 Setting it only on the eval client does not enable the server feature.
-Run the normal PR tier with the flag on and off. For panel cases, load the
+Run the normal PR tier with `control` and `variant`. For panel cases, load the
 external suite with `--source langtracer --suite <suite-id>`, or stage a local
-case and select it with `--filter <case-slug>`. Run those cases with the flag on.
+case and select it with `--filter <case-slug>`. Run those cases with `variant`.
 The repository does not include a `setup-panel-v2` tier.
 
 Remote Execute cases require LangTracer to preserve `attach.source` when it
@@ -344,6 +352,7 @@ on disk. Losing this field turns it into a normal attachment test.
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
+| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
@@ -559,6 +568,72 @@ For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
+### Routing mode
+
+Routing mode measures which route the orchestrator takes for a request: build
+an Agent, build a workflow, do the task once, debug, answer, ask a question,
+do many tasks, or decline. Before each tool call that is not read-only, a judge
+reads what the Assistant did so far and stops the trial when it has picked a
+route. Read-only calls (loading a skill, reading nodes, credentials or docs,
+searching the web) skip the judge. A trial takes seconds, not minutes.
+
+```bash
+pnpm eval:discovery --cases-dir <dir> --timeout 120000
+```
+
+The runner reads each `route-<slug>.json` file in `<dir>`. A case is in the
+format that LangTracer exports. The tags give the expected route:
+
+- `routing` marks the file as a routing case.
+- `bucket:<route>` is the main expected route. The summary groups cases by it.
+- `accepts:<token>` is another route that passes. A case can have more than
+  one. The bucket always passes, except `bucket:clarify`: a clarify case must
+  list the questions that pass, for example `accepts:clarify:open`. A token
+  can add a steer: `<route>:agent` passes a steer toward an Agent, and
+  `<route>:open` passes any steer except workflow only. This works for
+  `clarify` and `answer`.
+
+A case can add a second user turn with only `[stage directions]`: the facts
+that a user proxy uses to answer a question, for example
+`[Customers message the shop all day and want answers.]`. The proxy answers
+up to 2 accepted questions, and the trial passes only on the route after the
+last answer. If the proxy finds no question to answer in a text reply, the
+trial is graded on that question. `after:<route>` gives the routes that pass
+after an answer.
+Without it, the accepted routes without a steer pass. A further question passes
+when it steers to an `after` artifact.
+A `bucket:clarify` case with stage directions needs an `after:<route>` tag.
+
+A case can start with state. The stub instance and the thread then hold it
+before the turn:
+
+```json
+{
+	"complexity": "simple",
+	"tags": ["routing", "bucket:debug"],
+	"seed": {
+		"mode": "inline",
+		"workflows": [{ "id": "wf-1", "name": "Sync orders", "nodes": [], "connections": {} }],
+		"priorRuns": [{ "workflow": "wf-1", "hints": "The HTTP Request node returned 401." }]
+	},
+	"credentials": [{ "type": "slackApi" }],
+	"conversation": [{ "role": "user", "text": "It failed again.", "attach": { "workflow": "wf-1" } }],
+	"processExpectations": ["Routes to debug"]
+}
+```
+
+- `seed.messages` are earlier messages in the thread.
+- `seed.workflows` and `seed.dataTables` are on the instance.
+- `seed.priorRuns` are failed runs. `hints` is the error of the run.
+- `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
+  turn sends it in the same `<thread-context>` block as production.
+- `credentials` are accounts. Each account passes its connection test, unless
+  it is `blank` or `valid: false`.
+
+The stub instance cannot replay a LangSmith thread, sign in to a browser, or
+hold folders or projects. The runner skips cases that need them and prints
+their ids.
+
 ## Pairwise evals
 
 Pairwise evals score a built workflow against the dataset's `dos` / `donts`
@@ -744,7 +819,7 @@ The corpus lives in **LangTracer**. Workflow cases use the `baseline` suite. Age
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, `requiresMemoryCompaction`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One case = one LangSmith split**, named from the case slug (the LangTracer case name; for disk-loaded files, the filename without `.json`). Pick a slug you're happy to also use as a `--filter` target.
 
@@ -784,6 +859,10 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
 
+### Build isolation
+
+Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
+
 ### Credentials
 
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
@@ -799,6 +878,33 @@ A case that tests credential behaviour declares what should exist:
 Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
+
+Each declared credential can also have a `description`. The loader applies the
+shared credential description schema. It trims the text, enforces the length
+limit, and converts blank text to `null`. The seeder stores the description as
+credential metadata, outside the secret `data` object. Omit the field to test
+credential choice without descriptions.
+
+The current LangTracer case-write schema accepts only `type`, `name`, and
+`valid` on a credential. The push refuses a case with a description before it
+writes anything. Keep these cases on disk until LangTracer stores descriptions.
+The existing `blank` field also needs server support. The export check catches
+a server that drops it after a write.
+
+### `requiresMemoryCompaction` — grade the window after observational memory compacts
+
+```json
+"requiresMemoryCompaction": true
+```
+
+For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at 30k tokens of visible message content (`N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS`), which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
+
+1. The harness sends a low `observerThresholdTokens` override with **every** turn of that thread. The flag means "compact as soon as there is anything to compact" — the seed does not have to hit a token number. The Observer's prompt, masking and cursor logic are the production ones at any threshold.
+2. After the build, the harness checks the premise held, and reports every expectation on the case **not judged** if it did not. That is an `incomplete` verdict — excluded from scoring, not a red.
+
+The check is the point of the flag: uncompacted, the raw early turns are still in the window, so the agent answers off them and every expectation passes for free. The evidence is structural — `GET /rest/instance-ai/eval/threads/:threadId/memory` returns the observation rows and the compaction cursor straight from `instance_ai_observations` / `instance_ai_observation_cursors`. A cursor means the observer ran and everything up to `lastObservedMessageId` is masked out; the rows are what replaced it. Both, or the case had nothing to test. Nothing parses the system prompt, so a prompt or SDK rename cannot quietly turn "never compacted" into the answer, and the case needs no debug flag.
+
+The judge never sees the premise check — it grades the conversation, not whether the harness configured the scenario. It *does* see the observation rows, as a ground-truth block, so an expectation can grade the summary itself ("memory retained the 4700 threshold") rather than only the agent's reply, which passes just as well on a lucky guess. Authoring guidance — where to state the anchors, why live turn 1 must be off-topic — is in the [skill's context case shape](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md#context-cases-long-conversations-token-cost-compaction).
 
 ### Seeded cases (conversation pre-seeding)
 
@@ -990,11 +1096,10 @@ user names (CONTEXT-86: `workflows(action="list")` takes `folderPath` or `folder
   declare no `parentFolderId`. `unsupportedPushReason` refuses such a case, so keep it on
   disk (`--source disk`) until `n8n-io/lang-tracer` carries both.
 
-#### Handing the agent the workflow (`attach`)
+#### Handing the assistant a seeded resource (`attach`)
 
-When a real user opens the assistant with a workflow in front of them — "why is this
-failing?" — the editor sends that workflow as a resource reference and the agent
-resolves it by **id**, never by name. Declare it on the opening turn:
+When a real user opens the assistant with a workflow or Agent in front of them, the
+editor sends that resource by id. Declare the resource on the opening turn:
 
 ```json
 "conversation": [
@@ -1002,15 +1107,29 @@ resolves it by **id**, never by name. Declare it on the opening turn:
 ]
 ```
 
-The id is the one the seed declares; the harness substitutes the per-run remapped id,
-so the attachment always points at the workflow that actually exists. Only the opening
-turn may carry it, and it must name a workflow the inline seed declares — both are
-refused at case load rather than silently ignored.
+```json
+"conversation": [
+  { "role": "user", "text": "find and fix why this Agent cannot use Notion", "attach": { "agent": "AgentMcpRepairSeed01" } }
+]
+```
 
-Omit it when the user refers to the workflow in words instead ("the batch image
-workflow") — finding it is then part of what the case tests. Getting this backwards
-makes a case harder than reality: the agent has to guess from prose that deliberately
-names nothing, and a clarification the real user never saw scores as a failure.
+Use the id that the inline seed declares. The harness substitutes the per-run remapped
+id. A workflow id must exist in `seed.workflows`. An Agent id must exist in
+`seed.agents`. Only the opening user turn can carry an attachment. The schema rejects
+an invalid attachment before the run starts.
+
+An Agent attachment supplies identity only. It does not copy the Agent configuration into
+the orchestrator prompt. To inspect or change the attached Agent, the assistant must pass
+the remapped id to `build-agent`. Agent Builder then reads the current configuration. An
+Agent-content case must use process and outcome expectations that verify this delegation
+and the resulting repair. The attachment checks only that the eval reproduces the editor
+handoff.
+
+Only workflow attachments can set `source` to `setup-panel-execute`. This value sends
+the setup panel handoff context with the workflow.
+
+Omit `attach` when finding the resource is part of the test. For example, omit it when
+the user says "the batch image workflow" and the assistant must find that workflow.
 
 > **Pushing an `attach` case needs lang-tracer [#119](https://github.com/n8n-io/lang-tracer/pull/119) deployed.**
 > Carrying `attach` through import and case-write is that PR's job; a deployment
@@ -1022,6 +1141,11 @@ names nothing, and a clarification the real user never saw scores as a failure.
 > predating [#113](https://github.com/n8n-io/lang-tracer/pull/113). Until the
 > server is upgraded, keep such a case on disk (`--source disk`).
 > Round-trip coverage: `langtracer-to-exported.test.ts`.
+
+> **Agent attachments also need LangTracer to accept `attach.agent`.**
+> A LangTracer version that only accepts `attach.workflow` returns HTTP 400 when
+> an Agent attachment is pushed. Keep the Agent case on disk until that schema is
+> deployed. The push read-back check then confirms that the Agent reference survived.
 
 #### How restore works (all paths)
 

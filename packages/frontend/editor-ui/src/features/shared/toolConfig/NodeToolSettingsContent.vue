@@ -20,7 +20,12 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import {
+	collectParametersByTab,
+	createCommonNodeSettings,
+	removeMismatchedOptionValues,
+	resetValuesOfChangedShape,
+} from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
@@ -54,12 +59,16 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	forAgent?: boolean;
 	/** Resource/operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
 	hiddenOperations?: readonly string[];
+	/** Parameter names owned by the hosting surface instead of the node form. */
+	hiddenParameters?: readonly string[];
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
 	syncNodeToNdv?: boolean;
+	readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -91,10 +100,20 @@ const nodeTypeDescription = computed(() => {
 		return null;
 	}
 	const description = nodeTypesStore.getNodeType(props.initialNode.type);
-	if (!description || !props.hiddenOperations?.length) {
-		return description;
-	}
-	return omitOperationOptions(description, props.hiddenOperations);
+	if (!description) return null;
+
+	const withFilteredOperations = props.hiddenOperations?.length
+		? omitOperationOptions(description, props.hiddenOperations)
+		: description;
+	if (!props.hiddenParameters?.length) return withFilteredOperations;
+
+	const hiddenParameters = new Set(props.hiddenParameters);
+	return {
+		...withFilteredOperations,
+		properties: withFilteredOperations.properties.filter(
+			(parameter) => !hiddenParameters.has(parameter.name),
+		),
+	};
 });
 
 type ToolSettingsTab = 'params' | 'settings';
@@ -197,8 +216,23 @@ const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>
 	};
 });
 
+// Agents cannot use personal credentials yet. A saved selection that the
+// agent-scoped fetch no longer returns must block saving.
+const agentCredentialsLoaded = ref(false);
+const hasUnavailableAgentCredential = computed(() => {
+	if (!props.forAgent || !agentCredentialsLoaded.value) return false;
+	return Object.values(node.value?.credentials ?? {}).some(
+		(credential) => credential.id && !credentialsStore.getUsableCredentialById(credential.id),
+	);
+});
+
 const isValid = computed(() => {
-	return node.value?.name && !hasParameterIssues.value && !hasCredentialIssues.value;
+	return (
+		node.value?.name &&
+		!hasParameterIssues.value &&
+		!hasCredentialIssues.value &&
+		!hasUnavailableAgentCredential.value
+	);
 });
 
 // Provide expression resolve context for dynamic parameter loading
@@ -218,8 +252,52 @@ function makeUniqueName(baseName: string, existingNames: string[]): string {
 function handleChangeParameter(updateData: IUpdateInformation) {
 	if (!node.value) return;
 
-	const newParameters = deepCopy(node.value.parameters);
-	setParameterValue(newParameters, updateData.name, updateData.value);
+	const nodeType = nodeTypeDescription.value;
+	if (!nodeType) {
+		const newParameters = deepCopy(node.value.parameters);
+		setParameterValue(newParameters, updateData.name, updateData.value);
+		node.value = { ...node.value, parameters: newParameters };
+		return;
+	}
+
+	// Re-derive parameters the same way the NDV does (see
+	// `useNodeSettingsParameters.updateNodeParameter`): strip to user-set values,
+	// apply the change, drop options and same-named values that no longer match,
+	// then refill defaults.
+	// This resets a dependent param (e.g. `operation`) to the new resource's
+	// default when `resource` changes, instead of keeping a stale selection.
+	let parameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.value.parameters,
+			false,
+			false,
+			node.value,
+			nodeType,
+		) ?? {};
+	parameters = deepCopy(parameters);
+
+	setParameterValue(parameters, updateData.name, updateData.value);
+	if (updateData.value !== undefined) {
+		// `removeMismatchedOptionValues` keys off the changed param's `name` only;
+		// its `value` field is unused, so `null` keeps the call type-clean.
+		removeMismatchedOptionValues(nodeType, node.value.typeVersion, parameters, {
+			name: updateData.name,
+			value: null,
+		});
+	}
+
+	parameters = resetValuesOfChangedShape(nodeType, node.value, parameters, [updateData.name]);
+
+	const newParameters =
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			parameters,
+			true,
+			false,
+			node.value,
+			nodeType,
+		) ?? parameters;
 
 	node.value = {
 		...node.value,
@@ -401,8 +479,12 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchUsableCredentials({ projectId }),
+			credentialsStore.fetchUsableCredentials({
+				projectId,
+				...(props.forAgent ? { forAgent: true } : {}),
+			}),
 		]);
+		agentCredentialsLoaded.value = true;
 	}
 });
 
@@ -439,7 +521,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="parametersByTab.params"
 					:hide-delete="true"
 					:node-values="node.parameters"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:node="node"
 					:parameter-issues="props.parameterIssues"
 					:from-ai-disabled-parameters="props.fromAiDisabledParameters"
@@ -447,9 +529,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 				>
 					<NodeCredentials
 						:node="node"
-						:readonly="false"
+						:readonly="props.readOnly"
 						:show-all="true"
 						:project-id="credentialProjectId"
+						:for-agent="props.forAgent"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
 						:skip-credentials-fetch="true"
@@ -473,7 +556,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					v-if="node && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					:hide-delete="true"
 					path="parameters"
 					:node="node"
@@ -484,7 +567,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 					:parameters="nodeSettings"
 					:hide-delete="true"
 					:node-values="settingsNodeValues"
-					:is-read-only="false"
+					:is-read-only="props.readOnly"
 					path=""
 					:node="node"
 					@value-changed="handleChangeSettingsValue"

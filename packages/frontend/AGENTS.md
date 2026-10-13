@@ -9,6 +9,7 @@ Extra information, specific to the frontend codebase. Use this when doing any fr
 - When rendering `el-plus` popovers/dropdowns/selects inside `N8nDialog`, prefer to keep them in the dialog stacking context with `:teleported="false"` unless they intentionally need to escape.
 - Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
   Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
+- When you change a Pinia store, check for unused computed properties.
 - Use centralized constants from `@/app/constants/durations` instead of hardcoding:
 
 ```typescript

@@ -2,7 +2,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -51,7 +51,7 @@ describe('CredentialImporter', () => {
 	): CredentialRequirement => ({
 		name: 'Source GitHub',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		...overrides,
 	});
 
@@ -63,7 +63,6 @@ describe('CredentialImporter', () => {
 		sourceId: credential.id,
 		name: credential.name,
 		type: credential.type,
-		usedByWorkflows: credential.usedByWorkflows,
 		...overrides,
 	});
 
@@ -95,7 +94,7 @@ describe('CredentialImporter', () => {
 				id: 'cred-manifest',
 				name: 'Manifest GitHub',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 			},
 		]);
 		const credentialResolution = await importer.plan(context, request);
@@ -109,7 +108,15 @@ describe('CredentialImporter', () => {
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 
 		const request = bindingRequest([
-			{ id: 'cred-missing', name: 'Missing', type: 'githubApi', usedByWorkflows: ['wf-1'] },
+			{
+				id: 'cred-missing',
+				name: 'Missing',
+				type: 'githubApi',
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'agent', id: 'wf-1' },
+				],
+			},
 		]);
 		const credentialResolution = await importer.plan(context, request);
 
@@ -120,7 +127,6 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 		expect(importer.blockingFailures(request, credentialResolution)).toEqual([
@@ -129,7 +135,6 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 	});
@@ -145,7 +150,7 @@ describe('CredentialImporter', () => {
 					id: 'source-cred',
 					name: 'Source GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-cred']]) },
@@ -172,7 +177,6 @@ describe('CredentialImporter', () => {
 				kind: 'source_not_found',
 				sourceId: 'missing-source',
 				targetId: 'target-cred',
-				usedByWorkflows: [],
 			},
 		]);
 	});
@@ -188,7 +192,7 @@ describe('CredentialImporter', () => {
 					id: 'source-cred',
 					name: 'Source GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			{ credentialBindings: new Map([['source-cred', 'target-missing']]) },
@@ -203,7 +207,6 @@ describe('CredentialImporter', () => {
 				name: 'Source GitHub',
 				type: 'githubApi',
 				targetId: 'target-missing',
-				usedByWorkflows: ['wf-1'],
 			},
 		]);
 	});
@@ -215,7 +218,10 @@ describe('CredentialImporter', () => {
 			const missingCredential = packageCredential({
 				id: 'missing-cred',
 				name: 'Missing GitHub',
-				usedByWorkflows: ['wf-1', 'wf-2'],
+				usedBy: [
+					{ kind: 'workflow', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-2' },
+				],
 			});
 			const request = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const resolution = {
@@ -239,6 +245,7 @@ describe('CredentialImporter', () => {
 				bindings: new Map([['missing-cred', 'stub-1']]),
 				matched: [],
 				stubbed: ['missing-cred'],
+				seeded: [],
 			});
 		});
 
@@ -259,6 +266,7 @@ describe('CredentialImporter', () => {
 				bindings: new Map(),
 				matched: [],
 				stubbed: [],
+				seeded: [],
 			});
 		});
 
@@ -348,6 +356,7 @@ describe('CredentialImporter', () => {
 				bindings: new Map([['cred-source', 'cred-source']]),
 				matched: ['cred-source'],
 				stubbed: [],
+				seeded: [],
 			});
 		});
 
@@ -372,6 +381,101 @@ describe('CredentialImporter', () => {
 					},
 				),
 			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+	});
+
+	describe('create-with-values', () => {
+		it('apply seeds a created credential from the requirement package data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				packageData: { token: '={{ $secrets.github.token }}' },
+			});
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([missingCredential], { missingMode: 'create-with-values' }),
+				{
+					successes: new Map(),
+					failures: [notFoundFailure(missingCredential)],
+				},
+			);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{
+					id: 'missing-cred',
+					name: 'Source GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+					data: { token: '={{ $secrets.github.token }}' },
+				},
+				user,
+			);
+			expect(result).toEqual({
+				bindings: new Map([['missing-cred', 'created-1']]),
+				matched: [],
+				stubbed: [],
+				seeded: ['missing-cred'],
+			});
+		});
+
+		it('apply falls back to an empty stub when the package carries no data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const withoutData = packageCredential({ id: 'no-data-cred' });
+			const withEmptyData = packageCredential({ id: 'empty-data-cred', packageData: {} });
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([withoutData, withEmptyData], { missingMode: 'create-with-values' }),
+				{
+					successes: new Map(),
+					failures: [notFoundFailure(withoutData), notFoundFailure(withEmptyData)],
+				},
+			);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{
+					id: 'no-data-cred',
+					name: 'Source GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+				},
+				user,
+			);
+			expect(result.stubbed).toEqual(['no-data-cred', 'empty-data-cred']);
+			expect(result.seeded).toEqual([]);
+		});
+
+		it('apply never seeds under create-stub even when the package carries data', async () => {
+			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
+
+			const missingCredential = packageCredential({
+				id: 'missing-cred',
+				packageData: { token: '={{ $secrets.github.token }}' },
+			});
+
+			const result = await importer.apply(
+				context,
+				bindingRequest([missingCredential], { missingMode: 'create-stub' }),
+				{
+					successes: new Map(),
+					failures: [notFoundFailure(missingCredential)],
+				},
+			);
+
+			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
+				{
+					id: 'missing-cred',
+					name: 'Source GitHub',
+					type: 'githubApi',
+					projectId: 'project-target',
+				},
+				user,
+			);
+			expect(result.stubbed).toEqual(['missing-cred']);
+			expect(result.seeded).toEqual([]);
 		});
 	});
 });

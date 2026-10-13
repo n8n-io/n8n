@@ -5,7 +5,7 @@ import type { JSONWebKeySet, JWTPayload } from 'jose';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';

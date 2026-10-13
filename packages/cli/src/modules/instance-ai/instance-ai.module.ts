@@ -30,6 +30,14 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
+			await import('./self-healing/self-healing-results.controller.js');
+			const { WorkflowSuggestionEventRelay } = await import(
+				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
+			);
+			Container.get(WorkflowSuggestionEventRelay);
+		}
 
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
@@ -71,12 +79,14 @@ export class InstanceAiModule implements ModuleInterface {
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = settingsService.isAgentEnabled();
+		const mcpConnectionsAvailable = service.areMcpConnectionsAvailable();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const browserUseEnabled = settingsService.isBrowserUseEnabled();
 		const sandboxStatus = settingsService.getSandboxStatus();
 		const setupCompleted = await settingsService.isSetupCompleted();
 		return {
 			enabled,
+			mcpConnectionsAvailable,
 			localGatewayDisabled,
 			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
@@ -87,7 +97,6 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			activationCapped: settingsService.isActivationCapped(),
-			instanceAiSetupPanelEnabled: settingsService.isInstanceAiSetupPanelEnabled(),
 		};
 	}
 
@@ -113,8 +122,18 @@ export class InstanceAiModule implements ModuleInterface {
 			'./entities/instance-ai-mcp-registry-connection.entity.js'
 		);
 		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity.js');
+		const { InstanceAiThreadTabs } = await import('./entities/instance-ai-thread-tabs.entity.js');
 		const { InstanceAiEventLogEntry } = await import(
 			'./entities/instance-ai-event-log-entry.entity.js'
+		);
+		const { WorkflowSuggestion } = await import(
+			'./workflow-suggestions/database/workflow-suggestion.entity.js'
+		);
+		const { WorkflowSuggestionActivity } = await import(
+			'./workflow-suggestions/database/workflow-suggestion-activity.entity.js'
+		);
+		const { SelfHealingResult } = await import(
+			'./self-healing/database/self-healing-result.entity.js'
 		);
 
 		return [
@@ -129,7 +148,11 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiObservationLock,
 			InstanceAiMcpRegistryConnection,
 			InstanceAiThreadGrant,
+			InstanceAiThreadTabs,
 			InstanceAiEventLogEntry,
+			WorkflowSuggestion,
+			WorkflowSuggestionActivity,
+			SelfHealingResult,
 		];
 	}
 

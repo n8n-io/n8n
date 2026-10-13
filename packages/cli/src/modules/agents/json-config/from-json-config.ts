@@ -23,15 +23,18 @@ import {
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
 } from '@n8n/ai-utilities/agent-config';
-import type {
-	AgentSkill,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentJsonSkillConfig,
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	MANAGED_CREDENTIAL_TOKEN,
+	type AgentModelCredentialConfig,
+	type AgentSkill,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentJsonSkillConfig,
 } from '@n8n/api-types';
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { UserError } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
@@ -42,6 +45,10 @@ import {
 } from './embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
+import {
+	resolveWebSearchGatewayProxyConfig,
+	type AiGatewaySearchCredentialResolver,
+} from './web-search-credential';
 import { buildVectorStore } from './vector-store-factory';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
@@ -93,11 +100,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-
-type MemoryWorkerModelConfig = {
-	model: string;
-	credential: string;
-};
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -175,6 +177,7 @@ export async function buildFromJson(
 	// Tools
 	if (config.tools) {
 		for (const ref of config.tools) {
+			if (ref.enabled === false) continue;
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
 				agent.tool(built);
@@ -305,7 +308,7 @@ export function buildProviderToolsForModel(
 
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
-	credentialProvider: CredentialProvider,
+	credentialProvider: CredentialProvider & Partial<AiGatewaySearchCredentialResolver>,
 	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
@@ -337,33 +340,39 @@ function buildFallbackWebSearchTool(
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
-			const credential = await credentialProvider.resolve(credentialId);
 			const { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');
+			const searchOptions = {
+				maxResults: args.maxResults,
+				includeDomains: args.includeDomains,
+				excludeDomains: args.excludeDomains,
+			};
 
 			if (webSearchConfig.provider === 'brave') {
+				// n8n Connect (Gateway credits): route through the AI gateway with a
+				// minted credential instead of the user's API key.
+				if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+					const proxyConfig = await resolveWebSearchGatewayProxyConfig(
+						webSearchConfig.provider,
+						credentialProvider,
+					);
+					return await braveSearch('', args.query, { ...searchOptions, proxyConfig });
+				}
+				const credential = await credentialProvider.resolve(credentialId);
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, {
-					maxResults: args.maxResults,
-					includeDomains: args.includeDomains,
-					excludeDomains: args.excludeDomains,
-				});
+				return await braveSearch(credential.apiKey, args.query, searchOptions);
 			}
 
+			// SearXNG is self-hosted, so it has no gateway-served managed path.
+			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+				throw new UserError('Gateway credits web search is only available for Brave Search.');
+			}
+			const credential = await credentialProvider.resolve(credentialId);
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(
-				credential.apiUrl,
-				args.query,
-				{
-					maxResults: args.maxResults,
-					includeDomains: args.includeDomains,
-					excludeDomains: args.excludeDomains,
-				},
-				webSearchFetch,
-			);
+			return await searxngSearch(credential.apiUrl, args.query, searchOptions, webSearchFetch);
 		},
 	};
 }
@@ -381,6 +390,7 @@ function getConfiguredSkillSource(
 	>();
 
 	for (const ref of refs) {
+		if (ref.enabled === false) continue;
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
@@ -629,7 +639,7 @@ async function resolveModelConfig(
 }
 
 async function resolveMemoryWorkerModelConfig(
-	config: MemoryWorkerModelConfig,
+	config: AgentModelCredentialConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
 	// Mirrors `resolveModelConfig`: an empty credential means "not configured",

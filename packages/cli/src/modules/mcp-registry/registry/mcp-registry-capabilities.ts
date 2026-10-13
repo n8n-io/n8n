@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 // Add capabilities here when they do not depend on instance configuration.
-const BASE_CAPABILITIES: readonly string[] = [];
+const BASE_CAPABILITIES: readonly string[] = ['supabase-oauth2-credentials'];
 
 const N8N_CLOUD_CAPABILITY = 'n8n-cloud';
 

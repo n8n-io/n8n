@@ -7,7 +7,7 @@ import type {
 	TestRunErrorCode,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 /**
  * Creates a test run for a workflow
@@ -52,6 +52,8 @@ export const createTestCaseExecution = async (
 		errorDetails?: IDataObject;
 		executionId?: string;
 		pastExecutionId?: string;
+		inputs?: JsonObject;
+		outputs?: JsonObject;
 	} = {},
 ) => {
 	const testCaseExecutionRepository = Container.get(TestCaseExecutionRepository);
@@ -65,6 +67,8 @@ export const createTestCaseExecution = async (
 		errorCode: options.errorCode,
 		errorDetails: options.errorDetails,
 		executionId: options.executionId,
+		inputs: options.inputs ?? null,
+		outputs: options.outputs ?? null,
 	});
 
 	return await testCaseExecutionRepository.save(testCaseExecution);

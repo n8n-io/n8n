@@ -11,10 +11,12 @@ import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
 } from './test-utils/controller-route-metadata';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 function makeController({
 	agentsService = mock<
@@ -27,6 +29,7 @@ function makeController({
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
 	agentsService?: Mocked<
 		Pick<
@@ -38,11 +41,13 @@ function makeController({
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
 		agentValidationService,
 		agentPublishService,
+		createAgentSkillRefsService(),
 	);
 
 	return {
@@ -50,6 +55,7 @@ function makeController({
 			agentsService as unknown as AgentsService,
 			agentRunnableStateService,
 			agentDefaultModelResolverService,
+			collaborationService,
 		),
 		agentsService,
 		agentPublishService,
@@ -106,6 +112,7 @@ describe('AgentsController create', () => {
 		} as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: 'aBcDeFgHiJkLmNoP',
 		});
 	});
@@ -116,6 +123,7 @@ describe('AgentsController create', () => {
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: undefined,
 		});
 	});
@@ -131,6 +139,7 @@ describe('AgentsController create', () => {
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
 		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+			actor: { kind: 'user', user: { id: 'user-1' } },
 			id: undefined,
 			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
 		});
@@ -338,5 +347,27 @@ describe('AgentsController agent resource', () => {
 				isRunnable: false,
 			}),
 		);
+	});
+});
+
+describe('AgentsController.getWriteLock', () => {
+	it('passes the agent id from the route param, not the response object', async () => {
+		const collaborationService = mock<CollaborationService>();
+		const lock = { clientId: 'tab-1', userId: 'user-1' };
+		collaborationService.getAgentWriteLock.mockResolvedValue(lock);
+		const { controller } = makeController({ collaborationService });
+
+		// The registry calls handlers as (req, res, ...decoratedArgs).
+		const result = await controller.getWriteLock(
+			{
+				params: { projectId: 'project-1', agentId: 'agent-1' },
+				user: { id: 'user-1' },
+			} as never,
+			mock<Response>(),
+			'agent-1',
+		);
+
+		expect(collaborationService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(result).toEqual(lock);
 	});
 });

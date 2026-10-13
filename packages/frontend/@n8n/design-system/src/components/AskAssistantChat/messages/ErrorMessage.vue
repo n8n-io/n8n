@@ -27,7 +27,7 @@ const { t } = useI18n();
 			</p>
 			<N8nButton
 				v-if="message.retry"
-				variant="subtle"
+				variant="outline"
 				size="xsmall"
 				:class="$style.retryButton"
 				data-test-id="error-retry-button"

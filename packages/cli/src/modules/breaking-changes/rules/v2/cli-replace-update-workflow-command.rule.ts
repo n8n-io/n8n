@@ -18,7 +18,7 @@ export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule 
 			description:
 				'The CLI command update:workflow has been replaced with publish:workflow and unpublish:workflow for better clarity.',
 			category: BreakingChangeCategory.instance,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#replace-cli-command-updateworkflow',
 		};

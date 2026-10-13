@@ -18,7 +18,13 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
+import {
+	getGoogleModelLabel,
+	pinPrioritizedModels,
+	shouldIncludeGoogleModel,
+} from '@n8n/ai-utilities/model-discovery';
+
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 /** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
 async function filterChatModels(
@@ -33,6 +39,30 @@ async function filterChatModels(
 				supportedGenerationMethods: item.json.supportedGenerationMethods,
 			}),
 	);
+}
+
+/** Show models under the name the API reports, sorted by it, with prioritized models first. */
+async function labelModels(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const labelled = items.map((item) => {
+		// `displayName` and `priority` only carry the API's values to here; options do not keep them.
+		const { displayName, priority, ...option } = item.json;
+		const json =
+			typeof option.value === 'string'
+				? {
+						...option,
+						name: getGoogleModelLabel(
+							option.value,
+							typeof displayName === 'string' ? displayName : undefined,
+						),
+					}
+				: option;
+		return { item: { ...item, json }, priority };
+	});
+	labelled.sort((a, b) => String(a.item.json.name).localeCompare(String(b.item.json.name)));
+	return pinPrioritizedModels(labelled, (entry) => entry.priority).map((entry) => entry.item);
 }
 
 function errorDescriptionMapper(error: NodeError) {
@@ -76,14 +106,11 @@ const modelRLC: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
+						labelModels,
 					],
 				},
 			},
@@ -97,8 +124,10 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
+		// The dropdown loads through declarative routing, which the builder's resource lookup cannot call.
 		propertyHint:
-			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+			'This node declares no model-list lookup, so its models cannot be listed, even with a connected credential. For a new choice, use current Google provider catalog information and choose a Gemini 3.x or newer model ID with the "models/" prefix. Do not choose Gemini 2.x or older. ' +
+			MODEL_SELECTION_HINT,
 	},
 };
 
@@ -129,14 +158,11 @@ const modelRLCV2: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
+						labelModels,
 					],
 				},
 			},

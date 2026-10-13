@@ -19,6 +19,10 @@
     "./nodes": {
       "types": "./dist/configs/nodes.d.ts",
       "default": "./dist/configs/nodes.js"
+    },
+    "./import-x-alias": {
+      "types": "./dist/import-x-alias.d.ts",
+      "default": "./dist/import-x-alias.js"
     }
   },
   "scripts": {
@@ -29,7 +33,8 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "node -e \"process.exit(0)\"",
-    "test": "node -e \"process.exit(0)\"",
+    "test": "node ../../../scripts/lint-parity/verify-raw-enum-bridge.mjs",
+    "test:unit": "node ../../../scripts/lint-parity/verify-raw-enum-bridge.mjs",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"
   },
@@ -41,6 +46,7 @@
   "dependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
+    "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-lodash": "^8.0.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "oxlint": "catalog:"

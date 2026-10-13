@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 export class PrometheusMetricsConfig {
@@ -128,7 +129,7 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
 	workflowInfoMetricInterval: number = 60;
 
-	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	/** Whether to include database pool metrics for usage, acquisition, connection state, and recovery. */
 	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
 	includeDbPoolMetrics: boolean = false;
 
@@ -206,22 +207,6 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_APPS_ENABLED')
 	mcpAppsEnabled: boolean = false;
 
-	/**
-	 * Force-enable the instance-context read surface on the MCP server. That is four tools —
-	 * `get_instance_context`, `get_instance_activity`, `expand_instance_activity` and
-	 * `get_node_usage` — plus the `n8n://instance/context` resource and the one sentence in the
-	 * server instructions that points a client at them.
-	 *
-	 * Acts as an operator-level override of the PostHog rollout flag. Cannot
-	 * force-disable: setting this to `false` falls back to PostHog.
-	 *
-	 * The activity tools read what `N8N_ACTIVITY_LOG_ENABLED` writes, so with
-	 * only this flag on they answer from an empty log. The node-usage tool has
-	 * its own index and works either way.
-	 */
-	@Env('N8N_MCP_INSTANCE_CONTEXT_ENABLED')
-	mcpInstanceContextEnabled: boolean = false;
-
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;
@@ -244,4 +229,8 @@ export class EndpointsConfig {
 		z.string().transform((val) => (val.startsWith('/') ? val : `/${val}`)),
 	)
 	health: string = '/healthz';
+
+	/** Milliseconds the editor waits for a health check response before showing offline status. */
+	@Env('N8N_FRONTEND_HEALTH_CHECK_TIMEOUT_MS', positiveIntSchema.max(2_147_483_647))
+	frontendHealthCheckTimeoutMs: number = 5000;
 }

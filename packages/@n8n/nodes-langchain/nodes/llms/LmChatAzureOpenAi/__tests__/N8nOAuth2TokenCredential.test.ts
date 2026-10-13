@@ -1,11 +1,19 @@
+import { getBearerTokenProvider } from '@azure/identity';
 import { type ClientOAuth2Options } from '@n8n/client-oauth2';
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from '../credentials/N8nOAuth2TokenCredential';
+import { AZURE_AI_FOUNDRY_AUDIENCE, AZURE_OPENAI_INFERENCE_AUDIENCE } from '../types';
 import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
-const { MockClientOAuth2 } = vi.hoisted(() => {
+const { MockClientOAuth2, mockGetToken } = vi.hoisted(() => {
+	const mockGetToken = vi.fn();
+
+	class MockCredentialsFlow {
+		getToken = mockGetToken;
+	}
+
 	class MockClientOAuth2 {
 		credentials: MockCredentialsFlow;
 
@@ -17,16 +25,7 @@ const { MockClientOAuth2 } = vi.hoisted(() => {
 		static init = vi.fn();
 	}
 
-	class MockCredentialsFlow {
-		getToken = vi.fn().mockResolvedValue({
-			data: {
-				access_token: 'fresh-test-token',
-				expires_on: 1234567890,
-			},
-		});
-	}
-
-	return { MockClientOAuth2, MockCredentialsFlow };
+	return { MockClientOAuth2, MockCredentialsFlow, mockGetToken };
 });
 
 vi.mock('@n8n/client-oauth2', () => ({
@@ -42,19 +41,26 @@ const mockNode: INode = {
 	parameters: {},
 };
 
+const TENANT_ID = '8f2a1b3c-4d5e-6f70-8192-a3b4c5d6e7f8';
+
 describe('N8nOAuth2TokenCredential', () => {
 	let mockCredential: AzureEntraCognitiveServicesOAuth2ApiCredential;
 	let credential: N8nOAuth2TokenCredential;
 
 	beforeEach(() => {
-		// Create a mock credential with all required properties
+		mockGetToken.mockResolvedValue({
+			data: { access_token: 'fresh-test-token', expires_in: '3599' },
+		});
+
+		// A realistic credential: the URLs are what the field expressions resolve to for this
+		// tenant, so the assertions below check real values rather than empty strings.
 		mockCredential = {
 			authQueryParameters: '',
 			authentication: 'body',
-			authUrl: '',
-			accessTokenUrl: '',
+			authUrl: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/authorize`,
+			accessTokenUrl: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/token`,
 			grantType: 'clientCredentials',
-			clientId: '',
+			clientId: 'test-client-id',
 			clientSecret: 'secret',
 			customScopes: false,
 			apiVersion: '2023-05-15',
@@ -66,7 +72,7 @@ describe('N8nOAuth2TokenCredential', () => {
 				ext_expires_on: 0,
 			},
 			scope: '',
-			tenantId: '',
+			tenantId: TENANT_ID,
 		};
 
 		credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
@@ -82,40 +88,161 @@ describe('N8nOAuth2TokenCredential', () => {
 			const result = await credential.getToken();
 
 			// Assert
-			expect(result).toEqual({
-				token: 'fresh-test-token',
-				expiresOnTimestamp: 1234567890,
-			});
+			expect(result?.token).toBe('fresh-test-token');
 			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
 				expect.objectContaining({
 					clientId: mockCredential.clientId,
 					clientSecret: mockCredential.clientSecret,
+					// The mint must go to the credential's own tenant, not a default host
+					accessTokenUri: `https://login.microsoftonline.com/${TENANT_ID}/oauth2/token`,
 				}),
 			);
 		});
 
-		it('should throw NodeOperationError when credentials do not contain token', async () => {
-			// Arrange - remove the token
-			mockCredential.oauthTokenData.access_token = '';
-			credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
+		it('requests the cognitiveservices audience by default', async () => {
+			await credential.getToken();
 
-			// Act & Assert
-			await expect(credential.getToken()).rejects.toThrow(NodeOperationError);
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: `${AZURE_OPENAI_INFERENCE_AUDIENCE}/` },
+				}),
+			);
 		});
 
-		it('should throw NodeOperationError when oauthTokenData is missing', async () => {
-			// Arrange - remove oauthTokenData
-			const incompleteCredential = { ...mockCredential };
-			// @ts-expect-error: purposely making it invalid for test
-			delete incompleteCredential.oauthTokenData;
-
+		it('requests the audience passed to the constructor, when one is given', async () => {
 			credential = new N8nOAuth2TokenCredential(
 				mockNode,
-				incompleteCredential as AzureEntraCognitiveServicesOAuth2ApiCredential,
+				mockCredential,
+				AZURE_AI_FOUNDRY_AUDIENCE,
 			);
 
-			// Act & Assert
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({
+					additionalBodyProperties: { resource: `${AZURE_AI_FOUNDRY_AUDIENCE}/` },
+				}),
+			);
+		});
+
+		// The mint posts the client secret to a stored URL, so it has to run inside the egress
+		// policy, as the Databricks token provider does.
+		// Saved credentials still hold the old `common` default, so the mint has to refuse it
+		// rather than let Entra answer with an opaque AADSTS code.
+		it('should refuse a multi-tenant alias before contacting Entra', async () => {
+			credential = new N8nOAuth2TokenCredential(mockNode, {
+				...mockCredential,
+				tenantId: 'common',
+			});
+
+			await expect(credential.getToken()).rejects.toThrow('Tenant ID cannot be "common"');
+			expect(mockGetToken).not.toHaveBeenCalled();
+		});
+
+		it('should hand the egress filter to the token client', async () => {
+			const egressFilter = vi.fn();
+			credential = new N8nOAuth2TokenCredential(
+				mockNode,
+				mockCredential,
+				undefined,
+				egressFilter as never,
+			);
+
+			await credential.getToken();
+
+			expect(MockClientOAuth2.init).toHaveBeenCalledWith(
+				expect.objectContaining({ ssrfBridge: egressFilter }),
+			);
+		});
+
+		it('should report the expiry in epoch milliseconds, from expires_in', async () => {
+			const before = Date.now();
+
+			const result = await credential.getToken();
+
+			expect(result?.expiresOnTimestamp).toBeGreaterThanOrEqual(before + 3599 * 1000);
+			expect(result?.expiresOnTimestamp).toBeLessThanOrEqual(Date.now() + 3599 * 1000);
+		});
+
+		it('should fall back to expires_on, which the v1 endpoint sends as an epoch second', async () => {
+			mockGetToken.mockResolvedValueOnce({
+				data: { access_token: 'fresh-test-token', expires_on: '1790000000' },
+			});
+
+			const result = await credential.getToken();
+
+			expect(result?.expiresOnTimestamp).toBe(1790000000 * 1000);
+		});
+
+		it('should prefer expires_in when the response carries both', async () => {
+			mockGetToken.mockResolvedValueOnce({
+				data: { access_token: 'fresh-test-token', expires_in: '3599', expires_on: '1790000000' },
+			});
+			const before = Date.now();
+
+			const result = await credential.getToken();
+
+			expect(result?.expiresOnTimestamp).toBeGreaterThanOrEqual(before + 3599 * 1000);
+			expect(result?.expiresOnTimestamp).toBeLessThanOrEqual(Date.now() + 3599 * 1000);
+		});
+
+		it('should report an unreadable expiry as already expired, rather than caching forever', async () => {
+			mockGetToken.mockResolvedValueOnce({ data: { access_token: 'fresh-test-token' } });
+			const before = Date.now();
+
+			const result = await credential.getToken();
+
+			expect(result?.expiresOnTimestamp).toBeGreaterThanOrEqual(before);
+			expect(result?.expiresOnTimestamp).toBeLessThanOrEqual(Date.now());
+		});
+
+		it('should not require oauthTokenData', async () => {
+			const withoutBrowserToken = { ...mockCredential };
+			delete withoutBrowserToken.oauthTokenData;
+			credential = new N8nOAuth2TokenCredential(
+				mockNode,
+				withoutBrowserToken as AzureEntraCognitiveServicesOAuth2ApiCredential,
+			);
+
+			await expect(credential.getToken()).resolves.toEqual(
+				expect.objectContaining({ token: 'fresh-test-token' }),
+			);
+		});
+
+		it('should wrap a token-endpoint failure in a NodeOperationError', async () => {
+			mockGetToken.mockRejectedValueOnce(new Error('invalid_client'));
+
 			await expect(credential.getToken()).rejects.toThrow(NodeOperationError);
+		});
+	});
+
+	describe('through getBearerTokenProvider', () => {
+		it('should mint one token for many calls', async () => {
+			const provider = getBearerTokenProvider(
+				credential,
+				`${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`,
+			);
+
+			await expect(provider()).resolves.toBe('fresh-test-token');
+			await expect(provider()).resolves.toBe('fresh-test-token');
+			await expect(provider()).resolves.toBe('fresh-test-token');
+
+			expect(mockGetToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('should serve the old token while it refreshes near expiry', async () => {
+			mockGetToken
+				.mockResolvedValueOnce({ data: { access_token: 'first-token', expires_in: '30' } })
+				.mockResolvedValueOnce({ data: { access_token: 'second-token', expires_in: '3599' } });
+			const provider = getBearerTokenProvider(
+				credential,
+				`${AZURE_OPENAI_INFERENCE_AUDIENCE}/.default`,
+			);
+
+			await expect(provider()).resolves.toBe('first-token');
+			await expect(provider()).resolves.toBe('first-token');
+
+			expect(mockGetToken).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -130,6 +257,15 @@ describe('N8nOAuth2TokenCredential', () => {
 				endpoint: 'https://test.openai.azure.com',
 				resourceName: 'test-resource',
 			});
+		});
+
+		it('should leave a missing endpoint undefined', async () => {
+			delete mockCredential.endpoint;
+			credential = new N8nOAuth2TokenCredential(mockNode, mockCredential);
+
+			const result = await credential.getDeploymentDetails();
+
+			expect(result.endpoint).toBeUndefined();
 		});
 
 		it('should return the Foundry endpoint when endpointType is foundry', async () => {

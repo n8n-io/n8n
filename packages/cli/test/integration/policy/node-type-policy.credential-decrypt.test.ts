@@ -26,7 +26,7 @@ const HTTP_REQUEST = 'n8n-nodes-base.httpRequest';
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['policy-infrastructure', 'type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;

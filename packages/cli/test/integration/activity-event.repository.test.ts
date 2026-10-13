@@ -3,6 +3,8 @@ import type { Project } from '@n8n/db';
 import { ActivityEventRepository, activityDataMaxLength } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createMember } from './shared/db/users';
+
 describe('ActivityEventRepository', () => {
 	let repository: ActivityEventRepository;
 	let project: Project;
@@ -31,7 +33,11 @@ describe('ActivityEventRepository', () => {
 			data: { nodeCount: 4 },
 		});
 
-		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+		const [entry] = await repository.findFeed({
+			projectIds: [project.id],
+			allowedCategories: ['workflow', 'credential'],
+			limit: 10,
+		});
 
 		expect(entry).toMatchObject({
 			category: 'workflow',
@@ -57,7 +63,11 @@ describe('ActivityEventRepository', () => {
 			resourceName: 'Lead enrichment',
 		});
 
-		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+		const [entry] = await repository.findFeed({
+			projectIds: [project.id],
+			allowedCategories: ['workflow', 'credential'],
+			limit: 10,
+		});
 
 		expect(entry).toMatchObject({ action: 'deleted', resourceId: 'already-gone' });
 	});
@@ -70,7 +80,11 @@ describe('ActivityEventRepository', () => {
 			data: { note: 'y'.repeat(activityDataMaxLength) },
 		});
 
-		const [entry] = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+		const [entry] = await repository.findFeed({
+			projectIds: [project.id],
+			allowedCategories: ['workflow', 'credential'],
+			limit: 10,
+		});
 
 		expect(entry.data).toEqual({ truncated: true });
 	});
@@ -88,11 +102,16 @@ describe('ActivityEventRepository', () => {
 				resourceType: 'workflow',
 				resourceId: 'workflow-1',
 			});
-			const [written] = await repository.findFeed({ projectIds: [project.id], limit: 1 });
+			const [written] = await repository.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const entry = await repository.findEntry({
 				id: written.id,
 				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
 			});
 
 			expect(entry?.id).toBe(written.id);
@@ -110,15 +129,21 @@ describe('ActivityEventRepository', () => {
 				resourceType: 'workflow',
 				resourceId: 'not-yours',
 			});
-			const [written] = await repository.findFeed({ projectIds: [otherProject.id], limit: 1 });
+			const [written] = await repository.findFeed({
+				projectIds: [otherProject.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
 			const outOfScope = await repository.findEntry({
 				id: written.id,
 				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
 			});
 			const pruned = await repository.findEntry({
 				id: written.id + 10_000,
 				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
 			});
 
 			expect(outOfScope).toBeNull();
@@ -180,9 +205,19 @@ describe('ActivityEventRepository', () => {
 				resourceType: 'workflow',
 				resourceId: 'workflow-1',
 			});
-			const [written] = await repository.findFeed({ projectIds: [project.id], limit: 1 });
+			const [written] = await repository.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 1,
+			});
 
-			expect(await repository.findEntry({ id: written.id, projectIds: [] })).toBeNull();
+			expect(
+				await repository.findEntry({
+					id: written.id,
+					projectIds: [],
+					allowedCategories: ['workflow', 'credential'],
+				}),
+			).toBeNull();
 			expect(
 				await repository.findByResource({
 					resourceType: 'workflow',
@@ -202,6 +237,7 @@ describe('ActivityEventRepository', () => {
 			// Newest first, so the second row is the one written first.
 			const [newest, oldest] = await repository.findFeed({
 				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
 				limit: 10,
 			});
 			// `createdAt` defaults to now for both, so age one row explicitly rather than
@@ -212,7 +248,11 @@ describe('ActivityEventRepository', () => {
 			const deleted = await repository.deleteOlderThan(cutoff);
 
 			expect(deleted).toBe(1);
-			const remaining = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+			const remaining = await repository.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(remaining.map((entry) => entry.id)).toEqual([newest.id]);
 		});
 
@@ -259,8 +299,72 @@ describe('ActivityEventRepository', () => {
 			const deleted = await repository.deleteBeyondNewest(2);
 
 			expect(deleted).toBe(1);
-			const remaining = await repository.findFeed({ projectIds: [project.id], limit: 10 });
+			const remaining = await repository.findFeed({
+				projectIds: [project.id],
+				allowedCategories: ['workflow', 'credential'],
+				limit: 10,
+			});
 			expect(remaining.map((entry) => entry.action)).toEqual(['third', 'second']);
+		});
+	});
+
+	describe('findRecentAttributedByResource', () => {
+		// Real users: the column is a foreign key to the user table.
+		let alice: string;
+		let bob: string;
+		let carol: string;
+		beforeAll(async () => {
+			[alice, bob, carol] = (
+				await Promise.all([createMember(), createMember(), createMember()])
+			).map((user) => user.id);
+		});
+		const entry = async (resourceId: string, userId: string | null) =>
+			await repository.record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId,
+				userId,
+			});
+
+		it('returns the newest attributed entries per resource first, newest entry first', async () => {
+			await entry('wf-1', alice);
+			await entry('wf-1', bob);
+			await entry('wf-1', null);
+			await entry('wf-2', carol);
+			await entry('wf-3', alice);
+
+			const recent = await repository.findRecentAttributedByResource(
+				'workflow',
+				['wf-1', 'wf-2'],
+				10,
+			);
+
+			expect([...recent.keys()].sort()).toEqual(['wf-1', 'wf-2']);
+			expect(recent.get('wf-1')?.map((e) => e.userId)).toEqual([bob, alice]);
+			expect(recent.get('wf-2')?.map((e) => e.userId)).toEqual([carol]);
+		});
+
+		it('keeps at most the requested number of entries per resource', async () => {
+			await entry('wf-1', alice);
+			await entry('wf-1', bob);
+			await entry('wf-1', carol);
+
+			const recent = await repository.findRecentAttributedByResource('workflow', ['wf-1'], 2);
+
+			expect(recent.get('wf-1')?.map((e) => e.userId)).toEqual([carol, bob]);
+		});
+
+		it('omits a resource with no attributed entry and returns nothing for no ids', async () => {
+			await entry('wf-1', null);
+
+			expect(await repository.findRecentAttributedByResource('workflow', ['wf-1'], 10)).toEqual(
+				new Map(),
+			);
+			expect(await repository.findRecentAttributedByResource('workflow', [], 10)).toEqual(
+				new Map(),
+			);
 		});
 	});
 });

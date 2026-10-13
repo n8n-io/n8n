@@ -5,7 +5,13 @@ import { waitFor } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { GLOBAL_ADMIN_SCOPES } from '@n8n/permissions';
 import InstanceRoleView from './InstanceRoleView.vue';
+import {
+	BASELINE_INSTANCE_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+	MANDATORY_INSTANCE_SCOPES,
+} from '@n8n/permissions';
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
@@ -42,8 +48,8 @@ const mockCustomRole = {
 	displayName: 'Support',
 	slug: 'support',
 	description: 'A custom instance role',
-	// The mandatory options every instance role carries — see MANDATORY_INSTANCE_OPTIONS.
-	scopes: ['user:list', 'tag:read', 'tag:list'],
+	// The mandatory options and baseline scopes every instance role carries.
+	scopes: [...MANDATORY_INSTANCE_SCOPES],
 	licensed: true,
 	systemRole: false,
 	roleType: 'global' as const,
@@ -54,6 +60,26 @@ const mockSystemRole = {
 	slug: 'global:admin',
 	description: 'System admin role',
 	scopes: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
+	licensed: true,
+	systemRole: true,
+	roleType: 'global' as const,
+};
+
+const mockMemberRole = {
+	displayName: 'Member',
+	slug: 'global:member',
+	description: 'Can create and use their own workflows and credentials',
+	scopes: [...GLOBAL_MEMBER_SCOPES],
+	licensed: true,
+	systemRole: true,
+	roleType: 'global' as const,
+};
+
+const mockChatRole = {
+	displayName: 'Chat',
+	slug: 'global:chatUser',
+	description: 'Can only use chat',
+	scopes: ['chatHub:message'],
 	licensed: true,
 	systemRole: true,
 	roleType: 'global' as const,
@@ -79,7 +105,7 @@ describe('InstanceRoleView', () => {
 		createTestingPinia();
 		rolesStore = mockedStore(useRolesStore);
 		rolesStore.fetchRoles.mockResolvedValue();
-		rolesStore.processedInstanceRoles = [mockSystemRole];
+		rolesStore.processedInstanceRoles = [mockSystemRole, mockMemberRole, mockChatRole];
 	});
 
 	describe('Create', () => {
@@ -97,7 +123,7 @@ describe('InstanceRoleView', () => {
 					displayName: 'Support',
 					description: '',
 					// Mandatory on every instance role — see instanceRoleScopes.ts.
-					scopes: ['user:list', 'tag:read', 'tag:list'],
+					scopes: [...MANDATORY_INSTANCE_SCOPES],
 					roleType: 'global',
 				});
 			});
@@ -153,6 +179,34 @@ describe('InstanceRoleView', () => {
 			});
 		});
 
+		it('ticks Credentials "Manage" when starting from the real Admin preset', async () => {
+			// Before the credential group existed, setPreset's ALL_INSTANCE_SCOPES filter
+			// silently dropped all 12 credential scopes, so "Start from Admin" produced a
+			// role that could not see credentials at all. It now ticks Credentials Manage.
+			rolesStore.processedInstanceRoles = [
+				{ ...mockSystemRole, scopes: [...GLOBAL_ADMIN_SCOPES] },
+			] as typeof rolesStore.processedInstanceRoles;
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+					'false',
+				),
+			);
+
+			await userEvent.click(getByTestId('role-preset-global:admin'));
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+					'true',
+				),
+			);
+			// The lower rungs render as implied, not as independent selections.
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
+		});
+
 		it('populates scopes from a system-role preset', async () => {
 			const { getByTestId } = renderComponent();
 
@@ -166,6 +220,121 @@ describe('InstanceRoleView', () => {
 			await waitFor(() =>
 				expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('true'),
 			);
+		});
+
+		it('offers the Member and Admin system roles as presets, in that order, but not Chat', async () => {
+			const { container, queryByTestId } = renderComponent();
+
+			await waitFor(() => expect(queryByTestId('role-preset-global:member')).toBeInTheDocument());
+
+			const presets = Array.from(container.querySelectorAll('[data-test-id^="role-preset-"]')).map(
+				(el) => el.getAttribute('data-test-id'),
+			);
+			expect(presets).toEqual(['role-preset-global:member', 'role-preset-global:admin']);
+		});
+
+		it('populates the options Member grants in full from the Member preset, with no half-checked box', async () => {
+			const { container, getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-settings-mcp-use').getAttribute('aria-checked')).toBe(
+					'false',
+				),
+			);
+
+			await userEvent.click(getByTestId('role-preset-global:member'));
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-settings-mcp-use').getAttribute('aria-checked')).toBe(
+					'true',
+				),
+			);
+			for (const testId of [
+				'scope-option-settings-aiassistant-use',
+				'scope-option-apiKey-manage-own',
+				'scope-option-variable-view',
+			]) {
+				expect(getByTestId(testId).getAttribute('aria-checked')).toBe('true');
+			}
+			expect(getByTestId('scope-option-settings-manage').getAttribute('aria-checked')).toBe(
+				'false',
+			);
+			// Member holds four of the five Tags scopes: the partial option is left
+			// out of the preset instead of rendering half-checked.
+			expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('false');
+			const halfChecked = Array.from(
+				container.querySelectorAll('[data-test-id^="scope-option-"]'),
+			).filter((el) => el.getAttribute('aria-checked') === 'mixed');
+			expect(halfChecked).toHaveLength(0);
+		});
+
+		it('highlights the preset the form matches and drops the highlight on any change', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('role-preset-global:member')).toBeInTheDocument());
+			// A new role starts with the mandatory scopes only: no preset matches yet.
+			expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('false');
+			expect(getByTestId('role-preset-global:admin').getAttribute('aria-pressed')).toBe('false');
+
+			await userEvent.click(getByTestId('role-preset-global:member'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
+			);
+			expect(getByTestId('role-preset-global:admin').getAttribute('aria-pressed')).toBe('false');
+
+			// Any change to the form drops the highlight ...
+			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('false'),
+			);
+
+			// ... and it returns once the form matches the preset again.
+			await userEvent.click(getByTestId('scope-option-project-create'));
+
+			await waitFor(() =>
+				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
+			);
+		});
+	});
+
+	describe('Loading', () => {
+		it('shows the name and description of a role the roles list already holds before the fetch resolves', async () => {
+			// Never resolves: everything asserted below comes from the store, not the fetch.
+			rolesStore.fetchRoleBySlug.mockReturnValue(new Promise(() => {}));
+			rolesStore.roles.global = [mockCustomRole];
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput, descriptionInput } = getFormElements(container);
+				expect(nameInput.value).toBe('Support');
+				expect(descriptionInput.value).toBe('A custom instance role');
+			});
+			expect(getByRole('heading', { level: 1 })).toHaveTextContent('Role "Support"');
+		});
+
+		it('replaces the cached role with the fetched one and keeps the form clean', async () => {
+			rolesStore.roles.global = [mockCustomRole];
+			rolesStore.fetchRoleBySlug.mockResolvedValue({ ...mockCustomRole, displayName: 'Helpdesk' });
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => expect(getFormElements(container).nameInput.value).toBe('Helpdesk'));
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
+		});
+
+		it('empties the form when the fetch fails, even for a cached role', async () => {
+			rolesStore.roles.global = [mockCustomRole];
+			const error = new Error('boom');
+			rolesStore.fetchRoleBySlug.mockRejectedValue(error);
+
+			const { container, queryByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, 'Error fetching role'));
+			expect(getFormElements(container).nameInput.value).toBe('');
+			expect(queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
 		});
 	});
 
@@ -191,7 +360,7 @@ describe('InstanceRoleView', () => {
 				expect(rolesStore.updateRole).toHaveBeenCalledWith('support', {
 					displayName: 'Support 2',
 					description: 'A custom instance role',
-					scopes: ['user:list', 'tag:read', 'tag:list'],
+					scopes: [...MANDATORY_INSTANCE_SCOPES],
 				});
 			});
 			expect(mockShowMessage).toHaveBeenCalledWith({
@@ -227,7 +396,7 @@ describe('InstanceRoleView', () => {
 				expect(rolesStore.updateRole).toHaveBeenCalledWith('support', {
 					displayName: 'Support 2',
 					description: 'A custom instance role',
-					scopes: ['user:list', 'tag:read', 'tag:list'],
+					scopes: [...MANDATORY_INSTANCE_SCOPES],
 				});
 			});
 		});
@@ -319,7 +488,7 @@ describe('InstanceRoleView', () => {
 		it('does not mark a role unsaved when only non-editor scopes were stripped', async () => {
 			rolesStore.fetchRoleBySlug.mockResolvedValue({
 				...mockCustomRole,
-				scopes: ['user:list', 'tag:read', 'tag:list', 'workflow:read'],
+				scopes: [...MANDATORY_INSTANCE_SCOPES, 'workflow:read'],
 			});
 
 			const { getByRole, container } = renderComponent({ props: { roleSlug: 'support' } });
@@ -340,7 +509,7 @@ describe('InstanceRoleView', () => {
 			rolesStore.fetchRoleBySlug.mockResolvedValue(legacyRole);
 			rolesStore.updateRole.mockResolvedValueOnce({
 				...legacyRole,
-				scopes: [...legacyRole.scopes, 'user:list'],
+				scopes: [...legacyRole.scopes, 'user:list', ...BASELINE_INSTANCE_SCOPES],
 			});
 
 			const { getByRole, getByTestId } = renderComponent({ props: { roleSlug: 'support' } });
@@ -358,7 +527,16 @@ describe('InstanceRoleView', () => {
 				expect(rolesStore.updateRole).toHaveBeenCalledWith('support', {
 					displayName: 'Support',
 					description: 'A custom instance role',
-					scopes: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete', 'user:list'],
+					// The editor unions in the missing mandatory scopes: Users View and the baseline.
+					scopes: [
+						'tag:read',
+						'tag:list',
+						'tag:create',
+						'tag:update',
+						'tag:delete',
+						'user:list',
+						...BASELINE_INSTANCE_SCOPES,
+					],
 				});
 			});
 		});
@@ -371,7 +549,7 @@ describe('InstanceRoleView', () => {
 			rolesStore.fetchRoleBySlug.mockResolvedValue(preTagViewRole);
 			rolesStore.updateRole.mockResolvedValueOnce({
 				...preTagViewRole,
-				scopes: ['user:list', 'tag:read', 'tag:list'],
+				scopes: [...MANDATORY_INSTANCE_SCOPES],
 			});
 
 			const { getByRole, getByTestId } = renderComponent({ props: { roleSlug: 'support' } });
@@ -390,7 +568,7 @@ describe('InstanceRoleView', () => {
 				expect(rolesStore.updateRole).toHaveBeenCalledWith('support', {
 					displayName: 'Support',
 					description: 'A custom instance role',
-					scopes: ['user:list', 'tag:read', 'tag:list'],
+					scopes: [...MANDATORY_INSTANCE_SCOPES],
 				});
 			});
 		});

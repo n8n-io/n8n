@@ -123,6 +123,26 @@ function toggleScope(scope: string) {
 		}
 	}
 
+	// Executions: viewing follows workflow viewing and cannot be toggled on its own
+	// (its checkbox is disabled); deleting requires viewing.
+	if (scope === 'workflow:read') {
+		if (isBeingAdded && !form.value.scopes.includes('execution:read')) {
+			toggleScope('execution:read');
+		}
+		if (!isBeingAdded) {
+			if (form.value.scopes.includes('execution:read')) toggleScope('execution:read');
+			if (form.value.scopes.includes('execution:delete')) toggleScope('execution:delete');
+		}
+	}
+
+	if (
+		scope === 'execution:delete' &&
+		isBeingAdded &&
+		!form.value.scopes.includes('workflow:read')
+	) {
+		toggleScope('workflow:read');
+	}
+
 	// Dependency: workflow:publish and workflow:unpublish are coupled
 	if (scope === 'workflow:publish') {
 		if (isBeingAdded && !form.value.scopes.includes('workflow:unpublish')) {
@@ -342,13 +362,13 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				</N8nText>
 
 				<div class="mb-s" :class="$style.presetsContainer">
-					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+					<N8nButton variant="outline" @click="setPreset('project:admin')">
 						{{ i18n.baseText('projectRoles.admin') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+					<N8nButton variant="outline" @click="setPreset('project:editor')">
 						{{ i18n.baseText('projectRoles.editor') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+					<N8nButton variant="outline" @click="setPreset('project:viewer')">
 						{{ i18n.baseText('projectRoles.viewer') }}
 					</N8nButton>
 				</div>
@@ -376,7 +396,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 										validate-on-blur
 										type="checkbox"
 										:class="$style.checkbox"
-										:disabled="isReadOnly"
+										:disabled="isReadOnly || scope === 'execution:read'"
 										@update:model-value="() => toggleScope(scope)"
 									/>
 								</N8nTooltip>

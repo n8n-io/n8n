@@ -29,6 +29,10 @@ vi.mock('../data-tables.tool', () => ({
 	})),
 }));
 
+vi.mock('../agent-context.tool', () => ({
+	createAgentContextTool: vi.fn(() => ({ id: 'agent-context' })),
+}));
+
 vi.mock('../executions.tool', () => ({
 	createExecutionsTool: vi.fn(() => ({ id: 'executions' })),
 }));
@@ -37,6 +41,10 @@ vi.mock('../nodes.tool', () => ({
 	createNodesTool: vi.fn((_context: unknown, scope?: string) => ({
 		id: scope ? `nodes-${scope}` : 'nodes',
 	})),
+}));
+
+vi.mock('../search-models.tool', () => ({
+	createSearchModelsTool: vi.fn(() => ({ id: 'searchModels' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -49,10 +57,6 @@ vi.mock('../mcp-servers.tool', () => ({
 
 vi.mock('../orchestration/build-agent.tool', () => ({
 	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
-}));
-
-vi.mock('../orchestration/list-agent-capabilities.tool', () => ({
-	createListAgentCapabilitiesTool: vi.fn(() => ({ id: 'list-agent-capabilities' })),
 }));
 
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
@@ -135,6 +139,7 @@ describe('domain tool construction', () => {
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
+			searchModels: { id: 'searchModels' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
 		});
@@ -143,10 +148,17 @@ describe('domain tool construction', () => {
 
 		const { createWorkflowsTool } = await import('../workflows.tool.js');
 		const { createNodesTool } = await import('../nodes.tool.js');
+		const { createSearchModelsTool } = await import('../search-models.tool.js');
 		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
 		expect(createNodesTool).toHaveBeenCalledWith(context);
+		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+	});
+
+	it('makes model catalog search discoverable without loading it for every turn', () => {
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('searchModels');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('searchModels')).toBe(false);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -225,17 +237,33 @@ describe('domain tool construction', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('activity')).toBe(true);
 	});
 
+	it('registers save_user_preference only when the preference service is wired', () => {
+		const without = getActiveOrchestratorDomainToolNames(makeContext());
+		expect(without.has('save_user_preference')).toBe(false);
+
+		const context = makeContext();
+		context.aiPreferenceService = { create: vi.fn(), recordRejection: vi.fn() };
+		const withService = getActiveOrchestratorDomainToolNames(context);
+		expect(withService.has('save_user_preference')).toBe(true);
+	});
+
 	it('never defers mcp-servers behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('mcp-servers')).toBe(true);
 	});
 
-	it('pairs list-agent-capabilities with build-agent in the always-loaded set', () => {
-		// Both are gated on the agents feature flag at module load time, so they
-		// must always be in or out together — the orchestrator needs to check
-		// support during intent recognition on the same footing as build-agent.
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('list-agent-capabilities')).toBe(
-			ALWAYS_LOADED_TOOL_NAMES.has('build-agent'),
-		);
+	it('gates Agent context on the project-scoped reader', () => {
+		const disabled = makeContext();
+		expect(createOrchestratorDomainTools(disabled).get('agent-context')).toBeUndefined();
+
+		const enabled = makeContext({
+			agentContextService: {} as InstanceAiContext['agentContextService'],
+		});
+		expect(createOrchestratorDomainTools(enabled).get('agent-context')).toBeDefined();
+		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('agent-context');
+	});
+
+	it('never defers Agent context lookup behind search_tools', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});
 
 	it('constructs create-tasks for the agent to apply profile exclusions', () => {
@@ -255,7 +283,6 @@ describe('domain tool construction', () => {
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
 		);
 		expect(withoutDelegate.has('build-agent')).toBe(false);
-		expect(withoutDelegate.has('list-agent-capabilities')).toBe(false);
 
 		const withDelegate = createOrchestrationTools(
 			makeContext({
@@ -264,7 +291,6 @@ describe('domain tool construction', () => {
 		);
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
-			'list-agent-capabilities': { id: 'list-agent-capabilities' },
 		});
 	});
 

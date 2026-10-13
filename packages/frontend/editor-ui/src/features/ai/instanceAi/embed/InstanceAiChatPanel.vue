@@ -18,20 +18,27 @@ import {
 	onBeforeUnmount,
 	onMounted,
 	onUnmounted,
+	provide,
 	ref,
 	watch,
 } from 'vue';
 import { useRouter } from 'vue-router';
-import type { InstanceAiHandoffContext, InstanceAiThreadSummary } from '@n8n/api-types';
-import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiPrefillPayload,
+	InstanceAiThreadSummary,
+} from '@n8n/api-types';
+import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getThreadDisplayTitle } from '../instanceAi.threadRuntime';
 import { provideThread, useInstanceAiStore } from '../instanceAi.store';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	provisionSubjectThread,
 	stashPendingComposerDraft,
@@ -41,8 +48,13 @@ import {
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
-import { threadTargetsSubject, type InstanceAiEmbedSubject } from './instanceAiEmbed.types';
+import {
+	INSTANCE_AI_EMBED_SUBJECT_KEY,
+	threadTargetsSubject,
+	type InstanceAiEmbedSubject,
+} from './instanceAiEmbed.types';
 
 const props = defineProps<{
 	subject: InstanceAiEmbedSubject;
@@ -60,12 +72,30 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
+const slots = defineSlots<{
+	/** A host's welcome state, rendered by the conversation until the thread has its first message. */
+	empty?: () => unknown;
+}>();
+
 const i18n = useI18n();
+const { isCtrlKeyPressed } = useDeviceSupport();
 const toast = useToast();
 const router = useRouter();
 const store = useInstanceAiStore();
 const subject = computed(() => props.subject);
 const { threads } = useInstanceAiEmbedThreads(subject);
+provide(INSTANCE_AI_EMBED_SUBJECT_KEY, subject);
+
+// No preview panel here: artifact cards and chips open their resource in a new
+// tab, so the host page (and this conversation) stays put.
+function openInNewTab(path: string): boolean {
+	window.open(path, '_blank', 'noopener');
+	return true;
+}
+provide('openWorkflowPreview', (id: string) => openInNewTab(`/workflow/${id}`));
+provide('openAgentPreview', (id: string, projectId: string) =>
+	openInNewTab(`/projects/${projectId}/agents/${id}`),
+);
 // Scopes the header's popover history to this panel's subject — a stable
 // function reference so the list's `filter` prop doesn't re-run on every render.
 function threadFilter(thread: InstanceAiThreadSummary): boolean {
@@ -156,7 +186,30 @@ function handoff(context: InstanceAiHandoffContext, initialDraft?: PendingCompos
 	return true;
 }
 
-defineExpose({ handoff });
+/**
+ * Puts n8n-authored text into the mounted conversation's composer without
+ * sending it. The host (e.g. the agent builder) owns the wording and the
+ * pre-fill tag. A no-op while no thread is mounted yet.
+ */
+function setPrefill(prefill: InstanceAiPrefillPayload) {
+	conversationRef.value?.setPrefill(prefill);
+}
+
+/**
+ * Sends a prompt to the assistant right away, without staging it in the
+ * composer first. The host (e.g. the agent builder) owns the wording and the
+ * pre-fill tag. A no-op while no thread is mounted yet.
+ */
+function submitSuggestion(payload: SuggestionSelectionPayload) {
+	conversationRef.value?.submitSuggestion(payload);
+}
+
+defineExpose({
+	handoff,
+	/** Forwards to the mounted conversation's composer; a no-op while no thread is mounted. */
+	setPrefill,
+	submitSuggestion,
+});
 
 /** The assistant is actively mutating the subject — the thread list stops
  * accepting select/new while that's true, so a click can't race it. */
@@ -380,34 +433,57 @@ const ThreadScope = defineComponent({
 			{ immediate: true },
 		);
 		return () =>
-			h(InstanceAiConversation, {
-				// Closes over the outer scope's ref directly — `ThreadScope` is
-				// defined inside the panel's own `<script setup>`, and this is the
-				// only place that can reach the mounted conversation for `handoff()`.
-				ref: conversationRef,
-				// Forward the live subject so the chat-input context chip follows a
-				// host rename instead of the snapshot stashed at thread mint.
-				subject: props.subject,
-				beforeSend: props.beforeSend,
-				onThreadMissing: () => scopeEmit('thread-missing'),
-			});
+			h(
+				InstanceAiConversation,
+				{
+					// Closes over the outer scope's ref directly — `ThreadScope` is
+					// defined inside the panel's own `<script setup>`, and this is the
+					// only place that can reach the mounted conversation for `handoff()`.
+					ref: conversationRef,
+					// Forward the live subject so the chat-input context chip follows a
+					// host rename instead of the snapshot stashed at thread mint.
+					subject: props.subject,
+					beforeSend: props.beforeSend,
+					onThreadMissing: () => scopeEmit('thread-missing'),
+				},
+				slots.empty ? { empty: slots.empty } : undefined,
+			);
 	},
 });
+
+/** Handle shortcuts locally instead of useKeybindings because ChatInput has canvas paste protection. */
+function handleCloseShortcut(event: KeyboardEvent) {
+	if (
+		event.defaultPrevented ||
+		event.isComposing ||
+		event.shiftKey ||
+		event.altKey ||
+		(event.target instanceof Element && event.target.closest('[role="dialog"]'))
+	) {
+		return;
+	}
+
+	const isEscape = event.key === 'Escape' && !event.ctrlKey && !event.metaKey;
+	const isToggleShortcut = event.key.toLowerCase() === 'j' && isCtrlKeyPressed(event);
+	if (!isEscape && !isToggleShortcut) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	emit('close');
+}
 </script>
 
 <template>
-	<div :class="$style.panel" data-test-id="instance-ai-embed-panel">
+	<div :class="$style.panel" data-test-id="instance-ai-embed-panel" @keydown="handleCloseShortcut">
 		<InstanceAiViewHeader
+			:title="currentThreadTitle"
 			:thread-id="activeThreadId"
 			:thread-list="{ filter: threadFilter, navigate: false, disabled: building }"
 			@select="onThreadSelect"
 			@deleted="onThreadDeleted"
 		>
-			<template #title>
-				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.title">
-					{{ currentThreadTitle }}
-				</N8nHeading>
-			</template>
 			<template #actions>
 				<N8nTooltip
 					:content="i18n.baseText('instanceAi.thread.new')"
@@ -415,7 +491,7 @@ const ThreadScope = defineComponent({
 					:show-after="TOOLTIP_DELAY_MS"
 				>
 					<N8nIconButton
-						icon="plus"
+						icon="message-circle-plus"
 						variant="ghost"
 						size="small"
 						icon-size="large"
@@ -440,21 +516,21 @@ const ThreadScope = defineComponent({
 						@click="openFullAssistant"
 					/>
 				</N8nTooltip>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.embed.close')"
+				<KeyboardShortcutTooltip
 					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
+					:label="i18n.baseText('generic.close')"
+					:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 				>
 					<N8nIconButton
 						icon="x"
 						variant="ghost"
 						size="small"
 						icon-size="large"
-						:aria-label="i18n.baseText('instanceAi.embed.close')"
+						:aria-label="i18n.baseText('generic.close')"
 						data-test-id="instance-ai-embed-close"
 						@click="emit('close')"
 					/>
-				</N8nTooltip>
+				</KeyboardShortcutTooltip>
 			</template>
 		</InstanceAiViewHeader>
 		<div :class="$style.body">
@@ -481,12 +557,6 @@ const ThreadScope = defineComponent({
 	height: 100%;
 	min-height: 0;
 	min-width: 0;
-}
-
-.title {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .body {

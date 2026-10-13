@@ -263,6 +263,10 @@ export class NotionTrigger implements INodeType {
 				default: true,
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
+				builderHint: {
+					propertyHint:
+						'When true, returns id and simplified database properties under their original names and case, such as $json.Status and $json.Owner. The trigger does not add the property_ prefix. Rich-text values are strings. Status values use the status name when present. People values are arrays of email addresses, with {} for missing emails. Match downstream expressions and verification output fixtures to this trigger output. When false, read the native properties object, including people entries when you need person names.',
+				},
 			},
 		],
 	};

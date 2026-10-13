@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -112,7 +113,9 @@ const runStepAction = z.object({
 				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
 				'performs the effect again. Read the failed execution with action="debug" ' +
 				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
-				'node as a write.',
+				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
+				"mockInput and reuseExecutionId feed that node and the tool's own " +
+				'arguments come from toolArguments. No other sub-node kind can run.',
 		),
 	workflowId: z.string().describe('Workflow ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -136,6 +139,16 @@ const runStepAction = z.object({
 				'produces, so use reuseExecutionId or a chain run when that is the ' +
 				'question. This does not make a write node safe: the node still runs for ' +
 				'real, only its input is invented.',
+		),
+	toolArguments: z
+		.union([z.string(), z.record(z.unknown())])
+		.optional()
+		.describe(
+			'Only for a tool node: the arguments an agent would pass it. Keys are the ' +
+				"tool's $fromAI argument names. Pass a plain string for a tool that takes " +
+				'one free-text input (Wikipedia, Code Tool, a vector store used as a ' +
+				'tool). Required when the node declares $fromAI arguments, because the ' +
+				'tool runs with empty arguments otherwise.',
 		),
 	versionId: z
 		.string()
@@ -416,11 +429,20 @@ async function handleRun(
 	}
 
 	// Approved or always_allow — execute
-	return await context.executionService.run(workflowId, input.inputData, {
+	const result = await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
 	});
+	// A live test is the evidence verification cannot produce itself. Record it
+	// so the publish gate stops disclosing simulations that this run replaced.
+	const verificationClaim = await recordLiveRunVerification({
+		context,
+		workflowId,
+		triggerNodeName: input.triggerNodeName,
+		result,
+	});
+	return verificationClaim ? { ...result, verificationClaim } : result;
 }
 
 /**
@@ -509,6 +531,7 @@ async function handleRunStep(
 	return await context.executionService.runStep(input.workflowId, input.nodeName, {
 		reuseExecutionId: input.reuseExecutionId,
 		mockInput: input.mockInput,
+		toolArguments: input.toolArguments,
 		versionId: input.versionId,
 		timeout: input.timeout,
 		abortSignal,

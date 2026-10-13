@@ -2,21 +2,12 @@ import {
 	buildN8nObservationLogObserverPrompt,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 	DEFAULT_OBSERVER_THRESHOLD_TOKENS,
-	DEFAULT_OBSERVER_PROMPT,
 } from '../observation-log-observer';
 
 describe('n8n observation-log observer policy', () => {
 	it('uses the n8n observer defaults', () => {
 		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(50_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
-		expect(DEFAULT_OBSERVER_PROMPT).toContain('Output the new observations only');
-		expect(DEFAULT_OBSERVER_PROMPT).toContain('CRITICAL. Things the agent must not forget');
-	});
-
-	it('uses parseable markdown bullets for good output examples', () => {
-		expect(DEFAULT_OBSERVER_PROMPT).toContain(
-			'GOOD:\n* IMPORTANT (14:30) User is purchasing Claude Code subscriptions for their team.',
-		);
 	});
 
 	it('builds the observer prompt from log tail and transcript delta', () => {

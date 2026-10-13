@@ -1,16 +1,30 @@
-import { ALL_SCOPES } from '@n8n/permissions';
+import {
+	ALL_SCOPES,
+	BASELINE_INSTANCE_SCOPES,
+	GLOBAL_ADMIN_SCOPES,
+	GLOBAL_CHAT_USER_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+	MANDATORY_INSTANCE_SCOPES,
+} from '@n8n/permissions';
 import {
 	INSTANCE_SCOPE_GROUPS,
 	INSTANCE_SCOPE_GROUP_LIST,
 	INSTANCE_RESOURCE_ORDER,
 	ALL_INSTANCE_SCOPES,
+	TOTAL_INSTANCE_PERMISSIONS,
+	countGrantedInstancePermissions,
+	getCoveredOptions,
 	getOptionState,
+	getPresetScopes,
 	getEscalationWarningKey,
+	findSubordinateOption,
+	impliedByOption,
 	isOptionImplied,
 	isOptionMandatory,
 	mandatoryOptionTooltipKey,
 	resolveOptionState,
 	toggleOptionInGroup,
+	supersedingKey,
 	withMandatoryInstanceScopes,
 } from './instanceRoleScopes';
 
@@ -121,7 +135,7 @@ describe('isOptionImplied', () => {
 	const allScopes = [...INSTANCE_SCOPE_GROUPS.apiKey['Manage all']];
 	const ownScopes = [...INSTANCE_SCOPE_GROUPS.apiKey['Manage own']];
 
-	it('returns false for an option that has no SUPERSEDED_BY entry', () => {
+	it('returns false for an option that nothing supersedes', () => {
 		expect(isOptionImplied(manageAll, apiKeyGroup.options, allScopes)).toBe(false);
 	});
 
@@ -359,16 +373,18 @@ describe('toggleOptionInGroup', () => {
 			expect(getOptionState(scopes, aiAssistantManage.scopes)).toBe('checked');
 		});
 
-		it('all four MCP/n8n Assistant options stay independently toggleable while "Manage all settings" is checked (none implied/disabled by it)', () => {
-			// Unlike apiKey's "Manage own"/"Manage all" tiering, none of these four
-			// are superseded by another option in this group — "Manage all settings"
-			// checks them via plain scope-superset arithmetic, not implication, so
-			// unchecking any one of the four must stay a single, direct click.
+		it('keeps "Mcp manage" and "AiAssistant manage" toggleable while "Manage all settings" is checked (not implied by it)', () => {
+			// "Manage all settings" checks them via plain scope-superset arithmetic,
+			// not implication, so unchecking either must stay a single, direct click.
 			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
-			expect(isOptionImplied(mcpUse, settingsGroup.options, scopes)).toBe(false);
 			expect(isOptionImplied(mcpManage, settingsGroup.options, scopes)).toBe(false);
-			expect(isOptionImplied(aiAssistantUse, settingsGroup.options, scopes)).toBe(false);
 			expect(isOptionImplied(aiAssistantManage, settingsGroup.options, scopes)).toBe(false);
+		});
+
+		it('implies "Mcp use" and "AiAssistant use" through their manage counterparts while "Manage all settings" is checked', () => {
+			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			expect(isOptionImplied(mcpUse, settingsGroup.options, scopes)).toBe(true);
+			expect(isOptionImplied(aiAssistantUse, settingsGroup.options, scopes)).toBe(true);
 		});
 
 		it('unchecking "Mcp manage" while "Manage all settings" is checked drops it out of the checked state', () => {
@@ -381,12 +397,18 @@ describe('toggleOptionInGroup', () => {
 			expect(afterUncheck).toContain('securitySettings:manage');
 		});
 
-		it('unchecking "AiAssistant use" while "Manage all settings" is checked drops it out of the checked state', () => {
+		it('unchecking "AiAssistant manage" while "Manage all settings" is checked drops it out of the checked state and keeps "AiAssistant use"', () => {
 			const fullyChecked = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
-			const afterUncheck = toggleOptionInGroup(fullyChecked, aiAssistantUse, settingsGroup.options);
+			const afterUncheck = toggleOptionInGroup(
+				fullyChecked,
+				aiAssistantManage,
+				settingsGroup.options,
+			);
 			expect(resolveOptionState(manageAllSettings, settingsGroup.options, afterUncheck)).not.toBe(
 				'checked',
 			);
+			expect(afterUncheck).not.toContain('aiAssistant:manage');
+			expect(getOptionState(afterUncheck, aiAssistantUse.scopes)).toBe('checked');
 		});
 	});
 });
@@ -436,8 +458,14 @@ describe('mandatory instance options', () => {
 		expect(mandatoryOptionTooltipKey('tag', tagManage)).toBeUndefined();
 	});
 
-	it("withMandatoryInstanceScopes adds every mandatory option's scopes to an empty list", () => {
-		expect(withMandatoryInstanceScopes([])).toEqual(['user:list', 'tag:read', 'tag:list']);
+	it("withMandatoryInstanceScopes adds every mandatory option's scopes and the baseline scopes to an empty list", () => {
+		expect(withMandatoryInstanceScopes([])).toEqual([
+			'user:list',
+			'tag:read',
+			'tag:list',
+			...BASELINE_INSTANCE_SCOPES,
+		]);
+		expect(withMandatoryInstanceScopes([])).toEqual([...MANDATORY_INSTANCE_SCOPES]);
 	});
 
 	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
@@ -457,5 +485,323 @@ describe('mandatory instance options', () => {
 				...tagView.scopes,
 			]),
 		);
+	});
+});
+
+describe('baseline instance scopes in the editor', () => {
+	it('keeps them in ALL_INSTANCE_SCOPES so a stored role does not lose them on save', () => {
+		for (const scope of BASELINE_INSTANCE_SCOPES) {
+			expect(ALL_INSTANCE_SCOPES).toContain(scope);
+		}
+	});
+
+	it('does not count them toward any option', () => {
+		// The Chat role holds chatHub:message and nothing else the editor knows.
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				expect(resolveOptionState(option, group.options, [...BASELINE_INSTANCE_SCOPES])).toBe(
+					'unchecked',
+				);
+			}
+		}
+		expect(countGrantedInstancePermissions([...BASELINE_INSTANCE_SCOPES])).toBe(0);
+	});
+});
+
+describe('MCP and n8n Assistant use/manage tiering', () => {
+	const settingsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'settings')!;
+	const manageAllSettings = settingsGroup.options.find((o) => o.key === 'Manage')!;
+	const mcpUse = settingsGroup.options.find((o) => o.key === 'Mcp use')!;
+	const mcpManage = settingsGroup.options.find((o) => o.key === 'Mcp manage')!;
+	const aiAssistantUse = settingsGroup.options.find((o) => o.key === 'AiAssistant use')!;
+	const aiAssistantManage = settingsGroup.options.find((o) => o.key === 'AiAssistant manage')!;
+
+	it('resolves "manage" as unchecked (not indeterminate) when only "use" is present', () => {
+		// The Member role holds exactly the "use" scopes of both.
+		expect(resolveOptionState(mcpManage, settingsGroup.options, mcpUse.scopes)).toBe('unchecked');
+		expect(
+			resolveOptionState(aiAssistantManage, settingsGroup.options, aiAssistantUse.scopes),
+		).toBe('unchecked');
+	});
+
+	it('implies "use" while "manage" is fully checked, and not otherwise', () => {
+		expect(isOptionImplied(mcpUse, settingsGroup.options, mcpManage.scopes)).toBe(true);
+		expect(isOptionImplied(aiAssistantUse, settingsGroup.options, aiAssistantManage.scopes)).toBe(
+			true,
+		);
+		expect(isOptionImplied(mcpUse, settingsGroup.options, mcpUse.scopes)).toBe(false);
+	});
+
+	it('downgrades to "use" when unchecking "manage"', () => {
+		expect(
+			new Set(toggleOptionInGroup(mcpManage.scopes, mcpManage, settingsGroup.options)),
+		).toEqual(new Set(mcpUse.scopes));
+		expect(
+			new Set(
+				toggleOptionInGroup(aiAssistantManage.scopes, aiAssistantManage, settingsGroup.options),
+			),
+		).toEqual(new Set(aiAssistantUse.scopes));
+	});
+
+	it('lets "Manage all settings" cover the four MCP/n8n Assistant options without implying them', () => {
+		expect(
+			getCoveredOptions(manageAllSettings, settingsGroup.options)
+				.map((o) => o.key)
+				.sort(),
+		).toEqual(['AiAssistant manage', 'AiAssistant use', 'Mcp manage', 'Mcp use']);
+		expect(isOptionImplied(mcpManage, settingsGroup.options, manageAllSettings.scopes)).toBe(false);
+		expect(
+			isOptionImplied(aiAssistantManage, settingsGroup.options, manageAllSettings.scopes),
+		).toBe(false);
+	});
+});
+
+describe('implied options', () => {
+	it('returns checked for an implied option whose own scopes the role does not list', () => {
+		// Admin holds role:manage, not role:manageProject; "Manage project roles" is
+		// granted through "Manage all roles" and must not render half-checked.
+		const roleGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'role')!;
+		const manageProjectRoles = roleGroup.options.find((o) => o.key === 'Manage project roles')!;
+		expect(
+			resolveOptionState(manageProjectRoles, roleGroup.options, ['role:read', 'role:manage']),
+		).toBe('checked');
+	});
+});
+
+describe('system roles', () => {
+	const optionsInState = (roleScopes: readonly string[], state: string) =>
+		INSTANCE_SCOPE_GROUP_LIST.flatMap((group) =>
+			group.options
+				.filter((option) => resolveOptionState(option, group.options, roleScopes) === state)
+				.map((option) => `${group.resource}: ${option.key}`),
+		);
+
+	it('Admin resolves every option as checked, "Manage project roles" through "Manage all roles"', () => {
+		// Admin holds role:manage but not role:manageProject.
+		expect(GLOBAL_ADMIN_SCOPES).not.toContain('role:manageProject');
+		expect(optionsInState(GLOBAL_ADMIN_SCOPES, 'checked')).toHaveLength(TOTAL_INSTANCE_PERMISSIONS);
+		expect(countGrantedInstancePermissions(GLOBAL_ADMIN_SCOPES)).toBe(TOTAL_INSTANCE_PERMISSIONS);
+	});
+
+	it('Chat resolves no option as indeterminate', () => {
+		expect(optionsInState(GLOBAL_CHAT_USER_SCOPES, 'indeterminate')).toEqual([]);
+	});
+
+	it('Member resolves no option as indeterminate, except Tags "Manage"', () => {
+		// Member holds every Tags scope but tag:delete. Whether Manage stops
+		// including delete or Member gains it is a product call; drop this
+		// exception once Member covers the option in full.
+		expect(optionsInState(GLOBAL_MEMBER_SCOPES, 'indeterminate')).toEqual(['tag: Manage']);
+	});
+
+	it('Member fully grants MCP use, n8n Assistant use, Users View, Tags View, Variables View and API keys Manage own, and nothing else', () => {
+		expect(optionsInState(GLOBAL_MEMBER_SCOPES, 'checked').sort()).toEqual([
+			'apiKey: Manage own',
+			'settings: AiAssistant use',
+			'settings: Mcp use',
+			'tag: View',
+			'user: View',
+			'variable: View',
+		]);
+	});
+});
+
+describe('getPresetScopes', () => {
+	it('copies every option Admin grants in full; the implied "Manage project roles" is left to "Manage all roles"', () => {
+		// Admin holds role:manage but not role:manageProject, and the preset copies
+		// what the role holds, not what the editor implies from it.
+		expect(new Set(getPresetScopes(GLOBAL_ADMIN_SCOPES))).toEqual(
+			new Set(ALL_INSTANCE_SCOPES.filter((scope) => scope !== 'role:manageProject')),
+		);
+	});
+
+	it('copies only the options Member grants in full and drops scopes the editor does not expose', () => {
+		const settingsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'settings')!;
+		const apiKeyGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'apiKey')!;
+		const variableGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'variable')!;
+		const mcpUse = settingsGroup.options.find((o) => o.key === 'Mcp use')!;
+		const aiAssistantUse = settingsGroup.options.find((o) => o.key === 'AiAssistant use')!;
+		const manageOwn = apiKeyGroup.options.find((o) => o.key === 'Manage own')!;
+		const variableView = variableGroup.options.find((o) => o.key === 'View')!;
+
+		const preset = getPresetScopes(GLOBAL_MEMBER_SCOPES);
+
+		expect(new Set(preset)).toEqual(
+			new Set([
+				...mcpUse.scopes,
+				...aiAssistantUse.scopes,
+				...manageOwn.scopes,
+				...variableView.scopes,
+				...MANDATORY_INSTANCE_SCOPES,
+			]),
+		);
+		// Member's partial Tags "Manage" subset and its chat agent / annotation scopes are left out.
+		expect(preset).not.toContain('tag:create');
+		expect(preset).not.toContain('chatHubAgent:create');
+		expect(preset).not.toContain('annotationTag:read');
+	});
+
+	it('always includes the mandatory scopes, even for a role that grants no option', () => {
+		expect(getPresetScopes(GLOBAL_CHAT_USER_SCOPES)).toEqual(withMandatoryInstanceScopes([]));
+	});
+
+	it('never yields a half-checked option', () => {
+		for (const roleScopes of [GLOBAL_ADMIN_SCOPES, GLOBAL_MEMBER_SCOPES, GLOBAL_CHAT_USER_SCOPES]) {
+			const preset = getPresetScopes(roleScopes);
+			for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+				for (const option of group.options) {
+					expect(resolveOptionState(option, group.options, preset)).not.toBe('indeterminate');
+				}
+			}
+		}
+	});
+});
+
+describe('credential three-rung ladder (View / Use / Manage)', () => {
+	const group = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'credential')!;
+	const view = group.options.find((o) => o.key === 'View')!;
+	const use = group.options.find((o) => o.key === 'Use')!;
+	const manage = group.options.find((o) => o.key === 'Manage')!;
+
+	it('renders the three rungs in View, Use, Manage order', () => {
+		expect(group.options.map((o) => o.key)).toEqual(['View', 'Use', 'Manage']);
+	});
+
+	it('declares the ladder View -> Use -> Manage', () => {
+		// One shared map serves every group. Without the Use rung between them,
+		// unchecking Manage would skip Use and drop straight to View.
+		expect(supersedingKey('View')).toBe('Use');
+		expect(supersedingKey('Use')).toBe('Manage');
+		expect(supersedingKey('Manage')).toBeUndefined();
+	});
+
+	it('implies View under a checked Use', () => {
+		expect(isOptionImplied(view, group.options, [...use.scopes])).toBe(true);
+	});
+
+	it('implies both View and Use under a checked Manage (transitive walk)', () => {
+		// Manage supersedes Use directly and View only through Use. A non-transitive
+		// lookup would leave View enabled and clickable under a checked Manage.
+		const scopes = [...manage.scopes];
+		expect(isOptionImplied(use, group.options, scopes)).toBe(true);
+		expect(isOptionImplied(view, group.options, scopes)).toBe(true);
+	});
+
+	it('implies nothing when only View is checked', () => {
+		const scopes = [...view.scopes];
+		expect(isOptionImplied(view, group.options, scopes)).toBe(false);
+		expect(isOptionImplied(use, group.options, scopes)).toBe(false);
+		expect(isOptionImplied(manage, group.options, scopes)).toBe(false);
+	});
+
+	it('resolves each rung as checked from its own scopes alone', () => {
+		expect(resolveOptionState(view, group.options, [...view.scopes])).toBe('checked');
+		expect(resolveOptionState(use, group.options, [...use.scopes])).toBe('checked');
+		expect(resolveOptionState(manage, group.options, [...manage.scopes])).toBe('checked');
+	});
+
+	it('suppresses the false indeterminate on both higher rungs when View is checked', () => {
+		// View's scopes are a subset of Use's and Manage's, so raw arithmetic reads
+		// both as indeterminate. Only the transitive artifact check clears Manage.
+		const scopes = [...view.scopes];
+		expect(resolveOptionState(use, group.options, scopes)).toBe('unchecked');
+		expect(resolveOptionState(manage, group.options, scopes)).toBe('unchecked');
+	});
+
+	it('suppresses the false indeterminate on Manage when Use is checked', () => {
+		expect(resolveOptionState(manage, group.options, [...use.scopes])).toBe('unchecked');
+	});
+
+	it('keeps a genuine partial subset indeterminate', () => {
+		// One of View's two scopes: no rung is fully checked, so this is a real
+		// partial (an API-created role, or a preset carrying a subset).
+		expect(resolveOptionState(manage, group.options, ['credential:read'])).toBe('indeterminate');
+	});
+
+	it('downgrades Manage to Use, not to View', () => {
+		const result = toggleOptionInGroup(['user:list', ...manage.scopes], manage, group.options);
+		expect(new Set(result)).toEqual(new Set(['user:list', ...use.scopes]));
+		expect(result).toContain('credential:use');
+		expect(result).not.toContain('credential:update');
+	});
+
+	it('downgrades Use to View', () => {
+		const result = toggleOptionInGroup(['user:list', ...use.scopes], use, group.options);
+		expect(new Set(result)).toEqual(new Set(['user:list', ...view.scopes]));
+		expect(result).not.toContain('credential:use');
+	});
+
+	it('clears View entirely when unchecked directly', () => {
+		const result = toggleOptionInGroup(['user:list', ...view.scopes], view, group.options);
+		expect(result).toEqual(['user:list']);
+	});
+
+	it('steps Manage down to View in two clicks', () => {
+		const afterFirst = toggleOptionInGroup([...manage.scopes], manage, group.options);
+		const afterSecond = toggleOptionInGroup(afterFirst, use, group.options);
+		expect(new Set(afterSecond)).toEqual(new Set(view.scopes));
+	});
+
+	it('warns about plaintext decrypt on Manage but not on View or Use', () => {
+		expect(getEscalationWarningKey('credential', [...manage.scopes])).toBe(
+			'instanceRoles.warning.manageCredentials',
+		);
+		expect(getEscalationWarningKey('credential', [...use.scopes])).toBeUndefined();
+		expect(getEscalationWarningKey('credential', [...view.scopes])).toBeUndefined();
+	});
+});
+
+describe('two-rung groups are unchanged by the shared ladder', () => {
+	// Regression guard on the SUPERSEDED_BY refactor: every group that had exactly
+	// two tiered rungs before must still resolve to the same pair.
+	const cases: Array<{
+		resource: 'apiKey' | 'tag' | 'variable' | 'role';
+		sub: string;
+		sup: string;
+	}> = [
+		{ resource: 'apiKey', sub: 'Manage own', sup: 'Manage all' },
+		{ resource: 'tag', sub: 'View', sup: 'Manage' },
+		{ resource: 'variable', sub: 'View', sup: 'Manage' },
+		{ resource: 'role', sub: 'Manage project roles', sup: 'Manage' },
+	];
+
+	it.each(cases)('$resource resolves "$sub" up the ladder to "$sup"', ({ resource, sub, sup }) => {
+		const group = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === resource)!;
+		const subordinate = group.options.find((o) => o.key === sub)!;
+		const superseding = group.options.find((o) => o.key === sup)!;
+
+		// The shared map can route through a rung a group does not declare — tag's
+		// View points at Use — so assert the option the group actually resolves to,
+		// in both directions.
+		expect(impliedByOption(subordinate, group.options, [...superseding.scopes])).toBe(superseding);
+		expect(findSubordinateOption(superseding, group.options)).toBe(subordinate);
+	});
+
+	it.each(cases)(
+		'$resource implies "$sub" under a checked "$sup" and downgrades back to it',
+		({ resource, sub, sup }) => {
+			const group = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === resource)!;
+			const subordinate = group.options.find((o) => o.key === sub)!;
+			const superseding = group.options.find((o) => o.key === sup)!;
+
+			expect(isOptionImplied(subordinate, group.options, [...superseding.scopes])).toBe(true);
+			expect(isOptionImplied(subordinate, group.options, [...subordinate.scopes])).toBe(false);
+			expect(resolveOptionState(superseding, group.options, [...subordinate.scopes])).toBe(
+				'unchecked',
+			);
+
+			const downgraded = toggleOptionInGroup([...superseding.scopes], superseding, group.options);
+			expect(new Set(downgraded)).toEqual(new Set(subordinate.scopes));
+		},
+	);
+
+	it('leaves "Manage all settings" untiered', () => {
+		// The select-all covers the four MCP / n8n Assistant options by plain scope
+		// superset, not by implication, so unchecking it downgrades to nothing. The
+		// tiering inside each of those pairs is covered above.
+		const group = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'settings')!;
+		const manageAllSettings = group.options.find((o) => o.key === 'Manage')!;
+		expect(supersedingKey('Manage')).toBeUndefined();
+		expect(findSubordinateOption(manageAllSettings, group.options)).toBeUndefined();
 	});
 });

@@ -35,6 +35,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Agent',
 		description: 'Allows reading agent configuration and history.',
 	},
+	'agent:export': {
+		displayName: 'Export Agent',
+		description: 'Allows including agents in a portable package export.',
+	},
 	'agent:update': {
 		displayName: 'Update Agent',
 		description: 'Allows updating, building, publishing, and managing integrations of agents.',
@@ -62,6 +66,18 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'aiAssistant:manage': {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
+	},
+	'execution:read': {
+		displayName: 'View Execution',
+		description: 'Allows viewing executions of workflows the role can view.',
+	},
+	'execution:list': {
+		displayName: 'List Executions',
+		description: 'Allows listing executions of workflows the role can view.',
+	},
+	'execution:delete': {
+		displayName: 'Delete Execution',
+		description: 'Allows deleting executions of workflows in the project.',
 	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
@@ -121,6 +137,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage End-User Credential',
 		description:
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
+	},
+	'credential:use': {
+		displayName: 'Use Credential',
+		description:
+			'Allows using any credential on the instance in a workflow, without being a member of its project. Without it, a role that can read credentials sees them but cannot select, test, or run them.',
 	},
 	'credential:manageInstance': {
 		displayName: 'Manage provider connections',

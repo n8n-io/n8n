@@ -19,9 +19,14 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 					{
 						name: 'caller_context',
 						type: 'jsonb',
-						default: "'{}'",
 						comment:
 							'Supplied by the caller at start (user, project, host mode). The engine stores and forwards it to step executors without reading it. Not the engine-internal per-request context.',
+					},
+					{
+						name: 'response_expectation',
+						type: 'jsonb',
+						comment:
+							'What kind of a response the caller expects (none, runEnd, stepResponse or stream)',
 					},
 					{
 						name: 'created_at',
@@ -40,7 +45,8 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 				checks: [
 					{
 						name: 'chk_workflow_execution_status',
-						expression: "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
+						expression:
+							"status IN ('queued', 'running', 'waiting', 'completed', 'failed', 'cancelled')",
 					},
 				],
 			}),

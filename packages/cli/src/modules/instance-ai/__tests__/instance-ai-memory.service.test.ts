@@ -712,6 +712,86 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[3].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual(['tool-1']);
 	});
 
+	it('keeps a turn paired when a preference-card fact lands after a later message', async () => {
+		// Edit and Undo append a `preference-card` fact to the run that saved the
+		// preference. A second tab, or a crafted runId, can append one after the
+		// next user message. The anchor must ignore that fact: the parser drops a
+		// snapshot anchored after the next message, which would unpair the whole
+		// turn instead of correcting one card.
+		const t = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{ id: 'msg-u1', role: 'user', content: 'remember this', createdAt: t(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'saved it' }],
+					createdAt: t(8),
+				},
+				{ id: 'msg-u2', role: 'user', content: 'something else', createdAt: t(20) },
+			],
+		});
+		setLogRows([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(5),
+			),
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+				},
+				t(6),
+			),
+			eventRow(
+				{
+					type: 'tool-result',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', result: { preferenceId: 'pref-1' } },
+				},
+				t(7),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(9),
+			),
+			// The undo lands after the next user message.
+			eventRow(
+				{
+					type: 'preference-card',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+				},
+				t(30),
+			),
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		// Three messages, no trailing orphan card.
+		expect(result.messages).toHaveLength(3);
+		const assistant = result.messages[1];
+		expect(assistant.role).toBe('assistant');
+		expect(assistant.runId).toBe('run_pref');
+		const toolCall = assistant.agentTree?.toolCalls.find((tc) => tc.toolCallId === 'tc-1');
+		expect(toolCall?.preferenceCard?.state).toBe('undone');
+	});
+
 	it('keeps interleaved runs of one group in thread order', async () => {
 		// Background runs execute concurrently with their parent, so a group's
 		// facts interleave in the log. The fold must feed the reducer in seq

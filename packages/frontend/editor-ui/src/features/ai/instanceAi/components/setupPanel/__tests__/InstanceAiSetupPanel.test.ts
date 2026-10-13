@@ -7,12 +7,15 @@ import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 import type { InstanceAiMessage, InstanceAiSetupItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import type { SetupPanelRow } from '../../../composables/useSetupPanelState';
 import InstanceAiSetupPanel from '../InstanceAiSetupPanel.vue';
 import ResourceLocatorDropdown from '@/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue';
 import { SETUP_PANEL_SUCCESS_DELAY } from '@/app/constants/durations';
 import { AI_GATEWAY_MANAGED_TAG } from '../../../constants';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { LOCAL_STORAGE_INSTANCE_AI_SETUP_COACHMARK_SEEN } from '@/app/constants/localStorage';
 
 // The shared popover mock renders inline and cannot verify the portal boundary.
 vi.unmock('reka-ui');
@@ -60,7 +63,9 @@ const stateMock = reactive({
 	rows: [] as SetupPanelRow[],
 	nodesByName: {} as Record<string, INodeUi>,
 	credentialsAvailable: true,
+	isCheckingOAuthCredentials: false,
 	isAgentBuilding: false,
+	isAwaitingFirstBuild: false,
 	isApplying: false,
 	pendingApplyCount: 0,
 	refreshWorkflow: vi.fn().mockResolvedValue(undefined),
@@ -84,9 +89,11 @@ vi.mock('../../../composables/useSetupPanelState', async () => {
 			rows: computed(() => stateMock.rows),
 			rowSource: computed(() => 'derived'),
 			credentialsAvailable: computed(() => stateMock.credentialsAvailable),
+			isCheckingOAuthCredentials: computed(() => stateMock.isCheckingOAuthCredentials),
 			isRefreshingWorkflow: computed(() => false),
 			workflowProjectId: computed(() => undefined),
 			isAgentBuilding: computed(() => stateMock.isAgentBuilding),
+			isAwaitingFirstBuild: computed(() => stateMock.isAwaitingFirstBuild),
 			getNodeByName: (name: string) => stateMock.nodesByName[name],
 			refreshWorkflow: stateMock.refreshWorkflow,
 		}),
@@ -146,7 +153,14 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: () => ({ getNodeType: () => null }),
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) =>
+			name === 'n8n-nodes-base.slack'
+				? mockNodeTypeDescription({
+						properties: [{ name: 'channel', displayName: 'Channel', type: 'string', default: '' }],
+					})
+				: null,
+	}),
 }));
 
 const credentialItem: InstanceAiSetupItem = {
@@ -373,8 +387,10 @@ describe('InstanceAiSetupPanel', () => {
 		setActivePinia(createTestingPinia());
 		localStorage.clear();
 		stateMock.credentialsAvailable = true;
+		stateMock.isCheckingOAuthCredentials = false;
 		stateMock.rows = [];
 		stateMock.isAgentBuilding = false;
+		stateMock.isAwaitingFirstBuild = false;
 		stateMock.isApplying = false;
 		stateMock.pendingApplyCount = 0;
 		threadMock.messages = [];
@@ -391,6 +407,83 @@ describe('InstanceAiSetupPanel', () => {
 		oauthMock.isOAuthCredentialType.mockReturnValue(false);
 		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(false);
 		credentialsMock.getUsableCredentialByType.mockReturnValue([]);
+	});
+
+	it('shows the early setup coachmark once per user in this browser', async () => {
+		useUsersStore().currentUserId = 'user-1';
+		stateMock.isAgentBuilding = true;
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const first = renderComponent();
+		expect(await first.findByTestId('instance-ai-setup-coachmark')).toHaveTextContent(
+			'The list will update as the assistant builds your workflow.',
+		);
+		expect(localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_SETUP_COACHMARK_SEEN('user-1'))).toBe(
+			'true',
+		);
+		await userEvent.click(first.getByRole('button', { name: 'Got it' }));
+		expect(first.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
+		first.unmount();
+		const second = renderComponent();
+		await flushPromises();
+		expect(second.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
+		second.unmount();
+		useUsersStore().currentUserId = 'user-2';
+		const third = renderComponent();
+		expect(await third.findByTestId('instance-ai-setup-coachmark')).toBeVisible();
+	});
+
+	it('explains setup before the first build and closes the coachmark when a row opens', async () => {
+		useUsersStore().currentUserId = 'user-1';
+		stateMock.isAwaitingFirstBuild = true;
+		threadMock.isStreaming = true;
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const view = renderComponent();
+		expect(await view.findByTestId('instance-ai-setup-coachmark')).toBeVisible();
+		await userEvent.click(view.getByRole('button', { name: /Notion/ }));
+		expect(view.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
+		expect(view.getByRole('dialog', { name: 'Notion' })).toBeVisible();
+		await userEvent.click(view.getByRole('button', { name: 'Back to setup checklist' }));
+		expect(view.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
+	});
+
+	it('shows the coachmark when the first actionable row arrives after mounting', async () => {
+		useUsersStore().currentUserId = 'user-1';
+		stateMock.isAgentBuilding = true;
+		stateMock.credentialsAvailable = false;
+		const view = renderComponent();
+		await flushPromises();
+		expect(view.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		stateMock.credentialsAvailable = true;
+		expect(await view.findByTestId('instance-ai-setup-coachmark')).toBeVisible();
+	});
+
+	it.each(['no-build', 'stopped-before-build', 'resolved', 'credentials-loading'])(
+		'does not consume the coachmark before early setup is actionable: %s',
+		async (state) => {
+			useUsersStore().currentUserId = 'user-1';
+			stateMock.isAgentBuilding = state !== 'no-build' && state !== 'stopped-before-build';
+			stateMock.isAwaitingFirstBuild = state === 'stopped-before-build';
+			stateMock.credentialsAvailable = state !== 'credentials-loading';
+			stateMock.rows = [{ item: credentialItem, isDone: state === 'resolved' }];
+			const view = renderComponent();
+			await flushPromises();
+			expect(view.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
+			expect(
+				localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_SETUP_COACHMARK_SEEN('user-1')),
+			).toBeNull();
+		},
+	);
+
+	it('closes the coachmark when generation finishes', async () => {
+		useUsersStore().currentUserId = 'user-1';
+		stateMock.isAgentBuilding = true;
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const view = renderComponent();
+		expect(await view.findByTestId('instance-ai-setup-coachmark')).toBeVisible();
+		stateMock.isAgentBuilding = false;
+		await flushPromises();
+		expect(view.queryByTestId('instance-ai-setup-coachmark')).not.toBeInTheDocument();
 	});
 
 	async function completeSetup() {
@@ -425,6 +518,13 @@ describe('InstanceAiSetupPanel', () => {
 		stateMock.isAgentBuilding = false;
 		await flushPromises();
 		expect(view.getByRole('button', { name: 'Execute' })).toBeEnabled();
+	});
+
+	it('keeps Execute hidden when a stopped build has not saved its first workflow', async () => {
+		stateMock.isAwaitingFirstBuild = true;
+		const view = await completeSetup();
+		expect(view.getByRole('button', { name: 'Notion Complete' })).toBeVisible();
+		expect(view.queryByRole('button', { name: 'Execute' })).toBeNull();
 	});
 
 	it.each(['success', 'error', 'canceled'] as const)(
@@ -567,6 +667,30 @@ describe('InstanceAiSetupPanel', () => {
 		expect(getByTestId('setup-panel-back')).toBeVisible();
 	});
 
+	it('keeps Connect available during a row connection without starting another attempt', async () => {
+		oauthMock.isOAuthCredentialType.mockReturnValue(true);
+		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(true);
+		stateMock.rows = [{ item: credentialItem, isDone: false }];
+		const authorization = Promise.withResolvers<null>();
+		const reopen = vi.fn();
+		oauthMock.createAndAuthorize.mockImplementationOnce((_type, _node, options) => {
+			options.onAuthorizationStarted(reopen);
+			return authorization.promise;
+		});
+		const view = renderComponent();
+		await userEvent.click(view.getByRole('button', { name: 'Connect' }));
+		expect(view.getByRole('button', { name: 'Connect' })).toBeEnabled();
+		expect(view.queryByRole('button', { name: 'Reopen sign-in' })).toBeNull();
+		expect(view.queryByRole('button', { name: 'Cancel' })).toBeNull();
+		await userEvent.click(view.getByRole('button', { name: 'Connect' }));
+		expect(reopen).toHaveBeenCalledOnce();
+		expect(oauthMock.createAndAuthorize).toHaveBeenCalledOnce();
+		authorization.resolve(null);
+		await flushPromises();
+		expect(view.getByRole('button', { name: 'Connect' })).toBeEnabled();
+		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
+	});
+
 	it('connects managed OAuth directly from the row and keeps cancellation pending', async () => {
 		oauthMock.isOAuthCredentialType.mockReturnValue(true);
 		oauthMock.canOAuthCredentialQuickConnect.mockReturnValue(true);
@@ -581,6 +705,7 @@ describe('InstanceAiSetupPanel', () => {
 		expect(oauthMock.createAndAuthorize).toHaveBeenCalledWith('notionApi', undefined, {
 			projectId: 'p1',
 			workflowId: 'wf1',
+			onAuthorizationStarted: expect.any(Function),
 		});
 		expect(actionsMock.bindCredential).not.toHaveBeenCalled();
 		expect(queryByRole('dialog')).toBeNull();

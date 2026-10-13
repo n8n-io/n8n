@@ -1,23 +1,13 @@
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskTarget, SystemTaskSchedule } from '@n8n/decorators';
 
 @SystemTask()
 export class DummySystemTask implements SystemTask {
 	name = 'dummy';
 
-	schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 60 };
+	schedule: SystemTaskSchedule = intervalFromSeconds(60);
 
-	effects: SystemTaskEffects = 'idempotent';
-
-	durable = false;
-
-	runOnTakeover = false;
-
-	retryDelaySeconds?: number;
-
-	maxAttempts?: number;
-
-	misfireGraceSeconds?: number;
+	target: SystemTaskTarget = { scope: 'cluster', leaderTimer: {} };
 
 	runCount = 0;
 
@@ -33,4 +23,14 @@ export class DummySystemTask implements SystemTask {
 @SystemTask()
 export class OtherDummySystemTask extends DummySystemTask {
 	name = 'other-dummy';
+}
+
+@SystemTask()
+export class PerInstanceDummySystemTask extends DummySystemTask {
+	name = 'per-instance-dummy';
+
+	target: SystemTaskTarget = {
+		scope: 'instance',
+		instanceTypes: ['main', 'worker', 'webhook'],
+	};
 }

@@ -1,9 +1,15 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { validateWorkflow, workflow as workflowBuilder } from '@n8n/workflow-sdk';
+import {
+	validateWorkflow,
+	workflow as workflowBuilder,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
+import { downgradeUnchangedNodeBlockers } from '../workflow-node-diff';
 import { compileWorkflowSource } from '../workflow-source-compiler';
+import { partitionWarnings } from '../workflow-validation-warnings';
 
 vi.mock('@n8n/agents/sandbox', () => ({
 	getWorkspaceRoot: vi.fn(async () => await Promise.resolve('/home/daytona/workspace')),
@@ -38,6 +44,108 @@ describe('compileWorkflowSource', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	it('preserves node attribution for SDK and host findings on an unchanged node', async () => {
+		const sdk = await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk');
+		vi.mocked(validateWorkflow).mockImplementationOnce(sdk.validateWorkflow);
+		const saved: WorkflowJSON = {
+			name: 'Scoped edit',
+			nodes: [
+				{
+					id: 'start',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'fetch',
+					name: 'Fetch record',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: {
+						url: 'https://example.test/records',
+						authentication: 'genericCredentialType',
+						genericAuthType: 'httpHeaderAuth',
+						sendHeaders: true,
+						headerParameters: { parameters: [{ name: 'apikey', value: 'example-key' }] },
+						options: { timeout: 1000 },
+					},
+					credentials: { httpHeaderAuth: { id: 'header-1', name: 'Request header' } },
+				},
+				{
+					id: 'compose',
+					name: 'Compose',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [400, 0],
+					parameters: { mode: 'runOnceForEachItem', jsCode: 'return { json: $json };' },
+				},
+				{
+					id: 'switch',
+					name: 'Spare route',
+					type: 'n8n-nodes-base.switch',
+					typeVersion: 3.2,
+					position: [200, 300],
+					parameters: { mode: 'rules', rules: { values: [] }, options: {} },
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Fetch record', type: 'main', index: 0 }]] },
+				'Fetch record': { main: [[{ node: 'Compose', type: 'main', index: 0 }]] },
+			},
+		};
+		const built = structuredClone(saved);
+		built.nodes[2].parameters = {
+			mode: 'runOnceForEachItem',
+			jsCode: 'return { json: { ...$json, updated: true } };',
+		};
+		const builder = workflowBuilder.fromJSON(built);
+		const graphValidation = builder.validate();
+		vi.mocked(runInSandbox).mockResolvedValueOnce({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: builder.toJSON({ tidyUp: false }),
+				warnings: [...graphValidation.errors, ...graphValidation.warnings],
+			}),
+			stderr: '',
+		});
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/scoped.workflow.ts',
+			'sandbox source',
+		);
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.warnings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'HARDCODED_CREDENTIALS',
+					nodeName: 'Fetch record',
+					parameterPath: 'headerParameters.parameters[apikey]',
+				}),
+				expect.objectContaining({ code: 'SWITCH_NO_OUTPUT_CONNECTIONS', nodeName: 'Spare route' }),
+			]),
+		);
+		const classified = partitionWarnings(
+			downgradeUnchangedNodeBlockers(result.warnings, result.workflow, saved),
+		);
+		expect(classified.blocking).toEqual([]);
+		expect(classified.informational).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'HARDCODED_CREDENTIALS', severity: 'informational' }),
+				expect.objectContaining({
+					code: 'SWITCH_NO_OUTPUT_CONNECTIONS',
+					severity: 'informational',
+				}),
+			]),
+		);
 	});
 
 	it('parses WorkflowJSON sources in process without sandbox execution', async () => {
@@ -466,6 +574,125 @@ describe('compileWorkflowSource > node positions in JSON sources', () => {
 		} finally {
 			layout.mockRestore();
 		}
+	});
+});
+
+describe('compileWorkflowSource > node positions in TypeScript sources', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	// The sandbox lays this row out as if Writer were a plain node, because no tool is wired.
+	const sandboxWorkflow = (): WorkflowJSON => ({
+		name: 'Briefing',
+		nodes: [
+			{
+				id: 's',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+			},
+			{ id: 'w', name: 'Writer', type: 'test.writer', typeVersion: 1, position: [224, 0] },
+			{ id: 'e', name: 'Email', type: 'n8n-nodes-base.noOp', typeVersion: 1, position: [448, 0] },
+			{
+				id: 'n',
+				name: 'Note',
+				type: 'n8n-nodes-base.stickyNote',
+				typeVersion: 1,
+				position: [0, -200],
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Writer', type: 'main', index: 0 }]] },
+			Writer: { main: [[{ node: 'Email', type: 'main', index: 0 }]] },
+		},
+	});
+	const compileWithWriterInputs = async (
+		inputs: string[],
+		extraNode?: WorkflowJSON['nodes'][number],
+	) => {
+		const workflow = sandboxWorkflow();
+		if (extraNode) workflow.nodes.push(extraNode);
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({ success: true, workflow, warnings: [] }),
+			stderr: '',
+		});
+		const nodeTypesProvider = {
+			getByNameAndVersion: (type: string) => {
+				if (type === 'test.writer')
+					return { description: { properties: [], inputs, outputs: ['main'] } };
+				throw new Error(`Unknown node type: ${type}`);
+			},
+		};
+		const result = await compileWorkflowSource(
+			makeContext({ nodeTypesProvider } as unknown as Partial<InstanceAiContext>),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+		if (!result.success) throw new Error('compile failed');
+		return new Map(result.workflow.nodes.map((node) => [node.name, node]));
+	};
+
+	it('lays the nodes out again when a node type declares an unwired port', async () => {
+		// The Tools port makes the canvas draw Writer 224 wide.
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool']);
+
+		expect(nodes.get('Email')?.position[0]).toBeGreaterThan(
+			(nodes.get('Writer')?.position[0] ?? 0) + 224,
+		);
+		expect(nodes.get('Note')?.position).toEqual([0, -200]);
+	});
+
+	it('keeps a sticky note around the nodes it wrapped when the nodes move', async () => {
+		// The note wraps Writer and Email in the sandbox layout, with a 24 px margin.
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool'], {
+			id: 'g',
+			name: 'Group',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [200, -80],
+			parameters: { width: 368, height: 200 },
+		});
+
+		const group = nodes.get('Group');
+		const writer = nodes.get('Writer');
+		const email = nodes.get('Email');
+		expect(group?.position).toEqual([
+			(writer?.position[0] ?? 0) - 24,
+			(writer?.position[1] ?? 0) - 80,
+		]);
+		// Writer is drawn 224 wide and Email 96 wide, so the note grows to keep the margin.
+		expect(group?.parameters).toEqual({
+			width: (email?.position[0] ?? 0) + 96 + 24 - (group?.position[0] ?? 0),
+			height: 200,
+		});
+	});
+
+	it('keeps an unnamed sticky note around the nodes it wrapped', async () => {
+		const nodes = await compileWithWriterInputs(['main', 'ai_tool'], {
+			id: 'g',
+			type: 'n8n-nodes-base.stickyNote',
+			typeVersion: 1,
+			position: [200, -80],
+			parameters: { width: 368, height: 200 },
+		});
+
+		const email = nodes.get('Email');
+		const group = [...nodes.values()].find((node) => node.id === 'g');
+		expect(group?.parameters?.width).toBe(
+			(email?.position[0] ?? 0) + 96 + 24 - (group?.position[0] ?? 0),
+		);
+	});
+
+	it('keeps the sandbox layout when the node types give the same sizes', async () => {
+		const nodes = await compileWithWriterInputs(['main']);
+
+		expect([...nodes.values()].map((node) => node.position)).toEqual(
+			sandboxWorkflow().nodes.map((node) => node.position),
+		);
 	});
 });
 

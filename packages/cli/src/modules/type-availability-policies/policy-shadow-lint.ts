@@ -1,4 +1,9 @@
-import type { PolicyRule } from './policy-rule.types';
+import {
+	nodeTypePackageResolver,
+	type PackageResolver,
+	type PolicedType,
+} from './policy-evaluator';
+import type { PolicyRule, PolicySelector } from './policy-rule.types';
 
 /**
  * One case of an unreachable rule: `ruleId` can never match, because `shadowedByRuleId`
@@ -8,14 +13,6 @@ export type ShadowWarning = {
 	readonly ruleId: string;
 	readonly shadowedByRuleId: string;
 };
-
-/**
- * Package selectors match the segment of the type name before the first dot (a full type
- * name is always `<packageName>.<nodeName>`). Same convention as `policy-evaluator.ts`.
- */
-function packageOf(typeName: string): string {
-	return typeName.split('.')[0];
-}
 
 /** The earliest rule (by position) that first used a given selector value. */
 type FirstOccurrence = { readonly rule: PolicyRule; readonly index: number };
@@ -34,13 +31,31 @@ function earlierOccurrence(
 }
 
 /**
+ * `resolvePackage` returns `null` for a type whose package is unknown, but the map it looks
+ * up in is keyed by `string` — so a `null` short-circuits to "no earlier occurrence" instead
+ * of becoming a lookup key.
+ */
+function resolvePackageOrUndefined(
+	firstByPackage: ReadonlyMap<string, FirstOccurrence>,
+	resolvePackage: PackageResolver,
+	typeName: string,
+): FirstOccurrence | undefined {
+	const packageName = resolvePackage(typeName);
+	return packageName === null ? undefined : firstByPackage.get(packageName);
+}
+
+/**
  * Finds rules in an ordered rule list that can never match, because an earlier rule in the
  * same list already matches every type the later rule would match.
  *
- * A name selector matches exactly one type, so it is shadowed only by an earlier, identical
- * name selector. A package selector matches every type in that package, so it also shadows a
- * later name selector scoped to that same package. A name selector never shadows a package
- * selector: one type can't cover a whole package.
+ * A name selector is shadowed by an earlier, identical name selector, or by an earlier name
+ * selector for the base node it is a synthetic tool variant of — `gmail` matches `gmailTool`
+ * too, so a later `gmailTool` rule is dead. A package selector matches every type in that
+ * package, so it also shadows a later name selector scoped to that same package. A name
+ * selector never shadows a package selector: one type can't cover a whole package.
+ *
+ * An `extends` selector shadows a later `name` or `extends` selector whose type is the same one
+ * or built on it. Nothing else shadows an `extends`: its family can span several packages.
  *
  * Runs in one O(n) pass: instead of comparing each rule against every rule before it, it
  * keeps, per selector kind, only the earliest rule seen so far for each selector value, and
@@ -48,30 +63,60 @@ function earlierOccurrence(
  *
  * Pure and synchronous, like `evaluateType` — it never throws and never blocks the write.
  * Callers decide what to do with the warnings (e.g. return them alongside the saved policy).
+ *
+ * `resolvePackage` and `policedType` must resolve the same way `evaluateType` will for this
+ * policy's `kind` (see `package-resolver.ts`), so a shadow this lint warns about is exactly
+ * one evaluation would also produce. Both default to the `node-types` convention, with no
+ * knowledge of which names are synthetic variants.
  */
-export function lintRulesForShadowing(rules: readonly PolicyRule[]): ShadowWarning[] {
+export function lintRulesForShadowing(
+	rules: readonly PolicyRule[],
+	resolvePackage: PackageResolver = nodeTypePackageResolver,
+	policedType: (name: string) => PolicedType = (name) => ({ name, baseName: name }),
+): ShadowWarning[] {
 	const warnings: ShadowWarning[] = [];
 
-	const firstByName = new Map<string, FirstOccurrence>();
-	const firstByPackage = new Map<string, FirstOccurrence>();
+	const firstByKind: Record<PolicySelector['kind'], Map<string, FirstOccurrence>> = {
+		name: new Map(),
+		package: new Map(),
+		extends: new Map(),
+	};
+
+	/** The earliest `extends` rule naming the type itself or one it is built on. */
+	const firstFamilyOccurrence = (type: PolicedType) =>
+		[type.name, ...(type.ancestors ?? [])]
+			.map((name) => firstByKind.extends.get(name))
+			.reduce(earlierOccurrence, undefined);
 
 	for (let index = 0; index < rules.length; index++) {
 		const rule = rules[index];
 		const { selector } = rule;
 
-		const shadowedBy =
-			selector.kind === 'package'
-				? firstByPackage.get(selector.value)
-				: earlierOccurrence(
-						firstByName.get(selector.value),
-						firstByPackage.get(packageOf(selector.value)),
-					);
+		let shadowedBy: FirstOccurrence | undefined;
+		switch (selector.kind) {
+			case 'package':
+				shadowedBy = firstByKind.package.get(selector.value);
+				break;
+			case 'extends':
+				shadowedBy = firstFamilyOccurrence(policedType(selector.value));
+				break;
+			case 'name': {
+				const type = policedType(selector.value);
+				shadowedBy = [
+					firstByKind.name.get(selector.value),
+					firstByKind.name.get(type.baseName),
+					resolvePackageOrUndefined(firstByKind.package, resolvePackage, selector.value),
+					firstFamilyOccurrence(type),
+				].reduce(earlierOccurrence, undefined);
+				break;
+			}
+		}
 
 		if (shadowedBy) {
 			warnings.push({ ruleId: rule.id, shadowedByRuleId: shadowedBy.rule.id });
 		}
 
-		const firstOccurrenceByValue = selector.kind === 'package' ? firstByPackage : firstByName;
+		const firstOccurrenceByValue = firstByKind[selector.kind];
 		if (!firstOccurrenceByValue.has(selector.value)) {
 			firstOccurrenceByValue.set(selector.value, { rule, index });
 		}

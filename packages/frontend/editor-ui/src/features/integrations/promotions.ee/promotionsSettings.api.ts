@@ -1,4 +1,9 @@
 import type {
+	ApplyPackageDto,
+	ApplyPackageResultDto,
+	ApplySelectionDto,
+	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	CreatePromotionConnectionDto,
 	CreatePromotionProviderDto,
 	PromotionApplyConfigPublicDto,
@@ -221,5 +226,56 @@ export const promotePackage = async (
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: `${promotionsApiRoot}/connections/${connectionId}/promote`,
+		data: payload,
+	});
+
+export const applyPromotion = async (
+	context: PublicApiContext,
+	connectionId: string,
+	payload?: ApplyPackageDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply`,
+		data: payload,
+	});
+
+/** Resumes an apply that paused on unresolved bindings, once they are created. */
+export const continueApplyPromotion = async (
+	context: PublicApiContext,
+	connectionId: string,
+	payload: ContinueApplyPackageDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/connections/${connectionId}/apply/continue`,
+		data: payload,
+	});
+
+/** Applies only the chosen workflows into the destination project. */
+export const applyProjectSelection = async (
+	context: PublicApiContext,
+	projectId: string,
+	payload: ApplySelectionDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply`,
+		data: payload,
+	});
+
+/** Resumes a selective apply that paused on unresolved bindings, once they are created. */
+export const continueApplyProjectSelection = async (
+	context: PublicApiContext,
+	projectId: string,
+	payload: ContinueApplySelectionDto,
+): Promise<ApplyPackageResultDto> =>
+	await request({
+		method: 'POST',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply/continue`,
 		data: payload,
 	});

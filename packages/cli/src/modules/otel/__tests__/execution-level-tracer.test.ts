@@ -1,10 +1,16 @@
 import type { Logger } from '@n8n/backend-common';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
+import type { TextMapPropagator, Tracer } from '@opentelemetry/api';
+import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import { hrTimeToMilliseconds } from '@opentelemetry/core';
+import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
+import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import type { OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
+import type { OtelService } from '../otel.service';
 import { OtelTestProvider } from './support/otel-test-provider';
 
 describe('ExecutionLevelTracer', () => {
@@ -20,7 +26,7 @@ describe('ExecutionLevelTracer', () => {
 	};
 
 	beforeAll(() => {
-		otel = OtelTestProvider.create();
+		otel = OtelTestProvider.create({ withContextManager: true });
 	});
 
 	afterAll(async () => {
@@ -29,7 +35,7 @@ describe('ExecutionLevelTracer', () => {
 
 	beforeEach(() => {
 		otel.reset();
-		tracer = new ExecutionLevelTracer(makeOtelSettingsService(), logger);
+		tracer = new ExecutionLevelTracer(otel.asOtelService(), makeOtelSettingsService(), logger);
 	});
 
 	const inboundTracingContext = {
@@ -88,37 +94,52 @@ describe('ExecutionLevelTracer', () => {
 			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
 		});
 
-		it('should not attach project custom attributes to node spans', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-node-no-tags',
-				workflow: defaultWorkflow,
-				project: {
-					id: 'proj-tags',
-					customAttributes: { env: 'staging' },
-				},
-			});
+		const runSingleNodeExecution = (
+			executionId: string,
+			project?: { id: string; customAttributes?: Record<string, string> },
+		) => {
+			tracer.startWorkflow({ executionId, workflow: defaultWorkflow, project });
 			const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
-			tracer.startNode({ executionId: 'exec-node-no-tags', node });
-			tracer.endNode({
-				executionId: 'exec-node-no-tags',
-				node,
-				inputItemCount: 1,
-				outputItemCount: 1,
-			});
-			tracer.endWorkflow({
-				executionId: 'exec-node-no-tags',
-				status: 'success',
-				mode: 'manual',
-				isRetry: false,
-			});
+			tracer.startNode({ executionId, node });
+			tracer.endNode({ executionId, node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({ executionId, status: 'success', mode: 'manual', isRetry: false });
 
 			const spans = otel.getFinishedSpans();
-			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
-			// No project custom attributes should appear on the node span
-			const projectCustomKeys = Object.keys(nodeSpan.attributes).filter((k) =>
-				k.startsWith('n8n.project.custom.'),
+			return {
+				workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
+				nodeSpan: spans.find((s) => s.name === 'node.execute')!,
+			};
+		};
+
+		const projectCustomKeys = (attributes: Record<string, unknown>) =>
+			Object.keys(attributes).filter((k) => k.startsWith('n8n.project.custom.'));
+
+		it('should attach project id and custom attributes to node spans', () => {
+			const { workflowSpan, nodeSpan } = runSingleNodeExecution('exec-node-tags', {
+				id: 'proj-tags',
+				customAttributes: { env: 'staging' },
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-tags');
+			expect(nodeSpan.attributes['n8n.project.custom.env']).toBe('staging');
+			expect(nodeSpan.attributes['n8n.project.id']).toBe(workflowSpan.attributes['n8n.project.id']);
+			expect(nodeSpan.attributes['n8n.project.custom.env']).toBe(
+				workflowSpan.attributes['n8n.project.custom.env'],
 			);
-			expect(projectCustomKeys).toHaveLength(0);
+		});
+
+		it('should attach only project id to node spans when the project has no custom attributes', () => {
+			const { nodeSpan } = runSingleNodeExecution('exec-node-no-tags', { id: 'proj-no-tags' });
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-no-tags');
+			expect(projectCustomKeys(nodeSpan.attributes)).toHaveLength(0);
+		});
+
+		it('should omit project attributes on node spans when project is not provided', () => {
+			const { nodeSpan } = runSingleNodeExecution('exec-node-no-project');
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBeUndefined();
+			expect(projectCustomKeys(nodeSpan.attributes)).toHaveLength(0);
 		});
 
 		it('should omit project id attribute when project is not provided', () => {
@@ -315,6 +336,123 @@ describe('ExecutionLevelTracer', () => {
 			).not.toThrow();
 
 			expect(otel.getFinishedSpans()).toHaveLength(0);
+		});
+	});
+
+	describe('endCrashedWorkflow', () => {
+		it('should end a tracked workflow span as crashed and stop tracking it', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-crashed',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({
+				executionId: 'exec-crashed',
+				node: { id: 'n1', name: 'Node1', type: 'n8n-nodes-base.set', typeVersion: 1 },
+			});
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crashed',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				mode: 'trigger',
+				detector: 'stall',
+				stoppedAt: new Date(),
+			});
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(2);
+
+			const nodeSpan = spans.find((s) => s.name === 'node.execute')!;
+			expect(nodeSpan.attributes['n8n.node.termination_reason']).toBe('workflow_crashed');
+
+			const span = spans.find((s) => s.name === 'workflow.execute')!;
+			expect(span.name).toBe('workflow.execute');
+			expect(span.attributes['n8n.execution.status']).toBe('crashed');
+			expect(span.attributes['n8n.execution.error_type']).toBe('WorkflowCrashedError');
+			expect(span.attributes['n8n.execution.crash.detector']).toBe('stall');
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(false);
+			expect(span.status.code).toBe(SpanStatusCode.ERROR);
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-crashed', undefined, headers);
+			expect(headers.traceparent).toBeUndefined();
+		});
+
+		it('should reconstruct the workflow span for an untracked execution', () => {
+			const startedAt = new Date('2025-01-01T00:00:00.000Z');
+			const stoppedAt = new Date('2025-01-01T00:01:00.000Z');
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-untracked',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				workflowVersionId: 'v1',
+				mode: 'trigger',
+				detector: 'queue-recovery',
+				startedAt,
+				stoppedAt,
+				tracingContext: inboundTracingContext,
+				workflow: { customAttributes: { workflowTag: 'checkout' } },
+				project: { id: 'project-1', customAttributes: { team: 'platform' } },
+			});
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(1);
+
+			const span = spans[0];
+			expect(span.name).toBe('workflow.execute');
+			expect(span.attributes['n8n.workflow.id']).toBe('wf-1');
+			expect(span.attributes['n8n.workflow.name']).toBe('Test');
+			expect(span.attributes['n8n.execution.id']).toBe('exec-untracked');
+			expect(span.attributes['n8n.execution.status']).toBe('crashed');
+			expect(span.attributes['n8n.execution.crash.detector']).toBe('queue-recovery');
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(true);
+			expect(span.attributes['n8n.workflow.version_id']).toBe('v1');
+			expect(span.attributes['n8n.project.id']).toBe('project-1');
+			expect(span.attributes['n8n.workflow.custom.workflowTag']).toBe('checkout');
+			expect(span.attributes['n8n.project.custom.team']).toBe('platform');
+			expect(hrTimeToMilliseconds(span.startTime)).toBe(startedAt.getTime());
+			expect(hrTimeToMilliseconds(span.endTime)).toBe(stoppedAt.getTime());
+			expect(span.spanContext().traceId).toBe('abcdef1234567890abcdef1234567890');
+		});
+
+		it.each([
+			['tracked', true],
+			['reconstructed', false],
+		])('should attach the retry attributes to a %s span', (_kind, isTracked) => {
+			if (isTracked) {
+				tracer.startWorkflow({ executionId: 'exec-crashed-retry', workflow: defaultWorkflow });
+			}
+
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-crashed-retry',
+				workflowId: 'wf-1',
+				mode: 'retry',
+				retryOf: 'exec-original',
+				detector: 'stall',
+				stoppedAt: new Date(),
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.execution.is_retry']).toBe(true);
+			expect(span.attributes['n8n.execution.retry_of']).toBe('exec-original');
+		});
+
+		it('should omit the version id, project and retry source a reconstructed span has no value for', () => {
+			tracer.endCrashedWorkflow({
+				executionId: 'exec-untracked-bare',
+				workflowId: 'wf-1',
+				mode: 'trigger',
+				detector: 'queue-recovery',
+				stoppedAt: new Date(),
+			});
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes).not.toHaveProperty('n8n.workflow.version_id');
+			expect(span.attributes).not.toHaveProperty('n8n.project.id');
+			expect(span.attributes).not.toHaveProperty('n8n.execution.retry_of');
+			expect(span.attributes['n8n.execution.is_retry']).toBe(false);
 		});
 	});
 
@@ -783,6 +921,7 @@ describe('ExecutionLevelTracer', () => {
 
 		it('should no-op when injectOutbound is false', () => {
 			const noInjectTracer = new ExecutionLevelTracer(
+				otel.asOtelService(),
 				makeOtelSettingsService({ injectOutbound: false }),
 				logger,
 			);
@@ -826,6 +965,59 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('trace context ownership', () => {
+		const traceparentPattern = /^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/;
+
+		it('should start a new trace when no tracing context is given, even inside an active foreign span', () => {
+			const foreignSpan = trace.getTracer('foreign').startSpan('GET /webhook');
+
+			context.with(trace.setSpan(context.active(), foreignSpan), () => {
+				tracer.startWorkflow({ executionId: 'exec-root', workflow: defaultWorkflow });
+			});
+			tracer.endWorkflow({
+				executionId: 'exec-root',
+				status: 'success',
+				mode: 'webhook',
+				isRetry: false,
+			});
+			foreignSpan.end();
+
+			const workflowSpan = otel.getFinishedSpans().find((s) => s.name === 'workflow.execute')!;
+			expect(workflowSpan.parentSpanContext).toBeUndefined();
+			expect(workflowSpan.spanContext().traceId).not.toBe(foreignSpan.spanContext().traceId);
+		});
+
+		it('should emit W3C trace context while another library owns the global propagator', () => {
+			const foreignPropagator: TextMapPropagator = {
+				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),
+				extract: (ctx) => ctx,
+				fields: () => ['sentry-trace'],
+			};
+			propagation.setGlobalPropagator(foreignPropagator);
+
+			try {
+				const persisted = tracer.startWorkflow({
+					executionId: 'exec-w3c',
+					workflow: defaultWorkflow,
+				});
+				const headers: Record<string, string> = {};
+				tracer.injectTraceHeaders('exec-w3c', undefined, headers);
+				tracer.endWorkflow({
+					executionId: 'exec-w3c',
+					status: 'success',
+					mode: 'webhook',
+					isRetry: false,
+				});
+
+				expect(persisted.traceparent).toMatch(traceparentPattern);
+				expect(headers.traceparent).toMatch(traceparentPattern);
+				expect(headers['sentry-trace']).toBeUndefined();
+			} finally {
+				propagation.disable();
+			}
 		});
 	});
 
@@ -877,6 +1069,400 @@ describe('ExecutionLevelTracer', () => {
 		it('returns undefined when no spans are tracked for the execution', () => {
 			expect(tracer.getActiveContext('non-existent')).toBeUndefined();
 			expect(tracer.getActiveContext('non-existent', 'SomeNode')).toBeUndefined();
+		});
+	});
+	describe('execution identity', () => {
+		const identityKeys = [
+			'n8n.execution.id',
+			'n8n.workflow.id',
+			'n8n.workflow.name',
+			'n8n.project.id',
+			'n8n.project.name',
+		];
+		const identityOf = (attributes: Record<string, unknown>) =>
+			Object.fromEntries(
+				identityKeys.filter((k) => k in attributes).map((k) => [k, attributes[k]]),
+			);
+
+		const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
+
+		const runSegment = (params: StartWorkflowParams, status: ExecutionStatus = 'success') => {
+			const saved = tracer.startWorkflow(params);
+			tracer.startNode({ executionId: params.executionId, node });
+			tracer.endNode({
+				executionId: params.executionId,
+				node,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			tracer.endWorkflow({
+				executionId: params.executionId,
+				status,
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			const spans = otel
+				.getFinishedSpans()
+				.filter((s) => s.attributes['n8n.execution.id'] === params.executionId);
+			return {
+				saved,
+				workflowSpan: spans.find((s) => s.name === 'workflow.execute')!,
+				nodeSpan: spans.find((s) => s.name === 'node.execute')!,
+			};
+		};
+
+		it('should add the same five identity attributes to workflow and node spans', () => {
+			const { workflowSpan, nodeSpan } = runSegment({
+				executionId: 'exec-id',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			const expected = {
+				'n8n.execution.id': 'exec-id',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Test',
+				'n8n.project.id': 'proj-1',
+				'n8n.project.name': 'Finance',
+			};
+			expect(identityOf(workflowSpan.attributes)).toEqual(expected);
+			expect(identityOf(nodeSpan.attributes)).toEqual(expected);
+		});
+
+		it('should not add a project name when the project has none', () => {
+			const { nodeSpan } = runSegment({
+				executionId: 'exec-no-name',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1' },
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-1');
+			expect(nodeSpan.attributes).not.toHaveProperty('n8n.project.name');
+		});
+
+		it('should give a sub-workflow its own identity, not the identity of its parent', () => {
+			const parent = runSegment({
+				executionId: 'exec-parent',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			const child = runSegment({
+				executionId: 'exec-child',
+				tracingContext: parent.saved,
+				workflow: { id: 'wf-child', name: 'Child', nodeCount: 1 },
+				project: { id: 'proj-2', name: 'Operations' },
+			});
+
+			const expected = {
+				'n8n.execution.id': 'exec-child',
+				'n8n.workflow.id': 'wf-child',
+				'n8n.workflow.name': 'Child',
+				'n8n.project.id': 'proj-2',
+				'n8n.project.name': 'Operations',
+			};
+			expect(identityOf(child.workflowSpan.attributes)).toEqual(expected);
+			expect(identityOf(child.nodeSpan.attributes)).toEqual(expected);
+			expect(child.workflowSpan.parentSpanContext?.spanId).toBe(
+				parent.workflowSpan.spanContext().spanId,
+			);
+		});
+
+		it('should take the current workflow name and project on a resume', () => {
+			const parked = runSegment(
+				{
+					executionId: 'exec-resume',
+					workflow: { ...defaultWorkflow, name: 'Before' },
+					project: { id: 'proj-1', name: 'Finance' },
+				},
+				'waiting',
+			);
+			otel.reset();
+
+			const resumed = runSegment({
+				executionId: 'exec-resume',
+				tracingContext: parked.saved,
+				linkTo: parked.saved,
+				savedIdentity: toExecutionIdentity(parked.saved.identity),
+				workflow: { ...defaultWorkflow, name: 'After' },
+				project: { id: 'proj-2', name: 'Operations' },
+			});
+
+			const expected = {
+				'n8n.execution.id': 'exec-resume',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'After',
+				'n8n.project.id': 'proj-2',
+				'n8n.project.name': 'Operations',
+			};
+			expect(identityOf(resumed.workflowSpan.attributes)).toEqual(expected);
+			expect(identityOf(resumed.nodeSpan.attributes)).toEqual(expected);
+			expect(resumed.saved.identity).toEqual(expected);
+		});
+
+		it('should keep the saved project on a resume when the project lookup fails', () => {
+			const parked = runSegment(
+				{
+					executionId: 'exec-resume-lookup',
+					workflow: defaultWorkflow,
+					project: { id: 'proj-1', name: 'Finance' },
+				},
+				'waiting',
+			);
+			otel.reset();
+
+			const { nodeSpan } = runSegment({
+				executionId: 'exec-resume-lookup',
+				tracingContext: parked.saved,
+				linkTo: parked.saved,
+				savedIdentity: toExecutionIdentity(parked.saved.identity),
+				workflow: defaultWorkflow,
+			});
+
+			expect(nodeSpan.attributes['n8n.project.id']).toBe('proj-1');
+			expect(nodeSpan.attributes['n8n.project.name']).toBe('Finance');
+		});
+
+		it('should take the project from the resume when the saved identity has no project', () => {
+			const parked = runSegment(
+				{ executionId: 'exec-resume-project', workflow: { ...defaultWorkflow, name: 'Before' } },
+				'waiting',
+			);
+			otel.reset();
+
+			const { nodeSpan } = runSegment({
+				executionId: 'exec-resume-project',
+				tracingContext: parked.saved,
+				linkTo: parked.saved,
+				savedIdentity: toExecutionIdentity(parked.saved.identity),
+				workflow: { ...defaultWorkflow, name: 'After' },
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			expect(identityOf(nodeSpan.attributes)).toEqual({
+				'n8n.execution.id': 'exec-resume-project',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'After',
+				'n8n.project.id': 'proj-1',
+				'n8n.project.name': 'Finance',
+			});
+		});
+
+		it('should build the identity again on a resume without a saved identity', () => {
+			const { workflowSpan, nodeSpan } = runSegment({
+				executionId: 'exec-resume-legacy',
+				tracingContext: inboundTracingContext,
+				linkTo: inboundTracingContext,
+				workflow: { ...defaultWorkflow, name: 'After' },
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			expect(workflowSpan.attributes['n8n.workflow.name']).toBe('After');
+			expect(nodeSpan.attributes['n8n.workflow.name']).toBe('After');
+			expect(nodeSpan.attributes['n8n.project.name']).toBe('Finance');
+		});
+
+		const crashParams = {
+			executionId: 'exec-crash',
+			workflowId: 'wf-1',
+			workflowName: 'Renamed',
+			mode: 'trigger',
+			detector: 'queue-recovery',
+			stoppedAt: new Date(),
+			project: { id: 'proj-1' },
+		} as const;
+
+		it('should take the identity of a reconstructed crash span from the saved identity', () => {
+			const otherProcess = new ExecutionLevelTracer(
+				otel.asOtelService(),
+				makeOtelSettingsService(),
+				logger,
+			);
+			const saved = otherProcess.startWorkflow({
+				executionId: 'exec-crash',
+				workflow: { ...defaultWorkflow, name: 'Before' },
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+
+			tracer.endCrashedWorkflow({ ...crashParams, tracingContext: saved });
+
+			const span = otel.getFinishedSpans()[0];
+			expect(span.attributes['n8n.execution.reconstructed']).toBe(true);
+			expect(identityOf(span.attributes)).toEqual({
+				'n8n.execution.id': 'exec-crash',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Before',
+				'n8n.project.id': 'proj-1',
+				'n8n.project.name': 'Finance',
+			});
+		});
+
+		it('should build a crash span identity from the event without a project name when no identity is saved', () => {
+			tracer.endCrashedWorkflow({ ...crashParams, tracingContext: inboundTracingContext });
+
+			expect(identityOf(otel.getFinishedSpans()[0].attributes)).toEqual({
+				'n8n.execution.id': 'exec-crash',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Renamed',
+				'n8n.project.id': 'proj-1',
+			});
+		});
+
+		it('should not send the execution identity on outbound requests', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-outbound',
+				workflow: defaultWorkflow,
+				project: { id: 'proj-1', name: 'Finance' },
+			});
+			tracer.startNode({ executionId: 'exec-outbound', node });
+
+			const headers: Record<string, string> = {};
+			tracer.injectTraceHeaders('exec-outbound', node.name, headers);
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+	});
+
+	describe('start marker spans', () => {
+		const node = { id: 'n1', name: 'MyNode', type: 'test', typeVersion: 1 };
+		const project = { id: 'proj-1', name: 'Finance', customAttributes: { env: 'prod' } };
+		const workflow = { ...defaultWorkflow, customAttributes: { team: 'ops' } };
+		const identity = {
+			'n8n.execution.id': 'exec-marker',
+			'n8n.workflow.id': 'wf-1',
+			'n8n.workflow.name': 'Test',
+			'n8n.project.id': 'proj-1',
+			'n8n.project.name': 'Finance',
+		};
+
+		const runSegment = (emitStartSpan: boolean, params: Partial<StartWorkflowParams> = {}) => {
+			tracer.startWorkflow({
+				executionId: 'exec-marker',
+				workflow,
+				project,
+				emitStartSpan,
+				...params,
+			});
+			tracer.startNode({ executionId: 'exec-marker', node, emitStartSpan });
+			tracer.endNode({ executionId: 'exec-marker', node, inputItemCount: 1, outputItemCount: 1 });
+			tracer.endWorkflow({
+				executionId: 'exec-marker',
+				status: 'success',
+				mode: 'trigger',
+				isRetry: false,
+			});
+		};
+
+		const spansNamed = (name: string) => otel.getFinishedSpans().filter((s) => s.name === name);
+
+		it('should emit no marker when the flags are off', () => {
+			runSegment(false);
+
+			expect(otel.getFinishedSpans().map((s) => s.name)).toEqual([
+				'node.execute',
+				'workflow.execute',
+			]);
+		});
+
+		it('should emit one zero-duration workflow marker as a child of the workflow span', () => {
+			runSegment(true);
+
+			const [workflowSpan] = spansNamed('workflow.execute');
+			const markers = spansNamed('workflow.execute.started');
+			expect(markers).toHaveLength(1);
+
+			const [marker] = markers;
+			expect(marker.parentSpanContext?.spanId).toBe(workflowSpan.spanContext().spanId);
+			expect(marker.spanContext().traceId).toBe(workflowSpan.spanContext().traceId);
+			expect(marker.duration).toEqual([0, 0]);
+			expect(marker.startTime).toEqual(workflowSpan.startTime);
+			expect(marker.endTime).toEqual(workflowSpan.startTime);
+		});
+
+		it('should give the workflow marker the start attributes and identity of the workflow span', () => {
+			runSegment(true);
+
+			const [marker] = spansNamed('workflow.execute.started');
+			expect(marker.attributes).toEqual({
+				'n8n.workflow.version_id': 'v1',
+				'n8n.workflow.node_count': 2,
+				'n8n.workflow.custom.team': 'ops',
+				'n8n.project.custom.env': 'prod',
+				...identity,
+			});
+		});
+
+		it('should emit one zero-duration node marker as a child of each node span', () => {
+			runSegment(true);
+
+			const [nodeSpan] = spansNamed('node.execute');
+			const markers = spansNamed('node.execute.started');
+			expect(markers).toHaveLength(1);
+
+			const [marker] = markers;
+			expect(marker.parentSpanContext?.spanId).toBe(nodeSpan.spanContext().spanId);
+			expect(marker.duration).toEqual([0, 0]);
+			expect(marker.startTime).toEqual(nodeSpan.startTime);
+			expect(marker.endTime).toEqual(nodeSpan.startTime);
+		});
+
+		it('should give the node marker the node attributes and identity, without node custom tags', () => {
+			runSegment(true);
+
+			const [marker] = spansNamed('node.execute.started');
+			expect(marker.attributes).toEqual({
+				'n8n.node.id': 'n1',
+				'n8n.node.name': 'MyNode',
+				'n8n.node.type': 'test',
+				'n8n.node.type_version': 1,
+				'n8n.project.custom.env': 'prod',
+				...identity,
+			});
+		});
+
+		it('should emit one workflow marker for each segment', () => {
+			runSegment(true);
+			runSegment(true, { workflow: { ...workflow, name: 'Renamed' } });
+
+			const workflowSpans = spansNamed('workflow.execute');
+			const markers = spansNamed('workflow.execute.started');
+			expect(markers).toHaveLength(2);
+			expect(markers.map((m) => m.parentSpanContext?.spanId)).toEqual(
+				workflowSpans.map((s) => s.spanContext().spanId),
+			);
+			expect(markers.map((m) => m.attributes['n8n.workflow.name'])).toEqual(['Test', 'Renamed']);
+		});
+
+		it('should keep the real spans and only warn when a marker fails', () => {
+			const failingMarkers = mock<OtelService>({
+				getTracer: (name: string) => {
+					const real = otel.provider.getTracer(name);
+					return {
+						startSpan: (spanName, options, ctx) => {
+							if (spanName.endsWith('.started')) throw new Error('marker failed');
+							return real.startSpan(spanName, options, ctx);
+						},
+					} as Tracer;
+				},
+			});
+			tracer = new ExecutionLevelTracer(failingMarkers, makeOtelSettingsService(), logger);
+
+			expect(() => runSegment(true)).not.toThrow();
+
+			expect(otel.getFinishedSpans().map((s) => s.name)).toEqual([
+				'node.execute',
+				'workflow.execute',
+			]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to emit start marker span',
+				expect.objectContaining({ spanName: 'workflow.execute.started', error: 'marker failed' }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to emit start marker span',
+				expect.objectContaining({ spanName: 'node.execute.started', error: 'marker failed' }),
+			);
 		});
 	});
 });

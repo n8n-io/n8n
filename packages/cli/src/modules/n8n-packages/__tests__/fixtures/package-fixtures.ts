@@ -2,12 +2,16 @@ import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-te
 import type { WorkflowEntity } from '@n8n/db';
 import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
 
+import { DirectoryPackageWriter } from '../../io/directory/directory-package-writer';
+import { entityFilePath, workflowMetadataFilePath } from '../../io/manifest-entry';
+import type { PackageWriter } from '../../io/package-writer';
 import { TarPackageWriter } from '../../io/tar/tar-package-writer';
 import { FORMAT_VERSION } from '../../spec/constants';
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type {
 	PackageCredentialRequirement,
 	PackageDataTableRequirement,
+	PackageRequirementConsumer,
 	PackageWorkflowRequirement,
 } from '../../spec/requirements.schema';
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
@@ -15,6 +19,7 @@ import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import type { SerializedWorkflowMetadata } from '../../spec/serialized/workflow-metadata.schema';
+import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
@@ -148,13 +153,15 @@ export function workflowRequirementsFromWorkflows(
 		if (!referencedId) return;
 		const existing = byId.get(referencedId);
 		if (existing) {
-			if (!existing.usedByWorkflows.includes(workflowId)) existing.usedByWorkflows.push(workflowId);
+			if (!existing.usedBy.some(({ id }) => id === workflowId)) {
+				existing.usedBy.push({ kind: 'workflow', id: workflowId });
+			}
 			return;
 		}
 		byId.set(referencedId, {
 			id: referencedId,
 			name: nameById.get(referencedId) ?? referencedId,
-			usedByWorkflows: [workflowId],
+			usedBy: [{ kind: 'workflow', id: workflowId }],
 		});
 	};
 
@@ -203,8 +210,8 @@ export function credentialRequirementsFromWorkflows(
 
 				const existing = byId.get(details.id);
 				if (existing) {
-					if (!existing.usedByWorkflows.includes(workflow.id)) {
-						existing.usedByWorkflows.push(workflow.id);
+					if (!existing.usedBy.some(({ id }) => id === workflow.id)) {
+						existing.usedBy.push({ kind: 'workflow', id: workflow.id });
 					}
 					continue;
 				}
@@ -213,7 +220,7 @@ export function credentialRequirementsFromWorkflows(
 					id: details.id,
 					name: details.name,
 					type: credentialType,
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				});
 			}
 		}
@@ -229,6 +236,7 @@ export async function buildImportPackageBuffer(
 		sourceId?: string;
 		/** Replaces every metadata file, or leaves it out, so tests can drive the rejections. */
 		workflowMetadata?: 'omit' | Record<string, unknown>;
+		credentials?: SerializedCredential[];
 	} = {},
 ): Promise<Buffer> {
 	const writer = new TarPackageWriter();
@@ -244,6 +252,15 @@ export async function buildImportPackageBuffer(
 			name: w.name,
 			target: `workflows/wf-${idx}`,
 		})),
+		...(options.credentials?.length
+			? {
+					credentials: options.credentials.map((credential, idx) => ({
+						id: credential.id,
+						name: credential.name,
+						target: `credentials/cred-${idx}`,
+					})),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
@@ -261,14 +278,19 @@ export async function buildImportPackageBuffer(
 	writer.writeFile('manifest.json', JSON.stringify(manifest));
 	workflows.forEach((wf, idx) => {
 		const { content, metadata } = workflowFiles(wf);
-		writer.writeDirectory(`workflows/wf-${idx}`);
-		writer.writeFile(`workflows/wf-${idx}/workflow.json`, JSON.stringify(content));
+		const target = `workflows/wf-${idx}`;
+		writer.writeDirectory(target);
+		writer.writeFile(entityFilePath('workflows', target), JSON.stringify(content));
 		if (options.workflowMetadata !== 'omit') {
 			writer.writeFile(
-				`workflows/wf-${idx}/workflow-metadata.json`,
+				workflowMetadataFilePath(target),
 				JSON.stringify(options.workflowMetadata ?? metadata),
 			);
 		}
+	});
+	(options.credentials ?? []).forEach((credential, idx) => {
+		writer.writeDirectory(`credentials/cred-${idx}`);
+		writer.writeFile(`credentials/cred-${idx}/credential.json`, JSON.stringify(credential));
 	});
 
 	return await streamToBuffer(writer.finalize());
@@ -315,9 +337,13 @@ export function serializedWorkflowWithDataTable(options: {
 /** Builds a manifest data table requirement (simulates export). */
 export function dataTableRequirement(
 	table: SerializedDataTable,
-	usedByWorkflows: string[],
+	usedBy: PackageRequirementConsumer[],
 ): PackageDataTableRequirement {
-	return { id: table.id, name: table.name, usedByWorkflows };
+	return {
+		id: table.id,
+		name: table.name,
+		usedBy,
+	};
 }
 
 export function serializedFolder(overrides: Partial<SerializedFolder> = {}): SerializedFolder {
@@ -354,12 +380,7 @@ export interface PackageVariableEntry {
 	variable: SerializedVariable;
 }
 
-/**
- * Builds a package at explicit target paths, so tests can shape the exact package layout
- * (top-level folders, nested folders, project-namespaced entities). Manifest entries are
- * derived from each entity's id/name and the given target.
- */
-export async function buildEntityPackageBuffer(options: {
+export interface EntityPackageOptions {
 	workflows?: PackageWorkflowEntry[];
 	folders?: PackageFolderEntry[];
 	projects?: PackageProjectEntry[];
@@ -367,8 +388,12 @@ export async function buildEntityPackageBuffer(options: {
 	variables?: PackageVariableEntry[];
 	manifestExtras?: Partial<PackageManifest>;
 	sourceId?: string;
-}): Promise<Buffer> {
-	const writer = new TarPackageWriter();
+}
+
+async function writeEntityPackage(
+	writer: PackageWriter,
+	options: EntityPackageOptions,
+): Promise<void> {
 	const workflows = options.workflows ?? [];
 	const folders = options.folders ?? [];
 	const projects = options.projects ?? [];
@@ -429,29 +454,48 @@ export async function buildEntityPackageBuffer(options: {
 	};
 
 	// Manifest first: the reader/parser resolves it before reading any referenced file.
-	writer.writeFile('manifest.json', JSON.stringify(manifest));
+	await writer.writeFile('manifest.json', JSON.stringify(manifest));
 	for (const { target, workflow } of workflows) {
 		const { content, metadata } = workflowFiles(workflow);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/workflow.json`, JSON.stringify(content));
-		writer.writeFile(`${target}/workflow-metadata.json`, JSON.stringify(metadata));
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('workflows', target), JSON.stringify(content));
+		await writer.writeFile(workflowMetadataFilePath(target), JSON.stringify(metadata));
 	}
 	for (const { target, folder } of folders) {
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/folder.json`, JSON.stringify(folder));
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('folders', target), JSON.stringify(folder));
 	}
 	for (const { target, project } of projects) {
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/project.json`, JSON.stringify(project));
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('projects', target), JSON.stringify(project));
 	}
 	for (const { target, dataTable } of dataTables) {
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/data-table.json`, JSON.stringify(dataTable));
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('dataTables', target), JSON.stringify(dataTable));
 	}
 	for (const { target, variable } of variables) {
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/variable.json`, JSON.stringify(variable));
+		await writer.writeDirectory(target);
+		await writer.writeFile(entityFilePath('variables', target), JSON.stringify(variable));
 	}
+}
 
+/**
+ * Builds a package at explicit target paths, so tests can shape the exact package layout
+ * (top-level folders, nested folders, project-namespaced entities). Manifest entries are
+ * derived from each entity's id/name and the given target.
+ */
+export async function buildEntityPackageBuffer(options: EntityPackageOptions): Promise<Buffer> {
+	const writer = new TarPackageWriter();
+	await writeEntityPackage(writer, options);
 	return await streamToBuffer(writer.finalize());
+}
+
+/** Use the same package layout for directory and tar imports. */
+export async function buildEntityPackageDirectory(
+	targetDir: string,
+	options: EntityPackageOptions,
+): Promise<void> {
+	const writer = new DirectoryPackageWriter(targetDir);
+	await writeEntityPackage(writer, options);
+	await writer.finalize();
 }

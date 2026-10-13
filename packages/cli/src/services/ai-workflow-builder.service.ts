@@ -27,7 +27,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { getBase } from '@/workflow-execute-additional-data';

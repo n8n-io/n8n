@@ -5,6 +5,10 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
+	/** Enable workflow suggestion runtime integrations at startup. */
+	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
+	workflowSuggestionsEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
@@ -118,6 +122,15 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
+	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
+	 * instance an eval pointed at a real workflow must leave its history alone. An eval
+	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
+	evalInstance: boolean = false;
+
+	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
 	 * `0` disables auto-stop (the sandbox stays running).
 	 */
@@ -166,7 +179,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 30;
 
-	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
@@ -191,13 +204,6 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
-	 * Let the assistant discover and connect MCP registry servers.
-	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
-	 */
-	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
-	mcpConnectionsEnabled: boolean = false;
-
-	/**
 	 * Force-enable canvas-selected-nodes chat context in Instance AI.
 	 * Acts as an operator-level override of the PostHog rollout flag
 	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
@@ -207,13 +213,20 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
+	 * Pin every Instance AI run on this instance to one published prompt profile
+	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
+	 *
+	 * Instance-wide on purpose, so the two system prompts never fragment the
+	 * prompt cache within one instance. A request-level `promptVersion` and a
+	 * value already selected for the thread both still win, so an eval keeps the
+	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
+	 * that resumes after you change it uses the new value. Profiles are keyed by
+	 * build mode, so pinning a `default`-mode profile also overrides a
+	 * progressive building assignment. An unknown version fails the run, and n8n
+	 * keeps serving everything else.
 	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
+	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
+	promptVersion: string = '';
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
@@ -291,19 +304,4 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
 	maxConcurrentSubAgents: number = -1;
-
-	/**
-	 * Whether to hand the agent a block of instance context on each turn — what exists here, what
-	 * changed recently, and what has run — plus the tool to read further back.
-	 *
-	 * Separate from `N8N_ACTIVITY_LOG_ENABLED`, which decides whether the record is written at all.
-	 * The record is core and has other potential consumers; this flag gates one consumer's read.
-	 * Two of the three sources are not the activity log in the first place: what exists comes from
-	 * the workflows themselves, and runs come from `execution_entity`.
-	 *
-	 * Reading needs both flags on. With only this one, the workflow and run legs still work while
-	 * the edit history stays empty, since no entry was ever written.
-	 */
-	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
-	instanceContextEnabled: boolean = false;
 }

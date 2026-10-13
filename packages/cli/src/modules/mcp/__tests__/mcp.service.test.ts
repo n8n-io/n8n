@@ -6,11 +6,12 @@ import {
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
-	MCP_INSTANCE_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
@@ -28,33 +29,32 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
+import { McpConfig } from '../mcp.config';
 import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo } from '../mcp.types';
@@ -134,13 +134,15 @@ describe('McpService', () => {
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
-			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(ErrorWorkflowValidationService),
 			mockAiGatewayService(),
 			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry),
 			eventService,
 			mockInstance(FolderService),
 			aiPreferenceService,
+			mockInstance(McpConfig),
+			mockInstance(ExecutionRedactionServiceProxy),
 		);
 	});
 
@@ -189,13 +191,15 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -358,7 +362,6 @@ describe('McpService', () => {
 		const buildResolutionService = (opts: {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
-			mcpInstanceContextEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -371,10 +374,10 @@ describe('McpService', () => {
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: {
+						...new EndpointsConfig(),
 						webhook: '/webhook',
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
-						mcpInstanceContextEnabled: opts.mcpInstanceContextEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -399,18 +402,20 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-		it('resolves every feature with a single PostHog lookup', async () => {
+		it('resolves user flags and the instance activity flag', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
@@ -418,12 +423,52 @@ describe('McpService', () => {
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([true, false])(
+			'uses the same instance context answer for two users: %s',
+			async (enabled) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true })
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false });
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				const service = buildResolutionService({ postHogClient });
+				const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
+
+				const results = await Promise.all([
+					service.resolveFeatureFlags(user),
+					service.resolveFeatureFlags(secondUser),
+				]);
+
+				expect(results.map((result) => result.instanceContextEnabled)).toEqual([enabled, enabled]);
+				expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				]);
+			},
+		);
+
+		it('keeps context off when its flag fails without disabling user features', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+			});
+			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
+
+			await expect(
+				buildResolutionService({ postHogClient }).resolveFeatureFlags(user),
+			).resolves.toMatchObject({
+				instanceContextEnabled: false,
+				mcpApps: { enabled: true, variant: 'variant' },
+			});
 		});
 
 		describe('MCP Apps', () => {
@@ -473,9 +518,10 @@ describe('McpService', () => {
 		});
 
 		describe('instance context', () => {
-			it('enables the surface from the rollout flag with the env override off', async () => {
+			it('enables the surface from the shared instance flag alone', async () => {
 				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_INSTANCE_CONTEXT_FLAG]: true });
+				postHogClient.getFeatureFlags.mockResolvedValue({});
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 				const service = buildResolutionService({ postHogClient });
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
@@ -483,18 +529,21 @@ describe('McpService', () => {
 				});
 			});
 
-			/** A wrong key or a variant-string value would otherwise never roll out, silently. */
-			it('leaves the surface off for any value that is not boolean true', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_INSTANCE_CONTEXT_FLAG]: 'variant',
-				});
-				const service = buildResolutionService({ postHogClient });
+			it.each([false, undefined, 'variant'])(
+				'keeps the surface off when the instance flag is %s',
+				async (value) => {
+					const postHogClient = mockInstance(PostHogClient);
+					postHogClient.getFeatureFlags.mockResolvedValue({
+						[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					});
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
+					const service = buildResolutionService({ postHogClient });
 
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					instanceContextEnabled: false,
-				});
-			});
+					await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+						instanceContextEnabled: false,
+					});
+				},
+			);
 		});
 
 		describe('user preferences', () => {
@@ -550,6 +599,7 @@ describe('McpService', () => {
 			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
@@ -558,18 +608,19 @@ describe('McpService', () => {
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it('still queries PostHog for the AI preferences flag when every other feature is env-overridden', async () => {
+		it('resolves user preferences while the instance context flag and MCP Apps are on', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			});
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,
-				mcpInstanceContextEnabled: true,
 			});
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				aiPreferencesEnabled: true,
@@ -1154,13 +1205,15 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1211,13 +1264,15 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1293,13 +1348,15 @@ describe('McpService', () => {
 					mockInstance(WorkflowHistoryService),
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
-					mockInstance(SubworkflowPolicyChecker),
+					mockInstance(ErrorWorkflowValidationService),
 					mockAiGatewayService(),
 					mockInstance(McpPostSaveMetricsService),
 					mockInstance(ModuleRegistry),
 					mockInstance(EventService),
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),
+					mockInstance(McpConfig),
+					mockInstance(ExecutionRedactionServiceProxy),
 				);
 			};
 

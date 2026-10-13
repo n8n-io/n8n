@@ -3,6 +3,7 @@ import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
 
 /**
@@ -26,6 +27,7 @@ export {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 };
 
 /** Who wrote the message being sent. Required at every send boundary. */

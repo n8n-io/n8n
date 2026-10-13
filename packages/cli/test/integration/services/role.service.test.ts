@@ -4,15 +4,17 @@ import { testDb } from '@n8n/backend-test-utils';
 import { ProjectRepository } from '@n8n/db';
 import { RoleMappingRuleRepository, RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { ALL_ROLES, MANDATORY_INSTANCE_SCOPES } from '@n8n/permissions';
+import {
+	ALL_ROLES,
+	GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS,
+	MANDATORY_INSTANCE_SCOPES,
+} from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningRoleDeletionChecker } from '@/modules/provisioning.ee/role-deletion-checker.ee';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleDeletionCheckProxy } from '@/services/role-deletion-check-proxy.service';
-import { RoleService } from '@/services/role.service';
+import { RoleDeletionCheckProxy, RoleService } from '@n8n/backend-services';
 
 import {
 	createRole,
@@ -913,6 +915,64 @@ describe('RoleService', () => {
 			expect(savedRole).toBeDefined();
 			expect(savedRole?.roleType).toBe('global');
 			expect(savedRole?.systemRole).toBe(false);
+		});
+
+		it('accepts every credential scope the instance-role editor can send', async () => {
+			//
+			// ARRANGE
+			//
+			// `resolveScopes` rejects anything outside GLOBAL_CUSTOM_ROLE_SCOPES, so a
+			// scope the editor offers but the whitelist omits would fail the save.
+			const editorScopes = [
+				...new Set(
+					Object.values<readonly string[]>(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.credential).flat(),
+				),
+			];
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Credential Manager',
+				description: 'Holds every credential scope the editor offers',
+				roleType: 'global',
+				scopes: editorScopes as CreateRoleDto['scopes'],
+			};
+
+			//
+			// ACT
+			//
+			const result = await roleService.createCustomRole(createRoleDto);
+
+			//
+			// ASSERT
+			//
+			expect([...result.scopes].sort()).toEqual(
+				[...new Set([...editorScopes, ...MANDATORY_INSTANCE_SCOPES])].sort(),
+			);
+			expect(result.scopes).toContain('credential:use');
+		});
+
+		it.each([
+			'credential:shareGlobally',
+			'credential:manageInstance',
+			'credential:createEndUser',
+			'credential:connect',
+		])('rejects the withheld credential scope %s on a global role', async (scope) => {
+			//
+			// ARRANGE
+			//
+			// These stay Owner/Admin-only. They are valid scope slugs, so only the
+			// whitelist keeps them out of a custom instance role.
+			const createRoleDto: CreateRoleDto = {
+				displayName: `Overreaching Role ${scope}`,
+				description: 'Asks for a withheld credential scope',
+				roleType: 'global',
+				scopes: ['credential:read', scope] as CreateRoleDto['scopes'],
+			};
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(roleService.createCustomRole(createRoleDto)).rejects.toThrow(
+				`The following scopes are not allowed for global roles: ${scope}`,
+			);
 		});
 
 		it('should create custom role without description', async () => {

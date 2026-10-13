@@ -191,6 +191,13 @@ describe('mergeNodeSets', () => {
 		expect(merged).toEqual([set('A'), set('B')]);
 	});
 
+	it('adds group metadata when an incoming mention matches an existing set', () => {
+		const grouped = { ...set('A'), canvasGroupId: 'g1', canvasGroupName: 'Fulfilment' };
+		const merged = mergeNodeSets([set('A')], [grouped]);
+
+		expect(merged).toEqual([grouped]);
+	});
+
 	it('caps the merged sets at the schema limit (50)', () => {
 		const existing = Array.from({ length: 40 }, (_, i) => set(`e${i}`));
 		const incoming = Array.from({ length: 40 }, (_, i) => set(`i${i}`));

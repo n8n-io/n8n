@@ -2,7 +2,7 @@ import express, { type Application } from 'express';
 
 import { createAuthenticationMiddleware } from '../auth/authenticate';
 import type { IdentityVerifier } from '../auth/identity.types';
-import type { ExecutionQueryService } from '../execution';
+import type { CancelExecutionService, ExecutionQueryService } from '../execution';
 import type { StartExecutionService } from '../execution/start-execution.service';
 import type { EngineLogger } from '../logging';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
@@ -17,6 +17,7 @@ const MAX_BODY_SIZE = '16mb';
 /** Services the engine API is built on, handed in at construction. */
 export interface EngineServerDeps {
 	startExecution: StartExecutionService;
+	cancelExecution: CancelExecutionService;
 	executionQuery: ExecutionQueryService;
 	identityVerifier: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */

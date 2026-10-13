@@ -41,12 +41,14 @@ const props = withDefaults(
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
+		executionPermissions?: PermissionsRecord['execution'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
+		executionPermissions: () => ({}),
 	},
 );
 
@@ -302,7 +304,7 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<N8nIconButton variant="subtle" icon="ellipsis-vertical" />
+				<N8nIconButton variant="outline" icon="ellipsis-vertical" />
 				<template #dropdown>
 					<ElDropdownMenu
 						:class="{
@@ -332,7 +334,7 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-delete-dropdown-item"
 							:class="$style.deleteAction"
 							command="delete"
-							:disabled="!workflowPermissions.update"
+							:disabled="!executionPermissions.delete"
 						>
 							{{ locale.baseText('generic.delete') }}
 						</ElDropdownItem>

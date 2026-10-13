@@ -3,7 +3,7 @@ import type { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { CallbackStore } from '../callback-store';
 
@@ -34,13 +34,13 @@ describe('CallbackStore', () => {
 		const reader = new CallbackStore(cache, lockService, 'agent-1:discord:cred-1');
 
 		const key = await writer.store('resume:run:tool:0', '{"approved":true}', {
-			kind: 'approval',
+			groupId: '["run","tool"]',
 		});
 
 		await expect(reader.resolve(key)).resolves.toEqual({
 			actionId: 'resume:run:tool:0',
 			value: '{"approved":true}',
-			kind: 'approval',
+			groupId: '["run","tool"]',
 		});
 	});
 

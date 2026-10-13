@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nActionDropdown } from '@n8n/design-system';
+import { N8nActionDropdown, N8nTooltip } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -47,23 +47,29 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 
 <template>
 	<div :class="$style.chips" data-test-id="canvas-node-agent-chips">
-		<span
+		<N8nTooltip
 			v-for="chip in inlineChips"
 			:key="chip.key"
-			:class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]"
+			as-child
+			:show-after="500"
+			placement="top"
 		>
-			<AgentChipButton
-				:icon="chip.nodeTypeDescription ? undefined : chip.icon"
-				:clickable="false"
-				:aria-busy="isChipActive(chip)"
-				data-test-id="canvas-node-agent-chip"
-			>
-				<template v-if="chip.nodeTypeDescription" #icon>
-					<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
-				</template>
-				{{ chip.label }}
-			</AgentChipButton>
-		</span>
+			<span :class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]">
+				<AgentChipButton
+					:class="$style.chipButton"
+					:icon="chip.nodeTypeDescription ? undefined : chip.icon"
+					:clickable="false"
+					:aria-busy="isChipActive(chip)"
+					data-test-id="canvas-node-agent-chip"
+				>
+					<template v-if="chip.nodeTypeDescription" #icon>
+						<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
+					</template>
+					{{ chip.label }}
+				</AgentChipButton>
+			</span>
+			<template #content>{{ chip.label }}</template>
+		</N8nTooltip>
 		<span
 			v-if="overflowChips.length && isReadOnly"
 			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
@@ -88,15 +94,16 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<span :class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]">
-					<AgentChipButton :aria-busy="isOverflowActive">
-						{{
-							i18n.baseText('agentNode.card.moreChips', {
-								interpolate: { count: overflowChips.length },
-							})
-						}}
-					</AgentChipButton>
-				</span>
+				<AgentChipButton
+					:aria-busy="isOverflowActive"
+					:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
+				>
+					{{
+						i18n.baseText('agentNode.card.moreChips', {
+							interpolate: { count: overflowChips.length },
+						})
+					}}
+				</AgentChipButton>
 			</template>
 		</N8nActionDropdown>
 	</div>
@@ -108,6 +115,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 .chips {
 	display: flex;
 	flex-wrap: wrap;
+	min-width: 0;
 	gap: var(--spacing--2xs);
 }
 
@@ -119,7 +127,14 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	display: inline-flex;
 	position: relative;
 	isolation: isolate;
+	max-width: 100%;
+	min-width: 0;
 	border-radius: var(--radius--full);
+}
+
+.chipButton {
+	max-width: 100%;
+	min-width: 0;
 }
 
 /* stylelint-disable */
@@ -127,8 +142,24 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	@include styles.status-animated-after;
 	@include styles.status-running-animation;
 
+	// This matches the mixin's 3px inset and keeps the gradient outside the button face.
+	padding: 3px;
 	border-radius: inherit;
+	z-index: 0;
+	-webkit-mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
 	pointer-events: none;
+}
+
+.running > * {
+	position: relative;
+	z-index: 1;
 }
 
 @include styles.status-animation-definitions;

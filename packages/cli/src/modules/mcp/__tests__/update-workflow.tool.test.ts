@@ -18,15 +18,16 @@ import { NON_FATAL_OPERATION_TYPES } from '../tools/workflow-builder/workflow-op
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -201,6 +202,20 @@ describe('update-workflow MCP tool', () => {
 		incrementPostSaveFailure: vi.fn(),
 	});
 
+	/**
+	 * Built per tool, not once in `beforeEach`: a test may swap `globalConfig`
+	 * (custom error-trigger type) before building its tool, and the service reads
+	 * the config it was constructed with.
+	 */
+	const buildErrorWorkflowValidationService = () =>
+		new ErrorWorkflowValidationService(
+			globalConfig,
+			nodeTypes,
+			workflowFinderService,
+			workflowPublishedDataService,
+			subworkflowPolicyChecker,
+		);
+
 	const createTool = () =>
 		createUpdateWorkflowTool(
 			user,
@@ -215,9 +230,9 @@ describe('update-workflow MCP tool', () => {
 			dataTableOps as never,
 			tagService,
 			globalConfig,
-			subworkflowPolicyChecker,
-			workflowPublishedDataService,
+			buildErrorWorkflowValidationService(),
 			aiGatewayService,
+			{},
 			logger,
 			postSaveMetrics,
 		);
@@ -2074,6 +2089,42 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
+			// Ref: ADO-5928. Error workflow references must respect MCP availability.
+			test('rejects an error workflow that is not available in MCP', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { settings: { availableInMCP: false } })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain('not available in MCP');
+				expect(parseResult(result).error).toContain('/workflow/err-wf?settings=true');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects an archived error workflow', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { isArchived: true })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain("Workflow 'err-wf' is archived");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('rejects when the error workflow is not found or inaccessible', async () => {
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1' ? buildExistingWorkflow() : null,
@@ -2099,6 +2150,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'draft-only-wf',
 							name: 'Draft Only Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: null,
@@ -2165,6 +2217,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'no-trigger-wf',
 							name: 'Not An Error Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: 'no-trigger-wf-v1',
@@ -2306,6 +2359,26 @@ describe('update-workflow MCP tool', () => {
 				expect(findWorkflowMock).toHaveBeenCalledTimes(1);
 				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 				expect(saved.settings).toEqual(expect.objectContaining({ errorWorkflow: 'DEFAULT' }));
+			});
+
+			// Nothing evaluates `settings.errorWorkflow`; `executeErrorWorkflow` uses it
+			// as a literal workflow id. Saving an expression would look like it worked
+			// and then silently never run a handler.
+			test('rejects an expression instead of saving a reference that never resolves', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setWorkflowSettings',
+							settings: { errorWorkflow: '={{ $json.handlerId }}' },
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('does not accept expressions');
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
 			test('does not attach settings for node-only edits', async () => {
@@ -2486,9 +2559,9 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3039,6 +3112,296 @@ describe('update-workflow MCP tool', () => {
 
 				const response = parseResult(result);
 				expect(response.validationWarnings).toEqual([]);
+			});
+
+			test('does not re-add a required subnode link that this batch removed', async () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [
+									[
+										{ node: 'AI Agent', type: 'ai_languageModel', index: 0 },
+										{ node: 'Parser', type: 'ai_languageModel', index: 0 },
+									],
+								],
+							},
+						} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'removeConnection',
+							source: 'Model',
+							target: 'Parser',
+							connectionType: 'ai_languageModel',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('keeps the removal when the batch also renames the target node', async () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [
+									[
+										{ node: 'AI Agent', type: 'ai_languageModel', index: 0 },
+										{ node: 'Parser', type: 'ai_languageModel', index: 0 },
+									],
+								],
+							},
+						} as IConnections,
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'removeConnection',
+							source: 'Model',
+							target: 'Parser',
+							connectionType: 'ai_languageModel',
+						},
+						{ type: 'renameNode', oldName: 'Parser', newName: 'Schema' },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			/**
+			 * A parser whose required model input is unsatisfied, with the only model
+			 * wired to the agent instead. A repair pass therefore has an unambiguous
+			 * source to borrow, so any auto-wiring shows up in the saved graph.
+			 */
+			const seedParserMissingItsModel = () => {
+				nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
+						return {
+							description: {
+								group: ['transform'],
+								builderHint: {
+									inputs: {
+										ai_languageModel: {
+											required: true,
+											displayOptions: { show: { autoFix: [true] } },
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { group: ['transform'] } };
+				}) as unknown as typeof nodeTypes.getByNameAndVersion);
+
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing',
+						settings: { availableInMCP: true },
+						nodes: [
+							makeNode({
+								id: 'agent',
+								name: 'AI Agent',
+								type: '@n8n/n8n-nodes-langchain.agent',
+								typeVersion: 3.1,
+							}),
+							makeNode({
+								id: 'parser',
+								name: 'Parser',
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								typeVersion: 1.3,
+								parameters: { autoFix: true },
+							}),
+							makeNode({
+								id: 'model',
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								typeVersion: 1.3,
+							}),
+						],
+						connections: {
+							Parser: {
+								ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+							Model: {
+								ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+							},
+						} as IConnections,
+					}),
+				);
+			};
+
+			test('does not auto-wire anything for a layout-only update', async () => {
+				seedParserMissingItsModel();
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setNodePosition', nodeName: 'Parser', position: [10, 20] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
+				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				// The warning is derived from the links the repair added, so assert the
+				// graph too: dropping the warning must not be enough to pass this.
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('does not auto-wire anything for a settings-only update', async () => {
+				seedParserMissingItsModel();
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setNodeSettings', nodeName: 'Parser', settings: { retryOnFail: true } },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
+				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				// The model stays wired to the agent alone; the repair pass must not
+				// have borrowed it for the parser's required input.
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
+			});
+
+			test('does not auto-wire anything for a workflow-level-only update', async () => {
+				seedParserMissingItsModel();
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowMetadata', description: 'Renamed by an agent' },
+						{ type: 'setWorkflowSettings', settings: { executionOrder: 'v1' } },
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+
+				const response = parseResult(result);
+				const warnings = (response.validationWarnings ?? []) as Array<{ code: string }>;
+				expect(warnings.some((w) => w.code === 'REQUIRED_SUBNODE_CONNECTED')).toBe(false);
+
+				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const targets = saved.connections.Model.ai_languageModel?.[0]?.map((c) => c.node);
+				expect(targets).toEqual(['AI Agent']);
 			});
 
 			test('refuses to save when an addConnection wires an agent as a tool to another agent', async () => {
@@ -3847,9 +4210,9 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3886,9 +4249,9 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);
@@ -3925,9 +4288,9 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
+					{},
 					logger,
 					postSaveMetrics,
 				);

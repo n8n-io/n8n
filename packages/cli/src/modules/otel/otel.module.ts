@@ -9,7 +9,8 @@ import { InstanceSettings } from 'n8n-core';
 })
 export class OtelModule implements ModuleInterface {
 	async init() {
-		await import('./otel-lifecycle-handler.js');
+		const { OtelLifecycleHandler } = await import('./otel-lifecycle-handler.js');
+		Container.get(OtelLifecycleHandler).init();
 
 		const { OtelService } = await import('./otel.service.js');
 		await Container.get(OtelService).init();

@@ -4,6 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
+import { isGoogleVertexAnthropicModel } from './google-vertex';
 import type { PromptCachingConfig } from '../../types/sdk/agent';
 import type { JSONObject } from '../../types/utils/json';
 
@@ -58,7 +59,11 @@ function isEnabledForProvider(
 /** Providers that speak the Anthropic Messages API (including Vertex Claude). */
 export function isAnthropicMessagesProvider(modelId: string): boolean {
 	const provider = getProviderPrefix(modelId);
-	return provider === 'anthropic' || provider === 'google-vertex-anthropic';
+	return (
+		provider === 'anthropic' ||
+		provider === 'google-vertex-anthropic' ||
+		isGoogleVertexAnthropicModel(modelId)
+	);
 }
 
 /**
@@ -151,6 +156,24 @@ export function buildInstructionPromptCacheOptions(
 	}
 
 	return buildAnthropicCacheControl(config);
+}
+
+/**
+ * Cache options for the recovered-skills system message. It reuses the
+ * instruction breakpoint, so it is cached only when the instructions are.
+ * Undefined when the extra breakpoint would leave no slot for the
+ * conversation breakpoint next to the caller's tool and message breakpoints.
+ */
+export function buildSkillInstructionCacheOptions(
+	instructionProviderOptions: ProviderOptions | undefined,
+	aiTools: ToolSet,
+	messages: ModelMessage[],
+): ProviderOptions | undefined {
+	if (!hasAnthropicCacheControl(instructionProviderOptions)) return undefined;
+	const callerBreakpoints = countAnthropicBreakpoints([], aiTools, messages);
+	// Instructions + skills + conversation breakpoint.
+	if (callerBreakpoints + 3 > MAX_ANTHROPIC_CACHE_BREAKPOINTS) return undefined;
+	return instructionProviderOptions;
 }
 
 /** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */
