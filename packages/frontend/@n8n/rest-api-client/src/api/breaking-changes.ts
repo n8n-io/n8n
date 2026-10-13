@@ -88,3 +88,15 @@ export async function updateFindingStatus(
 		{ status },
 	);
 }
+
+export async function updateFindingStatuses(
+	context: IRestApiContext,
+	ruleId: string,
+	workflowIds: string[],
+	status: MigrationFindingTriageStatus,
+): Promise<void> {
+	await makeRestApiRequest(context, 'PATCH', `/breaking-changes/report/${ruleId}/workflows`, {
+		workflowIds,
+		status,
+	});
+}

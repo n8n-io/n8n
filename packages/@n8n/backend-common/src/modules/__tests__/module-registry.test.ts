@@ -57,6 +57,7 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
+<<<<<<< HEAD
 	it('should not include the deprecated chat-hub module by default', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('chat-hub');
 	});
@@ -69,8 +70,16 @@ describe('eligibleModules', () => {
 	it.each(['instance-ai', 'agents'])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
 	});
+=======
+	it.each(['instance-ai', 'agents', 'agent-evals'])(
+		'should include %s by default',
+		(moduleName) => {
+			expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+		},
+	);
+>>>>>>> 8d93e31d1d3d4bbcdd88f73bc0b5ef5386006dd3
 
-	it.each(['instance-ai', 'agents'])(
+	it.each(['instance-ai', 'agents', 'agent-evals'])(
 		'should allow opting out of the default %s module via env var',
 		(moduleName) => {
 			process.env.N8N_DISABLED_MODULES = moduleName;
@@ -112,6 +121,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'agent-evals',
 			'scim',
 		]);
 	});
@@ -151,6 +161,7 @@ describe('eligibleModules', () => {
 			'workflow-reviews',
 			'instance-ai',
 			'agents',
+			'agent-evals',
 			'scim',
 			'type-availability-policies',
 		]);

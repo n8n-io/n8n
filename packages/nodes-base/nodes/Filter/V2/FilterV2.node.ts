@@ -20,8 +20,12 @@ export class FilterV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
+<<<<<<< HEAD
 			version: [2, 2.1, 2.2, 2.3],
 			iconColor: 'sky-blue',
+=======
+			version: [2, 2.1, 2.2, 2.3, 2.4],
+>>>>>>> 8d93e31d1d3d4bbcdd88f73bc0b5ef5386006dd3
 			defaults: {
 				name: 'Filter',
 			},
@@ -44,7 +48,8 @@ export class FilterV2 implements INodeType {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: getTypeValidationStrictness(2.1),
-							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
+							version:
+								'={{ $nodeVersion >= 2.4 ? 4 : $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
 					},
 					builderHint: {

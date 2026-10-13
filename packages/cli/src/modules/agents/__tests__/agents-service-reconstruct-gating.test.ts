@@ -58,6 +58,10 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
+import { storedRunSource } from './test-utils/stored-agent-config';
+
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -184,7 +188,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
 	});
@@ -208,7 +216,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 			],
 		});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(buildMcpClientForServerMock).toHaveBeenCalledTimes(2);
 		expect(buildMcpClientForServerMock.mock.calls[0][0]).toMatchObject({ name: 'github' });
@@ -230,7 +242,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		});
 
 		await service.reconstructFromAgentEntity(
-			entity,
+			storedRunSource(entity),
 			credentialProvider,
 			'production',
 			undefined,
@@ -267,7 +279,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 	const reconstructWithWorkspace = async (service: AgentRuntimeReconstructionService) =>
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 			undefined,
@@ -392,7 +404,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 
 		await expect(
 			service.reconstructFromAgentEntity(
-				makeAgentEntity(),
+				storedRunSource(makeAgentEntity()),
 				mock<CredentialProvider>(),
 				'production',
 			),
@@ -432,7 +444,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity(undefined, subAgents !== undefined ? { subAgents } : {});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
@@ -505,7 +521,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService();
 
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: SUB_AGENT_MAX_CHILDREN_DEFAULT,
@@ -517,7 +537,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService();
 		const entity = makeAgentEntity(undefined, { subAgents: { maxChildren: 2 } });
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedDelegatePolicy()).toMatchObject({
 			maxChildren: 2,
@@ -552,7 +576,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			});
 
 			await service.reconstructFromAgentEntity(
-				entity,
+				storedRunSource(entity),
 				credentialProvider,
 				'production',
 				undefined,
@@ -601,7 +625,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			},
 		});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedAvailableSubAgents()).toEqual([
 			{
@@ -657,8 +685,26 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 	});
 
 	it('resolves subAgents.modelsByDifficulty into delegate tool metadata', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
 		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.list.mockResolvedValue([
+			{ id: 'vertex-cred', name: 'Vertex', type: 'googleVertexAiApi' },
+		]);
 		credentialProvider.resolve.mockImplementation(async (credentialId: string) => {
+			if (credentialId === 'vertex-cred') {
+				return {
+					email: 'agent@example.test',
+					privateKey: 'private-key',
+					region: 'europe-west1',
+					project: 'child-project',
+				};
+			}
 			if (credentialId === 'low-cred') {
 				return { apiKey: 'low-key', url: 'https://low.example/v1' };
 			}
@@ -672,18 +718,34 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
+					medium: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'vertex-cred',
+					},
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
 				},
 			},
 		});
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedInlineSubAgentModelsByDifficulty()).toEqual({
 			low: {
 				id: 'openai/gpt-4o-mini',
 				apiKey: 'low-key',
 				baseURL: 'https://low.example/v1',
+			},
+			medium: {
+				id: 'google-vertex/gemini-3-flash-preview',
+				sdk: '@ai-sdk/google-vertex',
+				project: 'child-project',
+				location: 'europe-west1',
+				clientEmail: 'agent@example.test',
+				privateKey: 'private-key',
 			},
 			high: {
 				id: 'anthropic/claude-sonnet-4-5',
@@ -713,7 +775,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			},
 		);
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		const resolveInlineSubAgentProviderTools = getInjectedResolveInlineSubAgentProviderTools();
 		expect(resolveInlineSubAgentProviderTools).toBeDefined();
@@ -730,7 +796,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService();
 
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+		);
 
 		expect(getInjectedInlineSubAgentModelsByDifficulty()).toBeUndefined();
 	});
@@ -764,7 +834,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		const entity = makeAgentEntity();
 
 		await service.reconstructFromAgentEntity(
-			entity,
+			storedRunSource(entity),
 			credentialProvider,
 			'production',
 			N8N_CHAT_INTEGRATION_TYPE,
@@ -780,7 +850,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		// Same entity, reconstruct WITHOUT integrationType.
 		const entity = makeAgentEntity();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+		);
 
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
@@ -791,7 +865,12 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 		const { service, credentialProvider } = setup();
 		const entity = makeAgentEntity();
 
-		await service.reconstructFromAgentEntity(entity, credentialProvider, 'production', 'slack');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'production',
+			'slack',
+		);
 
 		const toolNames = getInjectedToolNames();
 		expect(toolNames).not.toContain(N8N_CHAT_ACTION_TOOL_NAME);
@@ -816,7 +895,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — check
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService({ n8nCheckpointStorage });
 
-		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'production');
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+		);
 
 		expect(n8nCheckpointStorage.getStorage).toHaveBeenCalledWith('agent-1');
 		expect(builtAgent.checkpoint).toHaveBeenCalledWith(scopedStorage);
@@ -882,7 +965,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 	it('keeps write_todos and omits planning instructions when disabled', async () => {
 		Container.get(AgentsConfig).planToolsEnabled = false;
 		await makeReconstructionService().reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -897,7 +980,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			Container.get(AgentsConfig).planToolsEnabled = true;
 			Container.get(AgentsConfig).backgroundTasksEnabled = backgroundTasksEnabled;
 			await makeReconstructionService().reconstructFromAgentEntity(
-				makeAgentEntity(),
+				storedRunSource(makeAgentEntity()),
 				mock<CredentialProvider>(),
 				'production',
 			);
@@ -921,7 +1004,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 	it('keeps write_todos when the caller disables plan tools', async () => {
 		Container.get(AgentsConfig).planToolsEnabled = true;
 		await makeReconstructionService().reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 			undefined,
@@ -991,7 +1074,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const { service, credentialProvider } = setupWithRoster();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, { subAgents }),
+			storedRunSource(makeAgentEntity(undefined, { subAgents })),
 			credentialProvider,
 			'production',
 		);
@@ -1013,7 +1096,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const { service, credentialProvider } = setupWithRoster();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, { subAgents }),
+			storedRunSource(makeAgentEntity(undefined, { subAgents })),
 			credentialProvider,
 			'production',
 		);
@@ -1031,9 +1114,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: 'disabled-agent' }));
 		const service = makeReconstructionService({ agentRepository });
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, {
-				subAgents: { agents: [{ agentId: 'disabled-agent', enabled: false }] },
-			}),
+			storedRunSource(
+				makeAgentEntity(undefined, {
+					subAgents: { agents: [{ agentId: 'disabled-agent', enabled: false }] },
+				}),
+			),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -1072,7 +1157,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const service = makeReconstructionService();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -1108,7 +1193,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		});
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(),
+			storedRunSource(makeAgentEntity()),
 			mock<CredentialProvider>(),
 			'production',
 			undefined,
@@ -1164,7 +1249,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const service = makeReconstructionService();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity({ guardrails: { budget } }),
+			storedRunSource(makeAgentEntity({ guardrails: { budget } })),
 			mock<CredentialProvider>(),
 			'production',
 		);
@@ -1190,7 +1275,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		const { service, credentialProvider } = setupWithRoster();
 
 		await service.reconstructFromAgentEntity(
-			makeAgentEntity(undefined, { subAgents }),
+			storedRunSource(makeAgentEntity(undefined, { subAgents })),
 			credentialProvider,
 			'production',
 			undefined,

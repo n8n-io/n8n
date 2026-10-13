@@ -41,6 +41,7 @@ import type { IntegrationMessageContextService } from '../integrations/integrati
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
+import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -176,6 +177,7 @@ function makeService() {
 		aiConfigMock,
 		integrationMessageContextService,
 		settingsService,
+		createAgentSkillRefsService(agentRepository),
 	);
 
 	return {
@@ -1500,8 +1502,8 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(prepareForEval).toHaveBeenCalledWith(schema, { hasChatIntegrations: true });
 			const [entity, , , , , passedInstrumentation] =
 				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
-			expect(entity.schema).toEqual(evalConfig);
-			expect(entity.integrations).toEqual([]);
+			expect(entity.agent.schema).toEqual(evalConfig);
+			expect(entity.agent.integrations).toEqual([]);
 			expect(passedInstrumentation).toBe(instrumentation);
 			// Run telemetry describes the config that ran, not the stored one.
 			expect(executionService.startExecutionRecording).toHaveBeenCalledWith(
@@ -1556,7 +1558,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 			const [entity, , , , , passedInstrumentation] =
 				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
-			expect(entity.integrations).toEqual(integrations);
+			expect(entity.agent.integrations).toEqual(integrations);
 			expect(passedInstrumentation).toBeUndefined();
 		});
 	});

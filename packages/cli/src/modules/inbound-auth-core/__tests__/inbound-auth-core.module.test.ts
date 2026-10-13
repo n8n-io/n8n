@@ -1,22 +1,21 @@
 import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
+	AuthenticationPipeline,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
-	migrateToLatest,
-	TrustedSourceConfigSchema,
 	TrustedSourceGate,
 	TrustedSourceStore,
-	type Extracted,
-	type TrustedSource,
-	type Verified,
 } from '@n8n/inbound-auth';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
+import { InboundAuthPipeline } from '../authentication-pipeline';
 import { OAuth2AuthenticationService } from '../authentication.service';
+import { TrustedSourceIdentityService } from '../identity/trusted-source-identity.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
@@ -24,20 +23,15 @@ import { TrustedSourceDbStore } from '../trusted-source.store';
 
 describe('InboundAuthCoreModule', () => {
 	describe('init', () => {
-		const extracted = {
-			surface: 'instance-mcp',
-			resource: { url: 'https://n8n.example/mcp', acceptedAudiences: ['https://n8n.example/mcp'] },
-			request: { method: 'POST', url: '/mcp', headers: {}, ip: '203.0.113.7' },
-			receivedAt: new Date(),
-			credential: { kind: 'bearer', token: 'a.b.c' },
-		} satisfies Extracted;
-
 		const dbStore = mock<TrustedSourceDbStore>();
 		const dbGate = mock<TrustedSourceDbGate>();
+		const identityService = mock<TrustedSourceIdentityService>();
 
 		beforeAll(async () => {
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			Container.set(TrustedSourceDbStore, dbStore);
 			Container.set(TrustedSourceDbGate, dbGate);
+			Container.set(TrustedSourceIdentityService, identityService);
 			await new InboundAuthCoreModule().init();
 		});
 
@@ -48,6 +42,30 @@ describe('InboundAuthCoreModule', () => {
 		it('binds the TrustedSourceGate contract to the database gate', () => {
 			expect(Container.get(TrustedSourceGate)).toBe(dbGate);
 		});
+
+		it('seeds the system trusted source once', async () => {
+			// Mock history from `beforeAll` does not survive into the test, so init again here.
+			dbStore.seedSystemSource.mockClear();
+			await new InboundAuthCoreModule().init();
+
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+			expect(dbStore.seedSystemSource).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'n8n-internal' }),
+			);
+		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'does not seed the system trusted source on a %s instance',
+			async (instanceType) => {
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.seedSystemSource.mockClear();
+
+				await new InboundAuthCoreModule().init();
+
+				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			},
+		);
 
 		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
 			const server = Container.get(LocalAuthorizationServer);
@@ -60,44 +78,12 @@ describe('InboundAuthCoreModule', () => {
 			expect(Container.get(AuthenticationService)).toBeInstanceOf(OAuth2AuthenticationService);
 		});
 
-		it('binds an IdentityService that fails closed until an implementation is registered', async () => {
-			const source: TrustedSource = {
-				id: 'source-1',
-				name: 'Example IdP',
-				type: 'oauth2',
-				issuer: 'https://idp.example',
-				managedBy: 'admin',
-				status: 'unchecked',
-				lastError: null,
-				lastCheckedAt: null,
-				createdAt: '2026-09-30T10:00:00.000Z',
-				updatedAt: '2026-09-30T10:00:00.000Z',
-				config: migrateToLatest(
-					TrustedSourceConfigSchema.parse({
-						version: 1,
-						authentication: { type: 'oauth2' },
-						surfaces: { 'instance-mcp': {} },
-					}),
-				),
-				metadata: null,
-			};
-			const {
-				credential,
-				request: { headers: _headers, ...request },
-				...rest
-			} = extracted;
-			const verified = {
-				...rest,
-				request,
-				credentialKind: credential.kind,
-				source,
-				claims: { sub: 'alice' },
-				expiresAt: new Date(),
-			} satisfies Verified;
+		it('binds the IdentityService contract to the trusted-source identity service', () => {
+			expect(Container.get(IdentityService)).toBe(identityService);
+		});
 
-			const result = await Container.get(IdentityService).identify(verified);
-
-			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
+		it('binds the AuthenticationPipeline contract to the inbound-auth pipeline', () => {
+			expect(Container.get(AuthenticationPipeline)).toBeInstanceOf(InboundAuthPipeline);
 		});
 	});
 
