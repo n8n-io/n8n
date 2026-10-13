@@ -165,7 +165,8 @@ export class InstanceAiAgentContextAdapterService {
 
 		const agent = await this.agentsService.findById(input.agentId, projectId);
 		if (!agent) throw new UserError('Agent not found.');
-		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
+		// Refs only: the skill bodies are read in the `skills` case, which needs them.
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
 		const config = composeJsonConfig(agent, skillRefs);
 
 		switch (input.type) {
@@ -185,6 +186,7 @@ export class InstanceAiAgentContextAdapterService {
 				};
 			case 'skills': {
 				// The skills hub keeps no skill on an agent that is not attached.
+				const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
 				return {
 					skills: Object.entries(skills).map(([id, skill]) => ({
 						id,

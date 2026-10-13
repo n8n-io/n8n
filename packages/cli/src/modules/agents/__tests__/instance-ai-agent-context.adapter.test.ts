@@ -77,7 +77,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 	});
 
 	it('labels config as the current draft and includes publication state', async () => {
-		const { service, agentsService } = makeService();
+		const { service, agentsService, agentSkillRefs } = makeService();
 		agentsService.findById.mockResolvedValue(agent);
 
 		const result = await service.createReader(user, 'project-1').lookup({
@@ -86,6 +86,8 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		});
 
 		expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+		// The config needs the skill refs, not the skill bodies.
+		expect(agentSkillRefs.skillsForRefs).not.toHaveBeenCalled();
 		expect(result).toMatchObject({
 			configState: 'current-draft',
 			config: { name: 'Support Agent', model: '', instructions: 'Help users.' },
