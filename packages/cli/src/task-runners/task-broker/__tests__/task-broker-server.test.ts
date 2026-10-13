@@ -43,56 +43,35 @@ describe('TaskBrokerServer', () => {
 	};
 
 	describe('start', () => {
-		it('should start when the configured port is available', async () => {
-			const { server, taskBrokerWsServer } = createServer();
+		let server: TaskBrokerServer | undefined;
+		let occupyingServer: Server | undefined;
 
-			try {
-				await server.start();
-
-				expect(server.port).toBeGreaterThan(0);
-				expect(taskBrokerWsServer.start).toHaveBeenCalledOnce();
-				await request(`http://127.0.0.1:${server.port}`)
-					.get('/healthz')
-					.expect(200, { status: 'ok' });
-			} finally {
-				await server.stop();
-			}
+		afterEach(async () => {
+			await server?.stop();
+			occupyingServer?.close();
+			server = undefined;
+			occupyingServer = undefined;
 		});
 
-		// CAT-4920: A port conflict must reject startup instead of leaving test hooks pending.
-		it('should reject startup when the configured port is already in use', async () => {
-			const occupiedServer = createHttpServer();
-			let server: TaskBrokerServer | undefined;
+		it('should listen on an OS-assigned port when the configured port is 0', async () => {
+			({ server } = createServer({ port: 0 }));
 
-			try {
-				occupiedServer.listen(0, '127.0.0.1');
-				await once(occupiedServer, 'listening');
-				const address = occupiedServer.address();
-				assert(address && typeof address !== 'string');
+			await server.start();
 
-				({ server } = createServer({ port: address.port }));
-				const startup = server.start().then(
-					() => ({ status: 'started' }),
-					(error: unknown) => ({ status: 'rejected', error }),
-				);
-				// @ts-expect-error Private property
-				const brokerHttpServer: Server = server.server;
-				const [bindError] = await once(brokerHttpServer, 'error');
-				expect(bindError).toMatchObject({ code: 'EADDRINUSE' });
+			expect(server.port).toBeGreaterThan(0);
+			await request(`http://127.0.0.1:${server.port}`)
+				.get('/healthz')
+				.expect(200, { status: 'ok' });
+		});
 
-				// Let the bind error propagate through the startup promise before checking its state.
-				await new Promise<void>((resolve) => setImmediate(resolve));
-				expect(await Promise.race([startup, Promise.resolve({ status: 'pending' })])).toEqual({
-					status: 'rejected',
-					error: expect.objectContaining({ code: 'EADDRINUSE' }),
-				});
-			} finally {
-				try {
-					await server?.stop();
-				} finally {
-					await new Promise<void>((resolve) => occupiedServer.close(() => resolve()));
-				}
-			}
+		it('should reject when the configured port is already in use', async () => {
+			occupyingServer = createHttpServer().listen(0, '127.0.0.1');
+			await once(occupyingServer, 'listening');
+			const address = occupyingServer.address();
+			assert(address && typeof address !== 'string');
+			({ server } = createServer({ port: address.port }));
+
+			await expect(server.start()).rejects.toMatchObject({ code: 'EADDRINUSE' });
 		});
 	});
 

@@ -143,7 +143,7 @@ export class TaskBrokerServer {
 
 		await once(this.server.listen(port, address), 'listening');
 
-		this.logger.info(`n8n Task Broker ready on ${address}, port ${port}`);
+		this.logger.info(`n8n Task Broker ready on ${address}, port ${this.port}`);
 	}
 
 	/** Creates WebSocket server for handling upgrade requests */
