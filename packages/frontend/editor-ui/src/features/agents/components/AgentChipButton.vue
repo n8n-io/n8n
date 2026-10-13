@@ -2,7 +2,7 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import { SCOPE_LABEL_KEY } from '@n8n/frontend-module-type-availability-policies';
+import { describeAgentToolRestriction } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -57,13 +57,12 @@ const reasons = computed(() => (props.invalid ? props.invalidReasons : props.war
 const showAlertIcon = computed(
 	() => !props.deactivated && !props.restricted && (props.invalid || props.warning),
 );
-/** The scope line the ticket asks for, or the embedded-tool reason when the type is allowed. */
-const restrictionText = computed(() => {
-	if (props.restrictedMessage) return props.restrictedMessage;
-	const scopeKey = props.restrictedScope && SCOPE_LABEL_KEY[props.restrictedScope];
-	const scope = scopeKey ? i18n.baseText(scopeKey) : '';
-	return [props.restrictedTypeLabel, scope].filter(Boolean).join(' — ');
-});
+/** One translated sentence, so a locale owns its wording and order. */
+const restrictionText = computed(() =>
+	props.restrictedMessage
+		? props.restrictedMessage
+		: describeAgentToolRestriction(props.restrictedTypeLabel, props.restrictedScope),
+);
 
 defineSlots<{
 	icon?: () => unknown;
