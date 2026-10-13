@@ -7,7 +7,7 @@ import {
 	foldGutter,
 	indentOnInput,
 } from '@codemirror/language';
-import { Prec, EditorState } from '@codemirror/state';
+import { Prec, EditorState, type TransactionSpec } from '@codemirror/state';
 import {
 	dropCursor,
 	EditorView,
@@ -27,6 +27,7 @@ import {
 	expressionCloseBrackets,
 	expressionCloseBracketsConfig,
 } from '../../plugins/codemirror/expressionCloseBrackets';
+import { withFormatLock } from '../../plugins/codemirror/format';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
 import { n8nAutocompletion } from '../../plugins/codemirror/n8nLang';
 import { autoCloseTags, htmlLanguage } from '@n8n/codemirror-lang-html';
@@ -163,10 +164,16 @@ function isMissingHtmlTags() {
 	);
 }
 
+const formatEditor = withFormatLock(formatSections);
+
 async function formatHtml() {
 	const editor = toValue(editorRef);
 	if (!editor) return;
 
+	await formatEditor(editor);
+}
+
+async function formatSections(editor: EditorView): Promise<TransactionSpec | undefined> {
 	const { format, plugins } = await loadPrettier();
 
 	const sectionToFormat = sections.value;
@@ -180,9 +187,9 @@ async function formatHtml() {
 			})
 		).trim();
 
-		return editor.dispatch({
+		return {
 			changes: { from: 0, to: editor.state.doc.length, insert: formatted },
-		});
+		};
 	}
 
 	const formatted = [];
@@ -227,9 +234,9 @@ async function formatHtml() {
 
 	if (formatted.length === 0) return;
 
-	editor.dispatch({
+	return {
 		changes: { from: 0, to: editor.state.doc.length, insert: formatted.join('\n\n') },
-	});
+	};
 }
 
 function pasteSanitizer() {

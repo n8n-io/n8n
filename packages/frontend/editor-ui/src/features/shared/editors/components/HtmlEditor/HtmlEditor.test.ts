@@ -8,6 +8,13 @@ import { userEvent } from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { htmlEditorEventBus } from '@/app/event-bus';
+import { loadPrettier, type PrettierModules } from '@/features/shared/editors/utils/loadPrettier';
+
+vi.mock('@/features/shared/editors/utils/loadPrettier', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@/features/shared/editors/utils/loadPrettier')>();
+	return { loadPrettier: vi.fn(actual.loadPrettier) };
+});
 
 const DEFAULT_SETUP = {
 	props: {
@@ -56,6 +63,25 @@ describe('HtmlEditor.vue', () => {
 		textbox = await waitFor(() => getByRole('textbox'));
 
 		await waitFor(() => expect(textbox.querySelectorAll('.cm-line').length).toBe(24));
+	});
+
+	it('makes the editor read-only while it formats html', async () => {
+		const { promise, resolve } = Promise.withResolvers<PrettierModules>();
+		vi.mocked(loadPrettier).mockReturnValueOnce(promise);
+		const { getByRole } = renderComponent(HtmlEditor, DEFAULT_SETUP);
+
+		const textbox = await waitFor(() => getByRole('textbox'));
+		htmlEditorEventBus.emit('format-html');
+
+		expect(textbox).toHaveAttribute('aria-readonly', 'true');
+
+		const { loadPrettier: actualLoadPrettier } = await vi.importActual<
+			typeof import('@/features/shared/editors/utils/loadPrettier')
+		>('@/features/shared/editors/utils/loadPrettier');
+		resolve(await actualLoadPrettier());
+
+		await waitFor(() => expect(textbox).not.toHaveAttribute('aria-readonly'));
+		expect(textbox.querySelectorAll('.cm-line').length).toBeGreaterThan(1);
 	});
 
 	it('emits update:model-value events', async () => {
