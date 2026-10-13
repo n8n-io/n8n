@@ -1095,6 +1095,48 @@ oneOf:
                     kind:
                       type: string
                       enum:
+                        - project
+                    code:
+                      type: string
+                      enum:
+                        - project-deletion
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    contents:
+                      type: object
+                      properties:
+                        workflows:
+                          type: integer
+                          minimum: 0
+                        credentials:
+                          type: integer
+                          minimum: 0
+                        dataTables:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - workflows
+                        - credentials
+                        - dataTables
+                  required:
+                    - kind
+                    - code
+                    - project
+                    - contents
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
                         - data-table
                     code:
                       type: string

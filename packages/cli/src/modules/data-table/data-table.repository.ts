@@ -5,7 +5,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { parseListQuerySortBy, Project, withTransaction } from '@n8n/db';
+import { chunkIds, parseListQuerySortBy, Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import {
@@ -197,6 +197,21 @@ export class DataTableRepository extends Repository<DataTable> {
 
 			return changed;
 		});
+	}
+
+	/** Number of data tables in each project. Keyed by project id. */
+	async countByProjectIds(projectIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+		for (const batch of chunkIds(projectIds)) {
+			const rows = await this.createQueryBuilder('dataTable')
+				.select('dataTable.projectId', 'projectId')
+				.addSelect('COUNT(*)', 'count')
+				.where('dataTable.projectId IN (:...batch)', { batch })
+				.groupBy('dataTable.projectId')
+				.getRawMany<{ projectId: string; count: string | number }>();
+			for (const { projectId, count } of rows) counts.set(projectId, Number(count));
+		}
+		return counts;
 	}
 
 	async findSummariesByIds(

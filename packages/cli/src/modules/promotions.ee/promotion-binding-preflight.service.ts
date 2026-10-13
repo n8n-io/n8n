@@ -4,11 +4,19 @@ import type {
 	PromotionBindingProject,
 	PromotionVariableScope,
 } from '@n8n/api-types';
-import { CredentialsRepository, ProjectRepository, VariablesRepository } from '@n8n/db';
+import { ModuleRegistry } from '@n8n/backend-common';
+import {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	VariablesRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
+import { DataTableService } from '@/modules/data-table/data-table.service';
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
 import { DataTableImporter } from '@/modules/n8n-packages/entities/data-table/data-table-importer';
 import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
@@ -60,6 +68,10 @@ export class PromotionBindingPreflightService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly dataTableService: DataTableService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
@@ -150,7 +162,44 @@ export class PromotionBindingPreflightService {
 		this.checkCredentials(credentials, targetCredentials, personalProjectIds, projectOf, result);
 		this.checkVariables(variables, targetVariables, personalProjectIds, projectOf, result);
 		this.checkDataTables(destructiveChanges, projectOf, result);
+		// Only a full apply deletes projects.
+		if (!selection) await this.checkProjectDeletions(packageInventory, result);
 		return result;
+	}
+
+	/** Reports the team projects that a full apply deletes: the ones that the package does not hold. */
+	private async checkProjectDeletions(
+		inventory: PackageDirectoryInventory,
+		result: PromotionBindingPreflightResult,
+	): Promise<void> {
+		const packageProjectIds = new Set(inventory.projects.map(({ id }) => id));
+		const deletedIds = (await this.projectRepository.findTeamProjectIds()).filter(
+			(id) => !packageProjectIds.has(id),
+		);
+		if (deletedIds.length === 0) return;
+
+		const [projects, workflows, credentials, dataTables] = await Promise.all([
+			this.projectRepository.findTeamProjectInfoByIds(deletedIds),
+			this.sharedWorkflowRepository.countOwnedByProjectIds(deletedIds),
+			this.sharedCredentialsRepository.countOwnedByProjectIds(deletedIds),
+			this.moduleRegistry.isActive('data-table')
+				? this.dataTableService.countDataTablesByProjectIds(deletedIds)
+				: new Map<string, number>(),
+		]);
+		for (const { id, name } of projects.sort(
+			(a, b) => compare(a.name, b.name) || compare(a.id, b.id),
+		)) {
+			result.conflicts.push({
+				kind: 'project',
+				code: 'project-deletion',
+				project: { id, name },
+				contents: {
+					workflows: workflows.get(id) ?? 0,
+					credentials: credentials.get(id) ?? 0,
+					dataTables: dataTables.get(id) ?? 0,
+				},
+			});
+		}
 	}
 
 	private checkProjects(

@@ -1,9 +1,17 @@
 import { promotionBindingPreflightResultSchema } from '@n8n/api-types';
-import type { CredentialsRepository, ProjectRepository, VariablesRepository } from '@n8n/db';
+import type { ModuleRegistry } from '@n8n/backend-common';
+import type {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	VariablesRepository,
+} from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { DataTableImporter } from '@/modules/n8n-packages/entities/data-table/data-table-importer';
 import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
@@ -35,6 +43,10 @@ const service = new PromotionBindingPreflightService(
 	credentialsRepository,
 	variablesRepository,
 	projectRepository,
+	mock<SharedWorkflowRepository>(),
+	mock<SharedCredentialsRepository>(),
+	mock<DataTableService>(),
+	mock<ModuleRegistry>(),
 );
 
 const PROJECT_A = { id: 'proj-a', name: 'Alpha' };
@@ -167,6 +179,7 @@ describe('PromotionBindingPreflightService', () => {
 		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
 		dataTableImporter.findDestructiveChanges.mockResolvedValue([]);
+		projectRepository.findTeamProjectIds.mockResolvedValue([]);
 		projectRepository.findTypesByIds.mockResolvedValue(
 			[PROJECT_A, PROJECT_B, PROJECT_C].map(({ id }) => ({ id, type: 'team' })),
 		);

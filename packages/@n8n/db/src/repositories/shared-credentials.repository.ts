@@ -36,6 +36,22 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return rows.map(({ credentials }) => credentials);
 	}
 
+	/** Number of credentials that each project owns. Keyed by project id. */
+	async countOwnedByProjectIds(projectIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+		for (const batch of chunkIds(projectIds)) {
+			const rows = await this.createQueryBuilder('sc')
+				.select('sc.projectId', 'projectId')
+				.addSelect('COUNT(*)', 'count')
+				.where('sc.projectId IN (:...batch)', { batch })
+				.andWhere('sc.role = :role', { role: 'credential:owner' })
+				.groupBy('sc.projectId')
+				.getRawMany<{ projectId: string; count: string | number }>();
+			for (const { projectId, count } of rows) counts.set(projectId, Number(count));
+		}
+		return counts;
+	}
+
 	async findOwnerProjectsByCredentialIds(credentialIds: string[]): Promise<Map<string, Project>> {
 		const ownerProjects = new Map<string, Project>();
 		for (const chunk of chunkIds(credentialIds)) {

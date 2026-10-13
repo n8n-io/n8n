@@ -220,6 +220,35 @@ describe('promotion-connection apply command', () => {
 		expect(exit).toHaveBeenCalledWith(4);
 	});
 
+	it('exits 4 and lists the projects that a confirmed Apply deletes', async () => {
+		const { run, logToStderr, exit } = runApply({
+			...BLOCKED_RESULT,
+			preflight: {
+				...BLOCKED_RESULT.preflight,
+				conflicts: [
+					{
+						kind: 'project',
+						code: 'project-deletion',
+						project: { id: 'proj-2', name: 'Sales' },
+						contents: { workflows: 3, credentials: 1, dataTables: 0 },
+					},
+				],
+			},
+		});
+
+		await run();
+
+		const message = logToStderr.mock.calls[0][0];
+		expect(message).toContain(
+			'Apply deletes these projects with everything in them:\n' +
+				'  Sales: 3 workflows, 1 credential, 0 data tables',
+		);
+		expect(message).toContain(
+			"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
+		);
+		expect(exit).toHaveBeenCalledWith(4);
+	});
+
 	it('quotes source values in the Continue command so it is safe to paste', async () => {
 		const { run, logToStderr } = runApply({
 			...BLOCKED_RESULT,

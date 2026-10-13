@@ -355,6 +355,12 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 					},
 				]),
 			}),
+			{
+				kind: 'project',
+				code: 'project-deletion',
+				project: { id: projectB.id, name: 'Beta' },
+				contents: { workflows: 0, credentials: 1, dataTables: 0 },
+			},
 		]);
 		expect(
 			result.conflicts.find((conflict) => conflict.code === 'missing-definition')?.consumers,
@@ -451,7 +457,14 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 		const expected = {
 			missingProjects: [],
 			missingBindings: [],
-			conflicts: [],
+			conflicts: [
+				{
+					kind: 'project',
+					code: 'project-deletion',
+					project: { id: unrelated.id, name: 'Unrelated' },
+					contents: { workflows: 0, credentials: 1, dataTables: 0 },
+				},
+			],
 			warnings: [],
 			accessRequirements: [
 				{
