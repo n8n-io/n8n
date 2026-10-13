@@ -410,21 +410,6 @@ export async function loadPrebakedRuntimeSkillsBundle({
 		schemaVersion: RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
 		resourceLabel: RUNTIME_SKILL_FILE_LABEL,
 		logger,
-		invalidManifestLogMessage: 'Ignoring invalid prebaked runtime skills manifest',
-		staleManifestLogMessage: 'Ignoring stale prebaked runtime skills manifest',
-		staleManifestLogKeys: {
-			expected: 'expectedSkillsHash',
-			actual: 'actualSkillsHash',
-		},
-		successLogMessage: 'Using prebaked runtime skills from workspace',
-		successLogContext: (bundle) => ({
-			root,
-			workspaceRoot,
-			skillsRoot: bundle.rootDir,
-			registryPath: bundle.registryPath,
-			skillsHash: bundle.skillsHash,
-			count: bundle.skills.length,
-		}),
 		buildBundle: async () =>
 			await buildRuntimeSkillWorkspaceBundle({
 				source,
@@ -564,11 +549,11 @@ export async function buildRuntimeSkillWorkspaceBundle({
 	const registryPath = posixJoin(skillsRoot, SANDBOX_RUNTIME_SKILL_REGISTRY_FILE);
 	files.set(registryPath, stringifyWorkspaceJson(registry));
 
+	const manifestPath = posixJoin(skillsRoot, RUNTIME_SKILL_MANIFEST_FILE);
 	const manifest: RuntimeSkillWorkspaceManifest = {
 		schemaVersion: RUNTIME_SKILL_MANIFEST_SCHEMA_VERSION,
 		skillsHash: source.registry.skillsHash,
 	};
-	const manifestPath = posixJoin(skillsRoot, RUNTIME_SKILL_MANIFEST_FILE);
 	files.set(manifestPath, stringifyWorkspaceJson(manifest));
 
 	const env: NodeJS.ProcessEnv = {
@@ -634,14 +619,6 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 					return bundle;
 				},
 				bundleHash: (bundle) => bundle.skillsHash,
-				materializedLogMessage: 'Materialized runtime skills into workspace',
-				materializedLogContext: (bundle) => ({
-					root,
-					skillsRoot: bundle.rootDir,
-					registryPath: bundle.registryPath,
-					skillsHash: bundle.skillsHash,
-					count: bundle.skills.length,
-				}),
 			});
 		},
 	);
