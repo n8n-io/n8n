@@ -647,6 +647,41 @@ describe('SkillRepository', () => {
 		});
 	});
 
+	describe('findUsingAgentIds and updateTarget', () => {
+		it('lists the agents with a draft ref or a published pin, once each', async () => {
+			const id = await createSkill({ projectId: project.id });
+			const drafting = await createAgent('Drafting');
+			await skills.replaceDependencies(drafting.id, [{ skillId: id }]);
+			const published = await createAgent('Published');
+			await skills.insertPins([
+				{
+					agentVersionId: await publish(published.id),
+					skillId: id,
+					skillVersionId: await latestVersionId(id),
+				},
+			]);
+			await skills.replaceDependencies(published.id, [{ skillId: id }]);
+
+			expect((await skills.findUsingAgentIds(id)).sort()).toEqual(
+				[drafting.id, published.id].sort(),
+			);
+		});
+
+		it('moves a skill to one agent and back to the instance', async () => {
+			const id = await createSkill({ projectId: project.id });
+			const agent = await createAgent('Agent');
+
+			await skills.updateTarget(id, { userId: null, projectId: project.id, agentId: agent.id });
+			expect((await skills.findByIds([id]))[0]).toMatchObject({
+				projectId: project.id,
+				agentId: agent.id,
+			});
+
+			await skills.updateTarget(id, { userId: null, projectId: null });
+			expect((await skills.findByIds([id]))[0]).toMatchObject({ projectId: null, agentId: null });
+		});
+	});
+
 	describe('findProjectNames', () => {
 		it('maps project ids to names', async () => {
 			const names = await skills.findProjectNames([project.id, project.id, otherProject.id]);
