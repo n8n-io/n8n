@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/tools/demo-remind-later.tool.ts
+  s_4078fc3ac54bab::t_b0afe6cdf7ba20 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "684c4eb8355ef39ea315ccb256441e514ba6e3cb",
+  "prompts": {},
+  "sessions": {
+    "s_4078fc3ac54bab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce24d7b8-10aa-4597-a24d-c6b582b18044",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
