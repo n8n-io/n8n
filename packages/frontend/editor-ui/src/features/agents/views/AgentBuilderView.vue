@@ -100,6 +100,7 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
@@ -167,7 +168,7 @@ import {
 	raisedBudgetCaps,
 	type BudgetAmountField,
 } from '../utils/budget-config';
-import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasBlockingIssues, unpublishedWorkflowTools } from '../utils/validationIssues';
 import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
@@ -1894,7 +1895,23 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 		return false;
 	}
 	await refreshConfigValidation(projectId.value, agentId.value);
-	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
+	if (configValidation.value === null) return false;
+	if (hasBlockingIssues(configValidation.value.issues)) return false;
+	// Unpublished workflow tools do not disable the Publish button, but the
+	// backend rejects the publish — surface them here instead of failing the
+	// request (AGENT-1001).
+	const unpublishedWorkflows = unpublishedWorkflowTools(
+		configValidation.value.issues,
+		localConfig.value?.tools ?? [],
+	);
+	if (unpublishedWorkflows.length > 0) {
+		uiStore.openModalWithData({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: unpublishedWorkflows },
+		});
+		return false;
+	}
+	return true;
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {

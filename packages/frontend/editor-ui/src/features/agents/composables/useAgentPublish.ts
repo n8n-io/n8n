@@ -2,7 +2,13 @@ import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { useStorage } from '@n8n/composables/useStorage';
+import { useUIStore } from '@/app/stores/ui.store';
 import { MODAL_CONFIRM } from '@/app/constants';
+import {
+	AGENT_PUBLISHED_MODAL_KEY,
+	LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION,
+} from '../constants';
 import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgentApi';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import { upsertProjectAgentsListCache } from './useProjectAgentsList';
@@ -16,6 +22,7 @@ import type { AgentResource } from '../types';
 export function useAgentPublish() {
 	const rootStore = useRootStore();
 	const locale = useI18n();
+	const uiStore = useUIStore();
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -28,6 +35,12 @@ export function useAgentPublish() {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
 			upsertProjectAgentsListCache(projectId, updated);
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
+			if (useStorage(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION).value !== 'true') {
+				uiStore.openModalWithData({
+					name: AGENT_PUBLISHED_MODAL_KEY,
+					data: { agentId },
+				});
+			}
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.publish'));
