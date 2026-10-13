@@ -1,0 +1,73 @@
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_9d6e86e783864c::t_b11c6235bb55c8 1,56-61
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_9d6e86e783864c::t_b11c6235bb55c8 191-193,1606-1627
+  s_9d6e86e783864c::t_be38538f48b96a 1628-1630
+packages/@n8n/api-types/package.json
+  s_9d6e86e783864c::t_eabbcff4b6e48c 45-46
+packages/@n8n/permissions/src/constants.ee.ts
+  s_9d6e86e783864c::t_eb31541656593f 104
+packages/@n8n/api-types/tsconfig.json
+  s_9d6e86e783864c::t_eabbcff4b6e48c 10-11
+packages/@n8n/api-types/src/dto/trusted-source/update-trusted-source.dto.ts
+  s_9d6e86e783864c::t_eabbcff4b6e48c 1-16
+packages/cli/src/modules/inbound-auth-core/trusted-source.controller.ts
+  s_9d6e86e783864c::t_9af52ad82b9e66 4-14
+  s_9d6e86e783864c::t_4b3794945f905a 1-3,15-182
+packages/@n8n/api-types/src/consent.ts
+  s_9d6e86e783864c::t_eabbcff4b6e48c 1
+packages/cli/test/integration/inbound-auth-core/trusted-source.api.test.ts
+  s_9d6e86e783864c::t_050b50b1a3849a 240
+  s_9d6e86e783864c::t_f6a6771743ffd3 120-122,175-184,368-370,404-407
+  s_9d6e86e783864c::t_dd5d083246cd57 22,111-112
+  s_9d6e86e783864c::t_5073f970133e66 1-21,23-110,113-119,123-174,185-239,241-367,371-403,408-596
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_9d6e86e783864c::t_a864e9a4fedf3b 24-31,123-159
+  s_9d6e86e783864c::t_21f37922f54723 160
+packages/cli/src/events/maps/relay.event-map.ts
+  s_9d6e86e783864c::t_b11c6235bb55c8 1016-1033
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_9d6e86e783864c::t_b11c6235bb55c8 96-97,101-106
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_9d6e86e783864c::t_eb31541656593f 195-199,235
+packages/cli/src/controllers/e2e.controller.ts
+  s_9d6e86e783864c::t_e799fb31011504 150
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source.controller.test.ts
+  s_9d6e86e783864c::t_f6a6771743ffd3 27-32,34-57
+  s_9d6e86e783864c::t_de3da7d27ca96b 1-26,33,58-60
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_9d6e86e783864c::t_b11c6235bb55c8 174-176
+packages/cli/test/integration/shared/types.ts
+  s_9d6e86e783864c::t_a864e9a4fedf3b 63
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_9d6e86e783864c::t_a864e9a4fedf3b 431-434
+packages/@n8n/constants/src/index.ts
+  s_9d6e86e783864c::t_eb31541656593f 62
+packages/@n8n/inbound-auth/src/contracts.ts
+  s_9d6e86e783864c::t_eabbcff4b6e48c 11-16
+  s_9d6e86e783864c::t_d1f1dccc40dd14 17
+packages/@n8n/api-types/src/dto/index.ts
+  s_9d6e86e783864c::t_eabbcff4b6e48c 793-794
+packages/@n8n/api-types/src/dto/trusted-source/create-trusted-source.dto.ts
+  s_9d6e86e783864c::t_eabbcff4b6e48c 1-15
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_9d6e86e783864c::t_a864e9a4fedf3b 3546-3565
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_9d6e86e783864c::t_f329f701bca386 207-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9c85c50006be8c9c811562a491377fee7c94368",
+  "prompts": {},
+  "sessions": {
+    "s_9d6e86e783864c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82991bb8-d868-4063-a38b-36762cccb4c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
