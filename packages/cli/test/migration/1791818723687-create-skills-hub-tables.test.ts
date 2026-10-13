@@ -85,13 +85,12 @@ describe('CreateSkillsHubTables migration', () => {
 
 	/** A skill with one version and one file. */
 	const insertSkill = async (
-		target: { userId?: string; projectId?: string; agentId?: string },
+		target: { projectId?: string; agentId?: string },
 		createdById?: string,
 	) => {
 		const skillId = `skill_${randomUUID().slice(0, 16)}`;
 		await insertRow('skill', {
 			id: skillId,
-			userId: target.userId ?? null,
 			projectId: target.projectId ?? null,
 			agentId: target.agentId ?? null,
 			source: 'ui',
@@ -137,17 +136,6 @@ describe('CreateSkillsHubTables migration', () => {
 
 	afterAll(async () => {
 		await Container.get(DbConnection).close();
-	});
-
-	it('deletes a user together with their Just you skills, versions and files', async () => {
-		const userId = await insertUser();
-		const { skillId, versionId } = await insertSkill({ userId });
-
-		await deleteRow('user', 'id', userId);
-
-		expect(await countRows('skill', 'id', skillId)).toBe(0);
-		expect(await countRows('skill_version', 'skillId', skillId)).toBe(0);
-		expect(await countRows('skill_file', 'skillVersionId', versionId)).toBe(0);
 	});
 
 	it('keeps a project skill when its author is deleted and clears the author', async () => {
@@ -259,27 +247,6 @@ describe('CreateSkillsHubTables migration', () => {
 
 		await expect(insertSkill({ agentId })).rejects.toThrow();
 
-		await deleteRow('project', 'id', projectId);
-	});
-
-	it('rejects an agent skill that is also a Just you skill', async () => {
-		const userId = await insertUser();
-		const projectId = await insertProject();
-		const agentId = await insertAgent(projectId);
-
-		await expect(insertSkill({ userId, agentId })).rejects.toThrow();
-
-		await deleteRow('user', 'id', userId);
-		await deleteRow('project', 'id', projectId);
-	});
-
-	it('rejects a skill with both a user and a project', async () => {
-		const userId = await insertUser();
-		const projectId = await insertProject();
-
-		await expect(insertSkill({ userId, projectId })).rejects.toThrow();
-
-		await deleteRow('user', 'id', userId);
 		await deleteRow('project', 'id', projectId);
 	});
 

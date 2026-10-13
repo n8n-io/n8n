@@ -270,7 +270,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ source
   datetime_3_ updatedAt
-  varchar userId FK
 }
 "type_availability_policy_scope" {
   datetime_3_ createdAt

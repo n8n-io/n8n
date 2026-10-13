@@ -8,11 +8,10 @@ const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
 
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
- * A skill belongs to one target: a user ("Just you", for the assistant only), a project
- * (team or personal, for its agents and its assistant sessions), one agent in a project
- * (only that agent can use it), or the instance (neither set). Its name and content live in numbered, immutable versions: a Save that changes
- * the content creates the next one, agents read the latest, and agent publishes pin the
- * one they ran.
+ * A skill belongs to one target: a project (team or personal, for its agents), one agent
+ * in a project (only that agent can use it), or the instance (neither set). Its name and
+ * content live in numbered, immutable versions: a Save that changes the content creates
+ * the next one, agents read the latest, and agent publishes pin the one they ran.
  */
 export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -40,9 +39,6 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 		await createTable(SKILL_TABLE)
 			.withColumns(
 				column('id').varchar(36).primary.comment('skill_<nanoid>, the same format agents use'),
-				column('userId').uuid.comment(
-					'Set for a "Just you" skill, which agents never use. NULL otherwise',
-				),
 				column('projectId')
 					.varchar(36)
 					.comment('Set for a project skill, team or personal. NULL otherwise'),
@@ -59,14 +55,8 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
-			.withTimestamps.withIndexOn(['userId'])
-			.withIndexOn(['projectId'])
+			.withTimestamps.withIndexOn(['projectId'])
 			.withIndexOn(['agentId'])
-			.withForeignKey('userId', {
-				tableName: 'user',
-				columnName: 'id',
-				onDelete: 'CASCADE',
-			})
 			.withForeignKey('projectId', {
 				tableName: 'project',
 				columnName: 'id',
@@ -83,10 +73,6 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			.withCheck(
-				`CHK_${tablePrefix}skill_single_target`,
-				`${escape.columnName('userId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
-			)
 			.withCheck(
 				`CHK_${tablePrefix}skill_agent_in_project`,
 				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NOT NULL`,
