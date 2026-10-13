@@ -1,0 +1,19 @@
+.github/workflows/ci-pull-requests.yml
+  s_30db3f5d25d04b::t_d1846c2a1885d9 193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "637a795c177b80fb7dccb7735a14a37df1cd11a9",
+  "prompts": {},
+  "sessions": {
+    "s_30db3f5d25d04b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cbd856e-82a7-496d-b468-eb971b694a43",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

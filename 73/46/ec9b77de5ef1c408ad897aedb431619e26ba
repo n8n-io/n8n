@@ -1,0 +1,19 @@
+packages/cli/src/public-api/__tests__/idempotency-key-cleanup.task.test.ts
+  s_4becfe847c1137::t_66d896d95caba2 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7346ec9b77de5ef1c408ad897aedb431619e26ba",
+  "prompts": {},
+  "sessions": {
+    "s_4becfe847c1137": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bfb21754-81f6-4f48-9f32-7720fc4b4e6a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

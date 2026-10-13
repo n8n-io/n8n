@@ -1,0 +1,277 @@
+packages/nodes-base/google-service-account.js
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1
+packages/nodes-base/package.json
+  s_9dde2d3ceb6629::t_a0e91a598f5325 10-12,36-37
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/test/EmbeddingsGoogleVertex.test.ts
+  s_9dde2d3ceb6629::t_a128df57385068 70
+  s_9dde2d3ceb6629::t_74d12239b46a7d 32,46,61,78
+  s_9dde2d3ceb6629::t_165a11d49bf422 42
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 62-64,66,68-69,71-76,79-81,83,85-89
+packages/nodes-base/credentials/common/google/regions.ts
+  s_9dde2d3ceb6629::t_a0e91a598f5325 1-207
+packages/@n8n/nodes-langchain/credentials/GoogleVertexAiApi.credentials.ts
+  s_9dde2d3ceb6629::t_e4cb155cfd12c2 1-2,5-7,10-11,13-16,30-32,35,82,83,86
+  s_9dde2d3ceb6629::t_cbd796c79ea06c 33-34,36
+  s_9dde2d3ceb6629::t_94349b6c270e1c 37
+  s_9dde2d3ceb6629::t_0b9a367b8e38d1 8-9
+  s_9dde2d3ceb6629::t_c8f78125789bd4 4,84-85
+  s_9dde2d3ceb6629::t_33ac74ff29352b 3,17-29,37-38
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleVertex/EmbeddingsGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_a128df57385068 87
+  s_9dde2d3ceb6629::t_2df2b07bdba294 15-16,18,20,54,75,132
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 12,121-124
+  s_9dde2d3ceb6629::t_f4830428fd2896 13
+  s_9dde2d3ceb6629::t_c8f78125789bd4 19,26-35
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/LmChatGoogleVertex.node.ts
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 25,138-141
+  s_9dde2d3ceb6629::t_a128df57385068 81
+  s_9dde2d3ceb6629::t_2df2b07bdba294 28-29,31,33,74,76,176
+  s_9dde2d3ceb6629::t_efc0abf42dc777 26
+  s_9dde2d3ceb6629::t_c8f78125789bd4 32,123-132
+packages/nodes-base/credentials/common/google/utils.ts
+  s_9dde2d3ceb6629::t_3960b5642173b7 1-19
+packages/@n8n/nodes-langchain/credentials/icons/google.svg
+  s_9dde2d3ceb6629::t_2df2b07bdba294 1
+packages/@n8n/nodes-langchain/package.json
+  s_9dde2d3ceb6629::t_2df2b07bdba294 60
+packages/nodes-base/credentials/common/google/index.ts
+  s_9dde2d3ceb6629::t_3960b5642173b7 2
+packages/@n8n/nodes-langchain/utils/tests/google-vertex.test.ts
+  s_9dde2d3ceb6629::t_676f96f082f88f 137-141,148-150,173-175
+  s_9dde2d3ceb6629::t_6ed1a9b0f48d77 12-14,129-135,154-159,169-171,177-180
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 166-168
+  s_9dde2d3ceb6629::t_a128df57385068 11,136,142-147,151-153,172,176
+  s_9dde2d3ceb6629::t_6e1201e6018b6a 127-128,160
+  s_9dde2d3ceb6629::t_ab5db37439bde6 2,123,165
+  s_9dde2d3ceb6629::t_c8f78125789bd4 25-42,66-74,95-103,105-116,118-128
+  s_9dde2d3ceb6629::t_395d36283ffc71 2-4,7-10,43-65
+  s_cf7e00ffefe182::t_daad2f66ab0e96 75-94,104,117
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleVertex/test/LmChatGoogleVertex.test.ts
+  s_9dde2d3ceb6629::t_7906dcd194cc1b 106-112,114-123,125-130,152-172,177-179
+  s_9dde2d3ceb6629::t_a128df57385068 124
+  s_9dde2d3ceb6629::t_165a11d49bf422 180
+  s_9dde2d3ceb6629::t_676f96f082f88f 82-84
+  s_9dde2d3ceb6629::t_74d12239b46a7d 105,151,173-176,181-184,188-189
+  s_9dde2d3ceb6629::t_e3a52530024aea 41
+packages/@n8n/nodes-langchain/utils/google-vertex.ts
+  s_9dde2d3ceb6629::t_43c5a2c58f7c0d 60,66
+  s_9dde2d3ceb6629::t_a128df57385068 26
+  s_9dde2d3ceb6629::t_e4cb155cfd12c2 6-7,11,14-19,22-25,27-30,32-47,53-59,61,63-65,67-77,165
+  s_9dde2d3ceb6629::t_c8f78125789bd4 8,13,127-129,131-137,144,146-164
+  s_9dde2d3ceb6629::t_5573b291b39044 165
+  s_9dde2d3ceb6629::t_43f2e10fa447a0 20-21
+  s_cf7e00ffefe182::t_e141b0328fb1a2 130,138-143,145
+packages/nodes-base/credentials/GoogleApi.credentials.ts
+  s_9dde2d3ceb6629::t_0b9a367b8e38d1 11,24-66
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_9dde2d3ceb6629::t_c8f78125789bd4 70-71,788-791
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.vue
+  s_9dde2d3ceb6629::t_c8f78125789bd4 12,23-25,73,75-79
+  s_9dde2d3ceb6629::t_78868e1155f6c4 74
+packages/cli/src/credentials/credentials.service.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1050,1541,1563,1566,2441,2443-2444,2448,2451,2455-2458,2469-2470,2491,2508
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1816,1905
+  s_9dde2d3ceb6629::t_41dc3be5189c99 30-35,1803-1815,1817-1880,1882-1904
+  s_9dde2d3ceb6629::t_3a7da48553ef09 1881
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 2261-2290
+packages/cli/src/credentials/credential-options.controller.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-8,10-18,20-28,30-39,41-42
+  s_9dde2d3ceb6629::t_165a11d49bf422 9,19,29,40
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialInputs.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 3-9,13-18,105-123,129-136,138-159,161,163-166,172-173,175-177,182,185-189,191,213,215,244-246,248-250,252-253,260-261,266-276,278-279,282-287,289-294,297,329-330
+  s_9dde2d3ceb6629::t_cb8eed119d3fec 367
+  s_9dde2d3ceb6629::t_41dc3be5189c99 124-128,137,162,167-171,178,180,243,247,251,254-259,262-265,277,280-281,288
+  s_9dde2d3ceb6629::t_96caff4ed4d5de 355-359,361-366
+  s_cf7e00ffefe182::t_bbf77aa37770a8 174,179,182,193-215,220,223
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialOptions.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1,3,10,12,14-21,25,33,37,48,74,96-97,99,102-103,106,108,110,112
+  s_9dde2d3ceb6629::t_5294a75502a1b0 4-9,11,13,22-24,26-27,32,34-36,38-47,49,51,53-57,60-61,63,70-73,98,100-101,104,109
+  s_9dde2d3ceb6629::t_c5c90d68811453 52,107
+packages/frontend/editor-ui/src/features/credentials/credentials.api.test.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 10-11,23,30-32,34-38,41,64
+  s_9dde2d3ceb6629::t_37e908373fa231 65
+  s_cf7e00ffefe182::t_b29367c534cb06 42-47,49-63
+  s_cf7e00ffefe182::t_7bc4972e8696b1 48
+  s_cf7e00ffefe182::t_17cec34f037a89 1,4,24-29,33,39-40
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialOptionsInput.vue
+  s_9dde2d3ceb6629::t_b0b359392a438b 94-95
+  s_9dde2d3ceb6629::t_a64156d9454924 1,10-29,47-49,59-60,61-79,82,86,87,88,92-93,96-97,108,109,111-116,118-120
+  s_9dde2d3ceb6629::t_88fde8bf9898c0 90
+  s_9dde2d3ceb6629::t_dfc74d8a2f1fdf 80,89,91
+packages/workflow/src/interfaces.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 441-449
+  s_9dde2d3ceb6629::t_2bd12bd08c934c 2032-2033
+packages/cli/src/credentials/__tests__/credential-options.controller.test.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-19
+packages/frontend/editor-ui/src/features/credentials/credentials.api.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1-5,21,185-200
+  s_9dde2d3ceb6629::t_8f6efb057446ae 206-207
+  s_cf7e00ffefe182::t_2d091892703d64 201-205
+packages/@n8n/api-types/src/dto/index.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 171
+packages/cli/src/credentials/credential-options.service.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-32,34-47,49-107,109,112,114-132
+  s_9dde2d3ceb6629::t_c8f78125789bd4 33,48
+  s_9dde2d3ceb6629::t_549357a0fef838 108,110-111
+  s_9dde2d3ceb6629::t_a6979dfb69694e 113
+packages/@n8n/api-types/src/dto/credentials/credential-options-request.dto.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-26
+packages/cli/src/credentials/__tests__/credential-options.service.test.ts
+  s_9dde2d3ceb6629::t_12e418b7aaafb9 1-52,59-60,62-64,66-167,201-215
+  s_9dde2d3ceb6629::t_549357a0fef838 58,61
+  s_9dde2d3ceb6629::t_3c5ba4ec1b40a5 53-57,65
+  s_cf7e00ffefe182::t_b32ef47b6b6e24 168-200
+packages/cli/src/server.ts
+  s_9dde2d3ceb6629::t_c8f78125789bd4 62
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_9dde2d3ceb6629::t_c8f78125789bd4 1740-1741
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9dde2d3ceb6629::t_bff779c27bc98d 1051
+  s_e4711c58d1e6aa::t_6c3f3773126956 5773-5775
+  s_e4711c58d1e6aa::t_d7943f91485f2d 8564
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.test.ts
+  s_cf7e00ffefe182::t_c116bfa95b5568 47
+  s_cf7e00ffefe182::t_e9fbf2e3567e7b 30-33,35-46,48-68
+  s_cf7e00ffefe182::t_62b90c6420d484 34
+packages/frontend/@n8n/design-system/src/components/N8nSelect/Select.vue
+  s_cf7e00ffefe182::t_c8ab69e20979b9 4,87-95,97,100-105
+  s_cf7e00ffefe182::t_ad87c5de37a089 96,98-99
+  s_cf7e00ffefe182::t_63fe5b89cfa46d 106
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 19,210
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_e4711c58d1e6aa::t_6c3f3773126956 36-40
+  s_e4711c58d1e6aa::t_4f9be28e316e7d 41
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_e4711c58d1e6aa::t_bb78a97b3ccffd 88-96,1066-1090,1092-1103,1105-1107
+  s_e4711c58d1e6aa::t_a11ac33077d2a1 1091
+  s_e4711c58d1e6aa::t_3e447f84a16bb9 1104,1108-1109
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_e4711c58d1e6aa::t_6c3f3773126956 33
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 45
+packages/@n8n/agents/src/runtime/model/raw-error.ts
+  s_e4711c58d1e6aa::t_96da0c33ee2cb9 56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsPanel.spec.ts
+  s_e4711c58d1e6aa::t_a9fd3c6dc63754 527-532
+  s_e4711c58d1e6aa::t_837857d1939f8e 533-536,538-549,553-567,571-573
+packages/cli/src/modules/agents/model-catalog.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 1-2,4-21,26-29
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_e4711c58d1e6aa::t_d025ce82565868 13,294
+  s_e4711c58d1e6aa::t_7eea27f1991318 416-426,428-464
+  s_e4711c58d1e6aa::t_c5985905fd1cc3 427
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 39-44
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_e4711c58d1e6aa::t_0b73aea7e76209 611
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryModelSetting.vue
+  s_e4711c58d1e6aa::t_6c3f3773126956 140,192
+  s_e4711c58d1e6aa::t_7eea27f1991318 6,137-139,141-144
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryModelSetting.test.ts
+  s_e4711c58d1e6aa::t_a9fd3c6dc63754 12,154-159,170
+  s_e4711c58d1e6aa::t_837857d1939f8e 160-169,171-184,186-188,191-193
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 40,148,486-487,599-600
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 3,22,25-36,61-64
+packages/cli/src/modules/agents/__tests__/model-catalog.test.ts
+  s_e4711c58d1e6aa::t_1e21a0e3b39a55 1,9-12,18-19,25-27,32-33,40,50-62
+  s_e4711c58d1e6aa::t_9667560df58734 34-39,41-49
+  s_e4711c58d1e6aa::t_ec64916fb665c0 63
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 4,350-366
+  s_e4711c58d1e6aa::t_1f23f73d91f28a 367-368
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_e4711c58d1e6aa::t_6760994bee0506 839-840,847-850,859,866-870,878-882,887,895,902-918,922-928,935-936
+  s_e4711c58d1e6aa::t_837857d1939f8e 245-252,841-846,851-858,860-865,871-877,883-886,888-894,896-901,919-921,929-934
+  s_e4711c58d1e6aa::t_4f9be28e316e7d 7,57,76,217-220,244,253,274,336
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_e4711c58d1e6aa::t_bb78a97b3ccffd 11-24,26-39,41-45,47-51,53-59,61-62,64-65
+  s_e4711c58d1e6aa::t_eda86096c99179 25,40,46,52,60,63
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_e4711c58d1e6aa::t_d5d38fbb120bb0 321,323-325,327,376
+  s_e4711c58d1e6aa::t_9667560df58734 311-313,315,356-357
+  s_e4711c58d1e6aa::t_c426027b9b6600 307-310,316-320,322,328-344,346-348,350-351,353-355,358-362,365,367-375,377,380,382-386,389-391
+  s_e4711c58d1e6aa::t_12ea7c705755ec 314,326,345,349,352,363-364,366,378-379,381,387-388
+packages/cli/src/modules/agents/json-config/credential-field-mapping.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 23-27
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 318-319,398
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 1169
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_e4711c58d1e6aa::t_4d24805b19c397 661,663,665-667,681-683,685,699-704
+  s_e4711c58d1e6aa::t_1219d6e289ac7d 662,684,705
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_e4711c58d1e6aa::t_a8be73a3143ac2 5,43,64-67
+  s_e4711c58d1e6aa::t_10e4a1f91e19c4 68-69
+packages/frontend/editor-ui/src/features/agents/components/AgentValidationTooltip.vue
+  s_e4711c58d1e6aa::t_96da0c33ee2cb9 60,78,163,165-166
+  s_e4711c58d1e6aa::t_25feea31e53336 164
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_e4711c58d1e6aa::t_fdadc3d1709bcd 399-401
+  s_e4711c58d1e6aa::t_6c3f3773126956 278
+  s_e4711c58d1e6aa::t_7eea27f1991318 9,232,275-277,279-281
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e4711c58d1e6aa::t_6c3f3773126956 294-297,422
+packages/cli/src/modules/agent-evals/agent-eval-case-generation.service.ts
+  s_e4711c58d1e6aa::t_19d1b5494e61a9 336,338-339
+  s_e99de54a53d3e4::t_25c6a0a55fc78f 337
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_e4711c58d1e6aa::t_eb44ec6253374b 637,653
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_e4711c58d1e6aa::t_7ada4887449e53 67
+  s_e4711c58d1e6aa::t_eb44ec6253374b 11,66,68
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_e4711c58d1e6aa::t_9667560df58734 581-582,590,595,600,602,606,611,616,627
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_e4711c58d1e6aa::t_6c3f3773126956 12,16,60,71,102,115-134,138-195,512-513,522,708,744-756,791
+  s_e4711c58d1e6aa::t_fdadc3d1709bcd 135-137,550-556
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e4711c58d1e6aa::t_837857d1939f8e 177-183
+  s_e4711c58d1e6aa::t_adc2d8ebbef5ff 255-261,268-269,274-279
+  s_e4711c58d1e6aa::t_4f9be28e316e7d 254,262-266,270-273
+  s_e4711c58d1e6aa::t_95e733411bc273 267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87674482b36cca5987fe395f4e6b888be875b3ad",
+  "prompts": {},
+  "sessions": {
+    "s_9dde2d3ceb6629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11ac2-6b8c-78c0-8c5b-f0f0c2840b03",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_cf7e00ffefe182": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11bae-5950-7d02-881b-ef39fcf7c2bf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e4711c58d1e6aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1158d-df08-7c82-b2ce-f486eedc3174",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,157 @@
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ec96d20c0c19b7::t_3dc19b569c1952 1692-1694
+  s_ec96d20c0c19b7::t_52d36c8d68c33d 1663-1689,1695-1697,1720-1740
+  s_ec96d20c0c19b7::t_06a42370a77eae 197-202,204,242,261,275
+  s_ec96d20c0c19b7::t_0243713e1fad7e 1698-1719
+  s_ec96d20c0c19b7::t_321796ecd6fb33 1690-1691
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_fbba0b32ee6f59::t_11e9b178f6c212 1122-1128,1195-1199,1201-1244,1246-1247,1281-1283,1285-1293,1295-1296,1298-1303,1305-1310,1313,1476
+  s_fbba0b32ee6f59::t_02df36e948af7e 1129-1136,1138,1140-1146,1148-1164
+  s_fbba0b32ee6f59::t_185653d0543d04 1267-1274
+  s_fbba0b32ee6f59::t_4e86428fc364be 66,340,1137,1139,1147
+  s_fbba0b32ee6f59::t_71f4b25ac695f9 723-725
+  s_fbba0b32ee6f59::t_747688817d52df 1248-1266,1275-1280
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_fbba0b32ee6f59::t_abb613f74bdd21 9-16
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_fbba0b32ee6f59::t_14e558fbfc92e0 263-265
+  s_fbba0b32ee6f59::t_1cd1e5eeba7538 240-245
+  s_fbba0b32ee6f59::t_804d7707576144 259
+  s_fbba0b32ee6f59::t_38723f2e3e6f0e 261
+  s_fbba0b32ee6f59::t_bbf1a7e85381dc 252-258
+  s_fbba0b32ee6f59::t_bd1fd405905022 262
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_fbba0b32ee6f59::t_2cd502823b9eb6 2493,2495
+  s_fbba0b32ee6f59::t_b4911555bab71a 929,939-988
+  s_fbba0b32ee6f59::t_804d7707576144 990-1010
+  s_fbba0b32ee6f59::t_ec095ff8f54abd 2494,2496-2527
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_ec96d20c0c19b7::t_bc5dfe97edd1a0 367-368
+  s_fbba0b32ee6f59::t_abb613f74bdd21 104,255-265,267
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_ec96d20c0c19b7::t_bc5dfe97edd1a0 14,62
+  s_fbba0b32ee6f59::t_8ff340c0a03c4d 12-13,15,37,51-56,63,65-66,91-99,102-108,110-113,115,117-121,123,125,131-133,135,137,140,151,179-187
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_fbba0b32ee6f59::t_4e86428fc364be 15,72,262-263,328
+  s_fbba0b32ee6f59::t_263c35dfea40b9 11,97,100,179-183,190-194,255-256,258-261,264-270,272-279,281-285,287-288,291-304,318-319,325-326
+  s_fbba0b32ee6f59::t_bbf1a7e85381dc 308-313,316-317
+  s_fbba0b32ee6f59::t_57a5a92591ba7d 35
+  s_fbba0b32ee6f59::t_038a0835bb7a61 280,324,327
+  s_ec96d20c0c19b7::t_bc5dfe97edd1a0 17,320-323
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  s_fbba0b32ee6f59::t_038a0835bb7a61 27-34
+packages/cli/test/integration/agents/agent-chat-cancellation.api.test.ts
+  s_ec96d20c0c19b7::t_1800dfd316c7fd 1-30,34-80,83-104
+  s_ec96d20c0c19b7::t_3dc19b569c1952 31-33,81-82
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_fbba0b32ee6f59::t_abb613f74bdd21 6,101-113,115
+packages/@n8n/api-types/src/agents/task-cancellation.ts
+  s_fbba0b32ee6f59::t_abb613f74bdd21 34-35
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_ec96d20c0c19b7::t_bc5dfe97edd1a0 29,483,503
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_fbba0b32ee6f59::t_312fc7458590ab 348
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_ec96d20c0c19b7::t_06a42370a77eae 16,142-175
+  s_fbba0b32ee6f59::t_1bf0b408235539 18,176-183,185-193,196-204,206-217,219-232,234-239
+  s_fbba0b32ee6f59::t_4e86428fc364be 13,106,121
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_fbba0b32ee6f59::t_38723f2e3e6f0e 210-216
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_fbba0b32ee6f59::t_bd1fd405905022 1676
+  s_fbba0b32ee6f59::t_abb613f74bdd21 218,232,1672
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_fbba0b32ee6f59::t_cd5566fe23b193 165-168
+  s_fbba0b32ee6f59::t_dc2ef44f340003 10,142-147,169-176,245-246
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_fbba0b32ee6f59::t_804d7707576144 1,169-173
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_fbba0b32ee6f59::t_312fc7458590ab 337
+  s_fbba0b32ee6f59::t_8ff340c0a03c4d 324,331
+  s_fbba0b32ee6f59::t_c8876279355ec2 725,732
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBackgroundJobs.ts
+  s_fbba0b32ee6f59::t_c8876279355ec2 48-49
+packages/cli/src/modules/agents/repositories/agent-task-cancellation.repository.ts
+  s_fbba0b32ee6f59::t_4e86428fc364be 365
+  s_fbba0b32ee6f59::t_038a0835bb7a61 357-360,363
+  s_fbba0b32ee6f59::t_1e498a2fa5ff2c 226,243-252
+  s_fbba0b32ee6f59::t_abb613f74bdd21 74,84-86,88-110,122-125,137,240-241,253,256-257,260,305,311-319,321-337,347-352,354-356,362,366-374,376-377
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_fbba0b32ee6f59::t_b337bd54e1f096 314-339
+packages/cli/test/integration/database/repositories/agent-task-cancellation.repository.test.ts
+  s_fbba0b32ee6f59::t_5b74373afa155b 300,307
+  s_fbba0b32ee6f59::t_1bf0b408235539 88,90-95,100-114,116-124,126-127,129-139,141-144,164-172,176-177,179-180,182-187
+  s_fbba0b32ee6f59::t_b75b2d31eca256 145-163
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_fbba0b32ee6f59::t_57a5a92591ba7d 104
+  s_fbba0b32ee6f59::t_1bf0b408235539 6,102-103,105,108-115,120-122,124-139,141-143
+  s_fbba0b32ee6f59::t_4e86428fc364be 977,991
+  s_fbba0b32ee6f59::t_bce6bf04893219 116-118
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentBackgroundJobs.test.ts
+  s_fbba0b32ee6f59::t_8bf9f37c3088bf 141-158
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_fbba0b32ee6f59::t_185653d0543d04 496,498
+  s_fbba0b32ee6f59::t_b3ae8296991308 451-454,456,464,479,488,495,508,510-523,525-530,551,573,579-580,593-594,607,1482,1487,1495,1515-1516,1579-1580
+  s_fbba0b32ee6f59::t_747688817d52df 487,491-494,499-507,1497,1519,1583
+  s_fbba0b32ee6f59::t_11e6d0d006101f 1513,1577
+  s_fbba0b32ee6f59::t_bbf1a7e85381dc 73,195,197-198,208-213,215,217,232,236,238-244,247,249,480-484,486,489-490,497,509,577-578,590-591,1517-1518,1581-1582
+  s_fbba0b32ee6f59::t_8bf9f37c3088bf 192-193
+  s_fbba0b32ee6f59::t_6e330334ca02c2 565-569
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPlan.test.ts
+  s_fbba0b32ee6f59::t_57a5a92591ba7d 31-47
+  s_fbba0b32ee6f59::t_11e9b178f6c212 414-415,419-427,429-430,433,442,444-446,448-461,463,465-480,484,486,493
+  s_fbba0b32ee6f59::t_1cd1e5eeba7538 156-184,186-187
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_fbba0b32ee6f59::t_4e86428fc364be 856
+  s_ec96d20c0c19b7::t_0243713e1fad7e 291-296
+  s_fbba0b32ee6f59::t_312fc7458590ab 463,489-496,507-510
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_ec96d20c0c19b7::t_06a42370a77eae 5,139-140,142
+  s_fbba0b32ee6f59::t_daea994e74e61f 207
+  s_ec96d20c0c19b7::t_0243713e1fad7e 148-159
+  s_fbba0b32ee6f59::t_038a0835bb7a61 7,16,34,36,42,49-51,53,59-64,66,86,89-90,95,98-102,105,132-133,136-138,143-145,162-169,172-174,176,179,181-186,189-192,195-196,198
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_fbba0b32ee6f59::t_7290a909b4b456 186,468,470,531-542,544-561,563-565,567,571-589,593,595-601,607-618,622-623,1165,1185-1189,1191-1192
+  s_fbba0b32ee6f59::t_4e86428fc364be 13,590-592,602-606
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_fbba0b32ee6f59::t_4e86428fc364be 365-367
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_fbba0b32ee6f59::t_08ba383df4763c 17,20,66-67,78,85-89,95,103,135,164-166,170-171,177-183,189-191,195-196,202-208,215,247,255,331-335
+  s_fbba0b32ee6f59::t_11e6d0d006101f 14,236,239
+  s_fbba0b32ee6f59::t_1cd1e5eeba7538 107
+  s_fbba0b32ee6f59::t_bbf1a7e85381dc 18-19,45,56-60,259
+  s_fbba0b32ee6f59::t_4e86428fc364be 258
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_fbba0b32ee6f59::t_bbf1a7e85381dc 8117
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_fbba0b32ee6f59::t_ec095ff8f54abd 272-290
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_fbba0b32ee6f59::t_8bf9f37c3088bf 838-848,852-854,858-860
+  s_fbba0b32ee6f59::t_312fc7458590ab 50,234-244
+  s_fbba0b32ee6f59::t_57a5a92591ba7d 1214-1233
+  s_fbba0b32ee6f59::t_756f771bcd41cd 849-851,855-857
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ad3fea774b6817c5602f061bbcb81bf93795fc9",
+  "prompts": {},
+  "sessions": {
+    "s_ec96d20c0c19b7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11fe0-21b1-77a2-b037-2b0263c949ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

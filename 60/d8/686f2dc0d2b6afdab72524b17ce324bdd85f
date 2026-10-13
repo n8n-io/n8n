@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Slack/test/v2/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_54647eca644d8d 328,365,400,469,483,1033,1048,1120,1126,1129,1139,1145,1148,1157,1169,1181
+packages/nodes-base/nodes/Slack/test/v1/GenericFunctions.test.ts
+  s_54b080d432fd44::t_73738cca4460d7 103,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60d8686f2dc0d2b6afdab72524b17ce324bdd85f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_54b080d432fd44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aae6274cf5f956d31",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

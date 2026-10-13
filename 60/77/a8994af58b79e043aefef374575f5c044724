@@ -1,0 +1,57 @@
+packages/nodes-base/nodes/Hubspot/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6babd43b39ccb1 1-35
+packages/nodes-base/nodes/Hubspot/HubspotTrigger.node.ts
+  s_07471f89218761::t_72472ea1d39c95 12,347,366,375,380-385,395,403,429,437,443-448
+packages/nodes-base/nodes/Hubspot/V1/GenericFunctions.ts
+  s_07471f89218761::t_c2ce9ccc11fb08 12-14,16,21,25,38,42,56,85,109-113,135
+packages/nodes-base/nodes/Hubspot/V1/HubspotV1.node.ts
+  s_07471f89218761::t_b3d3fc10a76ca7 17,534,552,589,606,653,750,775,795,821,869,884,1192,1208,1221,1244,1263,1296,1316,1355,1595,1822,1834,1850,1871,1877,1905,1923,1996,2058,2067,2088,2115,2117,2136,2175,2243,2249,2256,2262,2287,2303,2344-2352,2428,2444,2462,2482,2497,2523,2598,2614,2632
+packages/nodes-base/nodes/Hubspot/V2/GenericFunctions.ts
+  s_0f7982f67d1b35::t_7df1aed136b1fc 12-14,16,21,25,37,41,48,77,101,123
+packages/nodes-base/nodes/Hubspot/V2/HubspotV2.node.ts
+  s_07471f89218761::t_fdc8614f0d1bd3 3-9,571,589,648,667,684,731,828,853,873,899,921,942,975,1006,1023,1044,1086,1101,1535,1551,1564,1592,1614,1650,1672,1721,1961,2190,2204,2226,2258,2290,2310,2392,2466,2490,2523,2540,2571,2620,2701,2709,2719,2725,2750,2766,2807-2815,2891,2907,2925,2947,2962,2990,3068,3084,3102
+packages/nodes-base/nodes/Hubspot/__test__/Hubspot.node.test.ts
+  s_9e2db97aad2123::t_1be0720b48abb9 127,211,217
+packages/nodes-base/nodes/Hubspot/__test__/loadOptions.test.ts
+  s_07471f89218761::t_ea1b161ab9d602 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6077a8994af58b79e043aefef374575f5c044724",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_0f7982f67d1b35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a65b801439482db1f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9e2db97aad2123": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4064eb8cce7d1f8f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

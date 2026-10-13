@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_54a1c0cf80fb54 74
+  s_2e1fa95fc44f8f::t_c2c28033148662 8-10,12-21,32,36,43
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_9109d2dff8d12d 182-204,220,263
+  s_2e1fa95fc44f8f::t_ebc0eae01d0d8b 205-207
+  s_01a6cef1dba9b2::t_35788c70abfaa2 3,65,160
+packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/GoogleFirebaseRealtimeDatabase.node.ts
+  s_2e1fa95fc44f8f::t_a33a629fbcd4ec 147
+  s_2e1fa95fc44f8f::t_8f5ff15afd8164 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4296ca192fda60e7ebaafea00cd3cd93ac043527",
+  "prompts": {},
+  "sessions": {
+    "s_01a6cef1dba9b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a04ba7208f8c81e30",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

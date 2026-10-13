@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Google/CloudStorage/ObjectDescription.ts
+  s_2e1fa95fc44f8f::t_bafb5ec756ec33 9
+  s_2e1fa95fc44f8f::t_3145846399b413 259
+  s_2e1fa95fc44f8f::t_9943aa754f1d50 279
+packages/nodes-base/nodes/Google/CloudStorage/test/ObjectDescription.resumableUpload.test.ts
+  s_2e1fa95fc44f8f::t_da28dcb492a027 290
+  s_2e1fa95fc44f8f::t_8297a146efc94a 8
+  s_2e1fa95fc44f8f::t_5b70c5a0f2ae5f 112-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0f53d8302325eb89cecbdc0da257329ebd20833",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

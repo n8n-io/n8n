@@ -1,0 +1,46 @@
+packages/nodes-base/nodes/Bitwarden/test/workflow/Bitwarden.workflow.test.ts
+  s_2e1fa95fc44f8f::t_37549cbe974ea4 1-80
+packages/nodes-base/nodes/Beeminder/test/workflow/Beeminder.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d593533f96542f 1-36,38,40
+  s_2e1fa95fc44f8f::t_e874e39d0bf904 37
+  s_2e1fa95fc44f8f::t_8fd982da31cb56 39
+  s_2e1fa95fc44f8f::t_8e9b171e5f6bd5 41
+packages/nodes-base/nodes/BambooHr/test/workflow/BambooHr.workflow.test.ts
+  s_2e1fa95fc44f8f::t_69bbc127139841 1-55
+packages/nodes-base/nodes/Bannerbear/test/workflow/Bannerbear.workflow.test.ts
+  s_2e1fa95fc44f8f::t_1f27353d4833b7 1-32
+packages/nodes-base/nodes/BambooHr/test/workflow/requests.workflow.json
+  s_011c996fdfa425::t_568270e54e342d 1-553
+packages/nodes-base/nodes/Bannerbear/test/workflow/requests.workflow.json
+  s_011c996fdfa425::t_f8b16da3de84a9 1-155
+packages/nodes-base/nodes/Beeminder/test/workflow/requests.workflow.json
+  s_011c996fdfa425::t_175d1944ca6df9 1-370
+packages/nodes-base/nodes/Bitwarden/test/workflow/requests.workflow.json
+  s_011c996fdfa425::t_077d3ca3487faa 1-626
+packages/nodes-base/nodes/Bitwarden/test/workflow/self-hosted.workflow.json
+  s_011c996fdfa425::t_603bc720a143aa 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f19e2d84e806463053a814d459309a78418af7df",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

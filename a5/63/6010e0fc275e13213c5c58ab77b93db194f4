@@ -1,0 +1,87 @@
+packages/nodes-base/nodes/Mocean/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_5773a7aa8910c1 1-22
+  s_2e1fa95fc44f8f::t_f937c625214629 23-25
+  s_78ae36a6ed1ed6::t_ad998971ce61b9 26-27
+packages/nodes-base/nodes/Msg91/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7a36c369f82b1d 1-19
+  s_2e1fa95fc44f8f::t_913a06ae058030 20-22
+  s_78ae36a6ed1ed6::t_8edebc495da451 23-24
+packages/nodes-base/nodes/MonicaCrm/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f09624124157a3 1-23
+  s_2e1fa95fc44f8f::t_734ede6650200c 24-26
+  s_78ae36a6ed1ed6::t_6f8078a1f92ad7 27-28
+packages/nodes-base/nodes/MistralAI/MistralAi.node.ts
+  s_2e1fa95fc44f8f::t_bbc2f6c1727336 10
+  s_2e1fa95fc44f8f::t_ea9b4cc8ce2a37 115,129-131,139,146,155,185,192,267,286
+packages/nodes-base/nodes/N8n/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7e8a1006295763 1-22
+packages/nodes-base/nodes/MistralAI/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d985042cc86828 1-18
+packages/nodes-base/nodes/MonicaCrm/MonicaCrm.node.ts
+  s_2e1fa95fc44f8f::t_a020971097b34c 9
+  s_2e1fa95fc44f8f::t_50dcc251988e2c 159,168,182,194,203,249-254,264,276,285,299,321,342,352-356,367-371,379,390-394,406-411,468-473,483,495,511-517,525-529,573,594-599,609,621,632,649,670,685,706-711,721,733,749,762,767,786,793,830-835,845,856-860,868-872,882-886,902,925,935,946-950,958,971-975,986-991,1021-1026,1036,1048,1057-1061,1074,1093,1112,1122,1133,1141,1155-1160,1185,1195,1206-1210,1218,1229-1233,1247-1252
+packages/nodes-base/nodes/MistralAI/GenericFunctions.ts
+  s_7b26599724280c::t_8366338d464c7d 8-9,11,18,22,26
+packages/nodes-base/nodes/Mocean/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_2edd72e1fe39f1 7-9,11,20,40,44
+packages/nodes-base/nodes/Mocean/Mocean.node.ts
+  s_7b26599724280c::t_640d797cfd75f3 12,14,224,259,268
+packages/nodes-base/nodes/MonicaCrm/GenericFunctions.ts
+  s_27e8773386a129::t_3b8a7acdb18173 8-9,11,18,38-48,50-52,54-56,67
+packages/nodes-base/nodes/Msg91/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_393ac3f839bc75 7-9,11,20,32,36
+packages/nodes-base/nodes/Msg91/Msg91.node.ts
+  s_7b26599724280c::t_8e342f595632b1 8,10,130,146
+packages/nodes-base/nodes/N8n/GenericFunctions.ts
+  s_0b340cbcd99bee::t_e96d52e0bdf992 15-16,18,26,41-48,61
+packages/nodes-base/nodes/N8n/WorkflowLocator.ts
+  s_0b340cbcd99bee::t_44d0804fd20198 2,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5636010e0fc275e13213c5c58ab77b93db194f4",
+  "prompts": {},
+  "sessions": {
+    "s_0b340cbcd99bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac6763e23459042a2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_27e8773386a129": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0096ceb206f131bf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_78ae36a6ed1ed6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ccb36d1c1a8da49",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7b26599724280c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9db2cf491b2086aa",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
