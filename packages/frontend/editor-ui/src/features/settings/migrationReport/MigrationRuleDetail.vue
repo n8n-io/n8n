@@ -324,6 +324,15 @@ function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>)
 	};
 }
 
+// Puts the rows back as they were before a failed change, notified date included.
+function restoreWorkflows(rows: AffectedWorkflow[]) {
+	const byId = new Map(rows.map((row) => [row.id, row]));
+	state.value = {
+		...state.value,
+		affectedWorkflows: state.value.affectedWorkflows.map((row) => byId.get(row.id) ?? row),
+	};
+}
+
 function setSaving(workflowIds: string[], saving: boolean) {
 	const next = new Set(savingWorkflowIds.value);
 	for (const workflowId of workflowIds) {
@@ -337,8 +346,7 @@ async function onFindingStatusChange(
 	workflow: AffectedWorkflow,
 	status: MigrationFindingTriageStatus,
 ) {
-	const previousStatus = workflow.status;
-	if (status === previousStatus || savingWorkflowIds.value.has(workflow.id)) return;
+	if (status === workflow.status || savingWorkflowIds.value.has(workflow.id)) return;
 
 	setFindingStatuses(new Map([[workflow.id, status]]));
 	setSaving([workflow.id], true);
@@ -350,7 +358,7 @@ async function onFindingStatusChange(
 			status,
 		);
 	} catch (error) {
-		setFindingStatuses(new Map([[workflow.id, previousStatus]]));
+		restoreWorkflows([workflow]);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
 	} finally {
 		setSaving([workflow.id], false);
@@ -396,7 +404,7 @@ async function changeFindingStatuses(
 		);
 		return true;
 	} catch (error) {
-		setFindingStatuses(new Map(workflows.map((workflow) => [workflow.id, workflow.status])));
+		restoreWorkflows(workflows);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
 		return false;
 	} finally {

@@ -308,6 +308,33 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.getByText('2 affected')).toBeInTheDocument();
 		});
 
+		it('should keep the notified date when reopening a notified row fails', async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockRejectedValue(
+				new Error('Request failed'),
+			);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							status: 'notified',
+							notifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+						},
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			await selectState('Test Workflow 1', 'Open');
+
+			await waitFor(() => expect(showError).toHaveBeenCalled());
+			const row = screen.getByText('Test Workflow 1').closest('tr');
+			if (!row) throw new Error('Row not found');
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Notified');
+			expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
+		});
+
 		it('should disable the state of a row while its change is saving', async () => {
 			let finishSave = () => {};
 			vi.mocked(breakingChangesApi.updateFindingStatus).mockImplementation(
