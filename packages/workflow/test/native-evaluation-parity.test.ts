@@ -234,9 +234,9 @@ describe('Expression - fast native evaluation parity', () => {
 				return;
 			}
 
-			// Seconds-scale values (toSeconds, toUnixInteger) and small getters
-			// get the same tolerance in their own unit.
-			const tolerance = engineInstant > 1e11 ? 60_000 : 60;
+			// Milliseconds, seconds (toSeconds, toUnixInteger), or a calendar
+			// getter, which must match exactly.
+			const tolerance = engineInstant > 1e11 ? 60_000 : engineInstant > 1e8 ? 60 : 0;
 			expect(Math.abs(nativeInstant - engineInstant)).toBeLessThanOrEqual(tolerance);
 		});
 
