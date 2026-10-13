@@ -96,6 +96,10 @@ defineExpose({
 
 <style lang="scss">
 @use '@n8n/design-system/css/markdown.scss';
+
+.n8n-markdown .n8n-markdown-footnote-block {
+	display: none;
+}
 </style>
 
 <style lang="scss" module>
