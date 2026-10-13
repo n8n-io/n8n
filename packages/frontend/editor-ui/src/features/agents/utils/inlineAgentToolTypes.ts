@@ -26,18 +26,30 @@ export function inlineAgentToolTypes(nodeType: string | undefined, parameters: u
 		typeof raw === 'string' && !raw.startsWith('=') ? safeParse(raw) : (raw as unknown);
 	if (!isRecord(payload) || !isRecord(payload.config)) return [];
 
-	const types: string[] = [];
+	const types = new Set<string>();
 	for (const tool of asArray(payload.config.tools)) {
 		if (!isRecord(tool) || tool.type !== 'node' || !isRecord(tool.node)) continue;
 		if (typeof tool.node.nodeType !== 'string') continue;
 
-		types.push(tool.node.nodeType);
-		types.push(...inlineAgentToolTypes(tool.node.nodeType, tool.node.nodeParameters));
+		// A stored base type runs as its `…Tool` variant, and a rule may name only one of the two.
+		types.add(tool.node.nodeType).add(toolVariantOf(tool.node.nodeType));
+		for (const nested of inlineAgentToolTypes(tool.node.nodeType, tool.node.nodeParameters)) {
+			types.add(nested);
+		}
 	}
-	// Every MCP server runs the MCP client, whatever the registry type it carries.
-	if (asArray(payload.config.mcpServers).length > 0) types.push(AI_MCP_TOOL_NODE_TYPE);
+	for (const server of asArray(payload.config.mcpServers)) {
+		// Every server runs the MCP client; a registry server can also be named on its own type.
+		types.add(AI_MCP_TOOL_NODE_TYPE);
+		if (!isRecord(server) || !isRecord(server.metadata)) continue;
+		if (typeof server.metadata.nodeTypeName === 'string') types.add(server.metadata.nodeTypeName);
+	}
 
-	return types;
+	return [...types];
+}
+
+/** The type a node tool runs as when the catalog has a variant for it. */
+function toolVariantOf(nodeType: string): string {
+	return nodeType.endsWith('Tool') ? nodeType : `${nodeType}Tool`;
 }
 
 function asArray(value: unknown): unknown[] {

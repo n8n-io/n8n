@@ -19,7 +19,8 @@ describe('inlineAgentToolTypes', () => {
 				inline({ tools: [nodeTool('n8n-nodes-base.mySql')] }),
 			);
 
-			expect(types).toEqual(['n8n-nodes-base.mySql']);
+			// Both forms: a rule may name the stored type or the variant the tool runs as.
+			expect(types).toEqual(['n8n-nodes-base.mySql', 'n8n-nodes-base.mySqlTool']);
 		},
 	);
 
@@ -30,7 +31,7 @@ describe('inlineAgentToolTypes', () => {
 			inlineAgent: raw,
 		});
 
-		expect(types).toEqual(['n8n-nodes-base.mySql']);
+		expect(types).toEqual(['n8n-nodes-base.mySql', 'n8n-nodes-base.mySqlTool']);
 	});
 
 	it('reports the MCP client for an inline agent that holds MCP servers', () => {
@@ -40,6 +41,23 @@ describe('inlineAgentToolTypes', () => {
 		);
 
 		expect(types).toEqual(['@n8n/n8n-nodes-langchain.mcpClientTool']);
+	});
+
+	it('reports a registry server by its own type as well as the client it runs on', () => {
+		const types = inlineAgentToolTypes(
+			'n8n-nodes-base.messageAnAgentTool',
+			inline({
+				mcpServers: [
+					{
+						name: 'GitHub',
+						url: 'https://mcp.example.com',
+						metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					},
+				],
+			}),
+		);
+
+		expect(types).toEqual(['@n8n/n8n-nodes-langchain.mcpClientTool', '@n8n/mcp-registry.github']);
 	});
 
 	it('follows inline agents nested inside inline agents', () => {
@@ -55,7 +73,11 @@ describe('inlineAgentToolTypes', () => {
 			}),
 		);
 
-		expect(types).toEqual(['n8n-nodes-base.messageAnAgentTool', 'n8n-nodes-base.mySql']);
+		expect(types).toEqual([
+			'n8n-nodes-base.messageAnAgentTool',
+			'n8n-nodes-base.mySql',
+			'n8n-nodes-base.mySqlTool',
+		]);
 	});
 
 	it.each([
