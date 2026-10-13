@@ -41,8 +41,9 @@ export class MigrationFindingNotificationService {
 	/**
 	 * Notifies the owners of the given workflows about the rule's finding on them.
 	 * A finding is marked notified only when its owner's email went out, so the
-	 * report never claims a notification that nobody received. A workflow whose
-	 * finding is not open, or that has no owner with an email, is reported as skipped.
+	 * report never claims a notification that nobody received. A notified finding
+	 * is emailed again as a reminder. A workflow whose finding is won't fix or
+	 * missing, or that has no owner with an email, is reported as skipped.
 	 */
 	async notifyOwners(
 		ruleId: string,
