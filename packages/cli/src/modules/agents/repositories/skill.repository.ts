@@ -264,13 +264,13 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return (latest?.version ?? 0) + 1;
 	}
 
-	/** Inserts the skill with its v1. */
+	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
 		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
 		content: SkillContent,
 		ctx: OperationContext = {},
-	): Promise<void> {
-		await this.runInTransaction(ctx, async (manager) => {
+	): Promise<string> {
+		return await this.runInTransaction(ctx, async (manager) => {
 			await manager.insert(Skill, {
 				id: skill.id,
 				projectId: skill.target.projectId,
@@ -278,7 +278,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 				source: skill.source,
 				createdById: skill.createdById,
 			});
-			await insertVersion(manager, skill.id, 1, content, skill.createdById);
+			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
 		});
 	}
 
@@ -466,6 +466,92 @@ export class SkillRepository extends BaseRepository<Skill> {
 			})),
 			hiddenAgents: hidden.size,
 		};
+	}
+
+	/**
+	 * Whether the agent already has skills hub rows: a draft ref, an agent skill, or a pin
+	 * of one of its published versions. The startup copy leaves such an agent alone.
+	 */
+	async hasHubState(agentId: string, ctx: OperationContext = {}): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+		if (await manager.exists(AgentSkillDependency, { where: { agentId } })) return true;
+		if (await manager.exists(Skill, { where: { agentId } })) return true;
+		return await manager
+			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+			.where('history.agentId = :agentId', { agentId })
+			.getExists();
+	}
+
+	/** The published versions of an agent that pin no skill, oldest first. */
+	async findUnpinnedVersions(
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<AgentHistory, 'versionId' | 'schema' | 'skills'>>> {
+		return await this.managerFor(ctx)
+			.createQueryBuilder(AgentHistory, 'history')
+			.select(['history.versionId', 'history.schema', 'history.skills'])
+			.where('history.agentId = :agentId', { agentId })
+			.andWhere((qb) => {
+				const pinned = qb
+					.subQuery()
+					.select('1')
+					.from(AgentVersionSkillDependency, 'pin')
+					.where('pin.agentVersionId = history.versionId')
+					.getQuery();
+				return `NOT EXISTS ${pinned}`;
+			})
+			.orderBy('history.createdAt', 'ASC')
+			.addOrderBy('history.versionId', 'ASC')
+			.getMany();
+	}
+
+	/**
+	 * Every version of the skills one agent owns or refers to: its agent skills and the
+	 * skills of its draft refs. The startup copy reuses a version with the same content.
+	 */
+	async findAgentSkillVersions(
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<SkillVersion, 'id' | 'skillId' | 'version' | 'contentHash'>>> {
+		return await this.managerFor(ctx)
+			.createQueryBuilder(SkillVersion, 'version')
+			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
+			.select(['version.id', 'version.skillId', 'version.version', 'version.contentHash'])
+			.where('skill.agentId = :agentId', { agentId })
+			.orWhere((qb) => {
+				const refs = qb
+					.subQuery()
+					.select('dep.skillId')
+					.from(AgentSkillDependency, 'dep')
+					.where('dep.agentId = :agentId')
+					.getQuery();
+				return `skill.id IN ${refs}`;
+			})
+			.orderBy('version.version', 'ASC')
+			.getMany();
+	}
+
+	/** Agents that have draft refs in the skills hub, up to `limit`, and how many there are. */
+	async findAgentsWithDraftRefs(
+		limit: number,
+		ctx: OperationContext = {},
+	): Promise<{ agentIds: string[]; count: number }> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(AgentSkillDependency, 'dep')
+			.select('dep.agentId', 'agentId')
+			.distinct(true);
+		const count = await query.clone().getCount();
+		const rows = await query
+			.orderBy('dep.agentId', 'ASC')
+			.limit(limit)
+			.getRawMany<{ agentId: string }>();
+		return { agentIds: rows.map((row) => row.agentId), count };
+	}
+
+	/** Whether a skill with this id exists. */
+	async existsById(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).exists(Skill, { where: { id: skillId } });
 	}
 
 	/** The agents that use the skill: a draft ref or a published pin. */
