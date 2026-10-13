@@ -1140,6 +1140,7 @@ export function useCanvasOperations() {
 		{ trackHistory = true, trackBulk = true } = {},
 	) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (refuseRestrictedNodes(nodes)) return;
 
 		// Filter to only pinnable nodes
 		const pinnableNodesWithPinnedData = nodes
@@ -3670,7 +3671,7 @@ export function useCanvasOperations() {
 	}
 
 	/**
-	 * Refuses an operation that would reproduce a restricted node, and says why.
+	 * Refuses an operation on a restricted node, and says why.
 	 * The context menu disables its own items, but the keyboard shortcuts cannot,
 	 * so the refusal must explain itself.
 	 */
