@@ -67,9 +67,12 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain('chat-hub');
 	});
 
-	it.each(['instance-ai', 'agents'])('should include %s by default', (moduleName) => {
-		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
-	});
+	it.each(['instance-ai', 'agents', 'agent-evals'])(
+		'should include %s by default',
+		(moduleName) => {
+			expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+		},
+	);
 
 	it.each([
 		'instance-ai',
