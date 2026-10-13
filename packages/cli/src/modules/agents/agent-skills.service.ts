@@ -140,10 +140,7 @@ export class AgentSkillsService {
 		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
 		const previous = captureAgentMutation(entity, previousSkillRefs);
 
-		const results = skills.map(({ allowedTools: _ignored, ...skill }) => ({
-			id: this.addSkill(entity, skill),
-			skill,
-		}));
+		const results = skills.map((skill) => ({ id: this.addSkill(entity, skill), skill }));
 		let skillRefs = previousSkillRefs;
 		if (attach) {
 			for (const { id } of results) skillRefs = this.attachSkillRef(skillRefs, id);
@@ -197,13 +194,14 @@ export class AgentSkillsService {
 			throw new ConflictError('Skill was changed elsewhere; reload to get the latest version');
 		}
 
-		const { allowedTools: _ignored, ...updated } = { ...existing, ...updates };
+		const updated = { ...existing, ...updates };
 		if (instructionEdits?.length) {
 			if (updates.instructions !== undefined) {
 				throw new UserError('Pass either instructions or instructionEdits, not both.');
 			}
 			updated.instructions = applySkillInstructionEdits(existing.instructions, instructionEdits);
 		}
+		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
 		if ('references' in updates && !updates.references?.length) delete updated.references;
 		this.validateSkill(updated);
 		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);

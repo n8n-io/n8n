@@ -1742,7 +1742,6 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.systemInstruction).toContain('vague or placeholder skill');
 			expect(tool.systemInstruction).toContain('ask the user clarifying');
 			expect(tool.systemInstruction).toContain('Gotchas');
-			expect(tool.systemInstruction).not.toContain('allowedTools');
 			expect(tool.systemInstruction).toContain('references are not automatically loaded');
 			expect(tool.systemInstruction).toContain(
 				'instructions must say exactly when to load each one',
@@ -1843,20 +1842,6 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				errors: [{ message: 'Agent already has a skill named "Summarize Meetings".' }],
 			});
-		});
-
-		it('rejects allowedTools via the input schema', () => {
-			const { service } = makeService();
-
-			const result = (
-				getCreateSkillsTool(service).inputSchema as unknown as {
-					safeParse: (input: unknown) => { success: boolean };
-				}
-			).safeParse({
-				skills: [{ ...makeSkillInput('Summarize Meetings'), allowedTools: ['load_workflow'] }],
-			});
-
-			expect(result.success).toBe(false);
 		});
 
 		it('rejects an empty skills array via the input schema', () => {
@@ -2045,7 +2030,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('uses null to remove references and rejects an empty array or allowedTools', async () => {
+		it('uses null to remove references and rejects an empty array', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.updateSkill.mockResolvedValue({
 				id: 'skill_create_tickets',
@@ -2090,10 +2075,6 @@ describe('AgentsBuilderToolsService', () => {
 			expect(inputSchema.safeParse({ ...baseInput, updates: { references: [] } }).success).toBe(
 				false,
 			);
-			expect(
-				inputSchema.safeParse({ ...baseInput, updates: { allowedTools: ['create_ticket'] } })
-					.success,
-			).toBe(false);
 			expect(inputSchema.safeParse({ ...baseInput, updates: {} }).success).toBe(false);
 			expect(
 				inputSchema.safeParse({
