@@ -322,7 +322,17 @@ function onCreateFallbackCredential() {
 		undefined,
 		{
 			hideAskAssistant: true,
-			onCredentialCreated: (credential) => onFallbackCredentialChange(credential.id),
+			onCredentialCreated: async (credential) => {
+				// The picker reads the scoped usable list, which only a fetch writes.
+				// Refetch so the new credential is in the list before it is selected.
+				await (props.projectId
+					? credentialsStore.fetchUsableCredentials({
+							projectId: props.projectId,
+							forAgent: true,
+						})
+					: credentialsStore.refreshUsableCredentials());
+				onFallbackCredentialChange(credential.id);
+			},
 		},
 	);
 }

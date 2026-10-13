@@ -10,6 +10,7 @@ import AgentCredentialSelect from '../components/AgentCredentialSelect.vue';
 import type { AgentJsonConfig } from '../types';
 
 const openNewCredentialMock = vi.hoisted(() => vi.fn());
+const fetchUsableCredentialsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 
 // Mutable per test so the n8n Connect gating (enabled + served credential type)
 // can be exercised without touching the real gateway stores.
@@ -51,6 +52,8 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 				{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
 			].filter((credential) => credential.type === type),
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
+		fetchUsableCredentials: fetchUsableCredentialsMock,
+		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 
@@ -468,8 +471,12 @@ describe('AgentWebSearchSection', () => {
 
 			const onCredentialCreated = openNewCredentialMock.mock.calls.at(-1)?.[7]?.onCredentialCreated;
 			expect(onCredentialCreated).toBeTypeOf('function');
-			onCredentialCreated?.({ id: 'new-cred' });
+			await onCredentialCreated?.({ id: 'new-cred' });
 
+			expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				forAgent: true,
+			});
 			const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
 			expect(getWebSearchConfig(last)).toEqual({
 				enabled: true,

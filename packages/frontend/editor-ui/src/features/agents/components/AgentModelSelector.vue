@@ -584,7 +584,17 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 			undefined,
 			{
 				hideAskAssistant: true,
-				onCredentialCreated: function selectCreatedCredential(credential) {
+				onCredentialCreated: async function selectCreatedCredential(credential) {
+					// The picker reads the scoped usable list, which only a fetch writes.
+					// Refetch so the new credential is in the list before it is selected,
+					// else the picker treats the selection as invalid and falls back.
+					const scopeProjectId = createCredentialProjectId.value;
+					await (scopeProjectId
+						? credentialsStore.fetchUsableCredentials({
+								projectId: scopeProjectId,
+								forAgent: true,
+							})
+						: credentialsStore.refreshUsableCredentials());
 					selectCredentialAndResolveDefaultModel(provider, credential.id);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
