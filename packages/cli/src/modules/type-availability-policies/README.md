@@ -177,8 +177,9 @@ names the scope whose verdict decided, which is what a user needs to know who to
 
 `projectId` names the project whose policy was evaluated, also for an instance denial. A
 sub-workflow is checked against its own project, so its refusal names that project, not the
-caller's. It is absent when no project applied. The message says "a project policy" and never
-names the project: the client resolves the name, and only for a project the user can see.
+caller's. It is absent when no project applied. A project denial's message says "a project
+policy" and never names the project: the client resolves the name, and only for a project the
+user can see.
 
 `optInAvailable` is `true` when the instance delegated the type, so the project can lift the
 block with its own allow rule. It is always `false` when no project applied.
