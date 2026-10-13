@@ -139,7 +139,7 @@ describe('HomeAssistant Node', () => {
 			);
 
 			mockHomeAssistantApiRequest
-				.mockRejectedValueOnce(new NodeApiError(mockNode, { httpCode: '404' }))
+				.mockRejectedValueOnce(new NodeApiError(mockNode, { statusCode: 404 }))
 				.mockResolvedValueOnce({ entity_id: 'sensor.test', state: 'off' });
 
 			await homeAssistant.execute.call(mockExecuteFunctions);
@@ -160,7 +160,7 @@ describe('HomeAssistant Node', () => {
 			);
 
 			mockHomeAssistantApiRequest.mockRejectedValueOnce(
-				new NodeApiError(mockNode, { httpCode: '401' }),
+				new NodeApiError(mockNode, { statusCode: 401 }),
 			);
 
 			await expect(homeAssistant.execute.call(mockExecuteFunctions)).rejects.toThrow(NodeApiError);
