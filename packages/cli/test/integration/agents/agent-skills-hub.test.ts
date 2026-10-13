@@ -413,6 +413,28 @@ describe('Agent skills in the skills hub', () => {
 		expect(await agentRepository.findBy({ projectId: otherProject.id })).toEqual([]);
 	});
 
+	it('refuses an agent skill of another project and does not copy it', async () => {
+		const otherProject = await createTeamProject();
+		const source = await createAgent([], otherProject.id);
+		const secret = await skillService.create({
+			target: { projectId: null, agentId: source.id },
+			skill: body('Secret skill'),
+			source: 'agent',
+			createdById: owner.id,
+		});
+
+		const attempt = agentsService.create(project.id, 'Copy', {
+			actor: actor(),
+			user: owner,
+			schema: { ...config, skills: [{ type: 'skill', id: secret }] },
+			skills: {},
+		});
+
+		await expect(attempt).rejects.toThrow('is not available to this agent');
+		const agentSkills = await Container.get(SkillRepository).findBy({ source: 'agent' });
+		expect(agentSkills.map((skill) => skill.id)).toEqual([secret]);
+	});
+
 	it('creates a hub skill for a seeded ref that has only a body', async () => {
 		const agent = await agentsService.create(project.id, 'Seeded', {
 			actor: actor(),

@@ -250,9 +250,18 @@ export class AgentSkillRefsService {
 				)
 			).map((skill) => [skill.id, skill]),
 		);
+		// Copy only the agent skills of agents in this project (a duplicate). Any other
+		// agent skill stays a plain ref, so `checkRefs` refuses it without reading its body.
+		const otherAgents = await this.skillRepository.findAgents(
+			[...found.values()].flatMap((skill) =>
+				skill.agentId && skill.agentId !== agent.id ? [skill.agentId] : [],
+			),
+			ctx,
+		);
 		const otherAgentSkillIds = refs.flatMap((ref) => {
 			const skill = found.get(ref.id);
-			return skill?.agentId && skill.agentId !== agent.id ? [ref.id] : [];
+			if (!skill?.agentId || skill.agentId === agent.id) return [];
+			return otherAgents.get(skill.agentId)?.projectId === agent.projectId ? [ref.id] : [];
 		});
 		const otherAgentBodies =
 			otherAgentSkillIds.length > 0

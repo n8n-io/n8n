@@ -355,6 +355,9 @@ describe('AgentSkillRefsService', () => {
 			skillRepository.findByIds.mockResolvedValue([
 				mock<Skill>({ id: 'private', agentId: 'agent-source' }),
 			]);
+			skillRepository.findAgents.mockResolvedValue(
+				new Map([['agent-source', { name: 'Source', projectId: 'project-1' }]]),
+			);
 			skillService.resolveForAgentDraft.mockResolvedValue({ private: body });
 
 			const refs = await service.createDraftRefs(
@@ -375,6 +378,26 @@ describe('AgentSkillRefsService', () => {
 				ctx,
 			);
 			expect(refs).toEqual([{ type: 'skill', id: 'skill_created' }]);
+		});
+
+		it('does not read or copy an agent skill of another project', async () => {
+			skillRepository.findByIds.mockResolvedValue([
+				mock<Skill>({ id: 'private', agentId: 'agent-elsewhere' }),
+			]);
+			skillRepository.findAgents.mockResolvedValue(
+				new Map([['agent-elsewhere', { name: 'Elsewhere', projectId: 'project-2' }]]),
+			);
+
+			await service.createDraftRefs(agent, [{ type: 'skill', id: 'private' }], {}, user, ctx);
+
+			expect(skillService.resolveForAgentDraft).not.toHaveBeenCalled();
+			expect(skillService.create).not.toHaveBeenCalled();
+			// The ref stays a plain ref, so the attach check refuses it.
+			expect(skillService.checkRefs).toHaveBeenCalledWith(
+				{ id: 'agent-1', projectId: 'project-1' },
+				[{ id: 'private' }],
+				ctx,
+			);
 		});
 
 		it('creates no skill without a user', async () => {
