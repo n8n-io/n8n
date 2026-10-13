@@ -108,6 +108,3 @@ export interface LeaderTimerOptions {
 	 */
 	readonly retryDelaySeconds?: number;
 }
-
-/** A task that runs on the durable scheduler while the scheduler is enabled. */
-export type SchedulerSystemTask = SystemTask & { readonly target: ClusterTarget };

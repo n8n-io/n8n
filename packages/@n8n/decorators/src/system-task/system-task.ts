@@ -14,7 +14,6 @@ import type {
 	InstanceTarget,
 	LeaderTimerOptions,
 	LeaderTimerTarget,
-	SchedulerSystemTask,
 	SystemTask as SystemTaskContract,
 	SystemTaskSchedule,
 } from './types';
@@ -33,14 +32,9 @@ export interface SystemTaskRunOptions {
 }
 
 /** One occurrence at a time, like the in-memory timer. */
-export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
+const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
 
 const MAX_ATTEMPTS_WITH_RETRY = 3;
-
-/** Whether the task runs on the durable scheduler while the scheduler is enabled. */
-export function runsOnScheduler(task: SystemTask): task is SchedulerSystemTask {
-	return task.target.scheduler !== undefined;
-}
 
 /** A target that runs the task once for the cluster, on the durable scheduler. */
 export function clusterTarget(options: Omit<ClusterTarget, 'scope'>): ClusterTarget {
@@ -57,15 +51,33 @@ export function instanceTarget(instanceTypes: InstanceTarget['instanceTypes']): 
 	return { scope: 'instance', instanceTypes };
 }
 
+/** How a task runs, resolved from what it declares. */
+export interface ResolvedSystemTask {
+	readonly schedule: SystemTaskSchedule;
+	/** What the scheduler stores. `undefined` for a task that does not run on the scheduler. */
+	readonly runOptions: SystemTaskRunOptions | undefined;
+}
+
+/**
+ * Resolves the schedule and the scheduler run options of a task, and rejects a
+ * task that declares an option the runners cannot honor.
+ *
+ * @throws {UnexpectedError} when `retryDelaySeconds` or a scheduler option is out of range
+ * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
+ */
+export function resolveSystemTask(task: SystemTask): ResolvedSystemTask {
+	const runOptions = resolveSystemTaskRunOptions(task);
+	validateTimerOptions(task);
+	return { schedule: resolveSystemTaskSchedule(task), runOptions };
+}
+
 /**
  * Resolves the run options the scheduler stores for a task, and rejects values
  * it cannot store. Returns `undefined` for a task that does not run on the scheduler.
  *
  * @throws {UnexpectedError} when an option is out of range
  */
-export function resolveSystemTaskRunOptions(task: SchedulerSystemTask): SystemTaskRunOptions;
-export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions | undefined;
-export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions | undefined {
+function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions | undefined {
 	const { scheduler } = task.target;
 	if (scheduler === undefined) {
 		return undefined;
@@ -101,14 +113,12 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 }
 
 /**
- * Rejects a task that declares an option the schedulers cannot honor.
+ * Rejects a task that declares a timer option the in-memory timers cannot honor.
  *
- * @throws {UnexpectedError} when `retryDelaySeconds` or a scheduler option is out of range
+ * @throws {UnexpectedError} when `retryDelaySeconds` is out of range
  * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
  */
-export function validateSystemTask(task: SystemTask): void {
-	resolveSystemTaskRunOptions(task);
-
+function validateTimerOptions(task: SystemTask): void {
 	const { target } = task;
 	// oxlint-disable-next-line typescript/no-deprecated -- validated while the leader timer still runs tasks
 	const retryDelaySeconds = target.leaderTimer?.retryDelaySeconds;
@@ -180,7 +190,7 @@ export function intervalFromMilliseconds(milliseconds: number): IntervalDefiniti
  * a fractional config value keeps running as it did on the legacy timers. An
  * instance task's interval keeps its sub-second part, rounded to the millisecond.
  */
-export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
+function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
 	const { schedule } = task;
 	if (schedule.kind !== 'interval') {
 		return schedule;

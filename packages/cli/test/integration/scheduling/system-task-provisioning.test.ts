@@ -5,7 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { SchedulerOptions, SchedulerSystemTask, SystemTaskSchedule } from '@n8n/decorators';
+import type { SchedulerOptions, SystemTask, SystemTaskSchedule } from '@n8n/decorators';
 import { UnregisteredOwnerTypeError } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
@@ -15,6 +15,7 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
 	SystemTaskJobRegistrar,
 	systemTaskProvisionRequest,
+	durableSystemTask,
 } from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 
@@ -37,7 +38,7 @@ describe('system task provisioning', () => {
 
 	type TaskOverrides = { schedule?: SystemTaskSchedule; scheduler?: Partial<SchedulerOptions> };
 
-	const task = ({ schedule, scheduler }: TaskOverrides = {}): SchedulerSystemTask => ({
+	const task = ({ schedule, scheduler }: TaskOverrides = {}): SystemTask => ({
 		name: TASK_NAME,
 		schedule: schedule ?? { kind: 'interval', intervalSeconds: 60 },
 		target: { scope: 'cluster', scheduler: { retryOnFailure: true, ...scheduler } },
@@ -45,7 +46,9 @@ describe('system task provisioning', () => {
 	});
 
 	const provision = async (over: TaskOverrides = {}) =>
-		await provisioner.provision(systemTaskProvisionRequest(task(over), owner, 'UTC', new Date()));
+		await provisioner.provision(
+			systemTaskProvisionRequest(durableSystemTask(task(over)), owner, 'UTC', new Date()),
+		);
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -245,7 +248,9 @@ describe('system task provisioning', () => {
 			Container.get(ErrorReporter),
 			Container.get(EventService),
 		);
-		await provisioner.provision(systemTaskProvisionRequest(task(), booting, 'UTC', new Date()));
+		await provisioner.provision(
+			systemTaskProvisionRequest(durableSystemTask(task()), booting, 'UTC', new Date()),
+		);
 		await store('from-a-newer-version', inc(N8N_VERSION, 'minor') as string);
 		const older = await store('from-an-older-version', '0.0.1');
 

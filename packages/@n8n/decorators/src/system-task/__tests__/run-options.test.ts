@@ -1,22 +1,24 @@
 import { MAX_TIMER_DELAY_SECONDS, ScheduledJobMisfirePolicy } from '@n8n/constants';
 
 import {
-	resolveSystemTaskRunOptions,
-	runsOnScheduler,
+	resolveSystemTask,
 	timeoutAfterLimit,
-	validateSystemTask,
 	type SystemTask,
+	type SystemTaskRunOptions,
 } from '../system-task';
-import type { SchedulerOptions, SchedulerSystemTask, SystemTaskTarget } from '../types';
+import type { SchedulerOptions, SystemTaskTarget } from '../types';
 
 const schedule = { kind: 'interval', intervalSeconds: 60 } as const;
 
-const schedulerTask = (scheduler: SchedulerOptions): SchedulerSystemTask => ({
+const schedulerTask = (scheduler: SchedulerOptions): SystemTask => ({
 	name: 'test-task',
 	schedule,
 	target: { scope: 'cluster', scheduler },
 	run: async () => {},
 });
+
+const resolveSystemTaskRunOptions = (task: SystemTask) =>
+	resolveSystemTask(task).runOptions as SystemTaskRunOptions;
 
 const taskOn = (target: SystemTaskTarget, overrides: Partial<SystemTask> = {}): SystemTask => ({
 	name: 'test-task',
@@ -114,21 +116,19 @@ it('should accept the longest timeout a timer honors', () => {
 	expect(options.timeoutSeconds).toBe(2_147_483);
 });
 
-it('should resolve no run options for a task that does not run on the scheduler', () => {
-	expect(
-		resolveSystemTaskRunOptions(taskOn({ scope: 'cluster', leaderTimer: {} })),
-	).toBeUndefined();
-});
-
-it('should tell a scheduler task from a leader timer task and an instance task', () => {
-	expect(runsOnScheduler(schedulerTask({ retryOnFailure: true }))).toBe(true);
-	expect(runsOnScheduler(taskOn({ scope: 'cluster', leaderTimer: {} }))).toBe(false);
-	expect(runsOnScheduler(taskOn({ scope: 'instance', instanceTypes: ['main'] }))).toBe(false);
-});
+it.each<SystemTaskTarget>([
+	{ scope: 'cluster', leaderTimer: {} },
+	{ scope: 'instance', instanceTypes: ['main'] },
+])(
+	'should resolve no run options for a $scope task that does not run on the scheduler',
+	(target) => {
+		expect(resolveSystemTask(taskOn(target)).runOptions).toBeUndefined();
+	},
+);
 
 it('should validate the scheduler options of a task', () => {
 	expect(() =>
-		validateSystemTask(schedulerTask({ retryOnFailure: true, missedAfterSeconds: 0 })),
+		resolveSystemTask(schedulerTask({ retryOnFailure: true, missedAfterSeconds: 0 })),
 	).toThrow('A system task declares an out-of-range option');
 });
 
@@ -136,7 +136,7 @@ it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 	'should reject a retry delay of %s',
 	(retryDelaySeconds) => {
 		expect(() =>
-			validateSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds } })),
+			resolveSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds } })),
 		).toThrow(
 			expect.objectContaining({
 				message: 'A system task declares an out-of-range retry delay',
@@ -148,7 +148,7 @@ it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 
 it('should accept the longest retry delay a timeout honors', () => {
 	expect(() =>
-		validateSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds: 2_147_483 } })),
+		resolveSystemTask(taskOn({ scope: 'cluster', leaderTimer: { retryDelaySeconds: 2_147_483 } })),
 	).not.toThrow();
 });
 
@@ -156,7 +156,7 @@ it.each([0, -1, NaN, Infinity])(
 	'should reject an instance task interval of %s seconds',
 	(intervalSeconds) => {
 		expect(() =>
-			validateSystemTask(
+			resolveSystemTask(
 				taskOn(
 					{ scope: 'instance', instanceTypes: ['main'] },
 					{ schedule: { kind: 'interval', intervalSeconds } },
@@ -173,7 +173,7 @@ it.each([0, -1, NaN, Infinity])(
 
 it('should accept a cluster task interval of 0 seconds, which is rounded up', () => {
 	expect(() =>
-		validateSystemTask(
+		resolveSystemTask(
 			taskOn(
 				{ scope: 'cluster', scheduler: { retryOnFailure: true } },
 				{ schedule: { kind: 'interval', intervalSeconds: 0 } },

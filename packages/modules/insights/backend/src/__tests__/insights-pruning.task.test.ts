@@ -1,6 +1,6 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { MAX_TIMER_DELAY_SECONDS } from '@n8n/constants';
-import { resolveSystemTaskSchedule } from '@n8n/decorators';
+import { resolveSystemTask } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsPruningService } from '../insights-pruning.service';
@@ -33,7 +33,7 @@ describe('InsightsPruningTask', () => {
 		const config = new InsightsConfig();
 		config.pruneCheckIntervalHours = 0.03625;
 
-		const schedule = resolveSystemTaskSchedule(
+		const { schedule } = resolveSystemTask(
 			new InsightsPruningTask(config, databaseConfig, pruningService),
 		);
 

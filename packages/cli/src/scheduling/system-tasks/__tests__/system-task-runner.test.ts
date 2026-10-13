@@ -668,7 +668,10 @@ describe('SystemTaskRunner', () => {
 
 			await initRunner(runner);
 
-			expect(jobRegistrar.provision.mock.calls).toEqual([[dummy], [other]]);
+			expect(jobRegistrar.provision.mock.calls).toEqual([
+				[expect.objectContaining({ task: dummy })],
+				[expect.objectContaining({ task: other })],
+			]);
 		});
 
 		it('leaves a task on an in-memory timer unprovisioned', async () => {

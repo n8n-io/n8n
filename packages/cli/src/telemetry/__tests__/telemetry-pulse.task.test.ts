@@ -1,5 +1,5 @@
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
-import { resolveSystemTaskRunOptions } from '@n8n/decorators';
+import { resolveSystemTask } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { Telemetry } from '@/telemetry';
@@ -26,7 +26,7 @@ describe('TelemetryPulseTask', () => {
 
 	it('should keep a missed occurrence for an hour, coalesce a longer backlog and never retry a failed one', () => {
 		expect(task.target.scheduler?.missedAfterSeconds).toBe(3600);
-		expect(resolveSystemTaskRunOptions(task)).toEqual({
+		expect(resolveSystemTask(task).runOptions).toEqual({
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 3600,
 			maxAttempts: 1,

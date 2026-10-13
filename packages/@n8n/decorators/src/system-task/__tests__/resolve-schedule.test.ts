@@ -1,10 +1,12 @@
 import {
 	intervalFromMilliseconds,
 	intervalFromSeconds,
-	resolveSystemTaskSchedule,
+	resolveSystemTask,
 	type SystemTask,
 } from '../system-task';
 import type { SystemTaskTarget, SystemTaskSchedule } from '../types';
+
+const resolveSystemTaskSchedule = (task: SystemTask) => resolveSystemTask(task).schedule;
 
 const taskWith = (
 	schedule: SystemTaskSchedule,
