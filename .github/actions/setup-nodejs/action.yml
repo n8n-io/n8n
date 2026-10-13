@@ -2,6 +2,7 @@
 # Blacksmith runners benefit from transparent caching and optional Docker layer caching.
 # GitHub-hosted runners use standard GitHub Actions caching.
 # Namespace runners use native dependency, toolchain, and Turbo caches.
+# Blacksmith and Namespace runners keep node_modules and the pnpm store on a mounted volume.
 
 name: 'Node.js Build Setup'
 description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply chain protection, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
@@ -154,7 +155,8 @@ runs:
         # cache. Its post step would save an empty store, and cache keys are
         # write-once — so if it lost the race to a real installer, every other
         # job on that key would restore nothing and silently re-download.
-        cache: ${{ inputs.install-command != '' && !startsWith(runner.name, 'nsc-runner-') && 'pnpm' || '' }}
+        # Namespace and Blacksmith keep the store on a mounted volume instead.
+        cache: ${{ inputs.install-command != '' && !startsWith(runner.name, 'nsc-runner-') && !contains(runner.name, 'blacksmith') && 'pnpm' || '' }}
         package-manager-cache: false
         cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
@@ -194,21 +196,32 @@ runs:
         echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
 
     - name: Mount Namespace dependency cache
-      if: startsWith(runner.name, 'nsc-runner-') && inputs.install-command != '' && env.N8N_NAMESPACE_DEPS_READY != 'true'
+      if: startsWith(runner.name, 'nsc-runner-') && inputs.install-command != '' && env.N8N_DEPS_VOLUME_READY != 'true'
       uses: namespacelabs/nscloud-cache-action@1124a6f3ce44e5cf84cc22111530961f4d2a15f9 # v1
       with:
         path: |
           ${{ steps.pnpm-metadata-cache.outputs.path }}
           node_modules
 
-    - name: Prepare Namespace installation target
-      if: startsWith(runner.name, 'nsc-runner-') && inputs.install-command != '' && env.N8N_NAMESPACE_DEPS_READY != 'true'
+    # Same layout as the Namespace volume, so both providers restore dependencies the same way.
+    # Partial installs get their own disk so they never overwrite the full store.
+    - name: Mount Blacksmith dependency disk
+      if: contains(runner.name, 'blacksmith') && inputs.install-command != '' && env.N8N_DEPS_VOLUME_READY != 'true'
+      uses: useblacksmith/stickydisk@3f6be1451e3cad893b778bc93495c80452a5da26 # v1.7.2
+      with:
+        key: ${{ github.repository }}-pnpm-deps-v1-${{ inputs.cache-dependency-path == 'pnpm-lock.yaml' && 'full' || 'partial' }}
+        path: ${{ github.workspace }}/node_modules
+        commit: on-change
+
+    - name: Prepare dependency volume
+      if: (startsWith(runner.name, 'nsc-runner-') || contains(runner.name, 'blacksmith')) && inputs.install-command != '' && env.N8N_DEPS_VOLUME_READY != 'true'
       shell: bash
       # Keep both paths under one mount for hardlinks. Nested setup must retain the installed tools.
+      # lost+found is the root-owned ext4 directory on a Blacksmith sticky disk.
       run: | # zizmor: ignore[github-env] Fixed runner paths and a constant flag.
-        find node_modules -mindepth 1 -maxdepth 1 ! -name .pnpm-store -exec rm -rf -- {} +
+        find node_modules -mindepth 1 -maxdepth 1 ! -name .pnpm-store ! -name lost+found -exec rm -rf -- {} +
         echo "PNPM_CONFIG_STORE_DIR=$GITHUB_WORKSPACE/node_modules/.pnpm-store" >> "$GITHUB_ENV"
-        echo 'N8N_NAMESPACE_DEPS_READY=true' >> "$GITHUB_ENV"
+        echo 'N8N_DEPS_VOLUME_READY=true' >> "$GITHUB_ENV"
 
     - name: Restore pnpm metadata cache
       if: inputs.install-command != '' && !startsWith(runner.name, 'nsc-runner-')
