@@ -1,5 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import type { TeamsCatalogState, TeamsManagedSetupState } from '@n8n/api-types';
+import type {
+	TeamsAgentSetupState,
+	TeamsCatalogState,
+	TeamsManagedSetupState,
+} from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -153,10 +157,10 @@ describe('AgentChannelTeamsManagedSetup', () => {
 	it('previews the steps after Connect, greyed out, until signed in', async () => {
 		const { getByTestId, getByText, queryByTestId } = render({
 			runtime: buildRuntime({
-				botSetupState: ref({
+				botSetupState: ref<TeamsAgentSetupState | null>({
 					defaultDisplayName: 'Support Agent',
 					defaultDescription: 'Chat with Support Agent, an agent powered by n8n.',
-				}),
+				} as TeamsAgentSetupState),
 			}),
 		});
 
