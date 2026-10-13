@@ -58,6 +58,7 @@ describe('permissions', () => {
 			roleMappingRule: {},
 			otel: {},
 			scim: {},
+			trustedSource: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -193,6 +194,7 @@ describe('permissions', () => {
 			roleMappingRule: {},
 			otel: {},
 			scim: {},
+			trustedSource: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);
