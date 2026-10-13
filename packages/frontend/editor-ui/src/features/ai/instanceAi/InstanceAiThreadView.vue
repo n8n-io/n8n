@@ -66,7 +66,7 @@ import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
-import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
+import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 
 const props = defineProps<{ threadId: string }>();
 
@@ -214,7 +214,7 @@ watch(
 	{ immediate: true },
 );
 
-const { isFeatureEnabled: isTestAgentPreviewVariant } = useTestAgentPreviewExperiment();
+const { isFeatureEnabled: isTestAgentPreviewEnabled } = useTestAgentPreviewFlag();
 
 // The builder's own "Testing agent" step (the `call_agent` tool) already runs
 // a representative message against the draft agent — reused here so the
@@ -987,14 +987,14 @@ function handleNewThreadClick() {
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPanel
-								v-if="activeTestAgentOffer && !isTestAgentPreviewVariant"
+								v-if="activeTestAgentOffer && !isTestAgentPreviewEnabled"
 								@generate="handleGenerateTestCasesFromOffer"
 								@dismiss="dismissTestAgentOffer"
 							/>
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPreviewPanel
-								v-if="latchedTestAgentOffer && isTestAgentPreviewVariant"
+								v-if="latchedTestAgentOffer && isTestAgentPreviewEnabled"
 								:key="latchedTestAgentOffer.agentId"
 								:target="latchedTestAgentOffer"
 								:initial-case="latestCallAgentResult"
