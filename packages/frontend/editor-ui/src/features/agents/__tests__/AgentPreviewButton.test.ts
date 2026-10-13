@@ -50,6 +50,10 @@ async function renderComponent(
 	});
 }
 
+// The first mount pays the SFC transform for the button and its tooltip, which runs past the
+// default 5 s budget when the whole suite is in flight. Later tests hit the cached module.
+vi.setConfig({ testTimeout: 30_000 });
+
 describe('AgentPreviewButton', () => {
 	it('blocks the preview while a policy restricts a tool node type', async () => {
 		const wrapper = await renderComponent({
