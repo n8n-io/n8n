@@ -28,7 +28,7 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	workflowId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'text' })
 	nodeId: string;
 
 	/** The `workflow_history` version these statuses were recorded for. */

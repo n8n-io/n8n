@@ -13,7 +13,7 @@ export class PollerState extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	workflowId: string;
 
-	@PrimaryColumn({ type: 'varchar', length: 36 })
+	@PrimaryColumn({ type: 'text' })
 	nodeId: string;
 
 	/** The node's own cursor shape, e.g. a timestamp, a page token, or a list of consumed ids. */

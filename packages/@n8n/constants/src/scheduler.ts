@@ -175,5 +175,5 @@ export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
 /** Longest accepted `ownerId`. */
 export const SCHEDULED_JOB_OWNER_ID_MAX_LENGTH = 255;
 
-/** Longest accepted `ownerMemberId`. */
-export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = 36;
+/** Longest accepted `ownerMemberId`. A workflow node id can be longer than a UUID. */
+export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = 255;

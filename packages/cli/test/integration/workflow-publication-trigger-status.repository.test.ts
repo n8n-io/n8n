@@ -93,6 +93,24 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		expect(rows[0]).toMatchObject({ nodeId: 'n1', versionId: 'v2', status: 'activated' });
 	});
 
+	it('replaceForWorkflow stores node ids longer than 36 characters', async () => {
+		const longNodeId = 'n'.repeat(45);
+
+		await repo.replaceForWorkflow(workflow.id, [
+			{
+				nodeId: longNodeId,
+				versionId: 'v1',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'persisted',
+			},
+		]);
+
+		expect(await repo.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: longNodeId }),
+		]);
+	});
+
 	it('replaceForWorkflow with an empty list clears all rows', async () => {
 		await repo.replaceForWorkflow(workflow.id, [
 			{

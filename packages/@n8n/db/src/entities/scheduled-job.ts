@@ -69,7 +69,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * Which part of the owner, e.g. a workflow's trigger node id. `null` when the
 	 * owner has no parts.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'varchar', length: 255, nullable: true })
 	ownerMemberId: string | null;
 
 	/**

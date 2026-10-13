@@ -8,6 +8,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import {
 	WorkflowHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -52,6 +53,7 @@ let activeWorkflowManager: ActiveWorkflowManager;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let triggerStatusRepository: WorkflowPublicationTriggerStatusRepository;
 let originalUseWorkflowPublicationService: boolean;
 
 const scheduleNode = (suffix: string): INode => ({
@@ -81,6 +83,7 @@ beforeAll(async () => {
 	activeWorkflowTriggers = Container.get(ActiveWorkflowTriggers);
 	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	triggerStatusRepository = Container.get(WorkflowPublicationTriggerStatusRepository);
 });
 
 afterEach(async () => {
@@ -243,6 +246,27 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		);
 		expect(published?.publishedVersionId).toBe(newVersionId);
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('completes the publication of a trigger whose node id is longer than 36 characters', async () => {
+		const owner = await createOwner();
+
+		// Workflows created through the public API or source control can carry any node id.
+		const trigger = { ...scheduleNode('long-id'), id: 'n'.repeat(45) };
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!, abortSignal);
+
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
+			expect.objectContaining({ nodeId: trigger.id, status: 'activated' }),
+		]);
 	});
 
 	test('publishes a healed version for duplicate trigger node ids, then activates it', async () => {
