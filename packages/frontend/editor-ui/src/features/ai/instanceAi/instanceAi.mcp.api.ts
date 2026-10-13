@@ -3,7 +3,6 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionToolsResponse,
-	McpRegistryServerResponse,
 	McpToolPermissions,
 } from '@n8n/api-types';
 
@@ -15,12 +14,6 @@ export interface CreateMcpConnectionBody {
 export interface UpdateMcpConnectionBody {
 	credentialId?: string;
 	toolPermissions?: McpToolPermissions;
-}
-
-export async function fetchMcpRegistryServers(
-	context: IRestApiContext,
-): Promise<McpRegistryServerResponse[]> {
-	return await makeRestApiRequest(context, 'GET', '/mcp-registry/servers');
 }
 
 export async function fetchMcpConnections(

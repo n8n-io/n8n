@@ -15,7 +15,7 @@ const workflowPublishingOutcomeSchema = z.object({
 	state: z.enum(['published', 'unpublished', 'unchanged', 'blocked', 'failed']).openapi({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
-			'(for example because the workflow uses a stubbed credential, or uses a node type this ' +
+			'(for example because the workflow uses an empty or partially seeded credential, or uses a node type this ' +
 			'instance does not have). When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
@@ -39,7 +39,7 @@ const workflowPublishingOutcomeSchema = z.object({
 			description:
 				'Present when `state` is `unchanged` but the policy wanted to publish the imported ' +
 				'version: a prior published version is still active (for example after an update with ' +
-				'stubbed credentials).',
+				'incomplete credentials).',
 		}),
 });
 
@@ -144,11 +144,16 @@ const importCredentialSummarySchema = z
 			description:
 				'Source credential ids for which empty placeholder credentials were created in the target project.',
 		}),
+		seeded: z.array(z.string()).openapi({
+			description:
+				'Source credential ids for which credentials were created with bundled expression values ' +
+				'in the target project. Partial or unverified bundled data still blocks workflow publishing.',
+		}),
 	})
 	.openapi({
 		description:
 			'Source credential ids grouped by whether they matched an existing credential or were ' +
-			'created as stubs. Full source→target id mapping is in `bindings.credentials`.',
+			'created as empty stubs or seeded credentials. Full source→target id mapping is in `bindings.credentials`.',
 	});
 
 const importDataTableSummarySchema = z.object({

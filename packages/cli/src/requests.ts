@@ -189,7 +189,20 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<
+			{},
+			{},
+			{},
+			// `admin_consent` and its error pair arrive when an administrator approves
+			// the app for an organisation, which reuses the same reply URL.
+			{
+				code: string;
+				state: string;
+				admin_consent?: string;
+				error?: string;
+				error_description?: string;
+			}
+		>;
 	}
 }
 

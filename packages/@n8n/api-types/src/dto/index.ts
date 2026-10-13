@@ -56,6 +56,7 @@ export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
 export { UpdateMigrationFindingStatusesRequestDto } from './breaking-changes/update-migration-finding-statuses-request.dto';
 export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
+export { NotifyMigrationOwnersRequestDto } from './breaking-changes/notify-migration-owners-request.dto';
 
 export {
 	AuditPublicDto,

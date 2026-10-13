@@ -1,10 +1,13 @@
 import type { PolicyViolation } from '@n8n/decorators';
-import { UserError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { classifyRestError, RestErrorKind } from '@n8n/backend-services';
 import { serializeInternalRestError } from '@n8n/backend-services';
 
 import {
+	findPolicyViolations,
 	isPolicyRefusal,
 	PolicyViolationError,
 	type NonEmptyViolations,
@@ -120,6 +123,44 @@ describe('PolicyViolationError', () => {
 			['undefined', undefined],
 		])('does not recognise %s', (_label, value) => {
 			expect(isPolicyRefusal(value)).toBe(false);
+		});
+	});
+
+	describe('findPolicyViolations', () => {
+		function wrapWithCauses(innermost: Error, wrapperCount: number): Error {
+			let current = innermost;
+			for (let i = 0; i < wrapperCount; i++) {
+				current = new Error(`wrapper ${i}`, { cause: current });
+			}
+			return current;
+		}
+
+		const violations: NonEmptyViolations = [violation()];
+
+		it('returns the violations of a direct refusal', () => {
+			expect(findPolicyViolations(new PolicyViolationError(violations))).toEqual(violations);
+		});
+
+		it('returns the violations of a refusal a node error wraps', () => {
+			const nodeError = new NodeOperationError(mock<INode>(), new PolicyViolationError(violations));
+
+			expect(findPolicyViolations(nodeError)).toEqual(violations);
+		});
+
+		it('walks at most five errors down the cause chain', () => {
+			const refusal = new PolicyViolationError(violations);
+
+			expect(findPolicyViolations(wrapWithCauses(refusal, 4))).toEqual(violations);
+			expect(findPolicyViolations(wrapWithCauses(refusal, 5))).toBeUndefined();
+		});
+
+		it.each([
+			['a plain error chain', wrapWithCauses(new Error('root cause'), 3)],
+			['a plain object', { violations }],
+			['a string', 'boom'],
+			['undefined', undefined],
+		])('returns undefined for %s', (_label, value) => {
+			expect(findPolicyViolations(value)).toBeUndefined();
 		});
 	});
 });

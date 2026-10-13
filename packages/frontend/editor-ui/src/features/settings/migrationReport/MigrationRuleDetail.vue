@@ -7,6 +7,7 @@ import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
 	BreakingChangeWorkflowOwner,
+	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -237,14 +238,18 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			key: 'status',
 			width: 140,
 		},
-		{
+	];
+
+	// The actions column only holds the Migrate button.
+	if (showMigrate.value) {
+		headers.push({
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: showMigrate.value ? 160 : 80,
+			width: 160,
 			disableSort: true,
-		},
-	];
+		});
+	}
 
 	return headers;
 });
@@ -301,7 +306,7 @@ const openCount = computed(
 const savingWorkflowIds = ref<Set<string>>(new Set());
 
 // The state is a shallow ref, so replace the list to make the table update.
-function setFindingStatuses(statuses: Map<string, MigrationFindingTriageStatus>) {
+function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>) {
 	state.value = {
 		...state.value,
 		affectedWorkflows: state.value.affectedWorkflows.map((workflow) => {
@@ -494,7 +499,7 @@ const onSearchInput = (value: string) => {
 };
 
 // A migrated row shows as resolved, so it does not count as open.
-function findingState(workflow: AffectedWorkflow): MigrationFindingTriageStatus | 'migrated' {
+function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus | 'migrated' {
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
@@ -595,7 +600,7 @@ const sortedWorkflows = computed(() => {
 		:back-label="i18n.baseText('generic.back')"
 		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"
 	>
-		<header :class="$style.pageHeader">
+		<header>
 			<template v-if="isLoading">
 				<div class="mb-2xs">
 					<N8nLoading variant="h1" />
@@ -775,9 +780,16 @@ const sortedWorkflows = computed(() => {
 		>
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.cellStack">
-					<N8nText color="text-dark" :class="$style.truncate" :title="item.name">
+					<N8nLink
+						theme="text"
+						:to="workflowUrl(item)"
+						new-window
+						:title="item.name"
+						:class="[$style.truncate, $style.workflowName]"
+						data-test-id="migration-workflow-name-link"
+					>
 						{{ item.name }}
-					</N8nText>
+					</N8nLink>
 					<N8nText size="small" color="text-light">
 						{{
 							item.active
@@ -869,27 +881,16 @@ const sortedWorkflows = computed(() => {
 			</template>
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions">
-					<template v-if="showMigrate">
-						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
-							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
-						</N8nText>
-						<N8nButton
-							v-else
-							size="small"
-							:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
-							data-test-id="migrate-workflow-button"
-							@click="openMigrateModal([item])"
-						/>
-					</template>
-					<N8nLink
-						theme="text"
-						:to="workflowUrl(item)"
-						new-window
-						:class="$style.NoLineBreak"
-						data-test-id="migration-workflow-open-link"
-					>
-						{{ i18n.baseText('settings.migrationReport.detail.table.open') }} ↗
-					</N8nLink>
+					<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
+						{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
+					</N8nText>
+					<N8nButton
+						v-else
+						size="small"
+						:label="i18n.baseText('settings.migrationReport.detail.migrate.button')"
+						data-test-id="migrate-workflow-button"
+						@click="openMigrateModal([item])"
+					/>
 				</div>
 			</template>
 		</N8nDataTableServer>
@@ -928,14 +929,6 @@ const sortedWorkflows = computed(() => {
 </template>
 
 <style module>
-/* Mirrors N8nSettingsPageHeader's self-capping so the header column stays centered
-   while the table below spans the full-width layout. */
-.pageHeader {
-	width: 100%;
-	max-width: var(--settings-content--max-width, 45rem);
-	margin-inline: auto;
-}
-
 .unusedCallout {
 	display: flex;
 	align-items: center;
@@ -965,6 +958,11 @@ const sortedWorkflows = computed(() => {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+}
+
+/* The ellipsis takes the anchor color, so match it to the link text. */
+.workflowName {
+	color: var(--color--text);
 }
 
 .nodeNames {
