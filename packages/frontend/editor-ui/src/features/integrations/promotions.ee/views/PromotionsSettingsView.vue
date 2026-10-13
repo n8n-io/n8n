@@ -146,6 +146,11 @@ function onConnectionSaved(saved: PromotionConnection) {
 	invalidateInstancePromotionConnection();
 }
 
+function onConnectionRefresh() {
+	invalidateInstancePromotionConnection();
+	void load();
+}
+
 async function focusProvider(id: string | undefined) {
 	await nextTick();
 	const row = id ? list.value?.querySelector<HTMLElement>(`[data-provider-id="${id}"]`) : undefined;
@@ -237,7 +242,7 @@ async function onDialogOpenChange(open: boolean) {
 				:providers="providers"
 				:connection="connection"
 				@saved="onConnectionSaved"
-				@refresh="load"
+				@refresh="onConnectionRefresh"
 				@add-provider="openCreateDialog(true)"
 			/>
 		</N8nSettingsSection>

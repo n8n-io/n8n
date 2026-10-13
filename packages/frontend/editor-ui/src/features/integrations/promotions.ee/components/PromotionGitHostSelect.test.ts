@@ -141,6 +141,8 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 		await waitFor(() => expect(requests()).toHaveLength(5));
 		expect(requests()[4]).toEqual(requests()[3]);
 		expect(onClick).not.toHaveBeenCalled();
+		expect(screen.getByRole('combobox')).toHaveValue('');
+		expect(screen.getByText('Results for “team”')).toBeVisible();
 		await userEvent.click(screen.getByRole('combobox'));
 		expect(
 			screen.getAllByRole('option', {

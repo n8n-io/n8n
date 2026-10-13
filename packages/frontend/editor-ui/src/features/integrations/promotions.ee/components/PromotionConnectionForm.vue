@@ -91,6 +91,8 @@ watch(
 		savedStateRevision++;
 		// Refresh saved state without replacing the draft.
 		current.value = connection;
+		form.apply.name = connection?.configs.apply?.name;
+		form.promote.name = connection?.configs.promote?.name;
 		baseline.value = JSON.stringify(
 			connection ? connectionFormFrom(connection) : emptyConnectionForm(),
 		);
@@ -111,7 +113,10 @@ function applyProviderChange(change: PromotionProviderChange) {
 }
 
 function selectRepository(selected: PromotionRepository) {
-	if (form.repositoryId !== selected.id) {
+	if (
+		form.remoteUrl !== selected.remoteUrl ||
+		(form.repositoryId !== undefined && form.repositoryId !== selected.id)
+	) {
 		form.apply.branchName = '';
 		form.promote.baseBranchName = '';
 	}
@@ -178,15 +183,15 @@ async function submit() {
 				rootStore.publicApiContext,
 				buildConnectionCreatePayload(form),
 			);
+			toast.showMessage({
+				title: i18n.baseText('settings.promotions.connection.toast.created'),
+				type: 'success',
+			});
 			if (revision !== discoveryRevision.value || savedRevision !== savedStateRevision) {
 				emit('refresh');
 				return;
 			}
 			resetTo(created);
-			toast.showMessage({
-				title: i18n.baseText('settings.promotions.connection.toast.created'),
-				type: 'success',
-			});
 			emit('saved', created);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('settings.promotions.connection.toast.error.save'));
@@ -198,6 +203,14 @@ async function submit() {
 
 	// Build a new plan so retries include only unsaved changes.
 	const result = await save.run(existing, planConnectionWrites(form, existing));
+	if (result.failed.length > 0) {
+		toast.showError(result.error, i18n.baseText('settings.promotions.connection.toast.error.save'));
+	} else {
+		toast.showMessage({
+			title: i18n.baseText('settings.promotions.connection.toast.updated'),
+			type: 'success',
+		});
+	}
 	if (revision !== discoveryRevision.value || savedRevision !== savedStateRevision) {
 		// Read saved state again after a provider edit or a concurrent refresh.
 		save.reset();
@@ -209,16 +222,7 @@ async function submit() {
 	form.promote.name = result.connection.configs.promote?.name;
 	emit('saved', result.connection);
 
-	if (result.failed.length > 0) {
-		toast.showError(result.error, i18n.baseText('settings.promotions.connection.toast.error.save'));
-		return;
-	}
-
-	resetTo(result.connection);
-	toast.showMessage({
-		title: i18n.baseText('settings.promotions.connection.toast.updated'),
-		type: 'success',
-	});
+	if (result.failed.length === 0) resetTo(result.connection);
 }
 
 function discard() {

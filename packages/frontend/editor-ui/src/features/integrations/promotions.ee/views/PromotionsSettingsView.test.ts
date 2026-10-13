@@ -11,6 +11,10 @@ import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
+import {
+	invalidateInstancePromotionConnection,
+	useInstancePromotionConnection,
+} from '../composables/useInstancePromotionConnection';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionConnection, PromotionProvider } from '../promotionsSettings.api';
 import PromotionsSettingsView from './PromotionsSettingsView.vue';
@@ -218,6 +222,7 @@ const editGitlabProvider = async (fields: Parameters<typeof fillGitlabProvider>[
 describe('PromotionsSettingsView', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		invalidateInstancePromotionConnection();
 		createTestingPinia();
 		api.fetchPromotionProviders.mockResolvedValue([]);
 		api.fetchPromotionProvider.mockResolvedValue(sshProvider());
@@ -240,6 +245,12 @@ describe('PromotionsSettingsView', () => {
 
 	describe('GitLab connections', () => {
 		it('creates a provider and a connection without losing the draft', async () => {
+			const cachedConnection = useInstancePromotionConnection();
+			await cachedConnection.load();
+			const created = gitlabConnection({
+				configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
+			});
+			const pending = createDeferredPromise<PromotionConnection>();
 			api.createPromotionProvider.mockResolvedValue({
 				provider: gitlabProvider(),
 				publicKey: null,
@@ -247,7 +258,7 @@ describe('PromotionsSettingsView', () => {
 			api.fetchPromotionProviders
 				.mockResolvedValueOnce([])
 				.mockResolvedValue([summaryOf(gitlabProvider())]);
-			api.createPromotionConnection.mockResolvedValue(gitlabConnection());
+			api.createPromotionConnection.mockReturnValueOnce(pending.promise);
 			await renderReadyView();
 			await userEvent.type(screen.getByTestId('promotion-connection-name-input'), 'Production');
 			await userEvent.click(screen.getByTestId('promotion-connection-add-provider'));
@@ -282,22 +293,45 @@ describe('PromotionsSettingsView', () => {
 					},
 				},
 			});
+			api.fetchPromotionConnections.mockResolvedValue([created]);
+			api.fetchPromotionConnection.mockResolvedValue(created);
+			api.fetchPromotionProvider.mockResolvedValue(gitlabProvider());
+			api.updatePromotionProvider.mockResolvedValue(gitlabProvider());
+			await editGitlabProvider({ name: 'GitLab renamed' });
+			pending.resolve(created);
+			await flushPromises();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				title: 'Connection created',
+				type: 'success',
+			});
+			expect(
+				within(screen.getByTestId('promotion-connection-save-bar')).queryByRole('button', {
+					name: /save settings/i,
+				}),
+			).not.toBeInTheDocument();
+			await cachedConnection.load();
+			expect(cachedConnection.hasPromoteConfig.value).toBe(true);
 		});
 
 		it('clears dependent branches, supports discard, and saves repository identity together', async () => {
 			const saved = mockGitlabConnection(
 				gitlabConnection({
+					target: { schemaVersion: 1, remoteUrl: repository.remoteUrl },
 					configs: { apply: applyConfig('main'), promote: promoteConfig('release/test', true) },
 				}),
 			);
 			api.fetchPromotionProviders.mockResolvedValue([saved.provider, summaryOf(sshProvider())]);
-			api.updatePromotionConnection.mockResolvedValue({
-				...saved,
-				target: targetOf(otherRepository),
-			});
+			api.updatePromotionConnection
+				.mockResolvedValueOnce({ ...saved, target: targetOf(repository) })
+				.mockResolvedValue({ ...saved, target: targetOf(otherRepository) });
 			await renderReadyView();
 			await selectRepository(repository);
 			expect(selectedValue('apply-branch')).toHaveValue('main');
+			expect(selectedValue('promote-branch')).toHaveValue('release/test');
+			await save();
+			expect(api.updatePromotionConnection).toHaveBeenCalledWith(expect.anything(), saved.id, {
+				target: targetOf(repository),
+			});
 			await selectRepository();
 			expect(selectedValue('apply-branch')).toHaveValue('');
 			expect(selectedValue('promote-branch')).toHaveValue('');
@@ -452,8 +486,10 @@ describe('PromotionsSettingsView', () => {
 				await selectBranches();
 				await save();
 				await editGitlabProvider({ baseUrl: 'https://other.example.com', token: 'test-token' });
-				pending.reject(new Error('The provider changed during the update.'));
+				const failure = new Error('The provider changed during the update.');
+				pending.reject(failure);
 				await waitFor(() => expect(api.fetchPromotionConnection).toHaveBeenCalledTimes(3));
+				expect(mockShowError).toHaveBeenCalledWith(failure, "Couldn't save the connection");
 				if (editedProvider === 'original') {
 					expect(selectedValue('provider')).toHaveValue('GitLab B');
 					expect(selectedValue('apply-branch')).toBeEnabled();

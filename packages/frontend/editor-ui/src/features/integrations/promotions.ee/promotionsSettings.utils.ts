@@ -82,14 +82,14 @@ export const providerFormFrom = (provider: PromotionProvider): ProviderFormState
 	keyType: 'keyType' in provider.config ? provider.config.keyType : 'ed25519',
 });
 
-/** New forms must set whether promotion creates a branch. */
+/** Keep field order aligned with connectionFormFrom for JSON-based dirty checks. */
 export const emptyConnectionForm = (): ConnectionFormState => ({
 	name: '',
 	providerId: '',
 	remoteUrl: '',
 	repositoryId: undefined,
-	apply: { enabled: false, branchName: '' },
-	promote: { enabled: false, baseBranchName: '', createBranchOnPromotion: false },
+	apply: { enabled: false, name: undefined, branchName: '' },
+	promote: { enabled: false, name: undefined, baseBranchName: '', createBranchOnPromotion: false },
 });
 
 export const connectionFormFrom = (connection: PromotionConnection): ConnectionFormState => {

@@ -4006,6 +4006,7 @@
 	"settings.promotions.discovery.branch.empty": "No branches found. Try another search or create a branch in GitLab.",
 	"settings.promotions.discovery.error": "Couldn't load options. Check the provider settings and try again.",
 	"settings.promotions.discovery.loadMore": "Load more",
+	"settings.promotions.discovery.searchHint": "Results for “{search}”",
 	"settings.promotions.provider.form.authType": "Authentication",
 	"settings.promotions.provider.form.keyType": "SSH key type",
 	"settings.promotions.provider.form.username": "Username",

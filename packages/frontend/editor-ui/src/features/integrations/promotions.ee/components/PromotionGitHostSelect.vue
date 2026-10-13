@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { options, nextCursor, loading, error, onSearch, cancel, retry, loadMore } =
+const { options, search, nextCursor, loading, error, onSearch, cancel, retry, loadMore } =
 	usePromotionGitHostDiscovery(props);
 const selectedRepository = ref<PromotionRepository>();
 watch(
@@ -67,14 +67,14 @@ function select(value: string) {
 	}
 }
 
-function search(event: Event) {
+function onInput(event: Event) {
 	// Dropdown close events must not clear the search used by pagination or retry.
 	if (event.target instanceof HTMLInputElement) onSearch(event.target.value);
 }
 </script>
 
 <template>
-	<div :class="$style.picker" @input="search">
+	<div :class="$style.picker" @input="onInput">
 		<N8nSelect
 			:id="inputId"
 			:aria-describedby="descriptionId"
@@ -102,6 +102,9 @@ function search(event: Event) {
 				:label="option.label"
 			/>
 		</N8nSelect>
+		<N8nText v-if="search" size="small" color="text-light" role="status">
+			{{ i18n.baseText('settings.promotions.discovery.searchHint', { interpolate: { search } }) }}
+		</N8nText>
 		<N8nText
 			v-if="!loading && !error && !unavailable && options.length === 0 && !nextCursor"
 			size="small"
