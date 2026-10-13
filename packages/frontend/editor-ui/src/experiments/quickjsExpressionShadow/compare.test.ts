@@ -141,6 +141,12 @@ describe('expressionSkeleton', () => {
 		expect(skeleton).toContain('.map(');
 	});
 
+	it('masks names in any script, and characters that are not punctuation', () => {
+		expect(expressionSkeleton('{{ $json.名前 }}')).toBe('{{ $json.<id> }}');
+		expect(expressionSkeleton('{{ $json.präfix_kunde.größe() }}')).toBe('{{ $json.<id>.<fn>() }}');
+		expect(expressionSkeleton('{{ $json.a ≠ 1 }}')).toBe('{{ $json.<id>?<num> }}');
+	});
+
 	it('caps the length', () => {
 		const skeleton = expressionSkeleton(`{{ ${'$json.a + '.repeat(200)}1 }}`);
 

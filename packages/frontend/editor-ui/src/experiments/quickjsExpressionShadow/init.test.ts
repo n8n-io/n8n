@@ -114,6 +114,16 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(Expression.setShadowRunner).not.toHaveBeenCalledWith(expect.anything());
 	});
 
+	it('does not start when the user logs out while the flags load', async () => {
+		postHogStore.waitForFeatureFlags.mockImplementationOnce(async () => {
+			stopQuickJsExpressionShadow();
+		});
+
+		await initializeQuickJsExpressionShadow();
+
+		expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
+	});
+
 	it('sends the collected results and stops on logout', async () => {
 		postHogStore.getFeatureFlagPayload.mockReturnValue({ sampleRate: 1 });
 		await initializeQuickJsExpressionShadow();
@@ -206,5 +216,6 @@ describe('readShadowSettings', () => {
 			sampleRate: DEFAULT_SAMPLE_RATE,
 			timeoutMs: DEFAULT_TIMEOUT_MS,
 		});
+		expect(readShadowSettings({ timeoutMs: 1000 }).timeoutMs).toBe(DEFAULT_TIMEOUT_MS);
 	});
 });

@@ -195,7 +195,10 @@ function getKnownMethods(): Set<string> {
 	return names;
 }
 
-const IDENTIFIER = /^[A-Za-z_$][\w$]*/;
+// Unicode-aware, so a field name in any script becomes `<id>` instead of raw characters.
+const IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*/u;
+// What is left after names, numbers and strings. Anything else becomes `?`.
+const ASCII_PUNCTUATION = /^[!-/:-@[-`{-~]$/;
 const NUMBER =
 	/^(?:0[xXoObB][\da-fA-F_]+n?|\d[\d_]*(?:\.\d*)?(?:[eE][+-]?\d+)?n?|\.\d+(?:[eE][+-]?\d+)?)/;
 
@@ -289,7 +292,7 @@ export function expressionSkeleton(source: string): string {
 
 		if (char === '{' || char === '(' || char === '[') depth += 1;
 		if (char === '}' || char === ')' || char === ']') depth = Math.max(0, depth - 1);
-		tokens.push(char);
+		tokens.push(ASCII_PUNCTUATION.test(char) ? char : '?');
 		afterDot = char === '.';
 		index += 1;
 	}

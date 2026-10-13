@@ -17,7 +17,8 @@ export const DEFAULT_TIMEOUT_MS = 100;
 export const REPORT_INTERVAL_MS = 5 * 60 * 1000;
 
 const MIN_TIMEOUT_MS = 10;
-const MAX_TIMEOUT_MS = 5000;
+// A shadow run blocks the main thread for up to this long, so keep it short.
+const MAX_TIMEOUT_MS = 500;
 
 let started = false;
 
@@ -60,14 +61,16 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	if (!settingsStore.isCloudDeployment) return;
 	if (Expression.getActiveImplementation() !== 'legacy') return;
 
+	// Read before the wait, so a logout during the wait stops this start.
+	const startSession = session;
 	const postHogStore = usePostHog();
 	await postHogStore.waitForFeatureFlags();
+	if (startSession !== session) return;
 	if (!postHogStore.isFeatureEnabled(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name)) return;
 
 	// Checked again after the wait, so two calls cannot both start a run.
 	if (started) return;
 	started = true;
-	const startSession = session;
 
 	const settings = readShadowSettings(
 		postHogStore.getFeatureFlagPayload(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name),

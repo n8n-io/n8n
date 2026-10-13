@@ -77,11 +77,28 @@ export interface ShadowEvaluator {
 	dispose(): Promise<void>;
 }
 
+// Expression code can set `name` to any text, so only these names leave the engine.
+const KNOWN_ERROR_CLASSES = new Set([
+	'Error',
+	'AggregateError',
+	'EvalError',
+	'InternalError',
+	'RangeError',
+	'ReferenceError',
+	'SyntaxError',
+	'TypeError',
+	'URIError',
+	'ExpressionError',
+	'ExpressionExtensionError',
+	'UserError',
+]);
+
 function errorClassOf(error: unknown): string {
 	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
 	const runtimeClass = classifyExpressionError(error);
 	if (runtimeClass !== 'unknown') return runtimeClass;
-	return error instanceof Error ? error.name : typeof error;
+	if (!(error instanceof Error)) return typeof error;
+	return KNOWN_ERROR_CLASSES.has(error.name) ? error.name : 'other';
 }
 
 /**

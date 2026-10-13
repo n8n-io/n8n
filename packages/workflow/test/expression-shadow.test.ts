@@ -18,6 +18,7 @@ describe.runIf(process.env.N8N_EXPRESSION_ENGINE === 'legacy')('Expression shado
 
 	afterEach(() => {
 		Expression.setShadowRunner(undefined);
+		vi.restoreAllMocks();
 	});
 
 	it('calls the runner before the legacy engine and passes the legacy outcome', () => {
@@ -104,6 +105,38 @@ describe.runIf(process.env.N8N_EXPRESSION_ENGINE === 'legacy')('Expression shado
 			} finally {
 				await evaluator.dispose();
 			}
+		});
+
+		it('names an error by its class only when the class is a known one', async () => {
+			const thrown = (name: string) => Object.assign(new Error('x'), { name });
+			let next = thrown('TypeError');
+			vi.spyOn(
+				Expression as unknown as { buildEvaluator: () => Promise<unknown> },
+				'buildEvaluator',
+			).mockResolvedValue({
+				initialize: async () => {},
+				acquire: async () => true,
+				release: async () => {},
+				dispose: async () => {},
+				evaluate: () => {
+					throw next;
+				},
+			});
+			const evaluator = await Expression.createQuickJsShadowEvaluator({
+				bridgeTimeout: 5000,
+				bridgeMemoryLimit: 128,
+				maxCodeCacheSize: 1024,
+			});
+
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'TypeError',
+			});
+			next = thrown('jane@acme.com');
+			expect(evaluator.evaluate('{{ 1 }}', data(), 'UTC')).toMatchObject({
+				ok: false,
+				errorClass: 'other',
+			});
 		});
 	});
 });
