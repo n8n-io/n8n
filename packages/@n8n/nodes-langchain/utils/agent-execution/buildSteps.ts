@@ -425,6 +425,7 @@ export function buildSteps(
 				type: toolInput.type || 'tool_call',
 				// Approved HITL calls are replaced by the gated tool run, so only denials still carry hitl metadata
 				...(tool.action.metadata?.hitl && { hitlDenied: true }),
+				...(tool.data.error && { errored: true }),
 			},
 			observation,
 		});

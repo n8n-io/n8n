@@ -1489,6 +1489,42 @@ describe('buildSteps', () => {
 			expect(result[0].action.hitlDenied).toBe(true);
 			expect(result[1].action).not.toHaveProperty('hitlDenied');
 		});
+
+		it('should mark a step whose tool run failed as errored', () => {
+			const action = (id: string, nodeName: string) => ({
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName,
+				input: { id, input: { query: 'test' } },
+				type: NodeConnectionTypes.AiTool,
+				id,
+				metadata: { itemIndex: 0 },
+			});
+			const base = { executionTime: 0, startTime: 0, executionIndex: 0, source: [] };
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: action('call_123', 'Genie'),
+						data: {
+							...base,
+							data: {},
+							error: { message: 'Space not found', name: 'NodeOperationError' } as any,
+						},
+					},
+					{
+						action: action('call_456', 'Calculator'),
+						data: { ...base, data: { ai_tool: [[{ json: { output: '2' } }]] } },
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.errored).toBe(true);
+			expect(result[0].observation).toContain('Space not found');
+			expect(result[1].action).not.toHaveProperty('errored');
+		});
 	});
 
 	describe('Tool input extraction', () => {
