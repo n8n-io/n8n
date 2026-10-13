@@ -200,7 +200,9 @@ async function pollWebhookStatus() {
 		}
 	}
 	if (!webhookVerified.value && !unmounted) {
-		pollTimer = setTimeout(() => void pollWebhookStatus(), WEBHOOK_POLL_MS);
+		pollTimer = setTimeout(() => {
+			void pollWebhookStatus();
+		}, WEBHOOK_POLL_MS);
 	}
 }
 
