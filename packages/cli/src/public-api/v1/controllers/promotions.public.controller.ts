@@ -267,7 +267,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion connection')
 	@ApiDescription(
-		'Creates a connection on an existing provider, with up to one initial configuration for each direction. Only one instance connection can exist.',
+		'Creates a connection on an existing provider, with up to one initial configuration for each direction. A Git host target can include the repositoryId returned by discovery. The service checks that the ID matches remoteUrl before saving both. Plain Git targets do not use repository IDs. Only one instance connection can exist.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionConnectionPublicDto)
@@ -335,11 +335,12 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion connection')
 	@ApiDescription(
-		'Updates the name, target, or provider. Scope cannot change, and configurations have their own routes.',
+		'Updates the name, target, or provider. A target replaces the whole saved target. A Git host repositoryId must match remoteUrl. Omitting repositoryId from a replacement target clears the saved ID. Changing the provider without a replacement target also clears the ID. If the provider or connection target changes during repository validation, the update returns 409. Scope cannot change, and configurations have their own routes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionConnection(
 		_req: AuthenticatedRequest,

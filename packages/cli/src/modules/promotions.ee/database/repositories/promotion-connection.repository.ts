@@ -71,6 +71,48 @@ export class PromotionConnectionRepository extends BaseRepository<PromotionConne
 		await this.update({ id }, changes);
 	}
 
+	async updateTargetIfUnchanged(
+		id: string,
+		expected: Pick<PromotionConnection, 'providerId' | 'target'>,
+		changes: Partial<Pick<PromotionConnection, 'name' | 'providerId'>> &
+			Pick<PromotionConnection, 'target'>,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const targetUnchanged =
+			this.manager.connection.options.type === 'postgres'
+				? 'CAST("target" AS jsonb) = CAST(:expectedTarget AS jsonb)'
+				: '"target" = :expectedTarget';
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PromotionConnection)
+			.set(changes)
+			.where('"id" = :id', { id })
+			.andWhere('"providerId" = :expectedProviderId', { expectedProviderId: expected.providerId })
+			.andWhere(targetUnchanged, { expectedTarget: JSON.stringify(expected.target) })
+			.execute();
+		return result.affected === 1;
+	}
+
+	async clearRepositoryIdsForProvider(providerId: string, ctx: OperationContext): Promise<void> {
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PromotionConnection)
+			.set({
+				target: () =>
+					isPostgres
+						? '(CAST("target" AS jsonb) - \'repositoryId\')::json'
+						: 'json_remove("target", \'$.repositoryId\')',
+			})
+			.where('"providerId" = :providerId', { providerId })
+			.andWhere(
+				isPostgres
+					? 'CAST("target" AS jsonb) ? \'repositoryId\''
+					: 'json_type("target", \'$.repositoryId\') IS NOT NULL',
+			)
+			.execute();
+	}
+
 	/** Cascades to this connection's configs and project links only. */
 	async deleteConnection(id: string): Promise<void> {
 		await this.delete({ id });

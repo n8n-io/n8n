@@ -7,6 +7,7 @@ import type {
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderPublicDto,
 	PromotionProviderType,
+	PromotionRepository,
 	UpdatePromotionProviderDto,
 } from '@n8n/api-types';
 import {
@@ -17,6 +18,7 @@ import {
 	supportsPromotionAuthType,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
@@ -47,6 +49,7 @@ export class PromotionProvidersService {
 		private readonly gitService: PromotionsGitService,
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	async create(input: CreatePromotionProviderDto): Promise<PromotionProviderCreatedPublicDto> {
@@ -82,6 +85,20 @@ export class PromotionProvidersService {
 		return await client.listRepositories(access, query);
 	}
 
+	async getRepository(
+		provider: PromotionProvider,
+		repositoryId: string,
+	): Promise<PromotionRepository> {
+		const { client, access } = await this.hostAccess(provider);
+		return await client.getRepository(access, repositoryId);
+	}
+
+	async assertUnchangedForConnectionTarget(provider: PromotionProvider, ctx: OperationContext) {
+		if (!(await this.providerRepository.lockForConnectionTarget(provider.id, provider, ctx))) {
+			throw new ConflictError('The provider changed during the update. Reload it and try again.');
+		}
+	}
+
 	async listBranches(id: string, repositoryId: string, query: GitHostDiscoveryQuery) {
 		const { client, access } = await this.discoveryAccess(id);
 		return await client.listBranches(access, repositoryId, query);
@@ -89,6 +106,10 @@ export class PromotionProvidersService {
 
 	private async discoveryAccess(id: string) {
 		const provider = await this.getEntity(id);
+		return await this.hostAccess(provider);
+	}
+
+	private async hostAccess(provider: PromotionProvider) {
 		if (!isPromotionGitHostType(provider.type)) {
 			throw new BadRequestError(
 				'This provider has no Git host API. Use a GitLab provider to list repositories and branches.',
@@ -133,14 +154,22 @@ export class PromotionProvidersService {
 		if (credentials) changes.auth = await this.encryptCredentials(credentials);
 
 		if (updatesAuthentication) {
-			const updated = await this.providerRepository.updateProviderIfUnchanged(
-				id,
-				{ config: current.config, auth: current.auth },
-				changes,
-			);
-			if (!updated) {
-				throw new ConflictError('The provider changed during the update. Reload it and try again.');
-			}
+			await this.txRunner.run({}, async (ctx) => {
+				const updated = await this.providerRepository.updateProviderIfUnchanged(
+					id,
+					{ config: current.config, auth: current.auth },
+					changes,
+					ctx,
+				);
+				if (!updated) {
+					throw new ConflictError(
+						'The provider changed during the update. Reload it and try again.',
+					);
+				}
+				if (input.config !== undefined && !this.isSameHostUrl(current.config, input.config)) {
+					await this.connectionRepository.clearRepositoryIdsForProvider(id, ctx);
+				}
+			});
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}

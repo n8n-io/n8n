@@ -59,6 +59,11 @@ responses:
                       remoteUrl:
                         type: string
                         minLength: 1
+                      repositoryId:
+                        type: string
+                        minLength: 1
+                        maxLength: 256
+                        description: The repository ID returned by discovery. The server checks that it matches remoteUrl. Omit it when replacing the target to clear the saved ID. Plain Git targets do not use repository IDs.
                     required:
                       - schemaVersion
                       - remoteUrl

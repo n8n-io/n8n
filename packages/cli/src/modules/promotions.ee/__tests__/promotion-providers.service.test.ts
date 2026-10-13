@@ -1,4 +1,5 @@
 import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8n/api-types';
+import type { TransactionRunner } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,6 +17,7 @@ describe('PromotionProvidersService', () => {
 	const connectionRepository = mock<PromotionConnectionRepository>();
 	const gitService = mock<PromotionsGitService>();
 	const cipher = mock<Cipher>();
+	const txRunner = mock<TransactionRunner>();
 
 	const service = new PromotionProvidersService(
 		providerRepository,
@@ -23,6 +25,7 @@ describe('PromotionProvidersService', () => {
 		gitService,
 		cipher,
 		mock<GitHostClients>(),
+		txRunner,
 	);
 
 	const sshProvider = (): PromotionProvider =>
@@ -64,6 +67,7 @@ describe('PromotionProvidersService', () => {
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
 		connectionRepository.countByProviderId.mockResolvedValue(0);
 		providerRepository.updateProviderIfUnchanged.mockResolvedValue(true);
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn({}));
 	});
 
 	describe('create', () => {

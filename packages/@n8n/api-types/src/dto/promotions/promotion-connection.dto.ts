@@ -28,11 +28,18 @@ export type PromotionConnectionScope = z.infer<typeof promotionConnectionScopeSc
 const remoteUrlSchema = z.string().trim().min(1);
 
 /**
- * Plain Git points at a repository with its full SSH or HTTP(S) remote URL. A new
- * provider type adds its own target here and needs no remote URL.
+ * Git transport uses the remote URL. Git host providers can also save the
+ * repository ID returned by discovery.
  */
 export const promotionConnectionTargetSchema = z
-	.object({ schemaVersion: z.literal(1), remoteUrl: remoteUrlSchema })
+	.object({
+		schemaVersion: z.literal(1),
+		remoteUrl: remoteUrlSchema,
+		repositoryId: z.string().min(1).max(256).optional().openapi({
+			description:
+				'The repository ID returned by discovery. The server checks that it matches remoteUrl. Omit it when replacing the target to clear the saved ID. Plain Git targets do not use repository IDs.',
+		}),
+	})
 	.strict();
 export type PromotionConnectionTarget = z.infer<typeof promotionConnectionTargetSchema>;
 

@@ -88,6 +88,13 @@ export class GitLabHostClient implements GitHostClient {
 		if (!z.array(identitySchema).safeParse(projects.body).success) throw unexpectedResponse();
 	}
 
+	async getRepository(access: GitHostAccess, repositoryId: string): Promise<PromotionRepository> {
+		const response = await this.get(access, `projects/${encodeURIComponent(repositoryId)}`, {});
+		const project = projectSchema.safeParse(response.body);
+		if (!project.success) throw unexpectedResponse();
+		return toRepository(project.data);
+	}
+
 	async listRepositories(
 		access: GitHostAccess,
 		{ offset, limit, search }: GitHostDiscoveryQuery,
@@ -108,13 +115,7 @@ export class GitLabHostClient implements GitHostClient {
 		const projects = z.array(projectSchema).max(limit).safeParse(response.body);
 		if (!projects.success) throw unexpectedResponse();
 		return {
-			data: projects.data.map((project) => ({
-				id: String(project.id),
-				name: project.name,
-				fullPath: project.path_with_namespace,
-				remoteUrl: project.http_url_to_repo,
-				defaultBranch: project.default_branch,
-			})),
+			data: projects.data.map(toRepository),
 			hasNextPage: hasNextPage(response, offset, limit, projects.data.length),
 		};
 	}
@@ -234,6 +235,16 @@ export class GitLabHostClient implements GitHostClient {
 		this.logger.warn('GitLab request failed', { path, status: response.statusCode });
 		throw statusError(response.statusCode, path);
 	}
+}
+
+function toRepository(project: z.infer<typeof projectSchema>): PromotionRepository {
+	return {
+		id: String(project.id),
+		name: project.name,
+		fullPath: project.path_with_namespace,
+		remoteUrl: project.http_url_to_repo,
+		defaultBranch: project.default_branch,
+	};
 }
 
 function unexpectedResponse() {

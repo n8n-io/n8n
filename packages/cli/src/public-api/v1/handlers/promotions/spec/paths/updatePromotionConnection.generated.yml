@@ -2,7 +2,7 @@ operationId: updatePromotionConnection
 tags:
   - Promotions
 summary: Update a promotion connection
-description: Updates the name, target, or provider. Scope cannot change, and configurations have their own routes.
+description: Updates the name, target, or provider. A target replaces the whole saved target. A Git host repositoryId must match remoteUrl. Omitting repositoryId from a replacement target clears the saved ID. Changing the provider without a replacement target also clears the ID. If the provider or connection target changes during repository validation, the update returns 409. Scope cannot change, and configurations have their own routes.
 x-required-scope: gitConnection:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -35,6 +35,11 @@ requestBody:
               remoteUrl:
                 type: string
                 minLength: 1
+              repositoryId:
+                type: string
+                minLength: 1
+                maxLength: 256
+                description: The repository ID returned by discovery. The server checks that it matches remoteUrl. Omit it when replacing the target to clear the saved ID. Plain Git targets do not use repository IDs.
             required:
               - schemaVersion
               - remoteUrl
@@ -60,6 +65,8 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '503':

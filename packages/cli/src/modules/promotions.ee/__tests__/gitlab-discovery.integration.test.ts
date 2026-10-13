@@ -14,7 +14,7 @@ const fixtureSchema = z.object({
 	accessToken: z.string().min(1),
 });
 
-// This opt-in check only reads GitLab. It creates a provider in the test database.
+// This opt-in check only reads GitLab. It creates records in the test database.
 describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 	const server = setupTestServer({
 		endpointGroups: ['publicApi'],
@@ -28,7 +28,7 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		owner = await createOwnerWithApiKey();
 	});
 
-	it('finds the fixture repository and its default branch without a connection', async () => {
+	it('discovers the fixture before creating a connection and saves its repository ID', async () => {
 		const fixture = fixtureSchema.parse(JSON.parse(await readFile(fixturePath ?? '', 'utf8')));
 		const baseUrl = process.env.GITLAB_TEST_BASE_URL ?? fixture.baseUrl;
 		const agent = server.publicApiAgentFor(owner);
@@ -40,6 +40,7 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		});
 		expect(created.status, JSON.stringify(created.body)).toBe(201);
 		const root = `/promotions/providers/${created.body.provider.id}`;
+		let connectionId: string | undefined;
 		try {
 			let repository: PromotionRepository | undefined;
 			let cursor: string | undefined;
@@ -57,6 +58,23 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 			if (!repository) throw new Error('Fixture repository not found.');
 			expect(repository.defaultBranch).toBeTruthy();
 			expect(repository.remoteUrl).toMatch(/^https?:\/\//);
+			const target = {
+				schemaVersion: 1,
+				remoteUrl: repository.remoteUrl,
+				repositoryId: repository.id,
+			};
+			const connection = await agent.post('/promotions/connections').send({
+				name: 'GitLab repository identity verification',
+				scope: 'projects',
+				providerId: created.body.provider.id,
+				target,
+			});
+			expect(connection.status, JSON.stringify(connection.body)).toBe(201);
+			connectionId = connection.body.id;
+			expect(connection.body.target).toEqual(target);
+			const saved = await agent.get(`/promotions/connections/${connectionId}`);
+			expect(saved.status).toBe(200);
+			expect(saved.body.target).toEqual(target);
 
 			const branches = await agent
 				.get(`${root}/repositories/${repository.id}/branches`)
@@ -68,6 +86,9 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 			});
 			expect(JSON.stringify(branches.body)).not.toContain(fixture.accessToken);
 		} finally {
+			if (connectionId) {
+				expect((await agent.delete(`/promotions/connections/${connectionId}`)).status).toBe(204);
+			}
 			expect((await agent.delete(root)).status).toBe(204);
 		}
 	}, 60_000);

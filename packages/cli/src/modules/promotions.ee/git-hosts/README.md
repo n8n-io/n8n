@@ -49,6 +49,22 @@ The client never follows a pagination URL. It computes each page on the saved
 host. If a proxy omits pagination headers, a full page gets a continuation cursor.
 That fallback can cause one extra request at the end of a list.
 
+## Saved repository identity
+
+A Git host connection target can save `repositoryId` beside `remoteUrl`.
+Create and target-update requests check the ID with one exact host API request.
+The returned clone URL must match the supplied URL. A mismatch saves nothing.
+Connection create, read, list, and update responses include the saved ID.
+
+A replacement target without `repositoryId` clears the old ID. Name-only edits
+keep it. A provider reassignment without a replacement target clears it. A change
+to the provider's API destination clears IDs on its connections without changing
+their remote URLs, branches, or project links. Equivalent host URLs do not clear
+IDs. Provider snapshot checks prevent an overlapping edit from saving an ID
+validated against an old host. Plain Git targets remain URL-only.
+Target snapshot checks also reject an overlapping provider reassignment or target
+replacement instead of overwriting the winning URL.
+
 ## GitLab
 
 Use the instance base URL and an opaque access token. Recommend a group access
