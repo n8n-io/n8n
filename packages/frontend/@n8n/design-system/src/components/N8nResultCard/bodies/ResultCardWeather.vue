@@ -7,6 +7,7 @@ import RcGlyph from '../motion/RcGlyph.vue';
 import RcIconSwap from '../motion/RcIconSwap.vue';
 import RcIconSwapItem from '../motion/RcIconSwapItem.vue';
 import RcTextMorph from '../motion/RcTextMorph.vue';
+import RcTextSoft from '../motion/RcTextSoft.vue';
 import RcTextSwap from '../motion/RcTextSwap.vue';
 import type { WeatherCardData, WeatherConditionIcon } from '../ResultCard.types';
 
@@ -138,7 +139,12 @@ const flakes = Array.from({ length: 18 }, (_, index) => ({
 		</div>
 
 		<div :class="$style.content">
-			<div :class="$style.place">{{ card.location }}</div>
+			<div :class="$style.placeRow">
+				<div :class="$style.place">{{ card.location }}</div>
+				<span v-if="card.statusLabel" :class="$style.badge" data-test-id="result-card-status">
+					<RcTextSoft :text="card.statusLabel" />
+				</span>
+			</div>
 			<div v-if="day" :class="$style.day" data-test-id="result-card-weather-day">
 				<RcTextMorph :text="day" />
 			</div>
@@ -386,17 +392,37 @@ const flakes = Array.from({ length: 18 }, (_, index) => ({
 	}
 }
 
-/* ---- content ---- */
+/* ---- content: the card opens with the place, 24px from the edge like the reference ---- */
 .content {
-	padding: 8px 24px 0;
+	padding: 24px 24px 0;
+}
+.placeRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
 }
 .place {
+	min-width: 0;
 	font-size: 16px;
 	line-height: 22px;
 	font-weight: 500;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+.badge {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	height: 18px;
+	padding: 0 7px;
+	border-radius: 50px;
+	font-size: 11px;
+	line-height: 16px;
+	font-weight: 500;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.18);
 }
 .day {
 	font-size: 12px;

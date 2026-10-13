@@ -85,19 +85,27 @@ const STATUS_TONE: Record<ResultCardStatus, string> = {
 };
 const statusTone = computed(() => STATUS_TONE[merged.value.status ?? 'info']);
 
-/** The header row only exists when it has something to say; a lone dot is not a header. */
-const hasHeader = computed(
-	() =>
-		Boolean(topLine.value || statusLabel.value || props.footer?.time) ||
-		(hasSwitcher.value && control.value === 'menu'),
-);
-
 /** Bodies that carry their own hero (a number, a place, a date tile) leave the shell title out. */
 const SHELL_HERO = new Set(['message', 'records', 'list', 'keyValue']);
 const shellHero = computed(() => SHELL_HERO.has(props.card.type));
 
-/** The weather sky spans the whole card; its chrome reads in white. */
+/**
+ * The weather sky spans the whole card and, as in the reference, the card has
+ * no header: the body opens with the place. The provenance (workflow, time)
+ * moves into the single footer row over the sky, and the status badge is
+ * drawn by the body beside the place name.
+ */
 const onSky = computed(() => props.card.type === 'weather');
+
+/** The header row only exists when it has something to say; a lone dot is not a header. */
+const hasHeader = computed(
+	() =>
+		!onSky.value &&
+		(Boolean(topLine.value || statusLabel.value || props.footer?.time) ||
+			(hasSwitcher.value && control.value === 'menu')),
+);
+/** Without a header, the footer carries the workflow name and the time. */
+const footerMeta = computed(() => !hasHeader.value && Boolean(topLine.value || props.footer?.time));
 
 /** A top segmented switcher sits above the body, except for bodies that slot it under their own title. */
 const topSegmented = computed(
@@ -252,31 +260,46 @@ const accentStyle = computed(() => ({
 			/>
 		</div>
 
-		<footer v-if="iconList.length || expandable" :class="$style.bottom">
-			<span v-if="iconList.length" :class="$style.cluster" aria-hidden="true">
-				<span v-for="(nodeIcon, index) in iconList" :key="index" :class="$style.clusterItem">
-					<N8nNodeIcon
-						:type="nodeIcon.type"
-						:src="nodeIcon.src"
-						:name="nodeIcon.name"
-						:color="nodeIcon.color"
-						:size="12"
-					/>
+		<footer v-if="iconList.length || expandable || footerMeta" :class="$style.bottom">
+			<span :class="$style.lead">
+				<span v-if="iconList.length" :class="$style.cluster" aria-hidden="true">
+					<span v-for="(nodeIcon, index) in iconList" :key="index" :class="$style.clusterItem">
+						<N8nNodeIcon
+							:type="nodeIcon.type"
+							:src="nodeIcon.src"
+							:name="nodeIcon.name"
+							:color="onSky ? undefined : nodeIcon.color"
+							:size="12"
+						/>
+					</span>
 				</span>
+				<span v-if="footerMeta && topLine" :class="$style.topLine" data-test-id="result-card-top">{{
+					topLine
+				}}</span>
 			</span>
-			<span v-else />
-			<button
-				v-if="expandable"
-				type="button"
-				:class="$style.details"
-				:aria-expanded="detailsOpen"
-				aria-haspopup="dialog"
-				data-test-id="result-card-toggle"
-				@click="detailsOpen = true"
-			>
-				{{ t('resultCard.details') }}
-				<N8nIcon icon="chevron-right" size="xsmall" />
-			</button>
+			<span :class="$style.trail">
+				<span v-if="footerMeta && footer?.time" :class="$style.time">{{ footer.time }}</span>
+				<RcMenu
+					v-if="!hasHeader && hasSwitcher && control === 'menu'"
+					:options="options"
+					:model-value="activeKey"
+					:label="switcherLabel"
+					:class="$style.menu"
+					@update:model-value="select"
+				/>
+				<button
+					v-if="expandable"
+					type="button"
+					:class="$style.details"
+					:aria-expanded="detailsOpen"
+					aria-haspopup="dialog"
+					data-test-id="result-card-toggle"
+					@click="detailsOpen = true"
+				>
+					{{ t('resultCard.details') }}
+					<N8nIcon icon="chevron-right" size="xsmall" />
+				</button>
+			</span>
 		</footer>
 
 		<N8nDialog
@@ -503,8 +526,9 @@ const accentStyle = computed(() => ({
 	flex-direction: column;
 	min-width: 0;
 }
-/* without a header row the body takes the header's top inset (bodies add their own 8px) */
-.headless > .body:first-child,
+/* without a header row the body takes the header's top inset (bodies add their own 8px);
+   the sky body opens with its own 24px, as the reference does */
+.headless:not(.onSky) > .body:first-child,
 .headless > .hero:first-child,
 .headless > .topSwitcher:first-child {
 	padding-top: 16px;
@@ -545,9 +569,29 @@ const accentStyle = computed(() => ({
 .bottom:first-child {
 	padding-top: 16px;
 }
+.lead,
+.trail {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--rc-muted);
+}
+.trail {
+	flex: none;
+}
+.trail .time {
+	margin-left: 0;
+}
+.trail .menu {
+	margin: -6px 0;
+}
 .cluster {
 	display: inline-flex;
 	align-items: center;
+	flex: none;
 }
 .clusterItem {
 	display: inline-flex;
@@ -565,8 +609,14 @@ const accentStyle = computed(() => ({
 		margin-left: -6px;
 	}
 }
+/* on the sky the cluster is glass: white glyphs on translucent discs, no shadow */
 .onSky .clusterItem {
-	background: #fff;
+	--node--icon--color: #fff;
+	background: rgba(255, 255, 255, 0.2);
+	box-shadow: none;
+}
+.onSky .clusterItem + .clusterItem {
+	margin-left: 2px;
 }
 .details {
 	@include tokens.rc-button-reset;

@@ -135,27 +135,33 @@ describe('N8nResultCard shell', () => {
 		expect(withoutFooter.getByTestId('result-card-top')).toHaveTextContent('Gmail · Email sent');
 	});
 
-	it('weather: the body prints the eyebrow as the day line, so the header never repeats it', () => {
-		// on the canvas (no footer, no status label) the card starts with its own hero, as the reference does
+	it('weather: no header row — the card opens with the place; provenance sits in the footer', () => {
+		// on the canvas (no footer) the card is the reference card plus the node icons
 		const onCanvas = renderCard({ card: DEMO_CARDS.weather });
+		expect(onCanvas.container.querySelector('header')).toBeNull();
 		expect(onCanvas.queryByTestId('result-card-top')).not.toBeInTheDocument();
 		expect(onCanvas.getAllByText('Monday')).toHaveLength(1);
 		expect(onCanvas.getByTestId('result-card-weather-day')).toHaveTextContent('Monday');
 		onCanvas.unmount();
 
-		// a status label still earns a header row, but the eyebrow stays out of it
+		// the status badge is drawn by the body beside the place, not by a header
 		const withStatus = renderCard({ card: DEMO_CARDS.weatherSources });
-		expect(withStatus.getByTestId('result-card-top')).toHaveTextContent('');
+		expect(withStatus.container.querySelector('header')).toBeNull();
 		expect(withStatus.getByTestId('result-card-status')).toHaveTextContent('Live');
 		expect(withStatus.getAllByText('Now · Fri 12:40')).toHaveLength(1);
 		withStatus.unmount();
 
-		// in chat (footer) the header carries the workflow name and the time, not the eyebrow
+		// in chat the footer carries the workflow name and the time, next to Details
 		const inChat = renderCard({
 			card: DEMO_CARDS.weather,
 			footer: { workflowName: 'Weather check', time: '12:40' },
 		});
+		expect(inChat.container.querySelector('header')).toBeNull();
+		const footer = inChat.container.querySelector('footer');
+		expect(footer).toContainElement(inChat.getByTestId('result-card-top'));
 		expect(inChat.getByTestId('result-card-top')).toHaveTextContent('Weather check');
+		expect(footer).toHaveTextContent('12:40');
+		expect(footer).toContainElement(inChat.getByTestId('result-card-toggle'));
 		expect(inChat.getAllByText('Monday')).toHaveLength(1);
 	});
 
