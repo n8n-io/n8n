@@ -48,6 +48,13 @@ describe('paths and methods the public API does not serve', () => {
 		expect(response.body).toEqual({ message: 'PUT method not allowed' });
 	});
 
+	test('returns 405 for a parameterized known path with a method it does not serve', async () => {
+		const response = await authMemberAgent.patch('/tags/some-tag-id');
+
+		expect(response.statusCode).toBe(405);
+		expect(response.body).toEqual({ message: 'PATCH method not allowed' });
+	});
+
 	test('returns 401 for a served route without an API key', async () => {
 		const response = await testServer.publicApiAgentWithoutApiKey().get('/tags');
 

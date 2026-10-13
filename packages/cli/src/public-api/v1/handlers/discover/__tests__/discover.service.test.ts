@@ -3,13 +3,6 @@ import { isRecord } from '@n8n/utils/is-record';
 
 import { buildDiscoverResponse, _resetCache } from '../discover.service';
 
-beforeAll(async () => {
-	// Warm the registry once. The first call loads every controller module,
-	// which can approach the default 5s test timeout. Paying it here in the hook
-	// keeps the individual tests fast and non-flaky.
-	await buildDiscoverResponse([] as ApiKeyScope[]);
-}, 30_000);
-
 beforeEach(() => {
 	_resetCache();
 });

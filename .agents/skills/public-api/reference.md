@@ -123,9 +123,9 @@ app-wide `bodyParser` before the registry sees it. Declaring
   fails with `Unexpected form field "<name>"` — not the default "unrecognized
   keys" wording.
 - Multer parsing errors map to these statuses: `413` for a size or count limit,
-  `400` for any other multer error, and `500` for anything else (a malformed
-  body). The `500` is not masked, because it is a `ResponseError`. A missing
-  boundary gives `400` with `multipart file(s) required`.
+  `500` for `LIMIT_UNEXPECTED_FILE`, `400` for any other multer error, and `500`
+  for anything else (a malformed body). The `500` is not masked, because it is a
+  `ResponseError`. A missing boundary gives `400` with `multipart file(s) required`.
 - The body is parsed **after** every auth/scope/license/quota gate and
   **before** controller/route middlewares — a caller those gates would reject
   never has their (possibly huge) body read off the socket, and a middleware
