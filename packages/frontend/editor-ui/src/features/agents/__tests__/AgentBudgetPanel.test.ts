@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PushMessage } from '@n8n/api-types';
 
 import AgentBudgetMonthlyModal from '../components/AgentBudgetMonthlyModal.vue';
 import AgentBudgetPanel from '../components/AgentBudgetPanel.vue';
@@ -7,10 +8,34 @@ import AgentBudgetSessionModal from '../components/AgentBudgetSessionModal.vue';
 import type { AgentJsonConfig } from '../types';
 
 const getAgentBudgetSpend = vi.hoisted(() => vi.fn());
+const pushListeners = new Set<(event: PushMessage) => void>();
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentBudgetSpend,
 }));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		addEventListener: (listener: (event: PushMessage) => void) => {
+			pushListeners.add(listener);
+			return () => pushListeners.delete(listener);
+		},
+	}),
+}));
+
+function emitPush(data: {
+	projectId: string;
+	agentId: string;
+	threadId?: string;
+	executionId?: string;
+}): void {
+	const event: PushMessage = {
+		type: 'agentExecutionUpdated',
+		data: { threadId: 'thread-1', executionId: 'execution-1', ...data },
+	};
+	for (const listener of [...pushListeners]) listener(event);
+}
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '' } }),
@@ -43,6 +68,36 @@ function config(budget?: AgentJsonConfig['config']): AgentJsonConfig {
 		...(budget ? { config: budget } : {}),
 	};
 }
+
+function budgetConfig(): AgentJsonConfig {
+	return config({
+		guardrails: {
+			budget: {
+				enabled: true,
+				monthlyBudgetUsd: 200,
+				sessionCostCapUsd: 5,
+				alertThresholdPercent: 80,
+			},
+		},
+	});
+}
+
+function mountPanel() {
+	return mount(AgentBudgetPanel, {
+		props: { config: budgetConfig(), projectId: 'project-1', agentId: 'agent-1' },
+		global: {
+			stubs: {
+				I18nT: {
+					template: '<span><slot name="spent" /> of <slot name="budget" /> used</span>',
+				},
+			},
+		},
+	});
+}
+
+beforeEach(() => {
+	pushListeners.clear();
+});
 
 describe('AgentBudgetPanel', () => {
 	it('shows Not set when no budget is saved', async () => {
@@ -165,5 +220,70 @@ describe('AgentBudgetPanel', () => {
 
 		await wrapper.setProps({ disabled: true });
 		expect(body()?.classList.contains('disabled')).toBe(true);
+	});
+
+	it('refetches the spend when an execution update arrives for this agent', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		const wrapper = mountPanel();
+		await flushPromises();
+		expect(wrapper.text()).toContain('$42');
+		expect(wrapper.text()).toContain('21%');
+
+		getAgentBudgetSpend.mockResolvedValue({ spentUsd: 84 });
+		emitPush({ projectId: 'project-1', agentId: 'agent-1' });
+		await flushPromises();
+
+		expect(getAgentBudgetSpend).toHaveBeenCalledTimes(2);
+		expect(wrapper.text()).toContain('$84');
+		expect(wrapper.text()).toContain('42%');
+	});
+
+	it('keeps the shown value while a push-triggered refresh is in flight', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		const wrapper = mountPanel();
+		await flushPromises();
+		expect(wrapper.text()).toContain('$42 of $200 used');
+
+		let resolveSpend: (value: { spentUsd: number }) => void = () => {};
+		getAgentBudgetSpend.mockReturnValue(
+			new Promise<{ spentUsd: number }>((resolve) => {
+				resolveSpend = resolve;
+			}),
+		);
+		emitPush({ projectId: 'project-1', agentId: 'agent-1' });
+		await flushPromises();
+
+		// The old value stays rendered; the refresh does not flash a loading state.
+		expect(wrapper.text()).toContain('$42 of $200 used');
+
+		resolveSpend({ spentUsd: 84 });
+		await flushPromises();
+		expect(wrapper.text()).toContain('$84 of $200 used');
+	});
+
+	it('keeps the last shown value when a push-triggered refresh fails', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		getAgentBudgetSpend.mockRejectedValue(new Error('read failed'));
+		emitPush({ projectId: 'project-1', agentId: 'agent-1' });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('$42 of $200 used');
+		expect(wrapper.text()).not.toContain('Usage unavailable');
+	});
+
+	it('ignores execution updates for other projects and agents', async () => {
+		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });
+		mountPanel();
+		await flushPromises();
+		getAgentBudgetSpend.mockClear();
+
+		emitPush({ projectId: 'project-1', agentId: 'other-agent' });
+		emitPush({ projectId: 'other-project', agentId: 'agent-1' });
+		await flushPromises();
+
+		expect(getAgentBudgetSpend).not.toHaveBeenCalled();
 	});
 });

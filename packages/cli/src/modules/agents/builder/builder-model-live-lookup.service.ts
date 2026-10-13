@@ -89,7 +89,7 @@ export class BuilderModelLiveLookupService {
 
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId },
+			{ projectId, excludePersonalRoute: true },
 		);
 		const usable = usableCredentials.find((c) => c.id === credentialId);
 		if (!usable || usable.type !== credentialType) {

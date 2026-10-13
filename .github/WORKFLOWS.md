@@ -411,6 +411,7 @@ Run-workflow dropdown, which only a user with write access can pick.
 |-----------------------------|---------------------------------------------------------|
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `test-image-efficiency.yml` | Measure n8n and runners image size and layer waste with Dive |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 | `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 
