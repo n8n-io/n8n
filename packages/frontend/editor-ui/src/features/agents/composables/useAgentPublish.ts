@@ -15,6 +15,19 @@ import { upsertProjectAgentsListCache } from './useProjectAgentsList';
 import type { AgentResource } from '../types';
 
 /**
+ * Opens the "Agent published" confirmation modal after a successful publish,
+ * unless the user opted out with "Don't show again". Shared by the
+ * header/list publish flow and the version-history republish flow (AGENT-1102).
+ */
+export function showAgentPublishedConfirmation(agentId: string): void {
+	if (useStorage(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION).value === 'true') return;
+	useUIStore().openModalWithData({
+		name: AGENT_PUBLISHED_MODAL_KEY,
+		data: { agentId },
+	});
+}
+
+/**
  * Shared publish/unpublish flow used by the builder header button and the list card.
  * Owns the confirmation modal, toasts, error handling, and the `publishing` spinner
  * state so both call sites stay thin and behave consistently.
@@ -22,7 +35,6 @@ import type { AgentResource } from '../types';
 export function useAgentPublish() {
 	const rootStore = useRootStore();
 	const locale = useI18n();
-	const uiStore = useUIStore();
 	const { showMessage, showError } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -35,12 +47,7 @@ export function useAgentPublish() {
 			const updated = await publishAgent(rootStore.restApiContext, projectId, agentId);
 			upsertProjectAgentsListCache(projectId, updated);
 			showMessage({ title: locale.baseText('agents.publish.toast.published'), type: 'success' });
-			if (useStorage(LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION).value !== 'true') {
-				uiStore.openModalWithData({
-					name: AGENT_PUBLISHED_MODAL_KEY,
-					data: { agentId },
-				});
-			}
+			showAgentPublishedConfirmation(agentId);
 			return updated;
 		} catch (error) {
 			showError(error, locale.baseText('agents.publish.error.publish'));
