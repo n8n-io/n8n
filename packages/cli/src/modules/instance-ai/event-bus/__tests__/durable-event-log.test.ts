@@ -30,6 +30,7 @@ class FakeRepo {
 
 	/** Fail the next N maxSeq reads (seq seeding hits a transient DB error). */
 	failNextMaxSeq = 0;
+	failNextTerminalReads = 0;
 
 	/** Hold the next append until released — models an in-flight DB round trip. */
 	gateNextAppend: Promise<void> | undefined;
@@ -116,6 +117,20 @@ class FakeRepo {
 		return this.rows.filter((r) => set.has(r.event.runId)).map((r) => r.event);
 	}
 
+	async getActivityTerminalEvents(_threadId: string, runIds: string[]) {
+		if (this.failNextTerminalReads > 0) {
+			this.failNextTerminalReads--;
+			throw new Error('connect ETIMEDOUT');
+		}
+		return this.rows
+			.filter(
+				(row) =>
+					runIds.includes(row.event.runId) &&
+					(row.event.type === 'run-finish' || row.event.type === 'agent-completed'),
+			)
+			.map((row) => row.event);
+	}
+
 	async getSetupItemsSnapshots(_threadId: string) {
 		const latest = new Map<string, InstanceAiSetupItem[]>();
 		for (const { event } of [...this.rows].sort((a, b) => a.seq - b.seq)) {
@@ -189,6 +204,175 @@ function useIdleFlushTimers(): void {
 describe('DurableEventLog', () => {
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('keeps cancellation last and drops late activity from storage and delivery', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		const cancelled = {
+			...runFinish(),
+			payload: { status: 'cancelled', reason: 'user_cancelled' },
+		} as InstanceAiEvent;
+		const emitted = await publishAll(log, [
+			textDelta('before'),
+			toolCall('first'),
+			cancelled,
+			toolInputStart('late'),
+			toolCall('late'),
+			textDelta('after'),
+			{
+				type: 'setup-items',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { workflowId: 'workflow-1', items: [] },
+			},
+		]);
+		expect(repo.rows.map((row) => row.event.type)).toEqual([
+			'text-block',
+			'tool-call',
+			'run-finish',
+		]);
+		expect(emitted.map((row) => row.event.type)).not.toContain('tool-input-start');
+		expect(emitted.filter((row) => row.live).at(-1)?.event).toEqual(cancelled);
+		expect(log.getOpenSegments(THREAD)).toEqual([]);
+		log.clear();
+	});
+
+	it('permits task cleanup and preference edits after cancellation', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		await publishAll(log, [
+			{ ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		]);
+		const updates: InstanceAiEvent[] = [
+			{
+				type: 'tasks-update',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			},
+			{
+				type: 'preference-card',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { toolCallId: 'saved', preferenceId: 'preference-1', state: 'undone' },
+			},
+		];
+		expect((await publishAll(log, updates)).map((row) => row.event)).toEqual(updates);
+		expect(repo.rows.slice(1).map((row) => row.event)).toEqual(updates);
+		log.clear();
+	});
+
+	it('reads a saved cancellation after cache expiry or a process restart', async () => {
+		const repo = new FakeRepo();
+		repo.rows.push({
+			seq: 1,
+			event: { ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		});
+		const { log } = buildLog(repo);
+		const emitted = await publishAll(log, [toolCall('late'), textDelta('late')]);
+		expect(repo.rows).toHaveLength(1);
+		expect(emitted).toEqual([]);
+		log.clear();
+	});
+
+	it('retries a terminal-state read without losing the first activity batch', async () => {
+		const repo = new FakeRepo();
+		repo.failNextTerminalReads = 1;
+		const { log } = buildLog(repo);
+		const emitted = await publishAll(log, [textDelta('before'), toolCall('first')]);
+		expect(repo.rows.map((row) => row.event.type)).toEqual(['text-block', 'tool-call']);
+		expect(emitted.filter((row) => row.live).map((row) => row.event.type)).toEqual([
+			'text-delta',
+			'tool-call',
+		]);
+		log.clear();
+	});
+
+	it('rechecks cancellation when a sibling main wins the append range', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		let release!: () => void;
+		repo.gateNextAppend = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const entered = new Promise<void>((resolve) => {
+			repo.onGatedAppend = resolve;
+		});
+		const emitting = publishAll(log, [toolCall('late')]);
+		await entered;
+		repo.rows.push({
+			seq: 1,
+			event: { ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		});
+		release();
+		expect(await emitting).toEqual([]);
+		expect(repo.rows).toHaveLength(1);
+		log.clear();
+	});
+
+	it('permits live background tools after normal completion and new runs after cancellation', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		await publishAll(log, [runFinish(), toolCall('background', 'child')]);
+		await publishAll(log, [
+			{ ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		]);
+		await publishAll(log, [{ ...toolCall('new'), runId: 'new-run' }]);
+		expect(repo.rows.map((row) => row.event.type)).toEqual([
+			'run-finish',
+			'tool-call',
+			'run-finish',
+			'tool-call',
+		]);
+		log.clear();
+	});
+
+	it('keeps the cancellation guard when another run writes to the same thread', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		await publishAll(log, [
+			{ ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		]);
+		await publishAll(log, [{ ...toolCall('new'), runId: 'new-run' }]);
+		expect(await publishAll(log, [textDelta('late')])).toEqual([]);
+		expect(log.getOpenSegments(THREAD)).toEqual([]);
+		log.clear();
+	});
+
+	it('keeps late deltas from an older cancelled run out of storage', async () => {
+		const repo = new FakeRepo();
+		repo.rows.push({
+			seq: 1,
+			event: { ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+		});
+		const { log } = buildLog(repo);
+		await publishAll(log, [{ ...toolCall('new'), runId: 'new-run' }]);
+		await publishAll(log, [textDelta('late')]);
+		expect(log.getOpenSegments(THREAD)).toEqual([]);
+		expect(repo.rows).toHaveLength(2);
+		log.clear();
+	});
+
+	it('drops activity from an ended child and preserves its live sibling', async () => {
+		const repo = new FakeRepo();
+		const { log } = buildLog(repo);
+		await publishAll(log, [
+			{
+				type: 'agent-completed',
+				runId: RUN,
+				agentId: 'child',
+				payload: { role: 'workflow-builder', result: 'done' },
+			},
+		]);
+		const emitted = await publishAll(log, [
+			toolCall('late', 'child'),
+			textDelta('late', 'msg-1', 'child'),
+			toolCall('live', 'sibling'),
+		]);
+		expect(emitted.map((row) => row.event.agentId)).toEqual(['sibling']);
+		expect(repo.rows.map((row) => row.event.type)).toEqual(['agent-completed', 'tool-call']);
+		log.clear();
 	});
 
 	it('waits for an in-flight append before reading setup snapshots', async () => {

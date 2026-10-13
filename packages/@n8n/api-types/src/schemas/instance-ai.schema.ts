@@ -1,3 +1,4 @@
+import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { z } from 'zod';
 
@@ -2007,6 +2008,8 @@ export type InstanceAiConfirmation = Omit<
 > & { expired?: boolean };
 
 export interface InstanceAiToolCallState {
+	/** Owning run, retained when a message group resumes. */
+	runId?: string;
 	toolCallId: string;
 	toolName: string;
 	args: Record<string, unknown>;
@@ -2054,6 +2057,10 @@ export type InstanceAiTimelineEntry =
 	  };
 
 export interface InstanceAiAgentNode {
+	/** Owning run. The root updates this ID when a follow-up starts. */
+	runId?: string;
+	/** Root-only terminal facts for reconnect and history hydration. */
+	eventLifecycle?: InstanceAiEventLifecycle;
 	agentId: string;
 	role: string;
 	tools?: string[];
