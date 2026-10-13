@@ -1,0 +1,78 @@
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_8631ec10eb1199::t_5d31a28f2a86f9 16,26
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_e65c1e35c06e21 92-108
+packages/cli/src/public-api/types.ts
+  s_8631ec10eb1199::t_950f76abdcbb8a 11
+  s_8631ec10eb1199::t_0e468700e9a597 10
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_0c3a8085b85485 74-81
+  s_8631ec10eb1199::t_3ef39470b178e7 33
+packages/cli/src/public-api/v1/openapi.yml
+  s_8631ec10eb1199::t_05f6368c40013e 81
+packages/cli/src/public-api/index.ts
+  s_8631ec10eb1199::t_e3794818b9bffb 1
+  s_8631ec10eb1199::t_379700fc89fc80 158-162,168,173,177
+  s_8631ec10eb1199::t_bb668a4a77d8cf 193
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_8631ec10eb1199::t_8c50c6a38962e2 1,6,26-29
+packages/cli/src/public-api/v1/public-api-error-response.ts
+  s_8631ec10eb1199::t_d8c50012e8752f 3,9-10
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_8631ec10eb1199::t_8f9eb80b248910 17,55-58
+packages/cli/src/public-api/media-types/request-body/multipart-parser.ts
+  s_8631ec10eb1199::t_5d31a28f2a86f9 5
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_8631ec10eb1199::t_ef4384a2958ce9 67
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_8631ec10eb1199::t_367abcb8bede18 231-233
+  s_8631ec10eb1199::t_499bf71188f5fe 21-23,26,149-150,166,209,214-221,223,228-229,235,237-240,242-243,247,250
+  s_8631ec10eb1199::t_1ed8a442ffe2f1 40
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_8631ec10eb1199::t_095b6027263943 3-5,7,10-11,13,15-16,26-28,31-35,37-51,54-70,73,75-80,83,85-86,89-94,96,99-102,104-113,116-117,119,121,123,126-127
+packages/cli/src/public-api/media-types/content-type.ts
+  s_8631ec10eb1199::t_5d31a28f2a86f9 13-14
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_8631ec10eb1199::t_ef4384a2958ce9 95
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_8631ec10eb1199::t_ef4384a2958ce9 324
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_8631ec10eb1199::t_aa2fc31fa24321 4,7-9
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_8f9eb80b248910 125-128
+packages/cli/scripts/build.mjs
+  s_8631ec10eb1199::t_54f887707b4e5e 78-79,82,84,87,89,92-94,96-97,100-101,122
+  s_8631ec10eb1199::t_fbda745bee6fc2 90,132-133,135,137,141,143-144
+packages/@n8n/backend-services/src/errors/rest-error-classifier.ts
+  s_8631ec10eb1199::t_f44b4c855a7af4 49
+.agents/skills/public-api/SKILL.md
+  s_8631ec10eb1199::t_8f9eb80b248910 24
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_8631ec10eb1199::t_cd1d138892fb08 197
+  s_8631ec10eb1199::t_add231846eedc9 175
+packages/cli/test/integration/public-api/unmatched-routes.test.ts
+  s_8631ec10eb1199::t_337bbe8dc954ae 1,3-5,7-8,10,12-14,16-18,20-22,24-25,28,33-34,37-41,44-48,51-54
+  s_8631ec10eb1199::t_977619971d3662 29-31
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_8631ec10eb1199::t_6d55b1b51be8e1 209-210
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_8631ec10eb1199::t_6d55b1b51be8e1 41,43-45,48,67,169
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_8631ec10eb1199::t_fd4fb5fbc7b7bb 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60d6f603346e9966c66aecb24a0772b2630a1219",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

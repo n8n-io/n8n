@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Mautic/test/GenericFunctions.test.ts
+  s_715e72d26dd7c6::t_696aa76e3492d0 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f154be64afa60798adb5d4e6f8b6efc2d4f94c8c",
+  "prompts": {},
+  "sessions": {
+    "s_715e72d26dd7c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a62cd39faddbb3da7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

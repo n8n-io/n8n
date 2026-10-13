@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Bubble/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_afef3b84cf22f4 1-15,18-50
+  s_2e1fa95fc44f8f::t_8128358e074d3f 16-17
+packages/nodes-base/nodes/Bubble/Bubble.node.ts
+  s_9ebcc4a5bcd65f::t_84393e26a571da 8,87-93,103,115,127,168
+packages/nodes-base/nodes/Bubble/GenericFunctions.ts
+  s_c4a5f94a5acd88::t_127b475a4dc837 9-10,12,20,32-35,37,42-45,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bab8d007f3b81347937fe217dddad3f6bceeafc",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9ebcc4a5bcd65f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab04a536cee7fa137",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c4a5f94a5acd88": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2831ed4a0db9a61e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

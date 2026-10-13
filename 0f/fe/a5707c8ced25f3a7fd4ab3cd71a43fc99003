@@ -1,0 +1,57 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_e99de54a53d3e4::t_9e405dd6f1dafe 51-57,59-61
+packages/@n8n/agents/src/sdk/__tests__/catalog.test.ts
+  s_e99de54a53d3e4::t_b2522e57faf4eb 20,35-46,84-87
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_e99de54a53d3e4::t_1548e2bb5d1e01 24-25
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_e99de54a53d3e4::t_6ccd64790e2559 10-12,17,23-24,30-31,36-49,51-61,81
+packages/@n8n/api-types/src/agents/model-providers.ts
+  s_e99de54a53d3e4::t_1548e2bb5d1e01 22
+packages/frontend/editor-ui/src/features/agents/__tests__/model-string.test.ts
+  s_e99de54a53d3e4::t_9e405dd6f1dafe 21-25,42-44
+  s_e99de54a53d3e4::t_e0be6d18b52fc4 20,26-28,36-41
+packages/@n8n/agents/vite.config.ts
+  s_e99de54a53d3e4::t_702871c391cf56 21
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_e99de54a53d3e4::t_702871c391cf56 2,30,60-65
+packages/@n8n/agents/package.json
+  s_e99de54a53d3e4::t_0409544f9859e1 124
+packages/@n8n/agents/src/runtime/__tests__/google-vertex.test.ts
+  s_e99de54a53d3e4::t_a0955ce8f01ef5 141-145
+  s_e99de54a53d3e4::t_4b6635941c6815 1-45,47-48,52-80,85-104,108,115-122,124-125,127-131,138-140,146-158,160-168
+  s_e99de54a53d3e4::t_5a7b01ea0cd3e9 81-84
+  s_e99de54a53d3e4::t_d1862db0c25143 126,159
+  s_e99de54a53d3e4::t_6d98c753625d78 49-51,105-107,109-114,132-137
+  s_e99de54a53d3e4::t_702871c391cf56 46,123
+pnpm-workspace.yaml
+  s_e99de54a53d3e4::t_0409544f9859e1 294
+packages/@n8n/agents/src/runtime/model/google-vertex.ts
+  s_e99de54a53d3e4::t_702871c391cf56 1-75,78-128
+  s_e99de54a53d3e4::t_6d98c753625d78 76-77
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_e99de54a53d3e4::t_702871c391cf56 7,321
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_e99de54a53d3e4::t_702871c391cf56 52-53,99,130,287
+  s_e99de54a53d3e4::t_bc3cc979a50b91 214,218
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_e99de54a53d3e4::t_702871c391cf56 40
+pnpm-lock.yaml
+  s_e99de54a53d3e4::t_277771da82c614 602-604,1261-1263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ffea5707c8ced25f3a7fd4ab3cd71a43fc99003",
+  "prompts": {},
+  "sessions": {
+    "s_e99de54a53d3e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

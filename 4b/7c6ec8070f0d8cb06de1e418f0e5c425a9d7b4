@@ -1,0 +1,19 @@
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_d51616375ad4ee::t_c725d6926764a5 9,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b7c6ec8070f0d8cb06de1e418f0e5c425a9d7b4",
+  "prompts": {},
+  "sessions": {
+    "s_d51616375ad4ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a27e4e53-5e32-4961-9672-f9b46ca06994",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

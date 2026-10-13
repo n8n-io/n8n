@@ -1,0 +1,326 @@
+packages/@n8n/api-types/src/dto/ai-preference/ai-preference-list-query.dto.ts
+  h_b37747d1ad3fc1 13-16,51-55
+packages/@n8n/api-types/src/dto/index.ts
+  h_b37747d1ad3fc1 191-192,706-707,709-710,722,725-726
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  h_b37747d1ad3fc1 182
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  h_b37747d1ad3fc1 197,219-224
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  h_b37747d1ad3fc1 142-151
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-provider.dto.test.ts
+  h_b37747d1ad3fc1 48-57,138,143-146,176-195
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  h_b37747d1ad3fc1 122-127
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  h_b37747d1ad3fc1 109
+packages/@n8n/api-types/src/dto/promotions/promotion-provider.dto.ts
+  h_b37747d1ad3fc1 10,13,17-43,63-92,106,148-151,172-173,180,186-187,198,201-206,216-217,248
+packages/@n8n/api-types/src/schemas/ai-preference.schema.ts
+  h_b37747d1ad3fc1 97
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  h_b37747d1ad3fc1 159-160
+packages/@n8n/backend-network/src/http/axios/__tests__/request.test.ts
+  h_b37747d1ad3fc1 7,13-14,277-300
+packages/@n8n/backend-network/src/http/axios/invoke.ts
+  h_b37747d1ad3fc1 5,16,32-51
+packages/@n8n/backend-network/src/http/axios/request.ts
+  h_b37747d1ad3fc1 42
+packages/@n8n/backend-network/src/http/index.ts
+  h_b37747d1ad3fc1 15-20,22
+packages/@n8n/backend-network/src/http/response-size-limit.error.ts
+  h_b37747d1ad3fc1 1-12
+packages/@n8n/cli/docs/commands/package.md
+  h_b37747d1ad3fc1 83
+packages/@n8n/cli/docs/commands/promotions.md
+  h_b37747d1ad3fc1 323-325,400-402
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  h_b37747d1ad3fc1 59,73
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  h_b37747d1ad3fc1 218
+packages/@n8n/cli/src/commands/package/import.ts
+  h_b37747d1ad3fc1 95
+packages/@n8n/cli/src/commands/package/package-error.ts
+  h_b37747d1ad3fc1 87,100-101,196
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  h_b37747d1ad3fc1 80
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  h_b37747d1ad3fc1 22
+packages/@n8n/cli/src/commands/promotion-connection/apply-selection-continue.ts
+  h_b37747d1ad3fc1 28
+packages/@n8n/db/src/repositories/__tests__/ai-preference.repository.test.ts
+  h_b37747d1ad3fc1 63,112-129
+packages/@n8n/db/src/repositories/ai-preference.repository.ts
+  h_b37747d1ad3fc1 1,4,28,50,106-111
+packages/@n8n/db/src/repositories/execution.repository.ts
+  h_b37747d1ad3fc1 186,736-737,746,748
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  h_b37747d1ad3fc1 108-119
+packages/@n8n/decorators/src/system-task/system-task.ts
+  h_b37747d1ad3fc1 79-81,151,268-272
+packages/@n8n/engine/docs/adr/ADR-20260904-a-derived-token-authorizes-a-resume-request.md
+  h_b37747d1ad3fc1 1-226
+packages/@n8n/expression-runtime/src/extensions/__tests__/array-extensions.test.ts
+  h_b37747d1ad3fc1 20-24,140-151
+packages/@n8n/expression-runtime/src/extensions/__tests__/string-extensions.test.ts
+  h_b37747d1ad3fc1 10-11,69-82
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  h_b37747d1ad3fc1 197-198
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  h_b37747d1ad3fc1 24
+packages/@n8n/inbound-auth/src/contracts.ts
+  h_b37747d1ad3fc1 95-102
+packages/@n8n/telemetry/src/events/migration-report.ts
+  h_b37747d1ad3fc1 36,38
+packages/@n8n/telemetry/src/events/policies.ts
+  h_b37747d1ad3fc1 1-67
+packages/@n8n/telemetry/src/telemetry-events.ts
+  h_b37747d1ad3fc1 10,17
+packages/cli/src/binary-data/__tests__/binary-data-access.service.test.ts
+  h_b37747d1ad3fc1 6-8,15,20,25-26,38,45,54,61,70-71,136-226
+packages/cli/src/binary-data/binary-data-access.service.ts
+  h_b37747d1ad3fc1 8-10,13-17,31,67-68,70-72,79-97
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  h_b37747d1ad3fc1 1287-1566,4954-4977
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  h_b37747d1ad3fc1 136-150,257,715-750,2462-2464
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  h_b37747d1ad3fc1 2012-2040
+packages/cli/src/executions/execution-id.ts
+  h_b37747d1ad3fc1 10-16
+packages/cli/src/executions/execution-persistence.ts
+  h_b37747d1ad3fc1 653,658-659
+packages/cli/src/modules/breaking-changes/query/__tests__/migration-finding-query.service.test.ts
+  h_b37747d1ad3fc1 328-331
+packages/cli/src/modules/breaking-changes/query/migration-finding-query.service.ts
+  h_b37747d1ad3fc1 137
+packages/cli/src/modules/data-table/__tests__/pair-columns.test.ts
+  h_b37747d1ad3fc1 1-128
+packages/cli/src/modules/data-table/data-table-column.repository.ts
+  h_b37747d1ad3fc1 4,19,80-85,108-113,128-131,158-162,166-169,177-199,202-205
+packages/cli/src/modules/data-table/data-table.repository.ts
+  h_b37747d1ad3fc1 60,91
+packages/cli/src/modules/data-table/data-table.service.ts
+  h_b37747d1ad3fc1 119-121,123-128,143,186-192,303-306
+packages/cli/src/modules/data-table/utils/pair-columns.ts
+  h_b37747d1ad3fc1 1-70
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  h_b37747d1ad3fc1 1-150
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  h_b37747d1ad3fc1 4,11,16,31,46-69,84-87
+packages/cli/src/modules/inbound-auth-core/__tests__/system-trusted-source.seeder.test.ts
+  h_b37747d1ad3fc1 1-80
+packages/cli/src/modules/inbound-auth-core/authentication-pipeline.ts
+  h_b37747d1ad3fc1 1-46
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  h_b37747d1ad3fc1 126-144
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  h_b37747d1ad3fc1 5,14,31-32,52-56,66-68
+packages/cli/src/modules/inbound-auth-core/system-trusted-source.seeder.ts
+  h_b37747d1ad3fc1 1-81
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  h_b37747d1ad3fc1 38-40,209-266
+packages/cli/src/modules/mcp/__tests__/save-user-preference.tool.test.ts
+  h_b37747d1ad3fc1 48
+packages/cli/src/modules/mcp/__tests__/undo-user-preference.tool.test.ts
+  h_b37747d1ad3fc1 33
+packages/cli/src/modules/mcp/__tests__/update-user-preference.tool.test.ts
+  h_b37747d1ad3fc1 36
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  h_b37747d1ad3fc1 101,130,132-135,164
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  h_b37747d1ad3fc1 8,14,155-163,253-255,268,270-271,378-410,474-518,759-794,968,976,980,982,984-988,996-997,1002-1003,1007-1065,1068-1168,1190-1214,1216-1255,1258-1271,1465,1470,1475,1477,1479,1491-1495,1500,1512,1565
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  h_b37747d1ad3fc1 101
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  h_b37747d1ad3fc1 54
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  h_b37747d1ad3fc1 566-569
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  h_b37747d1ad3fc1 18,108,110-114
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-compat.test.ts
+  h_b37747d1ad3fc1 1-5,95,97-115,125-126,132-180,213,219,223
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  h_b37747d1ad3fc1 58-64,97-103
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-schema-conflict-policy.test.ts
+  h_b37747d1ad3fc1 9-10,13,72-124
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.exporter.test.ts
+  h_b37747d1ad3fc1 21,137
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table.serializer.test.ts
+  h_b37747d1ad3fc1 25,41,48-49
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  h_b37747d1ad3fc1 3-4,11-12,53,55-62,64-84,87-89,94-101,104-105,107-110
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  h_b37747d1ad3fc1 8,27-30,41-47,69,76,93,118-120,125-129,134,163-166,181-184,193,197,205-230,236,247-248,331,333-346
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-schema-conflict-policy.ts
+  h_b37747d1ad3fc1 1-2,12-13,20,38-54,62
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.serializer.ts
+  h_b37747d1ad3fc1 24,53
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  h_b37747d1ad3fc1 81,92,115-116
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  h_b37747d1ad3fc1 207-218
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  h_b37747d1ad3fc1 233,241-243,311-316
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  h_b37747d1ad3fc1 143,145
+packages/cli/src/modules/n8n-packages/spec/serialized/data-table.schema.ts
+  h_b37747d1ad3fc1 18-19
+packages/cli/src/modules/promotions.ee/__tests__/gitlab-provider.integration.test.ts
+  h_b37747d1ad3fc1 1-86
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  h_b37747d1ad3fc1 10,25,66,137,148-149
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  h_b37747d1ad3fc1 6,81,83,185-191,246,250,252-255,258,615,683-693,695-700,702-707,709-714,716-720,722-725,727-734,812,1738-1748,1759,1796-1801,1900-1933
+packages/cli/src/modules/promotions.ee/database/entities/promotion-provider.entity.ts
+  h_b37747d1ad3fc1 21
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-provider.repository.ts
+  h_b37747d1ad3fc1 40-59
+packages/cli/src/modules/promotions.ee/git-hosts/README.md
+  h_b37747d1ad3fc1 1-60
+packages/cli/src/modules/promotions.ee/git-hosts/git-host-clients.ts
+  h_b37747d1ad3fc1 1-18
+packages/cli/src/modules/promotions.ee/git-hosts/git-host.types.ts
+  h_b37747d1ad3fc1 1-8
+packages/cli/src/modules/promotions.ee/git-hosts/gitlab-host.client.ts
+  h_b37747d1ad3fc1 1-193
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  h_b37747d1ad3fc1 3,6,9,12-18,28,48,52-59,88-89,91-96,98,100-111,133-192,194-195,241-263,267-272,276-282,284-285,289-291
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  h_b37747d1ad3fc1 92,110-112,155,160
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  h_b37747d1ad3fc1 130,132
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  h_b37747d1ad3fc1 44
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  h_b37747d1ad3fc1 51
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionProvider.generated.yml
+  h_b37747d1ad3fc1 5,25,52,61-73,100,136-147
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionConnections.generated.yml
+  h_b37747d1ad3fc1 79
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  h_b37747d1ad3fc1 5,36
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  h_b37747d1ad3fc1 5,53,62-74,92-93
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  h_b37747d1ad3fc1 1226-1244
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  h_b37747d1ad3fc1 413-431,464
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionConnectionPublicDto.generated.yml
+  h_b37747d1ad3fc1 41
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionProviderPublicDto.generated.yml
+  h_b37747d1ad3fc1 13,49-60
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  h_b37747d1ad3fc1 8,49,62,66
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  h_b37747d1ad3fc1 47-50
+packages/cli/src/services/__tests__/ai-preference.service.test.ts
+  h_b37747d1ad3fc1 422-443,869-897
+packages/cli/src/services/ai-preference.service.ts
+  h_b37747d1ad3fc1 8,188,196,240,562-569
+packages/cli/src/services/pruning/__tests__/execution-pruning-hard-delete.task.test.ts
+  h_b37747d1ad3fc1 1-33
+packages/cli/src/services/pruning/__tests__/executions-pruning.service.test.ts
+  h_b37747d1ad3fc1 1-2,5,7,9-35,37-52,54,56,60-62,64-73,75,78-84,87-92,94-96,98-99,101-102,105-112,114-124,126,128,131-141,143-145,147-148,150-157,159-193,196-198,200-202,204-216,218-222,224,226-228
+packages/cli/src/services/pruning/execution-pruning-hard-delete.task.ts
+  h_b37747d1ad3fc1 1-40
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  h_b37747d1ad3fc1 2,4,8-12,17-21,46-47,49-64,67-68,70-71,74-78,80,82-99,101-106
+packages/cli/test/integration/ai-preference.api.test.ts
+  h_b37747d1ad3fc1 66,83-85,217-232,441-471
+packages/cli/test/integration/executions-pruning.service.test.ts
+  h_b37747d1ad3fc1 4,502-523
+packages/cli/test/integration/inbound-auth-core/authentication.service.integration.test.ts
+  h_b37747d1ad3fc1 1-2,8,11,19,24,26,36,38-46,80-81,83,88,91,105-117,125,127-130,139,157-158,206-223
+packages/cli/test/integration/inbound-auth-core/system-trusted-source.seeder.integration.test.ts
+  h_b37747d1ad3fc1 1-265
+packages/cli/test/integration/public-api/promotions.test.ts
+  h_b37747d1ad3fc1 2-3,5,10-12,19-20,154-836,878-901
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_b37747d1ad3fc1 3427-3429,3432,3653,4618-4619,4623,4666-4668,9539-9540
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  h_b37747d1ad3fc1 7-12,1393-1506
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsConnectionModalWrapper.test.ts
+  h_b37747d1ad3fc1 494-495,499
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  h_b37747d1ad3fc1 2,9-13,15-19,80-82,170-171,175-213,236,273,292-293,360-361,398-401,528-531,534-537,540-541,548-555,664-665,672-679,926-931
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  h_b37747d1ad3fc1 6,151-152
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  h_b37747d1ad3fc1 159
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension.ts
+  h_b37747d1ad3fc1 59-84
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/toolResultRenderers.test.ts
+  h_b37747d1ad3fc1 1-92
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  h_b37747d1ad3fc1 8-17,32,37,43,71-74,80,84-85,90,225,240,254,269,288
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  h_b37747d1ad3fc1 3,21-25,46-62,76-105
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  h_b37747d1ad3fc1 135,167
+packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.test.ts
+  h_b37747d1ad3fc1 150,170,193,290,375,434,464,491,520,568
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.test.ts
+  h_b37747d1ad3fc1 27,117-118,120-122,125-148
+packages/frontend/editor-ui/src/features/settings/context/components/PreferencesTable.vue
+  h_b37747d1ad3fc1 7-8,13,45-46,51,60,67-68,73-78,96,120-128
+packages/frontend/editor-ui/src/features/settings/context/context.constants.ts
+  h_b37747d1ad3fc1 2,9-11
+packages/frontend/editor-ui/src/features/settings/context/context.store.test.ts
+  h_b37747d1ad3fc1 39
+packages/frontend/editor-ui/src/features/settings/context/context.types.ts
+  h_b37747d1ad3fc1 1,11
+packages/frontend/editor-ui/src/features/settings/context/context.utils.test.ts
+  h_b37747d1ad3fc1 19,31,148-157
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  h_b37747d1ad3fc1 1-5,7,12,22,82-86,88-94,103-110
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.test.ts
+  h_b37747d1ad3fc1 39,111-139,344-348,355-359
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsPreferencesView.vue
+  h_b37747d1ad3fc1 23,28,41,56,58-62,72,82-87
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  h_b37747d1ad3fc1 186,507-660,947,952,955,1028
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  h_b37747d1ad3fc1 253,365-369,380,384,390-432,640-675,928-945
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  h_b37747d1ad3fc1 207,291,548,566-567,571-585,598,604,783
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  h_b37747d1ad3fc1 221-222,224,230-238
+packages/frontend/editor-ui/src/features/settings/migrationReport/components/ImpactTag.test.ts
+  h_b37747d1ad3fc1 9
+packages/modules/mcp/frontend/src/assets/client-icons/antigravity.svg
+  h_b37747d1ad3fc1 1
+packages/modules/mcp/frontend/src/components/McpConnectClientDialog.test.ts
+  h_b37747d1ad3fc1 72-95
+packages/modules/mcp/frontend/src/components/McpConnectClientDialog.vue
+  h_b37747d1ad3fc1 357-361
+packages/modules/mcp/frontend/src/mcp.clients.catalog.test.ts
+  h_b37747d1ad3fc1 14,18-27
+packages/modules/mcp/frontend/src/mcp.clients.catalog.ts
+  h_b37747d1ad3fc1 3,84,158-164,186
+packages/quality/testing/playwright/pages/components/RunDataPanel.ts
+  h_b37747d1ad3fc1 197-201
+packages/quality/testing/playwright/tests/e2e/projects/projects.spec.ts
+  h_b37747d1ad3fc1 96-98
+packages/quality/testing/playwright/tests/e2e/workflows/editor/ndv/binary-data-download.spec.ts
+  h_b37747d1ad3fc1 1-38
+packages/quality/testing/playwright/workflows/binary-data-download.json
+  h_b37747d1ad3fc1 1-59
+packages/workflow/src/extensions/array-extensions.ts
+  h_b37747d1ad3fc1 197-198
+packages/workflow/src/interfaces.ts
+  h_b37747d1ad3fc1 626-627
+packages/workflow/test/ExpressionExtensions/array-extensions.test.ts
+  h_b37747d1ad3fc1 420-426
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aec429b73da7b8f10c389a10eccfd4c4c22a164c",
+  "prompts": {},
+  "humans": {
+    "h_b37747d1ad3fc1": {
+      "author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

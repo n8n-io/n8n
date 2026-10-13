@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_adc3aa5f3ee5fa::t_846b9ddd65ddae 557-559,567-568
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_adc3aa5f3ee5fa::t_bd6d3c104000e1 1577,1580-1598
+  ai_agent 1578-1579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0418ba7e7dff6e74beed0e0cc6ceda2f997d0652",
+  "prompts": {},
+  "sessions": {
+    "s_adc3aa5f3ee5fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ae8fb7d-c339-403a-9aec-205bf00ec318",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

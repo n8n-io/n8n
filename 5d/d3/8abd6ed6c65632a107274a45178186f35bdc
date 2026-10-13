@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Wordpress/__tests__/workflow/Wordpress.workflow.test.ts
+  s_2e1fa95fc44f8f::t_682802597ef0d8 18
+  s_2e1fa95fc44f8f::t_dc455d08c3855d 27,30-38
+  s_2e1fa95fc44f8f::t_be787f3d4d887c 1-17,19-26,28-29,39-51
+packages/nodes-base/nodes/Wordpress/__tests__/workflow/requests.workflow.json
+  s_4ebde64ab825df::t_6b89e1942c494a 1-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5dd38abd6ed6c65632a107274a45178186f35bdc",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_4ebde64ab825df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9b9b2bb511b5c44a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
