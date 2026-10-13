@@ -140,6 +140,12 @@ const KNOWN_NAMES = new Set(
 		'isNaN parseFloat parseInt Infinity NaN false null true undefined',
 		'break case catch const continue default delete do else finally for function if in instanceof',
 		'let new of return switch this throw try typeof var void while',
+		// Roots that the data proxy and the extended functions define. Other `$` names are the user's.
+		'$ $agentInfo $average $binary $data $env $evaluateExpression $execution $fromAI $fromAi',
+		'$fromai $getPairedItem $if $ifEmpty $input $item $itemIndex $items $jmesPath $jmespath $json',
+		'$max $min $mode $node $nodeId $nodeVersion $not $now $pageCount $parameter $position',
+		'$prevNode $rawParameter $request $response $runIndex $secrets $self $thisItem $thisItemIndex',
+		'$thisRunIndex $today $tool $vars $webhookId $workflow',
 	]
 		.join(' ')
 		.split(' '),
@@ -257,7 +263,7 @@ export function expressionSkeleton(source: string): string {
 					tokens.push(KNOWN_MEMBERS.has(name) ? name : '<id>');
 				}
 			} else {
-				tokens.push(name.startsWith('$') || KNOWN_NAMES.has(name) ? name : '<id>');
+				tokens.push(KNOWN_NAMES.has(name) ? name : '<id>');
 			}
 			afterDot = false;
 			continue;

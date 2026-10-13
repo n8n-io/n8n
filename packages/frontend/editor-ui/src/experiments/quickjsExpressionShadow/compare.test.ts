@@ -141,6 +141,17 @@ describe('expressionSkeleton', () => {
 		expect(skeleton).toContain('.map(');
 	});
 
+	it('keeps the n8n `$` roots and masks other names that start with `$`', () => {
+		expect(
+			expressionSkeleton(
+				'{{ $json.orders.map($order => $order.total + $vars.fee + $privateLabel) }}',
+			),
+		).toBe('{{ $json.<id>.map(<id>=> <id>.<id>+$vars.<id>+<id>) }}');
+		expect(expressionSkeleton("{{ $if($input.first().json.ok, $('A').item.json.x, 0) }}")).toBe(
+			'{{ $if($input.first().json.<id>,$(<str>).item.json.<id>,<num>) }}',
+		);
+	});
+
 	it('masks names in any script, and characters that are not punctuation', () => {
 		expect(expressionSkeleton('{{ $json.名前 }}')).toBe('{{ $json.<id> }}');
 		expect(expressionSkeleton('{{ $json.präfix_kunde.größe() }}')).toBe('{{ $json.<id>.<fn>() }}');
