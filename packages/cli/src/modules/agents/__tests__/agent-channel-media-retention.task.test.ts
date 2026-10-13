@@ -17,6 +17,7 @@ describe('AgentChannelMediaRetentionTask', () => {
 	let attachmentService: ReturnType<typeof mock<AgentChatAttachmentService>>;
 	let logger: ReturnType<typeof mock<Logger>>;
 	let task: AgentChannelMediaRetentionTask;
+	const signal = new AbortController().signal;
 
 	beforeEach(() => {
 		vi.useFakeTimers({ now: NOW });
@@ -41,7 +42,7 @@ describe('AgentChannelMediaRetentionTask', () => {
 	it('looks up only agents with a WhatsApp channel', async () => {
 		agentRepository.findWithIntegrationType.mockResolvedValue([]);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(agentRepository.findWithIntegrationType).toHaveBeenCalledWith('whatsapp');
 		expect(attachmentService.deleteFromSourceCreatedBefore).not.toHaveBeenCalled();
@@ -53,16 +54,18 @@ describe('AgentChannelMediaRetentionTask', () => {
 			{ id: 'agent-2', integrations: [whatsApp({ mediaRetentionDays: 365 })] },
 		]);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
 		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledWith(
 			{ agentId: 'agent-1', source: 'whatsapp' },
 			new Date(NOW.getTime() - 7 * DAY_MS),
+			signal,
 		);
 		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledWith(
 			{ agentId: 'agent-2', source: 'whatsapp' },
 			new Date(NOW.getTime() - 365 * DAY_MS),
+			signal,
 		);
 	});
 
@@ -71,11 +74,12 @@ describe('AgentChannelMediaRetentionTask', () => {
 			{ id: 'agent-1', integrations: [whatsApp()] },
 		]);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledWith(
 			{ agentId: 'agent-1', source: 'whatsapp' },
 			new Date(NOW.getTime() - 30 * DAY_MS),
+			signal,
 		);
 	});
 
@@ -90,11 +94,12 @@ describe('AgentChannelMediaRetentionTask', () => {
 			},
 		]);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledExactlyOnceWith(
 			{ agentId: 'agent-1', source: 'whatsapp' },
 			new Date(NOW.getTime() - 3 * DAY_MS),
+			signal,
 		);
 	});
 
@@ -106,7 +111,7 @@ describe('AgentChannelMediaRetentionTask', () => {
 			},
 		]);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(attachmentService.deleteFromSourceCreatedBefore).not.toHaveBeenCalled();
 	});
@@ -116,9 +121,29 @@ describe('AgentChannelMediaRetentionTask', () => {
 			{ id: 'agent-1', integrations: null } as never,
 		]);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(attachmentService.deleteFromSourceCreatedBefore).not.toHaveBeenCalled();
+	});
+
+	it('stops before the next agent when the signal aborts', async () => {
+		const controller = new AbortController();
+		agentRepository.findWithIntegrationType.mockResolvedValue([
+			{ id: 'agent-1', integrations: [whatsApp()] },
+			{ id: 'agent-2', integrations: [whatsApp()] },
+		]);
+		attachmentService.deleteFromSourceCreatedBefore.mockImplementationOnce(async () => {
+			controller.abort();
+			return 0;
+		});
+
+		await task.run(controller.signal);
+
+		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledExactlyOnceWith(
+			{ agentId: 'agent-1', source: 'whatsapp' },
+			expect.any(Date),
+			controller.signal,
+		);
 	});
 
 	it('logs the count only when it deletes media', async () => {
@@ -130,7 +155,7 @@ describe('AgentChannelMediaRetentionTask', () => {
 			.mockResolvedValueOnce(4)
 			.mockResolvedValueOnce(0);
 
-		await task.run();
+		await task.run(signal);
 
 		expect(logger.debug).toHaveBeenCalledExactlyOnceWith(expect.any(String), {
 			agentId: 'agent-1',

@@ -383,7 +383,37 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findWithIntegrationType', () => {
-		it('selects only id and integrations and keeps agents with a matching integration type', async () => {
+		const makeQb = (rows: unknown[]) => ({
+			select: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			getMany: vi.fn().mockResolvedValue(rows),
+		});
+
+		it('pre-filters in SQL on the quoted type and selects only id and integrations', async () => {
+			const mockQb = makeQb([]);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findWithIntegrationType('whatsapp');
+
+			expect(mockQb.select).toHaveBeenCalledWith(['agent.id', 'agent.integrations']);
+			expect(mockQb.where).toHaveBeenCalledWith(
+				expect.stringContaining('CAST(agent.integrations AS TEXT) LIKE :pattern'),
+				{ pattern: '%"whatsapp"%' },
+			);
+		});
+
+		it('escapes LIKE metacharacters in the type', async () => {
+			const mockQb = makeQb([]);
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findWithIntegrationType('my_type%');
+
+			expect(mockQb.where).toHaveBeenCalledWith(expect.any(String), {
+				pattern: '%"my\\_type\\%"%',
+			});
+		});
+
+		it('keeps only agents with an exactly matching integration type', async () => {
 			const whatsAppAgent = {
 				id: 'agent-whatsapp',
 				integrations: [
@@ -391,26 +421,16 @@ describe('AgentRepository', () => {
 					{ type: 'whatsapp', credentialId: 'cred-2' },
 				],
 			} as Agent;
-			const find = vi
-				.spyOn(repository, 'find')
-				.mockResolvedValue([
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(
+				makeQb([
 					whatsAppAgent,
-					{ id: 'agent-telegram', integrations: [{ type: 'telegram', credentialId: 'cred-3' }] },
+					// The SQL pre-filter can match the string in another field.
+					{ id: 'agent-telegram', integrations: [{ type: 'telegram', credentialId: 'whatsapp' }] },
 					{ id: 'agent-null', integrations: null },
-				] as unknown as Agent[]);
+				]) as never,
+			);
 
-			const result = await repository.findWithIntegrationType('whatsapp');
-
-			expect(find).toHaveBeenCalledWith({ select: ['id', 'integrations'] });
-			expect(result).toEqual([whatsAppAgent]);
-		});
-
-		it('returns an empty array when no agent has the integration type', async () => {
-			vi.spyOn(repository, 'find').mockResolvedValue([
-				{ id: 'agent-1', integrations: [{ type: 'slack', credentialId: 'cred-1' }] },
-			] as Agent[]);
-
-			expect(await repository.findWithIntegrationType('whatsapp')).toEqual([]);
+			expect(await repository.findWithIntegrationType('whatsapp')).toEqual([whatsAppAgent]);
 		});
 	});
 

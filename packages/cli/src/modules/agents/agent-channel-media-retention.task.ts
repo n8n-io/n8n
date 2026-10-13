@@ -34,9 +34,10 @@ export class AgentChannelMediaRetentionTask implements SystemTask {
 		private readonly logger: Logger,
 	) {}
 
-	async run(): Promise<void> {
+	async run(signal: AbortSignal): Promise<void> {
 		const agents = await this.agentRepository.findWithIntegrationType('whatsapp');
 		for (const agent of agents) {
+			if (signal.aborted) return;
 			const integration = agent.integrations?.find((i) => i.type === 'whatsapp');
 			if (integration?.type !== 'whatsapp') continue;
 
@@ -45,6 +46,7 @@ export class AgentChannelMediaRetentionTask implements SystemTask {
 			const deleted = await this.attachmentService.deleteFromSourceCreatedBefore(
 				{ agentId: agent.id, source: 'whatsapp' },
 				before,
+				signal,
 			);
 			if (deleted > 0) {
 				this.logger.debug('[AgentChannelMediaRetention] Deleted expired WhatsApp media', {

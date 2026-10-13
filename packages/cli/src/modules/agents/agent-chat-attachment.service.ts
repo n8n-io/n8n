@@ -164,23 +164,30 @@ export class AgentChatAttachmentService {
 
 	/**
 	 * Deletes the files an agent received from one channel before `before`, in
-	 * batches, so a large backlog does not load into memory at once.
+	 * batches, so a large backlog does not load into memory at once. Deletes
+	 * bytes before rows so a storage failure leaves the rows for the next run.
 	 */
 	async deleteFromSourceCreatedBefore(
 		scope: { agentId: string; source: string },
 		before: Date,
+		signal?: AbortSignal,
 	): Promise<number> {
 		let deleted = 0;
-		for (;;) {
+		while (!signal?.aborted) {
 			const batch = await this.repository.findFromSourceCreatedBefore(
 				scope,
 				before,
 				RETENTION_BATCH_SIZE,
 			);
-			await this.deleteAttachments(batch, { agentId: scope.agentId, source: scope.source });
+			if (batch.length === 0) break;
+			await this.binaryDataService.deleteManyByBinaryDataId(
+				batch.map((attachment) => attachment.binaryDataId),
+			);
+			await this.repository.delete(batch.map((attachment) => attachment.id));
 			deleted += batch.length;
-			if (batch.length < RETENTION_BATCH_SIZE) return deleted;
+			if (batch.length < RETENTION_BATCH_SIZE) break;
 		}
+		return deleted;
 	}
 
 	async deleteStoredData(

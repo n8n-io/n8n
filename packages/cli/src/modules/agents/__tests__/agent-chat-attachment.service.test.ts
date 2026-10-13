@@ -320,5 +320,46 @@ describe('AgentChatAttachmentService', () => {
 			expect(repository.delete).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
+
+		it('deletes the bytes before the rows', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce(attachments(2, 'a'));
+
+			await service.deleteFromSourceCreatedBefore(scope, before);
+
+			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the rows and throws when the bytes cannot be deleted', async () => {
+			repository.findFromSourceCreatedBefore.mockResolvedValueOnce(attachments(2, 'a'));
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(service.deleteFromSourceCreatedBefore(scope, before)).rejects.toThrow(
+				'storage down',
+			);
+			expect(repository.delete).not.toHaveBeenCalled();
+		});
+
+		it('stops between batches when the signal aborts', async () => {
+			const controller = new AbortController();
+			repository.findFromSourceCreatedBefore.mockImplementationOnce(async () => {
+				controller.abort();
+				return attachments(BATCH_SIZE, 'a');
+			});
+
+			const deleted = await service.deleteFromSourceCreatedBefore(scope, before, controller.signal);
+
+			expect(deleted).toBe(BATCH_SIZE);
+			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
+		});
+
+		it('deletes nothing when the signal is already aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+
+			expect(await service.deleteFromSourceCreatedBefore(scope, before, controller.signal)).toBe(0);
+			expect(repository.findFromSourceCreatedBefore).not.toHaveBeenCalled();
+		});
 	});
 });
