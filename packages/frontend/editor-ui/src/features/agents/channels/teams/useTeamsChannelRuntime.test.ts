@@ -9,6 +9,7 @@ import {
 	getTeamsManagedSetup,
 	getTeamsSetupState,
 	provisionTeamsApp,
+	reportTeamsManualBotRoute,
 } from './api';
 import { useTeamsChannelRuntime } from './useTeamsChannelRuntime';
 
@@ -19,6 +20,7 @@ vi.mock('./api', () => ({
 	getTeamsAzureSubscriptions: vi.fn(),
 	provisionTeamsApp: vi.fn(),
 	provisionTeamsBot: vi.fn(),
+	reportTeamsManualBotRoute: vi.fn(),
 }));
 
 const oauth = { authorize: vi.fn(), authorizeNewCredential: vi.fn() };
@@ -262,58 +264,43 @@ describe('useTeamsChannelRuntime', () => {
 	});
 
 	/**
-	 * The bot rung is counted once for each setup. This runs again on every
-	 * remount and every change of sign-in, and a tenant with no Azure
-	 * subscription is the ordinary case, so asking the server to report each
-	 * read would count the dialog being opened.
+	 * Which rung the setup landed on is reported where the user takes it, not
+	 * where the lookup answers: the lookup runs again on every remount and every
+	 * change of sign-in, and would count the dialog being opened.
 	 */
-	describe('reporting which bot rung the setup reached', () => {
-		const firstCheckFlags = () =>
-			vi.mocked(getTeamsAzureSubscriptions).mock.calls.map((call) => call[4]);
-
-		// What has been reported outlives a runtime, so each case signs in as an
-		// account of its own. Sharing one would make these depend on their order.
-		beforeEach(() => {
+	describe('reporting the manual bot rung', () => {
+		it('asks no report from the subscription lookup', async () => {
 			vi.mocked(getTeamsAzureSubscriptions).mockResolvedValue([]);
-		});
-
-		it('asks for a report on the first read only', async () => {
 			const runtime = buildRuntime();
-			runtime.managerCredentialId.value = 'report-once';
+			runtime.managerCredentialId.value = 'cred-1';
 
 			await runtime.loadSubscriptions();
-			await runtime.loadSubscriptions();
 
-			expect(firstCheckFlags()).toEqual([true, false]);
+			expect(getTeamsAzureSubscriptions).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				'cred-1',
+			);
 		});
 
-		it('asks again once the setup moves to another sign-in', async () => {
-			const runtime = buildRuntime();
-			runtime.managerCredentialId.value = 'report-switch-a';
+		it('reports it for the agent that is leaving the recommended flow', async () => {
+			vi.mocked(reportTeamsManualBotRoute).mockResolvedValue(undefined);
 
-			await runtime.loadSubscriptions();
-			runtime.managerCredentialId.value = 'report-switch-b';
-			await runtime.loadSubscriptions();
+			await buildRuntime().reportManualBotRoute();
 
-			expect(firstCheckFlags()).toEqual([true, true]);
+			expect(reportTeamsManualBotRoute).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+			);
 		});
 
-		/**
-		 * The dialog is unmounted when it closes, taking its runtimes with it.
-		 * Reopening is the same setup reaching the same rung, and the commonest
-		 * way to ask twice.
-		 */
-		it('stays quiet when the dialog is closed and opened again', async () => {
-			const before = buildRuntime();
-			before.managerCredentialId.value = 'report-reopen';
-			await before.loadSubscriptions();
+		// A count that cannot be sent is not a reason to hold up the step.
+		it('swallows a report that cannot be sent', async () => {
+			vi.mocked(reportTeamsManualBotRoute).mockRejectedValue(new Error('offline'));
 
-			// A second runtime, as the dialog builds on every open.
-			const after = buildRuntime();
-			after.managerCredentialId.value = 'report-reopen';
-			await after.loadSubscriptions();
-
-			expect(firstCheckFlags()).toEqual([true, false]);
+			await expect(buildRuntime().reportManualBotRoute()).resolves.toBeUndefined();
 		});
 	});
 });

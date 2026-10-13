@@ -437,6 +437,17 @@ function useOwnMicrosoftApp() {
 	props.runtime.setupKind.value = 'manual';
 }
 
+/**
+ * The same move, made from the bot step, where it means something the ladder
+ * is counting: the setup reached the rung n8n cannot pass for this account and
+ * the user went to make the bot themselves. Leaving from the app step is a
+ * different answer and is not reported here.
+ */
+function useOwnMicrosoftAppForBot() {
+	void props.runtime.reportManualBotRoute();
+	useOwnMicrosoftApp();
+}
+
 const downloadPackage = async () =>
 	await run('download', async () => {
 		const blob = await fetchTeamsAppPackage(
@@ -722,7 +733,7 @@ const downloadPackage = async () =>
 							variant="ghost"
 							size="small"
 							data-testid="teams-use-own-app-from-bot-step"
-							@click="useOwnMicrosoftApp"
+							@click="useOwnMicrosoftAppForBot"
 						>
 							{{ i18n.baseText('agents.channels.teams.managed.useOwnApp') }}
 						</N8nButton>

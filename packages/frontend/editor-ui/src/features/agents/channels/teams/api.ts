@@ -101,23 +101,29 @@ export const provisionTeamsApp = async (
 		},
 	);
 
-/**
- * `firstCheck` marks the one read a setup makes before it knows which bot route
- * it is on. The browser asks again on every remount and every change of
- * sign-in, and only the first of those is the setup reaching that rung.
- */
 export const getTeamsAzureSubscriptions = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	managerCredentialId: string,
-	firstCheck = false,
 ): Promise<TeamsAzureSubscription[]> =>
 	await makeRestApiRequest(
 		context,
 		'GET',
 		`${integrationPath(projectId, agentId)}/azure-subscriptions`,
-		{ managerCredentialId, ...(firstCheck ? { firstCheck: 'true' } : {}) },
+		{ managerCredentialId },
+	);
+
+/** Says the setup left the recommended flow to make the bot by hand. */
+export const reportTeamsManualBotRoute = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<void> =>
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${integrationPath(projectId, agentId)}/manual-bot-route`,
 	);
 
 export const provisionTeamsBot = async (

@@ -64,6 +64,7 @@ const buildRuntime = (overrides: Partial<TeamsChannelRuntime> = {}): TeamsChanne
 	provisionApp: vi.fn().mockResolvedValue(true),
 	loadSubscriptions: vi.fn().mockResolvedValue(true),
 	provisionBot: vi.fn().mockResolvedValue(true),
+	reportManualBotRoute: vi.fn().mockResolvedValue(undefined),
 	...overrides,
 });
 
@@ -881,6 +882,34 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			await fireEvent.click(getByTestId('teams-use-own-app-from-bot-step'));
 
 			expect(runtime.setupKind.value).toBe('manual');
+			// Leaving from here is the rung the ladder counts.
+			expect(runtime.reportManualBotRoute).toHaveBeenCalled();
+		});
+
+		/**
+		 * Leaving from the app step is a different answer: the app could not be
+		 * registered, so the setup never reached the bot rung at all.
+		 */
+		it('counts no bot rung when the app step is the one that sent them away', async () => {
+			const runtime = buildRuntime({
+				provisionApp: vi
+					.fn()
+					.mockRejectedValue(
+						new Error('This account is not allowed to register applications in the organisation.'),
+					),
+			});
+			const { getByTestId } = render({
+				modelValue: 'cred-1',
+				setup: setupState({ managerCredentials: [connectedCredential] }),
+				runtime,
+			});
+
+			await fireEvent.click(getByTestId('teams-create-app'));
+			await waitFor(() => expect(getByTestId('teams-managed-error-create-app')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-use-own-app-from-app-step'));
+
+			expect(runtime.setupKind.value).toBe('manual');
+			expect(runtime.reportManualBotRoute).not.toHaveBeenCalled();
 		});
 	});
 

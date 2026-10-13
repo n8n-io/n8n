@@ -57,14 +57,9 @@ export class AgentTeamsIntegrationsController {
 	@Get('/:agentId/integrations/teams/azure-subscriptions')
 	@ProjectScope('agent:update')
 	async listAzureSubscriptions(
-		req: AuthenticatedRequest<
-			{ projectId: string },
-			{},
-			{},
-			{ managerCredentialId?: string; firstCheck?: string }
-		>,
+		req: AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>,
 		_res: Response,
-		@Param('agentId') agentId: string,
+		@Param('agentId') _agentId: string,
 	): Promise<TeamsAzureSubscription[]> {
 		const managerCredentialId = req.query.managerCredentialId;
 		// An empty answer here means "no Azure subscription", which sends the user
@@ -72,30 +67,33 @@ export class AgentTeamsIntegrationsController {
 		if (typeof managerCredentialId !== 'string' || managerCredentialId.length === 0) {
 			throw new BadRequestError('Sign in with Microsoft before looking for a subscription.');
 		}
-		const subscriptions = await this.botProvisioningService.listSubscriptions({
+		return await this.botProvisioningService.listSubscriptions({
 			user: req.user,
 			managerCredentialId,
 		});
+	}
 
-		// The rung the whole ladder exists to measure. It is chosen here rather
-		// than in the browser: an empty answer is the only moment n8n knows the
-		// account cannot reach a subscription, and the browser reports no step.
-		//
-		// Counted once for each setup rather than once for each read. This route
-		// answers again on every remount and every change of sign-in, and a tenant
-		// with no Azure subscription is the ordinary case, so counting every read
-		// would measure the dialog being opened. Only the browser knows which read
-		// is the first of a setup, so it is the browser that says so.
-		if (subscriptions.length === 0 && req.query.firstCheck === 'true') {
-			this.setupTelemetry.succeeded({
-				agentId,
-				projectId: req.params.projectId,
-				userId: req.user.id,
-				step: 'create_bot',
-				botRoute: 'manual',
-			});
-		}
-		return subscriptions;
+	/**
+	 * The rung the whole ladder exists to measure, reported where the user takes
+	 * it. The lookup above cannot report it: it answers again on every remount
+	 * and every change of sign-in, and a tenant with no Azure subscription is the
+	 * ordinary case, so it would count the dialog being opened. Leaving the
+	 * recommended flow is an act, and it happens once.
+	 */
+	@Post('/:agentId/integrations/teams/manual-bot-route')
+	@ProjectScope('agent:update')
+	reportManualBotRoute(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): void {
+		this.setupTelemetry.succeeded({
+			agentId,
+			projectId: req.params.projectId,
+			userId: req.user.id,
+			step: 'create_bot',
+			botRoute: 'manual',
+		});
 	}
 
 	@Post('/:agentId/integrations/teams/provision-bot')

@@ -39,6 +39,7 @@ describe('AgentTeamsIntegrationsController', () => {
 		['provisionApp', 'agent:update'],
 		['getManagedSetupState', 'agent:update'],
 		['createManagerCredential', 'agent:update'],
+		['reportManualBotRoute', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -148,29 +149,34 @@ describe('AgentTeamsIntegrationsController', () => {
 			};
 		};
 
-		const request = (firstCheck = true) =>
-			mock<
-				AuthenticatedRequest<
-					{ projectId: string },
-					{},
-					{},
-					{ managerCredentialId?: string; firstCheck?: string }
-				>
-			>({
+		const request = () =>
+			mock<AuthenticatedRequest<{ projectId: string }, {}, {}, { managerCredentialId?: string }>>({
 				params: { projectId: 'project-1' },
-				query: {
-					managerCredentialId: 'manager-1',
-					...(firstCheck ? { firstCheck: 'true' } : {}),
-				},
+				query: { managerCredentialId: 'manager-1' },
 				user: mock<User>({ id: 'user-1' }),
 			});
 
-		it('records the manual rung when the account reaches no subscription', async () => {
+		/**
+		 * The setup reads this again on every remount and every change of sign-in,
+		 * and a tenant with no Azure subscription is the ordinary case. Reporting
+		 * from here would count the dialog being opened.
+		 */
+		it.each([
+			['no subscription', []],
+			['one to use', [{ id: 'sub-1', name: 'Production' }]],
+		])('records nothing for a lookup that found %s', async (_name, subscriptions) => {
+			const { controller, setupTelemetry } = buildController(subscriptions);
+
+			await controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1');
+
+			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
+		});
+
+		// Where the rung is reported instead: the user leaving for the manual bot.
+		it('records the manual rung when the setup leaves the recommended flow', () => {
 			const { controller, setupTelemetry } = buildController([]);
 
-			await expect(
-				controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1'),
-			).resolves.toEqual([]);
+			controller.reportManualBotRoute(request(), mock<Response>(), 'agent-1');
 
 			expect(setupTelemetry.succeeded).toHaveBeenCalledWith({
 				agentId: 'agent-1',
@@ -179,29 +185,6 @@ describe('AgentTeamsIntegrationsController', () => {
 				step: 'create_bot',
 				botRoute: 'manual',
 			});
-		});
-
-		it('records nothing while the bot step can still run here', async () => {
-			const { controller, setupTelemetry } = buildController([{ id: 'sub-1', name: 'Production' }]);
-
-			await controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1');
-
-			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
-		});
-
-		/**
-		 * The setup reads this again on every remount and every change of sign-in.
-		 * Counting each one would measure how often the dialog was opened, and a
-		 * tenant with no Azure subscription is the ordinary case.
-		 */
-		it('records the rung once for a setup, not once for a read', async () => {
-			const { controller, setupTelemetry } = buildController([]);
-
-			await expect(
-				controller.listAzureSubscriptions(request(false), mock<Response>(), 'agent-1'),
-			).resolves.toEqual([]);
-
-			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
 		});
 	});
 });

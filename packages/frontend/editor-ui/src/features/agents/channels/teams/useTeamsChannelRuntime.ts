@@ -21,17 +21,10 @@ import {
 	getTeamsSetupState,
 	provisionTeamsApp,
 	provisionTeamsBot,
+	reportTeamsManualBotRoute,
 } from './api';
 
 const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
-
-/**
- * The setups the bot rung has already been reported for, keyed like every
- * reply. Held here rather than in the runtime: the dialog is unmounted when it
- * closes and its runtimes are built again when it opens, so a key kept inside
- * one would be lost on every close and would report the same setup again.
- */
-const reportedRouteFor = new Set<string>();
 
 export type TeamsSetupKind = 'managed' | 'manual';
 
@@ -57,6 +50,8 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	provisionApp: () => Promise<boolean>;
 	loadSubscriptions: () => Promise<boolean>;
 	provisionBot: (subscriptionId: string) => Promise<boolean>;
+	/** Says the setup left the recommended flow to make the bot by hand. */
+	reportManualBotRoute: () => Promise<void>;
 }
 
 export function isTeamsChannelRuntime(
@@ -242,20 +237,11 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 
 	async function loadSubscriptions(): Promise<boolean> {
 		const requestedFor = contextKey();
-		// Which rung the setup landed on is counted once for each setup. This runs
-		// again on every remount and every change of sign-in, and a tenant with no
-		// Azure subscription is the ordinary case, so reporting each read would
-		// count the dialog being opened rather than the rung being reached.
-		const firstCheck = !reportedRouteFor.has(requestedFor);
-		// Marked before the reply, because the server reports when it answers:
-		// waiting would let a second read for the same setup report again.
-		if (firstCheck) reportedRouteFor.add(requestedFor);
 		const available = await getTeamsAzureSubscriptions(
 			rootStore.restApiContext,
 			context.projectId.value,
 			context.agentId.value,
 			requireManagerCredential(),
-			firstCheck,
 		);
 		if (requestedFor !== contextKey()) return false;
 		subscriptions.value = available;
@@ -286,6 +272,17 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		});
 	}
 
+	/** Best effort: reporting which rung was taken must not break the step. */
+	async function reportManualBotRoute() {
+		try {
+			await reportTeamsManualBotRoute(
+				rootStore.restApiContext,
+				context.projectId.value,
+				context.agentId.value,
+			);
+		} catch {}
+	}
+
 	watch(context.credentialModalOpen, (isOpen, wasOpen) => {
 		if (wasOpen && !isOpen) void load();
 	});
@@ -305,5 +302,6 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		provisionApp,
 		loadSubscriptions,
 		provisionBot,
+		reportManualBotRoute,
 	};
 }
