@@ -31,13 +31,15 @@ export function satisfiesToolCapability(syntheticToolName: string, nodeType: INo
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
-		const executeWorkflowTriggerNode = nodes.find(
+		const eligibleNodes =
+			executionMode === 'cli' ? nodes.filter((node) => node.disabled !== true) : nodes;
+		const executeWorkflowTriggerNode = eligibleNodes.find(
 			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
 		);
 
 		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
 
-		const startNode = nodes.find((node) => STARTING_NODES.includes(node.type));
+		const startNode = eligibleNodes.find((node) => STARTING_NODES.includes(node.type));
 
 		if (startNode) return startNode;
 
