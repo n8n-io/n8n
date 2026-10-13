@@ -276,12 +276,15 @@ describe('useTeamsChannelRuntime', () => {
 
 			await runtime.loadSubscriptions();
 
+			// The lookup carries nothing for the count, and sends nothing of its
+			// own: it runs again on every remount and every change of sign-in.
 			expect(getTeamsAzureSubscriptions).toHaveBeenCalledWith(
 				expect.anything(),
 				'project-1',
 				'agent-1',
 				'cred-1',
 			);
+			expect(reportTeamsManualBotRoute).not.toHaveBeenCalled();
 		});
 
 		it('reports it for the agent that is leaving the recommended flow', async () => {

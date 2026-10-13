@@ -167,7 +167,11 @@ describe('AgentTeamsIntegrationsController', () => {
 		])('records nothing for a lookup that found %s', async (_name, subscriptions) => {
 			const { controller, setupTelemetry } = buildController(subscriptions);
 
-			await controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1');
+			// What the route is for, beside what it must not do: the bot step picks
+			// the subscription to build in out of this answer.
+			await expect(
+				controller.listAzureSubscriptions(request(), mock<Response>(), 'agent-1'),
+			).resolves.toEqual(subscriptions);
 
 			expect(setupTelemetry.succeeded).not.toHaveBeenCalled();
 		});
