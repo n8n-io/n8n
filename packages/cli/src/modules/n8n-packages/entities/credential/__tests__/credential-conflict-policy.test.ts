@@ -168,6 +168,15 @@ describe('credentialDiffers', () => {
 		).toBe(false);
 	});
 
+	it('ignores an object that holds only arrays when the destination has no such object', () => {
+		expect(
+			credentialDiffers(
+				{ name: 'Same', data: { token: 'stored-secret' } },
+				{ name: 'Same', data: { config: { headers: [EXPRESSION] } } },
+			),
+		).toBe(false);
+	});
+
 	it('compares only the name for a file without data', () => {
 		const stored = { name: 'Same', data: { token: 'stored-secret' } };
 
@@ -250,6 +259,15 @@ describe('divergentCredentials', () => {
 		expect(
 			divergentCredentials([
 				candidate({ data: { token: EXPRESSION, scopes: [EXPRESSION] } }),
+				candidate({ sourceId: 'source-2', data: { token: EXPRESSION } }),
+			]),
+		).toEqual([]);
+	});
+
+	it('ignores a payload whose only difference is an object that holds only arrays', () => {
+		expect(
+			divergentCredentials([
+				candidate({ data: { token: EXPRESSION, config: { headers: [EXPRESSION] } } }),
 				candidate({ sourceId: 'source-2', data: { token: EXPRESSION } }),
 			]),
 		).toEqual([]);

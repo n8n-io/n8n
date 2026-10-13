@@ -48,7 +48,15 @@ function mergeValue(
 	if (isRecord(incoming)) {
 		// Merge into an empty object when there is nothing to merge into, so the
 		// array mode also applies to arrays nested in a new object.
-		return mergeObjects(incoming, isRecord(existing) ? existing : {}, arrays);
+		const merged = mergeObjects(incoming, isRecord(existing) ? existing : {}, arrays);
+
+		// Only kept arrays were in the new object. Do not add an empty object for them,
+		// so that a merge which changes nothing gives the existing data back.
+		if (arrays === 'keep-existing' && !isRecord(existing) && Object.keys(merged).length === 0) {
+			return existing;
+		}
+
+		return merged;
 	}
 
 	// `null` or another value that carries no data: keep what exists.

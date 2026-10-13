@@ -212,6 +212,16 @@ describe('mergeCredentialData', () => {
 
 			expect(result).toEqual({ groups: [{ tags: [EXPRESSION, 'b'] }] });
 		});
+
+		it('adds a new incoming object that merges to no fields', () => {
+			const result = mergeCredentialData({
+				existing: {},
+				incoming: { config: { host: null } },
+				arrays,
+			});
+
+			expect(result).toEqual({ config: {} });
+		});
 	});
 
 	describe('with arrays "keep-existing"', () => {
@@ -276,6 +286,26 @@ describe('mergeCredentialData', () => {
 			});
 
 			expect(result).toEqual({ config: { host: EXPRESSION } });
+		});
+
+		it('does not add a new incoming object that holds only arrays', () => {
+			const result = mergeCredentialData({
+				existing: { apiKey: 'secret' },
+				incoming: { config: { headers: [EXPRESSION], nested: { hosts: [EXPRESSION] } } },
+				arrays,
+			});
+
+			expect(result).toEqual({ apiKey: 'secret' });
+		});
+
+		it('keeps an existing object when the incoming object holds only arrays', () => {
+			const result = mergeCredentialData({
+				existing: { config: {} },
+				incoming: { config: { headers: [EXPRESSION] } },
+				arrays,
+			});
+
+			expect(result).toEqual({ config: {} });
 		});
 	});
 });
