@@ -23,7 +23,9 @@ import {
 	listN8nChatAgents,
 	listN8nChatThreads,
 	duplicateAgent,
+	listAttachableSkills,
 } from '../composables/useAgentApi';
+import type { SkillListItem } from '@n8n/api-types';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -37,6 +39,29 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('listAttachableSkills', () => {
+		it('lists the attachable skills in one call, project skills first, each by name', async () => {
+			const skill = (name: string, scope: SkillListItem['scope']) =>
+				({ id: name, name, scope }) as SkillListItem;
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
+				count: 4,
+				data: [
+					skill('Tone', 'instance'),
+					skill('SQL', 'project'),
+					skill('Brand', 'instance'),
+					skill('Billing', 'project'),
+				],
+			});
+
+			const result = await listAttachableSkills(restApiContext, 'project-1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills', {
+				attachableTo: 'project-1',
+			});
+			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Brand', 'Tone']);
+		});
 	});
 
 	describe('listAgentsPage', () => {

@@ -736,15 +736,13 @@ export const listAttachableSkills = async (
 	context: IRestApiContext,
 	projectId: string,
 ): Promise<SkillListItem[]> => {
-	const [projectSkills, instanceSkills] = await Promise.all([
-		makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
-			scope: 'project',
-			projectId,
-		}),
-		makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', { scope: 'instance' }),
-	]);
-	const byName = (left: SkillListItem, right: SkillListItem) => left.name.localeCompare(right.name);
-	return [...projectSkills.data.sort(byName), ...instanceSkills.data.sort(byName)];
+	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
+		attachableTo: projectId,
+	});
+	const byScopeThenName = (left: SkillListItem, right: SkillListItem) =>
+		Number(left.scope === 'instance') - Number(right.scope === 'instance') ||
+		left.name.localeCompare(right.name);
+	return data.sort(byScopeThenName);
 };
 
 export const getHubSkill = async (
