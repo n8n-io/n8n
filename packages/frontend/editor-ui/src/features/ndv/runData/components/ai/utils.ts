@@ -1,8 +1,35 @@
 import type { IAiDataContent } from '@/Interface';
-import type { ITaskData, ITaskDataConnections, NodeConnectionType } from 'n8n-workflow';
+import type {
+	INodeExecutionData,
+	ITaskData,
+	ITaskDataConnections,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
 import { splitTextBySearch } from '@/app/utils/stringUtils';
 import { escapeHtml } from 'xss';
 import type MarkdownIt from 'markdown-it';
+
+/**
+ * Returns the name of the model that answered, from the first LLM generation that has one.
+ * Streaming runs carry it in `json.response.generations[][].generationInfo.model_name`.
+ */
+export function getRespondingModelName(task: Array<INodeExecutionData | null>): string | undefined {
+	return task
+		.map((item) => item?.json?.response)
+		.filter(isRecord)
+		.flatMap((response): unknown[] =>
+			Array.isArray(response.generations) ? response.generations.flat() : [],
+		)
+		.map((generation) =>
+			isRecord(generation) && isRecord(generation.generationInfo)
+				? // Read `model_name` only. The raw `model` key can hold a doubled value,
+					// such as `gpt-4.1-minigpt-4.1-mini`.
+					generation.generationInfo.model_name
+				: undefined,
+		)
+		.find((name): name is string => typeof name === 'string' && name.trim() !== '');
+}
 
 export function getReferencedData(taskData: ITaskData): IAiDataContent[] {
 	const returnData: IAiDataContent[] = [];
