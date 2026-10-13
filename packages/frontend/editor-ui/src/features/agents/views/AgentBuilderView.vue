@@ -1889,6 +1889,11 @@ watch(isEditingLocked, (locked) => {
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Capture the target before the awaits: when the autosave flush or the
+	// validation refresh resolves, the user may have switched to another
+	// agent, and the continuation must not act on the stale one.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	// Acquire the write lock before publishing — the lock is lazy.
 	agentCollaborationStore.requestWriteAccess();
 	try {
@@ -1896,7 +1901,9 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	} catch {
 		return false;
 	}
-	await refreshConfigValidation(projectId.value, agentId.value);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	await refreshConfigValidation(targetProjectId, targetAgentId);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	if (configValidation.value === null) return false;
 	if (hasBlockingIssues(configValidation.value.issues)) return false;
 	// Unpublished workflow tools do not disable the Publish button, but the

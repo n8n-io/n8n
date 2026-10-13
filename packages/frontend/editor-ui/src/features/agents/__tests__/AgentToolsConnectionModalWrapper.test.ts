@@ -24,7 +24,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import type { ToolConnectionItem } from '@/features/shared/toolsConnection/types';
+import type {
+	ToolConnectionItem,
+	WorkflowConnectionItem,
+} from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
 
 import type { ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
@@ -891,7 +894,10 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				'workflow:wf-1',
 			]);
 			// The compatible row carries no "Not published" warning.
-			expect(items.find((i) => i.id === 'workflow:wf-1')?.warning).toBeUndefined();
+			const workflowItem = items.find(
+				(i): i is WorkflowConnectionItem => i.kind === 'workflow' && i.id === 'workflow:wf-1',
+			);
+			expect(workflowItem?.warning).toBeUndefined();
 		});
 
 		it('creates a compatible workflow and attaches it after configuration is saved', async () => {

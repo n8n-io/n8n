@@ -32,7 +32,7 @@ export function hasBlockingIssues(issues: AgentConfigValidationIssue[]): boolean
  */
 export function unpublishedWorkflowTools(
 	issues: AgentConfigValidationIssue[],
-	tools: AgentJsonConfig['tools'],
+	tools: NonNullable<AgentJsonConfig['tools']>,
 ): UnpublishedWorkflowTool[] {
 	return issues
 		.filter((issue) => isWarningIssue(issue))

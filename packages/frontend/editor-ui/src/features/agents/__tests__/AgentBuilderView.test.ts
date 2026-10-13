@@ -3205,6 +3205,38 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
+	it('aborts the publish without opening a modal when the target goes stale mid-flight', async () => {
+		const notPublished = {
+			code: 'incompatible_reference',
+			reason: 'not_published',
+			path: 'tools.0.workflowId',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
+		};
+		const pendingValidation = Promise.withResolvers<{
+			status: 'valid' | 'invalid';
+			issues: (typeof notPublished)[];
+		}>();
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockReturnValueOnce(pendingValidation.promise);
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		const publishResult = vm.refreshValidationBeforePublish();
+		// Let the flush and the validation request start before navigating away.
+		await flushPromises();
+
+		routeParams.agentId = 'a2';
+		pendingValidation.resolve({ status: 'invalid', issues: [notPublished] });
+		await flushPromises();
+
+		await expect(publishResult).resolves.toBe(false);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
