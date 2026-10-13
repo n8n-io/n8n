@@ -445,7 +445,7 @@ Every table needs a primary key. **Use an integer key by default.** Read the opt
 1. **Integer (default)** — `column('id').int.primary.autoGenerate2`. Use this for every new table. Use a different option only when one of its conditions is true. Integer keys are small and make joins fast. `autoGenerate2` uses Postgres `IDENTITY`. Do not use `autoGenerate`. It uses `serial`, which is deprecated.
 2. **UUID** — `column('id').uuid.primary`. Use this only when one of these conditions is true:
    - The application must know the ID before the insert. For example, the client makes the ID.
-   - The ID is in a URL or a public API. Users must not see how many rows exist. Users must not guess other IDs.
+   - The ID is in a URL or a public API. Users must not see how many rows exist or guess other IDs.
 
    **You must use UUIDv7.** Make the ID in application code with the `uuid` package: `import { v7 as uuidv7 } from 'uuid'`.
 
