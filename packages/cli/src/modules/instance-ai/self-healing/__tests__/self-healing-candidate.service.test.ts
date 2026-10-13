@@ -122,6 +122,24 @@ describe('SelfHealingCandidateService', () => {
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
 
+	it('verifies retained evidence after pruning and still checks execution access', async () => {
+		input.evidence = {
+			message: 'The execution failed.',
+			allowExecutionData: false,
+			execution: { executionId: input.executionId, status: 'error', nodeTrace: [] },
+		};
+		executions.getReference.mockResolvedValue({ status: 'unavailable' });
+		const result = await service.verify({ ...input, validationOnly: true });
+		expect(result).toMatchObject({ validation: { success: true } });
+		expect(executions.validateReference).toHaveBeenCalledWith(
+			user,
+			baseline.workflowId,
+			input.executionId,
+		);
+		executions.validateReference.mockRejectedValueOnce(new Error('Access removed'));
+		await expect(service.verify(input)).rejects.toThrow('Access removed');
+	});
+
 	it('returns compile diagnostics without creating or running a temporary workflow', async () => {
 		source = '{invalid JSON';
 

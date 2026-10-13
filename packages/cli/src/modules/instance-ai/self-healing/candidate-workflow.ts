@@ -199,6 +199,10 @@ export async function compileCandidateWorkflow({
 			compiled.workflow,
 			toWorkflowJSON({ ...baseline.original, id: baseline.workflowId }),
 		);
+		// Self-healing preserves captured credential references instead of replacing them.
+		for (const warning of warnings) {
+			if (warning.code === 'PREFER_PREDEFINED_CREDENTIAL') warning.severity = 'informational';
+		}
 		const { blocking } = partitionWarnings(warnings);
 		if (blocking.length > 0) {
 			return {

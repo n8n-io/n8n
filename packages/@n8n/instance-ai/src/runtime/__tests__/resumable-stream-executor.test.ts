@@ -167,6 +167,7 @@ describe('executeResumableStream', () => {
 		expect(result.status).toBe(status);
 		expect(result.finishReason).toBe(finishReason);
 		expect(result.structuredOutput).toEqual(structuredOutput);
+		expect(result.stepCount).toBeUndefined();
 		await expect(result.text).resolves.toBe('Working...');
 	});
 
@@ -536,7 +537,7 @@ describe('executeResumableStream', () => {
 	it('assigns stable response IDs from native start-step chunks', async () => {
 		const eventBus = createEventBus();
 
-		await executeResumableStream({
+		const result = await executeResumableStream({
 			agent: {},
 			stream: {
 				runId: 'agent-run-1',
@@ -576,6 +577,7 @@ describe('executeResumableStream', () => {
 		expect(toolCall?.responseId).toBe('agent-run-1:step:1');
 		expect(firstStepContinuation?.responseId).toBe('agent-run-1:step:1');
 		expect(secondText?.responseId).toBe('agent-run-1:step:2');
+		expect(result.stepCount).toBe(2);
 	});
 
 	it('mints a synthetic per-segment responseId when the provider supplies none', async () => {

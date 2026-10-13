@@ -33,6 +33,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
+			await import('./self-healing/self-healing-investigations.controller.js');
 			const { WorkflowSuggestionEventRelay } = await import(
 				'./workflow-suggestions/workflow-suggestion-event-relay.service.js'
 			);
@@ -49,12 +50,18 @@ export class InstanceAiModule implements ModuleInterface {
 		// appending run-finish{interrupted}.
 		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
+		const { SelfHealingInvestigationService } = await import(
+			'./self-healing/self-healing-investigation.service.js'
+		);
 		const sweepLogger = Container.get(Logger).scoped('instance-ai');
 		const sweeper = Container.get(InterruptedRunSweeper);
 		sweeper.setResumeHost(Container.get(InstanceAiService));
-		void sweeper.sweep().catch((error: unknown) => {
-			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
-		});
+		void sweeper
+			.sweep()
+			.then(async () => await Container.get(SelfHealingInvestigationService).reconcile())
+			.catch((error: unknown) => {
+				sweepLogger.error('Interrupted-run sweep failed on startup', { error });
+			});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
@@ -135,6 +142,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { SelfHealingResult } = await import(
 			'./self-healing/database/self-healing-result.entity.js'
 		);
+		const { SelfHealingInvestigation } = await import(
+			'./self-healing/database/self-healing-investigation.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -153,6 +163,7 @@ export class InstanceAiModule implements ModuleInterface {
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
 			SelfHealingResult,
+			SelfHealingInvestigation,
 		];
 	}
 

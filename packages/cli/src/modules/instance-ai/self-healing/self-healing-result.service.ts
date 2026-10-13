@@ -15,6 +15,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
@@ -23,6 +24,8 @@ import {
 	type PreparedWorkflowSuggestion,
 } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingResult } from './database/self-healing-result.entity';
+import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 
@@ -46,6 +49,12 @@ export type CompleteSelfHealingResult = SelfHealingResultContent & {
 	suggestion?: PreparedWorkflowSuggestion;
 };
 
+type PreparedSelfHealingResult = {
+	references: z.infer<typeof referenceSchema>;
+	content: SelfHealingResultContent;
+	suggestion: PreparedWorkflowSuggestion | undefined;
+};
+
 export function getSelfHealingReviewState(
 	result: Pick<SelfHealingResult, 'dismissedAt'>,
 	suggestion: Pick<WorkflowSuggestionProposalDetail, 'closedReason'> | null,
@@ -62,9 +71,10 @@ export class SelfHealingResultService {
 		private readonly ownership: SharedWorkflowRepository,
 		private readonly executionReferences: SelfHealingExecutionReferenceService,
 		private readonly txRunner: TransactionRunner,
+		private readonly investigations: SelfHealingInvestigationRepository,
 	) {}
 
-	private async prepare(input: CompleteSelfHealingResult) {
+	private async prepare(input: CompleteSelfHealingResult): Promise<PreparedSelfHealingResult> {
 		const references = referenceSchema.parse(input);
 		const content = selfHealingResultContentSchema.parse({
 			outcome: input.outcome,
@@ -100,25 +110,88 @@ export class SelfHealingResultService {
 		return { references, content, suggestion: prepared };
 	}
 
-	async complete(input: CompleteSelfHealingResult) {
+	async complete(input: CompleteSelfHealingResult | { investigationId: string }) {
+		if ('investigationId' in input) return await this.completeInvestigation(input.investigationId);
 		// Validate execution evidence before opening the completion transaction.
 		const prepared = await this.prepare(input);
-		const { references, content } = prepared;
+		return await this.txRunner.run({}, async (ctx) => await this.storeResult(prepared, ctx));
+	}
+
+	private async completeInvestigation(investigationId: string) {
+		const investigation = await this.investigations.get(investigationId);
+		if (investigation.resultId) {
+			return await this.results.getResult(investigation.resultId, investigation);
+		}
+		const prepared = await this.prepareInvestigation(investigation);
 		return await this.txRunner.run({}, async (ctx) => {
-			await this.suggestions.requireEditor(references.backgroundUserId, references.workflowId, ctx);
-			await this.requireCurrentProject(references.workflowId, references.projectId, ctx);
-			const suggestion = prepared.suggestion
-				? await this.suggestions.createSuggestion(prepared.suggestion, ctx)
-				: null;
-			return await this.results.createResult(
-				{
-					...references,
-					...content,
-					suggestionId: suggestion?.id ?? null,
-				},
-				ctx,
-			);
+			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
+			const current = await this.investigations.get(investigationId, ctx);
+			if (current.resultId) {
+				return await this.results.getResult(current.resultId, current, ctx);
+			}
+			if (current.finishedAt) {
+				throw new ConflictError('The self-healing investigation has already finished.');
+			}
+			await this.suggestions.requireCurrentBaseline(current.baseline, ctx);
+			const result = await this.storeResult(prepared, ctx, investigationId);
+			await this.investigations.completeWithResult(investigationId, result.id, ctx);
+			return result;
 		});
+	}
+
+	private async prepareInvestigation(investigation: SelfHealingInvestigation) {
+		if (investigation.finishedAt || !investigation.acceptedOutput) {
+			throw new ConflictError('The investigation has no accepted output to complete.');
+		}
+		const { baseline, acceptedOutput: accepted } = investigation;
+		const { output, candidate } = accepted;
+		if (
+			candidate &&
+			(await calculateWorkflowChecksum({ ...baseline.original, ...candidate.graph })) !==
+				candidate.checksum
+		) {
+			throw new ConflictError('The accepted workflow candidate has changed.');
+		}
+		const suggestion = candidate
+			? await this.suggestions.prepareSuggestion(baseline, {
+					graph: candidate.graph,
+					explanation: output.summary,
+					resultKind: output.outcome === 'fix_ready' ? 'fix_ready' : 'needs_you',
+				})
+			: undefined;
+		return await this.prepare({
+			workflowId: investigation.workflowId,
+			projectId: investigation.projectId,
+			backgroundUserId: investigation.backgroundUserId,
+			executionId: investigation.executionId,
+			outcome: output.outcome,
+			summary: output.summary,
+			report: output.report,
+			usage: accepted.usage,
+			completedAt: new Date(accepted.completedAt),
+			suggestion,
+		});
+	}
+
+	private async storeResult(
+		prepared: PreparedSelfHealingResult,
+		ctx: OperationContext,
+		investigationId?: string,
+	) {
+		const { references, content } = prepared;
+		await this.suggestions.requireEditor(references.backgroundUserId, references.workflowId, ctx);
+		await this.requireCurrentProject(references.workflowId, references.projectId, ctx);
+		const suggestion = prepared.suggestion
+			? await this.suggestions.createSuggestion(prepared.suggestion, ctx, investigationId)
+			: null;
+		return await this.results.createResult(
+			{
+				...references,
+				...content,
+				suggestionId: suggestion?.id ?? null,
+			},
+			ctx,
+		);
 	}
 
 	async getDetail(

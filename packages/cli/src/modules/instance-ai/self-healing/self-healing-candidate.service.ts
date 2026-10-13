@@ -22,6 +22,7 @@ import { toWorkflowJSON } from '../workflow-json';
 import { compileCandidateWorkflow, type CandidateWorkflowResult } from './candidate-workflow';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingTemporaryWorkflowService } from './self-healing-temporary-workflow.service';
+import type { SelfHealingEvidence } from './self-healing-evidence.service';
 
 type CandidateInput = SelfHealingCandidateInput & {
 	user: User;
@@ -29,6 +30,7 @@ type CandidateInput = SelfHealingCandidateInput & {
 	executionId: string;
 	context: InstanceAiContext;
 	abortSignal: AbortSignal;
+	evidence?: SelfHealingEvidence;
 };
 type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }>;
 
@@ -48,13 +50,17 @@ export class SelfHealingCandidateService {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
 		const user = await this.suggestions.requireCurrentBaseline(baseline);
-		const execution = await this.executions.getReference(
-			user,
-			baseline.workflowId,
-			input.executionId,
-		);
-		if (execution.status !== 'available') {
-			throw new ForbiddenError('The failed execution is unavailable for this workflow.');
+		if (input.evidence) {
+			await this.executions.validateReference(user, baseline.workflowId, input.executionId);
+		} else {
+			const execution = await this.executions.getReference(
+				user,
+				baseline.workflowId,
+				input.executionId,
+			);
+			if (execution.status !== 'available') {
+				throw new ForbiddenError('The failed execution is unavailable for this workflow.');
+			}
 		}
 		const candidate = await compileCandidateWorkflow({
 			baseline,

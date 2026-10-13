@@ -19,6 +19,7 @@ import {
 import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { License } from '@/license';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -336,7 +337,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 		if (peer?.isInitialized) await peer.destroy();
 	});
 
-	it('preserves an edit made after the final baseline check without blocking it', async () => {
+	it('preserves a concurrent edit after the suggestion commits', async () => {
 		const { saved, workflows, baseline, graph } = await fixture();
 		const prepared = await service.prepareSuggestion(baseline, {
 			resultKind: 'fix_ready',
@@ -344,17 +345,24 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 			explanation: 'Sample fix',
 		});
 		const createPending = suggestions.createPending.bind(suggestions);
+		let edit: Promise<void> | undefined;
 		const insert = vi
 			.spyOn(suggestions, 'createPending')
 			.mockImplementationOnce(async (...args) => {
-				await peer.transaction(async (manager) => {
-					await manager.query("SET LOCAL lock_timeout = '250ms'");
-					await manager.update(WorkflowEntity, saved.id, { settings: { executionTimeout: 60 } });
+				const editStarted = createDeferredPromise();
+				edit = peer.transaction(async (manager) => {
+					const update = manager.update(WorkflowEntity, saved.id, {
+						settings: { executionTimeout: 60 },
+					});
+					editStarted.resolve();
+					await update;
 				});
+				await editStarted.promise;
 				return await createPending(...args);
 			});
 		try {
 			const suggestion = await service.createSuggestion(prepared);
+			await edit;
 			expect(suggestion.expectedBaseline).toEqual(baseline.expectedBaseline);
 			expect(suggestion.payload.original).toEqual(baseline.original);
 			expect(suggestion.payload.candidate).toEqual(graph);
@@ -365,6 +373,7 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('Concurrent workflow saves
 				settings: { executionTimeout: 60 },
 			});
 		} finally {
+			await edit?.catch(() => undefined);
 			insert.mockRestore();
 		}
 	});

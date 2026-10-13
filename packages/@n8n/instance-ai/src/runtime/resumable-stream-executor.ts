@@ -91,6 +91,8 @@ export interface ExecuteResumableStreamResult {
 	finishReason?: FinishReason;
 	/** Parsed SDK output. The caller validates its domain schema. */
 	structuredOutput?: unknown;
+	/** Observed model turns. Absent when the provider emits no step events. */
+	stepCount?: number;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -528,6 +530,7 @@ export async function executeResumableStream(
 			...(pass.error !== undefined ? { error: pass.error } : {}),
 			finishReason: pass.finishReason,
 			structuredOutput: pass.structuredOutput,
+			stepCount: nativeStepIndex || undefined,
 			workSummary: workSummaryAccumulator.toSummary(),
 			usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 		};

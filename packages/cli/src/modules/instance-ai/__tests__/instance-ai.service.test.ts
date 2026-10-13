@@ -1634,6 +1634,25 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
 	});
 
+	it('keeps the producer identity and completion hook in the host lifecycle', async () => {
+		const service = createLauncher();
+		const onComplete = vi.fn(async () => {});
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+			expect(options.onComplete).toBe(onComplete);
+			const result = completedRun(options);
+			await options.onComplete?.(result, options.signal);
+			return result;
+		});
+		const result = await service.startSelfHealingRun(input, {
+			threadId: 'persisted-thread',
+			runId: 'persisted-run',
+			onComplete,
+		});
+		expect(result).toMatchObject({ threadId: 'persisted-thread', runId: 'persisted-run' });
+		expect(onComplete).toHaveBeenCalledWith(result, expect.any(AbortSignal));
+		expect(service.runState.activeRunCount()).toBe(0);
+	});
+
 	it('applies concurrency admission before registering an internal run', async () => {
 		const service = createLauncher();
 		service.instanceAiConfig.maxConcurrentRunsPerUser = 1;

@@ -138,6 +138,35 @@ describe('compileCandidateWorkflow', () => {
 		expect(baseline.original.nodes[0].parameters.url).toBe('https://example.test/original');
 	});
 
+	it('keeps credential preferences informational when a candidate uses captured credentials', async () => {
+		baseline.original.nodes[0].parameters = {
+			url: 'https://api.stripe.com/v1/charges',
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			options: {},
+		};
+		context.credentialService.listHttpCredentialHosts = vi
+			.fn()
+			.mockResolvedValue([{ type: 'stripeApi', hosts: ['api.stripe.com'] }]);
+		const workflow = generatedWorkflow();
+		changeUrl(workflow, 'https://api.stripe.com/v1/customers');
+		await writeCandidate(workflow);
+
+		const result = await compile();
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.workflow.nodes[0].parameters.url).toBe('https://api.stripe.com/v1/customers');
+		expect(result.workflow.nodes[0].credentials).toEqual(baseline.original.nodes[0].credentials);
+		expect(result.warnings).toContainEqual(
+			expect.objectContaining({
+				code: 'PREFER_PREDEFINED_CREDENTIAL',
+				nodeName: 'Request',
+				severity: 'informational',
+			}),
+		);
+	});
+
 	it('rejects an unchanged SDK roundtrip despite automatic layout and node order changes', async () => {
 		await writeCandidate(generatedWorkflow());
 

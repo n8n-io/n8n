@@ -12,6 +12,7 @@ import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	TransactionRunner,
 	UserRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublicationTriggerStatusRepository,
@@ -19,6 +20,9 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { randomUUID } from 'node:crypto';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
@@ -33,17 +37,24 @@ import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createUser } from '@test-integration/db/users';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
+import { InstanceAiService } from '../../instance-ai.service';
 import { WorkflowSuggestionActivity } from '../../workflow-suggestions/database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../../workflow-suggestions/database/workflow-suggestion.repository';
 import { WorkflowSuggestionActionsService } from '../../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
+import { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
+import type { SelfHealingRunResult } from '../self-healing-agent.service';
+import { SelfHealingEvidenceService } from '../self-healing-evidence.service';
 import { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
+import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
 import { SelfHealingResultService } from '../self-healing-result.service';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
 const validation = mockInstance(WorkflowValidationService);
+const runtime = mockInstance(InstanceAiService);
+const evidence = mockInstance(SelfHealingEvidenceService);
 
 const testServer = setupTestServer({
 	modules: ['instance-ai'],
@@ -57,6 +68,7 @@ let suggestions: WorkflowSuggestionRepository;
 let suggestionService: WorkflowSuggestionService;
 let actions: WorkflowSuggestionActionsService;
 let workflows: WorkflowRepository;
+let investigations: SelfHealingInvestigationRepository;
 
 beforeAll(async () => {
 	await initNodeTypes();
@@ -69,10 +81,14 @@ beforeAll(async () => {
 	suggestionService = Container.get(WorkflowSuggestionService);
 	actions = Container.get(WorkflowSuggestionActionsService);
 	workflows = Container.get(WorkflowRepository);
+	investigations = Container.get(SelfHealingInvestigationRepository);
 });
 
 beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
+	Container.get(GlobalConfig).instanceAi.selfHealingEnabled = true;
+	runtime.startSelfHealingRun.mockReset();
+	evidence.read.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	validation.validateForActivation.mockResolvedValue({ isValid: true });
 	validation.validateDynamicCredentials.mockResolvedValue({ isValid: true });
@@ -83,6 +99,7 @@ beforeEach(() => {
 
 afterEach(async () => {
 	vi.restoreAllMocks();
+	await investigations.createQueryBuilder().delete().execute();
 	await results.createQueryBuilder().delete().execute();
 	await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).clear();
 	await suggestions.createQueryBuilder().delete().execute();
@@ -146,6 +163,196 @@ async function fixture(outcome: Outcome = 'needs_you', withSuggestion = false) {
 	const getDetail = async () => await service.getDetail(user, project.id, original.id, result.id);
 	return { ...prepared, result, url, getDetail };
 }
+
+async function prepareInvestigation(outcome: Outcome = 'fix_ready', withSuggestion = true) {
+	const fixture = await prepareFixture(outcome, withSuggestion);
+	const { original, user, input, graph } = fixture;
+	const baseline = await suggestionService.captureBaseline(original.id, user.id);
+	const investigation = await Container.get(TransactionRunner).run({}, async (ctx) => {
+		return await investigations.createInvestigation(
+			{ baseline, executionId: input.executionId, threadId: randomUUID(), runId: randomUUID() },
+			ctx,
+		);
+	});
+	await investigations.storeAcceptedOutput(investigation.id, {
+		output: {
+			outcome,
+			summary: input.summary,
+			report: input.report,
+			...(withSuggestion ? { candidateFilePath: 'candidate.workflow.ts' } : {}),
+		},
+		usage: input.usage,
+		completedAt: new Date().toISOString(),
+		...(withSuggestion
+			? {
+					candidate: {
+						graph,
+						checksum: await calculateWorkflowChecksum({ ...baseline.original, ...graph }),
+					},
+				}
+			: {}),
+	});
+	return { ...fixture, investigation };
+}
+
+it.each(['same', 'different'] as const)(
+	'returns one investigation to concurrent starts for %s failures',
+	async (failure) => {
+		const { input, original } = await prepareFixture();
+		const executionId =
+			failure === 'same'
+				? input.executionId
+				: (await createExecution({ status: 'error' }, original)).id;
+		const producer = Container.get(SelfHealingInvestigationService);
+		const evidenceReady = createDeferredPromise();
+		const stopRun = createDeferredPromise();
+		const runFinished = createDeferredPromise();
+		let evidenceReads = 0;
+		evidence.read.mockImplementation(async (_actor, _baseline, failedExecutionId) => {
+			evidenceReads += 1;
+			if (evidenceReads === 2) evidenceReady.resolve();
+			// Both callers must pass the initial lookup before either can claim the workflow.
+			await evidenceReady.promise;
+			return {
+				message: 'The execution failed.',
+				allowExecutionData: true,
+				execution: { executionId: failedExecutionId, status: 'error', nodeTrace: [] },
+			};
+		});
+		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
+			if (!lifecycle) throw new Error('The investigation run identity is required.');
+			await stopRun.promise;
+			const result: SelfHealingRunResult = {
+				threadId: lifecycle.threadId,
+				runId: lifecycle.runId,
+				status: 'cancelled',
+				usage: { credits: null, turns: null, durationSeconds: null },
+			};
+			try {
+				await lifecycle.onComplete(result, new AbortController().signal);
+				return result;
+			} finally {
+				runFinished.resolve();
+			}
+		});
+		try {
+			const [first, second] = await Promise.all([
+				producer.start(input),
+				producer.start({ ...input, executionId }),
+			]);
+			expect(first).toEqual(second);
+			expect(first.kind).toBe('investigation');
+			expect(await investigations.count()).toBe(1);
+			await vi.waitFor(() => expect(runtime.startSelfHealingRun).toHaveBeenCalledTimes(1));
+			expect(await results.count()).toBe(0);
+			expect(await suggestions.count()).toBe(0);
+		} finally {
+			stopRun.resolve();
+			if (runtime.startSelfHealingRun.mock.calls.length > 0) await runFinished.promise;
+		}
+	},
+);
+
+it.each([
+	['fix_ready', true],
+	['needs_you', true],
+	['needs_you', false],
+	['could_not_fix', false],
+] as const)('completes durable %s output with changes=%s', async (outcome, withSuggestion) => {
+	const { investigation, original } = await prepareInvestigation(outcome, withSuggestion);
+	const result = await service.complete({ investigationId: investigation.id });
+	expect(result.outcome).toBe(outcome);
+	expect(result.executionId).toBe(investigation.executionId);
+	expect(Boolean(result.suggestionId)).toBe(withSuggestion);
+	expect(await investigations.get(investigation.id)).toMatchObject({
+		resultId: result.id,
+		finishedAt: expect.any(Date),
+	});
+	expect(await investigations.getUnfinishedForWorkflow(original.id)).toBeNull();
+	expect((await workflows.findById(original.id))?.nodes).toEqual(original.nodes);
+});
+
+it('returns committed completion without repeating access or execution checks', async () => {
+	const { investigation, user } = await prepareInvestigation();
+	const result = await service.complete({ investigationId: investigation.id });
+	await Container.get(UserRepository).update(user.id, { disabled: true });
+	await Container.get(ExecutionRepository).delete(investigation.executionId);
+	expect(await service.complete({ investigationId: investigation.id })).toMatchObject({
+		id: result.id,
+	});
+	expect(await results.count()).toBe(1);
+	expect(await suggestions.count()).toBe(1);
+});
+
+it('commits concurrent finalization only once', async () => {
+	const { investigation } = await prepareInvestigation();
+	const completed = await Promise.all([
+		service.complete({ investigationId: investigation.id }),
+		service.complete({ investigationId: investigation.id }),
+	]);
+	expect(completed[0].id).toBe(completed[1].id);
+	expect(await results.count()).toBe(1);
+	expect(await suggestions.count()).toBe(1);
+	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(1);
+});
+
+it('rolls back all completion writes and retries from accepted data', async () => {
+	const { investigation } = await prepareInvestigation();
+	const completeWithResult = investigations.completeWithResult.bind(investigations);
+	vi.spyOn(investigations, 'completeWithResult').mockImplementationOnce(async (...args) => {
+		await completeWithResult(...args);
+		throw new Error('Completion unavailable.');
+	});
+	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
+		'Completion unavailable.',
+	);
+	expect(await results.count()).toBe(0);
+	expect(await suggestions.count()).toBe(0);
+	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
+	expect(await investigations.get(investigation.id)).toMatchObject({
+		resultId: null,
+		finishedAt: null,
+		acceptedOutput: expect.any(Object),
+	});
+	const result = await service.complete({ investigationId: investigation.id });
+	expect((await investigations.get(investigation.id)).resultId).toBe(result.id);
+});
+
+it('rejects a changed baseline when finalizing an accepted report', async () => {
+	const { investigation, original } = await prepareInvestigation('needs_you', false);
+	await workflows.update(original.id, { name: 'Changed after acceptance' });
+	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow('baseline');
+	expect(await results.count()).toBe(0);
+	expect((await investigations.get(investigation.id)).finishedAt).toBeNull();
+});
+
+it('keeps the first accepted output and protects it from technical cleanup', async () => {
+	const { investigation } = await prepareInvestigation('could_not_fix', false);
+	const first = await investigations.get(investigation.id);
+	await investigations.storeAcceptedOutput(investigation.id, {
+		output: { outcome: 'could_not_fix', summary: 'Changed', report: 'Changed' },
+		usage: { credits: null, turns: null, durationSeconds: null },
+		completedAt: new Date().toISOString(),
+	});
+	await investigations.finishWithoutResult(investigation.id);
+	expect(await investigations.get(investigation.id)).toMatchObject({
+		acceptedOutput: first.acceptedOutput,
+		finishedAt: null,
+	});
+	await investigations.rejectAcceptedOutput(investigation.id);
+	await expect(service.complete({ investigationId: investigation.id })).rejects.toThrow(
+		'no accepted output',
+	);
+	expect(await results.count()).toBe(0);
+});
+
+it('blocks a separate suggestion while an investigation owns the workflow', async () => {
+	const { investigation, input } = await prepareInvestigation();
+	await expect(service.complete(input)).rejects.toThrow('active investigation');
+	expect(await results.count()).toBe(0);
+	await service.complete({ investigationId: investigation.id });
+	expect(await suggestions.count()).toBe(1);
+});
 
 it.each([
 	['fix_ready', true],

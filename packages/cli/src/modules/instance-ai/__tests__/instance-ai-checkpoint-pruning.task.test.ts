@@ -4,12 +4,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiCheckpointPruningTask } from '../instance-ai-checkpoint-pruning.task';
 import type { InstanceAiService } from '../instance-ai.service';
+import type { SelfHealingInvestigationService } from '../self-healing/self-healing-investigation.service';
 import type { SelfHealingTemporaryWorkflowService } from '../self-healing/self-healing-temporary-workflow.service';
 
 describe('InstanceAiCheckpointPruningTask', () => {
 	const config = mock<InstanceAiConfig>({ pruneInterval: 60 * 60 * 1000 });
 	const instanceAiService = mock<InstanceAiService>();
 	const temporaryWorkflows = mock<SelfHealingTemporaryWorkflowService>();
+	const investigations = mock<SelfHealingInvestigationService>();
 	const databaseConfig = mock<DatabaseConfig>({
 		type: 'postgresdb',
 		postgresdb: { statementTimeoutMs: 300_000 },
@@ -19,6 +21,7 @@ describe('InstanceAiCheckpointPruningTask', () => {
 		databaseConfig,
 		instanceAiService,
 		temporaryWorkflows,
+		investigations,
 	);
 
 	it('should declare the configured prune cadence', () => {
@@ -35,6 +38,7 @@ describe('InstanceAiCheckpointPruningTask', () => {
 			databaseConfig,
 			instanceAiService,
 			temporaryWorkflows,
+			investigations,
 		);
 
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 1.5 });
@@ -51,8 +55,13 @@ describe('InstanceAiCheckpointPruningTask', () => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
 			expect(
-				new InstanceAiCheckpointPruningTask(config, database, instanceAiService, temporaryWorkflows)
-					.timeoutSeconds,
+				new InstanceAiCheckpointPruningTask(
+					config,
+					database,
+					instanceAiService,
+					temporaryWorkflows,
+					investigations,
+				).timeoutSeconds,
 			).toBe(timeoutSeconds);
 		},
 	);
@@ -62,6 +71,7 @@ describe('InstanceAiCheckpointPruningTask', () => {
 
 		await task.run(signal);
 
+		expect(investigations.reconcile).toHaveBeenCalledWith(signal);
 		expect(temporaryWorkflows.cleanupAbandoned).toHaveBeenCalledWith(signal);
 		expect(instanceAiService.pruneExpiredData).toHaveBeenCalledTimes(1);
 		expect(instanceAiService.pruneExpiredData).toHaveBeenCalledWith(expect.any(Number), signal);
