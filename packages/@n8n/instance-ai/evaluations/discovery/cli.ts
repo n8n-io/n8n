@@ -30,6 +30,7 @@ import type { DiscoveryTestCase } from './types';
 import { buildResumeData, toConfirmationData } from '../../src/runtime/confirmation-payload';
 import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
+import { defaultNodesJsonPath, missingEvalNodeData } from '../harness/stub-services';
 import {
 	loadRoutingCases,
 	ROUTING_BUCKETS,
@@ -487,6 +488,21 @@ async function main(): Promise<void> {
 	if (!process.env.ANTHROPIC_API_KEY) {
 		console.error(
 			'Error: ANTHROPIC_API_KEY is required to run discovery evaluations (the runner calls Anthropic in-process).',
+		);
+		process.exit(1);
+	}
+
+	// The stubs read node data from build outputs. Stop here, because without it
+	// every trial runs with no node types and shows no error.
+	const missing = missingEvalNodeData(args.nodesJsonPath ?? defaultNodesJsonPath());
+	if (missing.length > 0) {
+		console.error(
+			[
+				'Error: node data for the eval stubs is missing:',
+				...missing.map((p) => `  - ${p}`),
+				'Build the node packages: pnpm --filter n8n-nodes-base --filter @n8n/n8n-nodes-langchain build',
+				'Then generate nodes.json: run `pnpm export:nodes` in packages/@n8n/ai-workflow-builder.ee.',
+			].join('\n'),
 		);
 		process.exit(1);
 	}
