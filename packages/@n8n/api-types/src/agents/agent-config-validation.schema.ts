@@ -67,8 +67,8 @@ export type AgentConfigValidationWarningCode = z.infer<
 export const agentConfigValidationWarningSchema = z.object({
 	code: agentConfigValidationWarningCodeSchema,
 	capability: agentConfigValidationCapabilityRefSchema,
-	/** For `similar_skill_names`: the skill names that are hard to tell apart. */
-	names: z.array(z.string()),
+	/** For `similar_skill_names`: the skill names that are hard to tell apart, at least two. */
+	names: z.array(z.string().min(1)).min(2),
 });
 export type AgentConfigValidationWarning = z.infer<typeof agentConfigValidationWarningSchema>;
 
