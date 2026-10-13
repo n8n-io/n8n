@@ -1,6 +1,56 @@
 {
 	"type": "object",
 	"properties": {
+		"bcc": {
+			"type": "object",
+			"properties": {
+				"html": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"value": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"address": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		},
+		"cc": {
+			"type": "object",
+			"properties": {
+				"html": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"value": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"address": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		},
 		"date": {
 			"type": "string"
 		},
@@ -86,12 +136,18 @@
 				"x-received": {
 					"type": "string"
 				}
+			},
+			"additionalProperties": {
+				"type": "string"
 			}
 		},
 		"html": {
 			"type": ["string", "boolean"]
 		},
 		"id": {
+			"type": "string"
+		},
+		"inReplyTo": {
 			"type": "string"
 		},
 		"labelIds": {
@@ -102,6 +158,37 @@
 		},
 		"messageId": {
 			"type": "string"
+		},
+		"references": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"replyTo": {
+			"type": "object",
+			"properties": {
+				"html": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"value": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"address": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
 		},
 		"sizeEstimate": {
 			"type": "integer"

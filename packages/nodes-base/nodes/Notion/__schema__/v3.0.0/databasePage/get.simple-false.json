@@ -49,6 +49,9 @@
 				},
 				"database_id": {
 					"type": "string"
+				},
+				"data_source_id": {
+					"type": "string"
 				}
 			}
 		},
@@ -74,8 +77,48 @@
 						"items": {
 							"type": "object",
 							"properties": {
+								"type": {
+									"type": "string"
+								},
+								"text": {
+									"type": "object",
+									"properties": {
+										"content": {
+											"type": "string"
+										},
+										"link": {
+											"type": ["object", "null"]
+										}
+									}
+								},
+								"annotations": {
+									"type": "object",
+									"properties": {
+										"bold": {
+											"type": "boolean"
+										},
+										"italic": {
+											"type": "boolean"
+										},
+										"strikethrough": {
+											"type": "boolean"
+										},
+										"underline": {
+											"type": "boolean"
+										},
+										"code": {
+											"type": "boolean"
+										},
+										"color": {
+											"type": "string"
+										}
+									}
+								},
 								"plain_text": {
 									"type": "string"
+								},
+								"href": {
+									"type": ["string", "null"]
 								}
 							}
 						}
@@ -85,8 +128,48 @@
 						"items": {
 							"type": "object",
 							"properties": {
+								"type": {
+									"type": "string"
+								},
+								"text": {
+									"type": "object",
+									"properties": {
+										"content": {
+											"type": "string"
+										},
+										"link": {
+											"type": ["object", "null"]
+										}
+									}
+								},
+								"annotations": {
+									"type": "object",
+									"properties": {
+										"bold": {
+											"type": "boolean"
+										},
+										"italic": {
+											"type": "boolean"
+										},
+										"strikethrough": {
+											"type": "boolean"
+										},
+										"underline": {
+											"type": "boolean"
+										},
+										"code": {
+											"type": "boolean"
+										},
+										"color": {
+											"type": "string"
+										}
+									}
+								},
 								"plain_text": {
 									"type": "string"
+								},
+								"href": {
+									"type": ["string", "null"]
 								}
 							}
 						}
@@ -180,17 +263,29 @@
 						"items": {
 							"type": "object",
 							"properties": {
+								"object": {
+									"type": "string"
+								},
 								"id": {
 									"type": "string"
 								},
 								"name": {
 									"type": "string"
 								},
+								"type": {
+									"type": "string"
+								},
+								"avatar_url": {
+									"type": ["string", "null"]
+								},
 								"person": {
 									"type": "object",
 									"properties": {
 										"email": {
 											"type": "string"
+										},
+										"email_verified": {
+											"type": "boolean"
 										}
 									}
 								}
@@ -300,6 +395,15 @@
 		},
 		"public_url": {
 			"type": ["string", "null"]
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"is_locked": {
+			"type": "boolean"
+		},
+		"request_id": {
+			"type": "string"
 		}
 	},
 	"version": 1

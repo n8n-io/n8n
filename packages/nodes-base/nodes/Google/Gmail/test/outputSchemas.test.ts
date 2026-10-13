@@ -28,5 +28,20 @@ describe.each(['v2.1.0', 'v2.2.0'])('Gmail message output schemas %s', (version)
 			expect(properties).toHaveProperty('textAsHtml');
 			expect(properties).not.toHaveProperty('From');
 		});
+
+		it('describes the address fields and thread headers of the parsed email', () => {
+			const { properties } = readSchema(version, `${operation}.simple-false.json`);
+
+			for (const key of ['cc', 'bcc', 'replyTo', 'references', 'inReplyTo']) {
+				expect(properties).toHaveProperty(key);
+			}
+		});
+
+		it('allows any header name in the parsed email headers', () => {
+			const { properties } = readSchema(version, `${operation}.simple-false.json`);
+			const headers = properties.headers as { additionalProperties?: { type?: string } };
+
+			expect(headers.additionalProperties?.type).toBe('string');
+		});
 	});
 });

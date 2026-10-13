@@ -102,6 +102,31 @@ describe.each(['v3.0.0'])('Notion database page output schemas %s', (version) =>
 			);
 		});
 
+		it('describes the fields that the Notion API adds to a raw page', () => {
+			const { properties } = readSchema(version, `${operation}.simple-false.json`);
+
+			expect(Object.keys(properties ?? {})).toEqual(
+				expect.arrayContaining(['is_archived', 'is_locked', 'request_id']),
+			);
+			expect(properties?.parent?.properties).toHaveProperty('data_source_id');
+		});
+
+		it('describes the extra keys of people and text values in a raw page', () => {
+			const schema = readSchema(version, `${operation}.simple-false.json`);
+			const columns = schema.properties?.properties?.additionalProperties;
+			const columnProperties = typeof columns === 'object' ? columns.properties : undefined;
+			const person = columnProperties?.people?.items;
+			const text = columnProperties?.title?.items;
+
+			expect(Object.keys(person?.properties ?? {})).toEqual(
+				expect.arrayContaining(['object', 'type', 'avatar_url']),
+			);
+			expect(person?.properties?.person?.properties).toHaveProperty('email_verified');
+			expect(Object.keys(text?.properties ?? {})).toEqual(
+				expect.arrayContaining(['type', 'text', 'annotations', 'href']),
+			);
+		});
+
 		it('describes the value of every property type the node supports', () => {
 			const schema = readSchema(version, `${operation}.simple-false.json`);
 			const columns = schema.properties?.properties?.additionalProperties;
