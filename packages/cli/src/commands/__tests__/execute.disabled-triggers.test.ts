@@ -4,6 +4,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { ExecutionLifecycleHooks } from 'n8n-core';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
@@ -27,7 +28,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { Execute } from '../execute';
 import { ExecuteBatch } from '../execute-batch';
 
-const logger = mockInstance(Logger);
+mockInstance(Logger);
 const workflowRepository = mockInstance(WorkflowRepository);
 const ownershipService = mockInstance(OwnershipService);
 const workflowRunner = mockInstance(WorkflowRunner);
@@ -129,7 +130,7 @@ test.each(['execute', 'execute-batch'])(
 		});
 
 		// Run the command payload through the real engine to check which branch executes.
-		const run = await new ManualExecutionService(logger).runManually(
+		const run = await Container.get(ManualExecutionService).runManually(
 			runData,
 			workflow,
 			additionalData,
