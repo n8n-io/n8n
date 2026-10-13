@@ -42,13 +42,13 @@ export type AgentSkillModalData = {
 	 */
 	existingSkillNames?: string[];
 	hubSkillsEnabled?: boolean;
-	attachedSkillIds?: string[];
+	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	projectLabel?: string;
 	canCreateInstanceSkills?: boolean;
 	onConfirm: (payload: { id?: string; skill: AgentSkill; scope: AgentSkillCreateScope }) => void;
 	outdated?: boolean;
 	onUseLatestVersion?: (id: string) => void;
-	onAttach?: (skill: SkillListItem) => void;
+	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (id: string) => void;
 };
 
@@ -101,20 +101,25 @@ const showScopeSelect = computed(
 
 const librarySkills = ref<SkillListItem[]>([]);
 const libraryLoading = ref(false);
-const attachedSkillIds = computed(() => new Set(props.data.attachedSkillIds ?? []));
+const attachedSkills = computed(() => props.data.getAttachedSkills?.() ?? []);
+const attachedSkillIds = computed(() => new Set(attachedSkills.value.map(({ id }) => id)));
+const attachingSkillIds = ref(new Set<string>());
 const pickerItems = computed<SkillConnectionItem[]>(() =>
 	librarySkills.value.map((librarySkill) => {
-		const added = attachedSkillIds.value.has(librarySkill.id);
-		const similarNameReason = added ? undefined : getSimilarNameReason(librarySkill.name);
+		const attached = attachedSkillIds.value.has(librarySkill.id);
+		const attaching = attachingSkillIds.value.has(librarySkill.id);
+		const similarNameReason =
+			attached || attaching ? undefined : getSimilarNameReason(librarySkill.name);
 		return {
 			id: `skill:${librarySkill.id}`,
 			kind: 'skill',
 			skillId: librarySkill.id,
 			title: librarySkill.name,
 			description: librarySkill.description,
-			scopeLabel: getScopeLabel(librarySkill),
-			category: 'skills',
-			status: added ? 'connected' : 'none',
+			category: librarySkill.scope === 'instance' ? 'global' : 'project',
+			status: 'none',
+			attached: attached || attaching,
+			attaching,
 			disabled: similarNameReason !== undefined,
 			...(similarNameReason ? { disabledReason: similarNameReason } : {}),
 		};
@@ -140,9 +145,8 @@ const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>((
 	return isReadOnly.value ? undefined : 'save';
 });
 const modalTitle = computed(() => {
-	if (step.value === 'select' || step.value === 'upload') {
-		return i18n.baseText('agents.builder.skills.add');
-	}
+	if (step.value === 'select') return i18n.baseText('agents.builder.skills.title');
+	if (step.value === 'upload') return i18n.baseText('agents.builder.skills.add');
 	if (step.value === 'preview') return previewSkill.value?.name ?? '';
 	return skill.value.name;
 });
@@ -227,20 +231,13 @@ const canSave = computed(
 
 function getSimilarNameReason(name: string): string | undefined {
 	const key = skillNameKey(name);
-	const similarNames = (props.data.existingSkillNames ?? []).filter(
-		(existingName) => skillNameKey(existingName) === key,
-	);
+	const similarNames = attachedSkills.value
+		.map((attachedSkill) => attachedSkill.name)
+		.filter((attachedName) => skillNameKey(attachedName) === key);
 	if (similarNames.length === 0) return undefined;
 	return i18n.baseText('agents.builder.skills.picker.similarName', {
 		interpolate: { names: [...similarNames, name].map((value) => `"${value}"`).join(', ') },
 	});
-}
-
-function getScopeLabel(librarySkill: SkillListItem): string {
-	if (librarySkill.scope === 'instance') {
-		return i18n.baseText('agents.builder.skills.scope.instance');
-	}
-	return props.data.projectLabel ?? librarySkill.projectName ?? '';
 }
 
 async function loadLibrarySkills() {
@@ -268,9 +265,14 @@ async function loadSkillAccess(skillId: string) {
 	}
 }
 
-function onPickerItemAdd(item: ToolConnectionItem) {
-	if (item.kind !== 'skill' || item.disabled || item.status === 'connected') return;
-	attachLibrarySkill(item.skillId);
+function onPickerItemAttach(item: ToolConnectionItem) {
+	if (item.kind !== 'skill' || item.disabled || item.attached) return;
+	void attachLibrarySkill(item.skillId);
+}
+
+function onPickerItemDetach(item: ToolConnectionItem) {
+	if (item.kind !== 'skill' || !item.attached || item.attaching) return;
+	props.data.onRemove?.(item.skillId);
 }
 
 async function onPickerItemPreview(item: ToolConnectionItem) {
@@ -287,11 +289,23 @@ async function onPickerItemPreview(item: ToolConnectionItem) {
 	}
 }
 
-function attachLibrarySkill(skillId: string) {
+async function attachLibrarySkill(skillId: string) {
 	const librarySkill = librarySkills.value.find((candidate) => candidate.id === skillId);
-	if (!librarySkill) return;
-	props.data.onAttach?.(librarySkill);
-	closeModal();
+	if (!librarySkill || !props.data.onAttach) return;
+	attachingSkillIds.value = new Set([...attachingSkillIds.value, skillId]);
+	try {
+		await props.data.onAttach(librarySkill);
+	} finally {
+		const remaining = new Set(attachingSkillIds.value);
+		remaining.delete(skillId);
+		attachingSkillIds.value = remaining;
+	}
+}
+
+function onPreviewAdd() {
+	if (!previewSkill.value) return;
+	void attachLibrarySkill(previewSkill.value.id);
+	step.value = 'select';
 }
 
 onMounted(() => {
@@ -408,9 +422,13 @@ function onUseLatestVersion() {
 }
 
 function onRemove() {
-	const skillId = step.value === 'preview' ? previewSkill.value?.id : props.data.skillId;
-	if (!skillId) return;
-	props.data.onRemove?.(skillId);
+	if (step.value === 'preview') {
+		if (previewSkill.value) props.data.onRemove?.(previewSkill.value.id);
+		step.value = 'select';
+		return;
+	}
+	if (!props.data.skillId) return;
+	props.data.onRemove?.(props.data.skillId);
 	closeModal();
 }
 </script>
@@ -438,7 +456,8 @@ function onRemove() {
 			<ToolsConnectionModal
 				:open="modalOpen && step === 'select'"
 				:items="pickerItems"
-				:categories="['skills']"
+				:categories="['all', 'project', 'global']"
+				:category-labels="data.projectLabel ? { project: data.projectLabel } : undefined"
 				:detail-item="null"
 				:search-placeholder="i18n.baseText('agents.builder.skills.picker.search.placeholder')"
 				:empty-message="
@@ -448,24 +467,17 @@ function onRemove() {
 				"
 				:no-results-message="i18n.baseText('agents.builder.skills.picker.noResults')"
 				:create-action="{
-					category: 'skills',
+					category: 'all',
 					label: i18n.baseText('agents.builder.skills.picker.create'),
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
 				}"
-				:connect-label="() => i18n.baseText('agents.builder.skills.picker.add')"
-				:connect-aria-label="
-					(item) =>
-						i18n.baseText('agents.builder.skills.picker.addAriaLabel', {
-							interpolate: { name: item.title },
-						})
-				"
-				:connected-label="() => i18n.baseText('agents.builder.skills.picker.added')"
 				embedded
 				show-connect-actions
 				persistent-scrollbar
 				data-testid="agent-skill-picker"
-				@connect="onPickerItemAdd"
+				@connect="onPickerItemAttach"
+				@disconnect="onPickerItemDetach"
 				@open-detail="onPickerItemPreview"
 				@create="step = 'upload'"
 			/>
@@ -574,7 +586,7 @@ function onRemove() {
 				v-if="footerPrimaryAction === 'add'"
 				variant="solid"
 				data-testid="agent-skill-preview-add"
-				@click="previewSkill && attachLibrarySkill(previewSkill.id)"
+				@click="onPreviewAdd"
 			>
 				{{ i18n.baseText('agents.builder.skills.picker.add') }}
 			</N8nButton>

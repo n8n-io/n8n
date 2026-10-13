@@ -445,19 +445,19 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
 				hubSkillsEnabled,
-				attachedSkillIds: appliedSkills.value.map(({ id }) => id),
+				getAttachedSkills: () =>
+					appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
 				projectLabel: projectName.value ?? undefined,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
 				onRemove: (skillId: string) => {
 					if (!isCurrentTarget()) return;
 					onRemoveSkill(skillId);
 				},
-				onAttach: (librarySkill: SkillListItem) => {
-					void attachHubSkill(
+				onAttach: async (librarySkill: SkillListItem) =>
+					await attachHubSkill(
 						isCurrentTarget,
 						async () => await getHubSkill(rootStore.restApiContext, librarySkill.id),
-					);
-				},
+					),
 				onConfirm: ({
 					skill,
 					scope,

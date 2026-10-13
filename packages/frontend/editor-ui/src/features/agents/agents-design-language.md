@@ -223,16 +223,19 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
-When the skills hub is on, `Add skill` starts with the skill picker. The picker
-shows only skills that the Agent can use: skills of its project and instance
-skills. Show the scope next to the skill name. Show `Added` for an attached
-skill. Disable a skill whose name is hard to tell apart from an attached skill,
-and give the reason in its tooltip. The row action adds the skill. A row click
-opens a read-only preview with Back, Cancel, and `Add skill`. The preview of an
-attached skill shows `Remove skill` instead of `Add skill`. Do not edit a skill
-from the picker. `Create skill` opens the upload screen, and
-Back returns to the picker. A user who can create instance skills selects the
-scope with `Save to` at the bottom left of the editor.
+When the skills hub is on, `Add skill` starts with the `Skills` picker. The
+picker shows only skills that the Agent can use: skills of its project and
+global skills. Group them in the tabs All, the project name, and Global. Do not
+show a scope label or an icon in a row. Each row has a switch with the label
+`Attached` or `Detached`. The switch saves at once and keeps the picker open.
+This is an exception to the explicit row action. Disable a skill whose name is
+hard to tell apart from an attached skill, and give the reason in its tooltip.
+A row click opens a read-only preview with Back, Cancel, and `Add skill`. The
+preview of an attached skill shows `Remove skill` instead of `Add skill`. Both
+actions return to the picker. Do not edit a skill from the picker.
+`Create skill` opens the upload screen, and Back returns to the picker. A user
+who can create global skills selects the scope with `Save to` at the bottom
+left of the editor.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the

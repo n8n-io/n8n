@@ -88,18 +88,26 @@ const baseService: ServiceConnectionItem = {
 };
 
 describe('ToolRow', () => {
-	it('shows the scope label of a skill next to its title', () => {
-		const { getByTestId, getByText } = render({
+	it('switches a detached skill on and an attached skill off', async () => {
+		const skill: SkillConnectionItem = {
 			id: 'skill:tone',
 			kind: 'skill',
 			skillId: 'tone',
 			title: 'Support tone',
-			scopeLabel: 'Marketing',
 			status: 'none',
-		});
+			attached: false,
+		};
+		const detached = render(skill);
+		expect(detached.getByText('Detached')).toBeInTheDocument();
+		await userEvent.click(detached.getByTestId('tools-connection-row-attach'));
+		expect(detached.emitted('connect')).toEqual([[skill]]);
+		detached.unmount();
 
-		expect(getByText('Support tone')).toBeInTheDocument();
-		expect(getByTestId('tools-connection-row-scope')).toHaveTextContent('Marketing');
+		const attachedSkill = { ...skill, attached: true };
+		const attached = render(attachedSkill);
+		expect(attached.getByText('Attached')).toBeInTheDocument();
+		await userEvent.click(attached.getByTestId('tools-connection-row-attach'));
+		expect(attached.emitted('disconnect')).toEqual([[attachedSkill]]);
 	});
 
 	it('shows a Connect button for an available mcp-server and emits connect on click', async () => {

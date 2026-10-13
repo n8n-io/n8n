@@ -126,7 +126,8 @@ export interface ServiceConnectionItem extends BaseConnectionItem {
 export interface SkillConnectionItem extends BaseConnectionItem {
 	kind: 'skill';
 	skillId: string;
-	scopeLabel?: string;
+	attached: boolean;
+	attaching?: boolean;
 }
 
 export type ToolConnectionItem =
@@ -154,7 +155,8 @@ export type ToolCategoryKey =
 	| 'community'
 	| 'workflows'
 	| 'agents'
-	| 'skills'
+	| 'project'
+	| 'global'
 	| 'data';
 
 /** Used when an item carries no explicit `category`. */
@@ -165,7 +167,7 @@ export const CATEGORY_BY_KIND: Record<ConnectionItemKind, ToolCategoryKey> = {
 	service: 'built-in',
 	agent: 'agents',
 	'data-store': 'data',
-	skill: 'skills',
+	skill: 'project',
 };
 
 /**

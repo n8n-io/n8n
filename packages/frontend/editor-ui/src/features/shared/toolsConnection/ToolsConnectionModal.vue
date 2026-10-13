@@ -62,6 +62,7 @@ const props = withDefaults(
 		connectLabel?: (item: ToolConnectionItem) => string;
 		connectAriaLabel?: (item: ToolConnectionItem) => string;
 		connectedLabel?: (item: ToolConnectionItem) => string;
+		categoryLabels?: Partial<Record<ToolCategoryKey, string>>;
 	}>(),
 	{
 		open: false,
@@ -278,12 +279,13 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	community: 'tools.connection.categories.community',
 	workflows: 'tools.connection.categories.workflows',
 	agents: 'tools.connection.categories.agents',
-	skills: 'tools.connection.categories.skills',
+	project: 'tools.connection.categories.project',
+	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
 };
 
 function categoryLabel(category: ToolCategoryKey): string {
-	return i18n.baseText(CATEGORY_I18N[category]);
+	return props.categoryLabels?.[category] ?? i18n.baseText(CATEGORY_I18N[category]);
 }
 
 const groupedSearchRows = computed<ListRow[]>(() => {
@@ -490,6 +492,7 @@ function handleOpenChange(value: boolean) {
 								:connected-label="props.connectedLabel?.(row.item)"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
+								@disconnect="emit('disconnect', $event)"
 								@select-credential="
 									(item, authType, credentialId) =>
 										emit('select-credential', item, authType, credentialId)

@@ -165,14 +165,14 @@ type SkillModalData = {
 	hubSkillsEnabled?: boolean;
 	outdated?: boolean;
 	onUseLatestVersion?: (skillId: string) => void;
-	attachedSkillIds?: string[];
+	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	canCreateInstanceSkills?: boolean;
 	onConfirm: (payload: {
 		id?: string;
 		skill: AgentSkill;
 		scope?: 'project' | 'instance';
 	}) => void;
-	onAttach?: (skill: SkillListItem) => void;
+	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
 };
 
@@ -660,7 +660,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		const { modalData } = setupHub();
 
 		expect(modalData.hubSkillsEnabled).toBe(true);
-		expect(modalData.attachedSkillIds).toEqual(['tone']);
+		expect(modalData.getAttachedSkills?.()).toEqual([{ id: 'tone', name: supportTone.name }]);
 		expect(modalData.canCreateInstanceSkills).toBe(true);
 		expect(hasScopeSpy).toHaveBeenCalledWith('skill:create');
 	});
@@ -669,7 +669,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		vi.mocked(getHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
 		const { modalData, scheduleConfigUpdate, agent } = setupHub();
 
-		modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
 		await flushPromises();
 
 		expect(getHubSkill).toHaveBeenCalledWith(expect.anything(), 'sql');
@@ -691,7 +691,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		);
 		const { modalData, scheduleConfigUpdate } = setupHub();
 
-		modalData.onAttach?.({ id: 'tone-2', name: 'support_tone' } as SkillListItem);
+		await modalData.onAttach?.({ id: 'tone-2', name: 'support_tone' } as SkillListItem);
 		await flushPromises();
 
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
@@ -704,7 +704,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		vi.mocked(getHubSkill).mockRejectedValue(new Error('Not found'));
 		const { modalData, scheduleConfigUpdate } = setupHub();
 
-		modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
+		await modalData.onAttach?.({ id: 'sql', name: 'SQL helper' } as SkillListItem);
 		await flushPromises();
 
 		expect(showErrorSpy).toHaveBeenCalledWith(
