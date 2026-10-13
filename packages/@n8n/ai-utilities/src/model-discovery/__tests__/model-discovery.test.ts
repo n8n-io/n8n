@@ -149,27 +149,22 @@ describe('model-discovery', () => {
 			expect(calledUrl(fetch)).toBe('https://generativelanguage.googleapis.com/v1beta/models');
 			expect(calledHeaders(fetch)['x-goog-api-key']).toBe('g-key');
 			expect(models).toEqual([
-				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
 			]);
 		});
 
-		it("prefers the API's displayName over the product name map, unless it repeats the id", async () => {
+		it("labels models with the API's displayName, else the id", async () => {
 			const fetch = mockFetch({
 				models: [
 					{
 						name: 'models/gemini-2.5-pro',
-						displayName: 'Gemini 2.5 Pro (API)',
+						displayName: 'Gemini 2.5 Pro',
 						supportedGenerationMethods: ['generateContent'],
 					},
 					{
 						name: 'models/gemini-2.5-flash',
-						displayName: 'gemini-2.5-flash',
-						supportedGenerationMethods: ['generateContent'],
-					},
-					{
-						name: 'models/gemini-3-flash-preview',
-						displayName: 'models/gemini-3-flash-preview',
+						displayName: ' ',
 						supportedGenerationMethods: ['generateContent'],
 					},
 				],
@@ -178,9 +173,8 @@ describe('model-discovery', () => {
 			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
 
 			expect(models).toEqual([
-				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro (API)' },
-				{ id: 'models/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview' },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
 			]);
 		});
 
@@ -201,8 +195,8 @@ describe('model-discovery', () => {
 
 			expect(models).toEqual([
 				{ id: 'models/gemini-featured', name: 'models/gemini-featured', priority: 10 },
-				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
 			]);
 		});
 	});
@@ -237,8 +231,8 @@ describe('model-discovery', () => {
 			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
 
 			expect(models).toEqual([
-				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+				{ id: 'models/gemini-2.5-flash', name: 'models/gemini-2.5-flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'models/gemini-2.5-pro' },
 			]);
 		});
 	});

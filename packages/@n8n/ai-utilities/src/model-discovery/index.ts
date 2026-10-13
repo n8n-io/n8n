@@ -73,7 +73,9 @@ export { listDeepSeekModels } from './providers/deepseek';
 export {
 	getGoogleModelLabel,
 	listGoogleModels,
+	parseGoogleModels,
 	shouldIncludeGoogleModel,
+	type GoogleModel,
 } from './providers/google';
 export { pinPrioritizedModels } from '@n8n/api-types';
 export { listGroqModels } from './providers/groq';

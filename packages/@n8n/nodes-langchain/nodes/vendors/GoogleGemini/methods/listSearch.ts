@@ -1,4 +1,8 @@
-import { getGoogleModelLabel, pinPrioritizedModels } from '@n8n/ai-utilities/model-discovery';
+import {
+	getGoogleModelLabel,
+	parseGoogleModels,
+	pinPrioritizedModels,
+} from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
@@ -13,15 +17,13 @@ async function baseModelSearch(
 	modelFilter: (model: string) => boolean,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const response = (await apiRequest.call(this, 'GET', '/v1beta/models', {
+	const response: unknown = await apiRequest.call(this, 'GET', '/v1beta/models', {
 		qs: {
 			pageSize: 1000,
 		},
-	})) as {
-		models: Array<{ name: string; displayName?: string; priority?: number }>;
-	};
+	});
 
-	let entries = response.models
+	let entries = parseGoogleModels(response)
 		.filter((model) => modelFilter(model.name))
 		.map((model) => ({
 			result: { name: getGoogleModelLabel(model.name, model.displayName), value: model.name },

@@ -43,7 +43,7 @@ describe('LmChatGoogleGemini', () => {
 				json: {
 					name: 'models/gemini-featured',
 					value: 'models/gemini-featured',
-					displayName: 'gemini-featured',
+					displayName: 'Gemini Featured',
 					priority: 10,
 				},
 			},
@@ -66,11 +66,11 @@ describe('LmChatGoogleGemini', () => {
 
 			const result = await labelModels.call({} as IExecuteSingleFunctions, options, {} as never);
 
-			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id. A priority pins a model.
+			// The API's displayName labels a model, else its id. A priority pins a model.
 			expect(result.map((option) => option.json)).toEqual([
-				{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
-				{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+				{ name: 'Gemini Featured', value: 'models/gemini-featured' },
 				{ name: 'Gemini Api Named', value: 'models/gemini-api-named' },
+				{ name: 'models/gemini-2.5-pro', value: 'models/gemini-2.5-pro' },
 				{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
 			]);
 		}

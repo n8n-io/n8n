@@ -76,7 +76,7 @@ describe('GoogleGemini -> listSearch', () => {
 			expect(result).toEqual({
 				results: [
 					{
-						name: 'Gemini 2.5 Flash',
+						name: 'models/gemini-2.5-flash',
 						value: 'models/gemini-2.5-flash',
 					},
 					{
@@ -106,7 +106,7 @@ describe('GoogleGemini -> listSearch', () => {
 			apiRequestMock.mockResolvedValue({
 				models: [
 					{ name: 'models/gemini-zeta' },
-					{ name: 'models/gemini-featured', displayName: 'gemini-featured', priority: 10 },
+					{ name: 'models/gemini-featured', displayName: 'Gemini Featured', priority: 10 },
 					{ name: 'models/gemini-2.5-pro' },
 					{ name: 'models/gemini-api-named', displayName: 'Gemini Api Named' },
 				],
@@ -114,20 +114,23 @@ describe('GoogleGemini -> listSearch', () => {
 
 			const result = await modelSearch.call(mockExecuteFunctions);
 
-			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id. A priority pins a model.
+			// The API's displayName labels a model, else its id. A priority pins a model.
 			expect(result).toEqual({
 				results: [
-					{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
-					{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+					{ name: 'Gemini Featured', value: 'models/gemini-featured' },
 					{ name: 'Gemini Api Named', value: 'models/gemini-api-named' },
+					{ name: 'models/gemini-2.5-pro', value: 'models/gemini-2.5-pro' },
 					{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
 				],
 			});
 		});
 
-		it('should match the filter against the product name and the id', async () => {
+		it('should match the filter against the label and the id', async () => {
 			apiRequestMock.mockResolvedValue({
-				models: [{ name: 'models/gemini-zeta' }, { name: 'models/gemini-2.5-pro' }],
+				models: [
+					{ name: 'models/gemini-zeta' },
+					{ name: 'models/gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' },
+				],
 			});
 
 			const byName = await modelSearch.call(mockExecuteFunctions, '2.5 Pro');
@@ -147,7 +150,7 @@ describe('GoogleGemini -> listSearch', () => {
 			expect(result).toEqual({
 				results: [
 					{
-						name: 'Gemini 2.5 Flash',
+						name: 'models/gemini-2.5-flash',
 						value: 'models/gemini-2.5-flash',
 					},
 					{
@@ -237,7 +240,6 @@ describe('GoogleGemini -> listSearch', () => {
 
 			expect(result.results).toEqual([
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 					name: 'Gemini 2.5 Flash Image (Nano Banana)',
 					value: 'models/gemini-2.5-flash-image',
 				},

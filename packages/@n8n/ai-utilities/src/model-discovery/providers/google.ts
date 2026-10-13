@@ -1,4 +1,5 @@
-import { getModelDisplayName, pinPrioritizedModels } from '@n8n/api-types';
+import { pinPrioritizedModels } from '@n8n/api-types';
+import { z } from 'zod';
 
 import { baseUrl, byName, getJson } from '../request';
 import type { ListModelsFn } from '../types';
@@ -35,56 +36,48 @@ export function shouldIncludeGoogleModel(model: {
  */
 export const listGoogleModels: ListModelsFn = async (options) => {
 	const base = baseUrl(options, 'https://generativelanguage.googleapis.com');
-	const data = (await getJson(
+	const data = await getJson(
 		`${base}/v1beta/models`,
 		{ 'x-goog-api-key': options.apiKey },
 		options,
 		'google',
-	)) as {
-		models?: Array<{
-			name?: unknown;
-			displayName?: unknown;
-			priority?: unknown;
-			supportedGenerationMethods?: unknown;
-		}>;
-	};
+	);
 
-	const models = (data.models ?? [])
-		.filter(
-			(
-				model,
-			): model is {
-				name: string;
-				displayName?: unknown;
-				priority?: unknown;
-				supportedGenerationMethods?: unknown;
-			} =>
-				typeof model.name === 'string' &&
-				shouldIncludeGoogleModel({
-					name: model.name,
-					supportedGenerationMethods: model.supportedGenerationMethods,
-				}),
-		)
+	const models = parseGoogleModels(data)
+		.filter(shouldIncludeGoogleModel)
 		.map((model) => ({
 			id: model.name,
 			name: getGoogleModelLabel(model.name, model.displayName),
-			...(typeof model.priority === 'number' && Number.isFinite(model.priority)
-				? { priority: model.priority }
-				: {}),
+			...(model.priority !== undefined ? { priority: model.priority } : {}),
 		}))
 		.sort(byName);
 	return pinPrioritizedModels(models, (model) => model.priority);
 };
 
-/**
- * Dropdown label of a Google model: the API's `displayName`, else its product
- * name from `MODEL_DISPLAY_NAMES`, else the id. A `displayName` that only
- * repeats the id (as Gateway credits report unnamed models) does not count.
- */
-export function getGoogleModelLabel(modelId: string, displayName?: unknown): string {
-	const apiName = typeof displayName === 'string' ? displayName.trim() : '';
-	if (apiName && apiName !== modelId && apiName !== modelId.replace(/^models\//, '')) {
-		return apiName;
-	}
-	return getModelDisplayName('google', modelId) ?? modelId;
+/** A malformed optional field is dropped; a model without a name is skipped. */
+const googleModelSchema = z.object({
+	name: z.string(),
+	displayName: z.string().optional().catch(undefined),
+	priority: z.number().finite().optional().catch(undefined),
+	supportedGenerationMethods: z.array(z.string()).optional().catch(undefined),
+});
+
+const googleModelsResponseSchema = z.object({
+	models: z.array(z.unknown()).optional().catch(undefined),
+});
+
+export type GoogleModel = z.infer<typeof googleModelSchema>;
+
+/** Models of a Google `GET /v1beta/models` response. */
+export function parseGoogleModels(data: unknown): GoogleModel[] {
+	const response = googleModelsResponseSchema.safeParse(data);
+	return (response.success ? (response.data.models ?? []) : []).flatMap((item) => {
+		const model = googleModelSchema.safeParse(item);
+		return model.success ? [model.data] : [];
+	});
+}
+
+/** Dropdown label of a Google model: the API's `displayName`, else the id. */
+export function getGoogleModelLabel(modelId: string, displayName?: string): string {
+	return displayName?.trim() || modelId;
 }

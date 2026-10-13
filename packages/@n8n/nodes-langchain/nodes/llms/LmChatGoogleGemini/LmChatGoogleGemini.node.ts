@@ -41,7 +41,7 @@ async function filterChatModels(
 	);
 }
 
-/** Show models under their product name, sorted by it, with prioritized models first. */
+/** Show models under the name the API reports, sorted by it, with prioritized models first. */
 async function labelModels(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
@@ -51,7 +51,13 @@ async function labelModels(
 		const { displayName, priority, ...option } = item.json;
 		const json =
 			typeof option.value === 'string'
-				? { ...option, name: getGoogleModelLabel(option.value, displayName) }
+				? {
+						...option,
+						name: getGoogleModelLabel(
+							option.value,
+							typeof displayName === 'string' ? displayName : undefined,
+						),
+					}
 				: option;
 		return { item: { ...item, json }, priority };
 	});
