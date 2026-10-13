@@ -7,7 +7,7 @@ import type {
 import { AgentsConfig } from '@n8n/config';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ForbiddenError } from '@n8n/errors';
 import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -392,15 +392,7 @@ export class AgentSkillRefsService {
 		availableTo: AgentSkillAvailability,
 		ctx: OperationContext,
 	): Promise<void> {
-		const otherAgentIds = (await this.skillRepository.findUsingAgentIds(skillId, ctx)).filter(
-			(id) => id !== agent.id,
-		);
-		if (otherAgentIds.length > 0) {
-			throw new ConflictError(
-				'Other agents use this skill. Detach it from those agents first, then change where it can be added.',
-			);
-		}
-		await this.skillRepository.updateTarget(skillId, targetFor(agent, availableTo), ctx);
+		await this.skillService.changeTarget(skillId, targetFor(agent, availableTo), agent.id, ctx);
 	}
 
 	private async writeLegacyDraft(

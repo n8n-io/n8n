@@ -372,11 +372,17 @@ describe('Agent skills in the skills hub', () => {
 			agentId: agent.id,
 		});
 		await update('project');
-		await createAgent([created.id]);
+		const other = await createAgent([created.id]);
 		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
 		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
 			agentId: null,
 		});
+
+		// A published pin counts too, after the draft no longer refers to the skill.
+		await publish(other);
+		await skillRefs.replaceDraftRefs(await reload(other), [], {});
+		expect(await skillRefs.refsForDraft(await reload(other), {})).toEqual([]);
+		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
 	});
 
 	it('shares the skills of a duplicated agent', async () => {

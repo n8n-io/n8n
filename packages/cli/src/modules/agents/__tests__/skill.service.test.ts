@@ -486,6 +486,33 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('changeTarget', () => {
+		it('moves a skill that only the given agent uses, under the edit lock', async () => {
+			skills.findUsingAgentIds.mockResolvedValue(['agent-1']);
+
+			await service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
+
+			expect(skills.lockForEdit).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+			expect(skills.lockForEdit.mock.invocationCallOrder[0]).toBeLessThan(
+				skills.findUsingAgentIds.mock.invocationCallOrder[0],
+			);
+			expect(skills.updateTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: null, agentId: 'agent-1' },
+				TX_CTX,
+			);
+		});
+
+		it('refuses to move a skill that another agent uses', async () => {
+			skills.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+			await expect(
+				service.changeTarget('skill_a', { projectId: null, agentId: null }, 'agent-1'),
+			).rejects.toThrow('Other agents use this skill.');
+			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('publish', () => {
 		it('locks the skills and pins the version each ref resolves to', async () => {
 			const a = skillRow('skill_a');
@@ -593,6 +620,17 @@ describe('SkillService', () => {
 			const refs = await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }]);
 
 			expect(refs).toEqual([{ id: 'skill_old' }, { id: 'skill_new' }]);
+		});
+
+		it('holds a shared lock on newly attached skills in the caller transaction', async () => {
+			givenSkills([
+				{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' },
+				{ skill: skillRow('skill_new'), name: 'Tone' },
+			]);
+
+			await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }], TX_CTX);
+
+			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_new'], TX_CTX);
 		});
 
 		it('drops a new ref to a missing skill', async () => {

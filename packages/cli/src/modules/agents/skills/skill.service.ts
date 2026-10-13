@@ -363,6 +363,8 @@ export class SkillService {
 			(id) => !existingIds.has(id) && found.has(id),
 		);
 		if (newIds.length === 0) return kept;
+		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
+		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
 
 		const keptExistingIds = [...new Set(kept.map((ref) => ref.id))].filter((id) =>
 			existingIds.has(id),
@@ -386,6 +388,31 @@ export class SkillService {
 			);
 		}
 		return kept;
+	}
+
+	/**
+	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
+	 * than `keepAgentId` uses it. The edit lock makes a concurrent attach wait, so the check
+	 * and the move see the same agents.
+	 */
+	async changeTarget(
+		skillId: string,
+		target: SkillTarget,
+		keepAgentId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([skillId], txCtx);
+			const others = (await this.skillRepository.findUsingAgentIds(skillId, txCtx)).filter(
+				(id) => id !== keepAgentId,
+			);
+			if (others.length > 0) {
+				throw new ConflictError(
+					'Other agents use this skill. Detach it from those agents first, then change where it can be added.',
+				);
+			}
+			await this.skillRepository.updateTarget(skillId, target, txCtx);
+		});
 	}
 
 	// ---------------------------------------------------------------- permission
