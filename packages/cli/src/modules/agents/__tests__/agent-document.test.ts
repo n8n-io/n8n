@@ -1,8 +1,10 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 
+import type { Agent } from '../entities/agent.entity';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { fromAgentDocument, toAgentDocument } from '../json-config/agent-document';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import { storedAgentConfig } from './test-utils/stored-agent-config';
+import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
 const document: AgentJsonConfig = {
 	name: 'Support agent',
@@ -63,5 +65,22 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(getAgentConfigHash(toAgentDocument(config, skillRefs))).toBe(
 			getAgentConfigHash(document),
 		);
+	});
+});
+
+describe('config hash of a stored agent', () => {
+	// Clients send this hash back as the base hash of a save, so an accidental change to
+	// how skill refs compose must fail here.
+	const CONFIG_HASH = '1c29b5f1b9a64d762f735e1c218b23da83416ee305dca842f807019a6b4ba752';
+
+	it('composes the same document and hash from the stored config and its refs', async () => {
+		const { integrations, ...schema } = document;
+		const agent = { id: 'agent-1', schema: storedAgentConfig(schema), integrations } as Agent;
+
+		const skillRefs = await createAgentSkillRefsService().refsForDraft(agent, {});
+		const composed = composeJsonConfig(agent, skillRefs);
+
+		expect(composed).toEqual(document);
+		expect(getAgentConfigHash(composed)).toBe(CONFIG_HASH);
 	});
 });

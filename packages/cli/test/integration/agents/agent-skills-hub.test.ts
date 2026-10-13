@@ -12,7 +12,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { AgentsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -30,6 +30,10 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
 import { SkillService, toAgentSkill } from '@/modules/agents/skills/skill.service';
+import {
+	markAgentDraftDirty,
+	saveAgentDraftFenced,
+} from '@/modules/agents/utils/agent-draft.utils';
 import { getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { Telemetry } from '@/telemetry';
 
@@ -153,16 +157,21 @@ describe('Agent skills in the skills hub', () => {
 	it('keeps the attach order when the refs are written in another order', async () => {
 		const first = await createSkill(body('First'));
 		const second = await createSkill(body('Second'));
-		const agent = await createAgent([first, second]);
+		const agent = await reload(await createAgent([first, second]));
 
-		await skillRefs.replaceDraftRefs(
-			agent,
-			[
-				{ type: 'skill', id: second },
-				{ type: 'skill', id: first },
-			],
-			{},
-		);
+		// As a config save does: advance the draft and write the refs in one transaction.
+		markAgentDraftDirty(agent);
+		await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await saveAgentDraftFenced(agentRepository, agent, ctx);
+			await skillRefs.replaceDraftRefs(
+				agent,
+				[
+					{ type: 'skill', id: second },
+					{ type: 'skill', id: first },
+				],
+				ctx,
+			);
+		});
 
 		expect((await skillRefs.refsForDraft(agent, {}))?.map((ref) => ref.id)).toEqual([
 			first,

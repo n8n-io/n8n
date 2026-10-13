@@ -47,6 +47,8 @@ describe('AgentSkillRefsService', () => {
 	let service: AgentSkillRefsService;
 
 	beforeEach(() => {
+		// The module mock outlives each test, so clear the calls of earlier ones.
+		vi.mocked(userHasScopes).mockClear();
 		skillRepository = mock<SkillRepository>();
 		skillService = mock<SkillService>();
 		agentRepository = mock<AgentRepository>();

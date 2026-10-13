@@ -10,7 +10,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-dependency.entity';
+import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { SkillFile } from '@/modules/agents/entities/skill-file.entity';
+import { SkillVersion } from '@/modules/agents/entities/skill-version.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -48,11 +52,20 @@ let skillRepository: SkillRepository;
 let directory: string;
 
 async function readSourceRecords() {
+	const { manager } = skillRepository;
 	return await Promise.all([
 		agentRepository.find({ order: { id: 'ASC' } }),
 		historyRepository.find({ order: { versionId: 'ASC' } }),
 		taskRepository.find({ order: { id: 'ASC' } }),
 		taskSnapshotRepository.find({ order: { versionId: 'ASC', taskId: 'ASC' } }),
+		// The skills hub rows of the agents, so an export that changes them fails too.
+		skillRepository.find({ order: { id: 'ASC' } }),
+		manager.find(SkillVersion, { order: { id: 'ASC' } }),
+		manager.find(SkillFile, { order: { skillVersionId: 'ASC', path: 'ASC' } }),
+		manager.find(AgentSkillDependency, { order: { agentId: 'ASC', skillId: 'ASC' } }),
+		manager.find(AgentVersionSkillDependency, {
+			order: { agentVersionId: 'ASC', skillId: 'ASC' },
+		}),
 	]);
 }
 
