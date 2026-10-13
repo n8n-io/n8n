@@ -48,8 +48,16 @@ async function expectError(
 }
 const TX_CTX = { trx: {} } as OperationContext;
 
-function skillRow(id: string, target: Partial<Pick<Skill, 'userId' | 'projectId'>> = {}): Skill {
-	return mock<Skill>({ id, userId: target.userId ?? null, projectId: target.projectId ?? null });
+function skillRow(
+	id: string,
+	target: Partial<Pick<Skill, 'userId' | 'projectId' | 'agentId'>> = {},
+): Skill {
+	return mock<Skill>({
+		id,
+		userId: target.userId ?? null,
+		projectId: target.projectId ?? null,
+		agentId: target.agentId ?? null,
+	});
 }
 
 function versionRow(
@@ -530,8 +538,12 @@ describe('SkillService', () => {
 			['a skill of the agent project', { projectId: PROJECT }, true],
 			['a skill of another project', { projectId: 'project-2' }, false],
 			['a "Just you" skill', { userId: 'user-1' }, false],
+			['a skill of this agent only', { projectId: PROJECT, agentId: 'agent-1' }, true],
+			['a skill of another agent only', { projectId: PROJECT, agentId: 'agent-2' }, false],
 		])('is %s attachable: %s', (_label, target, expected) => {
-			expect(service.isAttachable(skillRow('skill_a', target), PROJECT)).toBe(expected);
+			expect(
+				service.isAttachable(skillRow('skill_a', target), { id: 'agent-1', projectId: PROJECT }),
+			).toBe(expected);
 		});
 	});
 

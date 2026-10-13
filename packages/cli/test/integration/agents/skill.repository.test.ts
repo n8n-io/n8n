@@ -57,14 +57,18 @@ describe('SkillRepository', () => {
 
 	let counter = 0;
 	async function createSkill(
-		target: { userId?: string; projectId?: string } = {},
+		target: { userId?: string; projectId?: string; agentId?: string } = {},
 		body: SkillContent = content(),
 	): Promise<string> {
 		const id = `skill_test${++counter}`;
 		await skills.createSkill(
 			{
 				id,
-				target: { userId: target.userId ?? null, projectId: target.projectId ?? null },
+				target: {
+					userId: target.userId ?? null,
+					projectId: target.projectId ?? null,
+					agentId: target.agentId ?? null,
+				},
 				source: 'ui',
 				createdById: null,
 			},
@@ -270,6 +274,29 @@ describe('SkillRepository', () => {
 			expect(await attachable({ allUsers: false, projectIds: [otherProject.id] })).toEqual([
 				instance,
 			]);
+		});
+
+		it('lists the agent-only skills of one agent only when asked for that agent', async () => {
+			const agent = await createAgent('Agent');
+			const other = await createAgent('Other');
+			const team = await createSkill({ projectId: project.id });
+			const own = await createSkill({ projectId: project.id, agentId: agent.id });
+			await createSkill({ projectId: project.id, agentId: other.id });
+			const visibility = { userId: user.id, allUsers: false, projectIds: [project.id] };
+
+			const attachable = async (attachableAgentId?: string) =>
+				ids(
+					await skills.findVisiblePage(visibility, {
+						skip: 0,
+						attachableTo: project.id,
+						attachableAgentId,
+					}),
+				).sort();
+
+			expect(await attachable()).toEqual([team]);
+			expect(await attachable(agent.id)).toEqual([team, own].sort());
+			const [stored] = await skills.findByIds([own]);
+			expect(stored.agentId).toBe(agent.id);
 		});
 
 		it('searches the name and description of the latest version, before the page is cut', async () => {

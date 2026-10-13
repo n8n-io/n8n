@@ -35,6 +35,7 @@ export type SkillListItem = {
 	projectName: string | null;
 	/** Set for a "Just you" skill. */
 	userId: string | null;
+	agentId: string | null;
 	source: SkillSource;
 	/** Number of the latest version, the one following agents run. */
 	latestVersion: number;
@@ -97,6 +98,7 @@ export class ListSkillsQueryDto extends Z.class({
 	 * skills, never "Just you" skills. Not combined with `scope` or `projectId`.
 	 */
 	attachableTo: z.string().max(36).optional(),
+	attachableAgentId: z.string().max(36).optional(),
 }) {}
 
 export class CreateSkillDto extends Z.class({
