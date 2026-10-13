@@ -2,7 +2,8 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import { GmailTrigger } from '../GmailTrigger.node';
 import { messageFields } from '../v2/MessageDescription';
-import { simplifyOutputShapeHint } from '../utils/descriptions';
+import { threadFields } from '../v2/ThreadDescription';
+import { simplifyOutputShapeHint, threadSimplifyOutputShapeHint } from '../utils/descriptions';
 
 const getSimpleHint = (properties: INodeProperties[], operation?: string) =>
 	properties.find(
@@ -34,5 +35,23 @@ describe('Gmail simplify output hint', () => {
 		const { properties } = new GmailTrigger().description;
 
 		expect(getSimpleHint(properties)).toBe(simplifyOutputShapeHint);
+	});
+
+	describe('thread get', () => {
+		it('is the Simplify hint of the thread get operation', () => {
+			expect(getSimpleHint(threadFields, 'get')).toBe(threadSimplifyOutputShapeHint);
+		});
+
+		it('says that both settings return the flat header keys', () => {
+			expect(threadSimplifyOutputShapeHint).toContain('`From`');
+			expect(threadSimplifyOutputShapeHint).toContain('Both settings');
+		});
+
+		it('says that Simplify off returns an encoded payload, not parsed text fields', () => {
+			expect(threadSimplifyOutputShapeHint).toContain('base64url');
+			expect(threadSimplifyOutputShapeHint).toContain('payload.parts');
+			expect(threadSimplifyOutputShapeHint).not.toContain('textAsHtml');
+			expect(threadSimplifyOutputShapeHint).toContain('no `text` or `html` field');
+		});
 	});
 });
