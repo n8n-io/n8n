@@ -24,6 +24,7 @@ import { TrustedSourceDbStore } from '../trusted-source.store';
 // A mocked module's factory runs on its first import, so the first `init()` that imports the
 // controller is the one that proves the gate. Keep the "loaded" case last.
 const { loadController } = vi.hoisted(() => ({ loadController: vi.fn() }));
+const FLAG = 'N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED';
 vi.mock('../trusted-source.controller', () => {
 	loadController();
 	return {};
@@ -36,6 +37,8 @@ describe('InboundAuthCoreModule', () => {
 		const identityService = mock<TrustedSourceIdentityService>();
 
 		beforeAll(async () => {
+			// The shell may carry the flag; the first init must not be the one that imports the controller.
+			vi.stubEnv(FLAG, '');
 			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			Container.set(TrustedSourceDbStore, dbStore);
 			Container.set(TrustedSourceDbGate, dbGate);
@@ -121,10 +124,9 @@ describe('InboundAuthCoreModule', () => {
 		]);
 	});
 	describe('management controller', () => {
-		const FLAG = 'N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED';
-
 		beforeEach(() => {
 			loadController.mockClear();
+			vi.stubEnv(FLAG, '');
 		});
 
 		afterEach(() => {

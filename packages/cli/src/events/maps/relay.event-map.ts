@@ -1014,19 +1014,19 @@ export type RelayEventMap = {
 	};
 
 	'trusted-source-created': {
-		userId: string;
+		user: UserLike;
 		sourceId: string;
 		issuer: string;
 	};
 
 	'trusted-source-updated': {
-		userId: string;
+		user: UserLike;
 		sourceId: string;
 		issuer: string;
 	};
 
 	'trusted-source-deleted': {
-		userId: string;
+		user: UserLike;
 		sourceId: string;
 		issuer: string;
 	};

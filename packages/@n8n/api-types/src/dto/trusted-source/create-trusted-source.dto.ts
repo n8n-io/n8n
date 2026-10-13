@@ -28,7 +28,7 @@ function droppedKey(
 	}
 	if (!isRecord(input) || !isRecord(parsed)) return undefined;
 	for (const key of Object.keys(input)) {
-		if (!(key in parsed)) return { path, key };
+		if (!Object.hasOwn(parsed, key)) return { path, key };
 		const hit = droppedKey(input[key], parsed[key], [...path, key]);
 		if (hit) return hit;
 	}

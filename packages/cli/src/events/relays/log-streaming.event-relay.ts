@@ -1605,24 +1605,27 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Trusted sources
 
-	private trustedSourceCreated(event: RelayEventMap['trusted-source-created']) {
+	@Redactable()
+	private trustedSourceCreated({ user, ...rest }: RelayEventMap['trusted-source-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.created',
-			payload: event,
+			payload: { ...user, ...rest },
 		});
 	}
 
-	private trustedSourceUpdated(event: RelayEventMap['trusted-source-updated']) {
+	@Redactable()
+	private trustedSourceUpdated({ user, ...rest }: RelayEventMap['trusted-source-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.updated',
-			payload: event,
+			payload: { ...user, ...rest },
 		});
 	}
 
-	private trustedSourceDeleted(event: RelayEventMap['trusted-source-deleted']) {
+	@Redactable()
+	private trustedSourceDeleted({ user, ...rest }: RelayEventMap['trusted-source-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.deleted',
-			payload: event,
+			payload: { ...user, ...rest },
 		});
 	}
 

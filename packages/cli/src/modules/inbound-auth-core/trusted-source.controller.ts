@@ -12,7 +12,7 @@ import {
 	Post,
 	RestController,
 } from '@n8n/decorators';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import {
 	deriveCapabilities,
 	type Capability,
@@ -115,9 +115,16 @@ export class TrustedSourceController {
 	@Licensed('feat:trustedSourceManage')
 	@GlobalScope('trustedSource:create')
 	async create(req: AuthenticatedRequest, _res: Response, @Body dto: CreateTrustedSourceDto) {
+		const { client } = dto.config.authentication;
+		// The blanking value stands for a stored secret, and a new source has none to stand for.
+		if (client?.kind === 'registered' && client.clientSecret === CREDENTIAL_BLANKING_VALUE) {
+			throw new BadRequestError(
+				'clientSecret must be a real secret on create, not the blanking value',
+			);
+		}
 		const source = await wrapConflict(async () => await this.store.create(dto));
 		this.eventService.emit('trusted-source-created', {
-			userId: req.user.id,
+			user: req.user,
 			sourceId: source.id,
 			issuer: source.issuer,
 		});
@@ -154,7 +161,7 @@ export class TrustedSourceController {
 		);
 		const updated = await this.require(id);
 		this.eventService.emit('trusted-source-updated', {
-			userId: req.user.id,
+			user: req.user,
 			sourceId: updated.id,
 			issuer: updated.issuer,
 		});
@@ -167,7 +174,7 @@ export class TrustedSourceController {
 		const source = await this.require(id);
 		await this.store.delete(id);
 		this.eventService.emit('trusted-source-deleted', {
-			userId: req.user.id,
+			user: req.user,
 			sourceId: source.id,
 			issuer: source.issuer,
 		});

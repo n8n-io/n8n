@@ -190,6 +190,16 @@ describe('POST /trusted-sources', () => {
 		},
 	);
 
+	it('refuses the blanking value as a secret and writes nothing', async () => {
+		const response = await ownerAgent
+			.post('/trusted-sources')
+			.send(body({ config: withClient(CREDENTIAL_BLANKING_VALUE) }));
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/blanking value/);
+		expect(await rows.countBy({ managedBy: 'admin' })).toBe(0);
+	});
+
 	it('answers 409 when the name or the issuer is taken', async () => {
 		await createSource();
 
@@ -207,7 +217,7 @@ describe('POST /trusted-sources', () => {
 		const { id } = await createSource();
 
 		expect(emit).toHaveBeenCalledWith('trusted-source-created', {
-			userId: owner.id,
+			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
 		});
@@ -338,7 +348,7 @@ describe('PATCH /trusted-sources/:id', () => {
 		expect((await rows.findOneByOrFail({ id })).name).toBe('Renamed');
 		expect(await bindings.countBy({ sourceId: id })).toBe(1);
 		expect(emit).toHaveBeenCalledWith('trusted-source-updated', {
-			userId: owner.id,
+			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
 		});
@@ -497,7 +507,7 @@ describe('DELETE /trusted-sources/:id', () => {
 		expect(await store.getById(id)).toBeUndefined();
 		expect(await store.getByIssuer(ISSUER)).toBeUndefined();
 		expect(emit).toHaveBeenCalledWith('trusted-source-deleted', {
-			userId: owner.id,
+			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
 		});
