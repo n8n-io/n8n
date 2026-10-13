@@ -14,7 +14,12 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, StorageConfig, WorkflowExecute } from 'n8n-core';
+import {
+	type ExecutionLifecycleHooks,
+	ExternalSecretsProxy,
+	StorageConfig,
+	WorkflowExecute,
+} from 'n8n-core';
 import type {
 	AiEvent,
 	EnvProviderState,
@@ -388,6 +393,15 @@ export async function executeWorkflow(
 	);
 
 	if (options.doNotWaitToFinish) {
+		// Nothing awaits a detached sub-workflow. `startExecution` stores its failure, or logs
+		// an error when it cannot.
+		executionPromise.catch((error: Error) => {
+			Container.get(Logger).debug('Detached sub-workflow execution failed', {
+				executionId,
+				workflowId: workflowData.id,
+				error,
+			});
+		});
 		return { executionId, data: [null] };
 	}
 
@@ -602,13 +616,6 @@ async function startExecution(
 		settings: workflowData.settings,
 	});
 
-	/**
-	 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
-	 * same worker process as the parent execution. Hence ensure the subworkflow
-	 * execution is marked as started as well.
-	 */
-	await executionRepository.setRunning(executionId);
-
 	const startTime = Date.now();
 	// A "library" sub-workflow can opt out of passing its own redaction to its caller. What it
 	// received from its own sub-workflows always passes up.
@@ -620,8 +627,26 @@ async function startExecution(
 		CredentialsPermissionChecker,
 	).getCredentialIdsForNodes(workflowData.nodes);
 
+	let hooks: ExecutionLifecycleHooks | undefined;
+	let preRunChecksPassed = false;
+
 	let data;
 	try {
+		/**
+		 * A subworkflow execution in queue mode is not enqueued, but rather runs in the
+		 * same worker process as the parent execution. Hence ensure the subworkflow
+		 * execution is marked as started as well.
+		 */
+		await executionRepository.setRunning(executionId);
+
+		hooks = getLifecycleHooksForSubExecutions(
+			runData.executionMode,
+			executionId,
+			workflowData,
+			additionalData.userId,
+			options.parentExecution,
+		);
+
 		// The original mode of the whole run tree: a sub-workflow's own
 		// `WorkflowExecute` always runs as 'integrated'. Same pattern as
 		// `credentials-helper`.
@@ -658,6 +683,7 @@ async function startExecution(
 			options.node,
 			additionalData.userId,
 		);
+		preRunChecksPassed = true;
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -672,13 +698,7 @@ async function startExecution(
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
-		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
-			runData.executionMode,
-			executionId,
-			workflowData,
-			additionalData.userId,
-			options.parentExecution,
-		);
+		additionalDataIntegrated.hooks = hooks;
 		additionalDataIntegrated.executionId = executionId;
 		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
 
@@ -752,10 +772,38 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await Container.get(ExecutionPersistence).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		// Nothing else records this failure, and a detached caller never sees the error.
+		const logUnrecordedFailure = (recordError: unknown) =>
+			Container.get(Logger).error('Failed to record a failed sub-workflow execution', {
+				executionId,
+				workflowId: workflowData.id,
+				error: recordError,
+			});
+
+		try {
+			if (hooks && !preRunChecksPassed) {
+				// `WorkflowExecute` never started, so run its hooks here, as `WorkflowRunner.failExecution`
+				// does for a top-level run. The save hook stores the failure and starts the error workflow.
+				// No workflow instance: nothing runs, so the before hooks skip their pre-run gates.
+				await hooks
+					.runHook('workflowExecuteBefore', [undefined, runData.executionData])
+					.catch((hookError: unknown) =>
+						Container.get(Logger).warn('A before hook failed for a failed sub-workflow execution', {
+							executionId,
+							workflowId: workflowData.id,
+							error: hookError,
+						}),
+					);
+				await hooks.runHook('workflowExecuteAfter', [fullRunData]);
+			} else {
+				await Container.get(ExecutionPersistence).updateExistingExecution(
+					executionId,
+					fullExecutionData,
+				);
+			}
+		} catch (recordError) {
+			logUnrecordedFailure(recordError);
+		}
 		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
 		// credential flags on already-executed tasks — ride them on the error like the
 		// regular failure path below.
