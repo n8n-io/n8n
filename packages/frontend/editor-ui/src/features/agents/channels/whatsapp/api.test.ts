@@ -40,4 +40,22 @@ describe('WhatsApp channel API', () => {
 		);
 		expect(result).toEqual({ verified: true });
 	});
+
+	it('encodes each ID as one path segment', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ verified: true });
+
+		await checkWhatsAppCredential(context, 'p/1', 'a?2', 'cred#3');
+		await getWhatsAppWebhookStatus(context, 'p/1', 'a?2');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'POST',
+			'/projects/p%2F1/agents/v2/a%3F2/integrations/whatsapp/check/cred%233',
+		);
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/p%2F1/agents/v2/a%3F2/integrations/whatsapp/webhook-status',
+		);
+	});
 });
