@@ -1159,7 +1159,12 @@ describe('NodeView', () => {
 			await deferred?.();
 
 			expect(copiedText).toEqual([]);
-			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining(MANUAL_TRIGGER_NODE_TYPE),
+				}),
+			);
 			expect(mockShowMessage).not.toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'success' }),
 			);
