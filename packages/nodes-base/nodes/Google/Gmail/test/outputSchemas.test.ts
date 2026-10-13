@@ -72,6 +72,7 @@ describe.each(['v2.1.0', 'v2.2.0'])('Gmail thread get output schemas %s', (versi
 
 		expect(Object.keys(properties).sort()).toEqual(
 			[
+				'Bcc',
 				'Cc',
 				'From',
 				'Subject',
@@ -110,5 +111,43 @@ describe.each(['v2.1.0', 'v2.2.0'])('Gmail thread get output schemas %s', (versi
 		for (const key of ['text', 'html', 'textAsHtml']) {
 			expect(properties).not.toHaveProperty(key);
 		}
+	});
+
+	describe.each(['get.json', 'get.simple-false.json'])('%s', (file) => {
+		it('describes a message at the root, because the default returns one message for each item', () => {
+			const { properties } = readThreadSchema(version, file) as unknown as {
+				properties: Record<string, SchemaNode>;
+			};
+
+			expect(Object.keys(properties)).toEqual(
+				expect.arrayContaining(['From', 'Subject', 'snippet', 'payload', 'threadId']),
+			);
+		});
+
+		it('describes the thread envelope for Return Only Messages off', () => {
+			const { properties } = readThreadSchema(version, file) as unknown as {
+				properties: Record<string, SchemaNode>;
+			};
+
+			expect(properties.messages?.type).toBe('array');
+			expect(Object.keys(properties.messages?.items?.properties ?? {})).toEqual(
+				expect.arrayContaining(['From', 'snippet', 'payload']),
+			);
+		});
+	});
+
+	it('describes the nested parts of a full message down to three levels', () => {
+		const { properties } = readThreadSchema(version, 'get.simple-false.json').properties.messages
+			.items;
+		const level1 = properties.payload.properties?.parts?.items;
+		const level2 = level1?.properties?.parts?.items;
+		const level3 = level2?.properties?.parts?.items;
+
+		expect(Object.keys(level3?.properties ?? {})).toEqual(
+			expect.arrayContaining(['body', 'mimeType', 'partId']),
+		);
+		expect(Object.keys(level3?.properties?.body?.properties ?? {})).toEqual(
+			expect.arrayContaining(['data', 'attachmentId']),
+		);
 	});
 });

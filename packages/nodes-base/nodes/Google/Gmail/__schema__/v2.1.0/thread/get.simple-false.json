@@ -1,10 +1,211 @@
 {
 	"type": "object",
 	"properties": {
+		"Cc": {
+			"type": "string"
+		},
+		"Date": {
+			"type": "string"
+		},
+		"From": {
+			"type": "string"
+		},
+		"Subject": {
+			"type": "string"
+		},
+		"To": {
+			"type": "string"
+		},
 		"historyId": {
 			"type": "string"
 		},
 		"id": {
+			"type": "string"
+		},
+		"internalDate": {
+			"type": "string"
+		},
+		"labels": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"payload": {
+			"type": "object",
+			"properties": {
+				"body": {
+					"type": "object",
+					"properties": {
+						"data": {
+							"type": "string"
+						},
+						"size": {
+							"type": "integer"
+						}
+					}
+				},
+				"filename": {
+					"type": "string"
+				},
+				"mimeType": {
+					"type": "string"
+				},
+				"partId": {
+					"type": "string"
+				},
+				"parts": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"body": {
+								"type": "object",
+								"properties": {
+									"attachmentId": {
+										"type": "string"
+									},
+									"data": {
+										"type": "string"
+									},
+									"size": {
+										"type": "integer"
+									}
+								}
+							},
+							"filename": {
+								"type": "string"
+							},
+							"headers": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"name": {
+											"type": "string"
+										},
+										"value": {
+											"type": "string"
+										}
+									}
+								}
+							},
+							"mimeType": {
+								"type": "string"
+							},
+							"partId": {
+								"type": "string"
+							},
+							"parts": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"body": {
+											"type": "object",
+											"properties": {
+												"attachmentId": {
+													"type": "string"
+												},
+												"data": {
+													"type": "string"
+												},
+												"size": {
+													"type": "integer"
+												}
+											}
+										},
+										"filename": {
+											"type": "string"
+										},
+										"headers": {
+											"type": "array",
+											"items": {
+												"type": "object",
+												"properties": {
+													"name": {
+														"type": "string"
+													},
+													"value": {
+														"type": "string"
+													}
+												}
+											}
+										},
+										"mimeType": {
+											"type": "string"
+										},
+										"partId": {
+											"type": "string"
+										},
+										"parts": {
+											"type": "array",
+											"items": {
+												"type": "object",
+												"properties": {
+													"body": {
+														"type": "object",
+														"properties": {
+															"attachmentId": {
+																"type": "string"
+															},
+															"data": {
+																"type": "string"
+															},
+															"size": {
+																"type": "integer"
+															}
+														}
+													},
+													"filename": {
+														"type": "string"
+													},
+													"headers": {
+														"type": "array",
+														"items": {
+															"type": "object",
+															"properties": {
+																"name": {
+																	"type": "string"
+																},
+																"value": {
+																	"type": "string"
+																}
+															}
+														}
+													},
+													"mimeType": {
+														"type": "string"
+													},
+													"partId": {
+														"type": "string"
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"sizeEstimate": {
+			"type": "integer"
+		},
+		"snippet": {
+			"type": "string"
+		},
+		"threadId": {
 			"type": "string"
 		},
 		"messages": {
@@ -12,19 +213,19 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"From": {
+					"Cc": {
 						"type": "string"
 					},
-					"To": {
+					"Date": {
+						"type": "string"
+					},
+					"From": {
 						"type": "string"
 					},
 					"Subject": {
 						"type": "string"
 					},
-					"Cc": {
-						"type": "string"
-					},
-					"Date": {
+					"To": {
 						"type": "string"
 					},
 					"historyId": {
@@ -49,15 +250,6 @@
 								}
 							}
 						}
-					},
-					"sizeEstimate": {
-						"type": "integer"
-					},
-					"snippet": {
-						"type": "string"
-					},
-					"threadId": {
-						"type": "string"
 					},
 					"payload": {
 						"type": "object",
@@ -127,13 +319,106 @@
 										"parts": {
 											"type": "array",
 											"items": {
-												"type": "object"
+												"type": "object",
+												"properties": {
+													"body": {
+														"type": "object",
+														"properties": {
+															"attachmentId": {
+																"type": "string"
+															},
+															"data": {
+																"type": "string"
+															},
+															"size": {
+																"type": "integer"
+															}
+														}
+													},
+													"filename": {
+														"type": "string"
+													},
+													"headers": {
+														"type": "array",
+														"items": {
+															"type": "object",
+															"properties": {
+																"name": {
+																	"type": "string"
+																},
+																"value": {
+																	"type": "string"
+																}
+															}
+														}
+													},
+													"mimeType": {
+														"type": "string"
+													},
+													"partId": {
+														"type": "string"
+													},
+													"parts": {
+														"type": "array",
+														"items": {
+															"type": "object",
+															"properties": {
+																"body": {
+																	"type": "object",
+																	"properties": {
+																		"attachmentId": {
+																			"type": "string"
+																		},
+																		"data": {
+																			"type": "string"
+																		},
+																		"size": {
+																			"type": "integer"
+																		}
+																	}
+																},
+																"filename": {
+																	"type": "string"
+																},
+																"headers": {
+																	"type": "array",
+																	"items": {
+																		"type": "object",
+																		"properties": {
+																			"name": {
+																				"type": "string"
+																			},
+																			"value": {
+																				"type": "string"
+																			}
+																		}
+																	}
+																},
+																"mimeType": {
+																	"type": "string"
+																},
+																"partId": {
+																	"type": "string"
+																}
+															}
+														}
+													}
+												}
 											}
 										}
 									}
 								}
 							}
 						}
+					},
+					"sizeEstimate": {
+						"type": "integer"
+					},
+					"snippet": {
+						"type": "string"
+					},
+					"threadId": {
+						"type": "string"
 					}
 				},
 				"additionalProperties": {
@@ -142,5 +427,8 @@
 			}
 		}
 	},
-	"version": 1
+	"version": 1,
+	"additionalProperties": {
+		"type": "string"
+	}
 }

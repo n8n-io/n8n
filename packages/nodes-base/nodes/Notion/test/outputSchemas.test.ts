@@ -122,6 +122,10 @@ describe.each(['v3.0.0'])('Notion database page output schemas %s', (version) =>
 				expect.arrayContaining(['object', 'type', 'avatar_url']),
 			);
 			expect(person?.properties?.person?.properties).toHaveProperty('email_verified');
+			expect(text?.properties?.text?.properties?.link?.properties).toHaveProperty('url');
+			expect(
+				columnProperties?.rich_text?.items?.properties?.text?.properties?.link?.properties,
+			).toHaveProperty('url');
 			expect(Object.keys(text?.properties ?? {})).toEqual(
 				expect.arrayContaining(['type', 'text', 'annotations', 'href']),
 			);

@@ -87,7 +87,12 @@
 											"type": "string"
 										},
 										"link": {
-											"type": ["object", "null"]
+											"type": ["object", "null"],
+											"properties": {
+												"url": {
+													"type": "string"
+												}
+											}
 										}
 									}
 								},
@@ -138,7 +143,12 @@
 											"type": "string"
 										},
 										"link": {
-											"type": ["object", "null"]
+											"type": ["object", "null"],
+											"properties": {
+												"url": {
+													"type": "string"
+												}
+											}
 										}
 									}
 								},

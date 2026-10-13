@@ -53,5 +53,9 @@ describe('Gmail simplify output hint', () => {
 			expect(threadSimplifyOutputShapeHint).not.toContain('textAsHtml');
 			expect(threadSimplifyOutputShapeHint).toContain('no `text` or `html` field');
 		});
+
+		it('tells the builder to look through nested parts for the body', () => {
+			expect(threadSimplifyOutputShapeHint).toContain('nested `parts`');
+		});
 	});
 });

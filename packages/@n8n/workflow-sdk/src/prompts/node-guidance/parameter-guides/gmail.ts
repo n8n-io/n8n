@@ -20,6 +20,8 @@ The parameter is named **simple**, not "simplify". Default: true.
 
 Read the sender from the field that matches the setting. \`$json.From\` is undefined when simple is false.
 
+These shapes are for the **message** operations. For **thread:get**, both settings flatten the headers, so \`$json.From\` works. With simple false, thread:get returns the Gmail API payload: the body is encoded in base64url in \`payload.parts[].body.data\` (look through nested parts), and there is no \`$json.from\`, \`$json.text\` or \`$json.html\`.
+
 Set simple to false only when:
 - Workflow needs the email body to analyze or summarize it
 - AI Agent will process the email text
