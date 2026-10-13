@@ -18,7 +18,8 @@ on:
         default: false
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  # Manual trial runs get their own group, so several samples can run at once.
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || (github.event_name == 'workflow_dispatch' && github.run_id) || github.ref }}
   cancel-in-progress: true
 
 jobs:
