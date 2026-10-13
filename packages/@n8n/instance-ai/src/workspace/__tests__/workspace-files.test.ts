@@ -1,3 +1,5 @@
+import { OperationalError } from 'n8n-workflow';
+
 import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
@@ -347,6 +349,20 @@ describe('workspace-files', () => {
 
 		expect(writeFile).toHaveBeenCalledTimes(3);
 		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
+	it('reports a failed write as an operational error at error level', async () => {
+		const writeFile = vi.fn(async () => await Promise.reject(new Error('permission denied')));
+		const executeCommand = vi.fn(async () => await Promise.reject(new Error('sandbox gone')));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		const error = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+			retryBackoffBaseMs: 1,
+		}).catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(OperationalError);
+		expect(error).toMatchObject({ level: 'error' });
 	});
 
 	it('keeps a classifiable primary quota error as cause when both write paths fail', async () => {
