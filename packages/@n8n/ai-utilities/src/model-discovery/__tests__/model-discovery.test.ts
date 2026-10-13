@@ -167,6 +167,11 @@ describe('model-discovery', () => {
 						displayName: 'gemini-2.5-flash',
 						supportedGenerationMethods: ['generateContent'],
 					},
+					{
+						name: 'models/gemini-3-flash-preview',
+						displayName: 'models/gemini-3-flash-preview',
+						supportedGenerationMethods: ['generateContent'],
+					},
 				],
 			});
 
@@ -175,6 +180,7 @@ describe('model-discovery', () => {
 			expect(models).toEqual([
 				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
 				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro (API)' },
+				{ id: 'models/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview' },
 			]);
 		});
 
@@ -198,6 +204,16 @@ describe('model-discovery', () => {
 				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
 				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
 			]);
+		});
+	});
+
+	describe('google empty response', () => {
+		it('returns no models when the response has no models list', async () => {
+			const fetch = mockFetch({});
+
+			await expect(listModelsForProvider('google', { apiKey: 'g-key', fetch })).resolves.toEqual(
+				[],
+			);
 		});
 	});
 

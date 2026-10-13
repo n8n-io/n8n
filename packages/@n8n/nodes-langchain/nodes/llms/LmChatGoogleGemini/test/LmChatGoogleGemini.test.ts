@@ -75,4 +75,22 @@ describe('LmChatGoogleGemini', () => {
 			]);
 		}
 	});
+
+	it('should leave the label of an option without a string value alone', async () => {
+		const property = new LmChatGoogleGemini().description.properties.find(
+			(p) => p.name === 'modelName',
+		);
+		const postReceive = property?.typeOptions?.loadOptions?.routing?.output
+			?.postReceive as PostReceiveAction[];
+		const labelModels = postReceive.at(-1);
+		if (typeof labelModels !== 'function') throw new Error('Expected a postReceive function');
+
+		const result = await labelModels.call(
+			{} as IExecuteSingleFunctions,
+			[{ json: { name: 'Unknown', value: 42, displayName: 'Ignored' } }],
+			{} as never,
+		);
+
+		expect(result.map((option) => option.json)).toEqual([{ name: 'Unknown', value: 42 }]);
+	});
 });
