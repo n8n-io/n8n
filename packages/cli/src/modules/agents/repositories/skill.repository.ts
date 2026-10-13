@@ -447,6 +447,35 @@ export class SkillRepository extends BaseRepository<Skill> {
 	}
 
 	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
+	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const manager = this.managerFor(ctx);
+		const drafts = await manager.find(AgentSkillDependency, {
+			select: ['agentId'],
+			where: { skillId },
+		});
+		const pins = await manager
+			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+			.where('pin.skillId = :skillId', { skillId })
+			.select('history.agentId', 'agentId')
+			.distinct(true)
+			.getRawMany<{ agentId: string }>();
+		return unique([...drafts, ...pins].map((row) => row.agentId));
+	}
+
+	async updateTarget(skillId: string, target: SkillTarget, ctx: OperationContext = {}) {
+		await this.managerFor(ctx).update(
+			Skill,
+			{ id: skillId },
+			{
+				userId: target.userId,
+				projectId: target.projectId,
+				agentId: target.agentId ?? null,
+				updatedAt: new Date(),
+			},
+		);
+	}
+
 	async countUsingAgents(
 		skillIds: string[],
 		ctx: OperationContext = {},
