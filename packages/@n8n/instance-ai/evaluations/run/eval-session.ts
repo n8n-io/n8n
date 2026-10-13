@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiEvalLlmUsage,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiRunDebugResponse,
 } from '@n8n/api-types';
@@ -24,7 +25,10 @@ import {
 } from './build-orchestrator';
 import { createCasePipeline, type CasePipeline } from './case-pipeline';
 import { LaneAllocator } from './lane-allocator';
+import { provisionBuildProject } from './lane-users';
+import type { EvalUsageMeter } from '../../src/utils/eval-usage';
 import type { CliArgs } from '../cli/args';
+import { N8nClient } from '../clients/n8n-client';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { executeAgentScenario, type AgentScenarioContext } from '../harness/agent-execution';
 import {
@@ -78,6 +82,8 @@ export interface ResolvedSideBand {
 	 *  builds (no threadId) still attach their outcome-expectation verdicts. */
 	buildExpectations: Map<string, BuildExpectationResult[]>;
 	runDebug: Map<string, InstanceAiRunDebugResponse[]>;
+	/** Keyed by the build-cache key (`iteration:fileSlug`). */
+	harnessUsage: Map<string, InstanceAiEvalLlmUsage[]>;
 }
 
 export interface EvalSession {
@@ -135,6 +141,16 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
 		const laneNum = idx + 1;
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
+		const { buildUserPool } = lane;
+		// Named like the owner, so the agent's project line reads as it does for a real user.
+		const buildProject = buildUserPool
+			? async () =>
+					await provisionBuildProject({
+						pool: buildUserPool,
+						memberClient: new N8nClient(lane.baseUrl),
+						name: lane.client.userName ?? { firstName: 'Eval', lastName: 'Builder' },
+					})
+			: undefined;
 		return {
 			runner: lane,
 			laneNum,
@@ -160,6 +176,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							seed: buildArgs.seed,
 							executionScenarios: buildArgs.executionScenarios,
 							createdCredentialIds: lane.createdCredentialIds,
+							buildProject,
 							timeoutMs: buildArgs.timeoutMs,
 							preRunWorkflowIds: lane.preRunWorkflowIds,
 							preRunDataTableIds: lane.preRunDataTableIds,
@@ -212,6 +229,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 					timeoutMs: number;
 					testCaseName?: string;
 					seedContext?: ScenarioSeedContext;
+					projectId?: string;
 				}) =>
 					await executeAgentScenario(
 						lane.client,
@@ -224,6 +242,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 						execArgs.buildTrace,
 						args.outputDir,
 						execArgs.seedContext,
+						execArgs.projectId,
 					),
 			),
 		};
@@ -247,6 +266,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 	// Agent config + skills, fetched once per build and shared by every
 	// scenario row of the case (the agent analog of the cached workflow JSON).
 	const agentContextByKey = new Map<string, Promise<AgentScenarioContext>>();
+	const harnessUsageByKey = new Map<string, EvalUsageMeter>();
 
 	const orchestrator = createBuildOrchestrator({
 		args,
@@ -273,6 +293,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		buildExpectationsByKey,
 		agentContextByKey,
 		runDebugByThreadId,
+		harnessUsageByKey,
 	});
 
 	const resolveSideBand = async (): Promise<ResolvedSideBand> => {
@@ -284,7 +305,10 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
 			runDebug.set(threadId, await runDebugPromise);
 		}
-		return { transcriptByThreadId, buildExpectations, runDebug };
+		const harnessUsage = new Map(
+			[...harnessUsageByKey].map(([key, meter]) => [key, meter.entries()]),
+		);
+		return { transcriptByThreadId, buildExpectations, runDebug, harnessUsage };
 	};
 
 	const drainBuilds = async (): Promise<void> => {

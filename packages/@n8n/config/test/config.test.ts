@@ -65,6 +65,7 @@ describe('GlobalConfig', () => {
 		hideUsagePage: false,
 		deployment: {
 			type: 'default',
+			artifact: '',
 		},
 		mfa: {
 			enabled: true,
@@ -214,6 +215,7 @@ describe('GlobalConfig', () => {
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 			mergeSqlSandboxMemoryLimitMb: 64,
+			blockDeprecated: true,
 		},
 		publicApi: {
 			disabled: false,
@@ -507,6 +509,7 @@ describe('GlobalConfig', () => {
 			pollTimeoutSeconds: 45,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,

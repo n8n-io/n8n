@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import AgentModal from './modals/AgentModal.vue';
@@ -17,8 +19,11 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const nodeTypesStore = useNodeTypesStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const form = ref<InstanceType<typeof AgentToolConfigForm> | null>(null);
 const credentialModalOpen = ref(false);
+const isRestricted = ref(false);
 const title = ref(initialTitle());
 
 const isOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
@@ -39,6 +44,16 @@ const removeLabel = computed(() => {
 	}
 	return i18n.baseText('agents.builder.tools.remove');
 });
+
+void nodeTypesStore.loadNodeTypesIfNotLoaded();
+
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
 
 function initialTitle(): string {
 	if (props.data.kind === 'mcpServer') return props.data.mcpServer.name;
@@ -80,7 +95,7 @@ function handleRemove() {
 		v-if="canRender"
 		:open="isOpen"
 		:title="title"
-		:editable-title="!isCustomTool"
+		:editable-title="!isCustomTool && !isRestricted"
 		:trap-focus="!credentialModalOpen"
 		:disable-outside-pointer-events="!credentialModalOpen"
 		data-testid="agent-tool-config-modal"
@@ -93,6 +108,7 @@ function handleRemove() {
 			:data="data"
 			@update:title="title = $event"
 			@update:credential-modal-open="credentialModalOpen = $event"
+			@update:restricted="isRestricted = $event"
 		/>
 
 		<template v-if="data.onRemove" #footerLeft>
@@ -102,7 +118,12 @@ function handleRemove() {
 			</N8nButton>
 		</template>
 		<template #footerActions>
-			<N8nButton variant="solid" data-testid="agent-tool-config-save" @click="handleConfirm">
+			<N8nButton
+				variant="solid"
+				:disabled="isRestricted"
+				data-testid="agent-tool-config-save"
+				@click="handleConfirm"
+			>
 				{{ i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>

@@ -21,6 +21,7 @@ import {
 	AgentChatExecutionService,
 	type CancelSuspendedRunParams,
 } from './agent-chat-execution.service';
+import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import type { AgentThreadAccess } from './entities/agent-execution-thread.entity';
 import type { AgentChatSurface, AgentSessionMode } from './utils/agent-thread-access';
 import {
@@ -47,6 +48,7 @@ import {
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentsSettingsService } from './agents-settings.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
@@ -75,7 +77,7 @@ import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
@@ -346,6 +348,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -521,7 +524,7 @@ export class AgentExecutionOrchestratorService {
 			resume.chatSurface === 'n8n-chat' &&
 			!(await this.agentRepository.isN8nChatPublished(resume.agentId, resume.projectId))
 		) {
-			throw new UserError('This agent is not available in n8n Chat');
+			throw new AgentN8nChatUnavailableError();
 		}
 		if (await this.resumeBackgroundForChat(resume)) return;
 		const checkpoint = await this.loadResumeCheckpoint(resume);
@@ -1194,21 +1197,26 @@ export class AgentExecutionOrchestratorService {
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;
 			let agent;
+			let selected;
 			try {
 				agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+				if (agent) {
+					selected = await resolveAgentRunSource(
+						agent,
+						params.usePublishedVersion === true && Boolean(agent.activeVersion?.schema),
+						this.agentSkillRefs,
+						{},
+					);
+				}
 			} catch (cause) {
 				throw new AgentExecutionRecordingError({ phase: 'create', cause, executionError: error });
 			}
 			abortSignal?.throwIfAborted();
-			if (agent) {
-				const selected =
-					params.usePublishedVersion && agent.activeVersion?.schema
-						? getPublishedAgentSnapshot(agent)
-						: agent;
+			if (agent && selected) {
 				const failed = {
 					...recording,
 					agentId,
-					agentName: selected.schema?.name ?? agent.name,
+					agentName: selected.agent.schema?.name ?? agent.name,
 					projectId,
 					telemetry: {
 						userId: params.attributionUserId ?? params.user?.id,
@@ -1308,7 +1316,7 @@ export class AgentExecutionOrchestratorService {
 			type: 'resume',
 			resumeData: config.resumeData,
 			options: withBudgetGuardrail(
-				this.createResumeOptions(config, memoryScope, messageContext, tracing),
+				this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
 				{
 					budget: runtime.budget,
 					sessionId: memoryScope.threadId,
@@ -1328,10 +1336,10 @@ export class AgentExecutionOrchestratorService {
 		runtime: AgentRuntime,
 	) {
 		const { agentId, projectId, source, user } = config;
-		// Recover the original source only when tracing needs it. `resumeForChat`
+		// Recover the original source for telemetry and tracing. `resumeForChat`
 		// already resolved the n8n Chat source, so this only runs for other callers.
 		const suspendedExecution =
-			this.agentRunTracingService.enabled && source === undefined
+			source === undefined
 				? await this.agentExecutionService.findLatestSuspendedRun(threadId)
 				: undefined;
 		const executionSource = source ?? suspendedExecution?.source ?? undefined;
@@ -1350,6 +1358,7 @@ export class AgentExecutionOrchestratorService {
 		config: ResumeChatConfig,
 		memoryScope: ResumeCheckpoint['memoryScope'],
 		selectedContext: IntegrationMessageContext | null,
+		source: string | undefined,
 		tracing: Awaited<ReturnType<AgentRunTracingService['build']>>,
 	): Extract<AgentTurnRequest, { type: 'resume' }>['options'] {
 		const { runId, toolCallId, agentId, user, usePublishedVersion, abortSignal } = config;
@@ -1373,6 +1382,7 @@ export class AgentExecutionOrchestratorService {
 				agentId,
 				userId: user?.id,
 				runType,
+				source,
 			}),
 			...modelStreamStallOptions(this.aiConfig),
 			...(tracing ? { telemetry: tracing } : {}),
@@ -1498,7 +1508,7 @@ export class AgentExecutionOrchestratorService {
 			!skipPublishedCheck &&
 			!(await this.agentRepository.isN8nChatPublished(agentId, projectId))
 		) {
-			throw new UserError('This agent is not available in n8n Chat');
+			throw new AgentN8nChatUnavailableError();
 		}
 		const fail = denied ?? (() => new UserError('Session not found'));
 		if (resourceId !== chatSurfaceMemoryResourceId('n8n-chat', userId)) {
@@ -1696,6 +1706,7 @@ export class AgentExecutionOrchestratorService {
 						agentId,
 						userId,
 						runType: telemetry.runType,
+						source,
 					}),
 					...modelStreamStallOptions(this.aiConfig),
 					...(tracing ? { telemetry: tracing } : {}),

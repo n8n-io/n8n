@@ -43,6 +43,7 @@ import {
 	setMessageInteractives,
 	upsertMessageInteractive,
 } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thinking';
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
@@ -80,8 +81,12 @@ export interface UseAgentChatStreamParams {
 	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	/** The agent is no longer available in n8n Chat (unpublished before send, or mid-run/resume). */
+	onAgentUnavailable?: () => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
+	/** Card types of the chat host. The stream maps suspended tool calls with them. */
+	interactionExtensions?: readonly AgentsChatInteractionExtension[];
 }
 
 type ResumePayload =
@@ -112,6 +117,7 @@ function warningKey(warning: AgentChatWarning): string {
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
+	const extensions = params.interactionExtensions ?? [];
 	const locale = useI18n();
 	const { showError } = useToast();
 	const channel = params.channel ?? ref<AgentChatChannel>('chat');
@@ -268,7 +274,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
 				messages.value = restoreBudgetNotices(
-					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
+					applyOpenSuspensions(
+						convertDbMessages(dbMessages, extensions),
+						openSuspensions,
+						extensions,
+					),
 				);
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
@@ -928,7 +938,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			settleOpenReasoning(session);
 			if (session.current) markMessageSuccessIfSettled(session.current);
 			session.current = undefined;
-			messages.value.push(...convertDbMessages([event.message]));
+			messages.value.push(...convertDbMessages([event.message], extensions));
 		}
 	}
 
@@ -1131,7 +1141,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					const currentInteractive = getMessageInteractive(found.msg, event.toolCallId);
-					const updated = rebuildInteractiveFromHistory(found.tc);
+					const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 					if (updated && currentInteractive?.resolvedAt === undefined) {
 						upsertMessageInteractive(found.msg, updated);
 					}
@@ -1170,10 +1180,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
-				const interactive = rebuildInteractiveFromHistory({
-					...tc,
-					output: undefined,
-				});
+				const interactive = rebuildInteractiveFromHistory({ ...tc, output: undefined }, extensions);
 				if (interactive) {
 					interactive.runId = payload.runId;
 					upsertMessageInteractive(msg, interactive);
@@ -1230,6 +1237,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				markInFlightStateFailed(session);
 				if (event.errorCode === 'agent_misconfigured') {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
+				} else if (event.errorCode === 'agent_unavailable') {
+					params.onAgentUnavailable?.();
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
 				} else {
@@ -1476,6 +1485,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		files?: File[],
 		onAccepted?: (queueId?: string) => void,
 		userMessage?: ChatMessage,
+		clientContext?: Record<string, unknown>,
 	) {
 		const target = targetKey();
 		const url = agentChatBaseUrl(
@@ -1492,6 +1502,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
 		}
+		if (clientContext) body.clientContext = clientContext;
 		if (files?.length) {
 			body.attachments = await Promise.all(
 				files.map(async (file) => {
@@ -1573,7 +1584,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					payload.resumeData,
 					found.tc.input,
 				);
-				const updated = rebuildInteractiveFromHistory(found.tc);
+				const updated = rebuildInteractiveFromHistory(found.tc, extensions);
 				if (updated?.toolName === APPROVAL_TOOL_NAME) {
 					const approved = getApprovalDecision(payload.resumeData);
 					if (approved !== undefined) updated.resolvedValue = { approved };
@@ -1659,10 +1670,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		);
 	}
 
+	/**
+	 * `clientContext` is per-message context that a system agent's provider reads.
+	 * The request body carries it only when it is set.
+	 */
 	async function sendMessage(
 		text: string,
 		files?: File[],
 		onAccepted?: (queueId?: string) => void,
+		clientContext?: Record<string, unknown>,
 	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
 		if ((!trimmed && !files?.length) || isSubmitting.value || isLoadingHistory.value) return 'busy';
@@ -1698,6 +1714,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					release();
 				},
 				userMessage,
+				clientContext,
 			)
 				.then(({ outcome }) => {
 					release(outcome === 'busy' ? 'busy' : 'sent');

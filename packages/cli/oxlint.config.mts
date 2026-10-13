@@ -70,6 +70,11 @@ const engineV2ModuleOnlyImport = {
 		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
 };
 
+const METRICS_DATABASE_IMPORT_MESSAGE =
+	'Use DatabaseMetricQueryService for metrics database reads.';
+const METRICS_CLI_IMPORT_MESSAGE =
+	'Metrics collectors import only reviewed cli modules. Use DatabaseMetricQueryService for metrics database reads.';
+
 export default defineConfig({
 	extends: [backendConfig],
 	ignorePatterns: ['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**'],
@@ -349,6 +354,93 @@ export default defineConfig({
 			rules: {
 				'n8n-local-rules/no-top-level-relative-imports-in-backend-module': 'error',
 				'n8n-local-rules/no-constructor-in-backend-module': 'error',
+			},
+		},
+		{
+			files: ['./src/metrics/prometheus/**/*.ts'],
+			excludeFiles: [
+				'./src/metrics/prometheus/**/__tests__/**/*.ts',
+				'./src/metrics/prometheus/**/*.test.ts',
+				'./src/metrics/prometheus/**/*.spec.ts',
+				// These files own queries or read connection state. Review their database access directly.
+				'./src/metrics/prometheus/database-metric-query.service.ts',
+				'./src/metrics/prometheus/cached-metric-query.ts',
+				'./src/metrics/prometheus/db-pool-metrics.service.ts',
+			],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{
+						paths: [
+							// Keep the package restrictions: rule options replace earlier options.
+							POLICY_INTERNAL_RESTRICTION,
+							engineV2ModuleOnlyImport,
+							jsonwebtokenSigningRestriction,
+							{
+								name: '@n8n/db',
+								allowImportNames: ['DbConnectionMetrics', 'WorkflowPublicationOutboxStatus'],
+								allowTypeImports: true,
+								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+							{
+								name: '@n8n/di',
+								importNames: ['Container'],
+								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+						],
+						patterns: [
+							jsonwebtokenSubpathRestriction,
+							{
+								group: [
+									'@n8n/db/**',
+									'@n8n/typeorm',
+									'@n8n/typeorm/**',
+									'@n8n/di/**',
+									'pg',
+									'pg/**',
+									'sqlite3',
+									'sqlite3/**',
+									'node:sqlite',
+								],
+								allowTypeImports: true,
+								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+							{
+								group: ['**/cached-metric-query', '**/cached-metric-query.*'],
+								allowImportNames: ['toGaugeValue'],
+								allowTypeImports: true,
+								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+							{
+								group: ['**/*.repository', '**/*.repository.*'],
+								allowTypeImports: true,
+								message: METRICS_DATABASE_IMPORT_MESSAGE,
+							},
+							{
+								group: [
+									'@/**',
+									'../**',
+									'./../**',
+									// gitignore cannot re-include a file under an excluded folder, so re-include each folder first.
+									'!@/constants',
+									'!@/eventbus/',
+									'!@/eventbus/message-event-bus/',
+									'!@/eventbus/message-event-bus/message-event-bus',
+									'!@/events/',
+									'!@/events/maps/',
+									'!@/events/maps/system-task-metrics.event-map',
+									'!@/modules/',
+									'!@/modules/instance-ai/',
+									'!@/modules/instance-ai/instance-ai-run-probe',
+									'!@/services/',
+									'!@/services/database-independent-routes.service',
+								],
+								allowTypeImports: true,
+								message: METRICS_CLI_IMPORT_MESSAGE,
+							},
+						],
+					},
+				],
 			},
 		},
 	],

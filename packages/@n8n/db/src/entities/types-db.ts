@@ -66,7 +66,11 @@ export interface IExecutionBase {
 	 * correlated across queue-mode boundaries.
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
-	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	tracingContext?: {
+		traceparent: string;
+		tracestate?: string;
+		identity?: Record<string, string>;
+	} | null;
 	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`

@@ -1,4 +1,4 @@
-import type { AiPreferenceScope, AiPreferenceSource, AiPreferenceUserDto } from '@n8n/api-types';
+import type { AiPreferenceScope, AiPreferenceUserDto } from '@n8n/api-types';
 import {
 	aiPreferenceScopeOf,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
@@ -72,12 +72,19 @@ export function preferenceAudience(
 	}
 }
 
-/** The surface that wrote the row, as the settings list names it. */
-export function preferenceSourceLabel(
-	i18n: { baseText: (key: BaseTextKey) => string },
-	source: AiPreferenceSource,
+export function preferenceCreatorLabel(
+	i18n: {
+		baseText: (key: BaseTextKey, options?: { interpolate: Record<string, string> }) => string;
+	},
+	row: Pick<Preference, 'createdBy' | 'source'>,
 ): string {
-	return i18n.baseText(`settings.context.preferences.source.${source}`);
+	const source = i18n.baseText(`settings.context.preferences.source.${row.source}`);
+	const name = preferenceUserName(row.createdBy);
+	if (!name) return source;
+	if (row.source === 'ui') return name;
+	return i18n.baseText('settings.context.preferences.createdBy.withSource', {
+		interpolate: { name, source },
+	});
 }
 
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {

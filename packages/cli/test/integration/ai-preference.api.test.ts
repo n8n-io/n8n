@@ -210,6 +210,22 @@ describe('POST /ai-preferences', () => {
 		expect(stored.createdById).toBe(member.id);
 	});
 
+	test('returns the author on the row, to the author and to other readers', async () => {
+		const created = await ownerAgent
+			.post('/ai-preferences')
+			.send({ content: 'Everyone.', scope: 'instance' });
+		const author = { id: owner.id, email: owner.email };
+		expect(created.body.data.createdBy).toMatchObject(author);
+
+		const listed = await memberAgent.get('/ai-preferences');
+		expect(listed.body.data.data).toEqual([
+			expect.objectContaining({
+				id: created.body.data.id,
+				createdBy: expect.objectContaining(author),
+			}),
+		]);
+	});
+
 	test('trims the content and refuses a blank preference', async () => {
 		const saved = await memberAgent
 			.post('/ai-preferences')

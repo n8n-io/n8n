@@ -57,6 +57,7 @@ erDiagram
   varchar_36_ versionId
 }
 "public.skill" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

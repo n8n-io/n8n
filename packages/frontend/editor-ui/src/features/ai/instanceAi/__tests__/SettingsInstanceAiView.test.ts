@@ -318,6 +318,38 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
 		});
 
+		it('renders a pulsing success dot when enabled and fully configured', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelEnvConfigured: true,
+					sandboxEnabled: true,
+					sandboxEnvConfigured: true,
+					searchDisabled: true,
+				},
+			});
+			const { getByTestId } = renderComponent();
+			const dot = getByTestId('n8n-agent-status-dot');
+			expect(dot.className).toContain('success');
+			expect(dot.className).toContain('pulse');
+		});
+
+		it('renders a static warning dot when setup is required', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelName: null,
+					sandboxEnvConfigured: true,
+				},
+			});
+			const { getByTestId } = renderComponent();
+			const dot = getByTestId('n8n-agent-status-dot');
+			expect(dot.className).toContain('warning');
+			expect(dot.className).not.toContain('pulse');
+		});
+
 		it('shows setup required for a credential-only legacy model assignment', () => {
 			store.$patch({
 				settings: {

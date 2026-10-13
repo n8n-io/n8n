@@ -144,6 +144,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -562,6 +563,7 @@ describe('WorkflowService', () => {
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 
 			vi.clearAllMocks();
@@ -1599,6 +1601,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 
 			// Bypass validation internals
@@ -2361,6 +2364,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -2504,6 +2508,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -2816,6 +2821,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -2992,6 +2998,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -3181,6 +3188,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -3286,6 +3294,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 		});
 
@@ -3394,6 +3403,7 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
