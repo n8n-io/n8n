@@ -206,14 +206,12 @@ const managedCredentialOption = computed<ManagedCredentialOption | null>(() => {
 });
 
 const fallbackCredentials = computed<AgentCredentialOption[]>(() =>
-	credentialsStore
-		.getUsableCredentialByType(fallbackCredentialType.value)
-		.map((credential) => ({
-			id: credential.id,
-			name: credential.name,
-			typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
-			homeProject: credential.homeProject,
-		})),
+	credentialsStore.getUsableCredentialByType(fallbackCredentialType.value).map((credential) => ({
+		id: credential.id,
+		name: credential.name,
+		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+		homeProject: credential.homeProject,
+	})),
 );
 
 const projectForPermissions = computed(() => {
