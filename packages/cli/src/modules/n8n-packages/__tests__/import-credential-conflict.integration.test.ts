@@ -1,5 +1,11 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -17,7 +23,7 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 } from '@test-integration/db/credentials';
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
@@ -284,6 +290,27 @@ describe('credentialConflictPolicy', () => {
 			}),
 		]);
 		await expectNothingWritten(credential);
+	});
+
+	it('fail only binds a global credential that the importing user cannot update', async () => {
+		const member = await createMember();
+		await linkUserToProject(member, project, 'project:admin');
+		const credential = await saveCredential(
+			githubCredentialPayload({ name: 'Global GitHub', isGlobal: true }),
+			{ user: owner, role: 'credential:owner' },
+		);
+
+		const result = await importPackage({
+			user: member,
+			projectId: project.id,
+			credentialConflictPolicy: 'fail',
+			packageBuffer: await workflowPackage(credential, {
+				name: 'Renamed',
+				data: { accessToken: EXPRESSION },
+			}),
+		});
+
+		expect(result.bindings.credentials).toEqual({ [credential.id]: credential.id });
 	});
 
 	it('fail only binds a managed credential', async () => {

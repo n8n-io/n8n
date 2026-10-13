@@ -428,6 +428,9 @@ describe('CredentialImporter', () => {
 
 		beforeEach(() => {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([usable('cred-1')]);
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids) => await Promise.resolve(new Set(ids)),
+			);
 		});
 
 		it('keep-existing loads and decrypts nothing', async () => {
@@ -517,6 +520,29 @@ describe('CredentialImporter', () => {
 
 			expect(result.candidates).toEqual([]);
 			expect(result.updates).toEqual([]);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		});
+
+		it('only binds a match the user cannot update, and loads and decrypts nothing', async () => {
+			credentialsFinder.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'fail',
+					packageCredentials: new Map([['cred-1', packageFile({ name: 'Renamed' })]]),
+				}),
+			);
+
+			expect(result.successes).toEqual(new Map([['cred-1', 'cred-1']]));
+			expect(result.candidates).toEqual([]);
+			expect(result.updates).toEqual([]);
+			expect(credentialsFinder.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
+				['cred-1'],
+				user,
+				['credential:update'],
+			);
+			expect(credentialsFinder.findById).not.toHaveBeenCalled();
 			expect(credentialsService.decrypt).not.toHaveBeenCalled();
 		});
 

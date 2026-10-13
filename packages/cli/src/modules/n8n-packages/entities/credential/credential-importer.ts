@@ -1,5 +1,5 @@
 import { CredentialsFinderService } from '@n8n/backend-services';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -49,7 +49,7 @@ export class CredentialImporter {
 			return { ...resolution, candidates: [], updates: [] };
 		}
 
-		return { ...resolution, ...(await this.planUpdates(request, resolution)) };
+		return { ...resolution, ...(await this.planUpdates(context.user, request, resolution)) };
 	}
 
 	/**
@@ -57,11 +57,21 @@ export class CredentialImporter {
 	 * Decrypted values stay in this method: the plan keeps only ids and the package payload.
 	 */
 	private async planUpdates(
+		user: User,
 		request: CredentialBindingRequest,
 		resolution: CredentialResolution,
 	): Promise<Pick<CredentialImportPlan, 'candidates' | 'updates'>> {
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
+		);
+		// Matching needs only use access. The comparison reads the stored secret, so it runs
+		// only on credentials the user can update: any other match is only bound.
+		const updatableIds = await this.credentialsFinder.findCredentialIdsWithScopeForUser(
+			[...resolution.successes]
+				.filter(([sourceId]) => request.packageCredentials?.has(sourceId))
+				.map(([, targetId]) => targetId),
+			user,
+			['credential:update'],
 		);
 		const destinations = new Map<string, CredentialsEntity | null>();
 		const candidates: CredentialUpdateCandidate[] = [];
@@ -70,7 +80,7 @@ export class CredentialImporter {
 		for (const [sourceId, targetId] of resolution.successes) {
 			// No file means the exporting user could not read the credential: bind only.
 			const packageCredential = request.packageCredentials?.get(sourceId);
-			if (packageCredential === undefined) continue;
+			if (packageCredential === undefined || !updatableIds.has(targetId)) continue;
 
 			if (!destinations.has(targetId)) {
 				destinations.set(
