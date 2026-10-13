@@ -49,8 +49,12 @@ Read and persist accepted candidate data before workspace cleanup removes it.
 AST-1480 owns investigation admission, baseline capture, final candidate compilation,
 acceptance, and atomic completion. This invocation creates no result or suggestion record.
 When parameter sharing is disabled, candidate source omits node parameters and verification is unavailable.
-Use `compileCandidateWorkflow()` for final reconstruction. It preserves baseline fields, node identity,
-layout, and credential references. It rejects unchanged or unsupported candidates.
+`compileCandidateWorkflow()` reuses the builder compiler, credential resolution, and save preparation.
+It uses the captured baseline for existing IDs, setup values, and layout. It keeps baseline workflow
+fields outside the candidate graph. Verification also runs the builder's credential permission check.
+Suggestions only change nodes and connections. Node-group edits are not supported.
+Apply runs the normal save validation on the retained groups.
+Unchanged candidates can be checked. Final acceptance must require a useful change for a suggestion.
 Recheck the baseline before saving the result. A successful execution is not required to store useful changes.
 There is no automatic trigger or public launch endpoint.
 
@@ -59,6 +63,8 @@ There is no automatic trigger or public launch endpoint.
 Each call compiles the current workspace file. `candidateChecksum` identifies the compiled candidate.
 Validation and execution evidence are separate. Edits require another check.
 The tool reuses the builder simulation planner, execution adapter, and coverage analysis.
+Credential changes use the normal builder rules. The response includes resolved and missing credentials.
+Nodes with mocked credentials use the same simulation rules as builder verification.
 It returns node previews, failures, simulated nodes, and nodes that the run did not reach.
 Some nodes execute against external services under the existing simulation rules.
 

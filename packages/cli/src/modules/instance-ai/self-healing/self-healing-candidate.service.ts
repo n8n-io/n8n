@@ -15,7 +15,10 @@ import {
 	type WorkflowBuildOutcome,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+import { calculateWorkflowChecksum, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+
+import { License } from '@/license';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import { toWorkflowJSON } from '../workflow-json';
@@ -30,7 +33,9 @@ type CandidateInput = SelfHealingCandidateInput & {
 	context: InstanceAiContext;
 	abortSignal: AbortSignal;
 };
-type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }>;
+type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }> & {
+	candidateChecksum: string;
+};
 
 @Service()
 export class SelfHealingCandidateService {
@@ -39,6 +44,8 @@ export class SelfHealingCandidateService {
 		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly temporaryWorkflows: SelfHealingTemporaryWorkflowService,
 		private readonly logger: Logger,
+		private readonly enterpriseWorkflows: EnterpriseWorkflowService,
+		private readonly license: License,
 	) {}
 
 	async verify(input: CandidateInput) {
@@ -56,19 +63,33 @@ export class SelfHealingCandidateService {
 		if (execution.status !== 'available') {
 			throw new ForbiddenError('The failed execution is unavailable for this workflow.');
 		}
-		const candidate = await compileCandidateWorkflow({
+		const compiled = await compileCandidateWorkflow({
 			baseline,
 			context,
 			filePath,
 			abortSignal,
 		});
-		if (!candidate.success) {
-			return { filePath, validation: candidate, verification: { status: 'not_run' } };
+		if (!compiled.success) {
+			return { filePath, validation: compiled, verification: { status: 'not_run' } };
 		}
+		// Match the builder's save checks before identifying the graph that will run.
+		// oxlint-disable-next-line typescript/no-deprecated
+		if (this.license.isSharingEnabled()) {
+			compiled.workflow = await this.enterpriseWorkflows.preventTampering(
+				compiled.workflow,
+				baseline.workflowId,
+				user,
+			);
+		}
+		const candidate = {
+			...compiled,
+			candidateChecksum: await calculateWorkflowChecksum(compiled.workflow),
+		};
 		const validated = {
 			filePath,
 			candidateChecksum: candidate.candidateChecksum,
 			validation: { success: true, warnings: candidate.warnings },
+			credentialResolution: candidate.credentialResolution,
 		};
 		if (input.validationOnly) return { ...validated, verification: { status: 'not_run' } };
 
@@ -96,6 +117,7 @@ export class SelfHealingCandidateService {
 		const plan = await planVerificationSimulation({
 			workflow,
 			workflowId: baseline.workflowId,
+			mockedNodeNames: candidate.credentialResolution.mockedNodeNames,
 			declaredOutputFixtures: candidate.declaredOutputFixtures,
 			outputSchemaLookup: context.outputSchemaLookup,
 			fallbackModelConfig: context.modelId,
@@ -114,7 +136,9 @@ export class SelfHealingCandidateService {
 			taskId: candidate.candidateChecksum,
 			submitted: false,
 			triggerType: 'manual_or_testable',
-			needsUserInput: false,
+			mockedNodeNames: candidate.credentialResolution.mockedNodeNames,
+			mockedCredentialTypes: candidate.credentialResolution.mockedCredentialTypes,
+			needsUserInput: candidate.credentialResolution.mockedCredentialTypes.length > 0,
 			summary: 'Verify the self-healing candidate.',
 		};
 		const preparation = prepareVerificationRun(buildOutcome, {});

@@ -3,8 +3,13 @@ import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { InstanceAiContext, InstanceAiExecutionService } from '@n8n/instance-ai';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { License } from '@/license';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+import { toWorkflowJSON } from '../../workflow-json';
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import { SelfHealingCandidateService } from '../self-healing-candidate.service';
 import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
@@ -63,6 +68,8 @@ describe('SelfHealingCandidateService', () => {
 	const executions = mock<SelfHealingExecutionReferenceService>();
 	const temporaryWorkflows = mock<SelfHealingTemporaryWorkflowService>();
 	const logger = mock<Logger>();
+	const enterpriseWorkflows = mock<EnterpriseWorkflowService>();
+	const license = mock<License>();
 	const executionService = mock<InstanceAiExecutionService>();
 	const filesystem = mock<WorkspaceFilesystem>();
 	const workspace = mock<Workspace>({ filesystem });
@@ -71,12 +78,16 @@ describe('SelfHealingCandidateService', () => {
 		executions,
 		temporaryWorkflows,
 		logger,
+		enterpriseWorkflows,
+		license,
 	);
 	let source: string;
 	let input: Parameters<SelfHealingCandidateService['verify']>[0];
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		license.isSharingEnabled.mockReturnValue(false);
+		enterpriseWorkflows.preventTampering.mockImplementation(async (workflow) => workflow);
 		source = candidateSource('Repaired process');
 		filesystem.readFile.mockImplementation(async () => source);
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
@@ -102,11 +113,26 @@ describe('SelfHealingCandidateService', () => {
 				workspace,
 				logger,
 				executionService,
-				credentialService: mock<InstanceAiContext['credentialService']>(),
+				workflowService: mock<InstanceAiContext['workflowService']>({
+					getAsWorkflowJSON: async () =>
+						toWorkflowJSON({ ...baseline.original, id: baseline.workflowId }),
+				}),
+				nodeService: mock<InstanceAiContext['nodeService']>(),
+				credentialService: mock<InstanceAiContext['credentialService']>({
+					list: async () => [],
+					isAiGatewayCredentialType: undefined,
+					isManagedOAuthCredentialType: undefined,
+				}),
 				nodeTypesProvider: undefined,
+				outputSchemaLookup: undefined,
+				modelId: undefined,
 				allowSendingParameterValues: true,
 			}),
 		};
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
 	});
 
 	it('validates the current source without creating or running a temporary workflow', async () => {
@@ -118,6 +144,42 @@ describe('SelfHealingCandidateService', () => {
 			validation: { success: true },
 			verification: { status: 'not_run' },
 		});
+		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(executionService.run).not.toHaveBeenCalled();
+	});
+
+	it('identifies the graph after the builder credential checks restore protected nodes', async () => {
+		license.isSharingEnabled.mockReturnValue(true);
+		enterpriseWorkflows.preventTampering.mockResolvedValueOnce(baseline.original);
+
+		const result = await service.verify({ ...input, validationOnly: true });
+
+		expect(enterpriseWorkflows.preventTampering).toHaveBeenCalledWith(
+			expect.objectContaining({
+				nodes: expect.arrayContaining([expect.objectContaining({ name: 'Repaired process' })]),
+			}),
+			baseline.workflowId,
+			user,
+		);
+		expect(result).toMatchObject({
+			candidateChecksum: await calculateWorkflowChecksum(baseline.original),
+			validation: { success: true },
+			verification: { status: 'not_run' },
+		});
+		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
+		expect(executionService.run).not.toHaveBeenCalled();
+	});
+
+	it('stops before verification when the builder credential checks reject the candidate', async () => {
+		license.isSharingEnabled.mockReturnValue(true);
+		enterpriseWorkflows.preventTampering.mockRejectedValueOnce(
+			new Error('The workflow credentials are unavailable.'),
+		);
+
+		await expect(service.verify(input)).rejects.toThrow(
+			'The workflow credentials are unavailable.',
+		);
+
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});
@@ -163,11 +225,68 @@ describe('SelfHealingCandidateService', () => {
 			expect(workflowId).toBe('temporary-1');
 			expect(options).toMatchObject({ isVerificationRun: true, abortSignal: input.abortSignal });
 		}
-		expect(temporaryWorkflows.withTemporaryWorkflow.mock.calls[1][0].graph.nodes[1].name).toBe(
-			'Second repair',
-		);
+		expect(
+			temporaryWorkflows.withTemporaryWorkflow.mock.calls[1][0].graph.nodes.find(
+				(node) => node.id === 'process-1',
+			)?.name,
+		).toBe('Second repair');
 		expect(input.baseline).toEqual(baseline);
 		expect(suggestions.createSuggestion).not.toHaveBeenCalled();
+	});
+
+	it('simulates a read-only node when the builder cannot resolve its credentials', async () => {
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL_API_KEY', '');
+		vi.stubEnv('N8N_AI_ANTHROPIC_KEY', '');
+		vi.stubEnv('ANTHROPIC_API_KEY', '');
+		const workflow = structuredClone(baseline.original);
+		workflow.nodes[1] = {
+			...workflow.nodes[1],
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			parameters: {
+				method: 'GET',
+				url: 'https://example.test/data',
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: { httpHeaderAuth: { id: 'missing', name: 'Missing credential' } },
+		};
+		source = JSON.stringify({ ...workflow, id: baseline.workflowId });
+		executionService.getResolvedNodeParameters.mockResolvedValueOnce({
+			nodeName: 'Process',
+			runIndex: 0,
+			itemIndex: 0,
+			parameters: {},
+			resolved: '{}',
+			failedExpressions: [],
+			emptyResolutions: [],
+		});
+		executionService.run.mockResolvedValueOnce({
+			executionId: 'verification-1',
+			status: 'success',
+			executedNodeNames: ['Start', 'Process'],
+		});
+
+		const result = await service.verify(input);
+
+		expect(result).toMatchObject({
+			credentialResolution: {
+				mockedNodeNames: ['Process'],
+				mockedCredentialsByNode: { Process: ['httpHeaderAuth'] },
+			},
+			verification: {
+				success: true,
+				simulatedNodes: [expect.objectContaining({ nodeName: 'Process' })],
+			},
+		});
+		expect(executionService.run).toHaveBeenCalledWith(
+			'temporary-1',
+			undefined,
+			expect.objectContaining({
+				verificationPinData: { Process: [expect.any(Object)] },
+			}),
+		);
+		expect(input.baseline).toEqual(baseline);
 	});
 
 	it('reports node failures and unreached nodes even when the engine returns success', async () => {
