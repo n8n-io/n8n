@@ -67,7 +67,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ source
   timestamp_3__with_time_zone updatedAt
-  uuid userId FK
 }
 "public.skill_version" {
   varchar_64_ contentHash

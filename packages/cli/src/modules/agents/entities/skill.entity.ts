@@ -5,20 +5,15 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 export type SkillSource = 'ui' | 'agent';
 
 /**
- * A skill in the skills hub, identified by its id only. One target: `userId` ("Just
- * you", used by the assistant only, never by agents), `projectId` (a team or personal
- * project, used by its agents and its assistant sessions), `agentId` with that agent's
- * `projectId` (only that agent can use it), or none (the instance).
+ * A skill in the skills hub, identified by its id only. One target: `projectId` (a team
+ * or personal project, used by its agents), `agentId` (only that agent can use it; the
+ * project is the agent's), or neither (the instance).
  * The name and content live in `SkillVersion` rows.
  */
 @Entity({ name: 'skill' })
 export class Skill extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	id: string;
-
-	@Index()
-	@Column({ type: 'uuid', nullable: true })
-	userId: string | null;
 
 	@Index()
 	@Column({ type: 'varchar', length: 36, nullable: true })

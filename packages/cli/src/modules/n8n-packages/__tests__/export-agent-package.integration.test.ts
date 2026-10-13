@@ -90,7 +90,7 @@ beforeAll(async () => {
 		await skillRepository.createSkill(
 			{
 				id: skillId,
-				target: { userId: null, projectId: project.id },
+				target: { projectId: project.id, agentId: null },
 				source: 'ui',
 				createdById: null,
 			},

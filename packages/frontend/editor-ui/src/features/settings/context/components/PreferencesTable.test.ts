@@ -141,6 +141,13 @@ describe('PreferencesTable', () => {
 		expect(authors[2]).toHaveTextContent('MCP');
 	});
 
+	it('shows when each row was last updated', () => {
+		const { getByText, getByTestId } = render([preference()]);
+
+		expect(getByText('Last updated')).toBeInTheDocument();
+		expect(getByTestId('preference-updated-at')).not.toBeEmptyDOMElement();
+	});
+
 	it('enables both actions when the row carries write scopes', () => {
 		const { getByTestId } = render([preference({ scopes: WRITABLE })]);
 

@@ -8,11 +8,10 @@ const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
 
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
- * A skill belongs to one target: a user ("Just you", for the assistant only), a project
- * (team or personal, for its agents and its assistant sessions), one agent in a project
- * (only that agent can use it), or the instance (neither set). Its name and content live in numbered, immutable versions: a Save that changes
- * the content creates the next one, agents read the latest, and agent publishes pin the
- * one they ran.
+ * A skill belongs to one target: a project (team or personal, for its agents), one agent
+ * (only that agent can use it; its project is the agent's), or the instance (neither set). Its name and
+ * content live in numbered, immutable versions: a Save that changes the content creates
+ * the next one, agents read the latest, and agent publishes pin the one they ran.
  */
 export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -40,33 +39,25 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 		await createTable(SKILL_TABLE)
 			.withColumns(
 				column('id').varchar(36).primary.comment('skill_<nanoid>, the same format agents use'),
-				column('userId').uuid.comment(
-					'Set for a "Just you" skill, which agents never use. NULL otherwise',
-				),
 				column('projectId')
 					.varchar(36)
 					.comment('Set for a project skill, team or personal. NULL otherwise'),
 				column('agentId')
 					.varchar(36)
 					.comment(
-						'Set when only this agent can use the skill. projectId is then the agent project',
+						'Set when only this agent can use the skill. projectId is then NULL: the agent holds the project',
 					),
+				// No CHECK on the values: new sources (upload, Git sync, AI-written) must not
+				// recreate the table on SQLite. The service validates them.
 				column('source')
 					.varchar(16)
-					.notNull.withEnumCheck(['ui', 'agent'])
-					.comment(
-						'How the skill was created: "ui" (the skills hub) or "agent" (the agent builder or the migration)',
+					.notNull.comment(
+						'How the skill was created, set by the server: "ui" (the skills hub) or "agent" (the agent builder or the copy of agent skills)',
 					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
-			.withTimestamps.withIndexOn(['userId'])
-			.withIndexOn(['projectId'])
+			.withTimestamps.withIndexOn(['projectId'])
 			.withIndexOn(['agentId'])
-			.withForeignKey('userId', {
-				tableName: 'user',
-				columnName: 'id',
-				onDelete: 'CASCADE',
-			})
 			.withForeignKey('projectId', {
 				tableName: 'project',
 				columnName: 'id',
@@ -83,13 +74,11 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
+			// One target. An agent skill takes its project from the agent, so the two cannot
+			// disagree, and the skill follows the agent if the agent moves.
 			.withCheck(
 				`CHK_${tablePrefix}skill_single_target`,
-				`${escape.columnName('userId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
-			)
-			.withCheck(
-				`CHK_${tablePrefix}skill_agent_in_project`,
-				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NOT NULL`,
+				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
 			);
 	}
 

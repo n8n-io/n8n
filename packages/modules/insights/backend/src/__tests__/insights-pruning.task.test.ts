@@ -1,6 +1,6 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { MAX_TIMER_DELAY_SECONDS } from '@n8n/constants';
-import { resolveSystemTaskSchedule } from '@n8n/decorators';
+import { resolveSystemTask } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsPruningService } from '../insights-pruning.service';
@@ -22,16 +22,18 @@ describe('InsightsPruningTask', () => {
 			kind: 'interval',
 			intervalSeconds: insightsConfig.pruneCheckIntervalHours * 3600,
 		});
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
-		expect(task.retryDelaySeconds).toBe(1);
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true, timeoutSeconds: 600 },
+			leaderTimer: { retryDelaySeconds: 1 },
+		});
 	});
 
 	it('should keep the whole-second rounding of a half-second prune-check cadence', () => {
 		const config = new InsightsConfig();
 		config.pruneCheckIntervalHours = 0.03625;
 
-		const schedule = resolveSystemTaskSchedule(
+		const { schedule } = resolveSystemTask(
 			new InsightsPruningTask(config, databaseConfig, pruningService),
 		);
 
@@ -48,9 +50,10 @@ describe('InsightsPruningTask', () => {
 		({ type, statementTimeoutMs, timeoutSeconds }) => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
-			expect(new InsightsPruningTask(insightsConfig, database, pruningService).timeoutSeconds).toBe(
-				timeoutSeconds,
-			);
+			expect(
+				new InsightsPruningTask(insightsConfig, database, pruningService).target.scheduler
+					.timeoutSeconds,
+			).toBe(timeoutSeconds);
 		},
 	);
 

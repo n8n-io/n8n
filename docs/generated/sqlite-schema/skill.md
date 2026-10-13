@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "projectId" varchar(36), "agentId" varchar(36), "source" varchar(16) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_skill_single_target" CHECK ("userId" IS NULL OR "projectId" IS NULL), CONSTRAINT "CHK_skill_agent_in_project" CHECK ("agentId" IS NULL OR "projectId" IS NOT NULL), CONSTRAINT "CHK_skill_source" CHECK ("source" IN ('ui', 'agent')), CONSTRAINT "FK_c08612011a88745a32784544b28" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE, CONSTRAINT "FK_402ed37bff0d3134f6e782455ed" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_7d4fb6af107e507d9a86293cf9d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4de4501583cd1fcd6f5ea85f547" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36), "agentId" varchar(36), "source" varchar(16) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_skill_single_target" CHECK ("agentId" IS NULL OR "projectId" IS NULL), CONSTRAINT "FK_402ed37bff0d3134f6e782455ed" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_7d4fb6af107e507d9a86293cf9d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4de4501583cd1fcd6f5ea85f547" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -22,19 +22,15 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "
 | projectId | varchar(36) |  | true |  | [project](project.md) |  |
 | source | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| userId | varchar |  | true |  | [user](user.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("userId" IS NULL OR "projectId" IS NULL) |
-| - | CHECK | CHECK ("agentId" IS NULL OR "projectId" IS NOT NULL) |
-| - | CHECK | CHECK ("source" IN ('ui', 'agent')) |
+| - | CHECK | CHECK ("agentId" IS NULL OR "projectId" IS NULL) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_skill_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -44,7 +40,6 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "
 | ---- | ---------- |
 | IDX_402ed37bff0d3134f6e782455e | CREATE INDEX "IDX_402ed37bff0d3134f6e782455e" ON "skill" ("projectId")  |
 | IDX_7d4fb6af107e507d9a86293cf9 | CREATE INDEX "IDX_7d4fb6af107e507d9a86293cf9" ON "skill" ("agentId")  |
-| IDX_c08612011a88745a32784544b2 | CREATE INDEX "IDX_c08612011a88745a32784544b2" ON "skill" ("userId")  |
 | sqlite_autoindex_skill_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -58,7 +53,6 @@ erDiagram
 "agent_version_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"skill" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "skill" {
   varchar_36_ agentId FK
@@ -68,7 +62,6 @@ erDiagram
   varchar_36_ projectId FK
   varchar_16_ source
   datetime_3_ updatedAt
-  varchar userId FK
 }
 "agents" {
   varchar_36_ activeVersionId FK

@@ -1,6 +1,8 @@
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Credentials } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
 
@@ -61,14 +63,17 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
+				let decryptedData: ICredentialDataDecryptedObject | undefined;
 				const data = await selectCredentialDataForExport(
 					request.credentialExportPolicy,
-					async () =>
-						await new Credentials(
+					async () => {
+						decryptedData = await new Credentials(
 							{ id: credential.id, name: credential.name },
 							credential.type,
 							credential.data,
-						).getData(),
+						).getData();
+						return decryptedData;
+					},
 				);
 				entries.push(
 					await writeManifestEntry(
@@ -80,7 +85,10 @@ export class CredentialExporter {
 							request.projectTargetsById,
 						),
 						{ id: credential.id, name: credential.name },
-						this.credentialSerializer.serialize(credential, { data }),
+						this.credentialSerializer.serialize(credential, {
+							data,
+							...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
+						}),
 					),
 				);
 			}

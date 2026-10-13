@@ -18,9 +18,9 @@ import {
 import { scopeInformation } from '@/scope-information';
 
 /**
- * Skill scopes follow the AI preference split. `skill` covers instance skills and other
- * users' "Just you" skills. `projectSkill` covers the skills of one project. A user's own
- * skills need no scope, and every user may read instance skills.
+ * Skill scopes follow the AI preference split. `skill` covers instance skills.
+ * `projectSkill` covers the skills of one project and of its agents. Every user may read
+ * instance skills.
  */
 describe('skill scopes', () => {
 	const write = ['create', 'update', 'delete'];

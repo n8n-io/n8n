@@ -67,6 +67,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		roleMappingRule: {},
 		otel: {},
 		scim: {},
+		trustedSource: {},
 	});
 
 	function addGlobalRole(role: Role) {

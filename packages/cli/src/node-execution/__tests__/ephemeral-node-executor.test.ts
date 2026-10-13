@@ -498,6 +498,7 @@ describe('EphemeralNodeExecutor', () => {
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBe('upstream 500');
+				expect(result).not.toHaveProperty('violations');
 			},
 		);
 
@@ -662,6 +663,7 @@ describe('EphemeralNodeExecutor', () => {
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBe('upstream 500');
+				expect(result).not.toHaveProperty('violations');
 			},
 		);
 
@@ -771,13 +773,14 @@ describe('EphemeralNodeExecutor', () => {
 			);
 		});
 
-		it('returns a tool error and never runs a blocked node', async () => {
+		it("returns a tool error carrying the refusal's violations, and never runs a blocked node", async () => {
 			const execute = vi.fn();
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: toolDescription,
 				execute,
 			} as unknown as INodeType);
-			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+			const refusal = blocked();
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(refusal);
 
 			const result = await executor.executeInline({
 				nodeType: 'n8n-nodes-base.dateTimeTool',
@@ -791,16 +794,18 @@ describe('EphemeralNodeExecutor', () => {
 				status: 'error',
 				data: [],
 				error: expect.stringContaining('is blocked by an instance policy'),
+				violations: refusal.violations,
 			});
 			expect(execute).not.toHaveBeenCalled();
 		});
 
-		it('never runs supplyData for a blocked native tool node', async () => {
+		it("never runs supplyData for a blocked native tool node, and carries the refusal's violations", async () => {
 			const supplyData = vi.fn();
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mockNodeType({ description: toolDescription, supplyData }),
 			);
-			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(blocked());
+			const refusal = blocked();
+			policyEnforcementService.enforceWorkflowStart.mockRejectedValueOnce(refusal);
 
 			const result = await executor.executeInline({
 				nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
@@ -811,6 +816,7 @@ describe('EphemeralNodeExecutor', () => {
 			});
 
 			expect(result.status).toBe('error');
+			expect(result.violations).toEqual(refusal.violations);
 			expect(supplyData).not.toHaveBeenCalled();
 		});
 

@@ -104,6 +104,9 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			url: 'https://mcp.example.com',
 			transport: 'streamableHttp',
 			authentication: 'none',
+			toolPermissions: {
+				categories: { read: 'always_allow', write: 'require_approval' },
+			},
 		};
 		modalData.onConfirm({ tools: [], mcpServers: [mcpServer] });
 

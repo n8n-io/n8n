@@ -85,13 +85,12 @@ describe('CreateSkillsHubTables migration', () => {
 
 	/** A skill with one version and one file. */
 	const insertSkill = async (
-		target: { userId?: string; projectId?: string; agentId?: string },
+		target: { projectId?: string; agentId?: string },
 		createdById?: string,
 	) => {
 		const skillId = `skill_${randomUUID().slice(0, 16)}`;
 		await insertRow('skill', {
 			id: skillId,
-			userId: target.userId ?? null,
 			projectId: target.projectId ?? null,
 			agentId: target.agentId ?? null,
 			source: 'ui',
@@ -139,17 +138,6 @@ describe('CreateSkillsHubTables migration', () => {
 		await Container.get(DbConnection).close();
 	});
 
-	it('deletes a user together with their Just you skills, versions and files', async () => {
-		const userId = await insertUser();
-		const { skillId, versionId } = await insertSkill({ userId });
-
-		await deleteRow('user', 'id', userId);
-
-		expect(await countRows('skill', 'id', skillId)).toBe(0);
-		expect(await countRows('skill_version', 'skillId', skillId)).toBe(0);
-		expect(await countRows('skill_file', 'skillVersionId', versionId)).toBe(0);
-	});
-
 	it('keeps a project skill when its author is deleted and clears the author', async () => {
 		const authorId = await insertUser();
 		const projectId = await insertProject();
@@ -169,6 +157,7 @@ describe('CreateSkillsHubTables migration', () => {
 		const projectId = await insertProject();
 		const agentId = await insertAgent(projectId);
 		const agentVersionId = await insertAgentVersion(agentId);
+		const agentSkill = await insertSkill({ agentId });
 		const { skillId, versionId } = await insertSkill({ projectId });
 		await insertRow('agent_skill_dependency', { agentId, skillId, skillVersionId: versionId });
 		await insertRow('agent_version_skill_dependency', {
@@ -185,6 +174,8 @@ describe('CreateSkillsHubTables migration', () => {
 		expect(await countRows('skill_file', 'skillVersionId', versionId)).toBe(0);
 		expect(await countRows('agent_skill_dependency', 'skillId', skillId)).toBe(0);
 		expect(await countRows('agent_version_skill_dependency', 'skillId', skillId)).toBe(0);
+		// An agent skill has no projectId and goes through the agent.
+		expect(await countRows('skill', 'id', agentSkill.skillId)).toBe(0);
 	});
 
 	/** One agent with a published version, both pinning the same skill version. */
@@ -230,7 +221,7 @@ describe('CreateSkillsHubTables migration', () => {
 		const projectId = await insertProject();
 		const agentId = await insertAgent(projectId);
 		const agentVersionId = await insertAgentVersion(agentId);
-		const own = await insertSkill({ projectId, agentId });
+		const own = await insertSkill({ agentId });
 		const shared = await insertSkill({ projectId });
 		for (const { skillId, versionId } of [own, shared]) {
 			await insertRow('agent_skill_dependency', { agentId, skillId, skillVersionId: null });
@@ -253,39 +244,22 @@ describe('CreateSkillsHubTables migration', () => {
 		await deleteRow('project', 'id', projectId);
 	});
 
-	it('rejects an agent skill without a project', async () => {
+	it('rejects an agent skill that also has a project', async () => {
 		const projectId = await insertProject();
 		const agentId = await insertAgent(projectId);
 
-		await expect(insertSkill({ agentId })).rejects.toThrow();
+		await expect(insertSkill({ projectId, agentId })).rejects.toThrow();
 
 		await deleteRow('project', 'id', projectId);
 	});
 
-	it('rejects an agent skill that is also a Just you skill', async () => {
-		const userId = await insertUser();
-		const projectId = await insertProject();
-		const agentId = await insertAgent(projectId);
+	// New sources must not need a migration, so the column has no CHECK on its values.
+	it('accepts a source value the code does not use yet', async () => {
+		const id = `skill_${randomUUID().slice(0, 16)}`;
 
-		await expect(insertSkill({ userId, agentId })).rejects.toThrow();
+		await insertRow('skill', { id, source: 'github' });
 
-		await deleteRow('user', 'id', userId);
-		await deleteRow('project', 'id', projectId);
-	});
-
-	it('rejects a skill with both a user and a project', async () => {
-		const userId = await insertUser();
-		const projectId = await insertProject();
-
-		await expect(insertSkill({ userId, projectId })).rejects.toThrow();
-
-		await deleteRow('user', 'id', userId);
-		await deleteRow('project', 'id', projectId);
-	});
-
-	it('rejects an unknown source', async () => {
-		await expect(
-			insertRow('skill', { id: `skill_${randomUUID().slice(0, 16)}`, source: 'upload' }),
-		).rejects.toThrow();
+		expect(await countRows('skill', 'id', id)).toBe(1);
+		await deleteRow('skill', 'id', id);
 	});
 });

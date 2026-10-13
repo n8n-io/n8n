@@ -23,10 +23,10 @@ import { skillContentHash, type SkillContent } from './skill-content-hash';
 import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
-export type SkillRef = { id: string; enabled?: boolean; versionId?: string };
+export type SkillRef = { id: string; versionId?: string };
 
 /** Fields to change, plus the hash of the version the editor started from. */
-export type SkillUpdate = Partial<AgentSkill> & { baseSkillHash?: string };
+export type SkillUpdate = Partial<AgentSkill> & { baseSkillHash: string };
 
 export type SkillSaveResult = {
 	versionId: string;
@@ -177,7 +177,7 @@ export class SkillService {
 			if (!latest) throw new NotFoundError('Skill not found');
 			const current = toAgentSkill(latest);
 			const { baseSkillHash, allowedTools: _ignored, ...changes } = update;
-			if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(current)) {
+			if (baseSkillHash !== getAgentSkillHash(current)) {
 				throw new ConflictError(
 					'The skill was changed somewhere else. Reload to get the latest version.',
 				);
@@ -268,7 +268,7 @@ export class SkillService {
 	// ---------------------------------------------------------------- publish and revert
 
 	/**
-	 * Publish, step 1: the version each ref resolves to, disabled refs included. Publish
+	 * Publish, step 1: the version each ref resolves to. Publish
 	 * creates no version. Needs the caller's transaction for the publish lock.
 	 */
 	async snapshotForPublish(
@@ -320,21 +320,19 @@ export class SkillService {
 
 	// ---------------------------------------------------------------- attach
 
-	/** An agent can attach instance skills and the skills of its own project. */
+	/** An agent can attach instance skills, the skills of its own project and its own agent skills. */
 	isAttachable(
-		skill: Pick<Skill, 'userId' | 'projectId' | 'agentId'>,
+		skill: Pick<Skill, 'projectId' | 'agentId'>,
 		agent: { id: string; projectId: string },
 	): boolean {
-		if (skill.userId !== null) return false;
-		if (skill.agentId && skill.agentId !== agent.id) return false;
-		const agentProjectId = agent.projectId;
-		return skill.projectId === null || skill.projectId === agentProjectId;
+		if (skill.agentId !== null) return skill.agentId === agent.id;
+		return skill.projectId === null || skill.projectId === agent.projectId;
 	}
 
 	/**
 	 * The check an agent config save runs on the skill refs it gets. The agent's current
-	 * refs come from its dependency rows. Unknown ids are dropped unless disabled or
-	 * already attached. A ref keeps a pin only when the agent already had it. A new ref
+	 * refs come from its dependency rows. Unknown ids are dropped unless already
+	 * attached. A ref keeps a pin only when the agent already had it. A new ref
 	 * must be attachable and must not clash by name.
 	 */
 	async checkRefs(
@@ -355,7 +353,7 @@ export class SkillService {
 			).map((skill) => [skill.id, skill]),
 		);
 		const kept = refs
-			.filter((ref) => ref.enabled === false || existingIds.has(ref.id) || found.has(ref.id))
+			.filter((ref) => existingIds.has(ref.id) || found.has(ref.id))
 			.map(({ versionId, ...ref }) =>
 				versionId !== undefined && existingPins.get(ref.id) === versionId
 					? { ...ref, versionId }
@@ -374,7 +372,7 @@ export class SkillService {
 			const skill = found.get(id);
 			if (skill && !this.isAttachable(skill, agent)) {
 				throw new UserError(
-					`Skill "${names.get(id) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project and instance skills.`,
+					`Skill "${names.get(id) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
 				);
 			}
 		}
@@ -393,50 +391,66 @@ export class SkillService {
 	// ---------------------------------------------------------------- permission
 
 	/**
+	 * The project a skill's permissions come from: its own for a project skill, its
+	 * agent's for an agent skill, none for an instance skill. A skill whose agent is gone
+	 * has none either, and only the global scope can reach it.
+	 */
+	async projectOf(
+		skill: Pick<Skill, 'projectId' | 'agentId'>,
+		ctx: OperationContext = {},
+	): Promise<string | null> {
+		if (skill.projectId) return skill.projectId;
+		if (!skill.agentId) return null;
+		const agent = (await this.skillRepository.findAgents([skill.agentId], ctx)).get(skill.agentId);
+		return agent?.projectId ?? null;
+	}
+
+	/**
 	 * Whether the user may do `operation` on the skill, from the skill's own scope:
-	 * `projectSkill:*` on its project for a project skill, the owner or the global
-	 * `skill:*` for a "Just you" skill, and the global `skill:*` for an instance skill.
-	 * Every user may read an instance skill.
+	 * `projectSkill:*` on the project of a project or agent skill, and the global
+	 * `skill:*` for an instance skill. Every user may read an instance skill.
 	 */
 	async canAccess(
 		user: User,
-		skill: Pick<Skill, 'userId' | 'projectId'>,
+		skill: Pick<Skill, 'projectId' | 'agentId'>,
 		operation: 'read' | 'update' | 'delete',
 	): Promise<boolean> {
-		if (skill.projectId) {
-			return await userHasScopes(user, [`projectSkill:${operation}`], false, {
-				projectId: skill.projectId,
-			});
+		const projectId = await this.projectOf(skill);
+		if (projectId) {
+			return await userHasScopes(user, [`projectSkill:${operation}`], false, { projectId });
 		}
-		return this.canAccessOutsideProjects(user, skill, operation);
+		return this.canAccessInstanceSkill(user, skill, operation);
 	}
 
-	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
+	/**
+	 * `canAccess` for a whole list: one query for the user's projects, not one per skill.
+	 * The caller passes each skill's project from `projectOf`, resolved in bulk.
+	 */
 	async accessCheck(
 		user: User,
 		operation: 'read' | 'update' | 'delete',
-	): Promise<(skill: Pick<Skill, 'userId' | 'projectId'>) => boolean> {
+	): Promise<(skill: Pick<Skill, 'agentId'>, projectId: string | null) => boolean> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, [
 			`projectSkill:${operation}`,
 		]);
 		const allowed = projectIds === null ? null : new Set(projectIds);
-		return (skill) =>
-			skill.projectId
-				? allowed === null || allowed.has(skill.projectId)
-				: this.canAccessOutsideProjects(user, skill, operation);
+		return (skill, projectId) =>
+			projectId
+				? allowed === null || allowed.has(projectId)
+				: this.canAccessInstanceSkill(user, skill, operation);
 	}
 
-	private canAccessOutsideProjects(
+	private canAccessInstanceSkill(
 		user: User,
-		skill: Pick<Skill, 'userId'>,
+		skill: Pick<Skill, 'agentId'>,
 		operation: 'read' | 'update' | 'delete',
 	): boolean {
-		if (skill.userId === user.id) return true;
-		if (skill.userId === null && operation === 'read') return true;
+		// An agent skill without a project lost its agent mid-request: only the global scope.
+		if (skill.agentId === null && operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
 	}
 
-	async canEdit(user: User, skill: Pick<Skill, 'userId' | 'projectId'>): Promise<boolean> {
+	async canEdit(user: User, skill: Pick<Skill, 'projectId' | 'agentId'>): Promise<boolean> {
 		return await this.canAccess(user, skill, 'update');
 	}
 

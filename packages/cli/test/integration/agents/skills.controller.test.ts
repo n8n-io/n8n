@@ -60,6 +60,21 @@ describe('SkillsController', () => {
 		await Container.get(SkillRepository).delete({});
 	});
 
+	async function newAgent(name: string, projectId: string) {
+		const agents = Container.get(AgentRepository);
+		return await agents.save(
+			agents.create({
+				id: randomUUID(),
+				name,
+				projectId,
+				integrations: [],
+				tools: {},
+				skills: {},
+				versionId: randomUUID(),
+			}),
+		);
+	}
+
 	async function attachToNewAgent(
 		skillId: string,
 		name: string,
@@ -98,24 +113,37 @@ describe('SkillsController', () => {
 		return response.body.data as { id: string; skillHash: string };
 	}
 
-	describe('"Just you" skills', () => {
-		it('lets any user create one and keeps it from other members', async () => {
-			const { id } = await create(member, { scope: 'user', skill: body });
+	describe('agent skills', () => {
+		it('lets a project editor create one for an agent and checks the project of the agent', async () => {
+			const agent = await newAgent('Support bot', project.id);
+			const { id } = await create(editor, { scope: 'agent', agentId: agent.id, skill: body });
 
-			const own = await member.get(`/skills/${id}`).expect(200);
-			expect(own.body.data).toMatchObject({
+			const read = await editor.get(`/skills/${id}`).expect(200);
+			expect(read.body.data).toMatchObject({
 				id,
-				scope: 'user',
-				userId: memberUser.id,
-				name: 'Brand voice',
+				scope: 'agent',
+				agentId: agent.id,
+				agentName: 'Support bot',
+				projectId: project.id,
+				projectName: 'Team',
 				latestVersion: 1,
 				canEdit: true,
 				canDelete: true,
-				usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
 			});
 			await outsider.get(`/skills/${id}`).expect(404);
-			await outsider.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(404);
+			await outsider
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'x', baseSkillHash: 'x' })
+				.expect(404);
 			await owner.get(`/skills/${id}`).expect(200);
+		});
+
+		it('refuses an agent skill to a user outside the project, and for an unknown agent', async () => {
+			const agent = await newAgent('Support bot', project.id);
+
+			await create(outsider, { scope: 'agent', agentId: agent.id, skill: body }, 403);
+			await create(editor, { scope: 'agent', skill: body }, 400);
+			await create(owner, { scope: 'agent', agentId: 'agent-gone', skill: body }, 404);
 		});
 	});
 
@@ -126,7 +154,10 @@ describe('SkillsController', () => {
 
 			const read = await member.get(`/skills/${id}`).expect(200);
 			expect(read.body.data).toMatchObject({ scope: 'instance', canEdit: false, canDelete: false });
-			await member.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(403);
+			await member
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'x', baseSkillHash: 'x' })
+				.expect(403);
 			await member.delete(`/skills/${id}`).expect(403);
 		});
 
@@ -151,7 +182,10 @@ describe('SkillsController', () => {
 			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
 
 			await viewer.get(`/skills/${id}`).expect(200);
-			await viewer.patch(`/skills/${id}`).send({ instructions: 'x' }).expect(403);
+			await viewer
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'x', baseSkillHash: 'x' })
+				.expect(403);
 			await outsider.get(`/skills/${id}`).expect(404);
 			await create(viewer, { scope: 'project', projectId: project.id, skill: body }, 403);
 			await create(outsider, { scope: 'project', projectId: project.id, skill: body }, 403);
@@ -187,7 +221,8 @@ describe('SkillsController', () => {
 
 	describe('list', () => {
 		it('lists what the user may see, searched and paged on the server', async () => {
-			await create(member, { scope: 'user', skill: { ...body, name: 'Mine' } });
+			const agent = await newAgent('Support bot', project.id);
+			await create(editor, { scope: 'agent', agentId: agent.id, skill: { ...body, name: 'Mine' } });
 			await create(owner, { scope: 'instance', skill: { ...body, name: 'Shared rules' } });
 			await create(editor, {
 				scope: 'project',
@@ -195,14 +230,17 @@ describe('SkillsController', () => {
 				skill: { ...body, name: 'Team rules' },
 			});
 
-			const all = await member.get('/skills').expect(200);
+			const all = await editor.get('/skills').expect(200);
+			const outside = await member.get('/skills').expect(200);
 			const search = await editor.get('/skills').query({ search: 'rules', take: 1 }).expect(200);
 			const ownerView = await owner.get('/skills').query({ scope: 'project' }).expect(200);
 
 			expect(all.body.data.data.map((s: { name: string }) => s.name).sort()).toEqual([
 				'Mine',
 				'Shared rules',
+				'Team rules',
 			]);
+			expect(outside.body.data.data.map((s: { name: string }) => s.name)).toEqual(['Shared rules']);
 			expect(search.body.data.count).toBe(2);
 			expect(search.body.data.data).toHaveLength(1);
 			expect(ownerView.body.data.data).toEqual([
@@ -210,8 +248,19 @@ describe('SkillsController', () => {
 			]);
 		});
 
-		it('lists the skills an agent of a project may attach', async () => {
-			await create(editor, { scope: 'user', skill: { ...body, name: 'Mine' } });
+		it('lists the skills one agent may attach, never those of another agent', async () => {
+			const support = await newAgent('Support bot', project.id);
+			const sales = await newAgent('Sales bot', project.id);
+			await create(editor, {
+				scope: 'agent',
+				agentId: support.id,
+				skill: { ...body, name: 'Mine' },
+			});
+			await create(editor, {
+				scope: 'agent',
+				agentId: sales.id,
+				skill: { ...body, name: 'Theirs' },
+			});
 			await create(owner, { scope: 'instance', skill: { ...body, name: 'Shared rules' } });
 			await create(editor, {
 				scope: 'project',
@@ -221,30 +270,35 @@ describe('SkillsController', () => {
 
 			const attachable = await editor
 				.get('/skills')
-				.query({ attachableTo: project.id })
+				.query({ attachableTo: support.id })
 				.expect(200);
 
 			expect(attachable.body.data.data.map((s: { name: string }) => s.name).sort()).toEqual([
+				'Mine',
 				'Shared rules',
 				'Team rules',
 			]);
-			await editor.get('/skills').query({ attachableTo: project.id, scope: 'user' }).expect(400);
+			await editor.get('/skills').query({ attachableTo: support.id, scope: 'agent' }).expect(400);
 		});
 	});
 
 	describe('save', () => {
 		it('saves changed content as the next version and unchanged content as nothing', async () => {
-			const { id, skillHash } = await create(member, { scope: 'user', skill: body });
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
 
-			const saved = await member
+			const saved = await editor
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
 				.expect(200);
-			const again = await member
+			const again = await editor
 				.patch(`/skills/${id}`)
-				.send({ instructions: 'Be very brief.' })
+				.send({ instructions: 'Be very brief.', baseSkillHash: saved.body.data.skillHash })
 				.expect(200);
-			const read = await member.get(`/skills/${id}`).expect(200);
+			const read = await editor.get(`/skills/${id}`).expect(200);
 
 			expect(saved.body.data).toMatchObject({ id, version: 2, created: true });
 			expect(saved.body.data.skill.instructions).toBe('Be very brief.');
@@ -256,19 +310,33 @@ describe('SkillsController', () => {
 		});
 
 		it('refuses a save based on a stale hash', async () => {
-			const { id, skillHash } = await create(member, { scope: 'user', skill: body });
-			await member
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await editor
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'First.', baseSkillHash: skillHash });
 
-			await member
+			await editor
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Second.', baseSkillHash: skillHash })
 				.expect(409);
 		});
 
+		it('refuses a save without a base hash', async () => {
+			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
+
+			await editor.patch(`/skills/${id}`).send({ instructions: 'Be very brief.' }).expect(400);
+		});
+
 		it('refuses blank instructions', async () => {
-			await create(member, { scope: 'user', skill: { ...body, instructions: '   ' } }, 400);
+			await create(
+				editor,
+				{ scope: 'project', projectId: project.id, skill: { ...body, instructions: '   ' } },
+				400,
+			);
 		});
 
 		it('marks a following agent that was in sync as changed, and leaves a pinned agent alone', async () => {
@@ -298,40 +366,31 @@ describe('SkillsController', () => {
 	// The edit lock is a row lock on Postgres only. SQLite runs one write at a time.
 	describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('parallel saves on Postgres', () => {
 		it('answers 409 to the second of two saves from the same base', async () => {
-			const { id, skillHash } = await create(member, { scope: 'user', skill: body });
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
 
 			const responses = await Promise.all(
 				['First.', 'Second.'].map(
 					async (instructions) =>
-						await member.patch(`/skills/${id}`).send({ instructions, baseSkillHash: skillHash }),
+						await editor.patch(`/skills/${id}`).send({ instructions, baseSkillHash: skillHash }),
 				),
 			);
-			const read = await member.get(`/skills/${id}`).expect(200);
+			const read = await editor.get(`/skills/${id}`).expect(200);
 
 			expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
 			expect(read.body.data.latestVersion).toBe(2);
-		});
-
-		it('numbers two saves without a base one after the other', async () => {
-			const { id } = await create(member, { scope: 'user', skill: body });
-
-			const responses = await Promise.all(
-				['First.', 'Second.'].map(
-					async (instructions) => await member.patch(`/skills/${id}`).send({ instructions }),
-				),
-			);
-
-			expect(responses.map((response) => response.status)).toEqual([200, 200]);
-			expect(responses.map((response) => response.body.data.version).sort()).toEqual([2, 3]);
 		});
 	});
 
 	describe('delete', () => {
 		it('deletes an unused skill', async () => {
-			const { id } = await create(member, { scope: 'user', skill: body });
+			const { id } = await create(editor, { scope: 'project', projectId: project.id, skill: body });
 
-			await member.delete(`/skills/${id}`).expect(200);
-			await member.get(`/skills/${id}`).expect(404);
+			await editor.delete(`/skills/${id}`).expect(200);
+			await editor.get(`/skills/${id}`).expect(404);
 		});
 
 		it('answers 409 and names the agents that use the skill', async () => {

@@ -24,23 +24,31 @@ const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
  * they start, so they survive restarts and, in a multi-instance setup, each run
  * is picked up by exactly one instance instead of every instance firing it.
  *
- * Off by default. While {@link enabled} is false none of these settings have any
- * effect and the existing in-memory Schedule Trigger behaviour is unchanged. The
- * tunables below only matter once the scheduler is turned on; the defaults suit
- * most instances, so change them only to tune timing precision or storage.
+ * On by default. It takes over Schedule Trigger nodes only while the workflow
+ * publication service is also on. Set {@link enabled} to false to keep the
+ * in-memory Schedule Trigger behaviour. Then none of these settings have any
+ * effect. The defaults suit most instances, so change them only to tune timing
+ * precision or storage.
  */
 @Config
 export class SchedulerConfig {
 	/**
-	 * Turn on the durable scheduler. Off by default so existing self-hosted setups
-	 * keep using the in-memory scheduler and behave exactly as before.
+	 * Turn on the durable scheduler. On by default. Set it to false to go back to
+	 * the in-memory scheduler.
 	 *
 	 * When on, scheduled runs are stored in the database before they execute, so a
 	 * restart doesn't drop them and, across multiple instances, each run executes
 	 * once rather than once per instance.
+	 *
+	 * Schedule Trigger nodes move to the durable scheduler only while the workflow
+	 * publication service (`N8N_USE_WORKFLOW_PUBLICATION_SERVICE`) is also on.
+	 * Otherwise they keep using the in-memory scheduler.
+	 *
+	 * @deprecated The durable scheduler is now the default. This variable and the
+	 * in-memory scheduler will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * How far into the future, in seconds, the scheduler works out and records the
@@ -239,7 +247,7 @@ export class SchedulerConfig {
 
 	/**
 	 * How a Schedule Trigger node's "every N seconds/minutes" schedules run under
-	 * the durable scheduler. Defaults to `legacy`.
+	 * the durable scheduler. Defaults to `new`.
 	 *
 	 * - `legacy`: fires stay aligned to the clock (on the minute, on the hour) and
 	 *   match the in-memory scheduler exactly.
@@ -251,14 +259,16 @@ export class SchedulerConfig {
 	 * for example, leaves a 4-second gap across each minute boundary); `new` keeps
 	 * a uniform gap throughout.
 	 *
-	 * `legacy` is the default so timing is unchanged while the durable scheduler
-	 * rolls out; `new` is the intended future default. Only "every N
-	 * seconds/minutes" schedules are affected: longer schedules (every N
-	 * hours/days/weeks/months) and raw cron expressions run the same way under
-	 * either setting.
+	 * Set it to `legacy` to keep the clock-aligned timing of the in-memory
+	 * scheduler. Only "every N seconds/minutes" schedules are affected: longer
+	 * schedules (every N hours/days/weeks/months) and raw cron expressions run the
+	 * same way under either setting.
+	 *
+	 * @deprecated `new` is now the default. This variable and the `legacy` mode
+	 * will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_TRIGGER_NODE_MODE', z.enum(['legacy', 'new']))
-	triggerNodeMode: 'legacy' | 'new' = 'legacy';
+	triggerNodeMode: 'legacy' | 'new' = 'new';
 
 	/**
 	 * Whether nodes that poll on a schedule (e.g. checking an inbox or API on an
@@ -335,24 +345,6 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
 	enabledForAgentTasks: boolean = false;
-
-	/**
-	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
-	 * Off by default; intended to be removed once the durable scheduler is GA.
-	 *
-	 * When on, the Schedule Trigger node shows a "Skip Durable Scheduler" toggle; a
-	 * trigger with it checked keeps using the in-memory scheduler even while
-	 * {@link enabled} is on, so an operator can move an individual schedule back
-	 * while testing. When off, the toggle is hidden and every schedule follows
-	 * {@link enabled}.
-	 *
-	 * Named with the `N8N_ENV_FEAT_` prefix so the frontend picks it up through the
-	 * env-feature-flag channel that gates the node property's visibility. Only has
-	 * an effect while {@link enabled} is on: with the durable scheduler off, every
-	 * schedule already runs in memory.
-	 */
-	@Env('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER')
-	allowSkipDurableScheduler: boolean = false;
 
 	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)

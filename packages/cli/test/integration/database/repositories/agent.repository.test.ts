@@ -222,7 +222,7 @@ describe('AgentRepository', () => {
 			await Container.get(SkillRepository).createSkill(
 				{
 					id: 'writing',
-					target: { userId: null, projectId },
+					target: { projectId, agentId: null },
 					source: 'ui',
 					createdById: null,
 				},

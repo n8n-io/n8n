@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { agentSkillSchema } from './agent-skill.schema';
+import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import type { AgentSkill } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
@@ -17,8 +17,8 @@ const optionalTake = z
 	})
 	.transform((value) => (value === undefined ? undefined : Math.min(value, SKILLS_MAX_PAGE_SIZE)));
 
-/** Who owns a skill: one user ("Just you"), one project, or the instance. */
-export const skillScopeSchema = z.enum(['user', 'project', 'instance']);
+/** Who owns a skill: one project, one agent (only that agent can use it), or the instance. */
+export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
@@ -30,12 +30,12 @@ export type SkillListItem = {
 	name: string;
 	description: string;
 	scope: SkillScope;
-	/** Set for a project skill. */
+	/** The project of a project skill, or the project of the agent of an agent skill. */
 	projectId: string | null;
 	projectName: string | null;
-	/** Set for a "Just you" skill. */
-	userId: string | null;
+	/** Set for an agent skill: the only agent that can use it. */
 	agentId: string | null;
+	agentName: string | null;
 	source: SkillSource;
 	/** Number of the latest version, the one following agents run. */
 	latestVersion: number;
@@ -94,16 +94,29 @@ export class ListSkillsQueryDto extends Z.class({
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
 	/**
-	 * The skills an agent of this project may attach: the project's skills and instance
-	 * skills, never "Just you" skills. Not combined with `scope` or `projectId`.
+	 * The id of an agent: the skills it may attach, which are its project's skills, its own
+	 * agent skills and instance skills. Not combined with `scope` or `projectId`.
 	 */
 	attachableTo: z.string().max(36).optional(),
-	attachableAgentId: z.string().max(36).optional(),
 }) {}
 
 export class CreateSkillDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),
+	/** Required for an agent skill, absent otherwise. */
+	agentId: z.string().max(36).optional(),
 	skill: agentSkillSchema,
+}) {}
+
+/**
+ * Saves the next version of a skill. `baseSkillHash` is the `skillHash` the editor
+ * started from: a save based on an older version is refused with 409.
+ */
+export class SaveSkillDto extends Z.class({
+	name: agentSkillShape.name.optional(),
+	description: agentSkillShape.description.optional(),
+	instructions: agentSkillShape.instructions.optional(),
+	references: agentSkillShape.references.optional(),
+	baseSkillHash: z.string().min(1),
 }) {}

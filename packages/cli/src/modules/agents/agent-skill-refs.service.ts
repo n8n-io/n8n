@@ -281,11 +281,10 @@ export class AgentSkillRefsService {
 			}
 			const id = await this.skillService.create(
 				{
-					target: {
-						userId: null,
-						projectId: agent.projectId,
-						agentId: copiesAgentSkill ? agent.id : null,
-					},
+					// An agent skill takes its project from its agent, so it has no projectId.
+					target: copiesAgentSkill
+						? { projectId: null, agentId: agent.id }
+						: { projectId: agent.projectId, agentId: null },
 					skill: body,
 					source: 'agent',
 					createdById: creator.id,
@@ -373,7 +372,7 @@ export class AgentSkillRefsService {
 		ctx: OperationContext,
 	): Promise<AgentSkillAvailability | undefined> {
 		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
-		if (!skill || skill.userId !== null) return undefined;
+		if (!skill) return undefined;
 		if (skill.agentId) return 'agent';
 		return skill.projectId ? 'project' : 'instance';
 	}
@@ -426,8 +425,7 @@ export class AgentSkillRefsService {
 
 function targetFor(agent: Pick<Agent, 'id' | 'projectId'>, availableTo: AgentSkillAvailability) {
 	return {
-		userId: null,
-		projectId: availableTo === 'instance' ? null : agent.projectId,
+		projectId: availableTo === 'project' ? agent.projectId : null,
 		agentId: availableTo === 'agent' ? agent.id : null,
 	};
 }

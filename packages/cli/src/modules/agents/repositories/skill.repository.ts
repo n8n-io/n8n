@@ -26,12 +26,11 @@ import {
 	type SkillContent,
 } from '../skills/skill-content-hash';
 
-/** Where a skill lives. Both null is an instance skill. */
-export type SkillTarget = {
-	userId: string | null;
-	projectId: string | null;
-	agentId?: string | null;
-};
+/**
+ * Where a skill lives: a project, one agent, or the instance (both null). An agent skill
+ * has no projectId: its project is the agent's.
+ */
+export type SkillTarget = { projectId: string | null; agentId: string | null };
 
 /** One skill with one of its version rows and that row's files, sorted by path. */
 export type ResolvedSkillRow = {
@@ -43,21 +42,18 @@ export type ResolvedSkillRow = {
 /** A skill ref of an agent draft. A ref with `versionId` is pinned to that saved version. */
 export type SkillDependencyRef = { skillId: string; versionId?: string | null };
 
-/** Which skills one user may list: instance skills always, plus these users' and projects'. */
+/** Which skills one user may list: instance skills always, plus the skills of these projects and of their agents. */
 export type SkillVisibility = {
-	userId: string;
-	/** Read access to the "Just you" skills of every user. */
-	allUsers: boolean;
 	projectIds: string[] | 'all';
 };
 
 /** Narrows the visible skills of `findVisiblePage` and cuts one page. */
 export type SkillListFilter = {
-	scope?: 'user' | 'project' | 'instance';
+	scope?: 'project' | 'agent' | 'instance';
+	/** The skills of this project and of its agents. */
 	projectId?: string;
-	/** Instance skills and the skills of this project: what its agents may attach. */
-	attachableTo?: string;
-	attachableAgentId?: string;
+	/** What this agent may attach: instance skills, its project's skills and its own. */
+	attachableTo?: { agentId: string; projectId: string };
 	search?: string;
 	skip: number;
 	take?: number;
@@ -86,45 +82,59 @@ export class SkillRepository extends BaseRepository<Skill> {
 		filter: SkillListFilter,
 		ctx: OperationContext = {},
 	): Promise<{ skills: Skill[]; count: number }> {
+		const manager = this.managerFor(ctx);
+		// An agent skill has no projectId: its project comes from its agent.
+		const agentsOf = (projectCondition: string) =>
+			manager
+				.createQueryBuilder()
+				.subQuery()
+				.select('owner.id')
+				.from(Agent, 'owner')
+				.where(projectCondition)
+				.getQuery();
+		const { projectIds } = visibility;
 		const branches: string[] = [];
 		if (!filter.scope || filter.scope === 'instance') {
-			branches.push('skill.userId IS NULL AND skill.projectId IS NULL');
+			branches.push('skill.projectId IS NULL AND skill.agentId IS NULL');
 		}
 		if (filter.attachableTo !== undefined) {
-			const { projectIds } = visibility;
-			if (projectIds === 'all' || projectIds.includes(filter.attachableTo)) {
-				branches.push(
-					filter.attachableAgentId === undefined
-						? 'skill.projectId = :attachableTo AND skill.agentId IS NULL'
-						: 'skill.projectId = :attachableTo AND (skill.agentId IS NULL OR skill.agentId = :attachableAgentId)',
-				);
+			if (projectIds === 'all' || projectIds.includes(filter.attachableTo.projectId)) {
+				branches.push('skill.projectId = :attachProjectId', 'skill.agentId = :attachAgentId');
 			}
 		} else {
-			if (!filter.scope || filter.scope === 'user') {
-				branches.push(visibility.allUsers ? 'skill.userId IS NOT NULL' : 'skill.userId = :userId');
-			}
 			if (!filter.scope || filter.scope === 'project') {
-				if (visibility.projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
-				else if (visibility.projectIds.length > 0) {
-					branches.push('skill.projectId IN (:...projectIds)');
+				if (projectIds === 'all') branches.push('skill.projectId IS NOT NULL');
+				else if (projectIds.length > 0) branches.push('skill.projectId IN (:...projectIds)');
+			}
+			if (!filter.scope || filter.scope === 'agent') {
+				if (projectIds === 'all') branches.push('skill.agentId IS NOT NULL');
+				else if (projectIds.length > 0) {
+					branches.push(`skill.agentId IN ${agentsOf('owner.projectId IN (:...projectIds)')}`);
 				}
 			}
 		}
 		if (branches.length === 0) return { skills: [], count: 0 };
 
-		const query = this.managerFor(ctx)
+		const query = manager
 			.createQueryBuilder(Skill, 'skill')
 			.where(new Brackets((qb) => branches.forEach((branch) => qb.orWhere(`(${branch})`))))
 			.setParameters({
-				userId: visibility.userId,
-				projectIds: visibility.projectIds,
-				...(filter.attachableTo !== undefined && { attachableTo: filter.attachableTo }),
-				...(filter.attachableAgentId !== undefined && {
-					attachableAgentId: filter.attachableAgentId,
+				projectIds,
+				...(filter.attachableTo !== undefined && {
+					attachProjectId: filter.attachableTo.projectId,
+					attachAgentId: filter.attachableTo.agentId,
 				}),
 			});
-		if (filter.projectId)
-			query.andWhere('skill.projectId = :projectId', { projectId: filter.projectId });
+		if (filter.projectId) {
+			query.andWhere(
+				new Brackets((qb) =>
+					qb
+						.where('skill.projectId = :projectId')
+						.orWhere(`skill.agentId IN ${agentsOf('owner.projectId = :projectId')}`),
+				),
+				{ projectId: filter.projectId },
+			);
+		}
 		if (filter.search) {
 			query
 				.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id')
@@ -250,9 +260,8 @@ export class SkillRepository extends BaseRepository<Skill> {
 		await this.runInTransaction(ctx, async (manager) => {
 			await manager.insert(Skill, {
 				id: skill.id,
-				userId: skill.target.userId,
 				projectId: skill.target.projectId,
-				agentId: skill.target.agentId ?? null,
+				agentId: skill.target.agentId,
 				source: skill.source,
 				createdById: skill.createdById,
 			});
@@ -446,7 +455,7 @@ export class SkillRepository extends BaseRepository<Skill> {
 		};
 	}
 
-	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
+	/** The agents that use the skill: a draft ref or a published pin. */
 	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}): Promise<string[]> {
 		const manager = this.managerFor(ctx);
 		const drafts = await manager.find(AgentSkillDependency, {
@@ -463,19 +472,16 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return unique([...drafts, ...pins].map((row) => row.agentId));
 	}
 
+	/** Moves a skill to a project, one agent or the instance. */
 	async updateTarget(skillId: string, target: SkillTarget, ctx: OperationContext = {}) {
 		await this.managerFor(ctx).update(
 			Skill,
 			{ id: skillId },
-			{
-				userId: target.userId,
-				projectId: target.projectId,
-				agentId: target.agentId ?? null,
-				updatedAt: new Date(),
-			},
+			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
 		);
 	}
 
+	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */
 	async countUsingAgents(
 		skillIds: string[],
 		ctx: OperationContext = {},
@@ -514,6 +520,23 @@ export class SkillRepository extends BaseRepository<Skill> {
 				await manager.find(Project, { where: { id: In(chunk) }, select: ['id', 'name'] }),
 		);
 		return new Map(projects.map((project) => [project.id, project.name]));
+	}
+
+	/** Name and project of each agent, keyed by agent id. An agent skill takes its project from them. */
+	async findAgents(
+		agentIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, Pick<Agent, 'name' | 'projectId'>>> {
+		const manager = this.managerFor(ctx);
+		const agents = await inChunks(
+			agentIds,
+			async (chunk) =>
+				await manager.find(Agent, {
+					where: { id: In(chunk) },
+					select: ['id', 'name', 'projectId'],
+				}),
+		);
+		return new Map(agents.map(({ id, name, projectId }) => [id, { name, projectId }]));
 	}
 
 	/**

@@ -29,7 +29,8 @@ import { AgentsSettingsService } from '@/modules/agents/agents-settings.service'
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
-import { SkillService } from '@/modules/agents/skills/skill.service';
+import { SkillService, toAgentSkill } from '@/modules/agents/skills/skill.service';
+import { getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { Telemetry } from '@/telemetry';
 
 import { createMember, createOwner } from '../shared/db/users';
@@ -93,11 +94,19 @@ describe('Agent skills in the skills hub', () => {
 		target: { projectId: string | null } = { projectId: project.id },
 	) {
 		return await skillService.create({
-			target: { userId: null, projectId: target.projectId },
+			target: { projectId: target.projectId, agentId: null },
 			skill,
 			source: 'ui',
 			createdById: owner.id,
 		});
+	}
+
+	/** Saves new instructions on top of the latest version, as an editor does. */
+	async function saveInstructions(skillId: string, instructions: string) {
+		const latest = (await Container.get(SkillRepository).findLatestSaved([skillId])).get(skillId);
+		if (!latest) throw new Error(`Skill ${skillId} not found`);
+		const baseSkillHash = getAgentSkillHash(toAgentSkill(latest));
+		return await skillService.save(skillId, { instructions, baseSkillHash }, owner.id);
 	}
 
 	async function createAgent(skillIds: string[], projectId = project.id) {
@@ -192,7 +201,7 @@ describe('Agent skills in the skills hub', () => {
 	it('reverts to the pinned versions without changing the hub', async () => {
 		const skill = await createSkill(body('Skill', 'Published text.'));
 		const agent = (await publish(await createAgent([skill])))!;
-		await skillService.save(skill, { instructions: 'Newer text.' }, owner.id);
+		await saveInstructions(skill, 'Newer text.');
 		const latestBefore = (await Container.get(SkillRepository).findLatestSaved([skill])).get(skill);
 
 		await publishService.revertToPublishedAgent(agent.id, project.id, owner, 'user');
@@ -211,7 +220,7 @@ describe('Agent skills in the skills hub', () => {
 	it('reverts an agent that pins an instance skill the user cannot edit', async () => {
 		const instanceSkill = await createSkill(body('Instance'), { projectId: null });
 		const agent = (await publish(await createAgent([instanceSkill])))!;
-		await skillService.save(instanceSkill, { instructions: 'Changed by an admin.' }, owner.id);
+		await saveInstructions(instanceSkill, 'Changed by an admin.');
 
 		await publishService.revertToPublishedAgent(agent.id, project.id, editor, 'user');
 
@@ -239,7 +248,7 @@ describe('Agent skills in the skills hub', () => {
 			context,
 		);
 		const [hubSkill] = await Container.get(SkillRepository).findByIds([created.id]);
-		expect(hubSkill).toMatchObject({ projectId: project.id, userId: null, source: 'agent' });
+		expect(hubSkill).toMatchObject({ projectId: project.id, agentId: null, source: 'agent' });
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: created.id }]);
 
 		const updated = await agentSkillsService.updateSkill(
@@ -315,7 +324,7 @@ describe('Agent skills in the skills hub', () => {
 			'agent',
 		);
 		const [hubSkill] = await Container.get(SkillRepository).findByIds([created.id]);
-		expect(hubSkill).toMatchObject({ projectId: project.id, agentId: agent.id });
+		expect(hubSkill).toMatchObject({ projectId: null, agentId: agent.id });
 
 		const other = await createAgent([]);
 		await expect(
@@ -330,7 +339,7 @@ describe('Agent skills in the skills hub', () => {
 		const [copyRef] = await skillRefs.refsForDraft(duplicate, {});
 		expect(copyRef.id).not.toBe(created.id);
 		const [copy] = await Container.get(SkillRepository).findByIds([copyRef.id]);
-		expect(copy).toMatchObject({ projectId: project.id, agentId: duplicate.id });
+		expect(copy).toMatchObject({ projectId: null, agentId: duplicate.id });
 		const { skills } = await skillRefs.readDraft(duplicate, {});
 		expect(Object.values(skills)).toEqual([body('Private')]);
 	});
@@ -359,7 +368,7 @@ describe('Agent skills in the skills hub', () => {
 
 		await update('agent');
 		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
-			projectId: project.id,
+			projectId: null,
 			agentId: agent.id,
 		});
 		await update('project');

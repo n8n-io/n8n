@@ -417,7 +417,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 	color: var(--color--text);
 
 	i {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-style: normal;
 		text-decoration: underline;
 	}
@@ -427,7 +427,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 	font-weight: var(--font-weight--regular);
 
 	strong {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 .apiHint {

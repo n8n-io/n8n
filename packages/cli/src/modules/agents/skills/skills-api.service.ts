@@ -5,8 +5,8 @@ import type {
 	SkillListItem,
 	SkillListResponse,
 	SkillSaveResponse,
+	SaveSkillDto,
 	SkillScope,
-	UpdateAgentSkillDto,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
@@ -21,9 +21,9 @@ import { SkillRepository, type SkillTarget } from '../repositories/skill.reposit
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { SkillService, toAgentSkill } from './skill.service';
 
-function scopeOf(skill: Pick<Skill, 'userId' | 'projectId'>): SkillScope {
+function scopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
+	if (skill.agentId) return 'agent';
 	if (skill.projectId) return 'project';
-	if (skill.userId) return 'user';
 	return 'instance';
 }
 
@@ -45,17 +45,13 @@ export class SkillsApiService {
 			throw new UserError('Filter by attachableTo alone, without scope or projectId.');
 		}
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
+		const attachableTo = await this.attachTarget(query.attachableTo);
 		const { skills, count } = await this.skillRepository.findVisiblePage(
-			{
-				userId: user.id,
-				allUsers: hasGlobalScope(user, 'skill:list'),
-				projectIds: projectIds ?? 'all',
-			},
+			{ projectIds: projectIds ?? 'all' },
 			{
 				scope: query.scope,
 				projectId: query.projectId,
-				attachableTo: query.attachableTo,
-				attachableAgentId: query.attachableAgentId,
+				attachableTo,
 				search: query.search,
 				skip: query.skip,
 				take: query.take,
@@ -83,11 +79,7 @@ export class SkillsApiService {
 	}
 
 	/** Saves the changes as the next version. Unchanged content creates nothing. */
-	async update(
-		user: User,
-		skillId: string,
-		payload: UpdateAgentSkillDto,
-	): Promise<SkillSaveResponse> {
+	async update(user: User, skillId: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
 		await this.requireAccess(user, skillId, 'update');
 		const { followingAgentIds: _following, ...saved } = await this.skillService.save(
 			skillId,
@@ -139,41 +131,69 @@ export class SkillsApiService {
 		return skill;
 	}
 
+	/** The agent of an `attachableTo` filter with its project. An unknown agent can attach nothing. */
+	private async attachTarget(
+		agentId: string | undefined,
+	): Promise<{ agentId: string; projectId: string } | undefined> {
+		if (agentId === undefined) return undefined;
+		const agent = (await this.skillRepository.findAgents([agentId])).get(agentId);
+		if (!agent) throw new NotFoundError('Agent not found');
+		return { agentId, projectId: agent.projectId };
+	}
+
 	private async targetForCreate(user: User, payload: CreateSkillDto): Promise<SkillTarget> {
 		switch (payload.scope) {
-			case 'user':
-				if (payload.projectId) throw new UserError('A "Just you" skill has no project.');
-				return { userId: user.id, projectId: null };
 			case 'instance':
-				if (payload.projectId) throw new UserError('An instance skill has no project.');
+				if (payload.projectId || payload.agentId) {
+					throw new UserError('An instance skill has no project and no agent.');
+				}
 				if (!hasGlobalScope(user, 'skill:create')) {
 					throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
 				}
-				return { userId: null, projectId: null };
+				return { projectId: null, agentId: null };
 			case 'project': {
 				const { projectId } = payload;
 				if (!projectId) throw new UserError('A project skill needs a project id.');
-				if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
-					throw new ForbiddenError('You are not allowed to create skills for this project.');
-				}
+				if (payload.agentId) throw new UserError('A project skill has no agent.');
+				await this.assertCanCreateIn(user, projectId);
 				// A global scope passes without looking at the project, so check that it exists.
 				if (!(await this.skillRepository.findProjectNames([projectId])).has(projectId)) {
 					throw new NotFoundError('Project not found');
 				}
 				// A personal project keeps its own skills, as a team project does.
-				return { userId: null, projectId };
+				return { projectId, agentId: null };
 			}
+			case 'agent': {
+				const { agentId } = payload;
+				if (!agentId) throw new UserError('An agent skill needs an agent id.');
+				if (payload.projectId)
+					throw new UserError('An agent skill takes its project from the agent.');
+				const agent = (await this.skillRepository.findAgents([agentId])).get(agentId);
+				if (!agent) throw new NotFoundError('Agent not found');
+				await this.assertCanCreateIn(user, agent.projectId);
+				return { projectId: null, agentId };
+			}
+		}
+	}
+
+	private async assertCanCreateIn(user: User, projectId: string): Promise<void> {
+		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
+			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}
 	}
 
 	private async toListItems(user: User, skills: Skill[]): Promise<SkillListItem[]> {
 		const ids = skills.map((skill) => skill.id);
+		// An agent skill has no projectId: resolve its project through its agent.
+		const agents = await this.skillRepository.findAgents(
+			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
+		);
+		const projectOf = (skill: Skill) =>
+			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
 		const [latest, usage, projects, canEdit, canDelete] = await Promise.all([
 			this.skillRepository.findLatestSummaries(ids),
 			this.skillRepository.countUsingAgents(ids),
-			this.skillRepository.findProjectNames(
-				skills.flatMap((skill) => (skill.projectId ? [skill.projectId] : [])),
-			),
+			this.skillRepository.findProjectNames(skills.flatMap((skill) => projectOf(skill) ?? [])),
 			this.skillService.accessCheck(user, 'update'),
 			this.skillService.accessCheck(user, 'delete'),
 		]);
@@ -181,20 +201,21 @@ export class SkillsApiService {
 		for (const skill of skills) {
 			const summary = latest.get(skill.id);
 			if (!summary) continue;
+			const projectId = projectOf(skill);
 			items.push({
 				id: skill.id,
 				name: summary.name,
 				description: summary.description,
 				scope: scopeOf(skill),
-				projectId: skill.projectId,
-				projectName: skill.projectId ? (projects.get(skill.projectId) ?? null) : null,
-				userId: skill.userId,
+				projectId,
+				projectName: projectId ? (projects.get(projectId) ?? null) : null,
 				agentId: skill.agentId,
+				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
-				canEdit: canEdit(skill),
-				canDelete: canDelete(skill),
+				canEdit: canEdit(skill, projectId),
+				canDelete: canDelete(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});

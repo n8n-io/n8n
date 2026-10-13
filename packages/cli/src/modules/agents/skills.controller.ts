@@ -1,4 +1,4 @@
-import { CreateSkillDto, ListSkillsQueryDto, UpdateAgentSkillDto } from '@n8n/api-types';
+import { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Query, RestController } from '@n8n/decorators';
@@ -46,7 +46,7 @@ export class SkillsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('skillId') skillId: string,
-		@Body payload: UpdateAgentSkillDto,
+		@Body payload: SaveSkillDto,
 	) {
 		this.assertEnabled();
 		return await this.skillsApi.update(req.user, skillId, payload);

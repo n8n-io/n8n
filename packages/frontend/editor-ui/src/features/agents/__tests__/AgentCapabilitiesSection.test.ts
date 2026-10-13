@@ -766,6 +766,9 @@ describe('AgentCapabilitiesSection', () => {
 					url: 'https://mcp.github.com',
 					transport: 'streamableHttp',
 					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			]),
 		);
@@ -1084,6 +1087,9 @@ describe('AgentCapabilitiesSection', () => {
 					url: 'https://mcp.github.com',
 					transport: 'streamableHttp',
 					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			]),
 			[],
@@ -1192,6 +1198,9 @@ describe('AgentCapabilitiesSection', () => {
 						url: 'https://mcp.github.com',
 						transport: 'streamableHttp',
 						authentication: 'bearerAuth',
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+						},
 					},
 				]),
 				[],

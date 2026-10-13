@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
-import type { CreateSkillDto, ListSkillsQueryDto, UpdateAgentSkillDto } from '@n8n/api-types';
+import type { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
 import type { ProjectScopeService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -25,12 +25,11 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 const user = mock<User>({ id: 'user-1' });
 const DATE = new Date('2026-10-01T00:00:00.000Z');
 
-function skill(id: string, target: Partial<Pick<Skill, 'userId' | 'projectId'>> = {}): Skill {
+function skill(id: string, target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {}): Skill {
 	return mock<Skill>({
 		id,
-		userId: target.userId ?? null,
 		projectId: target.projectId ?? null,
-		agentId: null,
+		agentId: target.agentId ?? null,
 		source: 'ui',
 		createdAt: DATE,
 		updatedAt: DATE,
@@ -107,6 +106,14 @@ describe('SkillsApiService', () => {
 			async (ids) => new Map(ids.map((id) => [id, 'Team'] as const)),
 		);
 		repository.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
+		repository.findAgents.mockImplementation(
+			async (ids) =>
+				new Map(
+					ids
+						.filter((id) => id === 'agent-1')
+						.map((id) => [id, { name: 'Support bot', projectId: 'project-1' }] as const),
+				),
+		);
 		skillService.canAccess.mockResolvedValue(true);
 		skillService.accessCheck.mockResolvedValue(() => true);
 	});
@@ -119,26 +126,36 @@ describe('SkillsApiService', () => {
 			);
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				{ userId: user.id, allUsers: false, projectIds: ['project-1'] },
+				{ projectIds: ['project-1'] },
 				{ scope: 'project', projectId: 'project-1', search: 'rules', skip: 10, take: 5 },
 			);
 			expect(result.count).toBe(3);
 		});
 
-		it('passes the project an agent attaches skills for', async () => {
-			await service.list(user, query({ attachableTo: 'project-1', search: 'voice' }));
+		it('passes the agent that attaches skills, with its project', async () => {
+			await service.list(user, query({ attachableTo: 'agent-1', search: 'voice' }));
 
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ attachableTo: 'project-1', search: 'voice' }),
+				expect.objectContaining({
+					attachableTo: { agentId: 'agent-1', projectId: 'project-1' },
+					search: 'voice',
+				}),
 			);
 		});
 
-		it.each([{ scope: 'user' as const }, { projectId: 'project-1' }])(
+		it('refuses attachableTo for an unknown agent', async () => {
+			await expect(service.list(user, query({ attachableTo: 'agent-gone' }))).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(repository.findVisiblePage).not.toHaveBeenCalled();
+		});
+
+		it.each([{ scope: 'agent' as const }, { projectId: 'project-1' }])(
 			'refuses attachableTo together with %o',
 			async (filter) => {
 				await expect(
-					service.list(user, query({ attachableTo: 'project-1', ...filter })),
+					service.list(user, query({ attachableTo: 'agent-1', ...filter })),
 				).rejects.toThrow(UserError);
 				expect(repository.findVisiblePage).not.toHaveBeenCalled();
 			},
@@ -164,13 +181,11 @@ describe('SkillsApiService', () => {
 
 		it('widens the list for a user with global scopes', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
-			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
 			await service.list(user, query());
 
-			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:list');
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				{ userId: user.id, allUsers: true, projectIds: 'all' },
+				{ projectIds: 'all' },
 				expect.anything(),
 			);
 		});
@@ -190,8 +205,8 @@ describe('SkillsApiService', () => {
 				scope: 'project',
 				projectId: 'project-1',
 				projectName: 'Team',
-				userId: null,
 				agentId: null,
+				agentName: null,
 				source: 'ui',
 				latestVersion: 2,
 				usedByAgents: 2,
@@ -200,6 +215,25 @@ describe('SkillsApiService', () => {
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
+		});
+
+		it('describes an agent skill with its agent and the project of the agent', async () => {
+			visible = [skill('skill_a', { agentId: 'agent-1' })];
+			repository.findProjectNames.mockResolvedValue(new Map([['project-1', 'Team']]));
+			const check = vi.fn().mockReturnValue(true);
+			skillService.accessCheck.mockResolvedValue(check);
+
+			const [item] = (await service.list(user, query())).data;
+
+			expect(item).toMatchObject({
+				scope: 'agent',
+				projectId: 'project-1',
+				projectName: 'Team',
+				agentId: 'agent-1',
+				agentName: 'Support bot',
+			});
+			// Permissions come from the agent's project.
+			expect(check).toHaveBeenCalledWith(visible[0], 'project-1');
 		});
 
 		it('checks edit and delete once for the page, not once per skill', async () => {
@@ -266,7 +300,7 @@ describe('SkillsApiService', () => {
 	describe('create', () => {
 		const body = { name: 'Tone', description: 'How we sound', instructions: 'Be kind.' };
 		const payload = (overrides: Partial<CreateSkillDto>) =>
-			({ scope: 'user', skill: body, ...overrides }) as CreateSkillDto;
+			({ scope: 'instance', skill: body, ...overrides }) as CreateSkillDto;
 
 		beforeEach(() => {
 			skillService.create.mockImplementation(async () => {
@@ -289,16 +323,30 @@ describe('SkillsApiService', () => {
 			expect(detail).toMatchObject({ id: 'skill_new', name: 'Skill', canEdit: false });
 		});
 
-		it('creates a "Just you" skill for the caller', async () => {
-			const detail = await service.create(user, payload({ scope: 'user' }));
+		it('creates an agent skill with projectSkill:create on the project of the agent', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 
+			const detail = await service.create(user, payload({ scope: 'agent', agentId: 'agent-1' }));
+
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
+				projectId: 'project-1',
+			});
 			expect(skillService.create).toHaveBeenCalledWith({
-				target: { userId: user.id, projectId: null },
+				target: { projectId: null, agentId: 'agent-1' },
 				skill: body,
 				source: 'ui',
 				createdById: user.id,
 			});
 			expect(detail.id).toBe('skill_new');
+		});
+
+		it('refuses an agent skill for an agent that does not exist', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+
+			await expect(
+				service.create(user, payload({ scope: 'agent', agentId: 'agent-gone' })),
+			).rejects.toThrow(NotFoundError);
+			expect(skillService.create).not.toHaveBeenCalled();
 		});
 
 		it('creates a project skill with projectSkill:create, also in a personal project', async () => {
@@ -310,7 +358,7 @@ describe('SkillsApiService', () => {
 				projectId: 'personal-1',
 			});
 			expect(skillService.create).toHaveBeenCalledWith(
-				expect.objectContaining({ target: { userId: null, projectId: 'personal-1' } }),
+				expect.objectContaining({ target: { projectId: 'personal-1', agentId: null } }),
 			);
 		});
 
@@ -321,14 +369,18 @@ describe('SkillsApiService', () => {
 
 			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:create');
 			expect(skillService.create).toHaveBeenCalledWith(
-				expect.objectContaining({ target: { userId: null, projectId: null } }),
+				expect.objectContaining({ target: { projectId: null, agentId: null } }),
 			);
 		});
 
 		it.each([
 			['project', {}, UserError],
-			['user', { projectId: 'project-1' }, UserError],
+			['project', { projectId: 'project-1', agentId: 'agent-1' }, UserError],
+			['agent', {}, UserError],
+			['agent', { agentId: 'agent-1', projectId: 'project-1' }, UserError],
+			['agent', { agentId: 'agent-1' }, ForbiddenError],
 			['instance', { projectId: 'project-1' }, UserError],
+			['instance', { agentId: 'agent-1' }, UserError],
 			['instance', {}, ForbiddenError],
 			['project', { projectId: 'project-1' }, ForbiddenError],
 		] as const)('refuses scope %s with %o', async (scope, extra, errorClass) => {
@@ -352,17 +404,16 @@ describe('SkillsApiService', () => {
 	});
 
 	describe('update', () => {
-		const update = (fields: Partial<UpdateAgentSkillDto>) => fields as UpdateAgentSkillDto;
+		const update = (fields: Partial<SaveSkillDto>) => fields as SaveSkillDto;
 		const saved = {
 			versionId: 'v3',
 			version: 3,
 			created: true,
 			skill: { name: 'Brand voice', description: 'd', instructions: 'New.' },
-			followingAgentIds: [],
+			followingAgentIds: ['agent-1'],
 		};
 
 		it('saves the update for a user who may edit the skill', async () => {
-			const { followingAgentIds: _following, ...response } = saved;
 			skillService.save.mockResolvedValue(saved);
 
 			const result = await service.update(
@@ -377,6 +428,7 @@ describe('SkillsApiService', () => {
 				user.id,
 			);
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
+			const { followingAgentIds: _following, ...response } = saved;
 			expect(result).toEqual({
 				id: 'skill_a',
 				...response,

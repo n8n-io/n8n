@@ -303,7 +303,7 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.create).toHaveBeenCalledTimes(1);
 			expect(skillService.create).toHaveBeenCalledWith(
 				{
-					target: { userId: null, projectId: 'project-1', agentId: null },
+					target: { projectId: 'project-1', agentId: null },
 					skill: body,
 					source: 'agent',
 					createdById: 'user-1',
@@ -367,7 +367,7 @@ describe('AgentSkillRefsService', () => {
 
 			expect(skillService.create).toHaveBeenCalledWith(
 				{
-					target: { userId: null, projectId: 'project-1', agentId: 'agent-1' },
+					target: { projectId: null, agentId: 'agent-1' },
 					skill: body,
 					source: 'agent',
 					createdById: 'user-1',
@@ -395,9 +395,9 @@ describe('AgentSkillRefsService', () => {
 
 	describe('createSkills', () => {
 		it.each([
-			['project', { userId: null, projectId: 'project-1', agentId: null }],
-			['agent', { userId: null, projectId: 'project-1', agentId: 'agent-1' }],
-			['instance', { userId: null, projectId: null, agentId: null }],
+			['project', { projectId: 'project-1', agentId: null }],
+			['agent', { projectId: null, agentId: 'agent-1' }],
+			['instance', { projectId: null, agentId: null }],
 		] as const)('creates a hub skill available to %s', async (availableTo, target) => {
 			const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
 			skillService.create.mockResolvedValue('skill_created');
@@ -420,7 +420,7 @@ describe('AgentSkillRefsService', () => {
 
 			expect(skillRepository.updateTarget).toHaveBeenCalledWith(
 				'skill_a',
-				{ userId: null, projectId: 'project-1', agentId: 'agent-1' },
+				{ projectId: null, agentId: 'agent-1' },
 				ctx,
 			);
 		});

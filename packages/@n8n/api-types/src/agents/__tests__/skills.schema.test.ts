@@ -1,4 +1,9 @@
-import { CreateSkillDto, ListSkillsQueryDto, SKILLS_MAX_PAGE_SIZE } from '../skills.schema';
+import {
+	CreateSkillDto,
+	ListSkillsQueryDto,
+	SaveSkillDto,
+	SKILLS_MAX_PAGE_SIZE,
+} from '../skills.schema';
 
 describe('ListSkillsQueryDto', () => {
 	it('leaves take unset when the client sends none, so the whole list comes back', () => {
@@ -29,24 +34,41 @@ describe('ListSkillsQueryDto', () => {
 		expect(ListSkillsQueryDto.parse({ attachableTo: 'p1' })).toMatchObject({ attachableTo: 'p1' });
 	});
 
-	it('rejects an unknown scope', () => {
-		expect(ListSkillsQueryDto.safeParse({ scope: 'team' }).success).toBe(false);
+	it.each(['team', 'user'])('rejects the unknown scope %s', (scope) => {
+		expect(ListSkillsQueryDto.safeParse({ scope }).success).toBe(false);
 	});
 });
 
 describe('CreateSkillDto', () => {
 	const skill = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
-	it.each([[{ scope: 'user' }], [{ scope: 'project', projectId: 'p1' }], [{ scope: 'instance' }]])(
-		'accepts %o',
-		(target) => {
-			expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
-		},
-	);
+	it.each([
+		[{ scope: 'project', projectId: 'p1' }],
+		[{ scope: 'agent', agentId: 'a1' }],
+		[{ scope: 'instance' }],
+	])('accepts %o', (target) => {
+		expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+	});
 
 	it('rejects a skill without instructions', () => {
 		expect(
-			CreateSkillDto.safeParse({ scope: 'user', skill: { ...skill, instructions: '' } }).success,
+			CreateSkillDto.safeParse({ scope: 'instance', skill: { ...skill, instructions: '' } })
+				.success,
 		).toBe(false);
 	});
+});
+
+describe('SaveSkillDto', () => {
+	it('accepts changed fields with the base hash', () => {
+		expect(SaveSkillDto.safeParse({ instructions: 'Be brief.', baseSkillHash: 'h1' }).success).toBe(
+			true,
+		);
+	});
+
+	it.each([[{ instructions: 'Be brief.' }], [{ instructions: 'Be brief.', baseSkillHash: '' }]])(
+		'rejects a save without a base hash: %o',
+		(payload) => {
+			expect(SaveSkillDto.safeParse(payload).success).toBe(false);
+		},
+	);
 });
