@@ -6,7 +6,7 @@
  * and what the judge found. The case comes from the builder's own test run
  * only when that run already has a rule and a verdict (`initialCase`);
  * otherwise the panel drafts, runs and judges one case of its own. Behind the
- * `INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT` flag, alongside the original
+ * `101_agent_evals` flag, alongside the original
  * `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';

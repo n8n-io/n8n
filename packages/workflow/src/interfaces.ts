@@ -623,6 +623,8 @@ export interface IHttpRequestOptions {
 		protocol?: string;
 	};
 	timeout?: number;
+	/** Maximum decoded body size in bytes for buffered responses. Unset keeps the response unlimited. */
+	maxResponseBodyBytes?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
 	/**
@@ -4469,7 +4471,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2 | 3;
+	version: 1 | 2 | 3 | 4;
 };
 
 export type FilterValue = {

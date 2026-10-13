@@ -133,6 +133,21 @@ function countRuleActions(rules: readonly PolicyRule[]) {
  */
 const MAX_LISTED_POLICY_TYPES = 100;
 
+/** Keeps a block on a workflow with many blocked nodes under the 32 KB payload cap. */
+const MAX_LISTED_VIOLATIONS = 50;
+
+/** Subject types whose subject is a type name. Any other subject is open text and stays out. */
+const TYPE_NAME_SUBJECT_TYPES = new Set(['nodeType', 'credentialType']);
+
+/** An agent or credential create has a `null` id, so test for the key's presence, not its value. */
+function policedTargetType(
+	event: RelayEventMap['policy-decision-blocked'],
+): 'workflow' | 'agent' | 'credential' {
+	if (event.credentialType !== undefined) return 'credential';
+	if (event.agentId !== undefined) return 'agent';
+	return 'workflow';
+}
+
 /**
  * What a saved policy makes of every type this instance knows, within the policy's own kind
  * (node types or credential types). Runs the same evaluation the node panel runs, once per
@@ -239,6 +254,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
+			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -692,6 +708,42 @@ export class TelemetryEventRelay extends EventRelay {
 				previous_attachment_count: before.attachments.length,
 			},
 		);
+	}
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	/** Workflow, agent and user names stay in the audit log; only ids and type names leave. */
+	private policyDecisionBlocked(event: RelayEventMap['policy-decision-blocked']) {
+		this.telemetry.track(TELEMETRY_EVENT.POLICIES.POLICY_BLOCKED_ACTION, {
+			...(event.actorType === 'user'
+				? { user_id: event.user.id, actor_type: 'user' }
+				: { actor_type: 'system', system_reason: event.systemReason }),
+			point: event.point,
+			outcome: event.outcome,
+			duration_ms: event.durationMs,
+			check_ids: event.checkIds,
+			violation_count: event.violations.length,
+			violations: event.violations.slice(0, MAX_LISTED_VIOLATIONS).map((violation) => ({
+				check_id: violation.checkId,
+				kind: violation.kind,
+				subject_type: violation.subjectType,
+				subject:
+					violation.subjectType !== null && TYPE_NAME_SUBJECT_TYPES.has(violation.subjectType)
+						? violation.subject
+						: null,
+				scope: violation.scope,
+				matched_rule: violation.matchedRuleId !== null,
+			})),
+			target_type: policedTargetType(event),
+			workflow_id: event.workflowId,
+			agent_id: event.agentId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			consumer_node_type: event.consumerNodeType,
+			project_id: event.projectId,
+		});
 	}
 
 	// #endregion
@@ -2408,7 +2460,9 @@ export class TelemetryEventRelay extends EventRelay {
 				impact: rule.ruleImpact,
 				affected_workflows: rule.nbAffectedWorkflows,
 			})),
-			synced_at: new Date(report.report.generatedAt).toISOString(),
+			synced_at: report.report.generatedAt
+				? new Date(report.report.generatedAt).toISOString()
+				: undefined,
 		});
 	}
 
