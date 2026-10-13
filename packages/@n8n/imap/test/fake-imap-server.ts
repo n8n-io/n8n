@@ -26,6 +26,9 @@ export class FakeImapServer {
 	/** Messages the mailbox reports on SELECT. */
 	exists = 0;
 
+	/** When true the server supports the ID command during startup. */
+	supportsId = false;
+
 	constructor(secure: boolean) {
 		const handler = (socket: net.Socket) => {
 			this.sockets.add(socket);
@@ -58,7 +61,9 @@ export class FakeImapServer {
 					const verb = (command ?? '').toUpperCase();
 
 					if (verb === 'CAPABILITY') {
-						write('* CAPABILITY IMAP4rev1 IDLE');
+						write(`* CAPABILITY IMAP4rev1 IDLE${this.supportsId ? ' ID' : ''}`);
+					} else if (verb === 'ID' && this.supportsId) {
+						write('* ID ("name" "fake IMAP" "version" "1")');
 					} else if (verb === 'LIST') {
 						write('* LIST (\\Noselect) "/" ""');
 					} else if (verb === 'SELECT' || verb === 'EXAMINE') {
