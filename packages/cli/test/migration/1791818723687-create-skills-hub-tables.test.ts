@@ -253,9 +253,13 @@ describe('CreateSkillsHubTables migration', () => {
 		await deleteRow('project', 'id', projectId);
 	});
 
-	it('rejects an unknown source', async () => {
-		await expect(
-			insertRow('skill', { id: `skill_${randomUUID().slice(0, 16)}`, source: 'upload' }),
-		).rejects.toThrow();
+	// New sources must not need a migration, so the column has no CHECK on its values.
+	it('accepts a source value the code does not use yet', async () => {
+		const id = `skill_${randomUUID().slice(0, 16)}`;
+
+		await insertRow('skill', { id, source: 'github' });
+
+		expect(await countRows('skill', 'id', id)).toBe(1);
+		await deleteRow('skill', 'id', id);
 	});
 });
