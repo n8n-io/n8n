@@ -285,6 +285,23 @@ describe('Agent skills in the skills hub', () => {
 		expect(await Container.get(SkillRepository).findByIds([created.id])).toHaveLength(1);
 	});
 
+	it('keeps the published skills readable after the flag is turned off', async () => {
+		const skill = await createSkill(body('Published', 'Published text.'));
+		const published = (await publish(await createAgent([skill])))!;
+		await saveInstructions(skill, 'Newer text.');
+		const version = published.activeVersion!;
+
+		await setSkillsHubFlag(false);
+		try {
+			// With the flag off, the legacy reader uses the columns that publish wrote.
+			const { skillRefs: refs, skills } = await skillRefs.readVersion(version, {});
+			expect(refs).toEqual([{ type: 'skill', id: skill }]);
+			expect(await instructionsOf(skills)).toEqual({ [skill]: 'Published text.' });
+		} finally {
+			await setSkillsHubFlag(true);
+		}
+	});
+
 	it('keeps skills on the agent row when the skills hub is off', async () => {
 		await setSkillsHubFlag(false);
 		try {

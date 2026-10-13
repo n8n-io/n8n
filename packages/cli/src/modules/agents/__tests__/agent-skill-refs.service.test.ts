@@ -485,8 +485,10 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
-	describe('pinDraftForPublish', () => {
-		it('pins each draft ref to the version it runs, in draft order', async () => {
+	describe('versionSnapshot and pinVersion', () => {
+		const notes = { name: 'Notes', description: 'Take notes', instructions: 'Write it down.' };
+
+		it('writes the refs and the bodies the draft runs to the legacy columns, and pins them', async () => {
 			skillRepository.findDependencies.mockResolvedValue(
 				new Map([
 					[
@@ -502,14 +504,24 @@ describe('AgentSkillRefsService', () => {
 				['zeta', 'zeta-v2'],
 				['alpha', pinId],
 			]);
-			skillService.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef });
+			skillService.snapshotForPublish.mockResolvedValue({
+				skills: { zeta: notes, alpha: notes },
+				versionByRef,
+			});
 
-			await service.pinDraftForPublish(agent, 'version-1', ctx);
+			const snapshot = await service.versionSnapshot(agent, ctx);
+			await service.pinVersion('version-1', snapshot, ctx);
 
 			expect(skillService.snapshotForPublish).toHaveBeenCalledWith(
 				[{ id: 'zeta' }, { id: 'alpha', versionId: pinId }],
 				ctx,
 			);
+			// A rollback reads these columns, so a published agent keeps its skills.
+			expect(snapshot.schema?.skills).toEqual([
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: 'alpha' },
+			]);
+			expect(snapshot.skills).toEqual({ zeta: notes, alpha: notes });
 			expect(skillService.pinForPublish).toHaveBeenCalledWith('version-1', versionByRef, ctx);
 		});
 
@@ -519,16 +531,19 @@ describe('AgentSkillRefsService', () => {
 			);
 			skillService.snapshotForPublish.mockResolvedValue({ skills: {}, versionByRef: new Map() });
 
-			await expect(service.pinDraftForPublish(agent, 'version-1', ctx)).rejects.toThrow(
+			await expect(service.versionSnapshot(agent, ctx)).rejects.toThrow(
 				'Cannot publish agent with missing skills: zeta',
 			);
-			expect(skillService.pinForPublish).not.toHaveBeenCalled();
 		});
 
-		it('pins nothing for a draft without skills', async () => {
-			await service.pinDraftForPublish(agent, 'version-1', ctx);
+		it('writes an empty skill list and pins nothing for a draft without skills', async () => {
+			const snapshot = await service.versionSnapshot(agent, ctx);
+			await service.pinVersion('version-1', snapshot, ctx);
 
+			expect(snapshot.schema?.skills).toEqual([]);
+			expect(snapshot.skills).toEqual({});
 			expect(skillService.snapshotForPublish).not.toHaveBeenCalled();
+			expect(skillService.pinForPublish).not.toHaveBeenCalled();
 		});
 	});
 
@@ -616,19 +631,23 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.restoreFromVersion).not.toHaveBeenCalled();
 		});
 
-		it('copies the refs and bodies into a new published version', () => {
+		it('copies the refs and bodies into a new published version', async () => {
 			const draft = legacyAgent([
 				{ type: 'skill', id: 'notes' },
 				{ type: 'skill', id: 'billing', enabled: false },
 			]);
 
-			expect(service.versionColumns(draft)).toEqual({ schema: draft.schema, skills: { notes } });
+			await expect(service.versionSnapshot(draft, ctx)).resolves.toEqual({
+				schema: draft.schema,
+				skills: { notes },
+				pins: new Map(),
+			});
 		});
 
-		it('refuses to publish a ref without a body', () => {
+		it('refuses to publish a ref without a body', async () => {
 			const draft = legacyAgent([{ type: 'skill', id: 'gone' }]);
 
-			expect(() => service.versionColumns(draft)).toThrow(
+			await expect(service.versionSnapshot(draft, ctx)).rejects.toThrow(
 				'Cannot publish agent with missing skill bodies: gone',
 			);
 		});

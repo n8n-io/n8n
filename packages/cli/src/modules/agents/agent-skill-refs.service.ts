@@ -22,6 +22,14 @@ import { getAgentSkillHash } from './utils/agent-config-hash';
 import { getMissingSkillIds } from './utils/agent-missing-skill-ids';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 
+/** The `agent_history` skill columns of one publish, and the hub versions to pin. */
+export type PublishSnapshot = {
+	schema: StoredAgentConfig | null;
+	skills: Record<string, AgentSkill> | null;
+	/** Hub skill version id for each skill ref, in draft order. Empty with the hub off. */
+	pins: Map<string, string>;
+};
+
 /** Skill refs and the skill bodies they resolve to, keyed by skill id. */
 export interface AgentSkillsSnapshot {
 	skillRefs: AgentJsonSkillConfig[];
@@ -367,39 +375,68 @@ export class AgentSkillRefsService {
 		return ids;
 	}
 
-	versionColumns(agent: Pick<Agent, 'schema' | 'skills'>): {
-		schema: StoredAgentConfig | null;
-		skills: Record<string, AgentSkill> | null;
-	} {
-		if (!agent.schema) return { schema: null, skills: null };
-		if (this.usesSkillsHub) return { schema: withoutLegacySkillRefs(agent.schema), skills: null };
-		const skillRefs = readLegacyRefs(agent.schema);
-		const skills = pickBodies(agent.skills ?? {}, skillRefs);
-		const missing = getMissingSkillIds(skillRefs, skills);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
+	/**
+	 * What a publish writes to `agent_history`. Both settings write the legacy columns in
+	 * full: the skill refs in `schema.skills` and their bodies in `skills`. With the skills
+	 * hub on, the bodies are the versions the draft runs, so a published agent keeps
+	 * running after the flag is turned off. `pins` are the hub versions to pin once the
+	 * `agent_history` row exists (see `pinVersion`); empty with the hub off. Call it in
+	 * the publish transaction: it takes the publish lock on the skills.
+	 */
+	async versionSnapshot(
+		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
+		ctx: OperationContext,
+	): Promise<PublishSnapshot> {
+		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
+		if (!this.usesSkillsHub) {
+			const skillRefs = readLegacyRefs(agent.schema);
+			const skills = pickBodies(agent.skills ?? {}, skillRefs);
+			const missing = getMissingSkillIds(skillRefs, skills);
+			if (missing.length > 0) {
+				throw new UserError(
+					`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`,
+				);
+			}
+			return { schema: agent.schema, skills: deepCopy(skills), pins: new Map() };
 		}
-		return { schema: agent.schema, skills: deepCopy(skills) };
+		const refs = await this.refsForDraft(agent, ctx);
+		if (refs.length === 0) {
+			return {
+				schema: {
+					...withoutLegacySkillRefs(agent.schema),
+					skills: [],
+				} as unknown as StoredAgentConfig,
+				skills: {},
+				pins: new Map(),
+			};
+		}
+		const { skills, versionByRef } = await this.skillService.snapshotForPublish(
+			toServiceRefs(refs),
+			ctx,
+		);
+		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
+		}
+		const schema = {
+			...withoutLegacySkillRefs(agent.schema),
+			skills: refs.map(({ id }) => ({ type: 'skill', id })),
+		} as unknown as StoredAgentConfig;
+		return { schema, skills, pins: versionByRef };
 	}
 
 	/**
 	 * Publish: pin each draft ref to the saved version it runs now. Call it in
 	 * the publish transaction, after the `agent_history` row exists.
 	 */
-	async pinDraftForPublish(
-		agent: Pick<Agent, 'id' | 'schema'>,
+	/** Publish, after the `agent_history` row exists: pin the versions of `versionSnapshot`. */
+	async pinVersion(
 		agentVersionId: string,
+		snapshot: PublishSnapshot,
 		ctx: OperationContext,
 	): Promise<void> {
-		if (!this.usesSkillsHub) return;
-		const refs = await this.refsForDraft(agent, ctx);
-		if (refs.length === 0) return;
-		const { versionByRef } = await this.skillService.snapshotForPublish(toServiceRefs(refs), ctx);
-		const missing = refs.filter((ref) => !versionByRef.has(ref.id)).map((ref) => ref.id);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skills: ${missing.join(', ')}`);
-		}
-		await this.skillService.pinForPublish(agentVersionId, versionByRef, ctx);
+		if (snapshot.pins.size === 0) return;
+		await this.skillService.pinForPublish(agentVersionId, snapshot.pins, ctx);
 	}
 
 	async availabilityOf(

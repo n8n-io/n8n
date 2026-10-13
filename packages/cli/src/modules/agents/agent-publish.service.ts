@@ -694,7 +694,8 @@ export class AgentPublishService {
 		versionId: string,
 	) {
 		try {
-			const { schema, skills } = this.agentSkillRefs.versionColumns(agent);
+			const snapshot = await this.agentSkillRefs.versionSnapshot(agent, ctx);
+			const { schema, skills } = snapshot;
 			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
@@ -714,7 +715,7 @@ export class AgentPublishService {
 				ctx,
 			);
 			// The skill pins need the `agent_history` row.
-			await this.agentSkillRefs.pinDraftForPublish(agent, versionId, ctx);
+			await this.agentSkillRefs.pinVersion(versionId, snapshot, ctx);
 			return history;
 		} catch (error) {
 			// Concurrent publishes of one draft can collide before they reach the revision fence.

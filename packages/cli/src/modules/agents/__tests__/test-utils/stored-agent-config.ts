@@ -104,11 +104,20 @@ export function createAgentSkillRefsService(
 			),
 		),
 	);
-	service.versionColumns.mockImplementation((agent) => ({
-		schema: agent.schema ? withoutLegacySkillRefs(agent.schema) : null,
-		skills: null,
-	}));
-	service.pinDraftForPublish.mockResolvedValue(undefined);
+	// As the real seam: the legacy columns get the refs and bodies the draft runs.
+	service.versionSnapshot.mockImplementation(async (agent) => {
+		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
+		const skillRefs = readDraftRefs(agent);
+		return {
+			schema: {
+				...withoutLegacySkillRefs(agent.schema),
+				skills: skillRefs.map(({ id }) => ({ type: 'skill', id })),
+			} as unknown as StoredAgentConfig,
+			skills: pickBodies(skillRefs),
+			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
+		};
+	});
+	service.pinVersion.mockResolvedValue(undefined);
 	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;
 }

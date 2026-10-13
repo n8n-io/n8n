@@ -555,18 +555,23 @@ describe('AgentPublishService', () => {
 			{
 				versionId,
 				agentId,
-				// The version stores no skill refs: the skill pins hold them.
+				// The legacy columns keep the refs and bodies, so a rollback can run this version.
 				schema: {
 					...withoutLegacySkillRefs(agent.schema!),
+					skills: storedSkillRefs(agent),
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],
 				},
 				tools: configuredTools,
-				skills: null,
+				skills: {},
 				publishedBy: user,
 			},
 			ctx,
 		);
-		expect(skillRefs.pinDraftForPublish).toHaveBeenCalledWith(agent, versionId, ctx);
+		expect(skillRefs.pinVersion).toHaveBeenCalledWith(
+			versionId,
+			await skillRefs.versionSnapshot.mock.results[0].value,
+			ctx,
+		);
 		expect(taskSnapshotRepository.saveForVersion).toHaveBeenCalledWith(
 			[expect.objectContaining({ versionId, taskId: 'task-1', objective: 'Summarize messages' })],
 			ctx,
@@ -654,7 +659,7 @@ describe('AgentPublishService', () => {
 			},
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		skillRefs.pinDraftForPublish.mockRejectedValue(
+		skillRefs.versionSnapshot.mockRejectedValue(
 			new UserError('Cannot publish agent with missing skills: missing_skill'),
 		);
 
@@ -1080,12 +1085,18 @@ describe('AgentPublishService', () => {
 			await service.publishAgent(agentId, projectId, user, byBuilder);
 
 			const [[saved, saveCtx]] = agentHistoryRepository.saveVersion.mock.calls;
-			expect(saved.schema).not.toHaveProperty('skills');
-			expect(refsService.pinDraftForPublish).toHaveBeenCalledWith(agent, saved.versionId, ctx);
+			// The legacy columns keep the refs, so a rollback still finds the published skills.
+			expect(saved.schema?.skills).toEqual(skillRefs);
+			expect(refsService.versionSnapshot).toHaveBeenCalledWith(agent, ctx);
+			expect(refsService.pinVersion).toHaveBeenCalledWith(
+				saved.versionId,
+				expect.objectContaining({ pins: expect.any(Map) }),
+				ctx,
+			);
 			expect(saveCtx).toBe(ctx);
 			// The pins need the history row.
 			expect(agentHistoryRepository.saveVersion.mock.invocationCallOrder[0]).toBeLessThan(
-				refsService.pinDraftForPublish.mock.invocationCallOrder[0],
+				refsService.pinVersion.mock.invocationCallOrder[0],
 			);
 		});
 
