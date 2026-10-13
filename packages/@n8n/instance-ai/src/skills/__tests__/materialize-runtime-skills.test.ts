@@ -319,6 +319,42 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(text).toContain(skillPath);
 	});
 
+	it('checks a prebaked bundle once per sandbox and reads only the manifest', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace, writes, readFile, writeFile } = createMockWorkspace();
+		const root = '/home/daytona/workspace';
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
+		if (!bundle) throw new Error('Expected runtime skill bundle');
+		for (const [path, content] of bundle.files) {
+			writes.set(path, content);
+		}
+		const verifiedBundles = new Map<string, string>();
+		const runSkillLoad = async () => {
+			const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+				logger: mockLogger,
+				source,
+				workspace,
+				resolveVerifiedBundles: async () => await Promise.resolve(verifiedBundles),
+			});
+			return await createSkillLoadTool(runtimeSource).handler?.(
+				{ skillId: 'data-table-manager' },
+				{},
+			);
+		};
+
+		await runSkillLoad();
+
+		expect(readFile).toHaveBeenCalledTimes(1);
+		expect(readFile).toHaveBeenCalledWith(bundle.manifestPath, expect.anything());
+
+		readFile.mockClear();
+		const result = await runSkillLoad();
+
+		expect(readFile).not.toHaveBeenCalled();
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(skillLoadText(result)).toContain('[Skill: "data-table-manager"]');
+	});
+
 	it('falls back to live materialization when the prebaked manifest is stale', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, writeFile } = createMockWorkspace();

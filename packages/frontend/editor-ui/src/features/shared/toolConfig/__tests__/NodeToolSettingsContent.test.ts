@@ -217,6 +217,22 @@ describe('NodeToolSettingsContent', () => {
 		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
+	it('hides host-owned parameters and keeps unrelated parameters visible', () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				initialNode: createMockNode(),
+				hiddenParameters: ['resource'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).not.toContain('"name":"resource"');
+		expect(renderedParameters).toContain('"name":"operation"');
+		expect(renderedParameters).toContain('"name":"nameField"');
+	});
+
 	it('should hide settings tab when there are no settings', () => {
 		const { queryByText } = renderComponent({
 			props: { initialNode: createMockNode() },

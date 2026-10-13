@@ -147,7 +147,10 @@ export class N8nPackageParser {
 	 * Bundled credential files, keyed by credential id. A credential requirement
 	 * without a file is valid: the exporting user could not read the credential.
 	 */
-	async getCredentials(reader: PackageReader): Promise<Map<string, SerializedCredential>> {
+	async getCredentials(
+		reader: PackageReader,
+		sourceIds?: ReadonlySet<string>,
+	): Promise<Map<string, SerializedCredential>> {
 		const manifest = await this.getManifest(reader);
 		const credentials = new Map<string, SerializedCredential>();
 		const requiredTypes = new Map(
@@ -157,6 +160,7 @@ export class N8nPackageParser {
 		// The manifest target already points into the owner project folder or the
 		// top-level `credentials/` folder, so the import scope does not matter here.
 		for (const entry of manifest.credentials ?? []) {
+			if (sourceIds && !sourceIds.has(entry.id)) continue;
 			credentials.set(
 				entry.id,
 				await this.readCredential(reader, entry, requiredTypes.get(entry.id)),

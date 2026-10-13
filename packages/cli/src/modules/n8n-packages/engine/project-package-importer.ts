@@ -11,6 +11,7 @@ import type {
 	CredentialBindingRequest,
 	CredentialUpdateScope,
 } from '../entities/credential/credential.types';
+import { canStubNotFoundFailure } from '../entities/credential/credential-missing-mode';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
@@ -40,9 +41,11 @@ import {
 } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
 import {
+	needsBundledCredentialData,
 	needsBundledCredentialFiles,
 	needsBundledVariableValues,
 	placeByLayout,
+	placeCredentialData,
 } from './package-layout';
 import {
 	ImportOrchestrator,
@@ -151,6 +154,24 @@ export class ProjectPackageImporter {
 			planned.push({ project, plan });
 		}
 
+		const missingCredentialIds = new Set(
+			planned.flatMap(({ plan }) =>
+				plan.credentialPlan.failures.filter(canStubNotFoundFailure).map(({ sourceId }) => sourceId),
+			),
+		);
+		if (needsBundledCredentialData(request, missingCredentialIds.size > 0)) {
+			const bundledCredentials =
+				packageCredentials ??
+				(await this.packageParser.getCredentials(reader, missingCredentialIds));
+			for (const { plan } of planned) {
+				const { credentialRequest } = plan.input;
+				credentialRequest.requirements = placeCredentialData({
+					requirements: credentialRequest.requirements,
+					bundledCredentials,
+				});
+			}
+		}
+
 		assertTagWritesAllowed(
 			request.apiKeyScopes,
 			planned.map(({ plan }) => plan.tagPlan),
@@ -207,6 +228,7 @@ export class ProjectPackageImporter {
 		let dataTablesMatched = 0;
 		let dataTablesCreated = 0;
 		let dataTablesUpdated = 0;
+		const seeded: string[] = [];
 		const variablesMatched: string[] = [];
 		const variablesMissing: string[] = [];
 		const variablesCreated: string[] = [];
@@ -229,6 +251,7 @@ export class ProjectPackageImporter {
 			dataTablesMatched += content.dataTablePlan.matchedCount;
 			dataTablesCreated += content.dataTablePlan.creations.length;
 			dataTablesUpdated += content.dataTablePlan.updates.length;
+			seeded.push(...content.credentialResult.seeded);
 			variablesMatched.push(...content.variablePlan.matched);
 			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
 			variablesCreated.push(...content.variableResult.created);
@@ -254,7 +277,7 @@ export class ProjectPackageImporter {
 			folders,
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
-			credentials: { matched, stubbed },
+			credentials: { matched, stubbed, seeded },
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,

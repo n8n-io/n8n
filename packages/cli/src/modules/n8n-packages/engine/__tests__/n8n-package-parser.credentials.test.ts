@@ -85,6 +85,23 @@ describe('N8nPackageParser.getCredentials', () => {
 		expect(credentials.get('cred-2')).toEqual(credential);
 	});
 
+	it('reads only the requested credential files', async () => {
+		const credential = { id: 'cred-1', name: 'GitHub', type: 'githubApi' };
+		const reader = makeReader(
+			manifestWith({
+				credentials: [
+					topLevelEntry,
+					{ id: 'cred-2', name: 'Slack', target: 'credentials/slack-cred-2' },
+				],
+			}),
+			{ 'credentials/github-cred-1/credential.json': credential },
+		);
+
+		const credentials = await parser.getCredentials(reader, new Set(['cred-1']));
+
+		expect(credentials).toEqual(new Map([['cred-1', credential]]));
+	});
+
 	it('reads a credential file without data (no-values export)', async () => {
 		const reader = makeReader(manifestWith({ credentials: [topLevelEntry] }), {
 			'credentials/github-cred-1/credential.json': {

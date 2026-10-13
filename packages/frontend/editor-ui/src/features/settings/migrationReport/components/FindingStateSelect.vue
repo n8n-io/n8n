@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MigrationFindingTriageStatus } from '@n8n/api-types';
+import type { MigrationFindingListedStatus, MigrationFindingTriageStatus } from '@n8n/api-types';
 import { N8nSelect2, N8nText } from '@n8n/design-system';
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -11,9 +11,12 @@ interface StateSelectItem extends SelectOptionBase<MigrationFindingTriageStatus>
 	description: string;
 }
 
-const modelValue = defineModel<MigrationFindingTriageStatus>({ required: true });
-
-const { disabled = false } = defineProps<{ disabled?: boolean }>();
+// The value can be any listed state, but a user picks only a triage state.
+const { disabled = false } = defineProps<{
+	modelValue: MigrationFindingListedStatus;
+	disabled?: boolean;
+}>();
+const emit = defineEmits<{ 'update:modelValue': [value: MigrationFindingTriageStatus] }>();
 
 const i18n = useI18n();
 
@@ -37,7 +40,7 @@ function findOption(value: SelectValue | undefined) {
 function onSelect(value: SelectValue | undefined) {
 	const option = findOption(value);
 	if (option) {
-		modelValue.value = option.value;
+		emit('update:modelValue', option.value);
 	}
 }
 </script>
