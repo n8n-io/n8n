@@ -5541,7 +5541,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			name: 'meeting_summary',
 			description: 'Use when extracting decisions from meeting notes',
 			instructions: 'Extract decisions, risks, and action items.',
-			allowedTools: ['load_workflow'],
 			references: [
 				{
 					path: 'references/guide.md',
@@ -5549,6 +5548,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				},
 			],
 		};
+		const editedSkill = { ...updatedSkill, allowedTools: ['load_workflow'] };
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -5576,9 +5576,9 @@ describe('AgentBuilderView — three-column shell', () => {
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
+			onConfirm: (payload: { id: string; skill: typeof editedSkill }) => void;
 		};
-		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
+		modalData.onConfirm({ id: 'summarize_notes', skill: editedSkill });
 		await nextTick();
 
 		expect(
@@ -5603,7 +5603,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('omits allowed tools before saving a skill when none are attached', async () => {
+	it('drops allowed tools before saving a skill', async () => {
 		const skill = {
 			name: 'summarize_notes',
 			description: 'Use when summarizing notes',

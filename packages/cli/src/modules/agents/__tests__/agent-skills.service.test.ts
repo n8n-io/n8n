@@ -105,6 +105,29 @@ describe('AgentSkillsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 	});
 
+	it('drops allowedTools when creating a skill', async () => {
+		const agent = makeAgent({
+			schema: {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.createSkill(
+			agentId,
+			projectId,
+			{ ...skill, allowedTools: ['load_workflow'] },
+			telemetryContext,
+		);
+
+		expect(result.skill).toEqual(skill);
+		expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
+			[result.id]: skill,
+		});
+	});
+
 	it('stores references without derived metadata when creating a skill', async () => {
 		const agent = makeAgent({
 			schema: {
@@ -468,12 +491,11 @@ describe('AgentSkillsService', () => {
 		});
 	});
 
-	it('removes optional list fields when an update clears them', async () => {
+	it('removes references when an update clears them', async () => {
 		const agent = makeAgent({
 			skills: {
 				summarize_notes: {
 					...skill,
-					allowedTools: ['load_workflow'],
 					references: [
 						{
 							path: 'references/guide.md',
@@ -490,18 +512,43 @@ describe('AgentSkillsService', () => {
 			projectId,
 			'summarize_notes',
 			{
-				allowedTools: undefined,
 				references: [],
 			},
 			telemetryContext,
 		);
 
-		expect(result.skill).not.toHaveProperty('allowedTools');
 		expect(result.skill).not.toHaveProperty('references');
 		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(
 			expect.objectContaining({
 				skills: {
 					summarize_notes: skill,
+				},
+			}),
+			{},
+		);
+	});
+
+	it('drops stored and supplied allowedTools when updating a skill', async () => {
+		const agent = makeAgent({
+			skills: {
+				summarize_notes: { ...skill, allowedTools: ['load_workflow'] },
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.updateSkill(
+			agentId,
+			projectId,
+			'summarize_notes',
+			{ instructions: 'New body', allowedTools: ['search_docs'] },
+			telemetryContext,
+		);
+
+		expect(result.skill).toEqual({ ...skill, instructions: 'New body' });
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(
+			expect.objectContaining({
+				skills: {
+					summarize_notes: { ...skill, instructions: 'New body' },
 				},
 			}),
 			{},
