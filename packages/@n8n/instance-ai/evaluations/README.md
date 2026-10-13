@@ -593,7 +593,8 @@ format that LangTracer exports. The tags give the expected route:
   list the questions that pass, for example `accepts:clarify:open`. A token
   can add a steer: `<route>:agent` passes a steer toward an Agent, and
   `<route>:open` passes any steer except workflow only. This works for
-  `clarify` and `answer`.
+  `clarify` and `answer`. `clarify:workflow` passes a question that steers
+  toward a workflow.
 
 A case can add a second user turn with only `[stage directions]`: the facts
 that a user proxy uses to answer a question, for example

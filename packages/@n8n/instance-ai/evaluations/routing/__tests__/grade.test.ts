@@ -351,6 +351,11 @@ describe('trialPasses', () => {
 		[['clarify'], clarify('workflow'), true],
 		[['clarify:agent'], clarify('both'), true],
 		[['clarify:agent'], clarify('none'), false],
+		[['clarify:workflow'], clarify('workflow'), true],
+		[['clarify:workflow'], clarify('both'), true],
+		[['clarify:workflow'], clarify('agent'), false],
+		[['clarify:workflow'], clarify('none'), false],
+		[['clarify:workflow'], clarify(undefined), false],
 		[['clarify:open'], clarify('none'), true],
 		[['clarify:open'], clarify('workflow'), false],
 		[['answer:agent'], { route: 'answer', steer: 'both', evidence: 'end of turn' }, true],
@@ -362,6 +367,19 @@ describe('trialPasses', () => {
 
 	it('fails a question toward the bucket artifact when the case accepts no question', () => {
 		expect(trialPasses(routingCase('workflow', ['workflow']), clarify('workflow'))).toBe(false);
+	});
+
+	it('replies to a workflow question in a workflow case, then passes only a workflow build', () => {
+		const workflowCase = routingCase('workflow', ['workflow', 'clarify:workflow'], ['workflow']);
+		const answered = (route: RouteResolution) => ({ ...route, questions: [clarify('workflow')] });
+
+		expect(canReplyTo(workflowCase, clarify('workflow'))).toBe(true);
+		expect(trialPasses(workflowCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(
+			true,
+		);
+		expect(trialPasses(workflowCase, answered({ route: 'agent', evidence: 'build-agent' }))).toBe(
+			false,
+		);
 	});
 
 	it('grades the route after an answer against the after routes only', () => {

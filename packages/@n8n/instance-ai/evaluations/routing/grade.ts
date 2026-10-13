@@ -224,11 +224,13 @@ export function routeLabel(resolution: RouteResolution): string {
 		.join('>');
 }
 
-// `<route>:agent` passes a steer toward an Agent; `<route>:open` passes any steer except workflow only.
+// `<route>:agent` passes a steer toward an Agent, and `<route>:workflow` a steer toward a workflow.
+// `<route>:open` passes any steer except workflow only.
 function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolution): boolean {
 	const [tokenRoute, tokenSteer] = token.split(':');
 	if (route !== tokenRoute) return false;
 	if (tokenSteer === 'agent') return steer === 'agent' || steer === 'both';
+	if (tokenSteer === 'workflow') return steer === 'workflow' || steer === 'both';
 	if (tokenSteer === 'open') return steer !== undefined && steer !== 'workflow';
 	return true;
 }

@@ -81,6 +81,30 @@ describe('loadRoutingCases', () => {
 		expect(needsSetup).toEqual([]);
 	});
 
+	it('reads a clarify:workflow token and keeps the token order of processExpectations', () => {
+		const expectation = 'Routes to one of: workflow, clarify:workflow';
+		const dir = caseDir({
+			'route-workflow-ask.json': exportedCase([], {
+				tags: ['routing', 'bucket:workflow', 'accepts:clarify:workflow'],
+				processExpectations: [expectation],
+			}),
+		});
+
+		const { cases } = loadRoutingCases(dir);
+
+		expect(cases).toEqual([
+			{
+				id: 'route-workflow-ask',
+				bucket: 'workflow',
+				accepts: ['workflow', 'clarify:workflow'],
+				after: ['workflow'],
+				userMessage: 'It failed again.',
+			},
+		]);
+		// eval-results.json writes this text, and LangTracer stores it.
+		expect(`Routes to one of: ${cases[0]?.accepts.join(', ')}`).toBe(expectation);
+	});
+
 	it('keeps the files whose name contains one of the filter tokens', () => {
 		const dir = caseDir({
 			'route-agent-one.json': exportedCase(),
@@ -182,7 +206,7 @@ describe('loadRoutingCases', () => {
 			'route-debug-bad-clarity.json': exportedCase(['clarity:obvious']),
 			'route-debug-bad-token.json': exportedCase(
 				[],
-				tags('bucket:debug', 'accepts:clarify:workflow'),
+				tags('bucket:debug', 'accepts:answer:workflow'),
 			),
 			'route-debug-two-turns.json': exportedCase([], {
 				conversation: [

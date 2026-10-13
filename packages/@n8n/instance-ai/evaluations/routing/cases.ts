@@ -42,6 +42,7 @@ export type RoutingBucket = (typeof ROUTING_BUCKETS)[number];
 export const ROUTING_ACCEPT_TOKENS = [
 	...ROUTING_BUCKETS,
 	'clarify:agent',
+	'clarify:workflow',
 	'clarify:open',
 	'answer:agent',
 	'answer:open',
