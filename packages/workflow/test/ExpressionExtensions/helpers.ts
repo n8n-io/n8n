@@ -47,13 +47,14 @@ export const evaluate = (value: string, values?: IDataObject[]) =>
 /**
  * Normalize expression results that may be Luxon instances or ISO strings.
  *
- * Both engines give back Luxon instances. The VM engine sends each Luxon value
- * across the isolate boundary as a marker object and rebuilds an instance from
- * it. More than one copy of Luxon is in play: the runtime bundle inlines its
- * own, because packages/@n8n/expression-runtime/esbuild.config.js sets
- * `external: []`. An instance from another copy fails `instanceof` against the
- * Luxon this file imports, but still passes the Luxon `is*` check. The helpers
- * below re-hydrate such an instance through ISO to get one of the local copy.
+ * All engines give back Luxon instances. The VM and QuickJS engines send each
+ * Luxon value across the isolate boundary as a marker object, and the host
+ * rebuilds an instance from it in @n8n/expression-runtime. In tests, that
+ * package loads from its CJS build and so uses the CJS build of Luxon. This
+ * file and the workflow source use the ESM build of Luxon. An instance from the
+ * CJS copy fails `instanceof` against the Luxon this file imports, but still
+ * passes the Luxon `is*` check. The helpers below re-hydrate such an instance
+ * through ISO to get one of the local copy.
  */
 export const asDateTime = (v: unknown): DateTime => {
 	if (v instanceof DateTime) return v;
