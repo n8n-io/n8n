@@ -471,7 +471,7 @@ defineExpose({
 }
 
 .dialog {
-	--n8n-dialog-content--padding: var(--spacing--5xs) 0 0 0;
+	--n8n-dialog-content--padding: 0;
 	max-height: var(--markdown-editor-max-height);
 }
 

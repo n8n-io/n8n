@@ -31,19 +31,6 @@ const props = withDefaults(
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
 }
 
 .title {

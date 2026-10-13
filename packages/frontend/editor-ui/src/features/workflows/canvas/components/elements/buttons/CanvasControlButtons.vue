@@ -135,7 +135,7 @@ function handleClickCollapseAll() {
 					:aria-label="i18n.baseText('nodeView.tidyUp')"
 					data-test-id="tidy-up-button"
 					@click="onTidyUp"
-					/>
+				/>
 			</KeyboardShortcutTooltip>
 			<N8nTooltip
 				v-if="isExperimentalNdvActive"

@@ -142,6 +142,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
 									<N8nIcon
 										:class="[$style.icon, getImpactStyle(id, deviation)]"
+										:size="12"
 										:icon="
 											deviation === 0
 												? 'chevron-right'

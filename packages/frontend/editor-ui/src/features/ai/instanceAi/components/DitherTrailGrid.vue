@@ -594,7 +594,7 @@ onUnmounted(() => {
 	max-height: clamp(120px, 45dvh, 1280px);
 	pointer-events: none;
 	image-rendering: pixelated;
-	--word-grid-background-color: #333;
+	--word-grid-background-color: #aaa;
 	color: var(--word-grid-background-color);
 	--word-grid-trail-color: var(--color--pink-500);
 	border-color: var(--word-grid-trail-color);

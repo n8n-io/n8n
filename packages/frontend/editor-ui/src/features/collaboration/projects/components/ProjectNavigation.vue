@@ -369,7 +369,7 @@ onBeforeUnmount(() => {
 					</N8nText>
 					<N8nIcon
 						icon="chevron-down"
-						size="medium"
+						:size="12"
 						:class="[$style.chevron, instanceAiChatsCollapsed ? $style.chevronCollapsed : '']"
 					/>
 				</button>

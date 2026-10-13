@@ -983,8 +983,8 @@ watch(
 }
 
 .markdownContent {
+	--n8n-markdown--base-font-size: var(--font-size--sm);
 	color: var(--text-color);
-	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	> *:last-child > *:last-child {
