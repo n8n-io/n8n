@@ -1,6 +1,8 @@
 import { CreateSkillDto, ListSkillsQueryDto, UpdateAgentSkillDto } from '@n8n/api-types';
+import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, Query, RestController } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 
 import { SkillsApiService } from './skills/skills-api.service';
@@ -11,20 +13,30 @@ import { SkillsApiService } from './skills/skills-api.service';
  */
 @RestController('/skills')
 export class SkillsController {
-	constructor(private readonly skillsApi: SkillsApiService) {}
+	constructor(
+		private readonly skillsApi: SkillsApiService,
+		private readonly agentsConfig: AgentsConfig,
+	) {}
+
+	private assertEnabled() {
+		if (!this.agentsConfig.skillsHubEnabled) throw new NotFoundError('Not found');
+	}
 
 	@Get('/')
 	async list(req: AuthenticatedRequest, _res: Response, @Query query: ListSkillsQueryDto) {
+		this.assertEnabled();
 		return await this.skillsApi.list(req.user, query);
 	}
 
 	@Get('/:skillId')
 	async get(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
+		this.assertEnabled();
 		return await this.skillsApi.get(req.user, skillId);
 	}
 
 	@Post('/')
 	async create(req: AuthenticatedRequest, _res: Response, @Body payload: CreateSkillDto) {
+		this.assertEnabled();
 		return await this.skillsApi.create(req.user, payload);
 	}
 
@@ -36,11 +48,13 @@ export class SkillsController {
 		@Param('skillId') skillId: string,
 		@Body payload: UpdateAgentSkillDto,
 	) {
+		this.assertEnabled();
 		return await this.skillsApi.update(req.user, skillId, payload);
 	}
 
 	@Delete('/:skillId')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
+		this.assertEnabled();
 		await this.skillsApi.delete(req.user, skillId);
 		return { ok: true };
 	}

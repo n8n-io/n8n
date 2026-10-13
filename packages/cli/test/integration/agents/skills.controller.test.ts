@@ -1,4 +1,5 @@
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { AgentsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
@@ -41,6 +42,17 @@ describe('SkillsController', () => {
 		project = await createTeamProject('Team');
 		await linkUserToProject(editorUser, project, 'project:editor');
 		await linkUserToProject(viewerUser, project, 'project:viewer');
+	});
+
+	beforeEach(() => {
+		Container.get(AgentsConfig).skillsHubEnabled = true;
+	});
+
+	it('hides the skills API when the skills hub is off', async () => {
+		Container.get(AgentsConfig).skillsHubEnabled = false;
+
+		await owner.get('/skills').expect(404);
+		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
 	});
 
 	afterEach(async () => {
