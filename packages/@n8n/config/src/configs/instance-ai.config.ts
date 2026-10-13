@@ -5,6 +5,10 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
+	/** Enable internal self-healing investigations. */
+	@Env('N8N_INSTANCE_AI_SELF_HEALING_ENABLED')
+	selfHealingEnabled: boolean = false;
+
 	/** Enable workflow suggestion runtime integrations at startup. */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;

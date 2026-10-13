@@ -36,7 +36,7 @@ export function substituteSkillPlaceholders(instructions: string): string {
 
 export function loadInstanceAiRuntimeSkillSource(): RuntimeSkillSource {
 	cachedRuntimeSkillSource ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
-		exclude: isAgentFeatureEnabled() ? [] : [...AGENTS_MODULE_RUNTIME_SKILLS],
+		exclude: ['self-healing', ...(isAgentFeatureEnabled() ? [] : AGENTS_MODULE_RUNTIME_SKILLS)],
 		transformInstructions: substituteSkillPlaceholders,
 	});
 	return cachedRuntimeSkillSource;

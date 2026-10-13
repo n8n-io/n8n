@@ -45,6 +45,8 @@ export interface LazyRuntimeWorkspaceOptions {
 	 */
 	sandboxInstructions?: string;
 	filesystemInstructions?: string;
+	/** Limit the tools exposed to the model. Backend workspace access is unchanged. */
+	allowedToolNames?: ReadonlySet<string>;
 }
 
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
@@ -56,6 +58,7 @@ export function createLazyRuntimeWorkspace({
 	name = 'Instance AI runtime workspace',
 	sandboxInstructions,
 	filesystemInstructions,
+	allowedToolNames = CORE_WORKSPACE_TOOL_NAMES,
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
@@ -68,7 +71,9 @@ export function createLazyRuntimeWorkspace({
 
 	const baseGetTools = workspace.getTools.bind(workspace);
 	workspace.getTools = () =>
-		baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+		baseGetTools().filter(
+			(tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name) && allowedToolNames.has(tool.name),
+		);
 
 	return workspace;
 }

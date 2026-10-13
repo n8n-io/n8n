@@ -99,9 +99,128 @@ describe('normalizeStreamSource', () => {
 		expect(source.runId).toBe('agent-run-1');
 		await expect(source.text).resolves.toBe('Hello');
 	});
+
+	it('handles native stream errors when the caller does not read text', async () => {
+		const error = new Error('Connection closed');
+		const source = normalizeStreamSource({
+			runId: 'agent-run-1',
+			stream: new ReadableStream<unknown>({
+				start(controller) {
+					controller.error(error);
+				},
+			}),
+		});
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: source,
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe('errored');
+		expect(result.error).toBe(error);
+		expect(result.measuredUsage).toBeUndefined();
+	});
 });
 
 describe('executeResumableStream', () => {
+	it.each([
+		{ finishReason: 'stop', status: 'completed' },
+		{ finishReason: 'max-iterations', status: 'completed' },
+		{ finishReason: 'error', status: 'errored' },
+	])('preserves SDK terminal details for $finishReason', async ({ finishReason, status }) => {
+		const structuredOutput = { summary: 'Finished checking the candidate.' };
+		const result = await executeResumableStream({
+			agent: {},
+			stream: normalizeStreamSource({
+				runId: 'agent-run-1',
+				stream: readableFromChunks([
+					textChunk('Working...'),
+					{ type: 'finish-step', structuredOutput: { summary: 'Partial output' } },
+					{
+						type: 'finish',
+						finishReason,
+						structuredOutput,
+						usage: { promptTokens: 10, totalTokens: 15 },
+					},
+				]),
+			}),
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus: createEventBus(),
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe(status);
+		expect(result.finishReason).toBe(finishReason);
+		expect(result.structuredOutput).toEqual(structuredOutput);
+		expect(result.measuredUsage).toEqual({
+			promptTokens: 10,
+			completionTokens: undefined,
+			totalTokens: 15,
+			costUsd: undefined,
+		});
+		await expect(result.text).resolves.toBe('Working...');
+	});
+
+	it.each([false, true])(
+		'retains usage when stream iteration fails (aborted: %s)',
+		async (aborted) => {
+			const controller = new AbortController();
+			const streamError = new Error('Connection closed');
+			const eventBus = createEventBus();
+			async function* failingStream() {
+				await Promise.resolve();
+				yield {
+					type: 'finish',
+					finishReason: 'error',
+					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				};
+				if (aborted) controller.abort();
+				throw streamError;
+			}
+
+			const result = await executeResumableStream({
+				agent: {},
+				stream: { runId: 'agent-run-1', fullStream: failingStream() },
+				context: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					agentId: 'agent-1',
+					eventBus,
+					signal: controller.signal,
+					logger: createLogger(),
+				},
+				control: { mode: 'manual' },
+			});
+
+			expect(result.status).toBe(aborted ? 'cancelled' : 'errored');
+			expect(result.finishReason).toBe('error');
+			expect(result.usage?.totalTokens).toBe(15);
+			expect(result.measuredUsage?.totalTokens).toBe(15);
+			if (!aborted) {
+				expect(result.error).toBe(streamError);
+				expect(eventBus.publish).toHaveBeenCalledWith(
+					'thread-1',
+					expect.objectContaining({ type: 'error' }),
+				);
+			}
+		},
+	);
+
 	it('buffers the confirmation event in manual mode', async () => {
 		const eventBus = createEventBus();
 
@@ -178,6 +297,8 @@ describe('executeResumableStream', () => {
 		expect(result.status).toBe('errored');
 		expect(result.agentRunId).toBe('agent-run-1');
 		expect(result.error).toBe(error);
+		expect(result.usage).toBeUndefined();
+		expect(result.measuredUsage).toBeUndefined();
 	});
 
 	it('reports the terminal finish reason of a completed run', async () => {
@@ -280,6 +401,8 @@ describe('executeResumableStream', () => {
 
 	it('captures terminal usage on an aborted run so cancelled runs are billed', async () => {
 		const controller = new AbortController();
+		const eventBus = createEventBus();
+		const structuredOutput = { outcome: 'needs_you' };
 
 		// Yield a text chunk, abort mid-stream (as a user "stop" does), then let
 		// the agent emit its terminal finish chunk carrying the run's usage.
@@ -287,9 +410,11 @@ describe('executeResumableStream', () => {
 			await Promise.resolve();
 			yield textChunk('partial');
 			controller.abort();
+			yield textChunk('after cancellation');
 			yield {
 				type: 'finish',
 				finishReason: 'error',
+				structuredOutput,
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 			};
 		}
@@ -301,7 +426,7 @@ describe('executeResumableStream', () => {
 				threadId: 'thread-1',
 				runId: 'run-1',
 				agentId: 'agent-1',
-				eventBus: createEventBus(),
+				eventBus,
 				signal: controller.signal,
 				logger: createLogger(),
 			},
@@ -309,11 +434,20 @@ describe('executeResumableStream', () => {
 		});
 
 		expect(result.status).toBe('cancelled');
+		expect(result.finishReason).toBe('error');
+		expect(result.structuredOutput).toEqual(structuredOutput);
 		expect(result.usage).toMatchObject({
 			promptTokens: 10,
 			completionTokens: 5,
 			totalTokens: 15,
 		});
+		expect(result.measuredUsage).toEqual({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			costUsd: undefined,
+		});
+		expect(eventBus.publish).toHaveBeenCalledTimes(1);
 	});
 
 	it('reports liveness activity for each consumed chunk', async () => {

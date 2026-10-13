@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
 	AgentDbMessage,
@@ -51,6 +52,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
 	CONCISE_PROMPT_VERSION,
+	SELF_HEALING_PROFILE_VERSION,
 	MAX_STEPS,
 	assertInstanceAiPromptVersion,
 	createInstanceAgent,
@@ -80,6 +82,7 @@ import {
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	isQuotaExhaustedError,
+	isSelfHealingResourceId,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
@@ -252,6 +255,12 @@ import { InstanceAiObservationRepository } from './repositories/instance-ai-obse
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
+import {
+	SelfHealingAgentService,
+	type SelfHealingRunInput,
+	type SelfHealingRunResult,
+	type SelfHealingVerifier,
+} from './self-healing/self-healing-agent.service';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
@@ -873,6 +882,7 @@ export class InstanceAiService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly selfHealingAgent: SelfHealingAgentService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -947,7 +957,7 @@ export class InstanceAiService {
 			settingsService: this.settingsService,
 			aiService: this.aiService,
 			resolveTracingConfig: async (threadId, userId) => {
-				const ownerId = userId ?? (await this.agentMemory.getThread(threadId))?.resourceId;
+				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
@@ -1518,6 +1528,66 @@ export class InstanceAiService {
 				);
 			}
 		}
+	}
+
+	/** Run one internal investigation under the normal host lifecycle. */
+	async startSelfHealingRun(
+		input: SelfHealingRunInput,
+		verifyCandidate: SelfHealingVerifier,
+	): Promise<SelfHealingRunResult> {
+		this.selfHealingAgent.assertEnabled(verifyCandidate);
+		this.assertRunAdmissible(input.user);
+		const threadId = randomUUID();
+		this.liveness.clearThreadState(threadId);
+		const { runId, abortController, messageGroupId } = this.runState.startRun({
+			threadId,
+			user: input.user,
+		});
+		const execution = this.selfHealingAgent
+			.execute(input, verifyCandidate, {
+				threadId,
+				runId,
+				messageGroupId,
+				signal: abortController.signal,
+				sandbox: this.sandboxService,
+				tracing: this.tracing,
+				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
+				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
+				onActivity: () => this.runState.touchActiveRun(threadId),
+				onTracing: (tracing) => this.runState.attachTracing(threadId, tracing),
+				getAbortReason: () => {
+					if (this.liveness.consumeRunTimeout(runId).timedOut)
+						return INSTANCE_AI_RUN_TIMEOUT_REASON;
+					if (quotaExhaustedFromSignal(abortController.signal)) return 'quota_exhausted';
+					return getAbortReason(abortController.signal);
+				},
+				onFinish: (result, modelId, stream) => {
+					const status = result.status === 'suspended' ? 'errored' : result.status;
+					this.publishRunFinish(
+						threadId,
+						runId,
+						status,
+						result.reason ?? result.finishReason,
+						undefined,
+						input.user.id,
+						{
+							modelId,
+							promptVersion: SELF_HEALING_PROFILE_VERSION,
+						},
+					);
+					this.emitRunMetrics(threadId, status, {
+						modelId,
+						workSummary: stream?.workSummary,
+						usage: stream?.usage,
+					});
+				},
+			})
+			.finally(() => {
+				this.runState.clearActiveRun(threadId);
+				this.liveness.clearThreadState(threadId);
+			});
+		this.trackInFlightExecution(execution);
+		return await execution;
 	}
 
 	startRun(
@@ -2145,7 +2215,7 @@ export class InstanceAiService {
 				status: 'cancelled',
 				reason: 'service_shutdown',
 			});
-			run.abortController.abort();
+			run.abortController.abort('service_shutdown');
 		}
 		for (const run of suspendedRuns) {
 			// Suspended runs are recoverable from the checkpoint store + pending
@@ -2221,9 +2291,10 @@ export class InstanceAiService {
 	 * tracking together in one method.
 	 */
 	private trackInFlightExecution(promise: Promise<unknown>): void {
-		const tracked = promise.finally(() => {
+		const clear = () => {
 			this.inFlightExecutions.delete(tracked);
-		});
+		};
+		const tracked = promise.then(clear, clear);
 		this.inFlightExecutions.add(tracked);
 	}
 
@@ -2610,6 +2681,10 @@ export class InstanceAiService {
 		resumeAgentBuild = false,
 	) {
 		const memory = this.agentMemory;
+		const thread = await memory.getThread(threadId);
+		if (thread && thread.resourceId !== user.id) {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
 		const boundProjectId = await memory.getThreadProjectId(threadId);
 		if (!boundProjectId) {
 			throw new UnexpectedError(
@@ -2681,7 +2756,6 @@ export class InstanceAiService {
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
-		const thread = await memory.getThread(threadId);
 		const onboardingThread =
 			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
@@ -5414,7 +5488,9 @@ export class InstanceAiService {
 		// to resume.
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
-			if (!state) return { kind: 'no-checkpoint' };
+			if (!state || isSelfHealingResourceId(state.persistence?.resourceId)) {
+				return { kind: 'no-checkpoint' };
+			}
 			const pendingToolCall = state.pendingToolCalls?.[orphan.toolCallId];
 			if (pendingToolCall?.suspended) {
 				toolName = pendingToolCall.toolName;
@@ -7033,7 +7109,7 @@ export class InstanceAiService {
 				status: effectiveStatus,
 				...(status === 'cancelled'
 					? { reason: reason ?? 'user_cancelled' }
-					: status === 'errored' && reason
+					: reason
 						? { reason }
 						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),

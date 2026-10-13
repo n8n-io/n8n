@@ -268,6 +268,63 @@ describe('InterruptedRunSweeper', () => {
 		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 
+	it.each([undefined, { selfHealing: { version: 99 } }])(
+		'terminalizes a suspended internal run without relying on identity metadata: %j',
+		async (hostMetadata) => {
+			const { sweeper, published } = buildSweeper({
+				events: [runStart()],
+				checkpoints: [
+					runningCheckpoint({
+						resourceId: 'ia-self-healing:user-1',
+						state: {
+							status: 'suspended',
+							messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+							pendingToolCalls: {},
+							persistence: {
+								threadId: THREAD,
+								resourceId: 'ia-self-healing:user-1',
+								hostMetadata,
+							},
+						},
+					}),
+				],
+			});
+
+			await sweeper.sweep();
+
+			expect(published.at(-1)).toMatchObject({
+				type: 'run-finish',
+				payload: { status: 'interrupted', reason: 'crash_interrupted' },
+			});
+		},
+	);
+
+	it.each(['local', 'sibling'] as const)(
+		'preserves %s liveness for suspended internal runs',
+		async (owner) => {
+			const { sweeper, published } = buildSweeper({
+				events: [runStart()],
+				checkpoints: [
+					runningCheckpoint({
+						resourceId: 'ia-self-healing:user-1',
+						state: {
+							status: 'suspended',
+							messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+							pendingToolCalls: {},
+						},
+						updatedAt: new Date(),
+					}),
+				],
+				isMultiMain: owner === 'sibling',
+				host: { isRunLive: () => owner === 'local' },
+			});
+
+			await sweeper.sweep();
+
+			expect(published).toHaveLength(0);
+		},
+	);
+
 	it('marks a run with a running step checkpoint interrupted (crash-resume is a later phase)', async () => {
 		const { sweeper, published, metrics } = buildSweeper({
 			events: [runStart()],

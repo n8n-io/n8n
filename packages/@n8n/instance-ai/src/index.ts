@@ -4,6 +4,9 @@ import './source-map-filter';
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
+import type * as SelfHealingAgentMod from './agent/self-healing-agent';
+import type * as SelfHealingMod from './self-healing';
+import type * as WorkspaceFilesMod from './workspace/workspace-files';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
 import type * as McpClientManagerMod from './mcp/mcp-client-manager';
@@ -97,6 +100,13 @@ const loadAgentSnapshotEvent = lazyModule(
 );
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
+);
+const loadSelfHealingAgent = lazyModule(
+	() => require('./agent/self-healing-agent') as typeof SelfHealingAgentMod,
+);
+const loadSelfHealing = lazyModule(() => require('./self-healing') as typeof SelfHealingMod);
+const loadWorkspaceFiles = lazyModule(
+	() => require('./workspace/workspace-files') as typeof WorkspaceFilesMod,
 );
 const loadAiaModelDefaults = lazyModule(
 	() => require('./agent/aia-model-defaults') as typeof AiaModelDefaultsMod,
@@ -836,3 +846,50 @@ export type {
 	OversizedAttachmentDetail,
 	OversizedAttachmentReason,
 } from './parsers/validate-attachments';
+
+export const createSelfHealingAgent: typeof SelfHealingAgentMod.createSelfHealingAgent =
+	lazyFunction(() => loadSelfHealingAgent().createSelfHealingAgent);
+export type { CreateSelfHealingAgentOptions } from './agent/self-healing-agent';
+export const getSelfHealingResourceId: typeof SelfHealingMod.getSelfHealingResourceId =
+	lazyFunction(() => loadSelfHealing().getSelfHealingResourceId);
+export const isSelfHealingResourceId: typeof SelfHealingMod.isSelfHealingResourceId = lazyFunction(
+	() => loadSelfHealing().isSelfHealingResourceId,
+);
+export type {
+	SelfHealingOutput,
+	SelfHealingIdentity,
+	SelfHealingThreadMetadata,
+	SelfHealingCandidateInput,
+	SelfHealingCandidateVerifier,
+} from './self-healing';
+export const readWorkspaceFile: typeof WorkspaceFilesMod.readWorkspaceFile = lazyFunction(
+	() => loadWorkspaceFiles().readWorkspaceFile,
+);
+export const writeWorkspaceFile: typeof WorkspaceFilesMod.writeWorkspaceFile = lazyFunction(
+	() => loadWorkspaceFiles().writeWorkspaceFile,
+);
+export type { WorkspaceFileTarget, WorkspaceFileOptions } from './workspace/workspace-files';
+export declare const SELF_HEALING_PROFILE_VERSION: typeof SelfHealingMod.SELF_HEALING_PROFILE_VERSION;
+defineLazyExport(
+	'SELF_HEALING_PROFILE_VERSION',
+	() => loadSelfHealing().SELF_HEALING_PROFILE_VERSION,
+);
+export declare const SELF_HEALING_RESOURCE_PREFIX: typeof SelfHealingMod.SELF_HEALING_RESOURCE_PREFIX;
+defineLazyExport(
+	'SELF_HEALING_RESOURCE_PREFIX',
+	() => loadSelfHealing().SELF_HEALING_RESOURCE_PREFIX,
+);
+export declare const SELF_HEALING_WORKSPACE_TOOL_NAMES: typeof SelfHealingMod.SELF_HEALING_WORKSPACE_TOOL_NAMES;
+defineLazyExport(
+	'SELF_HEALING_WORKSPACE_TOOL_NAMES',
+	() => loadSelfHealing().SELF_HEALING_WORKSPACE_TOOL_NAMES,
+);
+export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
+defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);
+export declare const selfHealingIdentitySchema: typeof SelfHealingMod.selfHealingIdentitySchema;
+defineLazyExport('selfHealingIdentitySchema', () => loadSelfHealing().selfHealingIdentitySchema);
+export declare const selfHealingThreadMetadataSchema: typeof SelfHealingMod.selfHealingThreadMetadataSchema;
+defineLazyExport(
+	'selfHealingThreadMetadataSchema',
+	() => loadSelfHealing().selfHealingThreadMetadataSchema,
+);

@@ -167,6 +167,87 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 	});
 });
 
+describe('InstanceAiMemoryService internal thread ownership', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+	afterEach(() => {
+		mockGetThread.mockReset();
+	});
+
+	it.each(['user-1', 'other-user'])('keeps producer threads hidden from %s', async (userId) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('internal-thread', '2026-02-01T00:00:00.000Z'),
+			resourceId: 'ia-self-healing:user-1',
+			metadata: { selfHealing: { backgroundUserId: 'user-1' } },
+		});
+		const service = createService();
+
+		expect(await service.checkThreadOwnership(userId, 'internal-thread')).toBe('other_user');
+		expect(await service.getThreadMetadata(userId, 'internal-thread')).toBeUndefined();
+		await expect(
+			service.ensureThread(userId, 'internal-thread', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+			}),
+		).rejects.toThrow('not owned');
+		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+	});
+
+	it('uses the checked actor identity for internal workspace cleanup', async () => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('internal-thread', '2026-02-01T00:00:00.000Z'),
+			resourceId: 'ia-self-healing:user-1',
+			metadata: {
+				profileVersion: 'self-healing-v1',
+				selfHealing: {
+					version: 1,
+					purpose: 'self-healing',
+					backgroundUserId: 'user-1',
+					projectId: 'project-1',
+					workflowId: 'workflow-1',
+					executionId: 'execution-1',
+				},
+			},
+		});
+
+		expect(await createService().getThreadActorId('internal-thread')).toBe('user-1');
+	});
+
+	it.each([
+		{},
+		{ selfHealing: { version: 99, backgroundUserId: 'user-1' } },
+		{
+			profileVersion: 'self-healing-v1',
+			selfHealing: {
+				version: 1,
+				purpose: 'self-healing',
+				backgroundUserId: 'other-user',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+				executionId: 'execution-1',
+			},
+		},
+	])(
+		'does not infer an actor from the namespace when metadata is invalid: %j',
+		async (metadata) => {
+			mockGetThread.mockResolvedValue({
+				...makeThread('internal-thread', '2026-02-01T00:00:00.000Z'),
+				resourceId: 'ia-self-healing:user-1',
+				metadata,
+			});
+
+			expect(await createService().getThreadActorId('internal-thread')).toBeUndefined();
+		},
+	);
+
+	it('keeps ordinary thread cleanup actor resolution unchanged', async () => {
+		mockGetThread.mockResolvedValue(makeThread('chat-thread', '2026-02-01T00:00:00.000Z'));
+
+		expect(await createService().getThreadActorId('chat-thread')).toBe('user-1');
+	});
+});
+
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -1346,14 +1427,15 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 		vi.clearAllMocks();
 	});
 
-	it('delegates to the agent memory and returns the number of deleted threads', async () => {
-		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+	it('deletes the actor chat and internal threads with their existing resource cleanup', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3).mockResolvedValueOnce(2);
 		const service = createService();
 
 		const deleted = await service.deleteThreadsForUser('user-1');
 
-		expect(deleted).toBe(3);
+		expect(deleted).toBe(5);
 		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('ia-self-healing:user-1');
 	});
 });
 

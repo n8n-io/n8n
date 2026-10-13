@@ -5,6 +5,7 @@ describe('UsageAccumulator', () => {
 		const acc = new UsageAccumulator();
 
 		expect(acc.hasUsage()).toBe(false);
+		expect(acc.toMeasuredUsage()).toBeUndefined();
 		expect(acc.toUsage()).toEqual({
 			promptTokens: 0,
 			completionTokens: 0,
@@ -243,5 +244,57 @@ describe('UsageAccumulator', () => {
 
 		expect(acc.hasUsage()).toBe(true);
 		expect(acc.toUsage().usage).toEqual([]);
+	});
+
+	it('keeps unavailable measurements distinct from measured zeroes', () => {
+		const acc = new UsageAccumulator();
+
+		acc.observe({ type: 'finish', usage: { promptTokens: 0, totalTokens: 10 } });
+
+		expect(acc.toMeasuredUsage()).toEqual({
+			promptTokens: 0,
+			completionTokens: undefined,
+			totalTokens: 10,
+			costUsd: undefined,
+		});
+	});
+
+	it('reports a measurement only when all stream segments supplied it', () => {
+		const acc = new UsageAccumulator();
+
+		acc.observe({
+			type: 'finish',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+		});
+		acc.observe({
+			type: 'finish',
+			usage: { completionTokens: 2, totalTokens: 7 },
+		});
+
+		expect(acc.toMeasuredUsage()).toEqual({
+			promptTokens: undefined,
+			completionTokens: 7,
+			totalTokens: 22,
+			costUsd: undefined,
+		});
+		expect(acc.toUsage().promptTokens).toBe(10);
+	});
+
+	it('keeps totals unavailable when a stream segment omitted usage', () => {
+		const acc = new UsageAccumulator();
+
+		acc.observe({ type: 'finish' });
+		acc.observe({
+			type: 'finish',
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
+		});
+
+		expect(acc.toMeasuredUsage()).toEqual({
+			promptTokens: undefined,
+			completionTokens: undefined,
+			totalTokens: undefined,
+			costUsd: undefined,
+		});
+		expect(acc.toUsage().totalTokens).toBe(15);
 	});
 });

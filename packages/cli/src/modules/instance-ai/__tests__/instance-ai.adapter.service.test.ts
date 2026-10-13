@@ -7828,6 +7828,30 @@ describe('createContext — builder delegate wiring', () => {
 		return builderDelegateAdapter;
 	}
 
+	it.each([undefined, true, false])(
+		'resolves delegation services only when enabled (builderDelegateEnabled=%s)',
+		(builderDelegateEnabled) => {
+			const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+			const delegate = mock<InstanceAiBuilderDelegate>();
+			const builderDelegateAdapter = mockBuilderModuleActive(delegate);
+
+			const context = service.createContext(mockUser, {
+				projectId: 'proj-1',
+				builderDelegateEnabled,
+			});
+
+			if (builderDelegateEnabled === false) {
+				expect(context.builderDelegate).toBeUndefined();
+				expect(Container.get).not.toHaveBeenCalledWith(ModuleRegistry);
+				expect(Container.get).not.toHaveBeenCalledWith(InstanceAiBuilderDelegateAdapterService);
+				expect(builderDelegateAdapter.createDelegate).not.toHaveBeenCalled();
+			} else {
+				expect(context.builderDelegate).toBe(delegate);
+				expect(Container.get).toHaveBeenCalledWith(InstanceAiBuilderDelegateAdapterService);
+			}
+		},
+	);
+
 	it.each([
 		{
 			name: 'omits new Agent builds when Agents are disabled',

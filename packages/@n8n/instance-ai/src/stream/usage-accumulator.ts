@@ -32,6 +32,8 @@ export const runTokenUsageSchema = z.object({
 
 export type RunTokenUsage = z.infer<typeof runTokenUsageSchema>;
 
+export type MeasuredTokenUsage = Partial<Omit<RunTokenUsage, 'usage'>>;
+
 /** Shape of the `finish` stream chunk emitted by the agent runtime. */
 const finishChunkSchema = z.object({
 	type: z.literal('finish'),
@@ -77,14 +79,23 @@ export class UsageAccumulator {
 	private totalTokens = 0;
 	private costUsd = 0;
 	private seen = false;
+	private measuredPromptTokens = true;
+	private measuredCompletionTokens = true;
+	private measuredTotalTokens = true;
+	private measuredCost = true;
 	private readonly perModel = new Map<string, PerModelTokens>();
 
 	/** Feed a raw stream chunk. Only `finish` chunks carry usage; others are ignored. */
 	observe(chunk: unknown): void {
 		const parsed = finishChunkSchema.safeParse(chunk);
-		if (!parsed.success || !parsed.data.usage) return;
-		const { promptTokens, completionTokens, totalTokens, cost, inputTokenDetails } =
-			parsed.data.usage;
+		if (!parsed.success) return;
+		const { usage } = parsed.data;
+		this.measuredPromptTokens &&= usage?.promptTokens !== undefined;
+		this.measuredCompletionTokens &&= usage?.completionTokens !== undefined;
+		this.measuredTotalTokens &&= usage?.totalTokens !== undefined;
+		this.measuredCost &&= usage?.cost !== undefined;
+		if (!usage) return;
+		const { promptTokens, completionTokens, totalTokens, cost, inputTokenDetails } = usage;
 
 		this.promptTokens += promptTokens ?? 0;
 		this.completionTokens += completionTokens ?? 0;
@@ -118,6 +129,17 @@ export class UsageAccumulator {
 	/** Whether any usage was observed. */
 	hasUsage(): boolean {
 		return this.seen;
+	}
+
+	/** Return only measurements supplied by every observed stream segment. */
+	toMeasuredUsage(): MeasuredTokenUsage | undefined {
+		if (!this.seen) return undefined;
+		return {
+			promptTokens: this.measuredPromptTokens ? this.promptTokens : undefined,
+			completionTokens: this.measuredCompletionTokens ? this.completionTokens : undefined,
+			totalTokens: this.measuredTotalTokens ? this.totalTokens : undefined,
+			costUsd: this.measuredCost ? this.costUsd : undefined,
+		};
 	}
 
 	/** Produce a usage summary. Safe to call multiple times (idempotent). */

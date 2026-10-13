@@ -17,6 +17,9 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
+		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
+		isSelfHealingResourceId: profiles.isSelfHealingResourceId,
+		RunStateRegistry: profiles.RunStateRegistry,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
 		setTraceModelId: vi.fn(),
@@ -287,6 +290,7 @@ import {
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { ForbiddenError } from '@n8n/errors';
@@ -306,6 +310,15 @@ import { InstanceAiRunLimitError } from '../instance-ai-run-limit.error';
 import { InstanceAiService } from '../instance-ai.service';
 import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../internal-messages';
 import { InstanceAiSandboxService } from '../sandbox';
+import type {
+	SelfHealingAgentService,
+	SelfHealingRunInput,
+	SelfHealingRunOptions,
+	SelfHealingRunResult,
+	SelfHealingVerifier,
+} from '../self-healing/self-healing-agent.service';
+import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
+import { RunStateRegistry } from '@n8n/instance-ai';
 import type {
 	RebuildSuspendedRunOutcome,
 	ResumableOrphan,
@@ -1526,6 +1539,262 @@ describe('InstanceAiService — memory task observer', () => {
 
 		expect(() => observer(event)).not.toThrow();
 		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
+	});
+});
+
+describe('InstanceAiService — self-healing launcher', () => {
+	const input: SelfHealingRunInput = {
+		user: fakeUser,
+		baseline: mock({
+			backgroundUserId: fakeUser.id,
+			workflowId: 'workflow-1',
+			projectId: 'project-1',
+		}),
+		executionId: 'execution-1',
+		message: 'The execution failed.',
+	};
+	const verifier = vi.fn<SelfHealingVerifier>();
+
+	function createLauncher() {
+		return Object.assign(
+			Object.create(InstanceAiService.prototype) as {
+				startSelfHealingRun: InstanceAiService['startSelfHealingRun'];
+				drainInFlightExecutions: (timeoutMs: number) => Promise<void>;
+			},
+			{
+				selfHealingAgent: {
+					assertEnabled: vi.fn(),
+					execute: vi.fn<SelfHealingAgentService['execute']>(),
+				},
+				runState: new RunStateRegistry<User>((user) => user.id),
+				liveness: {
+					clearThreadState: vi.fn(),
+					consumeRunTimeout: vi.fn(() => ({ timedOut: false })),
+				},
+				instanceAiConfig: { maxConcurrentRuns: 5, maxConcurrentRunsPerUser: 3 },
+				inFlightExecutions: new Set<Promise<unknown>>(),
+				logger: { warn: vi.fn() },
+				eventService: { emit: vi.fn() },
+				sandboxService: mock<InstanceAiSandboxService>(),
+				tracing: mock<InstanceAiTracingService>(),
+				publishRunFinish: vi.fn(),
+				emitRunMetrics: vi.fn(),
+				createExecutionEnvironment: vi.fn(),
+				executeRun: vi.fn(),
+				refineTitleIfNeeded: vi.fn(),
+			},
+		);
+	}
+
+	function completedRun(options: SelfHealingRunOptions): SelfHealingRunResult {
+		return {
+			threadId: options.threadId,
+			runId: options.runId,
+			status: 'completed',
+			usage: {
+				credits: null,
+				turns: null,
+				durationSeconds: null,
+				promptTokens: null,
+				completionTokens: null,
+				totalTokens: null,
+			},
+		};
+	}
+
+	it('tracks setup through completion and releases the shared run registration', async () => {
+		const service = createLauncher();
+		const pending = Promise.withResolvers<SelfHealingRunResult>();
+		service.selfHealingAgent.execute.mockReturnValue(pending.promise);
+
+		const run = service.startSelfHealingRun(input, verifier);
+		const options = service.selfHealingAgent.execute.mock.calls[0][2];
+		expect(service.runState.activeRunCountForUser(fakeUser.id)).toBe(1);
+		expect(service.inFlightExecutions.size).toBe(1);
+		expect(options.sandbox).toBe(service.sandboxService);
+		expect(options.tracing).toBe(service.tracing);
+		expect(options.signal).toBe(
+			service.runState.getActiveRun(options.threadId)?.abortController.signal,
+		);
+		expect(options.threadId).toMatch(/^[a-f0-9-]{36}$/);
+
+		const result = completedRun(options);
+		pending.resolve(result);
+		expect(await run).toBe(result);
+		expect(service.runState.activeRunCount()).toBe(0);
+		expect(service.inFlightExecutions.size).toBe(0);
+		expect(service.liveness.clearThreadState).toHaveBeenLastCalledWith(options.threadId);
+		expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
+		expect(service.executeRun).not.toHaveBeenCalled();
+		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
+	});
+
+	it('applies concurrency admission before registering an internal run', async () => {
+		const service = createLauncher();
+		service.instanceAiConfig.maxConcurrentRunsPerUser = 1;
+		service.runState.startRun({ threadId: 'existing', user: fakeUser });
+
+		await expect(service.startSelfHealingRun(input, verifier)).rejects.toThrow(
+			InstanceAiRunLimitError,
+		);
+
+		expect(service.selfHealingAgent.execute).not.toHaveBeenCalled();
+		expect(service.runState.activeRunCount()).toBe(1);
+	});
+
+	it('checks the gate and verifier before registering a run', async () => {
+		const service = createLauncher();
+		service.selfHealingAgent.assertEnabled.mockImplementation(() => {
+			throw new Error('Unavailable');
+		});
+
+		await expect(service.startSelfHealingRun(input, verifier)).rejects.toThrow('Unavailable');
+
+		expect(service.runState.activeRunCount()).toBe(0);
+		expect(service.selfHealingAgent.execute).not.toHaveBeenCalled();
+	});
+
+	it('releases registration and shutdown tracking after a setup rejection', async () => {
+		const service = createLauncher();
+		service.selfHealingAgent.execute.mockRejectedValue(new Error('Storage unavailable'));
+
+		await expect(service.startSelfHealingRun(input, verifier)).rejects.toThrow(
+			'Storage unavailable',
+		);
+		await service.drainInFlightExecutions(1000);
+
+		expect(service.runState.activeRunCount()).toBe(0);
+		expect(service.inFlightExecutions.size).toBe(0);
+	});
+
+	it('lets shutdown abort setup and waits for its cleanup to finish', async () => {
+		const service = createLauncher();
+		const cleanup = Promise.withResolvers<undefined>();
+		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+			await new Promise<void>((resolve) =>
+				options.signal.addEventListener('abort', () => resolve(), { once: true }),
+			);
+			await cleanup.promise;
+			return { ...completedRun(options), status: 'cancelled', reason: options.getAbortReason() };
+		});
+		const run = service.startSelfHealingRun(input, verifier);
+		const { activeRuns } = service.runState.shutdown();
+		for (const active of activeRuns) active.abortController.abort('service_shutdown');
+		let drained = false;
+		const drain = service.drainInFlightExecutions(1000).then(() => {
+			drained = true;
+		});
+		await Promise.resolve();
+		expect(drained).toBe(false);
+
+		cleanup.resolve(undefined);
+		expect(await run).toMatchObject({ status: 'cancelled', reason: 'service_shutdown' });
+		await drain;
+		expect(service.inFlightExecutions.size).toBe(0);
+	});
+
+	it('preserves finish reasons without starting chat title work', async () => {
+		const service = createLauncher();
+		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => {
+			const result = { ...completedRun(options), finishReason: 'length' as const };
+			options.onFinish(result, 'model-1');
+			return result;
+		});
+
+		const result = await service.startSelfHealingRun(input, verifier);
+
+		expect(service.publishRunFinish).toHaveBeenCalledWith(
+			result.threadId,
+			result.runId,
+			'completed',
+			'length',
+			undefined,
+			fakeUser.id,
+			{
+				modelId: 'model-1',
+				promptVersion: 'self-healing-v1',
+			},
+		);
+		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
+	});
+
+	it('uses the shared timeout classification for internal cancellation', async () => {
+		const service = createLauncher();
+		service.liveness.consumeRunTimeout.mockReturnValue({ timedOut: true });
+		service.selfHealingAgent.execute.mockImplementation(async (_input, _verify, options) => ({
+			...completedRun(options),
+			status: 'cancelled',
+			reason: options.getAbortReason(),
+		}));
+
+		expect(await service.startSelfHealingRun(input, verifier)).toMatchObject({
+			reason: INSTANCE_AI_RUN_TIMEOUT_REASON,
+		});
+	});
+
+	it.each([undefined, { selfHealing: { version: 99 }, profileVersion: 'unsupported' }])(
+		'rejects internal checkpoints before rebuilding ordinary chat tools: %j',
+		async (hostMetadata) => {
+			const service = Object.assign(createTerminalGuardOrderService(), {
+				revalidateActiveUser: vi.fn(async () => fakeUser),
+				createExecutionEnvironment: vi.fn(),
+				createAgentFromEnvironment: vi.fn(),
+			});
+			service.checkpointStore.load.mockResolvedValue({
+				status: 'suspended',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+				persistence: {
+					threadId: 'internal-thread',
+					resourceId: `ia-self-healing:${fakeUser.id}`,
+					hostMetadata,
+				},
+			});
+
+			const result = await service.rebuildSuspendedRunFromCheckpoint(
+				mock<ResumableOrphan>({
+					userId: fakeUser.id,
+					threadId: 'internal-thread',
+					checkpointKey: 'checkpoint-1',
+				}),
+			);
+
+			expect(result).toEqual({ kind: 'no-checkpoint' });
+			expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
+			expect(service.createAgentFromEnvironment).not.toHaveBeenCalled();
+		},
+	);
+
+	it('rejects an actor who tries to use a producer thread as ordinary chat', async () => {
+		const service = Object.assign(
+			Object.create(InstanceAiService.prototype) as {
+				createExecutionEnvironment: (
+					user: User,
+					threadId: string,
+					runId: string,
+					signal: AbortSignal,
+				) => Promise<unknown>;
+			},
+			{
+				agentMemory: {
+					getThread: vi.fn(async () => ({ resourceId: `ia-self-healing:${fakeUser.id}` })),
+					getThreadProjectId: vi.fn(),
+				},
+				adapterService: { createContext: vi.fn() },
+			},
+		);
+
+		await expect(
+			service.createExecutionEnvironment(
+				fakeUser,
+				'internal-thread',
+				'run-1',
+				new AbortController().signal,
+			),
+		).rejects.toThrow(ForbiddenError);
+
+		expect(service.adapterService.createContext).not.toHaveBeenCalled();
+		expect(service.agentMemory.getThreadProjectId).not.toHaveBeenCalled();
 	});
 });
 

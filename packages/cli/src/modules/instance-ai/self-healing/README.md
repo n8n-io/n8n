@@ -1,7 +1,54 @@
-# Self-healing results
+# Self-healing
 
-This directory stores completed investigation results inside `instance-ai`.
-It provides the result review API. It does not start investigations.
+This directory runs internal investigations and stores accepted results inside `instance-ai`.
+It also provides the result review API.
+
+## Run an investigation
+
+Call `InstanceAiService.startSelfHealingRun(input, verifyCandidate)` from backend code.
+Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup.
+Supply the acting `user`, captured `WorkflowSuggestionBaseline`, failed `executionId`,
+and failure description in `message`.
+The actor must match `baseline.backgroundUserId` and have current workflow read and edit access.
+The baseline project and execution must belong to `baseline.workflowId`.
+
+Supply a real verifier before model work starts. The verifier receives the actor, baseline,
+execution ID, workspace, abort signal, and the model arguments `{ filePath, validationOnly? }`.
+AST-1479 owns verifier implementation. Production has no successful placeholder verifier.
+
+`SelfHealingAgentService` creates `self-healing/candidate.workflow.ts` from the captured baseline.
+It uses the same workflow converter as ordinary workflow reads.
+Live workflow reads provide context. They do not replace this candidate or its baseline.
+
+The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
+It can read and edit workspace files and call `verify_candidate`.
+Research remains subject to the existing policy. A request that needs approval is unavailable.
+The agent has no shell, save, publish, credential setup, MCP, browser, or delegation tools.
+It does not request user confirmation or start follow-up runs.
+
+The call returns technical `status`, finish information, measured `usage`, and validated `output`
+when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
+`fix_ready` requires a candidate path. `could_not_fix` excludes one.
+The result can include a candidate reader for backend use.
+Unknown usage measurements stay null. The invocation claims measured credits once.
+Callers must not claim those credits again.
+
+Each invocation has a separate thread under `ia-self-healing:<actorId>`.
+The thread, memory, and checkpoint keep this resource identity.
+Versioned server metadata keeps the actor, project, workflow, and execution IDs.
+The conversation stays hidden from every user, including the actor.
+Account credit updates omit its thread ID and thread total.
+Deleting the actor also removes these internal threads.
+
+The host uses its existing admission limits, run registry, sandbox, tracing, and shutdown drain.
+An unexpected suspension stops the invocation and removes its suspended checkpoint.
+A crashed invocation becomes `crash_interrupted`. It cannot resume as ordinary chat.
+Workspace retention follows the existing sandbox lifecycle.
+Read and persist accepted candidate data before workspace cleanup removes it.
+
+AST-1480 owns investigation admission, baseline capture, final candidate compilation,
+acceptance, and atomic completion. This invocation creates no result or suggestion record.
+There is no automatic trigger or public launch endpoint.
 
 ## Store a result
 
@@ -11,10 +58,10 @@ and usage object. Supply measured usage from the existing runtime and accounting
 The method validates references and report content before opening its transaction.
 It then checks current editor access and ownership again and saves the result, suggestion,
 and submission activity together. Callers do not prepare results or supply a transaction.
-The investigation producer and completion retries are not implemented yet.
+Investigation admission and completion retries are not implemented yet.
 When added, persist investigation completion inside this method's transaction.
 Call `complete()` only for accepted investigation outcomes. Technical failures without an accepted result stay
-in the Assistant run history and do not create a report or suggestion.
+in internal run records and do not create a report or suggestion.
 The investigation instructions must keep sensitive values out of reports, summaries, and
 suggestion explanations and error context. Persistence does not scrub these fields.
 
@@ -75,9 +122,9 @@ Normal chat ownership and tool permissions apply. Do not copy the background con
 
 Set `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED=true` before startup to load review routes.
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
-The rollout flag is separate from the future switch for new investigations. Saved review services
+The rollout flag is separate from `N8N_INSTANCE_AI_SELF_HEALING_ENABLED`. Saved review services
 do not check investigation enablement or Assistant model availability.
 
 The inbox will provide result listing, pagination, counts, refresh, and seed examples.
 The review UI will provide review screens and chat and editor navigation.
-The investigation producer will run investigations and submit completed results.
+The investigation producer will admit invocations and submit accepted results.

@@ -11,7 +11,11 @@ import type {
 	OrchestratorRunStopSignal,
 } from './orchestrator-run-control';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
-import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
+import {
+	UsageAccumulator,
+	type MeasuredTokenUsage,
+	type RunTokenUsage,
+} from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -83,10 +87,14 @@ export interface ExecuteResumableStreamResult {
 	workSummary: WorkSummary;
 	/** Accumulated token usage and cost, when the stream emitted usage. */
 	usage?: RunTokenUsage;
+	/** Usage without defaults for measurements the stream did not provide. */
+	measuredUsage?: MeasuredTokenUsage;
 	/** Reason this stream stopped early after publishing the current chunk. */
 	stopReason?: OrchestratorRunHandoffReason;
 	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
 	finishReason?: FinishReason;
+	/** Parsed SDK output. The caller validates its domain schema. */
+	structuredOutput?: unknown;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -185,30 +193,18 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 
 	if (isNativeStreamResult(result)) {
 		const [eventStream, textStream] = result.stream.tee();
+		const text = collectNativeStreamText(textStream);
+		// Structured-output callers do not need to await the text branch.
+		void text.catch(() => undefined);
 
 		return {
 			runId: result.runId,
 			fullStream: readableStreamToAsyncIterable(eventStream),
-			text: collectNativeStreamText(textStream),
+			text,
 		};
 	}
 
 	throw new Error('Unsupported agent stream result');
-}
-
-function buildCancelledResult(
-	agentRunId: string,
-	text: Promise<string> | undefined,
-	workSummaryAccumulator: WorkSummaryAccumulator,
-	usageAccumulator: UsageAccumulator,
-): ExecuteResumableStreamResult {
-	return {
-		status: 'cancelled',
-		agentRunId,
-		text,
-		workSummary: workSummaryAccumulator.toSummary(),
-		usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-	};
 }
 
 /**
@@ -298,6 +294,7 @@ function publishEvents(
 interface StreamPassResult {
 	cancelled: boolean;
 	finishReason?: FinishReason;
+	structuredOutput?: unknown;
 	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
@@ -346,133 +343,134 @@ async function consumeStreamPass(args: {
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
 	let finishReason: FinishReason | undefined;
+	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
 
-	for await (const chunk of activeStream) {
-		if (options.context.signal.aborted) {
-			// A stop aborts the agent stream too: it stops generating and emits a
-			// terminal finish chunk carrying the run's usage. Drain the rest of the
-			// stream (without publishing further events) so that usage is observed
-			// and the cancelled run still gets billed for the tokens it consumed.
+	try {
+		for await (const chunk of activeStream) {
 			usageAccumulator.observe(chunk);
-			try {
-				for await (const remaining of activeStream) {
-					usageAccumulator.observe(remaining);
-				}
-			} catch (drainError) {
-				options.context.logger.debug('Instance AI abort drain ended early', {
-					threadId: options.context.threadId,
-					runId: options.context.runId,
-					error: drainError instanceof Error ? drainError.message : String(drainError),
-				});
+			if (isRecord(chunk) && chunk.type === 'finish') {
+				finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
+				structuredOutput = chunk.structuredOutput;
 			}
-			return {
-				cancelled: true,
-				hasError,
-				drainedCorrectionsForResume,
-				currentResponseId,
-				nativeStepIndex,
-			};
-		}
+			// Drain cancelled streams for terminal output and billing, without publishing events.
+			if (options.context.signal.aborted) continue;
 
-		options.context.onActivity?.();
-		usageAccumulator.observe(chunk);
-		if (isRecord(chunk) && chunk.type === 'finish' && isFinishReason(chunk.finishReason)) {
-			finishReason = chunk.finishReason;
-		}
+			options.context.onActivity?.();
 
-		if (isRecord(chunk) && chunk.type === 'start-step') {
-			nativeStepIndex += 1;
-			const responseRunId = activeAgentRunId || options.context.runId;
-			currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
-			syntheticSegmentId = undefined;
-		}
+			if (isRecord(chunk) && chunk.type === 'start-step') {
+				nativeStepIndex += 1;
+				const responseRunId = activeAgentRunId || options.context.runId;
+				currentResponseId = `${responseRunId}:step:${nativeStepIndex}`;
+				syntheticSegmentId = undefined;
+			}
 
-		const parsedSuspension = parseSuspension(chunk);
-		if (parsedSuspension) {
-			const recorded = recordSuspension(
-				parsedSuspension,
-				suspension,
-				options.control,
-				options.context,
+			const parsedSuspension = parseSuspension(chunk);
+			if (parsedSuspension) {
+				const recorded = recordSuspension(
+					parsedSuspension,
+					suspension,
+					options.control,
+					options.context,
+				);
+				suspension = recorded.suspension;
+				if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
+			}
+
+			if (isErrorChunk(chunk)) {
+				hasError = true;
+				// A quota error was already surfaced this run — swallow later error
+				// chunks (usage was still observed above) to avoid a confusing second
+				// callout. Do this before overwriting `error` so `result.error` stays the
+				// quota error the user saw, rather than the swallowed follow-on — otherwise
+				// telemetry would log a failure the user was never shown.
+				if (quotaErrorPublished) continue;
+				error = chunk.error;
+				if (isQuotaExhaustedError(chunk.error)) quotaErrorPublished = true;
+			}
+
+			const isDeltaChunk =
+				isRecord(chunk) && (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta');
+			if (isDeltaChunk && !currentResponseId && !syntheticSegmentId) {
+				syntheticSegmentId = `${activeAgentRunId || options.context.runId}:seg:${randomUUID()}`;
+			}
+
+			const mappedEvent = mapAgentChunkToEvent(
+				options.context.runId,
+				options.context.agentId,
+				chunk,
+				currentResponseId ?? syntheticSegmentId,
 			);
-			suspension = recorded.suspension;
-			if (recorded.pendingConfirmation) pendingConfirmation = recorded.pendingConfirmation;
-		}
 
-		if (isErrorChunk(chunk)) {
-			hasError = true;
-			// A quota error was already surfaced this run — swallow later error
-			// chunks (usage was still observed above) to avoid a confusing second
-			// callout. Do this before overwriting `error` so `result.error` stays the
-			// quota error the user saw, rather than the swallowed follow-on — otherwise
-			// telemetry would log a failure the user was never shown.
-			if (quotaErrorPublished) continue;
-			error = chunk.error;
-			if (isQuotaExhaustedError(chunk.error)) quotaErrorPublished = true;
-		}
+			// A segment boundary ends the synthetic segment; the next delta mints a
+			// fresh id so two different segments can never share one. finish-step
+			// maps to no event but is still a boundary — left sticky, a provider
+			// that never emits start-step would leak one id across steps, and the
+			// reducer's id-keyed replace could then drop an earlier block on replay.
+			const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
+			if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
-		const isDeltaChunk =
-			isRecord(chunk) && (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta');
-		if (isDeltaChunk && !currentResponseId && !syntheticSegmentId) {
-			syntheticSegmentId = `${activeAgentRunId || options.context.runId}:seg:${randomUUID()}`;
-		}
+			const events = mappedEvent ? [mappedEvent] : [];
 
-		const mappedEvent = mapAgentChunkToEvent(
-			options.context.runId,
-			options.context.agentId,
-			chunk,
-			currentResponseId ?? syntheticSegmentId,
-		);
-
-		// A segment boundary ends the synthetic segment; the next delta mints a
-		// fresh id so two different segments can never share one. finish-step
-		// maps to no event but is still a boundary — left sticky, a provider
-		// that never emits start-step would leak one id across steps, and the
-		// reducer's id-keyed replace could then drop an earlier block on replay.
-		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
-		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
-
-		const events = mappedEvent ? [mappedEvent] : [];
-
-		const published = publishEvents(events, {
-			suspension,
-			confirmationEvent,
-			confirmationEventPublished,
-			control: options.control,
-			context: options.context,
-			workSummaryAccumulator,
-		});
-		confirmationEvent = published.confirmationEvent;
-		confirmationEventPublished = published.confirmationEventPublished;
-
-		if (options.control.mode === 'auto' && options.control.drainCorrections) {
-			const corrections = options.control.drainCorrections();
-			publishCorrections(options.context, corrections);
-			drainedCorrectionsForResume.push(...corrections);
-		}
-
-		const stopSignal = options.context.stopSignal?.();
-		if (stopSignal) {
-			return {
-				cancelled: false,
-				stopReason: stopSignal.reason,
-				finishReason,
+			const published = publishEvents(events, {
 				suspension,
-				hasError,
-				error,
-				pendingConfirmation,
 				confirmationEvent,
-				drainedCorrectionsForResume,
-				currentResponseId,
-				nativeStepIndex,
-			};
+				confirmationEventPublished,
+				control: options.control,
+				context: options.context,
+				workSummaryAccumulator,
+			});
+			confirmationEvent = published.confirmationEvent;
+			confirmationEventPublished = published.confirmationEventPublished;
+
+			if (options.control.mode === 'auto' && options.control.drainCorrections) {
+				const corrections = options.control.drainCorrections();
+				publishCorrections(options.context, corrections);
+				drainedCorrectionsForResume.push(...corrections);
+			}
+
+			const stopSignal = options.context.stopSignal?.();
+			if (stopSignal) {
+				return {
+					cancelled: false,
+					stopReason: stopSignal.reason,
+					finishReason,
+					structuredOutput,
+					suspension,
+					hasError,
+					error,
+					pendingConfirmation,
+					confirmationEvent,
+					drainedCorrectionsForResume,
+					currentResponseId,
+					nativeStepIndex,
+				};
+			}
+		}
+	} catch (streamError) {
+		if (options.context.signal.aborted) {
+			options.context.logger.debug('Instance AI abort drain ended early', {
+				threadId: options.context.threadId,
+				runId: options.context.runId,
+				error: streamError instanceof Error ? streamError.message : String(streamError),
+			});
+		} else {
+			hasError = true;
+			if (!quotaErrorPublished) {
+				error = streamError;
+				const event = mapAgentChunkToEvent(options.context.runId, options.context.agentId, {
+					type: 'error',
+					error: streamError,
+				});
+				if (event) options.context.eventBus.publish(options.context.threadId, event);
+			}
 		}
 	}
 
 	return {
-		cancelled: false,
+		cancelled: options.context.signal.aborted,
 		finishReason,
+		structuredOutput,
 		suspension,
 		hasError,
 		error,
@@ -508,51 +506,37 @@ export async function executeResumableStream(
 		});
 		currentResponseId = pass.currentResponseId;
 		nativeStepIndex = pass.nativeStepIndex;
+		const result = {
+			agentRunId: activeAgentRunId,
+			text,
+			...(pass.error !== undefined ? { error: pass.error } : {}),
+			finishReason: pass.finishReason,
+			structuredOutput: pass.structuredOutput,
+			workSummary: workSummaryAccumulator.toSummary(),
+			usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+			measuredUsage: usageAccumulator.toMeasuredUsage(),
+		};
 
-		if (pass.cancelled) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
-		}
-
-		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
+		const { suspension, hasError, pendingConfirmation, confirmationEvent } = pass;
 		const { drainedCorrectionsForResume } = pass;
 
-		if (options.context.signal.aborted) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+		if (pass.cancelled || options.context.signal.aborted) {
+			return { ...result, status: 'cancelled' };
 		}
 
-		if (pass.stopReason) {
+		if (pass.stopReason || !suspension) {
 			return {
-				status: hasError ? 'errored' : 'completed',
-				agentRunId: activeAgentRunId,
-				text,
-				...(error !== undefined ? { error } : {}),
-				finishReason: pass.finishReason,
-				workSummary: workSummaryAccumulator.toSummary(),
-				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-				stopReason: pass.stopReason,
-			};
-		}
-
-		if (!suspension) {
-			return {
-				status: hasError ? 'errored' : 'completed',
-				agentRunId: activeAgentRunId,
-				text,
-				...(error !== undefined ? { error } : {}),
-				finishReason: pass.finishReason,
-				workSummary: workSummaryAccumulator.toSummary(),
-				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
+				...result,
+				status: hasError || pass.finishReason === 'error' ? 'errored' : 'completed',
+				...(pass.stopReason ? { stopReason: pass.stopReason } : {}),
 			};
 		}
 
 		if (options.control.mode === 'manual') {
 			return {
+				...result,
 				status: 'suspended',
-				agentRunId: activeAgentRunId,
-				text,
 				suspension,
-				workSummary: workSummaryAccumulator.toSummary(),
-				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				...(confirmationEvent ? { confirmationEvent } : {}),
 			};
 		}

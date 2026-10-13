@@ -80,6 +80,26 @@ function createMockWorkspace() {
 }
 
 describe('createLazyRuntimeWorkspace', () => {
+	it('exposes only the permitted file tools without initializing the workspace', () => {
+		const ensureWorkspace = vi.fn();
+		const workspace = createLazyRuntimeWorkspace({
+			ensureWorkspace,
+			allowedToolNames: new Set([
+				'workspace_read_file',
+				'workspace_write_file',
+				'workspace_list_files',
+			]),
+		});
+
+		expect(
+			workspace
+				.getTools()
+				.map((tool) => tool.name)
+				.sort(),
+		).toEqual(['workspace_read_file', 'workspace_write_file']);
+		expect(ensureWorkspace).not.toHaveBeenCalled();
+	});
+
 	it('advertises workspace tools without creating the real workspace', async () => {
 		const { workspace } = createMockWorkspace();
 		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
