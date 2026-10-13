@@ -21,6 +21,9 @@ export interface RedactionContext {
 	 *  dynamic credentials. Drives the `credential_inaccessible` redaction
 	 *  reason. */
 	readonly enforceCredentialUsabilityRedaction: boolean;
+	/** The credentials behind `enforceCredentialUsabilityRedaction`: those the
+	 *  requesting user cannot use. Empty when that redaction does not apply. */
+	readonly inaccessibleCredentialIds: readonly string[];
 	/** Generic memo store — strategies may cache intermediate results here
 	 *  to avoid redundant computation across requiresRedaction/apply calls.
 	 *  Keyed by strategy name. */

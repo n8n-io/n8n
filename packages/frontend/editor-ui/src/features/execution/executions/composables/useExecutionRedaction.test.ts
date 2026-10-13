@@ -7,9 +7,20 @@ import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/execu
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useExecutionRedaction } from './useExecutionRedaction';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { flushPromises } from '@vue/test-utils';
 
 const showError = vi.fn();
 const confirm = vi.fn();
+const track = vi.fn();
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError }),
@@ -86,6 +97,140 @@ describe('useExecutionRedaction()', () => {
 
 			expect(isDynamicCredentials.value).toBe(true);
 			expect(canReveal.value).toBe(false);
+		});
+	});
+
+	describe('credentialToShare', () => {
+		const redactedForCredential = (credentialIds: string[]) =>
+			({
+				workflowData: {
+					nodes: [{ credentials: { gmailOAuth2: { id: 'alice-gmail', name: "Alice's Gmail" } } }],
+				},
+				data: {
+					redactionInfo: {
+						isRedacted: true,
+						reason: 'credential_inaccessible',
+						canReveal: false,
+						credentialIds,
+					},
+				},
+			}) as never;
+
+		const viewerWith = (globalScopes: string[]) => {
+			const usersStore = mockedStore(useUsersStore);
+			usersStore.currentUser = { globalScopes } as never;
+		};
+
+		it('offers the credential to an owner or admin who can share it', () => {
+			viewerWith(['credential:share']);
+			setActiveExecution(redactedForCredential(['alice-gmail']));
+
+			const { credentialToShare } = useExecutionRedaction();
+
+			expect(credentialToShare.value).toEqual({ id: 'alice-gmail', name: "Alice's Gmail" });
+		});
+
+		it('offers nothing to a viewer who cannot share the credential', () => {
+			viewerWith([]);
+			setActiveExecution(redactedForCredential(['alice-gmail']));
+
+			const { credentialToShare } = useExecutionRedaction();
+
+			expect(credentialToShare.value).toBeUndefined();
+		});
+
+		it('offers nothing for another redaction reason', () => {
+			viewerWith(['credential:share']);
+			setActiveExecution({
+				data: {
+					redactionInfo: {
+						isRedacted: true,
+						reason: 'workflow_redaction_policy',
+						canReveal: false,
+					},
+				},
+			} as never);
+
+			const { credentialToShare } = useExecutionRedaction();
+
+			expect(credentialToShare.value).toBeUndefined();
+		});
+
+		it('opens the credential on its sharing tab', () => {
+			viewerWith(['credential:share']);
+			setActiveExecution(redactedForCredential(['alice-gmail']));
+			const uiStore = mockedStore(useUIStore);
+
+			useExecutionRedaction().openCredentialSharing();
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('alice-gmail', {
+				initialTab: 'sharing',
+			});
+		});
+
+		it('tracks the click on the sharing link', () => {
+			viewerWith(['credential:share']);
+			setActiveExecution({ ...redactedForCredential(['alice-gmail']), id: 'exec-123' });
+
+			useExecutionRedaction().openCredentialSharing();
+
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_OPENED_CREDENTIAL_SHARING_FROM_REDACTED_DATA,
+				{ credential_id: 'alice-gmail', workflow_id: '', execution_id: 'exec-123' },
+			);
+		});
+
+		describe('after the credential modal closes', () => {
+			const reloadedData = { resultData: { runData: { Node: [] } } };
+
+			beforeEach(() => {
+				viewerWith(['credential:share']);
+				setActiveExecution({ ...redactedForCredential(['alice-gmail']), id: 'exec-123' });
+				workflowsStore.fetchExecutionDataById = vi.fn().mockResolvedValue({ data: reloadedData });
+			});
+
+			it('reloads the execution when the sharing of the credential changed', async () => {
+				const setExecutionRunDataSpy = vi.spyOn(
+					useExecutionDataStore(createExecutionDataId('exec-123')),
+					'setExecutionRunData',
+				);
+
+				useExecutionRedaction().openCredentialSharing();
+				await useCredentialsStore().setCredentialSharedWith({
+					credentialId: 'alice-gmail',
+					sharedWithProjects: [],
+				});
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledWith('exec-123', undefined);
+				expect(setExecutionRunDataSpy).toHaveBeenCalledWith(reloadedData);
+			});
+
+			it('does not reload when the sharing did not change', async () => {
+				useExecutionRedaction().openCredentialSharing();
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+			});
+
+			it('stops listening once the modal closed', async () => {
+				useExecutionRedaction().openCredentialSharing();
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				await useCredentialsStore().setCredentialSharedWith({
+					credentialId: 'alice-gmail',
+					sharedWithProjects: [],
+				});
+				useUIStore().openModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+				useUIStore().closeModal(CREDENTIAL_EDIT_MODAL_KEY);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+			});
 		});
 	});
 
