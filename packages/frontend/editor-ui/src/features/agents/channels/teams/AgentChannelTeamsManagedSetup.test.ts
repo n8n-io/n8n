@@ -9,6 +9,7 @@ const copySpy = vi.fn();
 
 import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { entraApiPermissionsUrl } from './constants';
 
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
@@ -1285,7 +1286,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 			await fireEvent.click(getByTestId('teams-file-access-copy'));
 
-			expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('app-1'));
+			expect(copySpy).toHaveBeenCalledWith(entraApiPermissionsUrl('app-1'));
 		});
 	});
 });

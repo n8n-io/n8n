@@ -1,6 +1,7 @@
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment } from 'chat';
+import { OperationalError } from 'n8n-workflow';
 
 import { InboundAttachmentAccessError } from '../../agent-chat-integration';
 import { stringProperty } from '../../integration-helpers';
@@ -33,7 +34,7 @@ function isGraphHttp(value: unknown): value is GraphHttp {
 function toBuffer(data: unknown): Buffer {
 	if (Buffer.isBuffer(data)) return data;
 	if (data instanceof ArrayBuffer) return Buffer.from(data);
-	throw new Error('Microsoft Graph returned no file content');
+	throw new OperationalError('Microsoft Graph returned no file content');
 }
 
 /** The Graph token goes only to Graph, and only for content hosted on this message. */
@@ -143,7 +144,8 @@ async function downloadSharedFile(
 	]);
 	const itemId = stringProperty(item, 'id');
 	const driveId = isRecord(item) ? stringProperty(item.parentReference, 'driveId') : undefined;
-	if (!itemId || !driveId) throw new Error('Microsoft Graph did not say where the file is');
+	if (!itemId || !driveId)
+		throw new OperationalError('Microsoft Graph did not say where the file is');
 
 	const ownedBySender = async () => {
 		if (!senderId) return false;

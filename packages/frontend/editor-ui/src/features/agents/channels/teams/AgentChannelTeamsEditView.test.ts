@@ -209,6 +209,24 @@ describe('AgentChannelTeamsEditView', () => {
 			vi.useRealTimers();
 		});
 
+		it('still waits after an approval when the saved settings arrive late', async () => {
+			vi.useFakeTimers();
+			fileAccessJustApproved.value = true;
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+
+			const { rerender } = renderView({
+				props: { ...viewProps, savedSettings: undefined },
+				pinia: createTestingPinia(),
+			});
+			await rerender({ ...viewProps, savedSettings: { teamChannels: true } });
+			await vi.advanceTimersByTimeAsync(9_000);
+			expect(checkTeamsFileAccess).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(checkTeamsFileAccess).toHaveBeenCalledTimes(1);
+			vi.useRealTimers();
+		});
+
 		it('falls back to the request when the check fails', async () => {
 			vi.mocked(checkTeamsFileAccess).mockRejectedValue(new Error('offline'));
 
