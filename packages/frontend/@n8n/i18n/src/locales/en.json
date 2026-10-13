@@ -5727,6 +5727,7 @@
 	"agents.modelSelector.noMatch": "No models found",
 	"agents.modelSelector.noModels": "No models available for this provider",
 	"agents.modelSelector.modelsUnavailable": "Couldn't load models, try again",
+	"agents.builder.credentials.refreshError": "Couldn't refresh the credential list. Reload the page if the new credential is not selected.",
 	"agents.modelSelector.moreModels": "More {provider} models",
 	"agents.modelSelector.configureCredentials": "Create credential",
 	"agents.modelSelector.connectTo": "Connect to {provider}",

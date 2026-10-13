@@ -47,6 +47,7 @@ const freeAiCreditsState = vi.hoisted(() => ({
 const canCreateCredentials = vi.hoisted(() => ({ value: true }));
 const openNewCredential = vi.hoisted(() => vi.fn());
 const fetchUsableCredentials = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const showError = vi.hoisted(() => vi.fn());
 const openModalWithData = vi.hoisted(() => vi.fn());
 const aiGatewayState = vi.hoisted(() => ({
 	isEnabled: { value: false },
@@ -93,6 +94,10 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText,
 	}),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
 }));
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -760,6 +765,25 @@ describe('AgentModelSelector', () => {
 
 		expect(fetchUsableCredentials).toHaveBeenCalledWith({ projectId: 'project-1', forAgent: true });
 		expect(order).toEqual(['fetch', 'no-select']);
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+	});
+
+	it('reports a failed usable credential refetch and still selects the created credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+		const error = new Error('network');
+		fetchUsableCredentials.mockRejectedValueOnce(error);
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+
+		await expect(
+			onCredentialCreated?.({ id: 'new-anthropic-credential' }),
+		).resolves.toBeUndefined();
+
+		expect(showError).toHaveBeenCalledWith(error, 'agents.builder.credentials.refreshError');
 		expect(wrapper.emitted('selectCredential')).toEqual([
 			['anthropic', 'new-anthropic-credential'],
 		]);

@@ -6,6 +6,7 @@ import {
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -83,6 +84,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
@@ -589,12 +591,16 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 					// Refetch so the new credential is in the list before it is selected,
 					// else the picker treats the selection as invalid and falls back.
 					const scopeProjectId = createCredentialProjectId.value;
-					await (scopeProjectId
-						? credentialsStore.fetchUsableCredentials({
-								projectId: scopeProjectId,
-								forAgent: true,
-							})
-						: credentialsStore.refreshUsableCredentials());
+					try {
+						await (scopeProjectId
+							? credentialsStore.fetchUsableCredentials({
+									projectId: scopeProjectId,
+									forAgent: true,
+								})
+							: credentialsStore.refreshUsableCredentials());
+					} catch (error) {
+						toast.showError(error, i18n.baseText('agents.builder.credentials.refreshError'));
+					}
 					selectCredentialAndResolveDefaultModel(provider, credential.id);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),

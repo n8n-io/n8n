@@ -11,6 +11,7 @@ import type { AgentJsonConfig } from '../types';
 
 const openNewCredentialMock = vi.hoisted(() => vi.fn());
 const fetchUsableCredentialsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const showErrorMock = vi.hoisted(() => vi.fn());
 
 // Mutable per test so the n8n Connect gating (enabled + served credential type)
 // can be exercised without touching the real gateway stores.
@@ -27,6 +28,10 @@ const projectsStoreState = vi.hoisted(() => ({
 	currentProject: null as MockProject | null,
 	personalProject: null as MockProject | null,
 	myProjects: [] as MockProject[],
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorMock }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -203,6 +208,8 @@ function getCreateCredentialTooltip(wrapper: ReturnType<typeof mount>) {
 describe('AgentWebSearchSection', () => {
 	beforeEach(() => {
 		openNewCredentialMock.mockReset();
+		fetchUsableCredentialsMock.mockClear();
+		showErrorMock.mockClear();
 		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
 		projectsStoreState.personalProject = null;
 		projectsStoreState.myProjects = [];
@@ -485,6 +492,34 @@ describe('AgentWebSearchSection', () => {
 			});
 		},
 	);
+
+	it('reports a failed usable credential refetch and still selects the created fallback credential', async () => {
+		const wrapper = mount(AgentWebSearchSection, {
+			props: {
+				config: makeConfig({
+					model: 'deepseek/deepseek-chat',
+					config: { webSearch: { enabled: true, provider: 'brave' } },
+				} as Partial<AgentJsonConfig>),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		const error = new Error('network');
+		fetchUsableCredentialsMock.mockRejectedValueOnce(error);
+
+		wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+		const onCredentialCreated = openNewCredentialMock.mock.calls.at(-1)?.[7]?.onCredentialCreated;
+
+		await expect(onCredentialCreated?.({ id: 'new-cred' })).resolves.toBeUndefined();
+
+		expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String));
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(getWebSearchConfig(last)).toEqual({
+			enabled: true,
+			provider: 'brave',
+			credential: 'new-cred',
+		});
+	});
 
 	it('offers an enabled "Create new credential" action without the permission tooltip when the user can create credentials in the project', () => {
 		const wrapper = mountWithFallbackPicker();
