@@ -458,7 +458,6 @@ export type AuthenticationInformation = {
 export interface TokenGrant {
 	scopes: string[];
 	apiKeyScopes?: string[];
-	/** Set only when the request authenticated with an API key. */
 	apiKeyId?: string;
 	actor?: User;
 	subject: User;
