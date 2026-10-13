@@ -303,7 +303,7 @@ describe('AgentSkillRefsService', () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
-		it('keeps refs to hub skills and creates hub skills for refs with only a body', async () => {
+		it('keeps refs to hub skills and creates agent skills for refs with only a body', async () => {
 			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
 
 			const refs = await service.createDraftRefs(
@@ -321,7 +321,7 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.create).toHaveBeenCalledTimes(1);
 			expect(skillService.create).toHaveBeenCalledWith(
 				{
-					target: { projectId: 'project-1', agentId: null },
+					target: { projectId: null, agentId: 'agent-1' },
 					skill: body,
 					source: 'agent',
 					createdById: 'user-1',

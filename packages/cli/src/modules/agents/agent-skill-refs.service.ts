@@ -245,12 +245,13 @@ export class AgentSkillRefsService {
 
 	/**
 	 * Create with a config (duplicate, import, eval seeding). A ref to a hub
-	 * skill stays a ref. A ref to a skill of another agent only gets a copy for
-	 * this agent only. A ref with a body but no hub skill gets a new hub skill
-	 * in the agent's project. A new skill gets a new id, and the ref points to
-	 * it. A ref with neither is dropped, and so is a ref with only a body when
-	 * no user creates the skill. The creator needs `projectSkill:create` on the agent's project to
-	 * create a skill. Returns the refs that the draft now has.
+	 * skill stays a ref. A ref to an agent skill of another agent in the same
+	 * project gets a copy. A ref with a body but no hub skill gets a new agent
+	 * skill. Both new skills belong to this agent only, so deleting the agent
+	 * deletes them. A new skill gets a new id, and the ref points to it. A ref
+	 * with neither is dropped, and so is a ref with only a body when no user
+	 * creates the skill. The creator needs `projectSkill:create` on the agent's
+	 * project to create a skill. Returns the refs that the draft now has.
 	 */
 	async createDraftRefs(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
@@ -314,10 +315,9 @@ export class AgentSkillRefsService {
 			}
 			const id = await this.skillService.create(
 				{
-					// An agent skill takes its project from its agent, so it has no projectId.
-					target: copiesAgentSkill
-						? { projectId: null, agentId: agent.id }
-						: { projectId: agent.projectId, agentId: null },
+					// An inline body or a copy becomes a skill of this agent only, as the startup
+					// copy does. It takes its project from the agent, and goes with the agent.
+					target: { projectId: null, agentId: agent.id },
 					skill: body,
 					source: 'agent',
 					createdById: creator.id,

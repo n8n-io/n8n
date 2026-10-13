@@ -441,7 +441,7 @@ describe('Agent skills in the skills hub', () => {
 		expect(agentSkills.map((skill) => skill.id)).toEqual([secret]);
 	});
 
-	it('creates a hub skill for a seeded ref that has only a body', async () => {
+	it('creates an agent skill for a seeded ref that has only a body, and deletes it with the agent', async () => {
 		const agent = await agentsService.create(project.id, 'Seeded', {
 			actor: actor(),
 			schema: { ...config, skills: [{ type: 'skill', id: 'seed_skill' }] },
@@ -454,6 +454,9 @@ describe('Agent skills in the skills hub', () => {
 		expect(refs?.[0].id).not.toBe('seed_skill');
 		expect(Object.values(skills)).toEqual([body('Seeded skill')]);
 		const [hubSkill] = await Container.get(SkillRepository).findByIds([refs![0].id]);
-		expect(hubSkill).toMatchObject({ projectId: project.id, source: 'agent' });
+		expect(hubSkill).toMatchObject({ projectId: null, agentId: agent.id, source: 'agent' });
+
+		await agentsService.delete(agent.id, project.id);
+		expect(await Container.get(SkillRepository).findByIds([refs![0].id])).toEqual([]);
 	});
 });
