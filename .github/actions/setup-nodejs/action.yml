@@ -409,7 +409,7 @@ runs:
 
     - name: Configure Namespace Turborepo cache
       if: startsWith(runner.name, 'nsc-runner-') && env.TURBO_API == ''
-      uses: namespace-actions/setup-turbocache@a94b84c111f2cc781a4a83c4d07a99f2c63e33d6 # v0
+      uses: namespace-actions/setup-turbocache@3b82149ffb545cab670093f13bc0bad156917e18 # v0.0.4
       with:
         team: n8n-ci-poc
 
