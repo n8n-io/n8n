@@ -1,0 +1,25 @@
+type: object
+properties:
+  connectionId:
+    type: string
+    minLength: 1
+    maxLength: 36
+  configId:
+    type: string
+    minLength: 1
+    maxLength: 36
+  direction:
+    type: string
+    enum:
+      - apply
+      - promote
+  branchName:
+    type: string
+  hasCheckout:
+    type: boolean
+required:
+  - connectionId
+  - configId
+  - direction
+  - branchName
+  - hasCheckout

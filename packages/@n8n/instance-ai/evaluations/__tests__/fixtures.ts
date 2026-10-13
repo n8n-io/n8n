@@ -41,7 +41,7 @@ export function assistantMessage(agentTree: InstanceAiAgentNode): InstanceAiMess
 	};
 }
 
-export function workflow(id: string): WorkflowResponse {
+export function workflow(id: string, overrides: Partial<WorkflowResponse> = {}): WorkflowResponse {
 	return {
 		id,
 		name: `Workflow ${id}`,
@@ -49,6 +49,7 @@ export function workflow(id: string): WorkflowResponse {
 		versionId: `version-${id}`,
 		nodes: [],
 		connections: {},
+		...overrides,
 	};
 }
 

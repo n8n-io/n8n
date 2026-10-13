@@ -38,6 +38,47 @@ export function createMultiNodeWorkflowFixture() {
 	};
 }
 
+/** The wait is over the Wait node's 65-second threshold, so the execution always suspends. */
+export function createWaitWorkflowFixture() {
+	return {
+		nodes: [
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				id: uuid(),
+				name: 'Trigger',
+			},
+			{
+				parameters: { resume: 'timeInterval', amount: 10, unit: 'minutes' },
+				type: 'n8n-nodes-base.wait',
+				typeVersion: 1.1,
+				position: [200, 0] as [number, number],
+				id: uuid(),
+				name: 'Wait',
+			},
+			{
+				parameters: { category: 'doNothing' },
+				type: 'n8n-nodes-base.debugHelper',
+				typeVersion: 1,
+				position: [400, 0] as [number, number],
+				id: uuid(),
+				name: 'After Wait',
+			},
+		],
+		connections: {
+			Trigger: {
+				main: [[{ node: 'Wait', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+			Wait: {
+				main: [[{ node: 'After Wait', type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+		},
+		pinData: {},
+	};
+}
+
 export function createFailingWorkflowFixture() {
 	return {
 		nodes: [

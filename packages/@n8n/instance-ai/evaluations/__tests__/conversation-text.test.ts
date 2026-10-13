@@ -1,3 +1,5 @@
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+
 import type { CaseSeed } from '../harness/schema';
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
@@ -8,6 +10,7 @@ import {
 	perTurnToolCallCounts,
 	transcriptAsText,
 	userTurnsAsText,
+	usageTokens,
 } from '../utils/conversation-text';
 
 describe('userTurnsAsText', () => {
@@ -120,6 +123,15 @@ describe('conversationUserTurnsAsText', () => {
 			'[attached workflow: Batch loop]',
 		);
 	});
+
+	it('names an attached Agent by the name declared in its seed config', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { agent: 'AgentMcpRepairSeed01' } },
+		];
+		expect(conversationUserTurnsAsText(conversation, seedDeclaringAgent())).toBe(
+			'[attached agent: Notion research]',
+		);
+	});
 });
 
 /** An inline seed declaring one workflow under the id the tests attach. */
@@ -138,6 +150,29 @@ function seedDeclaring(name: string): CaseSeed {
 		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name, nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		folders: [],
+		projects: [],
+	};
+}
+
+function seedDeclaringAgent(): CaseSeed {
+	return {
+		mode: 'inline',
+		messages: [],
+		workflows: [],
+		dataTables: [],
+		folders: [],
+		projects: [],
+		agents: [
+			{
+				id: 'AgentMcpRepairSeed01',
+				config: {
+					name: 'Notion research',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Research company notes.',
+				},
+			},
+		],
 	};
 }
 
@@ -236,6 +271,103 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
 	});
+
+	it('surfaces ask-user question types for process expectations', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				steps: [
+					{
+						kind: 'ask-user',
+						questions: [
+							{
+								id: 'service',
+								question: 'Which service?',
+								type: 'single',
+								options: ['RocketChat', 'Zulip'],
+							},
+						],
+					},
+				],
+			},
+		];
+
+		expect(transcriptAsText(transcript)).toContain(
+			'Q (single): Which service? [RocketChat / Zulip]',
+		);
+	});
+
+	it('inlines a turn heading with tokens summed across its runs (main + resume)', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				userMessage: 'build it',
+				steps: [{ kind: 'agent-text', text: 'Done.' }],
+				runIds: ['run-1', 'run-2'],
+			},
+		];
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'run-1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [{ stepNumber: 0, output: { usage: { inputTokens: 100, outputTokens: 20 } } }],
+			},
+			{
+				threadId: 't1',
+				runId: 'run-2',
+				startedAt: 1,
+				workflowCode: [],
+				steps: [{ stepNumber: 0, output: { usage: { inputTokens: 300, outputTokens: 40 } } }],
+			},
+		];
+		const text = transcriptAsText(transcript, runDebug);
+		expect(text).toContain('### Turn 1 (2 steps, 400 tokens in, 60 tokens out)');
+	});
+
+	it('adds a cached clause to the heading only when the provider reported cache reads', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'follow-up', steps: [], runIds: ['run-1'] },
+			{ userMessage: 'another', steps: [], runIds: ['run-2'] },
+		];
+		const runDebug: InstanceAiRunDebugResponse[] = [
+			{
+				threadId: 't1',
+				runId: 'run-1',
+				startedAt: 0,
+				workflowCode: [],
+				steps: [
+					{
+						stepNumber: 0,
+						output: {
+							usage: {
+								inputTokens: 60000,
+								outputTokens: 500,
+								inputTokenDetails: { cacheReadTokens: 58000, cacheWriteTokens: 0 },
+							},
+						},
+					},
+				],
+			},
+			{
+				threadId: 't1',
+				runId: 'run-2',
+				startedAt: 1,
+				workflowCode: [],
+				steps: [{ stepNumber: 0, output: { usage: { inputTokens: 900, outputTokens: 30 } } }],
+			},
+		];
+		const text = transcriptAsText(transcript, runDebug);
+		expect(text).toContain('### Turn 1 (1 step, 60000 tokens in [58000 cached], 500 tokens out)');
+		// No cache reads reported for run-2 — no clause, rather than "[0 cached]".
+		expect(text).toContain('### Turn 2 (1 step, 900 tokens in, 30 tokens out)');
+	});
+
+	it('leaves the heading plain when no run-debug matches the turn', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'build it', steps: [{ kind: 'agent-text', text: 'Done.' }] },
+		];
+		expect(transcriptAsText(transcript)).toContain('### Turn 1\n');
+	});
 });
 
 describe('perTurnToolCallCounts', () => {
@@ -273,5 +405,62 @@ describe('lastAgentText', () => {
 			{ userMessage: 'and now?', steps: [] },
 		];
 		expect(lastAgentText(transcript)).toBe('latest');
+	});
+
+	// An analysis case lost a legitimate green here: the agent's closing
+	// "which should I build?" sat past a 2000-char cut while the stored
+	// transcript held it in full, so the judge graded an answer that had no
+	// ask in it. Narration is what process expectations read; tool payloads
+	// are what cost tokens.
+	it('keeps a long assistant answer whole while still capping tool payloads', () => {
+		const answer = `${'a'.repeat(2400)} SO WHICH ONE SHOULD I BUILD?`;
+		const transcript: TranscriptTurn[] = [
+			{
+				userMessage: 'analyse this',
+				steps: [
+					{ kind: 'agent-text', text: answer },
+					{
+						kind: 'tool-call',
+						toolName: 'workflow-connections',
+						args: {},
+						result: { blob: 'z'.repeat(9000) },
+					},
+				],
+			},
+		];
+		const text = transcriptAsText(transcript);
+
+		expect(text).toContain('SO WHICH ONE SHOULD I BUILD?');
+		expect(text).toContain('more chars');
+		expect(text.length).toBeLessThan(answer.length + 6000);
+	});
+});
+
+describe('usageTokens', () => {
+	it('reads cache tokens from the AI SDK details when present', () => {
+		expect(
+			usageTokens({
+				inputTokens: 100,
+				outputTokens: 5,
+				inputTokenDetails: { cacheReadTokens: 80, cacheWriteTokens: 10 },
+			}),
+		).toEqual({ input: 100, output: 5, cacheRead: 80, cacheWrite: 10 });
+	});
+
+	it("falls back to OpenAI's cachedPromptTokens, the way toTokenUsage does", () => {
+		// OpenAI reports cache hits only through provider metadata; without this the
+		// judge reads "0 tokens read" on a run that cached most of its prompt.
+		expect(
+			usageTokens({ inputTokens: 100, outputTokens: 5 }, { openai: { cachedPromptTokens: 80 } }),
+		).toEqual({ input: 100, output: 5, cacheRead: 80, cacheWrite: 0 });
+	});
+
+	it('prefers the SDK details over the provider fallback', () => {
+		expect(
+			usageTokens(
+				{ inputTokens: 100, outputTokens: 5, inputTokenDetails: { cacheReadTokens: 30 } },
+				{ openai: { cachedPromptTokens: 80 } },
+			).cacheRead,
+		).toBe(30);
 	});
 });

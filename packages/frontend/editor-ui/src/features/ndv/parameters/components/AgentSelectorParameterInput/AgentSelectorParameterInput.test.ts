@@ -3,6 +3,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import AgentSelectorParameterInput, { type Props } from './AgentSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -82,6 +83,45 @@ describe('AgentSelectorParameterInput', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it.each([undefined, 'Previously selected agent'])(
+		'hides setup markers while preserving the cached name: %s',
+		async (cachedResultName) => {
+			const view = renderComponent({
+				props: makeProps({
+					modelValue: {
+						__rl: true,
+						mode: 'list',
+						value: '<__PLACEHOLDER_VALUE__Choose an agent__>',
+						cachedResultName,
+					},
+				}),
+			});
+			await flushPromises();
+			const input = view.getByRole('textbox');
+			expect(input).not.toHaveDisplayValue(/__PLACEHOLDER_VALUE__/);
+			expect(input).toHaveValue(cachedResultName ?? '');
+			expect(getAgent).not.toHaveBeenCalled();
+			expect(view.queryByTestId('rlc-open-resource-link')).not.toBeInTheDocument();
+			expect(view.emitted('update:modelValue')).toBeUndefined();
+		},
+	);
+
+	it('closes with Escape and reopens its agent list', async () => {
+		listAgentsPage.mockResolvedValue({
+			count: 1,
+			data: [{ id: 'agent-choice', name: 'Agent option', projectId: 'proj-1' }],
+		});
+		const view = renderComponent({ props: makeProps() });
+		await flushPromises();
+		await userEvent.click(view.getByTestId('rlc-input'));
+		expect(await view.findByText('Agent option')).toBeVisible();
+		await userEvent.click(view.getByTestId('rlc-search'));
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(view.queryByText('Agent option')).toBeNull());
+		await userEvent.click(view.getByTestId('rlc-input'));
+		expect(await view.findByText('Agent option')).toBeVisible();
 	});
 
 	it('fetches the first project-scoped page on mount', async () => {

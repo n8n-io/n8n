@@ -2,6 +2,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'openai',
 	'anthropic',
 	'google',
+	'google-vertex',
 	'azure-openai',
 	'aws-bedrock',
 	'xai',
@@ -12,10 +13,13 @@ export const AGENT_MODEL_PROVIDERS = [
 	'mistral',
 	'vercel',
 	'nvidia',
+	'moonshotai',
+	'alibaba',
+	'minimax',
 ] as const;
 
 /** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
-export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:-]+\/)*[a-z0-9._:-]+$/i;
+export const AGENT_MODEL_STRING_REGEX = /^[a-z0-9-]+\/(?:[a-z0-9._:@-]+\/)*[a-z0-9._:@-]+$/i;
 
 export type AgentModelProvider = (typeof AGENT_MODEL_PROVIDERS)[number];
 
@@ -36,6 +40,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	openai: ['openAiApi'],
 	anthropic: ['anthropicApi'],
 	google: ['googlePalmApi'],
+	'google-vertex': ['googleVertexAiApi'],
 	'azure-openai': ['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'],
 	'aws-bedrock': ['aws'],
 	xai: ['xAiApi'],
@@ -46,6 +51,9 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	mistral: ['mistralCloudApi'],
 	vercel: ['vercelAiGatewayApi'],
 	nvidia: ['nvidiaApi'],
+	moonshotai: ['moonshotApi'],
+	alibaba: ['alibabaCloudApi'],
+	minimax: ['minimaxApi'],
 } as const satisfies Record<AgentModelProvider, readonly [string, ...string[]]>;
 
 /** Credential types for a provider prefix, or `[]` when it is not a model provider. */

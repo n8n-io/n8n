@@ -22,6 +22,7 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
 import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
+import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	EventKind,
@@ -30,7 +31,7 @@ import type {
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useActiveElement, useDocumentVisibility, useEventListener } from '@vueuse/core';
 
@@ -90,17 +91,26 @@ const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
+	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
+	if (backgroundJobKey) return i18n.baseText(backgroundJobKey);
+
 	switch (key) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return i18n.baseText('agentSessions.timeline.executionFailed');
+		case 'execution-interrupted':
+			return i18n.baseText('agentSessions.timeline.executionInterrupted');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.hitlRequest');
 		case 'hitl-response':
@@ -109,6 +119,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.approvalRequested');
 		case 'hitl-requested':
 			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'wait-requested':
+			return i18n.baseText('agentSessions.timeline.waitRequested');
 		case 'approved':
 			return i18n.baseText('agentSessions.timeline.approved');
 		case 'responded':
@@ -124,18 +136,20 @@ function labelForKey(key: string): string {
 
 const STATUS_FILTER_OPTIONS = [
 	{ key: 'approved', badgeTheme: 'success' },
-	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'declined', badgeTheme: 'outline' },
 	{ key: 'error', badgeTheme: 'danger' },
 ] satisfies Array<{
 	key: TimelineStatusFilterKey;
-	badgeTheme: 'default' | 'success' | 'danger';
+	badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
 }>;
 
 const filterOptions = computed<FilterOption[]>(() => {
 	const kindCounts = new Map<EventKind, number>();
 	const statusCounts = new Map<TimelineStatusFilterKey, number>();
 	for (const item of items.value) {
-		kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		if (item.kind !== 'execution-error') {
+			kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		}
 		const statusKey = itemStatusFilterKey(item);
 		if (statusKey) {
 			statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
@@ -442,6 +456,10 @@ watch([() => props.projectId, () => props.agentId, () => props.threadId], loadTh
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+	/* Keep the timeline's own stacking below the preview dock, which overlays
+	   this column as a sibling. Without it, a z-index inside the chart competes
+	   with the dock and paints over the chat. */
+	isolation: isolate;
 }
 .subHeader {
 	display: flex;

@@ -5,8 +5,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/test-e2e-helm.yml'
-      - 'packages/testing/containers/helm-stack.ts'
-      - 'packages/testing/containers/helm-start-stack.ts'
+      - 'packages/quality/environments/containers/helm-stack.ts'
+      - 'packages/quality/environments/containers/helm-start-stack.ts'
   workflow_dispatch:
     inputs:
       branch:
@@ -39,7 +39,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
@@ -56,6 +56,7 @@ jobs:
         with:
           build-command: 'pnpm build:docker'
           enable-docker-cache: true
+          docker-cache-key: n8n-io/n8n
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
           IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
@@ -71,7 +72,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
@@ -82,11 +83,11 @@ jobs:
           build-command: 'pnpm build'
 
       - name: Install Browsers
-        working-directory: packages/testing/playwright
+        working-directory: packages/quality/testing/playwright
         run: pnpm exec playwright install chromium
 
       - name: Install Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Install kubectl
         uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
@@ -114,7 +115,7 @@ jobs:
           echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "$GITHUB_ENV"
 
       - name: Run Building Blocks E2E Tests
-        working-directory: packages/testing/playwright
+        working-directory: packages/quality/testing/playwright
         run: |
           N8N_BASE_URL="${{ env.N8N_BASE_URL }}" \
           RESET_E2E_DB=true \
@@ -149,8 +150,8 @@ jobs:
         with:
           name: helm-e2e-report-${{ inputs.mode || 'queue' }}
           path: |
-            packages/testing/playwright/test-results/
-            packages/testing/playwright/playwright-report/
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/playwright-report/
           retention-days: 7
 
   cleanup-ghcr:
@@ -163,7 +164,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false

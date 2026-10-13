@@ -32,10 +32,9 @@ const mockReqWithoutApiKey = (): AuthenticatedRequest => {
 };
 
 async function signAndStoreMcpApiKey(owner: User): Promise<string> {
-	const apiKey = Container.get(JwtService).sign({
+	const apiKey = Container.get(JwtService).sign('mcpApiKey', {
 		sub: owner.id,
 		iss: API_KEY_ISSUER,
-		aud: 'mcp-server-api',
 		jti: randomUUID(),
 	});
 
@@ -106,7 +105,10 @@ describe('ApiKeyAuthStrategy', () => {
 		});
 
 		it('returns null for a JWT whose issuer does not match (abstain)', async () => {
-			const tokenExchangeJwt = jwtService.sign({ iss: TOKEN_EXCHANGE_ISSUER, sub: '123' });
+			const tokenExchangeJwt = jwtService.sign('tokenExchange', {
+				iss: TOKEN_EXCHANGE_ISSUER,
+				sub: '123',
+			});
 			expect(await strategy.buildTokenGrant(tokenExchangeJwt)).toBeNull();
 		});
 
@@ -115,7 +117,7 @@ describe('ApiKeyAuthStrategy', () => {
 			// Each is a short setup with the same expected outcome — folded into one.
 			expect(await strategy.buildTokenGrant('invalid')).toBe(false);
 
-			const unknownKey = jwtService.sign({ sub: '123', iss: API_KEY_ISSUER });
+			const unknownKey = jwtService.sign('publicApiKey', { sub: '123', iss: API_KEY_ISSUER });
 			expect(await strategy.buildTokenGrant(unknownKey)).toBe(false);
 
 			const expiredOwner = await createOwnerWithApiKey({

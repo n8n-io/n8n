@@ -248,7 +248,7 @@ class YjsMap<T = unknown> implements CRDTMap<T> {
 	}
 
 	toJSON(): Record<string, T> {
-		return this.yMap.toJSON() as Record<string, T>;
+		return this.yMap.toJSON();
 	}
 
 	onDeepChange(handler: (changes: DeepChange[], origin: ChangeOrigin) => void): Unsubscribe {

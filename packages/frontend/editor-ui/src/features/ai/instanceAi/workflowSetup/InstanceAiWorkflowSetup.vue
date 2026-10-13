@@ -31,6 +31,6 @@ const ctx = provideWorkflowSetupContext({
 			v-if="ctx.isReady.value && ctx.terminalState.value"
 			:state="ctx.terminalState.value"
 		/>
-		<WorkflowSetupWizard v-else-if="ctx.isReady.value && ctx.steps.value.length" />
+		<WorkflowSetupWizard v-else-if="ctx.isReady.value && ctx.activeSection.value" />
 	</div>
 </template>

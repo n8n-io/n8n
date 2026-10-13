@@ -18,7 +18,7 @@ function makeDataTable(overrides: Partial<DataTable> = {}): DataTable {
 		id: 'dt1',
 		name: 'Customers',
 		projectId: 'proj-1',
-		columns: [{ id: 'col-1', name: 'email', type: 'string', index: 0 }],
+		columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		...overrides,
@@ -48,6 +48,28 @@ function makeExporter() {
 }
 
 describe('DataTableExporter', () => {
+	it('keeps Agent and workflow consumers separate when their IDs match', async () => {
+		const { exporter, dataTableService } = makeExporter();
+		dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable()]);
+		const agent = { agentId: 'wf-1', projectId: 'proj-1', dataTableId: 'dt1' };
+		const result = await exporter.export({
+			user,
+			writer: new CapturingWriter(),
+			requirements: [agent, makeRequirement(), agent],
+		});
+		expect(result.entries).toHaveLength(1);
+		expect(result.requirements).toEqual([
+			{
+				id: 'dt1',
+				name: 'Customers',
+				usedBy: [
+					{ kind: 'agent', id: 'wf-1' },
+					{ kind: 'workflow', id: 'wf-1' },
+				],
+			},
+		]);
+	});
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, dataTableService } = makeExporter();
@@ -94,29 +116,29 @@ describe('DataTableExporter', () => {
 			]);
 
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers-dt1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
 					id: 'dt1',
 					name: 'Customers',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			]);
 
-			expect(writer.directories).toEqual(['data-tables/customers']);
+			expect(writer.directories).toEqual(['data-tables/customers-dt1']);
 			expect(writer.files).toHaveLength(1);
-			expect(writer.files[0].path).toBe('data-tables/customers/data-table.json');
+			expect(writer.files[0].path).toBe('data-tables/customers-dt1/data-table.json');
 
 			const parsed = jsonParse<Record<string, unknown>>(writer.files[0].content);
 			expect(parsed).toEqual({
 				id: 'dt1',
 				name: 'Customers',
-				columns: [{ name: 'email', type: 'string', index: 0 }],
+				columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 			});
 		});
 
-		it('dedupes by table id and aggregates usedByWorkflows when requirements come from multiple workflows', async () => {
+		it('dedupes by table id and aggregates workflow consumers when requirements come from multiple workflows', async () => {
 			const { exporter, dataTableService } = makeExporter();
 			dataTableService.findDataTablesByIdsForUser.mockResolvedValue([makeDataTable()]);
 			const writer = new CapturingWriter();
@@ -126,6 +148,7 @@ describe('DataTableExporter', () => {
 				requirements: [
 					makeRequirement({ workflowId: 'wf-a' }),
 					makeRequirement({ workflowId: 'wf-b' }),
+					makeRequirement({ workflowId: 'wf-a' }),
 				],
 				writer,
 			});
@@ -134,13 +157,16 @@ describe('DataTableExporter', () => {
 				'dataTable:read',
 			]);
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers-dt1' },
 			]);
 			expect(result.requirements).toEqual([
 				{
 					id: 'dt1',
 					name: 'Customers',
-					usedByWorkflows: ['wf-a', 'wf-b'],
+					usedBy: [
+						{ kind: 'workflow', id: 'wf-a' },
+						{ kind: 'workflow', id: 'wf-b' },
+					],
 				},
 			]);
 			expect(writer.files).toHaveLength(1);
@@ -164,11 +190,11 @@ describe('DataTableExporter', () => {
 			});
 
 			const targets = result.entries.map((e) => e.target);
-			expect(targets).toEqual(['data-tables/same-name', 'data-tables/same-name-2']);
+			expect(targets).toEqual(['data-tables/same-name-dta', 'data-tables/same-name-dtb']);
 
 			const writtenPaths = writer.files.map((f) => f.path);
-			expect(writtenPaths).toContain('data-tables/same-name/data-table.json');
-			expect(writtenPaths).toContain('data-tables/same-name-2/data-table.json');
+			expect(writtenPaths).toContain('data-tables/same-name-dta/data-table.json');
+			expect(writtenPaths).toContain('data-tables/same-name-dtb/data-table.json');
 		});
 
 		it('namespaces a table under its owner project when that project is part of the export', async () => {
@@ -186,10 +212,10 @@ describe('DataTableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'projects/sales/data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'projects/sales/data-tables/customers-dt1' },
 			]);
 			expect(writer.files.map((f) => f.path)).toContain(
-				'projects/sales/data-tables/customers/data-table.json',
+				'projects/sales/data-tables/customers-dt1/data-table.json',
 			);
 		});
 
@@ -208,7 +234,7 @@ describe('DataTableExporter', () => {
 			});
 
 			expect(result.entries).toEqual([
-				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers' },
+				{ id: 'dt1', name: 'Customers', target: 'data-tables/customers-dt1' },
 			]);
 		});
 
@@ -235,8 +261,8 @@ describe('DataTableExporter', () => {
 
 			const targets = result.entries.map((e) => e.target).sort();
 			expect(targets).toEqual([
-				'projects/team-a/data-tables/users',
-				'projects/team-b/data-tables/users',
+				'projects/team-a/data-tables/users-dta',
+				'projects/team-b/data-tables/users-dtb',
 			]);
 		});
 	});

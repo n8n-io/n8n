@@ -90,15 +90,36 @@ export const providerFixtureManifestSchema = z
 		 *  HTTPS-with-a-self-signed-cert so it can impersonate a hostname, and n8n's
 		 *  HTTP client would (correctly) reject that cert. Omit the block entirely
 		 *  and the check reports itself unverifiable rather than failing. */
+		//  A UNION, not three optionals: the secret arrives in a header or a query
+		//  parameter, never both and never neither, and `scheme` is meaningless
+		//  without a header. Stating that structurally makes the nonsense
+		//  combinations unrepresentable instead of policed after the fact.
 		verify: z
-			.object({
-				/** Path the credential's test request hits, e.g. `/v1/models`. */
-				path: z.string().startsWith('/'),
-				/** Header the credential type sends its secret in, e.g. `x-api-key`. */
-				header: z.string().min(1),
-			})
-			.strict()
+			.union([
+				z
+					.object({
+						/** Path the credential's test request hits, e.g. `/v1/models`. */
+						path: z.string().startsWith('/'),
+						/** Header carrying the secret, e.g. `x-api-key`. */
+						header: z.string().min(1),
+						/** Prefix inside that header, e.g. `Bearer` — without it the stand-in
+						 *  compares the whole header to the bare key and refuses it. */
+						scheme: z.string().min(1).optional(),
+					})
+					.strict(),
+				z
+					.object({
+						path: z.string().startsWith('/'),
+						/** Query parameter carrying the secret, e.g. gemini's `key`. */
+						query: z.string().min(1),
+					})
+					.strict(),
+			])
 			.optional(),
+		/** Credential field holding the base URL, overwritten to aim the credential's
+		 *  own test at the stand-in. `url` for anthropic/openai, `host` for gemini;
+		 *  the wrong name leaves the test pointed at the real provider. */
+		urlField: z.string().min(1).default('url'),
 	})
 	.strict()
 	// Was a throw after the TLS cert had already been generated; as a refinement
@@ -202,6 +223,29 @@ export async function findFixtureForCredentialType(
 	return fixtures.find((f) => f.manifest.credentialType === credentialType);
 }
 
+/**
+ * Resolve a request path to one of the declared routes, honouring `:param`
+ * segments (`/apps/:appId/general`).
+ *
+ * Consoles that create a resource put its id in every later URL, and the agent
+ * navigates by typing those URLs, not only by clicking. Without parameters the
+ * fixture would have to hardcode one id, and every other id would fall through
+ * to `defaultRoute` — serving a plausible WRONG page (an app list where the app
+ * settings should be) rather than an obvious dead end.
+ *
+ * Exact routes win over patterns, and a pattern matches one segment only, so a
+ * console's URL space cannot collapse onto a single page.
+ */
+export function matchRoute(routes: string[], path: string): string | undefined {
+	if (routes.includes(path)) return path;
+	const segments = path.split('/');
+	return routes.find((route) => {
+		const routeSegments = route.split('/');
+		if (routeSegments.length !== segments.length) return false;
+		return routeSegments.every((s, i) => s.startsWith(':') || s === segments[i]);
+	});
+}
+
 /** Mint a synthetic secret carrying the provider's real prefix. Random, not
  *  seeded: two runs must never share a secret, or a leak scan could pass by
  *  matching the wrong run's value. */
@@ -279,6 +323,7 @@ export async function startFixtureServer(
 	for (const [route, file] of Object.entries(manifest.routes)) {
 		pages.set(route, await readFile(join(fixture.dir, file), 'utf8'));
 	}
+	const routeKeys = [...pages.keys()];
 	// Non-null: the schema's refinement guarantees defaultRoute is a declared route.
 	const defaultPage = pages.get(manifest.defaultRoute)!;
 
@@ -300,7 +345,8 @@ export async function startFixtureServer(
 			res.writeHead(204).end();
 			return;
 		}
-		const body = pages.get(path) ?? defaultPage;
+		const matched = matchRoute(routeKeys, path);
+		const body = (matched && pages.get(matched)) ?? defaultPage;
 		res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
 		res.end(body);
 	});
@@ -322,9 +368,14 @@ export async function startFixtureServer(
 	let verifiedOk = false;
 	let verifyAttempts = 0;
 	if (manifest.verify) {
-		const { path: verifyPath, header } = manifest.verify;
+		const verify = manifest.verify;
+		const verifyPath = verify.path;
+		const expected =
+			'scheme' in verify && verify.scheme ? `${verify.scheme} ${mintedSecret}` : mintedSecret;
+		const headerName = 'header' in verify ? verify.header.toLowerCase() : undefined;
+		const queryName = 'query' in verify ? verify.query : undefined;
 		verifyServer = createHttpServer((req, res) => {
-			const path = (req.url ?? '/').split('?')[0];
+			const [path, search] = (req.url ?? '/').split('?');
 			if (path !== verifyPath) {
 				events.push({ method: req.method ?? 'GET', host: 'verify', path });
 				res.writeHead(404).end();
@@ -333,8 +384,10 @@ export async function startFixtureServer(
 			// ONLY the minted key authenticates. That is the whole proof: a
 			// truncated or re-typed key cannot pass, so a 200 means the stored
 			// value is exactly what the page issued — without reading it back.
-			const presented = req.headers[header.toLowerCase()];
-			const ok = typeof presented === 'string' && presented === mintedSecret;
+			const presented = headerName
+				? req.headers[headerName]
+				: new URLSearchParams(search ?? '').get(queryName!);
+			const ok = typeof presented === 'string' && presented === expected;
 			verifyAttempts += 1;
 			if (ok) verifiedOk = true;
 			events.push({ method: req.method ?? 'GET', host: 'verify', path, verifyOk: ok });

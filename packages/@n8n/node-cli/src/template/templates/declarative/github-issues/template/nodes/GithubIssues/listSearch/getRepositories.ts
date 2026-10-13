@@ -46,5 +46,5 @@ export async function getRepositories(
 	}));
 
 	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
-	return { results, paginationToken: nextPaginationToken };
+	return { results, paginationToken: nextPaginationToken?.toString() };
 }

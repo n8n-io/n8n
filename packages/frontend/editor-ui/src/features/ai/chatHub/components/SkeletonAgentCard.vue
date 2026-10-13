@@ -1,3 +1,7 @@
+<script setup lang="ts">
+withDefaults(defineProps<{ showActionButton?: boolean }>(), { showActionButton: true });
+</script>
+
 <template>
 	<div :class="$style.card">
 		<div :class="$style.avatar"></div>
@@ -7,7 +11,7 @@
 			<div :class="[$style.skeleton, $style.description]"></div>
 		</div>
 
-		<div :class="[$style.skeleton, $style.actionButton]"></div>
+		<div v-if="showActionButton" :class="[$style.skeleton, $style.actionButton]"></div>
 	</div>
 </template>
 
@@ -39,8 +43,8 @@
 	--animation--skeleton-pulse--opacity-start: 0.6;
 	--animation--skeleton-pulse--opacity-end: 0.3;
 
-	width: 24px;
-	height: 24px;
+	width: var(--skeleton-agent-card-avatar-size, var(--spacing--lg));
+	height: var(--skeleton-agent-card-avatar-size, var(--spacing--lg));
 	border-radius: 50%;
 	flex-shrink: 0;
 	background: var(--color--foreground);

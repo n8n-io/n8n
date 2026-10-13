@@ -45,7 +45,7 @@ const { docsUrl } = useNodeDocsUrl({ nodeType: () => props.nodeType });
 const activeNode = computed(() => ndvStore.value.activeNode);
 
 const nodeTypeName = computed(() => props.nodeType?.name);
-const { installedPackage, isCommunityNode, isUpdateCheckAvailable } =
+const { isCommunityNode, canUpdatePackage, hasUpdateAvailable } =
 	useInstalledCommunityPackage(nodeTypeName);
 
 const packageName = computed(() => props.nodeType?.name.split('.')[0] ?? '');
@@ -89,8 +89,7 @@ const options = computed(() => {
 		},
 		{
 			value: 'settings',
-			notification:
-				isUpdateCheckAvailable.value && installedPackage.value?.updateAvailable ? true : undefined,
+			notification: canUpdatePackage.value && hasUpdateAvailable.value ? true : undefined,
 			...(props.compact
 				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
 				: { label: i18n.baseText('nodeSettings.settings') }),
@@ -104,7 +103,7 @@ const options = computed(() => {
 			align: 'right',
 			tooltip: i18n.baseText('generic.communityNode.tooltip', {
 				interpolate: {
-					docUrl: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+					docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 					packageName: packageName.value,
 				},
 			}),

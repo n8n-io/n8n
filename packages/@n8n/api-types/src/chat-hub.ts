@@ -314,7 +314,6 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	mistralCloud: { models: [] },
 	nvidia: { models: [] },
 	n8n: { models: [] },
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },
 };
 

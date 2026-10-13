@@ -18,7 +18,7 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Page Token',
 		name: 'pageToken',
-		// eslint-disable-next-line -- pageToken is a pagination token, not a password
+		// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing -- pageToken is a pagination token, not a password
 		type: 'string',
 		description: 'Token from a previous page to retrieve the next page of results',
 		default: '',

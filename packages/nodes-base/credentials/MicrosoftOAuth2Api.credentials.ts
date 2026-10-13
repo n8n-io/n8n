@@ -105,6 +105,19 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			default: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
 		},
 		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
+			default: '',
+			placeholder: 'openid offline_access Sites.Selected',
+			hint: 'Separate the scopes with spaces. Include offline_access so n8n can refresh the access token. Include openid so n8n can identify the signed-in account. Then add the scopes the node needs. The Microsoft credential documentation lists them.',
+		},
+		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',

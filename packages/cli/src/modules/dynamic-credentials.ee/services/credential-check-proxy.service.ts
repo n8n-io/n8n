@@ -1,6 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
+	CredentialCheckOptions,
 	CredentialCheckResult,
 	CredentialCheckStatus,
 	DynamicCredentialCheckProxyProvider,
@@ -12,7 +13,7 @@ import type {
 import { CredentialTypes } from '@/credential-types';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { NodeTypes } from '@/node-types';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 import { ExecutionContextService } from 'n8n-core';
 import { AuthorizeIntentService } from './authorize-intent.service';
@@ -42,6 +43,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult> {
 		if (!executionContext.credentials) {
 			throw new Error(
@@ -61,6 +63,7 @@ export class CredentialCheckProxyService implements DynamicCredentialCheckProxyP
 		const statuses = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			plaintext,
+			{ rootNodes: options?.rootNodes },
 		);
 
 		const credentials: CredentialCheckStatus[] = await Promise.all(

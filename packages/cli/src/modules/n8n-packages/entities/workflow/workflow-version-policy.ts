@@ -1,11 +1,11 @@
 import { WorkflowEntity } from '@n8n/db';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../n8n-packages.types';
 import { PackageExportBlockedError } from '../package-export.errors';
 
-export function needsActiveVersion(policy: WorkflowVersionPolicy): boolean {
-	return policy !== WorkflowVersionPolicy.Latest;
+export function needsActiveVersion(policy: ExportVersionPolicy): boolean {
+	return policy !== ExportVersionPolicy.Latest;
 }
 
 /** Only nodes and connections are overlaid, so name, description, settings and tags stay at their draft values. */
@@ -46,23 +46,29 @@ function assertEveryWorkflowPublished(workflows: WorkflowEntity[]): void {
 }
 
 const WORKFLOW_VERSION_POLICIES: Record<
-	WorkflowVersionPolicy,
+	ExportVersionPolicy,
 	(workflows: WorkflowEntity[]) => WorkflowEntity[]
 > = {
-	[WorkflowVersionPolicy.Latest]: (workflows) => workflows,
-	[WorkflowVersionPolicy.PublishedStrict]: (workflows) => {
+	[ExportVersionPolicy.Latest]: (workflows) => workflows,
+	[ExportVersionPolicy.PublishedStrict]: (workflows) => {
 		assertEveryWorkflowPublished(workflows);
 		return workflows.map(atPublishedVersion);
 	},
-	[WorkflowVersionPolicy.PreferPublished]: (workflows) =>
+	[ExportVersionPolicy.PreferPublished]: (workflows) =>
 		workflows.map((workflow) => (isPublished(workflow) ? atPublishedVersion(workflow) : workflow)),
-	[WorkflowVersionPolicy.IgnoreUnpublished]: (workflows) =>
+	[ExportVersionPolicy.IgnoreUnpublished]: (workflows) =>
 		workflows.filter(isPublished).map(atPublishedVersion),
 };
 
+/**
+ * Archived workflows have no published version, so the policy only applies to the active ones.
+ * Archived workflows always export at their latest version.
+ */
 export function applyWorkflowVersionPolicy(
 	workflows: WorkflowEntity[],
-	policy: WorkflowVersionPolicy,
+	policy: ExportVersionPolicy,
 ): WorkflowEntity[] {
-	return WORKFLOW_VERSION_POLICIES[policy](workflows);
+	const archived = workflows.filter((workflow) => workflow.isArchived);
+	const active = workflows.filter((workflow) => !workflow.isArchived);
+	return [...WORKFLOW_VERSION_POLICIES[policy](active), ...archived];
 }

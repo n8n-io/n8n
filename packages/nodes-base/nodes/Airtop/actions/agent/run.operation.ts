@@ -13,7 +13,9 @@ import {
 	validateAgentParameters,
 } from './agent.utils';
 import { AGENT_MIN_TIMEOUT_SECONDS, AIRTOP_HOOKS_BASE_URL, ERROR_MESSAGES } from '../../constants';
+import { validateProfileName } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
+import { profileNameField } from '../common/fields';
 
 const displayOptions = {
 	show: {
@@ -102,6 +104,13 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
+		...profileNameField,
+		description:
+			"The Airtop browser profile ID the agent should use for this run. Leave empty to use the agent's default profile.",
+		hint: 'Copy the ID from your <a href="https://portal.airtop.ai/browser-profiles" target="_blank">Browser Profiles</a> page, not the profile\'s display name',
+		displayOptions,
+	},
+	{
 		displayName: 'Await Agent',
 		name: 'awaitExecution',
 		type: 'boolean',
@@ -144,6 +153,8 @@ export async function execute(
 
 	const timeout = this.getNodeParameter('timeout', index, 600) as number;
 
+	const profileName = validateProfileName.call(this, index);
+
 	// Validate timeout
 	throwOperationErrorIf(
 		timeout < AGENT_MIN_TIMEOUT_SECONDS,
@@ -157,11 +168,15 @@ export async function execute(
 	const { webhookId } = await getAgentDetails.call(this, agentId);
 	const invokeUrl = `${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/webhooks/${webhookId}`;
 
+	// Pass the chosen browser profile through to the agent webhook. Omitted when empty so
+	// the agent falls back to its default profile.
+	const query: IDataObject = profileName ? { profileId: profileName } : {};
+
 	const invocationResponse = await apiRequest.call<
 		IExecuteFunctions,
-		['POST', string, IDataObject],
+		['POST', string, IDataObject, IDataObject],
 		Promise<AgentInvocationResponse>
-	>(this, 'POST', invokeUrl, validatedAgentParameters);
+	>(this, 'POST', invokeUrl, validatedAgentParameters, query);
 
 	const invocationId = invocationResponse.invocationId;
 	throwOperationErrorIf(

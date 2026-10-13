@@ -18,7 +18,10 @@ describe('OAuthTokenVerifierProxy', () => {
 		const proxy = new OAuthTokenVerifierProxy();
 		const user = mock<User>({ id: 'user-1' });
 		const provider = mock<OAuthTokenVerifier>();
-		provider.verifyOAuthAccessToken.mockResolvedValue({ user, authType: 'oauth' });
+		provider.verifyOAuthAccessToken.mockResolvedValue({
+			user,
+			caller: { authType: 'oauth', clientId: 'client-abc' },
+		});
 
 		proxy.registerProvider(provider);
 
@@ -32,13 +35,16 @@ describe('OAuthTokenVerifierProxy', () => {
 			'https://n8n.example.com/mcp-server/http',
 			undefined,
 		);
-		expect(result).toEqual({ user, authType: 'oauth' });
+		expect(result).toEqual({ user, caller: { authType: 'oauth', clientId: 'client-abc' } });
 	});
 
 	it('should pass a sealed resource grant through to the provider', async () => {
 		const proxy = new OAuthTokenVerifierProxy();
 		const provider = mock<OAuthTokenVerifier>();
-		provider.verifyOAuthAccessToken.mockResolvedValue({ user: mock<User>(), authType: 'oauth' });
+		provider.verifyOAuthAccessToken.mockResolvedValue({
+			user: mock<User>(),
+			caller: { authType: 'oauth', clientId: 'client-abc' },
+		});
 		proxy.registerProvider(provider);
 
 		const grant = { audiences: ['https://n8n.example.com/webhook-test/abc?method=POST'] };

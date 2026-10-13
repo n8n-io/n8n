@@ -454,9 +454,7 @@ function updateAgentParameters(parameters: INodeProperties[], nodeName: string) 
 				return {
 					...option,
 					disabled: true,
-					description:
-						option.description ??
-						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+					description: i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
 				};
 			}),
 		};
@@ -998,6 +996,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
@@ -1070,6 +1069,8 @@ watch(
 </template>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .parameter-input-list-wrapper {
 	--input--color--background--disabled: var(--color--background);
 	.icon-button {

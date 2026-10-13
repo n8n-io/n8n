@@ -126,6 +126,7 @@ async function onComment() {
 					:rows="3"
 					:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 					:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
+					:class="$style.input"
 					data-test-id="workflow-review-decision-note"
 				/>
 				<div :class="$style.actions">
@@ -186,6 +187,12 @@ async function onComment() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.input {
+	:global(textarea) {
+		max-height: 50dvh;
+	}
 }
 
 .actions {

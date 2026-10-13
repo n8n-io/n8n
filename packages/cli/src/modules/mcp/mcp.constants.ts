@@ -41,11 +41,38 @@ export const MCP_DISCOVER_METHOD = 'server/discover';
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
+/** Telemetry-only: the handshake reached the SDK but it answered with an error. */
+export const HANDSHAKE_FAILED_ERROR_MESSAGE = 'MCP handshake failed';
+/** Telemetry-only: a `server/discover` with no protocol version to negotiate on. */
+export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
+	'MCP handshake failed: no protocol version declared';
 
 /**
  * Tool name constants
  */
-export const LIST_N8N_CONNECT_SERVICES_TOOL_NAME = 'list_n8n_connect_services';
+export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
+export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
+export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
+export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
+export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
+
+/**
+ * Installs a vetted community package so its nodes become usable. Not in
+ * `@n8n/ai-workflow-builder` with the other builder tool constants because
+ * installing packages is an instance-administration action, not something the
+ * code-builder agent can do.
+ */
+export const INSTALL_COMMUNITY_NODE_TOOL = {
+	toolName: 'install_community_node',
+	displayTitle: 'Install Community Node',
+} as const;
+
+/**
+ * Shared by the `get_user_preferences` description and the pointer in the server instructions,
+ * so the two cannot drift. Stored without a leading word; each caller supplies its own.
+ */
+export const MCP_USER_PREFERENCES_TRIGGER_CLAUSE =
+	'you create or modify anything in n8n — a workflow, an Agent, a data table, a folder —';
 export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
 

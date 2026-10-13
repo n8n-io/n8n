@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	shareWorkflowWithUsers,
@@ -7,7 +8,6 @@ import {
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import { saveCredential } from '@test-integration/db/credentials';
@@ -82,7 +82,7 @@ describe('workflow package export — with credentials', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});
@@ -98,6 +98,71 @@ describe('workflow package export — with credentials', () => {
 			type: 'httpHeaderAuth',
 		});
 		// Secret-adjacent fields must not appear on disk under any name.
+		expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
+	});
+
+	it('bundles expression values from credential data under the default policy', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const credential = await saveCredential(
+			{
+				name: 'Expression credential',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Plaintext-Header', value: '={{ $secrets.api.key }}' },
+			},
+			{ project, role: 'credential:owner' },
+		);
+		const workflow = await buildWorkflowReferencingCredential({
+			name: 'Workflow with expression creds',
+			project,
+			credential,
+		});
+
+		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
+		const { manifest, entries } = await readExport(stream);
+
+		const credentialFile = entries.find(
+			(e) => e.name === `${manifest.credentials![0].target}/credential.json`,
+		);
+		const parsed = jsonParse<Record<string, unknown>>(credentialFile!.content.toString());
+		expect(Object.keys(parsed).sort()).toEqual(['data', 'dataIsComplete', 'id', 'name', 'type']);
+		expect(parsed.dataIsComplete).toBe(false);
+		expect(parsed.data).toEqual({ value: '={{ $secrets.api.key }}' });
+
+		// The literal field value must not appear anywhere in the archive.
+		for (const entry of entries) {
+			expect(entry.content.toString()).not.toContain('X-Plaintext-Header');
+		}
+	});
+
+	it('keeps credential data out of the package under no-values', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const credential = await saveCredential(
+			{
+				name: 'Expression credential',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Auth', value: '={{ $secrets.api.key }}' },
+			},
+			{ project, role: 'credential:owner' },
+		);
+		const workflow = await buildWorkflowReferencingCredential({
+			name: 'Workflow with expression creds',
+			project,
+			credential,
+		});
+
+		const { stream } = await service.exportPackage({
+			user: owner,
+			workflowIds: [workflow.id],
+			credentialExportPolicy: 'no-values',
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		const credentialFile = entries.find(
+			(e) => e.name === `${manifest.credentials![0].target}/credential.json`,
+		);
+		const parsed = jsonParse<Record<string, unknown>>(credentialFile!.content.toString());
 		expect(Object.keys(parsed).sort()).toEqual(['id', 'name', 'type']);
 	});
 
@@ -134,8 +199,12 @@ describe('workflow package export — with credentials', () => {
 		expect(manifest.credentials![0].id).toBe(credential.id);
 
 		expect(manifest.requirements?.credentials).toHaveLength(1);
-		expect(manifest.requirements!.credentials![0].usedByWorkflows.sort()).toEqual(
-			[wfA.id, wfB.id].sort(),
+		expect(manifest.requirements!.credentials![0].usedBy).toHaveLength(2);
+		expect(manifest.requirements!.credentials![0].usedBy).toEqual(
+			expect.arrayContaining([
+				{ kind: 'workflow', id: wfA.id },
+				{ kind: 'workflow', id: wfB.id },
+			]),
 		);
 
 		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
@@ -176,7 +245,7 @@ describe('workflow package export — with credentials', () => {
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
-				usedByWorkflows: [child.id],
+				usedBy: [{ kind: 'workflow', id: child.id }],
 			},
 		]);
 		expect(manifest.requirements).not.toHaveProperty('subWorkflows');
@@ -205,7 +274,7 @@ describe('workflow package export — with credentials', () => {
 					id: 'does-not-exist',
 					name: 'Stale cred name',
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});
@@ -252,7 +321,7 @@ describe('workflow package export — with credentials', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 		});

@@ -1,0 +1,47 @@
+type: object
+properties:
+  personalSpacePublishing:
+    type: boolean
+    description: Whether members may publish workflows and agents from their personal space.
+    example: true
+  personalSpaceSharing:
+    type: boolean
+    description: Whether members may share workflows and credentials from their personal space.
+    example: true
+  publishedPersonalWorkflowsCount:
+    type: integer
+    description: Number of currently published personal workflows, shown for awareness before tightening the policy.
+    readOnly: true
+    example: 3
+  sharedPersonalWorkflowsCount:
+    type: integer
+    description: Number of personal workflows currently shared with other users.
+    readOnly: true
+    example: 5
+  sharedPersonalCredentialsCount:
+    type: integer
+    description: Number of personal credentials currently shared with other users.
+    readOnly: true
+    example: 2
+  redactionEnforcement:
+    type: object
+    properties:
+      floor:
+        type: string
+        enum:
+          - off
+          - production
+          - all
+        description: Minimum execution-data redaction level enforced across the instance.
+        example: production
+    required:
+      - floor
+    additionalProperties: false
+required:
+  - personalSpacePublishing
+  - personalSpaceSharing
+  - publishedPersonalWorkflowsCount
+  - sharedPersonalWorkflowsCount
+  - sharedPersonalCredentialsCount
+  - redactionEnforcement
+additionalProperties: false

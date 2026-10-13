@@ -6,12 +6,24 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type { AgentExecutionThread } from '@/features/agents/composables/useAgentThreadsApi';
+import type {
+	AgentExecutionThread,
+	AgentSessionFilters,
+	AgentSessionStatus,
+} from '@/features/agents/composables/useAgentThreadsApi';
+import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design-system';
+import {
+	N8nActionDropdown,
+	N8nButton,
+	N8nCheckbox,
+	N8nBadge,
+	N8nTableBase,
+	N8nText,
+} from '@n8n/design-system';
 import type { ActionDropdownItem, IconName } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
@@ -45,13 +57,17 @@ let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const hasActiveFilters = computed(() => {
+	const { status, origin, startDate, endDate } = sessionsStore.filters;
+	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
+});
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
 	// throttled while the document is hidden, so a silent merge-refresh on
 	// return closes the gap before the next interval tick without flashing
 	// the load-more button or dropping paginated pages.
-	if (document.visibilityState !== 'visible') return;
+	if (document.visibilityState !== 'visible' || !sessionsStore.autoRefresh) return;
 	if (!projectId.value || !agentId.value) return;
 	void sessionsStore.refreshThreads(projectId.value, agentId.value);
 }
@@ -92,6 +108,28 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
+function statusColor(status: AgentSessionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+	if (status === 'succeeded') return 'success';
+	if (status === 'error') return 'danger';
+	if (status === 'running') return 'text-base';
+	return 'warning';
+}
+
+function statusLabel(status: AgentSessionStatus): string {
+	switch (status) {
+		case 'running':
+			return i18n.baseText('agentSessions.status.running');
+		case 'succeeded':
+			return i18n.baseText('agentSessions.status.succeeded');
+		case 'error':
+			return i18n.baseText('agentSessions.status.error');
+		case 'cancelled':
+			return i18n.baseText('agentSessions.status.cancelled');
+		case 'interrupted':
+			return i18n.baseText('agentSessions.status.interrupted');
+	}
+}
+
 function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 	const rawSource = thread.source?.trim();
 	const source = rawSource ? rawSource.toLowerCase() : undefined;
@@ -113,11 +151,18 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 			return { icon: 'flask-conical', label: i18n.baseText('agentSessions.origin.mcp') };
 		case 'workflow':
 			return { icon: 'workflow', label: i18n.baseText('agentSessions.origin.workflow') };
+		case 'n8n_chat_production':
+			return { icon: 'message-square', label: i18n.baseText('agentSessions.origin.n8nChat') };
 		case 'slack':
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
+		case 'whatsapp':
+			// The generic capitalize-first-letter above would produce "Whatsapp",
+			// misspelling the brand name — WhatsApp has an internal capital.
+			return { icon: source, label: 'WhatsApp' };
 		case 'chat':
 		case 'n8n_chat':
 		case undefined:
@@ -205,41 +250,86 @@ async function loadMore() {
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	}
 }
+
+function onAutoRefreshChange(enabled: boolean) {
+	if (enabled) sessionsStore.startAutoRefresh();
+	else sessionsStore.stopAutoRefresh();
+}
+
+async function onFiltersChange(value: AgentSessionFilters) {
+	try {
+		await sessionsStore.setFilters(projectId.value, agentId.value, value);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+	}
+}
 </script>
 
 <template>
 	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
+		<div :class="$style.filters">
+			<N8nCheckbox
+				v-model="sessionsStore.autoRefresh"
+				data-test-id="agent-sessions-auto-refresh-checkbox"
+				:label="i18n.baseText('executionsList.autoRefresh')"
+				@update:model-value="onAutoRefreshChange"
+			/>
+			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
+		</div>
 		<div :class="$style.tableContainer">
-			<N8nTableBase>
+			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
 					<tr
 						v-for="thread in sessionsStore.threads"
 						:key="thread.id"
 						:class="$style.clickableRow"
+						:data-status="thread.status"
 						data-test-id="agent-session-list-item"
 						@click="onViewTrace({ agentId, threadId: thread.id })"
 					>
 						<td :class="$style.titleCell">
 							<button type="button" :class="$style.sessionOpen" data-test-id="agent-session-open">
-								<span :class="$style.sessionTitle" data-test-id="agent-session-title">
-									{{ threadTitleOf(thread) }}
+								<span :class="$style.sessionTitleRow">
+									<span :class="$style.sessionTitle" data-test-id="agent-session-title">
+										{{ threadTitleOf(thread) }}
+									</span>
+									<span v-if="thread.status" :class="$style.statusRow">
+										<N8nText
+											:color="statusColor(thread.status)"
+											size="small"
+											data-testid="agent-session-status-indicator"
+										>
+											{{ statusLabel(thread.status) }}
+										</N8nText>
+										<N8nText
+											v-if="thread.status !== 'running'"
+											color="text-base"
+											size="small"
+											data-testid="agent-session-status-duration"
+										>
+											{{
+												i18n.baseText('executionDetails.runningTimeFinished', {
+													interpolate: { time: formatDuration(thread.totalDuration) },
+												})
+											}}
+										</N8nText>
+									</span>
 								</span>
 							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
-							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
-								<span>{{ originPresentation(thread).label }}</span>
-							</span>
+							<N8nBadge
+								:leading-icon="originPresentation(thread).icon"
+								data-test-id="agent-session-origin-pill"
+							>
+								{{ originPresentation(thread).label }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
 						</td>
 						<td :class="$style.tokenCell" data-test-id="agent-session-token-usage">
 							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
-						</td>
-						<td :class="$style.durationCell" data-test-id="agent-session-duration">
-							{{ formatDuration(thread.totalDuration) }}
 						</td>
 						<td :class="$style.actionCell" @click.stop>
 							<div :class="$style.actionGroup">
@@ -253,8 +343,8 @@ async function loadMore() {
 						</td>
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
-						<tr v-for="item in 5" :key="item">
-							<td v-for="col in 6" :key="col">
+						<tr v-for="item in 5" :key="item" :class="$style.skeletonRow">
+							<td v-for="col in 5" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
@@ -263,16 +353,29 @@ async function loadMore() {
 						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
 						:class="$style.lastRow"
 					>
-						<td :colspan="6" style="text-align: center; padding: var(--spacing--lg)">
+						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
-								<span data-test-id="agent-sessions-empty">
-									{{ i18n.baseText('agentSessions.empty') }}
-								</span>
+								<div :class="$style.emptyState">
+									<span data-test-id="agent-sessions-empty">
+										{{
+											i18n.baseText(
+												hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+											)
+										}}
+									</span>
+									<span
+										v-if="!hasActiveFilters"
+										:class="$style.emptyStateDescription"
+										data-test-id="agent-sessions-empty-description"
+									>
+										{{ i18n.baseText('agentSessions.emptyDescription') }}
+									</span>
+								</div>
 							</template>
 						</td>
 					</tr>
 					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
-						<td :colspan="6">
+						<td :colspan="5">
 							<N8nButton
 								icon="refresh-cw"
 								variant="ghost"
@@ -299,6 +402,7 @@ async function loadMore() {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 	height: 100%;
+	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
 	scrollbar-width: thin;
@@ -313,9 +417,41 @@ async function loadMore() {
 
 .tableContainer {
 	width: 100%;
+	min-width: 0;
+	container: sessions / inline-size;
 	overflow-x: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+}
+
+.sessionsTable {
+	width: 100%;
+	height: auto;
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: var(--font-size--sm);
+	white-space: nowrap;
+
+	td {
+		height: var(--height--3xl);
+		padding: 0 var(--spacing--xs);
+		border-bottom: 0;
+		vertical-align: middle;
+	}
+
+	td:first-child {
+		padding-left: var(--spacing--sm);
+	}
+
+	td:last-child {
+		padding-right: var(--spacing--sm);
+	}
+}
+
+.filters {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .titleCell {
@@ -330,9 +466,24 @@ async function loadMore() {
 	overflow: hidden;
 	color: var(--text-color);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
+	font-weight: var(--font-weight--bold);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.sessionTitleRow {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
+.statusRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex: 0 0 auto;
 }
 
 .sessionOpen {
@@ -352,8 +503,7 @@ async function loadMore() {
 
 .originCell,
 .dateCell,
-.tokenCell,
-.durationCell {
+.tokenCell {
 	width: 1%;
 	white-space: nowrap;
 }
@@ -373,8 +523,7 @@ async function loadMore() {
 }
 
 .dateCell,
-.tokenCell,
-.durationCell {
+.tokenCell {
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
@@ -394,24 +543,50 @@ async function loadMore() {
 	gap: var(--spacing--4xs);
 }
 
-.clickableRow {
+.sessionsTable .clickableRow {
+	background-color: var(--execution-card--color--background);
 	cursor: pointer;
 
 	td {
 		color: var(--text-color--subtler);
 	}
 
+	.titleCell {
+		border-left: var(--spacing--4xs) var(--border-style)
+			var(--execution-card--border-color--unknown);
+	}
+
 	.actionCell {
 		text-align: right;
 	}
 
+	&[data-status='succeeded'] .titleCell {
+		border-left-color: var(--execution-card--border-color--success);
+	}
+
+	&[data-status='error'] .titleCell {
+		border-left-color: var(--execution-card--border-color--error);
+	}
+
+	&[data-status='cancelled'] .titleCell,
+	&[data-status='interrupted'] .titleCell {
+		border-left-color: var(--border-color--warning);
+	}
+
 	&:hover {
-		background-color: var(--background--hover);
+		background-color: var(--execution-card--color--background--hover);
 	}
 }
 
-.lastRow {
+.sessionsTable .skeletonRow {
+	background-color: var(--execution-card--color--background);
+}
+
+.sessionsTable .lastRow {
+	background-color: transparent;
+
 	td {
+		height: var(--height--2xl);
 		text-align: center;
 	}
 
@@ -420,7 +595,102 @@ async function loadMore() {
 	}
 
 	&:hover {
-		background-color: var(--background--surface) !important;
+		background-color: transparent;
+	}
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	text-align: center;
+}
+
+.emptyStateDescription {
+	max-width: 100%;
+	color: var(--text-color--subtler);
+	white-space: normal;
+}
+
+// No token covers the width needed by this five-column table.
+@container sessions (max-width: 44rem) {
+	.wrapper .sessionsTable table,
+	.wrapper .sessionsTable tbody {
+		display: block;
+		width: 100%;
+	}
+
+	.wrapper .sessionsTable .clickableRow {
+		display: grid;
+		grid-template-areas:
+			'title action'
+			'origin origin'
+			'date token';
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--spacing--3xs) var(--spacing--xs);
+		padding: var(--spacing--xs);
+		border-left: var(--spacing--4xs) var(--border-style)
+			var(--execution-card--border-color--unknown);
+
+		&[data-status='succeeded'] {
+			border-left-color: var(--execution-card--border-color--success);
+		}
+
+		&[data-status='error'] {
+			border-left-color: var(--execution-card--border-color--error);
+		}
+
+		&[data-status='cancelled'],
+		&[data-status='interrupted'] {
+			border-left-color: var(--border-color--warning);
+		}
+
+		td {
+			display: block;
+			width: auto;
+			min-width: 0;
+			height: auto;
+			padding: 0;
+		}
+
+		.titleCell {
+			grid-area: title;
+			max-width: none;
+			border-left: 0;
+		}
+
+		.originCell {
+			grid-area: origin;
+			overflow: hidden;
+		}
+
+		.dateCell {
+			grid-area: date;
+		}
+
+		.tokenCell {
+			grid-area: token;
+			text-align: right;
+		}
+
+		.actionCell {
+			grid-area: action;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow,
+	.wrapper .sessionsTable .lastRow {
+		display: block;
+
+		td {
+			display: block;
+			width: 100%;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {
+		display: none;
 	}
 }
 </style>

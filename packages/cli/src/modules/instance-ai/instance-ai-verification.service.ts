@@ -14,7 +14,7 @@ import { Service } from '@n8n/di';
 import type { ModelConfig, SandboxConfig } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -27,14 +27,18 @@ const VERIFICATION_TIMEOUT_MS = 30_000;
 const MAX_ERROR_MESSAGE_LENGTH = 512;
 
 /**
+ * The probe only needs the call to succeed, not its text, but OpenAI's
+ * Responses API rejects `max_output_tokens` below 16.
+ */
+const VERIFICATION_MAX_OUTPUT_TOKENS = 16;
+
+/**
  * Providers can echo credentials back in error messages. Scrub known secret
  * shapes (API keys, bearer tokens, key=value pairs), drop URL query strings
  * (e.g. ?key=...), and cap the length.
  */
 function sanitizeVerificationError(error: unknown): string {
-	return scrubSecretsInText(ensureError(error).message)
-		.replace(/(https?:\/\/[^\s?]+)\?\S*/g, '$1')
-		.slice(0, MAX_ERROR_MESSAGE_LENGTH);
+	return sanitizeErrorDetail(ensureError(error).message, MAX_ERROR_MESSAGE_LENGTH);
 }
 
 function modelProviderOf(config: ModelConfig): string | null {
@@ -135,14 +139,14 @@ export class InstanceAiVerificationService {
 			await generateText({
 				model: createModel(modelConfig, createAiProxyFetch(this.outboundHttp)),
 				prompt: 'Reply with OK.',
-				maxOutputTokens: 8,
+				maxOutputTokens: VERIFICATION_MAX_OUTPUT_TOKENS,
 				abortSignal: AbortSignal.timeout(VERIFICATION_TIMEOUT_MS),
 			});
 			return { ok: true, latencyMs: Math.round(performance.now() - startedAt) };
 		} catch (error) {
 			const failure = classifyFailure(error);
 			this.logVerificationFailure('model', failure, error, provider);
-			return { ok: false, failure };
+			return { ok: false, failure, error: sanitizeVerificationError(error) };
 		}
 	}
 
@@ -190,6 +194,7 @@ export class InstanceAiVerificationService {
 			return {
 				ok: false,
 				failure,
+				error: sanitizeVerificationError(error),
 			};
 		} finally {
 			if (workspace) {
@@ -235,7 +240,7 @@ export class InstanceAiVerificationService {
 		} catch (error) {
 			const failure = classifyFailure(error);
 			this.logVerificationFailure('search', failure, error, provider);
-			return { ok: false, failure };
+			return { ok: false, failure, error: sanitizeVerificationError(error) };
 		}
 	}
 
@@ -293,6 +298,7 @@ export class InstanceAiVerificationService {
 				saved?.apiKey ??
 				instanceAi.n8nSandboxServiceApiKey,
 			timeout: instanceAi.sandboxTimeout,
+			ephemeral: true,
 		};
 	}
 }

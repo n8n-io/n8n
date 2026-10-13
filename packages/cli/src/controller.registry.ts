@@ -12,25 +12,24 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { NotFoundError, UnauthenticatedError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
-
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { AuthService } from '@/auth/auth.service';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
+import { reportError, send, sendErrorResponse } from '@/response-helper';
 
 import { AbstractServer } from './abstract-server';
-import { NotFoundError } from './errors/response-errors/not-found.error';
 import { CorsService } from './services/cors-service';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
-
-import { AuthService } from '@/auth/auth.service';
+import type { BodyArg } from './public-api/public-api-route-resolver';
 
 @Service()
 export class ControllerRegistry {
@@ -82,6 +81,22 @@ export class ControllerRegistry {
 
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
+			// Guard against internal API using non-JSON body media types.
+			// We may support non-JSON media types in the future, but for now they are only supported
+			// on `@PublicApiController` routes.
+			const nonJsonBodyArg = route.args.find(
+				(arg): arg is BodyArg =>
+					arg?.type === 'body' &&
+					arg.media !== undefined &&
+					arg.media.mediaType !== 'application/json',
+			);
+			if (nonJsonBodyArg) {
+				throw new UnexpectedError(
+					`${controllerClass.name}.${handlerName} declares @Body({ mediaType: ` +
+						`'${nonJsonBodyArg.media?.mediaType}' }), which only @PublicApiController routes support.`,
+				);
+			}
+
 			// Original handler logic for non-router routes
 			const argTypes = Reflect.getMetadata(
 				'design:paramtypes',
@@ -121,7 +136,18 @@ export class ControllerRegistry {
 			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
-						await handler(req, res);
+						try {
+							await handler(req, res);
+						} catch (e) {
+							// Template routes skip `send()`, so without this a thrown error
+							// reaches Express's default handler, which cannot read
+							// `httpStatusCode` off a ResponseError and answers 500 — and in
+							// production with a body of just "Internal Server Error".
+							const error = ensureError(e);
+							reportError(error, { extra: { method: req.method, path: req.path } });
+							if (res.headersSent) throw error;
+							sendErrorResponse(res, error);
+						}
 					}
 				: send(handler);
 

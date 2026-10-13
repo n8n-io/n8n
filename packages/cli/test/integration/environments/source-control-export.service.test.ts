@@ -65,9 +65,13 @@ describe('SourceControlExportService Integration', () => {
 		// Setup export directory for testing (no longer creating real directories)
 		exportDirectory = path.join(process.cwd(), 'test-exports-' + uuid());
 
-		// Mock the instance settings to use our test directory
+		// Mock the instance settings to use our test directory. Keep the real
+		// encryptionKey: the cipher and the test key provider both read it, so a
+		// mock function here breaks credential encrypt/decrypt.
+		const { encryptionKey } = Container.get(InstanceSettings);
 		mockInstance(InstanceSettings, {
 			n8nFolder: exportDirectory,
+			encryptionKey,
 		});
 
 		// Get the services from container (this will use real dependencies)
@@ -137,7 +141,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Test Personal Credential',
 					type: 'testCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				personalProject,
 			);
@@ -197,7 +201,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Test Team Credential',
 					type: 'teamCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				teamProject,
 			);
@@ -271,7 +275,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Existing Credential',
 					type: 'existingType',
-					data: Container.get(Cipher).encrypt({ apiKey: 'test' }),
+					data: Container.get(Cipher).encryptWithInstanceKey({ apiKey: 'test' }),
 				},
 				personalProject,
 			);
@@ -303,7 +307,7 @@ describe('SourceControlExportService Integration', () => {
 			Object.assign(credential, {
 				name: 'Role Access Test Credential',
 				type: 'roleTestType',
-				data: Container.get(Cipher).encrypt({ testField: 'test-value' }),
+				data: Container.get(Cipher).encryptWithInstanceKey({ testField: 'test-value' }),
 			});
 
 			const savedCredential = await credentialsRepository.save(credential);
@@ -356,7 +360,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'OAuth Test Credential',
 					type: 'oauth2Credential',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				personalProject,
 			);
@@ -405,7 +409,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Nested Data Credential',
 					type: 'databaseCredential',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 				},
 				teamProject,
 			);
@@ -452,7 +456,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Global Test Credential',
 					type: 'globalCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 					isGlobal: true,
 				},
 				personalProject,
@@ -499,7 +503,7 @@ describe('SourceControlExportService Integration', () => {
 				{
 					name: 'Non-Global Credential',
 					type: 'standardCredentialType',
-					data: Container.get(Cipher).encrypt(credentialData),
+					data: Container.get(Cipher).encryptWithInstanceKey(credentialData),
 					isGlobal: false,
 				},
 				teamProject,

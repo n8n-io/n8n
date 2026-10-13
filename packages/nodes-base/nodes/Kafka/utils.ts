@@ -550,10 +550,6 @@ export async function createSchemaRegistry(
 	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
 
 	const filter = ctx.helpers.getSecureEgressFilter();
-	if (!filter) {
-		// Egress filtering not configured: use the default transport unchanged.
-		return new SchemaRegistry(options);
-	}
 
 	// Parse the configured host once. A valid registry host is an absolute
 	// http(s) URL; if it does not parse or uses an unexpected scheme, reject so

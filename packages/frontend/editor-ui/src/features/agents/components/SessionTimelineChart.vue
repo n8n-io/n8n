@@ -7,9 +7,13 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
+	backgroundJobSignalSummary,
+	executionErrorLabel,
+	executionErrorMessage,
 	formatDuration,
+	hitlRequestLabelKey,
 	hitlTimelineName,
-	isErroredToolCallTimelineItem,
+	isErroredTimelineItem,
 	isSubAgentTimelineItem,
 	matchesTimelineFilters,
 	timelineItemStatus,
@@ -104,22 +108,24 @@ function popoverPillKind(item: TimelineItem) {
 function popoverLabel(item: TimelineItem): string {
 	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
+		case 'background-task-signal':
+			return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return executionErrorLabel(item, i18n);
 		case 'suspension':
-			return i18n.baseText(
-				item.hitlRequestType === 'approval'
-					? 'agentSessions.timeline.approvalRequested'
-					: 'agentSessions.timeline.hitlRequested',
-			);
+			return i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
 		case 'hitl-response':
 			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
@@ -132,16 +138,22 @@ function popoverName(item: TimelineItem): string {
 		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
 	}
 	switch (item.kind) {
+		case 'background-task-signal':
+			return backgroundJobSignalSummary(item, i18n);
 		case 'user':
 		case 'agent':
 			return truncate(item.content ?? '', 80);
+		case 'skill':
+			return item.skillName ?? resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		case 'tool': {
-			return resolveToolNameForDisplay(item.toolName, i18n);
+			return resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		}
 		case 'workflow':
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
+		case 'execution-error':
+			return executionErrorMessage(item, i18n);
 		case 'suspension':
 		case 'hitl-response':
 			return hitlTimelineName(item, i18n);
@@ -346,12 +358,14 @@ onBeforeUnmount(() => {
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
 						<N8nBadge
 							v-if="activePopoverStatus"
-							:theme="activePopoverStatus.theme"
+							:variant="activePopoverStatus.theme"
 							size="xsmall"
 							:data-test-id="
 								activePopoverStatus.kind === 'hitl-response'
 									? 'timeline-popover-hitl-response-badge'
-									: 'timeline-popover-tool-error-badge'
+									: activePopover.segment.item.kind === 'execution-error'
+										? 'timeline-popover-execution-error-badge'
+										: 'timeline-popover-tool-error-badge'
 							"
 						>
 							{{ i18n.baseText(activePopoverStatus.labelKey) }}
@@ -367,6 +381,7 @@ onBeforeUnmount(() => {
 				v-for="(seg, segIdx) in segments"
 				:key="segIdx"
 				data-test-id="timeline-cell"
+				:data-error="seg.kind === 'event' && isErroredTimelineItem(seg.item) ? 'true' : undefined"
 				:class="$style.cell"
 				:style="cellStyle(seg)"
 			>
@@ -384,13 +399,9 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
-					:data-error="isErroredToolCallTimelineItem(seg.item) ? 'true' : undefined"
+					:data-error="isErroredTimelineItem(seg.item) ? 'true' : undefined"
 					:aria-label="blockAriaLabel(seg.item)"
-					:class="[
-						$style.block,
-						props.selectedIndex === seg.index && $style.selected,
-						isErroredToolCallTimelineItem(seg.item) && $style.error,
-					]"
+					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
@@ -445,6 +456,7 @@ onBeforeUnmount(() => {
  * anchored to the active block/idle element.
  */
 .cell {
+	position: relative;
 	display: flex;
 	align-items: stretch;
 	min-width: 24px;
@@ -454,8 +466,21 @@ onBeforeUnmount(() => {
 		transform var(--duration--snappy) var(--easing--ease-out);
 }
 
+.cell[data-error='true']::before {
+	position: absolute;
+	top: calc(var(--spacing--5xs) * -1);
+	left: 0;
+	width: 100%;
+	height: var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	background-color: var(--color--danger);
+	content: '';
+	/* Only needs to clear the block inside this cell. */
+	z-index: 1;
+}
+
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
-	opacity: 0.6;
+	opacity: 0.4;
 }
 
 .idle {
@@ -496,24 +521,6 @@ onBeforeUnmount(() => {
 	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
 	transition: filter 0.15s;
-}
-
-.selected {
-	outline: var(--focus--border-width) solid var(--session-timeline-chart-block-color);
-	outline-offset: var(--spacing--5xs);
-	/* Lift above neighbouring idle stripes so the highlight outline doesn't
-	   get covered by the adjacent .idle background. */
-	z-index: 2;
-}
-
-.error {
-	outline: var(--focus--border-width) solid var(--border-color--danger);
-	outline-offset: var(--spacing--5xs);
-	z-index: 1;
-}
-
-.selected.error {
-	z-index: 2;
 }
 
 /*

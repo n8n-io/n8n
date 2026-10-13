@@ -16,6 +16,24 @@ export type AuthFailureReason =
 
 export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
 
+/**
+ * How a caller that got through authenticated. `unknown` is reachable only on
+ * the failure paths, where auth was rejected before the method could be
+ * determined, so it cannot describe an admitted caller.
+ */
+export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
+
+/**
+ * How an admitted caller authenticated, together with the registered OAuth
+ * client it authenticated as. The two travel as one value because they are not
+ * independent: an OAuth token is always issued to a client, and an API key
+ * never is, so no code path can report `oauth` without naming a client or
+ * attach a client to an API key.
+ */
+export type McpCallerAuth =
+	| { authType: 'oauth'; clientId: string }
+	| { authType: 'api_key'; clientId?: never };
+
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;
 	auth_type: Mcpauth_type;
@@ -26,7 +44,13 @@ export type UserWithContext = {
 	user: User | null;
 	actor?: User;
 	context?: TelemetryAuthContext;
-	authType?: Mcpauth_type;
+	/**
+	 * How the caller authenticated and, for OAuth, the client the token was
+	 * issued to (`client_id`), so activity can be attributed to a client and not
+	 * just to the user who authorized it. Absent on the failure paths, which
+	 * reject before a caller is admitted.
+	 */
+	caller?: McpCallerAuth;
 	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
 	scopes?: string[];
 	/**

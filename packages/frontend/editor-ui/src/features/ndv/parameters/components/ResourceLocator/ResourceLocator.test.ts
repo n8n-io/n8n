@@ -155,6 +155,31 @@ describe('ResourceLocator', () => {
 		});
 	});
 
+	it('reopens a non-searchable list after Escape closes it', async () => {
+		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
+			results: [{ name: 'Choice', value: 'choice' }],
+		});
+		const view = renderComponent({
+			props: {
+				parameter: {
+					...TEST_PARAMETER_MULTI_MODE,
+					modes: TEST_PARAMETER_MULTI_MODE.modes?.map((mode) => ({
+						...mode,
+						typeOptions: { ...mode.typeOptions, searchable: false },
+					})),
+				},
+			},
+		});
+		const input = view.getByTestId('rlc-input');
+		await userEvent.click(input);
+		expect(await view.findByText('Choice')).toBeVisible();
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(input).not.toHaveFocus());
+		expect(view.queryByText('Choice')).toBeNull();
+		await userEvent.click(input);
+		expect(await view.findByText('Choice')).toBeVisible();
+	});
+
 	it('renders add resource button', async () => {
 		nodeTypesStore.getResourceLocatorResults.mockResolvedValue({
 			results: [],
@@ -437,6 +462,49 @@ describe('ResourceLocator', () => {
 					value: '={{  }}',
 				},
 			],
+		]);
+	});
+
+	it('switches to expression when user pastes a complete "{{ }}" expression', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: '', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ $json.fileId }}');
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')).toEqual([
+			[
+				{
+					__rl: true,
+					mode: 'id',
+					value: '={{ $json.fileId }}',
+				},
+			],
+		]);
+	});
+
+	it('switches to expression when user pastes an expression over a stored id', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: { ...TEST_MODEL_VALUE, value: 'stored-id', mode: 'id' } },
+		});
+
+		const input = getByTestId('rlc-input');
+		await userEvent.click(input);
+		await userEvent.clear(input);
+		const expression = new DataTransfer();
+		expression.setData('text', '{{ $json.fileId }}');
+		await userEvent.paste(expression);
+
+		expect(emitted('update:modelValue')?.at(-1)).toEqual([
+			{
+				__rl: true,
+				mode: 'id',
+				value: '={{ $json.fileId }}',
+			},
 		]);
 	});
 

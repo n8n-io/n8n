@@ -8,6 +8,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { trackAndReturnToolError } from './tool-error.utils';
 
 const MAX_RESULTS = 100;
 
@@ -51,7 +52,7 @@ export const createSearchFoldersTool = (
 	name: 'search_folders',
 	config: {
 		description:
-			"Search for folders within a project. Use this to resolve a folder name to an ID before creating a workflow in a folder, creating or updating a folder, or moving workflows into a folder. Each result includes the folder's full name path — when multiple folders match a name, use the paths to ask the user which one they meant. Requires a projectId — use search_projects first if needed.",
+			"Search for folders within a project. Use this to resolve a folder name to an ID before searching workflows inside a folder, creating a workflow in a folder, creating or updating a folder, or moving workflows into a folder. Each result includes the folder's full name path — when multiple folders match a name, use the paths to ask the user which one they meant. Requires a projectId — use search_projects first if needed.",
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -119,19 +120,11 @@ export const createSearchFoldersTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { data: [], count: 0, error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return trackAndReturnToolError(telemetry, telemetryPayload, error, (message) => ({
+				data: [],
+				count: 0,
+				error: message,
+			}));
 		}
 	},
 });

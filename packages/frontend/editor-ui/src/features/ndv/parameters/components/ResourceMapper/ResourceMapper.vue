@@ -17,6 +17,7 @@ import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, inject, onMounted, reactive, watch } from 'vue';
 import {
 	ExpressionLocalResolveContextSymbol,
+	ResourceMapperRefreshEmptySchemaKey,
 	ResourceMapperSchemaAutoRefreshKey,
 } from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
@@ -57,6 +58,7 @@ const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const schemaAutoRefreshEnabled = inject(ResourceMapperSchemaAutoRefreshKey, true);
+const refreshEmptySchemaEnabled = inject(ResourceMapperRefreshEmptySchemaKey, false);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -79,9 +81,11 @@ const state = reactive({
 		matchingColumns: [] as string[],
 		schema: [] as ResourceMapperField[],
 		attemptToConvertTypes: false,
-		// This should always be true if `showTypeConversionOptions` is provided
-		// It's used to avoid accepting any value as string without casting it
-		// Which is the legacy behavior without these type options.
+		// The execution engine no longer reads this. It stays in the saved value so an
+		// older instance that still reads it keeps casting instead of falling back to
+		// the legacy uncast passthrough. `onMounted` sets it to `true` when
+		// `showTypeConversionOptions` is set, but the stored node values spread after
+		// that, so a persisted value survives untouched. No control ever writes it.
 		convertFieldsToString: false,
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
@@ -115,7 +119,18 @@ function getDefaultFieldValue(field?: ResourceMapperField): string | number | bo
 watch(
 	() => props.dependentParametersValues,
 	async (currentValue, oldValue) => {
-		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
+		const dependencyBecameAvailable =
+			refreshEmptySchemaEnabled &&
+			oldValue === null &&
+			currentValue !== null &&
+			currentValue.length > 0 &&
+			state.paramValue.schema.length === 0;
+
+		if (
+			currentValue !== null &&
+			oldValue !== currentValue &&
+			(oldValue !== null || dependencyBecameAvailable)
+		) {
 			state.paramValue = {
 				...state.paramValue,
 				value: null,

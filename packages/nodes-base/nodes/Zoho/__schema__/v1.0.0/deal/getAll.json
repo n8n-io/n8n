@@ -4,6 +4,9 @@
         "$approval": {
             "type": "object",
             "properties": {
+                "add_approver": {
+                    "type": "boolean"
+                },
                 "approve": {
                     "type": "boolean"
                 },
@@ -79,6 +82,9 @@
         "$state": {
             "type": "string"
         },
+        "$zia_owner_assignment": {
+            "type": "string"
+        },
         "Account_Name": {
             "type": "object",
             "properties": {
@@ -147,6 +153,9 @@
         "Modified_Time": {
             "type": "string"
         },
+        "Overall_Sales_Duration": {
+            "type": "integer"
+        },
         "Owner": {
             "type": "object",
             "properties": {
@@ -167,9 +176,12 @@
         "Reason_For_Loss__s": {
             "type": "null"
         },
+        "Sales_Cycle_Duration": {
+            "type": "integer"
+        },
         "Stage": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 6
 }

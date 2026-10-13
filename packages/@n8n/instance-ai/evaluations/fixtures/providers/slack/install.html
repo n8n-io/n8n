@@ -1,0 +1,85 @@
+<!doctype html>
+<!--
+  Lookalike Slack "Install App" page — the hermetic path to a credential.
+
+  The token only exists after Install to Workspace, and it is rendered in a
+  field LABELLED as a token, which is what gets it redacted in the snapshot the
+  agent reads (the same treatment the real console's Client Secret got). So the
+  agent captures it through the marker, never by reading a raw value.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Install App | n8n integration | Slack</title>
+	</head>
+	<body>
+		<nav aria-label="App settings">
+			<span>n8n integration</span>
+			<h4>Settings</h4>
+			<ul>
+				<li><a href="/apps/A0EVALAPP/general">Basic Information</a></li>
+				<li><a href="/apps/A0EVALAPP/install-on-team" aria-current="page">Install App</a></li>
+			</ul>
+		</nav>
+
+		<main>
+			<h1>OAuth Tokens for Your Workspace</h1>
+			<p>
+				These tokens were automatically generated when you installed the app to your
+				team. You can use these to authenticate your app.
+			</p>
+
+			<section id="before-install">
+				<p>You must install this app to your workspace before a token is issued.</p>
+				<h2>Bot Token Scopes</h2>
+				<ul>
+					<li>channels:read</li>
+					<li>chat:write</li>
+					<li>groups:read</li>
+					<li>im:history</li>
+				</ul>
+				<button id="install" type="button">Install to Workspace</button>
+			</section>
+
+			<section id="after-install" hidden>
+				<h2>OAuth Tokens for Your Workspace</h2>
+				<label for="bot-token">Bot User OAuth Token</label>
+				<input id="bot-token" name="bot-token" type="text" readonly value="" />
+				<button id="copy-token" type="button">Copy</button>
+				<p>Installed to <strong>Eval Workspace</strong> by Eval Owner.</p>
+				<button type="button">Reinstall to Workspace</button>
+			</section>
+		</main>
+
+
+		<script>
+			// Keep every in-app link on the id this page was reached with.
+			const appId = window.location.pathname.split('/')[2];
+			for (const a of document.querySelectorAll('a[href^="/apps/"]')) {
+				a.setAttribute('href', a.getAttribute('href').replace(/^\/apps\/[^/]+/, '/apps/' + appId));
+			}
+
+			const before = document.getElementById('before-install');
+			const after = document.getElementById('after-install');
+			const token = document.getElementById('bot-token');
+
+			document.getElementById('install').addEventListener('click', async () => {
+				// The real console routes through an authorize screen; hermetically the
+				// grant is implicit, since the redirect would leave the fixture.
+				const response = await fetch('/__fixture__/create-key', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ app: 'n8n integration', workspace: 'Eval Workspace' }),
+				});
+				const { key } = await response.json();
+				token.value = key;
+				before.hidden = true;
+				after.hidden = false;
+			});
+
+			document.getElementById('copy-token').addEventListener('click', async () => {
+				await navigator.clipboard.writeText(token.value).catch(() => {});
+			});
+		</script>
+	</body>
+</html>

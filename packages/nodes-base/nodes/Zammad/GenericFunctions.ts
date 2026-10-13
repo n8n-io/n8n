@@ -9,11 +9,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { Zammad } from './types';
+import { removeTrailingSlash } from '@utils/utilities';
 
-export function tolerateTrailingSlash(url: string) {
-	return url.endsWith('/') ? url.substr(0, url.length - 1) : url;
-}
+import type { Zammad } from './types';
 
 export async function zammadApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -36,7 +34,7 @@ export async function zammadApiRequest(
 		const credentials =
 			await this.getCredentials<Zammad.BasicAuthCredentials>('zammadBasicAuthApi');
 
-		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+		const baseUrl = removeTrailingSlash(credentials.baseUrl);
 
 		options.uri = `${baseUrl}/api/v1${endpoint}`;
 
@@ -50,7 +48,7 @@ export async function zammadApiRequest(
 		const credentials =
 			await this.getCredentials<Zammad.TokenAuthCredentials>('zammadTokenAuthApi');
 
-		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
+		const baseUrl = removeTrailingSlash(credentials.baseUrl);
 
 		options.uri = `${baseUrl}/api/v1${endpoint}`;
 

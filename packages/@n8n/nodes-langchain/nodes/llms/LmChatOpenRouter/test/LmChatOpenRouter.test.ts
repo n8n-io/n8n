@@ -4,7 +4,7 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -17,6 +17,7 @@ vi.mock('@n8n/ai-utilities');
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmChatOpenRouter', () => {
 	let node: LmChatOpenRouter;
@@ -50,6 +51,11 @@ describe('LmChatOpenRouter', () => {
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
+		// aiClientFetch wraps global fetch in production; mirror that so the
+		// OpenRouter adapter drives the test's globalThis.fetch stub.
+		mockedAiClientFetch.mockImplementation(
+			async (...args) => await (globalThis.fetch as typeof fetch)(...args),
+		);
 		return ctx;
 	};
 
@@ -302,6 +308,17 @@ describe('LmChatOpenRouter', () => {
 			await node.supplyData.call(ctx, 0);
 			return MockedChatOpenAI.mock.calls[0][0]?.configuration?.fetch as typeof fetch;
 		}
+
+		it('should delegate to the bounded aiClientFetch under the wrapper', async () => {
+			const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+
+			const wrappedFetch = await setupFetchWrapper(mockFetch);
+			await wrappedFetch('https://openrouter.ai/api/v1/models');
+
+			// The wrapper must route through aiClientFetch, not call fetch directly,
+			// so the outbound response stays bounded.
+			expect(mockedAiClientFetch).toHaveBeenCalled();
+		});
 
 		it.each<{ input: unknown; expected: string; label: string }>([
 			{ input: '', expected: '{}', label: 'empty string' },

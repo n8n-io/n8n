@@ -141,6 +141,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isAgentsEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
+	);
+
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
 	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
@@ -150,9 +154,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
 	 */
 	const isAgentModuleActive = (name: string): boolean => {
-		return (
-			isModuleActive('agents') && moduleSettings.value.agents?.modules?.includes(name) === true
-		);
+		return isAgentsEnabled.value && moduleSettings.value.agents?.modules?.includes(name) === true;
 	};
 
 	const isAiCreditsEnabled = computed(
@@ -169,6 +171,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayCloudUbbEnabled = computed(
 		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
+	const isAiAssistantCloudUbbEnabled = computed(
+		() => settings.value.aiAssistant?.cloudUbbEnabled ?? false,
 	);
 
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
@@ -208,9 +214,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
+	const isWorkerPoolsEnabled = computed(() => settings.value.workerPools?.enabled ?? false);
+
 	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
-		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -504,6 +512,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
 		isAiGatewayCloudUbbEnabled,
+		isAiAssistantCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,
@@ -521,10 +530,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
+		isWorkerPoolsEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 		isWorkflowPublicationServiceEnabled,

@@ -18,6 +18,7 @@ const CONNECT_URL = `${EXT_ORIGIN}connect.html`;
 const tabUpdatedListeners: TabUpdatedHandler[] = [];
 const tabRemovedListeners: Array<(tabId: number) => void> = [];
 const externalMessageListeners: ExternalMessageHandler[] = [];
+const actionClickedListeners: Array<() => void> = [];
 
 const chromeMock = {
 	runtime: {
@@ -30,6 +31,7 @@ const chromeMock = {
 	},
 	tabs: {
 		query: vi.fn().mockResolvedValue([]),
+		get: vi.fn().mockResolvedValue(undefined),
 		update: vi.fn().mockResolvedValue(undefined),
 		remove: vi.fn().mockResolvedValue(undefined),
 		reload: vi.fn().mockResolvedValue(undefined),
@@ -56,9 +58,12 @@ const chromeMock = {
 	},
 	webNavigation: { onCreatedNavigationTarget: { addListener: vi.fn() } },
 	action: {
-		onClicked: { addListener: vi.fn() },
 		setBadgeText: vi.fn(),
 		setBadgeBackgroundColor: vi.fn(),
+		setPopup: vi.fn(),
+		onClicked: {
+			addListener: vi.fn((fn: () => void) => actionClickedListeners.push(fn)),
+		},
 	},
 };
 
@@ -97,6 +102,19 @@ async function simulateTabRemoved(tabId: number): Promise<void> {
 	await flush();
 }
 
+/** Stands in for the relay socket so no test opens a real connection. */
+class FailingWebSocket {
+	onopen: (() => void) | null = null;
+
+	onerror: ((event: unknown) => void) | null = null;
+
+	constructor(public url: string) {
+		setTimeout(() => this.onerror?.({}), 0);
+	}
+
+	close(): void {}
+}
+
 /** Flush pending microtasks/macrotasks so the listener's async IIFE settles. */
 const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -110,6 +128,11 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+});
+
+// In an `afterEach` so a failed assertion can't leak the stub into later cases.
+afterEach(() => {
+	vi.unstubAllGlobals();
 });
 
 // ---------------------------------------------------------------------------
@@ -197,6 +220,7 @@ describe('external messages (direct connect flow)', () => {
 		nowMs += 60_000;
 		vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
 		chromeMock.tabs.query.mockResolvedValue([]);
+		chromeMock.storage.local.get.mockResolvedValue({});
 		chromeMock.windows.create.mockResolvedValue({ tabs: [{ id: POPUP_TAB_ID }] });
 		chromeMock.windows.getLastFocused.mockResolvedValue({
 			left: 0,
@@ -231,12 +255,12 @@ describe('external messages (direct connect flow)', () => {
 		expect(chromeMock.windows.create).toHaveBeenCalledWith({
 			url: connectUrlWithRelay(RELAY_URL),
 			type: 'popup',
-			width: 620,
-			height: 640,
-			left: 650,
-			top: 220,
+			width: 540,
+			height: 700,
+			left: 690,
+			top: 190,
 		});
-		expect(response()).toEqual({ accepted: true });
+		expect(response()).toEqual({ accepted: true, confirmationRequired: true });
 	});
 
 	it('reuses an already-open connect page instead of opening a new popup', async () => {
@@ -256,7 +280,24 @@ describe('external messages (direct connect flow)', () => {
 			type: 'relayUrlReady',
 			relayUrl: RELAY_URL,
 		});
-		expect(response()).toEqual({ accepted: true });
+		expect(response()).toEqual({ accepted: true, confirmationRequired: true });
+	});
+
+	it('skips the confirmation popup for a previously approved host', async () => {
+		chromeMock.storage.local.get.mockResolvedValue({
+			approvedRelayHosts: ['acme.app.n8n.cloud'],
+		});
+		vi.stubGlobal('WebSocket', FailingWebSocket);
+
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		// No confirmation was shown, so the page must not tell the user to look for one.
+		expect(response()).toEqual({ accepted: true, confirmationRequired: false });
+		expect(chromeMock.windows.create).not.toHaveBeenCalled();
+		expect(chromeMock.tabs.update).not.toHaveBeenCalled();
 	});
 
 	it('rejects a relay URL that is not a recognized n8n instance', async () => {
@@ -292,7 +333,7 @@ describe('external messages (direct connect flow)', () => {
 			ALLOWED_ORIGIN,
 		);
 
-		expect(first()).toEqual({ accepted: true });
+		expect(first()).toEqual({ accepted: true, confirmationRequired: true });
 		expect(second()).toEqual({ accepted: false });
 		expect(chromeMock.windows.create).toHaveBeenCalledTimes(1);
 	});
@@ -331,6 +372,26 @@ describe('external messages (direct connect flow)', () => {
 		expect(result()).toEqual({ connected: false });
 	});
 
+	it('disables the drawer while the flow is pending and re-enables it on settle', async () => {
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+		expect(chromeMock.action.setPopup).toHaveBeenCalledWith({ popup: '' });
+
+		await simulateTabRemoved(POPUP_TAB_ID);
+
+		expect(chromeMock.action.setPopup).toHaveBeenLastCalledWith({ popup: 'drawer.html' });
+	});
+
+	it('focuses the pending connect page when the extension icon is clicked', async () => {
+		chromeMock.tabs.get.mockResolvedValue({ id: POPUP_TAB_ID, windowId: 7 });
+		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
+
+		for (const fn of actionClickedListeners) fn();
+		await flush();
+
+		expect(chromeMock.tabs.update).toHaveBeenCalledWith(POPUP_TAB_ID, { active: true });
+		expect(chromeMock.windows.update).toHaveBeenCalledWith(7, { focused: true });
+	});
+
 	it('resolves a superseded flow when a newer connect request arrives', async () => {
 		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
 		const firstResult = await simulateExternalMessage(
@@ -341,5 +402,19 @@ describe('external messages (direct connect flow)', () => {
 		await simulateExternalMessage({ type: 'connect', relayUrl: RELAY_URL }, ALLOWED_ORIGIN);
 
 		expect(firstResult()).toEqual({ connected: false });
+	});
+});
+
+describe('buildRelayWsUrl', () => {
+	const RELAY_URL = 'wss://acme.app.n8n.cloud/browser-use/extension/abc?token=bu_x';
+
+	it('adds the extension version while preserving the existing query', async () => {
+		const { buildRelayWsUrl } = await import('./background');
+
+		const url = new URL(buildRelayWsUrl(RELAY_URL, '0.0.7'));
+
+		expect(url.searchParams.get('extensionVersion')).toBe('0.0.7');
+		expect(url.searchParams.get('token')).toBe('bu_x');
+		expect(url.pathname).toBe('/browser-use/extension/abc');
 	});
 });

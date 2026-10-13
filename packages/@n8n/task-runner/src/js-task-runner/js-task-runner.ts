@@ -184,8 +184,8 @@ export class JsTaskRunner extends TaskRunner {
 
 		// Overwrite unsafe Buffer allocations on the real constructor
 		const safeAlloc = Buffer.alloc.bind(Buffer);
-		Buffer.allocUnsafe = safeAlloc as typeof Buffer.allocUnsafe;
-		Buffer.allocUnsafeSlow = safeAlloc as typeof Buffer.allocUnsafeSlow;
+		Buffer.allocUnsafe = safeAlloc;
+		Buffer.allocUnsafeSlow = safeAlloc;
 
 		if (process.env.NODE_ENV !== 'test') {
 			freezeGlobals();

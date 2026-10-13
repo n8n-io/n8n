@@ -4,16 +4,18 @@ import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/des
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
+import { getVersionLabel } from '@/features/workflows/workflowHistory/utils';
+
 import { formatUserDisplayName } from '../workflowReviews.utils';
 
-type BannerAction = 'submit-changes' | 'retry-publish';
+type BannerAction = 'submit-changes';
 
 /**
  * `info` while the review is simply in progress, `warning` once the author has
- * something to do, `success` for an approved version — matching how the design
- * system uses these semantic colors elsewhere.
+ * something to do — matching how the design system uses these semantic colors
+ * elsewhere.
  */
-type BannerTone = 'info' | 'warning' | 'success';
+type BannerTone = 'info' | 'warning';
 
 type BannerStatus = {
 	pill: string;
@@ -31,28 +33,32 @@ const props = defineProps<{
 	savedVersionId?: string;
 	/** Whether the user may push the latest version into the open review. */
 	canSubmitChanges: boolean;
+	/** Why publishing is blocked, or '' when it is not. Mirrors the Publish tooltip. */
+	submitBlockedReason?: string;
 	/**
-	 * Whether the user may open the review detail.
+	 * Whether the user may open the review detail — the backend-computed
+	 * `viewerCanOpen`, never a permission approximation.
 	 */
 	canOpenReview: boolean;
-	/** Whether the user may publish the approved pinned version. */
-	canRetryPublish: boolean;
-	/** A retry publish is in flight. */
-	isPublishing?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'open-review': [];
 	'submit-changes': [];
-	'retry-publish': [];
 }>();
 
 const i18n = useI18n();
 
 const isOpen = ref(false);
 
-/** Matches the workflow-version labels used elsewhere in the editor. */
-const pinnedVersionLabel = computed(() => props.review?.workflowVersionId?.slice(0, 8) ?? '');
+const pinnedVersionLabel = computed(() => {
+	const review = props.review;
+	if (!review?.workflowVersionId) return '';
+
+	return getVersionLabel({
+		workflowHistory: { versionId: review.workflowVersionId, name: review.workflowVersionName },
+	});
+});
 
 const actorName = computed(() => {
 	const actor = props.review?.decisionBy;
@@ -73,8 +79,6 @@ const hasDivergentVersion = computed(() => {
 
 const status = computed<BannerStatus | null>(() => {
 	const review = props.review;
-	// A pruned pin (LIGO-879) leaves nothing to name or publish, so stay silent
-	// rather than render copy about a version that no longer exists.
 	if (!review?.workflowVersionId) return null;
 
 	const version = pinnedVersionLabel.value;
@@ -83,7 +87,9 @@ const status = computed<BannerStatus | null>(() => {
 		if (review.decision === 'changes_requested') {
 			const actor = actorName.value;
 			return {
-				pill: i18n.baseText('workflowReviews.editorBanner.changesRequested.pill'),
+				pill: hasDivergentVersion.value
+					? i18n.baseText('workflowReviews.editorBanner.pendingStale.pill')
+					: i18n.baseText('workflowReviews.editorBanner.changesRequested.pill'),
 				title: i18n.baseText('workflowReviews.editorBanner.changesRequested.title'),
 				body: actor
 					? i18n.baseText('workflowReviews.editorBanner.changesRequested.body', {
@@ -123,41 +129,21 @@ const status = computed<BannerStatus | null>(() => {
 		};
 	}
 
-	// Closed: only an approved version that never made it to production is
-	// actionable. `published`, `superseded` and `unknown` all stay hidden.
-	if (
-		review.decision === 'approved' &&
-		review.approvedVersionPublicationState === 'not_published'
-	) {
-		return {
-			pill: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.pill'),
-			title: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.title'),
-			body: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.body', {
-				interpolate: { version },
-			}),
-			support: i18n.baseText('workflowReviews.editorBanner.approvedNotPublished.support'),
-			tone: 'success',
-			action: 'retry-publish',
-		};
-	}
-
+	// Closed reviews render nothing: approval hands recovery to the regular
+	// Publish button, and any other close needs no canvas presence.
 	return null;
 });
 
 /** Nothing to submit while the review already covers the saved version. */
 const isSubmitChangesEnabled = computed(() => props.canSubmitChanges && hasDivergentVersion.value);
 
-/**
- * Changes-requested keeps its Submit changes button even in sync, so say why it is
- * disabled — the support copy tells the author to submit. R2 (P3), see LIGO-607_review.md.
- */
-const submitChangesHint = computed(() =>
-	props.canSubmitChanges && !hasDivergentVersion.value
-		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
-		: '',
-);
+const submitChangesHint = computed(() => {
+	if (props.submitBlockedReason) return props.submitBlockedReason;
 
-const isRetryPublishEnabled = computed(() => props.canRetryPublish && !props.isPublishing);
+	return props.canSubmitChanges && !hasDivergentVersion.value
+		? i18n.baseText('workflowReviews.editorBanner.submitChanges.savedVersionHint')
+		: '';
+});
 
 /** A popover with no action left is still worth showing for its copy. */
 const hasActions = computed(() => props.canOpenReview || !!status.value?.action);
@@ -171,11 +157,6 @@ const onOpenReview = () => {
 const onSubmitChanges = () => {
 	isOpen.value = false;
 	emit('submit-changes');
-};
-
-const onRetryPublish = () => {
-	isOpen.value = false;
-	emit('retry-publish');
 };
 </script>
 
@@ -228,16 +209,6 @@ const onRetryPublish = () => {
 							{{ i18n.baseText('workflowReviews.editorBanner.submitChanges') }}
 						</N8nButton>
 					</N8nTooltip>
-					<N8nButton
-						v-else-if="status.action === 'retry-publish'"
-						size="small"
-						:loading="isPublishing"
-						:disabled="!isRetryPublishEnabled"
-						data-test-id="workflow-review-retry-publish-button"
-						@click="onRetryPublish"
-					>
-						{{ i18n.baseText('workflowReviews.editorBanner.retryPublish') }}
-					</N8nButton>
 				</div>
 			</div>
 		</template>
@@ -280,15 +251,6 @@ const onRetryPublish = () => {
 
 	&:hover {
 		border-color: var(--border-color--warning);
-	}
-}
-
-.success {
-	background-color: var(--background--success);
-	color: var(--text-color--success);
-
-	&:hover {
-		border-color: var(--border-color--success);
 	}
 }
 

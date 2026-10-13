@@ -24,6 +24,10 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 36 })
 	workflowReviewRequestId: string;
 
+	/**
+	 * Constrained here and nowhere else: the database has no CHECK on it, because the vocabulary
+	 * grows with every review feature and each widening would be another table recreation.
+	 */
 	@Column({ type: 'varchar', length: 64 })
 	type: WorkflowReviewActivityType;
 
@@ -42,16 +46,4 @@ export class WorkflowReviewActivity extends WithCreatedAt {
 	/** Who produced this entry. For a comment thread, whoever opened it. */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
-
-	/**
-	 * Scopes an entry to one workflow; `null` for review-level entries such as comments and
-	 * decisions. Nothing writes it yet, deliberately: the FK is `ON DELETE CASCADE`, so setting it
-	 * means accepting that an ordinary workflow delete removes those entries from an append-only
-	 * feed, which is why `review.version_updated` keeps its `workflowId` in `data`. Filtering the
-	 * feed on this column is the precondition for relaxing
-	 * `CreateWorkflowReviewRequestDto.workflows.length(1)`, since a multi-workflow review would
-	 * otherwise show entries about workflows the reader may not open.
-	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
 }

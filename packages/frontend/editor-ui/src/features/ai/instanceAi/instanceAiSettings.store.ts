@@ -25,29 +25,29 @@ import {
 	getBrowserStatus,
 	getGatewayStatus,
 } from './instanceAi.api';
-import type {
-	FrontendModuleSettings,
-	InstanceAiAdminSettingsResponse,
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiUserPreferencesResponse,
-	InstanceAiProviderConnection,
-	InstanceAiPermissions,
-	InstanceAiPermissionMode,
-	InstanceAiModelCatalogResponse,
-	ToolCategory,
-	InstanceAiVerifyModelRequest,
-	InstanceAiVerifySandboxRequest,
-	InstanceAiVerifySearchRequest,
-	InstanceAiVerificationResponse,
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type ComputerUseChannel,
+	type FrontendModuleSettings,
+	type InstanceAiAdminSettingsResponse,
+	type InstanceAiAdminSettingsUpdateRequest,
+	type InstanceAiUserPreferencesResponse,
+	type InstanceAiProviderConnection,
+	type InstanceAiPermissions,
+	type InstanceAiPermissionMode,
+	type InstanceAiModelCatalogResponse,
+	type ToolCategory,
+	type InstanceAiVerifyModelRequest,
+	type InstanceAiVerifySandboxRequest,
+	type InstanceAiVerifySearchRequest,
+	type InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
-import {
-	BROWSER_USE_CONNECTION_TYPE,
-	COMPUTER_USE_CONNECTION_TYPE,
-	type BrowserUseConnectionType,
-	type ComputerUseConnectionType,
-} from './constants';
+import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
+import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -66,36 +66,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
-	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
 	const setupCommandExpiresAt = ref<string | null>(null);
 	const setupCommandTtlSeconds = ref<number | null>(null);
 	const setupCommandFetchedAt = ref<number | null>(null);
 	let setupCommandRequestId = 0;
-
-	const hasEverConnectedGateway = ref(
-		typeof localStorage !== 'undefined' &&
-			localStorage.getItem(HAS_CONNECTED_STORAGE_KEY) === 'true',
-	);
-
-	function markGatewayEverConnected(): void {
-		if (hasEverConnectedGateway.value) return;
-		hasEverConnectedGateway.value = true;
-		try {
-			localStorage.setItem(HAS_CONNECTED_STORAGE_KEY, 'true');
-		} catch {}
-	}
-
-	function clearGatewayEverConnected(): void {
-		hasEverConnectedGateway.value = false;
-		try {
-			localStorage.removeItem(HAS_CONNECTED_STORAGE_KEY);
-		} catch {}
-	}
+	const hasObservedGatewayConnection = ref(false);
+	const hasObservedBrowserConnection = ref(false);
 
 	const gatewayConnected = ref(false);
-	const gatewayStatusLoaded = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
@@ -121,6 +101,30 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isBrowserUseEnabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
 	);
+	const isMcpAvailable = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.mcpConnectionsAvailable === true,
+	);
+
+	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
+
+	const isComputerUseAvailable = computed(
+		() => isComputerUseFeatureEnabled.value && !isLocalGatewayDisabledByAdmin.value,
+	);
+	const isBrowserUseAvailable = computed(
+		() => isBrowserUseSupportedOnDevice() && isBrowserUseEnabledByAdmin.value,
+	);
+
+	/**
+	 * The Computer Use entries the + menu renders for this user. Sent with every
+	 * message: the rollout and the device are visible only here, so the backend
+	 * cannot work them out and must not advertise an entry we do not report.
+	 */
+	const computerUseChannels = computed<ComputerUseChannel[]>(() => {
+		const channels: ComputerUseChannel[] = [];
+		if (isComputerUseAvailable.value) channels.push('localComputer');
+		if (isBrowserUseAvailable.value) channels.push('browser');
+		return channels;
+	});
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
 	);
@@ -133,6 +137,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
+	const { isEnabled: isInstanceAiSetupPanelEnabled } = useInstanceAiSetupPanelExperiment();
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,
@@ -146,6 +151,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
+			mcpConnectionsAvailable:
+				adminRes.mcpAccessEnabled && (prev?.mcpConnectionsAvailable ?? false),
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
@@ -175,7 +182,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
 	);
 
-	async function fetch(): Promise<void> {
+	async function fetch(): Promise<boolean> {
 		isLoading.value = true;
 		try {
 			const promises: [
@@ -199,11 +206,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
+			return true;
 		} catch {
 			toast.showError(
 				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
 				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
 			);
+			return false;
 		} finally {
 			isLoading.value = false;
 		}
@@ -288,16 +297,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		} catch {}
 	}
 
-	// ── Sidebar connections ──────────────────────────────────────────────
-	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
-
-	interface SidebarConnection {
-		type: ComputerUseConnectionType | BrowserUseConnectionType;
-		name: string;
-		subtitle: string;
-		status: ConnectionStatus;
-	}
-
 	const isGatewayBrowserCategoryEnabled = computed(
 		() => gatewayToolCategories.value.find((c) => c.name === 'browser')?.enabled === true,
 	);
@@ -307,37 +306,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			browserConnected.value || (gatewayConnected.value && isGatewayBrowserCategoryEnabled.value),
 	);
-
-	const connections = computed<SidebarConnection[]>(() => {
-		const result: SidebarConnection[] = [];
-
-		if (!isLocalGatewayDisabled.value) {
-			result.push({
-				type: COMPUTER_USE_CONNECTION_TYPE,
-				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
-				subtitle: gatewayConnected.value
-					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-				status: gatewayConnected.value ? 'connected' : 'disconnected',
-			});
-		}
-
-		if (isBrowserUseEnabledByAdmin.value) {
-			result.push({
-				type: BROWSER_USE_CONNECTION_TYPE,
-				name: isBrowserUseConnected.value
-					? 'Google Chrome'
-					: i18n.baseText('instanceAi.connections.add.browserUse'),
-				subtitle: isBrowserUseConnected.value
-					? i18n.baseText('instanceAi.connections.types.browserUse.subtitle')
-					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
-			});
-		}
-
-		return result;
+	const computerUseConnectionStatus = computed<ToolConnectionStatus>(() => {
+		if (gatewayConnected.value) return 'connected';
+		if (isDaemonConnecting.value) return 'connecting';
+		if (hasObservedGatewayConnection.value && !isLocalGatewayDisabled.value) return 'disconnected';
+		return 'none';
 	});
-
+	const browserUseConnectionStatus = computed<ToolConnectionStatus>(() => {
+		if (browserConnected.value) return 'connected';
+		return hasObservedBrowserConnection.value ? 'disconnected' : 'none';
+	});
 	/**
 	 * Tears down the paired gateway session on the server (so its tools are no
 	 * longer exposed to the agent). User preference stays enabled — the user
@@ -354,17 +332,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 		clearSetupCommand();
-		clearGatewayEverConnected();
+		hasObservedGatewayConnection.value = false;
 		gatewayConnected.value = false;
 		gatewayToolCategories.value = [];
 		gatewayDirectory.value = null;
 		gatewayHostIdentifier.value = null;
-	}
-
-	/** Destructive: disables the user preference and removes the row from the list. */
-	async function removeComputerUse(): Promise<void> {
-		await disconnectComputerUse();
-		await persistLocalGatewayPreference(true);
 	}
 
 	function setField<K extends keyof InstanceAiAdminSettingsUpdateRequest>(
@@ -389,7 +361,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	function getPermission(key: keyof InstanceAiPermissions): InstanceAiPermissionMode {
 		const draftVal = draft.permissions?.[key];
 		if (draftVal !== undefined) return draftVal;
-		return settings.value?.permissions?.[key] ?? 'require_approval';
+		// A key the server did not send falls back to its own default, not to
+		// `require_approval`: not every permission defaults to approval.
+		return settings.value?.permissions?.[key] ?? DEFAULT_INSTANCE_AI_PERMISSIONS[key];
 	}
 
 	// ── Gateway status fetch ──────────────────────────────────────────────
@@ -398,14 +372,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		try {
 			const status = await getGatewayStatus(rootStore.restApiContext);
 			gatewayConnected.value = status.connected;
-			gatewayDirectory.value = status.directory;
-			gatewayHostIdentifier.value = status.hostIdentifier ?? null;
 			gatewayToolCategories.value = status.toolCategories ?? [];
-			if (status.connected) markGatewayEverConnected();
-		} catch {
-		} finally {
-			gatewayStatusLoaded.value = true;
-		}
+			if (status.connected) {
+				hasObservedGatewayConnection.value = true;
+				gatewayDirectory.value = status.directory;
+				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
+			}
+		} catch {}
 	}
 
 	// ── Browser Use (direct channel) ──────────────────────────────────────
@@ -416,6 +389,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			browserConnected.value = status.connected;
 			browserConnectedAt.value = status.connectedAt;
 			browserToolCategories.value = status.toolCategories ?? [];
+			if (status.connected) hasObservedBrowserConnection.value = true;
 		} catch {
 		} finally {
 			browserStatusLoaded.value = true;
@@ -461,6 +435,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return;
 		}
 		clearBrowserConnectUrl();
+		hasObservedBrowserConnection.value = false;
 		browserConnected.value = false;
 		browserConnectedAt.value = null;
 		browserToolCategories.value = [];
@@ -526,11 +501,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		removeGatewayPushListener = pushStore.addEventListener((message) => {
 			if (message.type === 'instanceAiGatewayStateChanged') {
 				gatewayConnected.value = message.data.connected;
-				gatewayDirectory.value = message.data.directory;
-				gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 				gatewayToolCategories.value = message.data.toolCategories ?? [];
 				if (message.data.connected) {
-					markGatewayEverConnected();
+					hasObservedGatewayConnection.value = true;
+					gatewayDirectory.value = message.data.directory;
+					gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 				}
 				return;
 			}
@@ -538,6 +513,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				browserConnected.value = message.data.connected;
 				browserConnectedAt.value = message.data.connectedAt;
 				browserToolCategories.value = message.data.toolCategories ?? [];
+				if (message.data.connected) hasObservedBrowserConnection.value = true;
 			}
 		});
 
@@ -687,19 +663,23 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setupCommandExpiresAt,
 		setupCommandTtlSeconds,
 		setupCommandFetchedAt,
-		hasEverConnectedGateway,
+		computerUseConnectionStatus,
 		isGatewayConnected,
-		gatewayStatusLoaded,
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
+		isMcpAvailable,
+		isComputerUseAvailable,
+		isBrowserUseAvailable,
+		computerUseChannels,
 		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
+		isInstanceAiSetupPanelEnabled,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,
@@ -716,6 +696,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		verifySearch,
 		// Browser Use (direct channel)
 		browserConnected,
+		browserUseConnectionStatus,
 		browserConnectedAt,
 		browserToolCategories,
 		browserStatusLoaded,
@@ -725,10 +706,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetchBrowserConnectUrl,
 		clearBrowserConnectUrl,
 		disconnectBrowserUse,
-		// Sidebar connections
-		connections,
 		isBrowserUseConnected,
 		disconnectComputerUse,
-		removeComputerUse,
 	};
 });

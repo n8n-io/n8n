@@ -32,6 +32,11 @@ vi.mock('../../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => settingsStoreMock(),
 }));
 
+const { showMessageMock } = vi.hoisted(() => ({ showMessageMock: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock }),
+}));
+
 const { detectExtensionMock } = vi.hoisted(() => ({ detectExtensionMock: vi.fn() }));
 vi.mock('../../../utils/browserUseExtension', () => ({
 	detectBrowserUseExtension: detectExtensionMock,
@@ -103,12 +108,6 @@ describe('BrowserUseSetupModal', () => {
 
 	afterEach(() => {
 		delete (globalThis as { chrome?: unknown }).chrome;
-	});
-
-	it('tracks the modal opening on mount', () => {
-		renderComponent();
-		expect(telemetryMock.trackModalOpened).toHaveBeenCalledTimes(1);
-		expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(true);
 	});
 
 	it('tracks the install extension button click', async () => {
@@ -216,6 +215,32 @@ describe('BrowserUseSetupModal', () => {
 		expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
 	});
 
+	describe('once the browser connects', () => {
+		async function renderContentAndConnect(props: Record<string, unknown>) {
+			const store = reactive(makeSettingsStore());
+			settingsStoreMock.mockReturnValue(store);
+			const rendered = createComponentRenderer(BrowserUseSetupContent)({
+				props,
+			});
+			await flushPromises();
+
+			store.browserConnected = true;
+			await flushPromises();
+
+			return rendered;
+		}
+
+		// Closing the modal and reporting success now belong to useBrowserUseConnection, which
+		// drives every connect — including the remembered one that never opens this view.
+		it('keeps the connected status in place when not auto-connecting', async () => {
+			const { emitted, getByText } = await renderContentAndConnect({ embedded: true });
+
+			expect(emitted('close')).toBeUndefined();
+			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(getByText('instanceAi.browserUse.connected')).toBeVisible();
+		});
+	});
+
 	it('keeps the install step visible while the connect step waits for confirmation', async () => {
 		installExtensionMock({ connect: { accepted: true } });
 		const { getByTestId } = renderComponent();
@@ -269,11 +294,6 @@ describe('BrowserUseSetupModal', () => {
 			expect(getByTestId('browser-use-unsupported-browser')).toBeInTheDocument();
 			expect(queryByTestId('browser-use-install-extension')).toBeNull();
 			expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
-		});
-
-		it('tracks the modal opening as unsupported', () => {
-			renderComponent();
-			expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(false);
 		});
 
 		it('closes the modal via the close button', async () => {

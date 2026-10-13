@@ -17,6 +17,7 @@ import {
 
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { useActions } from '../../composables/useActions';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -36,6 +37,8 @@ import CommunityNodeFooter from '@/features/settings/communityNodes/components/n
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -57,6 +60,7 @@ const {
 } = useActions();
 
 const nodeCreatorStore = useNodeCreatorStore();
+const nodeTypesStore = useNodeTypesStore();
 const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 // We only inject labels if search is empty
@@ -115,6 +119,14 @@ const quickConnect = computed(() => {
 	return null;
 });
 
+// CommunityNodeInfo shows the promotion when community node details are open.
+const { promotionText } = useGatewayCreditsPromotion({
+	nodeType: () => {
+		const items = useViewStacks().activeViewStack.items;
+		return !communityNodeDetails.value && items?.length ? items[0].key : undefined;
+	},
+});
+
 const hasNoTriggerActions = computed(
 	() =>
 		parseCategoryActions(
@@ -131,7 +143,7 @@ const containsAPIAction = computed(() => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
 	});
 
-	return result;
+	return result && !nodeTypesStore.isNodeTypeUnavailable(HTTP_REQUEST_NODE_TYPE);
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
@@ -178,7 +190,6 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
-				section: useViewStacks().activeViewStack.title,
 			},
 		});
 	}
@@ -272,8 +283,13 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
-		<div :class="$style.banner" v-if="quickConnect">
-			<QuickConnectBanner :text="quickConnect.text" :disclaimer="quickConnect.disclaimer" />
+		<div v-if="quickConnect || promotionText" :class="$style.banner">
+			<QuickConnectBanner
+				v-if="quickConnect"
+				:text="quickConnect.text"
+				:disclaimer="quickConnect.disclaimer"
+			/>
+			<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>
@@ -371,6 +387,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 			v-if="communityNodeDetails"
 			:class="$style.communityNodeFooter"
 			:package-name="communityNodeDetails.packageName"
+			:node-type-name="communityNodeDetails.key"
 			:show-manage="communityNodeDetails.installed && usersStore.isAdminOrOwner"
 		/>
 	</div>
@@ -421,6 +438,9 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 	z-index: 1;
 }
 .banner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	margin: var(--spacing--sm);
 	margin-top: 0;
 }

@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import {
 	serializedCredentialSchema,
 	type SerializedCredential,
+	type SerializedCredentialData,
 } from '../../spec/serialized/credential.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
@@ -12,7 +13,8 @@ type CredentialPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
-	data: 'exclude';
+	description: 'exclude';
+	data: 'transform';
 	type: 'copy';
 	shared: 'exclude';
 	isManaged: 'exclude';
@@ -21,6 +23,7 @@ type CredentialPackageKeyHandling = {
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
+	pendingAuthorizationExpiresAt: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<
@@ -31,12 +34,17 @@ const serializePayload = definePackageSerializationPayload<
 
 @Service()
 export class CredentialSerializer {
-	serialize(credential: CredentialsEntity): SerializedCredential {
+	serialize(
+		credential: CredentialsEntity,
+		{ data, dataIsComplete }: { data?: SerializedCredentialData; dataIsComplete?: boolean } = {},
+	): SerializedCredential {
 		return serializedCredentialSchema.parse(
 			serializePayload({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
+				...(data !== undefined ? { data } : {}),
+				...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
 			}),
 		);
 	}

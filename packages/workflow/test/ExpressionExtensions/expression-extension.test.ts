@@ -5,6 +5,8 @@
 import { evaluate } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 import { extendTransform, extend } from '../../src/extensions';
+import { extendedFunctions } from '../../src/extensions/extended-functions';
+import { extendSyntax } from '../../src/extensions/expression-extension';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
 describe('Expression Extension Transforms', () => {
@@ -70,6 +72,13 @@ describe('Expression Parser', () => {
 			]);
 		});
 
+		test('Multiple escaped closing brackets', () => {
+			expect(splitExpression('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+			]);
+		});
+
 		test('Empty input (CAT-3075)', () => {
 			expect(splitExpression('')).toEqual([{ type: 'text', text: '' }]);
 		});
@@ -104,6 +113,15 @@ describe('Expression Parser', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
+		});
+
+		test('Multiple escaped closing brackets', () => {
+			expect(
+				joinExpression([
+					{ type: 'text', text: '' },
+					{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+				]),
+			).toEqual('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}');
 		});
 	});
 
@@ -229,6 +247,17 @@ describe('Expression Parser', () => {
 			).toEqual({ a: 1 });
 		});
 
+		test('zip should treat a key named __proto__ as an ordinary field', () => {
+			const result = extendedFunctions.zip(['__proto__'], [{ marker: 'set' }]) as Record<
+				string,
+				unknown
+			>;
+
+			expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+			expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+			expect(({} as Record<string, unknown>).marker).toBeUndefined();
+		});
+
 		test('$if', () => {
 			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
@@ -296,4 +325,14 @@ describe('Expression Parser', () => {
 			expect(result).toEqual('TEST');
 		});
 	});
+});
+
+describe('extendSyntax', () => {
+	test.each(['toString', 'constructor'])(
+		'should return the bracketed text %s unchanged, both uncached and cached',
+		(bracketedExpression) => {
+			expect(extendSyntax(bracketedExpression, true)).toBe(bracketedExpression);
+			expect(extendSyntax(bracketedExpression, true)).toBe(bracketedExpression);
+		},
+	);
 });

@@ -12,10 +12,11 @@ import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-cor
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ServiceUnavailableError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';
+import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
@@ -46,6 +47,8 @@ export abstract class AbstractServer {
 	protected globalConfig = Container.get(GlobalConfig);
 
 	protected dbConnection = Container.get(DbConnection);
+
+	private databaseIndependentRoutes = Container.get(DatabaseIndependentRoutes);
 
 	protected sslKey: string;
 
@@ -163,12 +166,24 @@ export abstract class AbstractServer {
 			}
 		});
 
-		this.app.use((_req, res, next) => {
+		this.app.use((req, res, next) => {
+			if (this.isServedWithoutDatabase(req)) {
+				next();
+				return;
+			}
 			if (connectionState.connected) {
 				if (connectionState.migrated) next();
 				else res.send('n8n is starting up. Please wait');
 			} else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
 		});
+	}
+
+	private isServedWithoutDatabase(req: express.Request) {
+		return (
+			this.dbConnection.connectionState.migrated &&
+			(req.method === 'GET' || req.method === 'HEAD') &&
+			this.databaseIndependentRoutes.has(req.path)
+		);
 	}
 
 	async init(): Promise<void> {

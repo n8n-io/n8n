@@ -136,10 +136,27 @@ export class TriggersAndPollers {
 				};
 			});
 
-			return triggerResponse;
+			return this.wrapCloseFunctionInIsolate(workflow, triggerResponse);
 		}
 		// In all other modes simply start the trigger
-		return await nodeType.trigger.call(triggerFunctions);
+		return this.wrapCloseFunctionInIsolate(workflow, await nodeType.trigger.call(triggerFunctions));
+	}
+
+	/**
+	 * Wraps a trigger's `closeFunction` so teardown holds an expression isolate:
+	 * the closure evaluates expressions through this workflow's expression
+	 * instance, which is no longer in scope at the eventual close call sites.
+	 */
+	private wrapCloseFunctionInIsolate(
+		workflow: Workflow,
+		response: ITriggerResponse | undefined,
+	): ITriggerResponse | undefined {
+		const closeFunction = response?.closeFunction;
+		if (response && closeFunction) {
+			response.closeFunction = async () =>
+				await workflow.expression.withIsolate(async () => await closeFunction.call(response));
+		}
+		return response;
 	}
 
 	/**

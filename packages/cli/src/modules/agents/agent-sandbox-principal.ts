@@ -2,15 +2,19 @@ import { createHash } from 'node:crypto';
 
 import type { JSONObject } from '@n8n/agents';
 
+/**
+ * Cache-scope key for an agent sandbox. It is not the caller identity: for that, see
+ * `Principal` in `@n8n/permissions`.
+ */
 export type AgentSandboxPrincipal =
 	| { type: 'n8n-user'; userId: string }
 	| {
-			type: 'integration-user';
+			type: 'integration-thread';
 			connectionId: string;
 			platform: string;
-			platformUserId: string;
+			platformThreadId: string;
 	  }
-	| { type: 'workflow-session'; workflowId: string; sessionId: string }
+	| { type: 'project-session'; projectId: string; sessionId: string }
 	| {
 			type: 'workflow-execution';
 			workflowId: string;
@@ -76,16 +80,16 @@ export function hashAgentSandboxPrincipal(
 		case 'n8n-user':
 			canonicalPrincipal = [principal.type, principal.userId];
 			break;
-		case 'integration-user':
+		case 'integration-thread':
 			canonicalPrincipal = [
 				principal.type,
 				principal.connectionId,
 				principal.platform,
-				principal.platformUserId,
+				principal.platformThreadId,
 			];
 			break;
-		case 'workflow-session':
-			canonicalPrincipal = [principal.type, principal.workflowId, principal.sessionId];
+		case 'project-session':
+			canonicalPrincipal = [principal.type, principal.projectId, principal.sessionId];
 			break;
 		case 'workflow-execution':
 			canonicalPrincipal = [principal.type, principal.workflowId, principal.executionId];

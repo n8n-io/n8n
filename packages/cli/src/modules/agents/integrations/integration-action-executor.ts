@@ -18,14 +18,17 @@ import {
 	integrationError,
 	normalizePlatformId,
 	unsupportedAction,
+	rateLimitExceeded,
 } from './integration-helpers';
 import type {
-	IntegrationAction,
 	IntegrationActionExecutor,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
+import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
+import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-limit';
 
 // The shared wire schema from @n8n/api-types — the same definition the tool
 // boundary validates against and the editor-ui renderer parses with.
@@ -67,23 +70,18 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	constructor(
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult> {
+	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (params.action === 'do_not_respond') {
 			return this.doNotRespond(params);
 		}
-
+		if (this.channelRateLimitGuard.isBlocked(params.descriptor.integrationConnectionId)) {
+			return rateLimitExceeded(channelRateLimitMessage(params.descriptor.integration.type));
+		}
 		const unsupportedAction = () =>
 			integrationError(
 				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
@@ -105,21 +103,19 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				});
 				return result ?? unsupportedAction();
 			} catch (error) {
-				return integrationError(
-					INTEGRATION_ERROR_CODES.ACTION_FAILED,
-					error instanceof Error ? error.message : String(error),
-				);
+				return caughtIntegrationError(error, {
+					connectionId: params.descriptor.integrationConnectionId,
+					platform: params.descriptor.integration.type,
+					guard: this.channelRateLimitGuard,
+					failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				});
 			}
 		}
 
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
-			type: params.descriptor.integration.type,
-			credentialId,
-		});
-		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+		const chat = await this.chatIntegrationService.getChatInstanceForTools(
 			params.descriptor.agentId,
 			params.descriptor.integration,
 		);
@@ -157,10 +153,12 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 			return unsupportedAction();
 		} catch (error) {
-			return integrationError(
-				INTEGRATION_ERROR_CODES.ACTION_FAILED,
-				error instanceof Error ? error.message : String(error),
-			);
+			return caughtIntegrationError(error, {
+				connectionId: params.descriptor.integrationConnectionId,
+				platform: params.descriptor.integration.type,
+				guard: this.channelRateLimitGuard,
+				failedCode: INTEGRATION_ERROR_CODES.ACTION_FAILED,
+			});
 		}
 	}
 
@@ -168,7 +166,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	 * End the turn without posting anything. Allowed only when the latest
 	 * inbound message marked the reply as optional.
 	 */
-	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+	private doNotRespond(params: IntegrationActionParams): IntegrationActionResult {
 		if (params.currentMessageContext?.replyExpectation !== 'optional') {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
@@ -185,7 +183,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async addReactionToMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
 		if (!supportsAddReaction(adapter)) {
@@ -236,7 +234,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -274,26 +272,31 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendDirectMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
 		const thread = await chat.openDM(input.userId);
-		await this.prepareSentThread(params.descriptor, thread);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
+		// Re-anchor at the sent message ts on platforms where a top-level DM
+		// starts its own thread; otherwise keep the openDM thread.
+		const anchoredId = this.sentThreadId(params.descriptor, sent);
+		const threadId = anchoredId ?? thread.id;
+		const targetThread = anchoredId && anchoredId !== thread.id ? chat.thread(threadId) : thread;
+		await this.prepareSentThread(params.descriptor, targetThread);
 
 		return {
 			ok: true,
 			messageContext: buildMessageContextFromSentMessage({
 				descriptor: params.descriptor,
 				sent,
-				target: { type: 'dm', userId: input.userId, threadId: thread.id },
+				target: { type: 'dm', userId: input.userId, threadId },
 			}),
 		};
 	}
 
 	private async editMessageInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = editMessageInputSchema.parse(params.input);
 		const currentMessageContext = params.currentMessageContext;
@@ -331,7 +334,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendChannelMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
 		const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
@@ -339,8 +342,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const sent = await channel.post(
 			await this.toPostable(params.descriptor, input.message, params),
 		);
-		if (sent.threadId) {
-			await this.prepareSentThread(params.descriptor, chat.thread(sent.threadId));
+		const threadId = this.sentThreadId(params.descriptor, sent);
+		if (threadId) {
+			await this.prepareSentThread(params.descriptor, chat.thread(threadId));
 		}
 
 		return {
@@ -348,7 +352,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			messageContext: buildMessageContextFromSentMessage({
 				descriptor: params.descriptor,
 				sent,
-				target: { type: 'channel', channelId, threadId: sent.threadId },
+				target: { type: 'channel', channelId, threadId },
 			}),
 		};
 	}
@@ -405,7 +409,27 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		descriptor: IntegrationToolConnectionDescriptor,
 		thread: Parameters<NonNullable<AgentChatIntegration['prepareSentThread']>>[0],
 	): Promise<void> {
-		await this.integrationRegistry.get(descriptor.integration.type)?.prepareSentThread?.(thread);
+		if (descriptor.integration.credentialId === undefined) return;
+		await this.integrationRegistry
+			.get(descriptor.integration.type)
+			?.prepareSentThread?.(thread, descriptor.integration);
+	}
+
+	/**
+	 * Thread id where follow-ups to an outbound sent message will arrive.
+	 * Platforms where a top-level post starts its own thread (Slack) re-anchor
+	 * the id at the sent message; others keep the posting thread. Returns
+	 * undefined when the send produced no thread id (e.g. a non-threaded post).
+	 */
+	private sentThreadId(
+		descriptor: IntegrationToolConnectionDescriptor,
+		sent: SentMessage,
+	): string | undefined {
+		if (!sent.threadId) return undefined;
+		const integration = this.integrationRegistry.get(descriptor.integration.type);
+		return (
+			integration?.messageThreadId?.({ id: sent.id, threadId: sent.threadId }) ?? sent.threadId
+		);
 	}
 }
 
@@ -415,16 +439,6 @@ function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'edi
 
 function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
 	return isRecord(adapter) && typeof adapter.addReaction === 'function';
-}
-
-interface ExecuteParams {
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	awaitResponse: boolean;
-	runId?: string;
-	toolCallId?: string;
-	currentMessageContext?: IntegrationMessageContext;
 }
 
 function buildMessageContextFromSentMessage(params: {

@@ -1,4 +1,4 @@
-import { inTest } from '@n8n/backend-common';
+import { inTest, LicenseState } from '@n8n/backend-common';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -6,19 +6,20 @@ import { BinaryDataConfig } from 'n8n-core';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { N8N_VERSION } from '@/constants';
+import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { resolveQueueName, resolveWorkerPoolName } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
-import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
 
@@ -47,6 +48,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override needsTaskRunner = true;
 
 	override seedsInstanceIdentity = true;
@@ -62,8 +65,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		try {
 			await this.externalHooks?.run('n8n.stop');
 
-			// Wait for in-process executions not tracked as Bull jobs,
-			// which are instead drained by `ScalingService.stopWorker`
+			// Final wait for any execution still active after the shutdown hooks.
 			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
@@ -85,8 +87,23 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		const { QUEUE_WORKER_TIMEOUT } = process.env;
 		if (QUEUE_WORKER_TIMEOUT) {
-			this.gracefulShutdownTimeoutInS =
-				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
+			// Accept a whole positive number only, the way the config layer parses
+			// `N8N_GRACEFUL_SHUTDOWN_TIMEOUT`, so a malformed value cannot shorten the
+			// shutdown window.
+			const parsed = Number(QUEUE_WORKER_TIMEOUT);
+			const isValid = Number.isInteger(parsed) && parsed > 0;
+
+			if (!isValid) {
+				this.logger.warn(
+					`Invalid QUEUE_WORKER_TIMEOUT value "${QUEUE_WORKER_TIMEOUT}". Using the configured queue timeout.`,
+				);
+			}
+
+			// oxlint-disable-next-line typescript/no-deprecated
+			const timeout = isValid ? parsed : this.globalConfig.queue.bull.gracefulShutdownTimeout;
+			// One field arms the force-exit timer, the other sizes the shutdown drains.
+			this.gracefulShutdownTimeoutInS = timeout;
+			this.globalConfig.generic.gracefulShutdownTimeout = timeout;
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
@@ -106,6 +123,17 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+
+		if (
+			resolveWorkerPoolName(this.globalConfig.queue.workerPool) !== '' &&
+			!Container.get(LicenseState).isWorkerPoolsLicensed()
+		) {
+			this.logger.error(
+				'A worker pool is configured (`N8N_WORKER_POOL_NAME`), but worker pools are not licensed. Either remove the worker pool configuration, or upgrade to a license that supports this feature.',
+			);
+			process.exit(1);
+		}
+
 		await this.initCommunityPackages();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
@@ -193,11 +221,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		};
 
 		let workerServer: WorkerServer | undefined;
-		if (Object.values(endpointsConfig).some((e) => e)) {
+		if (inE2ETests || Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server.js');
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
 		}
+
+		// After the server started, so the metrics collector is subscribed before the tasks are routed.
+		await this.initSystemTasks();
 
 		// Register the job processor only after `init()` has fully completed,
 		// so that jobs cannot be pulled before all modules and their
@@ -206,9 +237,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		workerServer?.markAsReady();
 
+		const poolName = resolveWorkerPoolName(this.globalConfig.queue.workerPool);
+		const queueName = resolveQueueName('worker', poolName);
+
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info(` * Pool: ${poolName === '' ? '(default)' : poolName}`);
+		this.logger.info(` * Queue: ${queueName}`);
 		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {

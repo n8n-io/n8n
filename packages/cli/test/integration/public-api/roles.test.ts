@@ -1,12 +1,22 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { RoleRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { MANDATORY_INSTANCE_SCOPES } from '@n8n/permissions';
 
 import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
-import { addApiKey, createOwnerWithApiKey, createUser } from '@test-integration/db/users';
+import {
+	addApiKey,
+	createOwnerWithApiKey,
+	createUser,
+	getUserById,
+} from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 describe('Roles in Public API', () => {
+	/** `findByList` does not order its rows, so compare scope sets, not sequences. */
+	const expectScopes = (actual: readonly string[], expected: readonly string[]) =>
+		expect([...actual].sort()).toEqual([...expected].sort());
+
 	let owner: User;
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
@@ -22,6 +32,23 @@ describe('Roles in Public API', () => {
 		const user = await createUser({ role });
 		user.apiKeys = [await addApiKey(user)];
 		return testServer.publicApiAgentFor(user);
+	};
+
+	const createGlobalRole = async (
+		displayName: string,
+		scopes: string[] = ['user:read'],
+	): Promise<{
+		slug: string;
+		displayName: string;
+		description: string | null;
+		scopes: string[];
+	}> => {
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.post('/roles')
+			.send({ displayName, roleType: 'global', scopes });
+		expect(response.status).toBe(201);
+		return response.body;
 	};
 
 	beforeAll(async () => {
@@ -76,10 +103,11 @@ describe('Roles in Public API', () => {
 				systemRole: false,
 				roleType: 'global',
 				licensed: expect.any(Boolean),
-				scopes: ['user:read'],
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
+			expectScopes(custom.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		const allRolesOf = (body: Record<string, Array<Record<string, unknown>>>) => [
@@ -130,7 +158,7 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('GET /roles/:slug', () => {
+	describe('GET /roles/:roleSlug', () => {
 		const systemRoleBody = (slug: string, roleType: string) => ({
 			slug,
 			displayName: expect.any(String),
@@ -168,10 +196,11 @@ describe('Roles in Public API', () => {
 				systemRole: false,
 				roleType: 'global',
 				licensed: expect.any(Boolean),
-				scopes: ['user:read'],
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		it('returns a project role', async () => {
@@ -266,11 +295,11 @@ describe('Roles in Public API', () => {
 				description: null,
 				systemRole: false,
 				roleType: 'global',
-				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
-			expect(response.body.scopes).toHaveLength(2);
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		it('creates a project role and returns 201', async () => {
@@ -289,11 +318,21 @@ describe('Roles in Public API', () => {
 			expect(response.body.scopes).toEqual(['workflow:read']);
 		});
 
-		it('creates a role with no scopes and returns 201 (matches internal behaviour)', async () => {
+		it('creates a global role with no scopes but keeps the mandatory ones', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/roles')
 				.send({ displayName: 'PA empty role', roleType: 'global', scopes: [] });
+
+			expect(response.status).toBe(201);
+			expectScopes(response.body.scopes, MANDATORY_INSTANCE_SCOPES);
+		});
+
+		it('creates a project role with no scopes and adds nothing', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({ displayName: 'PA empty project role', roleType: 'project', scopes: [] });
 
 			expect(response.status).toBe(201);
 			expect(response.body.scopes).toEqual([]);
@@ -318,6 +357,24 @@ describe('Roles in Public API', () => {
 				.send({ displayName: 'MP global role', roleType: 'global', scopes: ['user:read'] });
 
 			expect(response.status).toBe(403);
+		});
+
+		it('forbids creating a global role when the owner API key is scoped down to role:manageProject only (403)', async () => {
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['role:manageProject'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.post('/roles')
+				.send({
+					displayName: 'PA global role via scoped key',
+					roleType: 'global',
+					scopes: ['user:read'],
+				});
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toEqual(
+				'User is missing a scope required to perform this action',
+			);
 		});
 
 		it('rejects an unknown scope slug with 400', async () => {
@@ -408,24 +465,12 @@ describe('Roles in Public API', () => {
 		});
 	});
 
-	describe('PUT /roles/{slug}', () => {
+	describe('PUT /roles/{roleSlug}', () => {
 		type CreatedRole = {
 			slug: string;
 			displayName: string;
 			description: string | null;
 			scopes: string[];
-		};
-
-		const createGlobalRole = async (
-			displayName: string,
-			scopes: string[] = ['user:read'],
-		): Promise<CreatedRole> => {
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.post('/roles')
-				.send({ displayName, roleType: 'global', scopes });
-			expect(response.status).toBe(201);
-			return response.body;
 		};
 
 		const fullBody = (overrides: Partial<CreatedRole> = {}) => ({
@@ -457,15 +502,15 @@ describe('Roles in Public API', () => {
 				description: 'An updated description',
 				systemRole: false,
 				roleType: 'global',
-				scopes: expect.arrayContaining(['user:read', 'user:list']),
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
 			});
-			expect(response.body.scopes).toHaveLength(2);
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
 		});
 
 		it('replaces scopes entirely rather than merging them with the existing set', async () => {
-			const role = await createGlobalRole('PA put scopes', ['user:read', 'user:list']);
+			const role = await createGlobalRole('PA put scopes', ['user:read', 'insights:read']);
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
@@ -473,7 +518,20 @@ describe('Roles in Public API', () => {
 				.send(fullBody({ displayName: role.displayName, scopes: ['user:read'] }));
 
 			expect(response.status).toBe(200);
-			expect(response.body.scopes).toEqual(['user:read']);
+			// The mandatory scopes survive; `insights:read` does not.
+			expectScopes(response.body.scopes, ['user:read', ...MANDATORY_INSTANCE_SCOPES]);
+		});
+
+		it('keeps the mandatory scopes when the update sends an empty list', async () => {
+			const role = await createGlobalRole('PA put empty scopes', ['user:read', 'insights:read']);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: role.displayName, scopes: [] }));
+
+			expect(response.status).toBe(200);
+			expectScopes(response.body.scopes, MANDATORY_INSTANCE_SCOPES);
 		});
 
 		it('clears an existing description by sending null', async () => {
@@ -513,7 +571,9 @@ describe('Roles in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body.displayName).toBe(role.displayName);
 			expect(response.body.description).toBeNull();
-			expect(response.body.scopes).toEqual(expect.arrayContaining(['user:read', 'user:list']));
+			expect(response.body.scopes).toEqual(
+				expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
+			);
 		});
 
 		it('rejects a body missing a required field with 400', async () => {
@@ -564,6 +624,21 @@ describe('Roles in Public API', () => {
 				.send(fullBody({ displayName: 'MP should not put this' }));
 
 			expect(response.status).toBe(403);
+		});
+
+		it('forbids updating a global role when the owner API key is scoped down to role:manageProject only (403)', async () => {
+			const role = await createGlobalRole('PA global role for scoped-key put test');
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['role:manageProject'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.put(`/roles/${role.slug}`)
+				.send(fullBody({ displayName: 'Should not work via scoped key' }));
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toEqual(
+				'User is missing a scope required to perform this action',
+			);
 		});
 
 		it('returns 404 for an unknown slug', async () => {
@@ -687,6 +762,249 @@ describe('Roles in Public API', () => {
 				.publicApiAgentFor(owner)
 				.put(`/roles/${role.slug}`)
 				.send(fullBody({ displayName: 'Should not work' }));
+
+			expect(response.status).toBe(403);
+
+			testServer.license.enable('feat:customRoles');
+		});
+	});
+
+	describe('DELETE /roles/{roleSlug}', () => {
+		it('deletes a custom global role, returns its full public shape, and the slug becomes unreachable', async () => {
+			const role = await createGlobalRole('PA delete all fields', ['user:read', 'user:list']);
+
+			const response = await testServer.publicApiAgentFor(owner).delete(`/roles/${role.slug}`);
+
+			expect(response.status).toBe(200);
+			// Full-shape assertion also proves no extra fields leak (e.g. licensed, usedByUsers).
+			expect(response.body).toEqual({
+				slug: role.slug,
+				displayName: 'PA delete all fields',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				scopes: expect.arrayContaining(['user:read', ...MANDATORY_INSTANCE_SCOPES]),
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+			});
+
+			const getResponse = await testServer.publicApiAgentFor(owner).get(`/roles/${role.slug}`);
+			expect(getResponse.status).toBe(404);
+		});
+
+		it('deletes a custom project role', async () => {
+			const created = await testServer
+				.publicApiAgentFor(owner)
+				.post('/roles')
+				.send({
+					displayName: 'PA delete project role',
+					roleType: 'project',
+					scopes: ['workflow:read'],
+				});
+			expect(created.status).toBe(201);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/roles/${created.body.slug}`);
+
+			expect(response.status).toBe(200);
+			expect(response.body.roleType).toBe('project');
+		});
+
+		it('lets a role:manageProject key delete a project role (200)', async () => {
+			const agent = await makeManageProjectUserAgent();
+			const created = await agent.post('/roles').send({
+				displayName: 'MP delete project role',
+				roleType: 'project',
+				scopes: ['workflow:read'],
+			});
+			expect(created.status).toBe(201);
+
+			const response = await agent.delete(`/roles/${created.body.slug}`);
+
+			expect(response.status).toBe(200);
+			expect(response.body.slug).toBe(created.body.slug);
+		});
+
+		it('forbids a role:manageProject key from deleting a global role (403)', async () => {
+			const role = await createGlobalRole('PA global role for MP delete test');
+			const agent = await makeManageProjectUserAgent();
+
+			const response = await agent.delete(`/roles/${role.slug}`);
+
+			expect(response.status).toBe(403);
+		});
+
+		it('forbids deleting a global role when the owner API key is scoped down to role:manageProject only (403)', async () => {
+			const role = await createGlobalRole('PA global role for scoped-key delete test');
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['role:manageProject'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.delete(`/roles/${role.slug}`);
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toEqual(
+				'User is missing a scope required to perform this action',
+			);
+		});
+
+		it('rejects deleting a role assigned to users without reassignRoleSlug (400)', async () => {
+			const roleInUse = await createCustomRoleWithScopeSlugs(['user:read'], { roleType: 'global' });
+			await createUser({ role: roleInUse });
+
+			const response = await testServer.publicApiAgentFor(owner).delete(`/roles/${roleInUse.slug}`);
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot delete role assigned to users');
+		});
+
+		it('reassigns users to another role and deletes it, when the caller and the API key both hold user:changeRole', async () => {
+			const roleInUse = await createCustomRoleWithScopeSlugs(['user:read'], { roleType: 'global' });
+			const targetRole = await createCustomRoleWithScopeSlugs(['user:read'], {
+				roleType: 'global',
+			});
+			const user = await createUser({ role: roleInUse });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/roles/${roleInUse.slug}`)
+				.query({ reassignRoleSlug: targetRole.slug });
+
+			expect(response.status).toBe(200);
+			expect(response.body.slug).toBe(roleInUse.slug);
+
+			const reassignedUser = await getUserById(user.id);
+			expect(reassignedUser.role.slug).toBe(targetRole.slug);
+
+			const getResponse = await testServer.publicApiAgentFor(owner).get(`/roles/${roleInUse.slug}`);
+			expect(getResponse.status).toBe(404);
+		});
+
+		it('ignores the reassignment target when the API key lacks user:changeRole (400)', async () => {
+			const roleInUse = await createCustomRoleWithScopeSlugs(['user:read'], { roleType: 'global' });
+			const targetRole = await createCustomRoleWithScopeSlugs(['user:read'], {
+				roleType: 'global',
+			});
+			await createUser({ role: roleInUse });
+			// The owner user holds user:changeRole, but this key was granted only role scopes.
+			const scopedOwner = await createOwnerWithApiKey({
+				scopes: ['role:manage', 'role:manageProject', 'role:list', 'role:read'],
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.delete(`/roles/${roleInUse.slug}`)
+				.query({ reassignRoleSlug: targetRole.slug });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot delete role assigned to users');
+		});
+
+		it('ignores the reassignment target when the caller holds the role being deleted (400)', async () => {
+			const roleInUse = await createCustomRoleWithScopeSlugs(
+				['role:manage', 'user:changeRole', 'role:read'],
+				{ roleType: 'global' },
+			);
+			const targetRole = await createCustomRoleWithScopeSlugs(['user:read'], {
+				roleType: 'global',
+			});
+			const caller = await createUser({ role: roleInUse });
+			caller.apiKeys = [await addApiKey(caller, { scopes: ['role:manage', 'user:changeRole'] })];
+
+			const response = await testServer
+				.publicApiAgentFor(caller)
+				.delete(`/roles/${roleInUse.slug}`)
+				.query({ reassignRoleSlug: targetRole.slug });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot delete role assigned to users');
+		});
+
+		it('rejects reassigning users onto the role being deleted with 400', async () => {
+			const roleInUse = await createCustomRoleWithScopeSlugs(['user:read'], { roleType: 'global' });
+			await createUser({ role: roleInUse });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/roles/${roleInUse.slug}`)
+				.query({ reassignRoleSlug: roleInUse.slug });
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot reassign users to the role being deleted');
+		});
+
+		it('rejects a reassignRoleSlug of global:owner with 400', async () => {
+			const roleInUse = await createCustomRoleWithScopeSlugs(['user:read'], { roleType: 'global' });
+			await createUser({ role: roleInUse });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/roles/${roleInUse.slug}`)
+				.query({ reassignRoleSlug: 'global:owner' });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('returns 404 for an unknown slug', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete('/roles/global:does-not-exist');
+
+			expect(response.status).toBe(404);
+		});
+
+		it('returns 404 for a role type not exposed by the public API (e.g. credential)', async () => {
+			const credentialRole = await createRole({ roleType: 'credential', scopes: [] });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/roles/${credentialRole.slug}`);
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects deleting a system role with 400', async () => {
+			const response = await testServer.publicApiAgentFor(owner).delete('/roles/global:owner');
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('Cannot delete system roles');
+		});
+
+		it('rejects with 401 without an API key', async () => {
+			const role = await createGlobalRole('PA delete no key');
+
+			const response = await testServer.publicApiAgentWithoutApiKey().delete(`/roles/${role.slug}`);
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 401 with an invalid API key', async () => {
+			const role = await createGlobalRole('PA delete bad key');
+
+			const response = await testServer
+				.publicApiAgentWithApiKey('invalid-key')
+				.delete(`/roles/${role.slug}`);
+
+			expect(response.status).toBe(401);
+		});
+
+		it('rejects with 403 when the key lacks a role scope', async () => {
+			const role = await createGlobalRole('PA delete no scope');
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.delete(`/roles/${role.slug}`);
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when the custom roles feature is not licensed', async () => {
+			const role = await createGlobalRole('PA delete unlicensed');
+			testServer.license.disable('feat:customRoles');
+
+			const response = await testServer.publicApiAgentFor(owner).delete(`/roles/${role.slug}`);
 
 			expect(response.status).toBe(403);
 

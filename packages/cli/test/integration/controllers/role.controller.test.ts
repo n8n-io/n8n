@@ -2,7 +2,7 @@ import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type Role } from '@n8n/permissions';
 
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 import { cleanupRolesAndScopes } from '../shared/db/roles';
 import { createMember, createOwner } from '../shared/db/users';
@@ -15,12 +15,14 @@ describe('RoleController', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
+	let ownerId: string;
 
 	beforeAll(async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 		memberAgent = testServer.authAgentFor(member);
+		ownerId = owner.id;
 	});
 
 	beforeEach(() => {
@@ -1160,7 +1162,11 @@ describe('RoleController', () => {
 			//
 			// ASSERT
 			//
-			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, 'global:member');
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				reassignRoleSlug: 'global:member',
+				userId: ownerId,
+			});
 		});
 
 		it('should reject reassignment to the owner role', async () => {
@@ -1197,7 +1203,11 @@ describe('RoleController', () => {
 			//
 			// ASSERT
 			//
-			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, undefined);
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				reassignRoleSlug: undefined,
+				userId: ownerId,
+			});
 		});
 
 		it('should handle service errors gracefully', async () => {

@@ -4,6 +4,7 @@ import {
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	RoleRepository,
@@ -24,14 +25,13 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
+import { SsoAccessDeniedError } from './errors/sso-access-denied.error';
 import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
 import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './role-resolver-types';
 import { RoleResolverService } from './role-resolver.service.ee';
@@ -554,7 +554,7 @@ export class ProvisioningService {
 		};
 	}
 
-	private async applyExpressionMappedRoles(
+	async applyResolvedRoles(
 		user: User,
 		resolved: ResolvedRoles,
 		managed: { instanceRole: boolean; projectRoles: boolean },
@@ -744,7 +744,7 @@ export class ProvisioningService {
 						matchedRuleId: null,
 						isFallback: true,
 					});
-					throw new ForbiddenError('Access denied by SSO role mapping configuration');
+					throw new SsoAccessDeniedError();
 				}
 				return;
 			}
@@ -761,7 +761,7 @@ export class ProvisioningService {
 					matchedRuleId: resolved.instanceRole.matchedRuleId,
 					isFallback: resolved.instanceRole.isFallback,
 				});
-				throw new ForbiddenError('Access denied by SSO role mapping configuration');
+				throw new SsoAccessDeniedError();
 			}
 			return;
 		}
@@ -774,7 +774,7 @@ export class ProvisioningService {
 			this.logger.warn('SSO login blocked: no recognised instance role claim', {
 				provider: context.$provider,
 			});
-			throw new ForbiddenError('Access denied by SSO role mapping configuration');
+			throw new SsoAccessDeniedError();
 		}
 	}
 
@@ -814,7 +814,7 @@ export class ProvisioningService {
 			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
 		});
 
-		await this.applyExpressionMappedRoles(user, resolved, {
+		await this.applyResolvedRoles(user, resolved, {
 			instanceRole: instanceRolesManaged,
 			projectRoles: projectRolesManaged,
 		});

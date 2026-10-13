@@ -33,7 +33,7 @@ describe('withOpenSuspensions', () => {
 		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
 	});
 
-	it('keeps delegated tool input while exposing its suspension payload separately', () => {
+	it('keeps delegated tool input while redacting its approval display payload', () => {
 		const delegateInput = {
 			subAgentId: 'inline',
 			taskName: 'research_api',
@@ -43,7 +43,7 @@ describe('withOpenSuspensions', () => {
 		const suspendPayload = {
 			type: 'approval',
 			toolName: 'http_request',
-			args: { url: 'https://example.com/data' },
+			args: { url: 'https://example.com/data', password: 'secret' },
 		};
 		const checkpoint = {
 			status: 'suspended',
@@ -81,9 +81,13 @@ describe('withOpenSuspensions', () => {
 			{
 				toolCallId: 'parent-tool-call-1',
 				runId: 'parent-run-1',
-				suspendPayload,
+				suspendPayload: {
+					...suspendPayload,
+					args: { url: 'https://example.com/data', password: '[REDACTED]' },
+				},
 			},
 		]);
+		expect(suspendPayload.args.password).toBe('secret');
 	});
 
 	it('does not append checkpoint-only display cards after persisted history', () => {

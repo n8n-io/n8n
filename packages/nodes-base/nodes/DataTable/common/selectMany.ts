@@ -197,11 +197,11 @@ export async function executeSelectMany(
 	const nodeVersion = ctx.getNode().typeVersion;
 	const shouldConvertDates = nodeVersion >= 1.1;
 
-	let expectedTotal: number | undefined;
 	let skip = 0;
 	let take = PAGE_SIZE;
+	const abortSignal = ctx.getExecutionCancelSignal();
 
-	while (true) {
+	while (!abortSignal?.aborted) {
 		const { data, count } = await dataTableProxy.getManyRowsAndCount({
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
@@ -217,21 +217,17 @@ export async function executeSelectMany(
 			return wrapped;
 		}
 
-		// Ensure the total doesn't change mid-pagination
-		if (expectedTotal !== undefined && count !== expectedTotal) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				'synchronization error: result count changed during pagination',
-			);
+		// Concurrent changes can leave an empty page even when the count suggests more rows.
+		if (data.length === 0) {
+			break;
 		}
-		expectedTotal = count;
 
 		result.push.apply(result, wrapped);
 
 		// Stop if we've hit the limit
 		if (limit && result.length >= limit) break;
 
-		// Stop if we've collected everything
+		// Stop at the latest count
 		if (result.length >= count) break;
 
 		skip = result.length;

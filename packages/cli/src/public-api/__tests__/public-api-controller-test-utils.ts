@@ -15,6 +15,7 @@ export function markPublicApiController(controllerClass: Controller, basePath: `
 }
 
 export class WidgetBodyDto extends Z.class({ name: z.string() }) {}
+export class OptionalWidgetBodyDto extends Z.class({ name: z.string().optional() }) {}
 export class WidgetQueryDto extends Z.class({ q: z.string().optional() }) {}
 export class WidgetResponseDto extends Z.class({ id: z.string() }) {}
 /** Query DTO carrying a shared pagination field, for tests asserting `SHARED_PAGINATION_PARAMS` handling. */

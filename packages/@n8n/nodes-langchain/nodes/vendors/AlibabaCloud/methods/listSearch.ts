@@ -39,6 +39,7 @@ export async function textModelSearch(
 			!model.includes('-ocr') &&
 			!model.includes('-image') &&
 			!model.includes('-t2i') &&
+			!model.includes('-i2i') &&
 			!model.includes('-t2v') &&
 			!model.includes('-i2v') &&
 			!model.includes('-kf2v') &&
@@ -67,7 +68,7 @@ export async function imageGenerationModelSearch(
 ): Promise<INodeListSearchResult> {
 	return await baseModelSearch.call(
 		this,
-		(model) => model.includes('-image') || model.includes('-t2i'),
+		(model) => model.includes('-image') || model.includes('-t2i') || model.includes('-i2i'),
 		filter,
 	);
 }

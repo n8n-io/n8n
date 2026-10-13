@@ -2,8 +2,9 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, provide, useTemplateRef } from 'vue';
 
+import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
@@ -26,12 +27,32 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
+provide(ReviewDetailScrollContainerKey, useTemplateRef<HTMLElement>('detailBody'));
+
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
 const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
+
+// See the key's doc: read-time names for feed entries, never snapshotted into payloads.
+provide(
+	ReviewLinkedWorkflowsKey,
+	computed(
+		() =>
+			new Map(
+				(detail.value?.workflows ?? []).map((workflow) => [
+					workflow.workflowId,
+					{
+						workflowName: workflow.workflowName,
+						pinnedVersionId: workflow.workflowVersionId,
+						pinnedVersionName: workflow.pinnedVersion?.name ?? null,
+					},
+				]),
+			),
+	),
+);
 
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
@@ -40,6 +61,30 @@ const ineligibilityHint = computed(() => {
 	return detail.value.viewerDecisionIneligibilityReason === 'author'
 		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
 		: i18n.baseText('generic.missing.permissions');
+});
+
+/**
+ * Whether to append the approved-and-published summary below the feed. Derived at read
+ * time from the live published pointer, not from a `workflow.published` entry: an entry
+ * can sit on an unfetched feed page, and it would keep the summary up after a newer
+ * version replaced this one. The pointer cannot claim a publication that isn't live —
+ * a failed publish either left the pin unpublished (no summary) or never touched a pin
+ * that was already live (summary true) — and it is the signal the canvas banner trusts,
+ * so the two cannot disagree. A lifecycle close needs no summary here: its
+ * `review.closed` entry renders as a callout.
+ */
+const showApprovedAndPublished = computed(() => {
+	const review = detail.value;
+	if (!review || review.state !== 'closed' || review.decision !== 'approved') return false;
+
+	return (
+		review.workflows.length > 0 &&
+		review.workflows.every(
+			(workflow) =>
+				workflow.workflowVersionId !== null &&
+				workflow.publishedVersionId === workflow.workflowVersionId,
+		)
+	);
 });
 
 const tabOptions = computed(() => [
@@ -79,7 +124,8 @@ const tabOptions = computed(() => [
 			</div>
 		</div>
 
-		<div :class="$style.detailBody">
+		<!-- Keyed so another review or tab starts at the top. -->
+		<div :key="`${review.id}:${tab}`" ref="detailBody" :class="$style.detailBody">
 			<div
 				v-if="tab === 'activity'"
 				:class="$style.activityPanel"
@@ -106,29 +152,38 @@ const tabOptions = computed(() => [
 								v-else
 								color="text-light"
 								size="medium"
-								:class="$style.noDescription"
 								data-test-id="workflow-review-no-description"
 							>
 								{{ i18n.baseText('workflowReviews.detail.activity.noDescription') }}
 							</N8nText>
 						</div>
 					</template>
+					<template v-if="showApprovedAndPublished" #footer>
+						<N8nCallout
+							theme="success"
+							:class="$style.closedCallout"
+							data-test-id="workflow-review-closed-callout"
+						>
+							<div :class="$style.closedCalloutContent">
+								<N8nText bold size="medium">
+									{{ i18n.baseText('workflowReviews.detail.closedCallout.title') }}
+								</N8nText>
+								<N8nText size="medium">
+									{{ i18n.baseText('workflowReviews.detail.closedCallout.approvedAndPublished') }}
+								</N8nText>
+							</div>
+						</N8nCallout>
+					</template>
+					<!-- Closed reviews take no new comments (the backend 409s) -->
+					<template v-if="review.state === 'open'" #composer>
+						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
+					</template>
 				</WorkflowReviewActivityFeed>
-
-				<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
 				<N8nCallout
-					v-if="review.state === 'closed'"
-					theme="info"
-					:class="$style.callout"
-					data-test-id="workflow-review-changes-closed"
-				>
-					{{ i18n.baseText('workflowReviews.changes.closed.body') }}
-				</N8nCallout>
-				<N8nCallout
-					v-else-if="!detail"
+					v-if="!detail"
 					theme="warning"
 					:class="$style.callout"
 					data-test-id="workflow-review-changes-unavailable"
@@ -140,16 +195,19 @@ const tabOptions = computed(() => [
 						v-for="workflow in detail.workflows"
 						:key="workflow.workflowId"
 						:workflow="workflow"
+						:state="detail.state"
+						:decision="detail.decision"
 					/>
 				</template>
-				<N8nText
+				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
+				<N8nCallout
 					v-else
-					color="text-light"
-					size="medium"
-					data-test-id="workflow-review-changes-empty"
+					theme="warning"
+					:class="$style.callout"
+					data-test-id="workflow-review-changes-workflow-unavailable"
 				>
-					{{ i18n.baseText('workflowReviews.changes.empty') }}
-				</N8nText>
+					{{ i18n.baseText('workflowReviews.changes.workflowUnavailable') }}
+				</N8nCallout>
 			</div>
 
 			<WorkflowReviewDetailMetadata :review="review" />
@@ -165,6 +223,8 @@ const tabOptions = computed(() => [
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+	container-name: review-detail;
+	container-type: inline-size;
 }
 
 .tabRow {
@@ -172,6 +232,14 @@ const tabOptions = computed(() => [
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	margin-right: var(--spacing--md);
+	/* Holds the active-tab indicator, so the border sits under it. */
+	padding-bottom: var(--review-tab-bar--indicator-overhang);
+	border-bottom: var(--border);
+
+	> :global(.n8n-tabs) {
+		transform: translateY(var(--spacing--sm));
+	}
 }
 
 .detailBody {
@@ -179,25 +247,21 @@ const tabOptions = computed(() => [
 	flex: 1;
 	gap: var(--spacing--sm);
 	min-height: 0;
-	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+	overflow: auto;
+	/* Inside the scroll area, so the content keeps clear of the scrollbar. */
+	padding: var(--spacing--sm) var(--spacing--md) 0 0;
 }
 
 .panel {
 	flex: 1;
-	min-height: 0;
-	overflow: auto;
+	min-width: 0;
 }
 
-/* Separate from `.panel`: the feed brings its own scroll container, and the
-	composer must stay out of it. */
 .activityPanel {
-	display: flex;
-	flex-direction: column;
 	flex: 1;
-	min-height: 0;
-	overflow: hidden;
-	max-width: var(--review-activity--max-width, 48rem);
-	margin-inline-end: auto;
+	min-width: 0;
+	max-width: var(--review-activity--max-width, 45rem);
+	margin-inline: auto;
 }
 
 .descriptionCard {
@@ -212,6 +276,17 @@ const tabOptions = computed(() => [
 	max-width: var(--review-callout--max-width, 34rem);
 }
 
+/* line up the summary's edges with the entry cards above it. */
+.closedCallout {
+	margin-inline: calc(-1 * var(--spacing--sm));
+}
+
+.closedCalloutContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
 /* `pre-wrap` alone does not break a pasted URL, which is the one thing that could scroll the
 	card sideways. */
 .description {
@@ -219,30 +294,18 @@ const tabOptions = computed(() => [
 	overflow-wrap: anywhere;
 }
 
-.noDescription {
-	font-style: italic;
-}
-
 .decisionActions {
 	flex-shrink: 0;
 }
 
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.detailBody {
 		flex-direction: column;
-		overflow: auto;
 	}
 
-	.panel {
-		flex: 0 0 auto;
-		overflow: visible;
-	}
-
+	/* Auto margins would stop the stacked column from stretching. */
 	.activityPanel {
-		flex: 0 0 auto;
-		overflow: visible;
-		max-width: none;
-		margin-inline-end: 0;
+		margin-inline: 0;
 	}
 }
 </style>

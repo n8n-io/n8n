@@ -44,10 +44,15 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			}),
 			workflow_history: z.object({
 				compaction_optimizing_time_window_hours: z.number(),
-				compaction_trim_on_start_up: z.boolean(),
 				compaction_trimming_time_window_days: z.number(),
 			}),
 			n8n_deployment_type: z.string(),
+			n8n_deployment_artifact: z
+				.string()
+				.optional()
+				.describe(
+					'Official artifact that installed n8n, as `<artifact>[/<version>]`, e.g. `helm-chart/1.14.0`',
+				),
 			n8n_binary_data_mode: z.enum(['default', 'filesystem', 's3', 'azure', 'database']),
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),
@@ -107,19 +112,6 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				mcp_managed_by_env: z.boolean(),
 				community_packages_managed_by_env: z.boolean(),
 			}),
-		}),
-	},
-	INSTANCE_REFUSED_DURABLE_POLLERS: {
-		name: 'Instance refused durable pollers',
-		description:
-			'Boot scan found active workflows whose published version has duplicate or missing trigger node ids. Durable poll cursors and durable-scheduler poll triggers were disabled instance-wide and the offending workflows poller_state rows were deleted.',
-		properties: z.object({
-			workflow_ids: z
-				.array(z.string())
-				.describe('Active workflows whose published version failed the trigger node id check'),
-			deleted_cursor_rows: z
-				.number()
-				.describe('How many poller_state rows of the offending workflows were deleted'),
 		}),
 	},
 });

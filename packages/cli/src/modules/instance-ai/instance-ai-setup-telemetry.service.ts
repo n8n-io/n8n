@@ -6,6 +6,7 @@ import {
 	type InstanceAiWebSearchSource,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -15,7 +16,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-broker';
-import { EventService } from '@/events/event.service';
 import { Telemetry } from '@/telemetry';
 
 import {
@@ -44,7 +44,7 @@ function extractModelName(model: string): string {
 }
 
 /**
- * Reports the AI Assistant setup funnel: which components an admin configured
+ * Reports the n8n Assistant setup funnel: which components an admin configured
  * through the UI, and the once-per-instance setup completion. Listens to
  * `instance-ai-settings-updated` so the settings service stays free of
  * telemetry concerns; saves that carry no credential selections (e.g.
@@ -262,7 +262,7 @@ export class InstanceAiSetupTelemetryService {
 			this.emitSandboxConfigured(previous, next, connectionsUpdated.sandbox);
 			await this.emitSearchConfigured(previous, next, connectionsUpdated.search);
 		} catch (error) {
-			this.logger.warn('Failed to report AI Assistant setup telemetry', {
+			this.logger.warn('Failed to report n8n Assistant setup telemetry', {
 				error: ensureError(error).message,
 			});
 		}
@@ -295,7 +295,7 @@ export class InstanceAiSetupTelemetryService {
 				await this.buildSetupSnapshot(),
 			);
 		} catch (error) {
-			this.logger.warn('Failed to record AI Assistant setup completion', {
+			this.logger.warn('Failed to record n8n Assistant setup completion', {
 				error: ensureError(error).message,
 			});
 		}

@@ -6,7 +6,7 @@ import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { ResponseError } from '@n8n/errors';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import type {
 	IWebhookManager,

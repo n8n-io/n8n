@@ -66,6 +66,9 @@ export interface SlackAgentAppManifest {
 		description?: string;
 	};
 	features: {
+		agent_view: {
+			agent_description: string;
+		};
 		app_home: {
 			home_tab_enabled: boolean;
 			messages_tab_enabled: boolean;

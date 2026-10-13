@@ -30,10 +30,9 @@ export class McpServerApiKeyService {
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
 		const manager = trx ?? this.apiKeyRepository.manager;
 
-		const apiKey = this.jwtService.sign({
+		const apiKey = this.jwtService.sign('mcpApiKey', {
 			sub: user.id,
 			iss: API_KEY_ISSUER,
-			aud: API_KEY_AUDIENCE,
 			jti: randomUUID(),
 		});
 
@@ -75,7 +74,10 @@ export class McpServerApiKeyService {
 				return {
 					user: tokenGrant.actor ?? tokenGrant.subject,
 					actor: tokenGrant.actor,
-					authType: 'api_key',
+					// Every non-OAuth bearer token the strategy chain admits is reported
+					// as `api_key`, token-exchange scoped JWTs included. The distinction
+					// between them is not surfaced to telemetry or log streaming.
+					caller: { authType: 'api_key' },
 				};
 			}
 

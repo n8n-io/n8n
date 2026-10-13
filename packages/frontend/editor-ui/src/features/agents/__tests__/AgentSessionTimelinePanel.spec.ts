@@ -32,6 +32,14 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => pushStore,
 }));
 
+vi.mock('@/app/stores/nodeTypes.store', function () {
+	return {
+		useNodeTypesStore() {
+			return { getNodeType() {} };
+		},
+	};
+});
+
 // Avoid the project-agents list dependency — the panel only reads `.value`.
 vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
@@ -70,6 +78,7 @@ const keyboardExecution = {
 	stoppedAt: null,
 	duration: 0,
 	userMessage: 'Hello',
+	author: null,
 	attachments: null,
 	model: null,
 	promptTokens: null,
@@ -84,6 +93,7 @@ const keyboardExecution = {
 		},
 	],
 	error: null,
+	failureSummary: null,
 	hitlStatus: null,
 	source: null,
 } satisfies ThreadDetail['executions'][number];
@@ -195,7 +205,7 @@ describe('AgentSessionTimelinePanel', () => {
 			options
 				.filter((option) => option.presentation === 'badge')
 				.map(({ key, count }) => [key, count]),
-		).toEqual([['error', 1]]);
+		).toEqual([['error', 2]]);
 	});
 
 	it('omits status pills when the session has no matching statuses', async () => {

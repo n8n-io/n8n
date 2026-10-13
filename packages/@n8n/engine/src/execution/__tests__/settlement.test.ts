@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GraphEdge, WorkflowGraph } from '../../graph';
-import { getDescendantNodeIds } from '../../graph';
-import type { StepStatus } from '../execution.types';
-import { decideSuccessors } from '../settlement';
+import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph } from '../../graph';
+import { deriveLoops, getDescendantNodeIds } from '../../graph';
+import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
+import { decideSuccessors, type SuccessorDecisions } from '../settlement';
 import type { StepSummary } from '../step-store';
 
 function summary(
@@ -11,11 +11,24 @@ function summary(
 	status: StepStatus,
 	filledOutputSlots: boolean[] = [],
 ): StepSummary {
-	return { id: `step-${nodeId}`, nodeId, status, filledOutputSlots };
+	return { id: `step-${nodeId}`, nodeId, iteration: 0, status, filledOutputSlots };
 }
 
 function makeSteps(...summaries: StepSummary[]): Record<string, StepSummary> {
-	return Object.fromEntries(summaries.map((s) => [s.nodeId, s]));
+	return Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
+}
+
+function keyFor(nodeId: string): StepKey {
+	return { nodeId, iteration: 0 };
+}
+
+/** No loops, so there is no loop set and no loop that could have ended. */
+function decideLoopless(
+	graph: WorkflowGraph,
+	settled: StepKey,
+	steps: Record<string, StepSummary>,
+): SuccessorDecisions {
+	return decideSuccessors({ ...graph, seeded: [] }, [], settled, steps, new Map());
 }
 
 function makeGraph(
@@ -32,7 +45,7 @@ function makeGraph(
 	};
 }
 
-/** trigger → if → {a (out 0), b (out 1)} → m: the conditional diamond. */
+/** trigger -> if -> {a (out 0), b (out 1)} -> m: the conditional diamond. */
 const diamond = makeGraph([
 	{ from: 'trigger', to: 'if' },
 	{ from: 'if', to: 'a', outputIndex: 0 },
@@ -42,24 +55,38 @@ const diamond = makeGraph([
 ]);
 
 describe('decideSuccessors', () => {
+	it('sends a live successor whose outputs were seeded to toSeed instead of toQueue', () => {
+		const seeded: StoredWorkflowGraph = { ...diamond, seeded: ['a'] };
+
+		const decisions = decideSuccessors(
+			seeded,
+			[],
+			keyFor('if'),
+			makeSteps(summary('trigger', 'completed', [true]), summary('if', 'completed', [true, true])),
+			new Map(),
+		);
+
+		expect(decisions).toEqual({ toQueue: [keyFor('b')], toSeed: [keyFor('a')], toSkip: [] });
+	});
+
 	it('queues the live branch and skips the dead one', () => {
 		// if fired only output slot 0; m is not a direct successor, so it is
 		// not considered — b's own settled event will examine it.
-		const decisions = decideSuccessors(
+		const decisions = decideLoopless(
 			diamond,
-			'if',
+			keyFor('if'),
 			makeSteps(summary('trigger', 'completed', [true]), summary('if', 'completed', [true, false])),
 		);
 
-		expect(decisions).toEqual({ toQueue: ['a'], toSkip: ['b'] });
+		expect(decisions).toEqual({ toQueue: [keyFor('a')], toSeed: [], toSkip: [keyFor('b')] });
 	});
 
 	it('decides a merge once its last predecessor settles', () => {
 		// b was skipped earlier; a just completed. m has one live and one dead
 		// edge, so it runs on the live data.
-		const decisions = decideSuccessors(
+		const decisions = decideLoopless(
 			diamond,
-			'a',
+			keyFor('a'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('if', 'completed', [true, false]),
@@ -68,15 +95,15 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: ['m'], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [keyFor('m')], toSeed: [], toSkip: [] });
 	});
 
 	it('leaves a merge undecided while a predecessor is still unsettled', () => {
 		// b's settled event fires while a is still queued: m is not decidable
 		// yet, and a's own settlement will decide it later.
-		const decisions = decideSuccessors(
+		const decisions = decideLoopless(
 			diamond,
-			'b',
+			keyFor('b'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('if', 'completed', [true, false]),
@@ -85,11 +112,11 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
 	});
 
 	it('cascades a skip one hop at a time through the event loop', () => {
-		// dead chain b → c → d: each settled event plans exactly the next hop.
+		// dead chain b -> c -> d: each settled event plans exactly the next hop.
 		const graph = makeGraph([
 			{ from: 'trigger', to: 'if' },
 			{ from: 'if', to: 'a', outputIndex: 0 },
@@ -102,13 +129,25 @@ describe('decideSuccessors', () => {
 			summary('if', 'completed', [true, false]),
 		);
 
-		expect(decideSuccessors(graph, 'if', steps)).toEqual({ toQueue: ['a'], toSkip: ['b'] });
+		expect(decideLoopless(graph, keyFor('if'), steps)).toEqual({
+			toQueue: [keyFor('a')],
+			toSeed: [],
+			toSkip: [keyFor('b')],
+		});
 
-		steps.b = summary('b', 'skipped');
-		expect(decideSuccessors(graph, 'b', steps)).toEqual({ toQueue: [], toSkip: ['c'] });
+		steps[stepKeyId(keyFor('b'))] = summary('b', 'skipped');
+		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [keyFor('c')],
+		});
 
-		steps.c = summary('c', 'skipped');
-		expect(decideSuccessors(graph, 'c', steps)).toEqual({ toQueue: [], toSkip: ['d'] });
+		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
+		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [keyFor('d')],
+		});
 	});
 
 	it('skips a node only when every predecessor has settled dead', () => {
@@ -128,19 +167,27 @@ describe('decideSuccessors', () => {
 			summary('b', 'skipped'),
 		);
 
-		expect(decideSuccessors(graph, 'b', steps)).toEqual({ toQueue: [], toSkip: [] });
+		expect(decideLoopless(graph, keyFor('b'), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [],
+		});
 
-		steps.c = summary('c', 'skipped');
-		expect(decideSuccessors(graph, 'c', steps)).toEqual({ toQueue: [], toSkip: ['d'] });
+		steps[stepKeyId(keyFor('c'))] = summary('c', 'skipped');
+		expect(decideLoopless(graph, keyFor('c'), steps)).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [keyFor('d')],
+		});
 	});
 
 	it('does not re-decide a successor that already has a row', () => {
 		// duplicate delivery: both successors were planned by the first run.
 		// Nothing is created, so nothing is announced — a lost announcement is
 		// reconciliation's job (CAT-2938), not this planner's.
-		const decisions = decideSuccessors(
+		const decisions = decideLoopless(
 			diamond,
-			'if',
+			keyFor('if'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('if', 'completed', [true, false]),
@@ -149,7 +196,7 @@ describe('decideSuccessors', () => {
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: [] });
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
 	});
 
 	it('routes an N-output fan-out per slot', () => {
@@ -160,16 +207,20 @@ describe('decideSuccessors', () => {
 			{ from: 'switch', to: 'c', outputIndex: 2 },
 		]);
 
-		const decisions = decideSuccessors(
+		const decisions = decideLoopless(
 			graph,
-			'switch',
+			keyFor('switch'),
 			makeSteps(
 				summary('trigger', 'completed', [true]),
 				summary('switch', 'completed', [true, false, true]),
 			),
 		);
 
-		expect(decisions).toEqual({ toQueue: ['a', 'c'], toSkip: ['b'] });
+		expect(decisions).toEqual({
+			toQueue: [keyFor('a'), keyFor('c')],
+			toSeed: [],
+			toSkip: [keyFor('b')],
+		});
 	});
 
 	it('treats an output slot beyond the produced list as dead', () => {
@@ -178,13 +229,13 @@ describe('decideSuccessors', () => {
 			{ from: 'a', to: 'b', outputIndex: 1 },
 		]);
 
-		const decisions = decideSuccessors(
+		const decisions = decideLoopless(
 			graph,
-			'a',
+			keyFor('a'),
 			makeSteps(summary('trigger', 'completed', [true]), summary('a', 'completed', [true])),
 		);
 
-		expect(decisions).toEqual({ toQueue: [], toSkip: ['b'] });
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [keyFor('b')] });
 	});
 });
 
@@ -257,18 +308,18 @@ function simulateExecution(
 		if (handleEvent) {
 			const nodeId = settledEvents[0];
 			settledEvents.shift();
-			const { toQueue, toSkip } = decideSuccessors(graph, nodeId, steps);
-			for (const id of toQueue) {
-				steps[id] = summary(id, 'queued');
+			const { toQueue, toSkip } = decideLoopless(graph, keyFor(nodeId), steps);
+			for (const { nodeId: id } of toQueue) {
+				steps[stepKeyId(keyFor(id))] = summary(id, 'queued');
 				queuedNodes.push(id);
 			}
-			for (const id of toSkip) {
-				steps[id] = summary(id, 'skipped');
+			for (const { nodeId: id } of toSkip) {
+				steps[stepKeyId(keyFor(id))] = summary(id, 'skipped');
 				settledEvents.push(id);
 			}
 		} else {
 			const [nodeId] = queuedNodes.splice(randomInt(rand, queuedNodes.length), 1);
-			steps[nodeId] = summary(nodeId, 'completed', outputs[nodeId]);
+			steps[stepKeyId(keyFor(nodeId))] = summary(nodeId, 'completed', outputs[nodeId]);
 			settledEvents.push(nodeId);
 		}
 	}
@@ -311,11 +362,182 @@ describe('the event loop over decideSuccessors matches the reference evaluator',
 
 			const reachable = ['trigger', ...getDescendantNodeIds(graph, 'trigger')];
 			const actual = Object.fromEntries(
-				reachable.map((id) => [id, terminal[id]?.status ?? 'missing']),
+				reachable.map((id) => [id, terminal[stepKeyId(keyFor(id))]?.status ?? 'missing']),
 			);
 			// rule 1 (the finish predicate): every reachable node settled, and
 			// with exactly the fate the spec assigns
 			expect({ seed, statuses: actual }).toEqual({ seed, statuses: expected });
 		}
+	});
+});
+
+describe('decideSuccessors over loop iterations', () => {
+	/**
+	 * ┌───────┐    ┌───┐ o0    ┌───┐
+	 * │trigger├───►│   ├──────►│ d │
+	 * └───────┘    │ B │       └───┘
+	 *              │   │ o1    ┌───┐
+	 *              │   ├──────►│ x │
+	 *              └─▲─┘       └─┬─┘
+	 *                └──(back)───┘
+	 */
+	const graph = makeGraph([
+		{ from: 'trigger', to: 'B' },
+		{ from: 'B', to: 'x', outputIndex: 1 },
+		{ from: 'x', to: 'B', isBackEdge: true },
+		{ from: 'B', to: 'd', outputIndex: 0 },
+	]);
+	graph.nodes = graph.nodes.map((node) =>
+		node.id === 'B' ? { ...node, type: 'batch' as const } : node,
+	);
+	const loops = deriveLoops(graph);
+
+	/** A row at a given iteration, where the loopless `summary` always builds 0. */
+	function at(
+		nodeId: string,
+		iteration: number,
+		status: StepStatus,
+		filledOutputSlots: boolean[] = [],
+	): StepSummary {
+		return { id: `step-${nodeId}-${iteration}`, nodeId, iteration, status, filledOutputSlots };
+	}
+
+	function decide(
+		settled: StepKey,
+		steps: Record<string, StepSummary>,
+		terminalIterations: Map<string, number> = new Map(),
+	): SuccessorDecisions {
+		return decideSuccessors({ ...graph, seeded: [] }, loops, settled, steps, terminalIterations);
+	}
+
+	const key = (nodeId: string, iteration: number): StepKey => ({ nodeId, iteration });
+
+	it('queues the body at the batch row iteration, and leaves the exit undecided', () => {
+		const steps = makeSteps(at('B', 0, 'completed', [false, true]));
+
+		expect(decide(key('B', 0), steps)).toEqual({ toQueue: [key('x', 0)], toSeed: [], toSkip: [] });
+	});
+
+	it('advances the iteration across the return edge', () => {
+		const steps = makeSteps(
+			at('B', 0, 'completed', [false, true]),
+			at('x', 0, 'completed', [true]),
+		);
+
+		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
+	});
+
+	it('skips the next iteration when the body returns nothing', () => {
+		const steps = makeSteps(
+			at('B', 0, 'completed', [false, true]),
+			at('x', 0, 'completed', [false]),
+		);
+
+		expect(decide(key('x', 0), steps)).toEqual({ toQueue: [], toSeed: [], toSkip: [key('B', 1)] });
+	});
+
+	it('queues what follows the loop from the terminal row only', () => {
+		const steps = makeSteps(at('B', 2, 'completed', [true, false]));
+		const terminals = new Map([['B', 2]]);
+
+		expect(decide(key('B', 2), steps, terminals)).toEqual({
+			toQueue: [key('d', 0)],
+			toSeed: [],
+			toSkip: [],
+		});
+	});
+
+	it('plans no body row at the terminal iteration', () => {
+		const steps = makeSteps(at('B', 2, 'completed', [true, false]));
+		const terminals = new Map([['B', 2]]);
+
+		const decisions = decide(key('B', 2), steps, terminals);
+
+		expect(decisions.toQueue).not.toContainEqual(key('x', 2));
+		expect(decisions.toSkip).not.toContainEqual(key('x', 2));
+	});
+
+	it('leaves what follows the loop undecided while the loop still runs', () => {
+		const steps = makeSteps(
+			at('B', 0, 'completed', [false, true]),
+			at('x', 0, 'completed', [true]),
+			at('B', 1, 'completed', [false, true]),
+		);
+
+		expect(decide(key('B', 1), steps)).toEqual({ toQueue: [key('x', 1)], toSeed: [], toSkip: [] });
+	});
+
+	/**
+	 * The rule above keeps a running loop from deciding its exit, but a node after
+	 * the loop can also be reached from outside it. Then the exit edge is resolved
+	 * for real, finds no terminal row, and holds the decision open.
+	 *
+	 * ┌───────┐    ┌───┐ o1    ┌───┐
+	 * │trigger├───►│ B ├──────►│ x │
+	 * └───┬───┘    └─▲─┘       └─┬─┘
+	 *     │          └──(back)───┘
+	 *     │       ┌───┐ o0
+	 *     └──────►│ p ├──────────► d ◄── B's done slot
+	 *             └───┘
+	 */
+	it('holds a node after the loop undecided when another predecessor settles first', () => {
+		const joined = makeGraph([
+			{ from: 'trigger', to: 'B' },
+			{ from: 'B', to: 'x', outputIndex: 1 },
+			{ from: 'x', to: 'B', isBackEdge: true },
+			{ from: 'B', to: 'd', outputIndex: 0 },
+			{ from: 'trigger', to: 'p', outputIndex: 1 },
+			{ from: 'p', to: 'd', inputIndex: 1 },
+		]);
+		joined.nodes = joined.nodes.map((node) =>
+			node.id === 'B' ? { ...node, type: 'batch' as const } : node,
+		);
+		const joinedLoops = deriveLoops(joined);
+		const steps = makeSteps(
+			at('B', 0, 'completed', [false, true]),
+			at('p', 0, 'completed', [true]),
+		);
+
+		expect(
+			decideSuccessors({ ...joined, seeded: [] }, joinedLoops, key('p', 0), steps, new Map()),
+		).toEqual({
+			toQueue: [],
+			toSeed: [],
+			toSkip: [],
+		});
+
+		const ended = makeSteps(
+			at('B', 2, 'completed', [true, false]),
+			at('p', 0, 'completed', [true]),
+		);
+		expect(
+			decideSuccessors(
+				{ ...joined, seeded: [] },
+				joinedLoops,
+				key('p', 0),
+				ended,
+				new Map([['B', 2]]),
+			),
+		).toEqual({
+			toQueue: [key('d', 0)],
+			toSeed: [],
+			toSkip: [],
+		});
+	});
+
+	it('reads the entry edge at iteration 0 and the return edge after it', () => {
+		const entry = makeSteps(at('trigger', 0, 'completed', [true]));
+		expect(decide(key('trigger', 0), entry)).toEqual({
+			toQueue: [key('B', 0)],
+			toSeed: [],
+			toSkip: [],
+		});
+
+		const second = makeSteps(
+			at('trigger', 0, 'completed', [true]),
+			at('B', 0, 'completed', [false, true]),
+			at('x', 0, 'completed', [true]),
+		);
+		expect(decide(key('x', 0), second)).toEqual({ toQueue: [key('B', 1)], toSeed: [], toSkip: [] });
 	});
 });

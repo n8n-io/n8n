@@ -1343,6 +1343,28 @@ describe('JsTaskRunner', () => {
 			},
 		);
 
+		// A database driver error, e.g. `pg`'s `DatabaseError`, sets `name` to
+		// `'error'`, so V8 renders the stack header lowercased as `error: <message>`.
+		// The message the database gave must survive to the user.
+		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
+			'should surface the message of a rethrown database error in %s mode',
+			async (nodeMode) => {
+				const code = `
+					const dbError = new Error('duplicate key value violates unique constraint "users_email_key"');
+					dbError.name = 'error';
+					dbError.code = '23505';
+					throw dbError;
+				`;
+
+				await expect(
+					execTaskWithParams({
+						task: newTaskParamsWithSettings({ code, nodeMode }),
+						taskData: newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+					}),
+				).rejects.toThrow('duplicate key value violates unique constraint "users_email_key"');
+			},
+		);
+
 		it('sends serializes an error correctly', async () => {
 			const runner = createRunnerWithOpts({});
 			const taskId = '1';

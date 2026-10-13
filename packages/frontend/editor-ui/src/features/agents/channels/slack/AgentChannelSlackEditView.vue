@@ -15,6 +15,7 @@ const emit = defineEmits<{
 	edit: [];
 }>();
 
+const currentSettings = computed(() => props.savedSettings);
 const settingsRef = ref<InstanceType<typeof AgentChannelSlackManagedSettings>>();
 const managed = computed(() => props.runtime.isManagedCredential(credentialId.value));
 const validationError = computed(() =>
@@ -31,7 +32,7 @@ async function beforeSave() {
 	await props.runtime.saveSettings(settings);
 }
 
-defineExpose({ validationError, loading, beforeSave });
+defineExpose({ currentSettings, validationError, loading, beforeSave });
 </script>
 
 <template>

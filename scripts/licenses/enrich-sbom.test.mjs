@@ -201,6 +201,109 @@ describe('isPhantomNpm (cdxgen image-scan noise)', () => {
 			false,
 		);
 	});
+
+	const syftSrc = (p) => ({ properties: [{ name: 'syft:location:0:path', value: p }] });
+
+	it('flags an exports subpath whose syft path matches its own qualified name', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'genai/node',
+				group: '@google',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/%40google/genai%2Fnode',
+				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@google/genai/node/package.json'),
+			}),
+			true,
+		);
+		assert.equal(
+			isPhantomNpm({
+				name: 'sdk/webhooks',
+				group: '@linear',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/%40linear/sdk%2Fwebhooks',
+				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@linear/sdk/webhooks/package.json'),
+			}),
+			true,
+		);
+	});
+
+	it('keeps an unscoped package whose name is a prefix of a subpath', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'genai',
+				group: '@google',
+				version: '1.19.0',
+				purl: 'pkg:npm/%40google/genai@1.19.0',
+				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@google/genai/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('keeps an application root outside node_modules (runners ship the task runner there)', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'task-runner',
+				group: '@n8n',
+				version: '1.0.0',
+				purl: 'pkg:npm/%40n8n/task-runner@1.0.0',
+				...syftSrc('/opt/runners/task-runner-javascript/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('keeps an application root even when the scanner could not resolve its version', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'task-runner',
+				group: '@n8n',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/%40n8n/task-runner',
+				...syftSrc('/opt/runners/task-runner-javascript/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('keeps a package at its canonical path when the version is UNKNOWN', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'ssh2',
+				version: 'UNKNOWN',
+				purl: 'pkg:npm/ssh2',
+				...syftSrc('/x/node_modules/ssh2/package.json'),
+			}),
+			false,
+		);
+	});
+
+	it('still flags a nested fixture reported via the syft property', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'false_main',
+				version: '1.0.0',
+				purl: 'pkg:npm/false_main@1.0.0',
+				...syftSrc('/x/node_modules/resolve/test/false_main/package.json'),
+			}),
+			true,
+		);
+	});
+
+	it('prefers cdxgen SrcFile over the syft property when both are present', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'ssh2',
+				version: '1.16.0',
+				purl: 'pkg:npm/ssh2@1.16.0',
+				properties: [
+					{ name: 'SrcFile', value: '/x/node_modules/ssh2/package.json' },
+					{ name: 'syft:location:0:path', value: '/x/node_modules/other/nested/package.json' },
+				],
+			}),
+			false,
+		);
+	});
 });
 
 describe('enrichSbom dropPhantomNpm + byName', () => {
@@ -238,6 +341,47 @@ describe('enrichSbom dropPhantomNpm + byName', () => {
 		assert.equal(on.sbom.components.length, 1);
 		assert.equal(on.sbom.components[0].name, 'ssh2');
 		assert.deepEqual(on.sbom.components[0].licenses, [{ license: { id: 'MIT' } }]); // byName, version-agnostic
+	});
+
+	it('drops a syft-shaped phantom and keeps the real package alongside it', () => {
+		const sbom = {
+			components: [
+				{
+					name: 'polyfill',
+					version: 'UNKNOWN',
+					purl: 'pkg:npm/web-streams-polyfill',
+					properties: [
+						{
+							name: 'syft:location:0:path',
+							value: '/app/node_modules/web-streams-polyfill/es5/package.json',
+						},
+					],
+				},
+				{
+					name: 'ssh2',
+					version: '1.16.0',
+					purl: 'pkg:npm/ssh2@1.16.0',
+					properties: [
+						{ name: 'syft:location:0:path', value: '/app/node_modules/ssh2/package.json' },
+					],
+				},
+			],
+		};
+
+		const result = enrichSbom(sbom, {
+			overrides: {},
+			byName: { ssh2: { license: 'MIT' } },
+			elections: {},
+			licenseText: LICENSE_TEXT,
+			dropPhantomNpm: true,
+		});
+
+		assert.equal(result.droppedPhantoms, 1);
+		assert.deepEqual(
+			result.sbom.components.map((c) => c.name),
+			['ssh2'],
+		);
+		assert.deepEqual(result.droppedPhantomPurls, ['pkg:npm/web-streams-polyfill']);
 	});
 });
 
@@ -321,5 +465,66 @@ describe('enrich -> gate round-trip (no unlicensed code survives)', () => {
 		const after = checkSbom(enriched, { validIds: spdx, allowRefs: allow });
 		assert.equal(after.failures.length, 0, JSON.stringify(after.failures));
 		assert.equal(after.warnings.length, 1);
+	});
+});
+
+describe('isPhantomNpm across scanners (cdxgen and syft)', () => {
+	const cdxgen = (name, version, src) => ({
+		name,
+		version,
+		purl: `pkg:npm/${name}${version ? `@${version}` : ''}`,
+		properties: src ? [{ name: 'SrcFile', value: src }] : [],
+	});
+	const syft = (name, version, src) => ({
+		name,
+		version,
+		purl: `pkg:npm/${name}${version && version !== 'UNKNOWN' ? `@${version}` : ''}`,
+		properties: src ? [{ name: 'syft:location:0:path', value: src }] : [],
+	});
+
+	// syft names the path property differently. Without this the filter matches
+	// nothing and every phantom reaches the gate.
+	it('reads the source path from syft output, not just cdxgen', () => {
+		assert.equal(
+			isPhantomNpm(
+				syft(
+					'baz',
+					'1.0.0',
+					'/app/node_modules/.pnpm/resolve@1.22.11/node_modules/resolve/test/resolver/baz/package.json',
+				),
+			),
+			true,
+		);
+	});
+
+	it('treats an "UNKNOWN" version from syft the same as a missing one', () => {
+		assert.equal(isPhantomNpm(syft('web-streams-polyfill', 'UNKNOWN')), true);
+		assert.equal(isPhantomNpm(cdxgen('web-streams-polyfill', undefined)), true);
+	});
+
+	it('keeps a real package from either scanner', () => {
+		assert.equal(
+			isPhantomNpm(syft('lodash', '4.17.21', '/app/node_modules/lodash/package.json')),
+			false,
+		);
+		assert.equal(
+			isPhantomNpm(cdxgen('lodash', '4.17.21', '/app/node_modules/lodash/package.json')),
+			false,
+		);
+	});
+
+	it('keeps a real scoped package from syft output', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'task-runner',
+				group: '@n8n',
+				version: '2.37.2',
+				purl: 'pkg:npm/%40n8n/task-runner@2.37.2',
+				properties: [
+					{ name: 'syft:location:0:path', value: '/app/node_modules/@n8n/task-runner/package.json' },
+				],
+			}),
+			false,
+		);
 	});
 });

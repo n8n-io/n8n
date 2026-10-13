@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import AppCommandBar from './AppCommandBar.vue';
 
@@ -17,13 +17,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/features/shared/commandBar/composables/useCommandBar', () => ({
 	useCommandBar: () => ({
-		initialize: vi.fn(),
-		items: computed(() => []),
+		isOpen: ref(false),
+		query: ref(''),
+		activeTab: ref('all'),
+		tabs: computed(() => []),
+		sections: ref([]),
 		placeholder: computed(() => ''),
-		context: computed(() => undefined),
-		isLoading: ref(false),
-		onCommandBarChange: vi.fn(),
-		onCommandBarNavigateTo: vi.fn(),
+		breadcrumb: computed(() => undefined),
+		isLoading: computed(() => false),
+		hasMore: computed(() => false),
+		select: vi.fn(),
+		back: vi.fn(),
+		loadMore: vi.fn(),
 	}),
 }));
 

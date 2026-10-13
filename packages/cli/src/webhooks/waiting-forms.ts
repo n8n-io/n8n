@@ -1,14 +1,13 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type { IRunData } from 'n8n-workflow';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { applyCors } from '@/utils/cors.util';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 
 import { authAllowlistedNodes } from './constants';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -82,6 +81,7 @@ export class WaitingForms extends WaitingWebhooks {
 		if (execution?.data.resumeToken) {
 			const result = this.validateToken(req, execution);
 			if (!result.valid) {
+				applyFormSandboxCSP(res);
 				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };
 			}
@@ -103,12 +103,15 @@ export class WaitingForms extends WaitingWebhooks {
 			throw new ConflictError(message);
 		}
 
-		if (execution.status === 'running') {
+		// A run parked at a node boundary is not waiting for a form page. Treated
+		// like a running run, so the page keeps polling until the run resumes.
+		if (execution.status === 'running' || execution.data.waitReason === 'suspended') {
 			return { noWebhookResponse: true };
 		}
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			const workflow = this.createWorkflow(execution.workflowData);
 			const completionPage = this.findCompletionPage(
@@ -118,9 +121,7 @@ export class WaitingForms extends WaitingWebhooks {
 			);
 
 			if (!completionPage) {
-				if (!isFormHtmlSandboxingDisabled()) {
-					res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-				}
+				applyFormSandboxCSP(res);
 				res.render('form-trigger-completion', {
 					title: 'Form Submitted',
 					message: 'Your response has been recorded',
@@ -161,7 +162,10 @@ export class WaitingForms extends WaitingWebhooks {
 		let status: string = execution?.status ?? 'null';
 		const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
 
-		if (node && status === 'waiting' && this.isFormResumeNode(node)) {
+		// A run parked at a node boundary has its next, unexecuted node at the stack
+		// head. Even when that is a form node, no form is being served yet.
+		const isParked = execution?.data.waitReason === 'suspended';
+		if (node && status === 'waiting' && !isParked && this.isFormResumeNode(node)) {
 			status = 'form-waiting';
 		}
 

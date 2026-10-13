@@ -12,6 +12,7 @@ import {
 	dataTableProjectIdSchema,
 	successMessageOutputSchema,
 } from '../schemas';
+import { trackAndReturnToolError } from '../tool-error.utils';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table containing the column'),
@@ -79,16 +80,10 @@ export const createRenameDataTableColumnTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = { success: false, error: errorMessage };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { success: false, message: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return trackAndReturnToolError(telemetry, telemetryPayload, error, (message) => ({
+				success: false,
+				message,
+			}));
 		}
 	},
 });

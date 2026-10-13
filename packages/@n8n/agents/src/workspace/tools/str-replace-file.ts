@@ -12,7 +12,11 @@ const strReplacementSchema = z.object({
 });
 
 const inputSchema = z.object({
-	path: z.string().describe('Path to the file to edit'),
+	path: z
+		.string()
+		.describe(
+			'Path to the file to edit, relative to the workspace root (absolute paths must be under it)',
+		),
 	replacements: z
 		.array(strReplacementSchema)
 		.min(1)

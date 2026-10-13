@@ -26,6 +26,9 @@
                     },
                     "primary": {
                         "type": "boolean"
+                    },
+                    "type": {
+                        "type": "string"
                     }
                 }
             }
@@ -52,6 +55,9 @@
             "type": "boolean"
         },
         "isEnrolledIn2Sv": {
+            "type": "boolean"
+        },
+        "isGuestUser": {
             "type": "boolean"
         },
         "isMailboxSetup": {
@@ -102,6 +108,9 @@
                     "department": {
                         "type": "string"
                     },
+                    "primary": {
+                        "type": "boolean"
+                    },
                     "title": {
                         "type": "string"
                     }
@@ -114,9 +123,18 @@
         "primaryEmail": {
             "type": "string"
         },
+        "recoveryEmail": {
+            "type": "string"
+        },
         "suspended": {
             "type": "boolean"
+        },
+        "thumbnailPhotoEtag": {
+            "type": "string"
+        },
+        "thumbnailPhotoUrl": {
+            "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

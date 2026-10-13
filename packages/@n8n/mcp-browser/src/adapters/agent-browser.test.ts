@@ -308,6 +308,13 @@ describe('AgentBrowserAdapter', () => {
 			expect(getRunArgs(1)).toEqual(['press', 'Enter']);
 		});
 
+		it('accepts paste mode but still types, having no atomic insert of its own yet', async () => {
+			stubRun({ success: true });
+			await adapter.type('t1', { ref: 'e1' }, '{"a": 1}', { mode: 'paste' });
+
+			expect(getRunArgs(0)).toEqual(['type', '@e1', '{"a": 1}']);
+		});
+
 		it('splits a single leading dash into a separate type call', async () => {
 			stubRun({ success: true }); // type '-'
 			stubRun({ success: true }); // type '5'

@@ -33,7 +33,11 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SSO_MANAGED_BY_ENV')
 	ssoManagedByEnv: boolean = false;
 
-	/** User role provisioning mode: disabled, instance_role, or instance_and_project_roles. */
+	/**
+	 * Which roles direct-claim provisioning sets: disabled, instance_role, or
+	 * instance_and_project_roles. Ignored when N8N_SSO_SCOPES_USE_EXPRESSION_MAPPING selects
+	 * the expression-mapping strategy instead.
+	 */
 	@Env('N8N_SSO_USER_ROLE_PROVISIONING')
 	ssoUserRoleProvisioning: string = 'disabled';
 

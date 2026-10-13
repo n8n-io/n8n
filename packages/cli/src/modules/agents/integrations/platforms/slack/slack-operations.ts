@@ -256,7 +256,7 @@ function getSlackAdapter(chat: ChatInstance): SlackAdapter | undefined {
 	if (candidate.withToken !== undefined && typeof candidate.withToken !== 'function') {
 		return undefined;
 	}
-	return adapter as unknown as SlackAdapter;
+	return adapter;
 }
 
 async function withSlackToken(

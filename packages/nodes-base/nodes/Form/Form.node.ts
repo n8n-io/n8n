@@ -19,6 +19,7 @@ import {
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { limitWaitTimeProperties } from '../../utils/sendAndWait/descriptions';
 import {
+	appendAttributionToForm,
 	formDescription,
 	formFields,
 	formFieldsDynamic,
@@ -31,6 +32,7 @@ import {
 	getNodeReference,
 	parseFormFields,
 	prepareFormReturnItem,
+	respondIfCredentialsNotReady,
 	validateFormPageAuth,
 } from './utils/utils';
 
@@ -259,6 +261,11 @@ const completionProperties = updateDisplayOptions(
 			options: [
 				{ ...formTitle, required: false, displayName: 'Completion Page Title' },
 				{
+					...appendAttributionToForm,
+					description:
+						'Whether to include the link “Form automated with n8n” at the bottom of the page. Defaults to the Form Trigger’s setting.',
+				},
+				{
 					displayName: 'Custom Form Styling',
 					name: 'customCss',
 					type: 'string',
@@ -398,6 +405,15 @@ export class Form extends Node {
 		}
 
 		const method = context.getRequestObject().method;
+
+		// Same submit-time readiness gate as the trigger (see `formWebhook`): every
+		// POST here resumes the execution, and doing so with an account disconnected
+		// mid-journey — from the hosting shell's panel — would kill the run at
+		// credential resolution. That includes the completion resume POST, which can
+		// arrive long after the last page's own gate ran if its redirect hop was lost.
+		if (method === 'POST' && (await respondIfCredentialsNotReady(context, res))) {
+			return { noWebhookResponse: true };
+		}
 
 		if (operation === 'completion' && method === 'GET') {
 			return await renderFormCompletion(context, res, trigger, authResult.authedUser);

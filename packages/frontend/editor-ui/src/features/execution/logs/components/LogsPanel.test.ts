@@ -1,4 +1,5 @@
 import { renderComponent } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
@@ -25,7 +26,11 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	LogsPanelHostKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
@@ -108,11 +113,12 @@ describe('LogsPanel', () => {
 		).setWorkflowExecutionData(execution);
 	}
 
-	function render() {
+	function render(provide: Record<symbol, unknown> = {}) {
 		const wfId = workflowsStore.workflowId;
 		const wrapper = renderComponent(LogsPanel, {
 			global: {
 				provide: {
+					...provide,
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowIdKey as unknown as string]: computed(() => wfId),
@@ -181,6 +187,24 @@ describe('LogsPanel', () => {
 
 		expect(await rendered.findByTestId('logs-overview-header')).toBeInTheDocument();
 		expect(rendered.queryByTestId('logs-overview-empty')).not.toBeInTheDocument();
+	});
+
+	it('should size the panel relative to the container the host provides', async () => {
+		logsStore.toggleOpen(true);
+		setWorkflow(aiManualWorkflow);
+		const heightContainer = document.createElement('div');
+		Object.defineProperty(heightContainer, 'offsetHeight', { configurable: true, get: () => 600 });
+
+		render({
+			[LogsPanelHostKey as symbol]: {
+				context: 'artifact',
+				heightStorageKey: 'TEST_LOGS_PANEL_HEIGHT',
+				heightContainer,
+			},
+		});
+
+		// 30% of the 600px container. The 800px body would give 240px.
+		expect(logsStore.height).toBe(180);
 	});
 
 	it('should only render logs panel if the workflow has no chat trigger', async () => {
@@ -306,10 +330,13 @@ describe('LogsPanel', () => {
 		expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
 		expect(rendered.queryByTestId('logs-overview-body')).not.toBeInTheDocument();
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: 0 }));
-		window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: 0 }));
+		await startResize(
+			rendered.getByTestId('resize-handle'),
+			{ height: 40 },
+			{ clientY: VIEWPORT_HEIGHT - 40 },
+		);
+		await moveResize({ clientY: 500 });
+		await fireEvent.mouseUp(window);
 
 		await waitFor(() => {
 			expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
@@ -325,14 +352,13 @@ describe('LogsPanel', () => {
 		expect(logsStore.state).toBe(LOGS_PANEL_STATE.ATTACHED);
 		expect(rendered.queryByTestId('logs-overview-body')).toBeInTheDocument();
 
-		await fireEvent.mouseDown(rendered.getByTestId('resize-handle'));
-
-		window.dispatchEvent(
-			new MouseEvent('mousemove', { bubbles: true, clientX: 0, clientY: VIEWPORT_HEIGHT }),
+		await startResize(
+			rendered.getByTestId('resize-handle'),
+			{ height: 240 },
+			{ clientY: VIEWPORT_HEIGHT - 240 },
 		);
-		window.dispatchEvent(
-			new MouseEvent('mouseup', { bubbles: true, clientX: 0, clientY: VIEWPORT_HEIGHT }),
-		);
+		await moveResize({ clientY: VIEWPORT_HEIGHT });
+		await fireEvent.mouseUp(window);
 
 		await waitFor(() => {
 			expect(logsStore.state).toBe(LOGS_PANEL_STATE.CLOSED);
@@ -568,6 +594,27 @@ describe('LogsPanel', () => {
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
 			await fireEvent.keyDown(overview, { key: 'J' });
 			expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+		});
+
+		it('should handle arrow navigation without bubbling to canvas shortcuts', async () => {
+			const { getByTestId, findByRole } = render();
+			const overview = getByTestId('logs-overview');
+			const documentKeydown = vi.fn();
+			document.addEventListener('keydown', documentKeydown);
+
+			try {
+				await waitFor(async () =>
+					expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/),
+				);
+				await fireEvent.keyDown(overview, { key: 'ArrowUp' });
+
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Agent/);
+				await fireEvent.keyDown(overview, { key: 'ArrowDown' });
+				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/);
+				expect(documentKeydown).not.toHaveBeenCalled();
+			} finally {
+				document.removeEventListener('keydown', documentKeydown);
+			}
 		});
 
 		it('should not select a log for the selected node on canvas if sync is disabled', async () => {

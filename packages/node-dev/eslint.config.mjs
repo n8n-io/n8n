@@ -1,12 +1,9 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
-export default defineConfig(baseConfig, {
+export default defineConfig(backendConfig, {
 	rules: {
-		'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
 		// TODO: Remove this
 		'unicorn/filename-case': 'warn',
-		'@typescript-eslint/naming-convention': 'warn',
 	},
 });

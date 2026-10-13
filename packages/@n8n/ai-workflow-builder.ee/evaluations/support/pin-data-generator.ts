@@ -14,12 +14,8 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type {
-	NodeJSON,
-	NodeSchemaContext,
-	OutputSchemaLookup,
-	WorkflowJSON,
-} from '@n8n/workflow-sdk';
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
+import type { NodeSchemaContext, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	buildDateAnchors,
 	buildPinDataUserPrompt,
@@ -60,8 +56,7 @@ export interface PinDataGeneratorOptions {
  * describe the same serialized shape; the nominal mismatch is only in
  * credential details (`id: string | null` vs `id?: string`).
  */
-const toWorkflowJSON = (workflow: SimpleWorkflow): WorkflowJSON =>
-	workflow as unknown as WorkflowJSON;
+const toWorkflowJSON = (workflow: SimpleWorkflow): WorkflowJSON => workflow;
 
 // ---------------------------------------------------------------------------
 // Utility node deny-list
@@ -136,7 +131,7 @@ export function buildSchemaContexts(
 	nodes: INode[],
 	outputSchemaLookup?: OutputSchemaLookup,
 ): NodeSchemaContext[] {
-	return buildSchemaContextsShared(nodes as unknown as NodeJSON[], outputSchemaLookup);
+	return buildSchemaContextsShared(nodes, outputSchemaLookup);
 }
 
 /**
@@ -177,7 +172,7 @@ export async function generateEvalPinData(
 	const workflowJson = toWorkflowJSON(workflow);
 	const outputParserTargets = findOutputParserTargets(workflowJson);
 	const contexts = buildSchemaContextsShared(
-		eligibleNodes as unknown as NodeJSON[],
+		eligibleNodes,
 		outputSchemaLookup,
 		outputParserTargets,
 	);
@@ -201,7 +196,8 @@ export async function generateEvalPinData(
 		const responseText =
 			typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
-		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
+		// The model sometimes explains its answer after the JSON block.
+		const pinData = parsePinDataResponse(extractJsonCandidate(responseText), expectedNodeNames);
 
 		// Envelope repair for parser-target roots; the shared helper derives the
 		// envelope key from each root's with-parser `__schema__` variant

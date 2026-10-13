@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
 import VueMarkdown from 'vue-markdown-render';
 import {
 	N8nButton,
@@ -12,23 +13,34 @@ import {
 	N8nCard,
 	N8nCodeBlock,
 	N8nIcon,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import { parseIntegrationActionCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
+import { getThinkingDurationSec } from '@/features/ai/shared/agentsChat/thinking';
+import AiThinkingBlock from '@/features/ai/shared/components/AiThinkingBlock.vue';
+import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
+import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import type { TimelineItem } from '../session-timeline.types';
 import {
+	executionErrorLabel,
+	executionErrorMessage,
+	hitlRequestLabelKey,
 	hitlTimelineName,
+	isErroredToolCallTimelineItem,
 	isSubAgentTimelineItem,
 	linkedToolDisplayName,
+	timelineItemErrorMessage,
 	timelineItemStatus,
 } from '../session-timeline.utils';
+import { backgroundJobResultLabel } from '../utils/background-job-labels';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 
@@ -108,16 +120,24 @@ function stringifyJson(value: unknown): string {
 	return JSON.stringify(parsed, null, 2) ?? String(parsed);
 }
 
+function stringField(value: unknown, key: string): string {
+	const parsed = ensureParsed(value);
+	if (!isRecord(parsed)) return '';
+	const field = parsed[key];
+	return typeof field === 'string' ? field : '';
+}
+
 const toolDisplayName = computed((): string => {
 	if (
 		!props.item ||
 		(props.item.kind !== 'tool' &&
+			props.item.kind !== 'skill' &&
 			props.item.kind !== 'suspension' &&
 			props.item.kind !== 'hitl-response')
 	) {
 		return '';
 	}
-	return resolveToolNameForDisplay(props.item.toolName, i18n);
+	return resolveToolNameForDisplay(props.item.toolName, i18n, props.item.toolOutput);
 });
 
 const linkedToolName = computed((): string => {
@@ -143,6 +163,20 @@ const hitlRequestContent = computed((): unknown => {
 const isSubAgent = computed((): boolean =>
 	props.item ? isSubAgentTimelineItem(props.item) : false,
 );
+const subAgentSessionHref = computed((): string => {
+	if (!isSubAgent.value || !props.projectId || !props.agentId || !props.item) return '';
+	const threadId = stringField(props.item.toolOutput, 'threadId');
+	const requestedAgentId = stringField(props.item.toolInput, 'subAgentId');
+	if (!threadId || !requestedAgentId) return '';
+	return router.resolve({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: {
+			projectId: props.projectId,
+			agentId: requestedAgentId === 'inline' ? props.agentId : requestedAgentId,
+			threadId,
+		},
+	}).href;
+});
 const status = computed(() => (props.item ? timelineItemStatus(props.item) : undefined));
 
 /**
@@ -169,15 +203,19 @@ const headerTitle = computed((): string => {
 	const item = props.item;
 	if (!item) return '';
 	if (isSubAgent.value) return delegateLabel(i18n, item.subAgentName ?? '');
+	if (item.kind === 'background-task-signal')
+		return i18n.baseText('agents.chat.backgroundTasks.resultsReceived');
 	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'skill') return item.skillName ?? toolDisplayName.value;
 	if (item.kind === 'tool') return toolDisplayName.value;
 	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
+	if (item.kind === 'user') return item.authorName ?? i18n.baseText('agentSessions.timeline.user');
 	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
+	if (item.kind === 'execution-error') return executionErrorLabel(item, i18n);
 	if (item.kind === 'suspension') {
 		return item.hitlRequestType === 'approval'
 			? hitlTimelineName(item, i18n)
-			: i18n.baseText('agentSessions.timeline.hitlRequested');
+			: i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
 	}
 	return item.hitlRequestType === 'approval'
 		? hitlTimelineName(item, i18n)
@@ -188,32 +226,34 @@ const headerIcon = computed((): IconName => {
 	const item = props.item;
 	if (!item) return 'info';
 	if (isSubAgent.value) return 'bot';
+	if (item.kind === 'background-task-signal') return 'list-checks';
 	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'skill') return 'book-open';
 	if (item.kind === 'tool') return 'wrench';
 	if (item.kind === 'node') return 'box';
 	if (item.kind === 'user') return 'user';
 	if (item.kind === 'agent') return 'bot';
+	if (item.kind === 'execution-error') return 'circle-x';
 	if (item.kind === 'hitl-response') return 'message-square';
 	return 'clock';
 });
 
-const nodeErrorMessage = computed((): string => {
+const isFailed = computed((): boolean =>
+	props.item ? isErroredToolCallTimelineItem(props.item) : false,
+);
+
+/**
+ * Error message for a failed tool/workflow/node call. It surfaces a string,
+ * nested `toolOutput.error.message`, or MCP `structuredContent.error` / text
+ * content when available. Soft-failure payloads are detected in
+ * `isErroredToolCallTimelineItem`.
+ */
+const errorMessage = computed((): string => {
 	const item = props.item;
-	if (
-		!item ||
-		item.kind !== 'node' ||
-		(item.toolOutcome !== 'error' &&
-			!(item.toolOutcome === undefined && item.toolSuccess === false))
-	) {
-		return '';
-	}
-	const prefix = i18n.baseText('agentSessions.timeline.nodeError');
-	const output = item.toolOutput;
-	if (output && typeof output === 'object' && 'error' in output) {
-		const err = (output as { error: unknown }).error;
-		if (typeof err === 'string' && err.length > 0) return `${prefix}: ${err}`;
-	}
-	return prefix;
+	if (!item || !isFailed.value) return '';
+	const prefix = i18n.baseText('agentSessions.timeline.toolError');
+	const message = timelineItemErrorMessage(item);
+	return message ? `${prefix}: ${message}` : prefix;
 });
 
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
@@ -234,15 +274,33 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 			<div :class="$style.header">
 				<div :class="$style.headerTitle">
 					<N8nIcon :icon="headerIcon" :size="16" />
-					<N8nText bold>{{ headerTitle }}</N8nText>
+					<N8nText bold :class="$style.headerTitleText">{{ headerTitle }}</N8nText>
+					<N8nTooltip
+						v-if="subAgentSessionHref"
+						:content="i18n.baseText('agentSessions.subAgent.openSession')"
+						placement="top"
+					>
+						<N8nIconButton
+							icon="external-link"
+							variant="ghost"
+							size="small"
+							:href="subAgentSessionHref"
+							target="_blank"
+							rel="noopener noreferrer"
+							:aria-label="i18n.baseText('agentSessions.subAgent.openSession')"
+							data-test-id="open-sub-agent-session"
+						/>
+					</N8nTooltip>
 					<N8nBadge
 						v-if="status"
-						:theme="status.theme"
+						:variant="status.theme"
 						size="xsmall"
 						:data-test-id="
 							status.kind === 'hitl-response'
 								? 'detail-hitl-response-badge'
-								: 'detail-tool-error-badge'
+								: item.kind === 'execution-error'
+									? 'detail-execution-error-badge'
+									: 'detail-tool-error-badge'
 						"
 					>
 						{{ i18n.baseText(status.labelKey) }}
@@ -280,7 +338,20 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<template v-if="item.kind === 'suspension'">
+					<template v-if="item.kind === 'background-task-signal'">
+						<ul :class="$style.backgroundJobs" data-test-id="background-job-signal-details">
+							<li v-for="job in item.backgroundJobSignal?.tasks" :key="job.id">
+								{{ backgroundJobResultLabel(job, i18n) }}
+							</li>
+						</ul>
+					</template>
+					<template v-else-if="item.kind === 'execution-error'">
+						<N8nCallout theme="danger" data-test-id="execution-error-callout">
+							{{ executionErrorMessage(item, i18n) }}
+						</N8nCallout>
+					</template>
+
+					<template v-else-if="item.kind === 'suspension'">
 						<div data-test-id="hitl-request-details">
 							<div :class="$style.label">
 								{{ i18n.baseText('agentSessions.timeline.requestDetails') }}
@@ -299,6 +370,14 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'workflow'">
+						<N8nCallout
+							v-if="isFailed"
+							theme="danger"
+							data-test-id="workflow-error-callout"
+							:class="$style.errorCallout"
+						>
+							{{ errorMessage }}
+						</N8nCallout>
 						<WorkflowExecutionLogViewer
 							v-if="item.workflowExecutionId && item.workflowId"
 							:key="`${item.workflowId}:${item.workflowExecutionId}`"
@@ -337,7 +416,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						</div>
 					</template>
 
-					<template v-else-if="item.kind === 'tool'">
+					<template v-else-if="item.kind === 'tool' || item.kind === 'skill'">
+						<N8nCallout
+							v-if="isFailed"
+							theme="danger"
+							data-test-id="tool-error-callout"
+							:class="$style.errorCallout"
+						>
+							{{ errorMessage }}
+						</N8nCallout>
 						<template v-if="actionCard">
 							<RichInteractionCard :input="actionCard" :output="ensureParsed(item.toolOutput)" />
 						</template>
@@ -356,8 +443,8 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'node'">
-						<N8nCallout v-if="nodeErrorMessage" theme="danger" data-test-id="node-error-callout">
-							{{ nodeErrorMessage }}
+						<N8nCallout v-if="errorMessage" theme="danger" data-test-id="node-error-callout">
+							{{ errorMessage }}
 						</N8nCallout>
 						<ToolIoView
 							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
@@ -381,6 +468,20 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						/>
 						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 					</template>
+					<AiThinkingBlock
+						v-if="item.kind === 'agent' && item.thinkingSegments?.length"
+						:key="`${item.executionId}:${item.timestamp}`"
+						:segments="item.thinkingSegments"
+						:active="false"
+						:duration-sec="getThinkingDurationSec(item.thinkingSegments)"
+						test-id="session-agent-thinking"
+					>
+						<AiReasoningBlock
+							v-for="segment in item.thinkingSegments"
+							:key="segment.id"
+							:entry="segment"
+						/>
+					</AiThinkingBlock>
 				</div>
 			</div>
 		</template>
@@ -390,7 +491,12 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins' as ds-mixins;
+@use '@n8n/design-system/css/mixins/markdown';
+
+.backgroundJobs {
+	padding-inline-start: var(--spacing--md);
+	overflow-wrap: anywhere;
+}
 
 .panel {
 	display: flex;
@@ -419,11 +525,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	color: var(--text-color);
 }
 
-.headerTitle > span:last-child {
+.headerTitleText {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.errorCallout {
+	margin-bottom: var(--spacing--2xs);
 }
 
 .container {
@@ -508,7 +618,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 }
 
 .markdown {
-	@include ds-mixins.markdown-content;
+	@include markdown.markdown-content;
 
 	color: var(--color--text--shade-1);
 	font-size: var(--font-size--sm);

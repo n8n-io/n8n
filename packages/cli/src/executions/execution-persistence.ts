@@ -1,4 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -29,16 +30,17 @@ import { CorruptedExecutionDataError } from './execution-data/corrupted-executio
 import { DbStore } from './execution-data/db-store';
 import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import type {
-	BlobStorageLocation,
-	BundleWorkflowSnapshot,
-	ExecutionDataPayload,
-	ExecutionRef,
-	WorkflowSnapshot,
+import {
+	isExecutionDataPayload,
+	type BlobStorageLocation,
+	type BundleWorkflowSnapshot,
+	type ExecutionDataPayload,
+	type ExecutionRef,
+	toWorkflowSnapshot,
 } from './execution-data/types';
+import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
-import { EventService } from '../events/event.service';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
@@ -96,15 +98,8 @@ export class ExecutionPersistence {
 	 */
 	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
-		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
-		const workflowSnapshot: WorkflowSnapshot = {
-			connections,
-			nodes,
-			name,
-			settings,
-			id,
-			nodeGroups,
-		};
+		const { id } = workflowData;
+		const workflowSnapshot = toWorkflowSnapshot(workflowData);
 		const storedAt = this.storageConfig.modeTag;
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
@@ -592,6 +587,11 @@ export class ExecutionPersistence {
 		});
 	}
 
+	/** Statuses of the given executions in one read; ids that no longer exist are absent. */
+	async findStatusesByIds(ids: string[]): Promise<Array<{ id: string; status: ExecutionStatus }>> {
+		return await this.executionRepository.findStatusesByIds(ids);
+	}
+
 	/** Find executions scoped to the given workflows, with data per `storedAt`. */
 	async findManyInWorkflows(
 		workflowIds: string[],
@@ -601,6 +601,8 @@ export class ExecutionPersistence {
 			lastId?: string;
 			status?: ExecutionStatus;
 			excludedExecutionsIds?: string[];
+			startedAfter?: string;
+			startedBefore?: string;
 		},
 		maxDataSizeBytes?: number,
 	): Promise<IExecutionBase[]> {
@@ -648,11 +650,13 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
+		// Files first: a failed file delete leaves the rows, so the next run retries them.
 		await Promise.all([
-			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
 			this.jsonStore.delete(this.toBlobRefs(targets)),
 		]);
+
+		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
@@ -775,6 +779,13 @@ export class ExecutionPersistence {
 		const { data, workflowData } = execution;
 		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 
+		// Skip the read on a full overwrite. Safe only with a known version id, except in db mode:
+		// the DB overwrite leaves that column untouched, whereas a blob write would clobber it with null.
+		const isFullOverwrite =
+			data !== undefined &&
+			workflowData !== undefined &&
+			(workflowVersionId !== null || mode === 'db');
+
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
 
@@ -795,18 +806,12 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			// Skip the read on a full overwrite. Safe only with a known version id, except in db mode:
-			// the DB overwrite leaves that column untouched, whereas a blob write would clobber it with null.
-			if (
-				data !== undefined &&
-				workflowData !== undefined &&
-				(workflowVersionId !== null || mode === 'db')
-			) {
+			if (isFullOverwrite) {
 				const binaryDataSizeBytes = sumBinaryDataBytes(data);
 				const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
-						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowData: toWorkflowSnapshot(workflowData),
 						workflowVersionId,
 					};
 
@@ -823,22 +828,36 @@ export class ExecutionPersistence {
 				return true;
 			}
 
-			// Read the existing bundle to merge the field the caller didn't supply (or to recover the
-			// version id when the entity row doesn't have it).
-			const existing = await this.trackRead(mode, async () => await this.readData(mode, ref, tx));
-			if (!existing) throw new MissingExecutionDataError(ref);
+			const stored = await this.trackRead(mode, async () =>
+				data !== undefined && mode === 'db'
+					? await this.dbStore.readWorkflowData(ref, tx) // do not load .data, it will be overwritten
+					: await this.readData(mode, ref, tx),
+			);
+			if (!stored) throw new MissingExecutionDataError(ref);
 
 			const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
+				let serializedData: string;
+
+				if (data !== undefined) {
+					// the caller replaces it, the stored one was not read
+					serializedData = stringify(data);
+				} else if (isExecutionDataPayload(stored)) {
+					// carried over from the full read
+					serializedData = stored.data;
+				} else {
+					// should not happen, ensures serializedData type safety
+					throw new UnreadableRunDataError(ref);
+				}
+
 				const bundle: ExecutionDataPayload = {
-					data: data !== undefined ? stringify(data) : existing.data,
-					workflowData: workflowData
-						? this.toWorkflowSnapshot(workflowData)
-						: existing.workflowData,
-					workflowVersionId: existing.workflowVersionId,
+					data: serializedData,
+					workflowData: workflowData ? toWorkflowSnapshot(workflowData) : stored.workflowData,
+					workflowVersionId: stored.workflowVersionId,
 				};
 
 				return await this.writeData(mode, ref, bundle, tx);
 			});
+
 			// Binary size is derived from the in-memory run data, so only recompute it when the
 			// caller supplied `data`. A workflowData-only update leaves the column untouched (and
 			// doesn't affect binary anyway), mirroring when `jsonSizeBytes` would have changed.
@@ -898,6 +917,7 @@ export class ExecutionPersistence {
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (conditions?.requireNotFinished) where.finished = false;
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;
@@ -973,13 +993,6 @@ export class ExecutionPersistence {
 		if (mode !== 'db') return await this.jsonStore.read(ref, mode);
 
 		return tx ? await this.dbStore.read(ref, tx) : await this.dbStore.read(ref);
-	}
-
-	private toWorkflowSnapshot(
-		workflowData: NonNullable<IExecutionResponse['workflowData']>,
-	): WorkflowSnapshot {
-		const { id, name, nodes, connections, settings, nodeGroups } = workflowData;
-		return { id, name, nodes, connections, settings, nodeGroups };
 	}
 
 	private async assembleExecution(

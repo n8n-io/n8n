@@ -175,16 +175,16 @@ expect.extend({
 });
 
 declare module 'vitest' {
-	interface Assertion<T> {
-		toHaveLoggedSuccess(message: string): T;
-		toHaveLoggedWarning(message: string): T;
-		toHaveLoggedError(message: string): T;
-		toHaveFile(filename: string): T;
-		toHaveFileEqual(filename: string, expectedContent?: string): Promise<T>;
-		toHaveFileContaining(filename: string, text: string): Promise<T>;
-		toHaveFileMatchingPattern(filename: string, pattern: RegExp): Promise<T>;
-		toNotHaveFile(filename: string): T;
-		toHaveAskedAllQuestions(): T;
-		toHaveAskedQuestion(question: string): T;
+	interface Assertion<R, T> {
+		toHaveLoggedSuccess(message: string): R;
+		toHaveLoggedWarning(message: string): R;
+		toHaveLoggedError(message: string): R;
+		toHaveFile(filename: string): R;
+		toHaveFileEqual(filename: string, expectedContent?: string): Promise<void>;
+		toHaveFileContaining(filename: string, text: string): Promise<void>;
+		toHaveFileMatchingPattern(filename: string, pattern: RegExp): Promise<void>;
+		toNotHaveFile(filename: string): R;
+		toHaveAskedAllQuestions(): R;
+		toHaveAskedQuestion(question: string): R;
 	}
 }
