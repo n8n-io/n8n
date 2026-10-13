@@ -49,6 +49,17 @@ export const migrationFindingTriageStatusSchema = migrationFindingStatusSchema.e
 export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriageStatusSchema>;
 
 /**
+ * The statuses the rule detail lists. A `notified` finding is still unresolved:
+ * only the notification sets it apart from `open`.
+ */
+export const migrationFindingListedStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'notified',
+	'wont_fix',
+]);
+export type MigrationFindingListedStatus = z.infer<typeof migrationFindingListedStatusSchema>;
+
+/**
  * The target n8n major version for the migration/breaking-changes report.
  *
  * Set this to a version (e.g. 'v2') to enable the migration report on both
@@ -136,7 +147,9 @@ export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResult
 
 // The rule detail lists each workflow with the status of its finding.
 const ruleDetailWorkflowSchema = affectedWorkflowSchema.extend({
-	status: migrationFindingTriageStatusSchema,
+	status: migrationFindingListedStatusSchema,
+	// When the owner was last notified about the finding. Absent until the first notification.
+	notifiedAt: z.date().optional(),
 });
 export type BreakingChangeRuleDetailWorkflow = z.infer<typeof ruleDetailWorkflowSchema>;
 
@@ -163,7 +176,7 @@ const breakingChangeLightReportDataSchema = {
 	instanceResults: z.array(instanceRuleResultsSchema),
 	workflowResults: z.array(
 		workflowRuleResultsSchema.omit({ affectedWorkflows: true }).extend({
-			// Workflows with an open finding for the rule.
+			// Workflows with an open or notified finding for the rule.
 			nbAffectedWorkflows: z.number(),
 			// Workflows with a won't fix finding for the rule.
 			nbWontFixWorkflows: z.number(),
