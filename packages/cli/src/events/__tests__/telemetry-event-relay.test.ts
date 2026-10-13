@@ -48,7 +48,7 @@ import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 // The runner may itself run in a container with limits.
 vi.mock('@/utils/container-limits', () => ({
 	getMemoryLimit: vi.fn(() => null),
-	getCpuLimit: vi.fn(() => ({ limit: null, source: 'cgroup_v2' as const })),
+	getCpuLimit: vi.fn(() => ({ limit: null, source: 'cgroup_v2' as const, weight: null })),
 }));
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -3871,7 +3871,7 @@ describe('TelemetryEventRelay', () => {
 
 		it('should report the memory and CPU limits in KiB and CPUs on `server-started`', async () => {
 			vi.mocked(getMemoryLimit).mockReturnValueOnce(1024 ** 3);
-			vi.mocked(getCpuLimit).mockReturnValueOnce({ limit: 0.5, source: 'cgroup_v2' });
+			vi.mocked(getCpuLimit).mockReturnValueOnce({ limit: 0.5, source: 'cgroup_v2', weight: 39 });
 
 			eventService.emit('server-started');
 			await flushPromises();
@@ -3882,6 +3882,7 @@ describe('TelemetryEventRelay', () => {
 						memory_limit: 1024 ** 2,
 						cpu_limit: 0.5,
 						cpu_limit_source: 'cgroup_v2',
+						cpu_weight: 39,
 					}),
 				}),
 			);
@@ -3952,6 +3953,7 @@ describe('TelemetryEventRelay', () => {
 						memory_limit: null,
 						cpu_limit: null,
 						cpu_limit_source: 'cgroup_v2',
+						cpu_weight: null,
 						cpus: expect.objectContaining({
 							count: expect.any(Number),
 							model: expect.any(String),

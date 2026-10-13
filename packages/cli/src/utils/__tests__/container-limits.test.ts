@@ -57,7 +57,7 @@ describe('getCpuLimit', () => {
 
 	it('reads the cgroup v2 quota', () => {
 		mockFiles({ '/sys/fs/cgroup/cpu.max': '50000 100000\n' });
-		expect(getCpuLimit()).toEqual({ limit: 0.5, source: 'cgroup_v2' });
+		expect(getCpuLimit()).toEqual({ limit: 0.5, source: 'cgroup_v2', weight: null });
 	});
 
 	it('reports a cgroup v2 file without a quota as null, not unreadable', () => {
@@ -66,7 +66,7 @@ describe('getCpuLimit', () => {
 			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '50000\n',
 			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
 		});
-		expect(getCpuLimit()).toEqual({ limit: null, source: 'cgroup_v2' });
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'cgroup_v2', weight: null });
 	});
 
 	it('falls back to the cgroup v1 quota and period', () => {
@@ -74,11 +74,30 @@ describe('getCpuLimit', () => {
 			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '200000\n',
 			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
 		});
-		expect(getCpuLimit()).toEqual({ limit: 2, source: 'cgroup_v1' });
+		expect(getCpuLimit()).toEqual({ limit: 2, source: 'cgroup_v1', weight: null });
 	});
 
 	it('reports unreadable when no cgroup files exist', () => {
 		mockFiles({});
-		expect(getCpuLimit()).toEqual({ limit: null, source: 'unreadable' });
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'unreadable', weight: null });
+	});
+
+	it.each([[''], ['garbage'], ['50000']])('treats cgroup v2 file %j as unreadable', (content) => {
+		mockFiles({ '/sys/fs/cgroup/cpu.max': content });
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'unreadable', weight: null });
+	});
+
+	it('reads the cgroup v2 weight', () => {
+		mockFiles({ '/sys/fs/cgroup/cpu.max': 'max 100000\n', '/sys/fs/cgroup/cpu.weight': '39\n' });
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'cgroup_v2', weight: 39 });
+	});
+
+	it('reads the cgroup v1 shares', () => {
+		mockFiles({
+			'/sys/fs/cgroup/cpu/cpu.cfs_quota_us': '-1\n',
+			'/sys/fs/cgroup/cpu/cpu.cfs_period_us': '100000\n',
+			'/sys/fs/cgroup/cpu/cpu.shares': '1024\n',
+		});
+		expect(getCpuLimit()).toEqual({ limit: null, source: 'cgroup_v1', weight: 1024 });
 	});
 });

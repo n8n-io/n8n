@@ -58,6 +58,13 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					.describe(
 						'Where cpu_limit was read from. Unreadable means n8n could not read it, so a null cpu_limit is unknown, not "no limit"',
 					),
+				cpu_weight: z
+					.number()
+					.nullable()
+					.optional()
+					.describe(
+						'Raw cgroup CPU weight (cgroup v2 cpu.weight) or shares (cgroup v1 cpu.shares). Kubernetes derives it from the CPU request. Null when unreadable',
+					),
 				kubernetes_provider: z
 					.enum(['aws', 'azure', 'gcp', 'other'])
 					.optional()
