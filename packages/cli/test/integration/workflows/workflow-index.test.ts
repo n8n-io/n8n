@@ -10,6 +10,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -344,6 +345,76 @@ describe('WorkflowIndexService Integration', () => {
 					unpublish ? [] : [expect.objectContaining({ publishedVersionId: workflow.versionId })],
 				);
 			});
+		});
+
+		it('retains the published credential when unpublish cleanup runs after same-version republish', async () => {
+			const owner = await createOwner();
+			const credentialId = uuid();
+			const workflow = await createWorkflow({ nodes: [credentialNode(credentialId)] });
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+			await workflowIndexService.updateIndexForPublished(
+				workflow,
+				workflow.versionId,
+				workflow.nodes,
+			);
+
+			const cleanupStarted = createDeferredPromise();
+			const resumeCleanup = createDeferredPromise();
+			let cleanup: Promise<void> | undefined;
+			const removePublishedDependencies =
+				workflowDependencyRepository.removePublishedDependenciesForWorkflow.bind(
+					workflowDependencyRepository,
+				);
+			const cleanupSpy = vi
+				.spyOn(workflowDependencyRepository, 'removePublishedDependenciesForWorkflow')
+				.mockImplementationOnce(async (workflowId, publishedVersionId) => {
+					cleanupStarted.resolve();
+					cleanup = resumeCleanup.promise.then(async () => {
+						await removePublishedDependencies(workflowId, publishedVersionId);
+					});
+					await cleanup;
+				});
+
+			try {
+				await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+				const deactivated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				eventService.emit('workflow-deactivated', {
+					user: createUserPayload(owner),
+					workflowId: workflow.id,
+					workflow: deactivated,
+					deactivatedVersionId: workflow.versionId,
+					publicApi: false,
+				});
+				await cleanupStarted.promise;
+
+				await setActiveVersion(workflow.id, workflow.versionId);
+				const republished = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(republished.versionCounter).toBe(workflow.versionCounter);
+				// Finish activation indexing before the delayed cleanup resumes.
+				await workflowIndexService.updateIndexForPublished(
+					republished,
+					workflow.versionId,
+					republished.nodes,
+				);
+				resumeCleanup.resolve();
+				await cleanup;
+
+				expect(
+					await workflowDependencyRepository.findBy({
+						workflowId: workflow.id,
+						publishedVersionId: workflow.versionId,
+						dependencyType: 'credentialId',
+					}),
+				).toEqual([expect.objectContaining({ dependencyKey: credentialId })]);
+			} finally {
+				resumeCleanup.resolve();
+				try {
+					await cleanup;
+				} finally {
+					cleanupSpy.mockRestore();
+				}
+			}
 		});
 	});
 
