@@ -133,10 +133,13 @@ The \`integrations\` array controls how the target agent is triggered.
   agent; do not follow up with \`patch_config\`/\`write_config\` to write the
   credential.
 - ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
-  \`agent-context({ type: "integrations" })\` returns the matching type,
-  \`patch_config\` (with the \`configHash\` from your latest config read or write) adding \`{ "type": "<integrationType>", "credentialId": "" }\`
-  to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
-  telegram) so the channel appears in the agent panel as needing setup. Pass
+  \`agent-context({ type: "integrations" })\` returns the matching type, add
+  \`{ "type": "<integrationType>", "credentialId": "" }\` to \`integrations\`
+  in your single initial config write (include a minimal valid draft
+  \`settings\` object for telegram) so the channel appears in the agent panel
+  as needing setup. If the config is already written, \`patch_config\` (with
+  the \`configHash\` from your latest config read or write) adding it to
+  \`/integrations/-\` instead. Pass
   the same \`integrationType\` in the trailing \`finish_setup\` call's
   \`channels\` array — its card configures or skips the channel itself. Do not
   call \`configure_channel\` again after \`finish_setup\` handles the card. If
@@ -227,8 +230,10 @@ Follow these steps for the selected MCP result:
    credential is already persisted.
 
 ${INITIAL_BUILD_NOTE} For MCP that means: pick the best candidate as an
-assumption (above), then \`patch_config\` (with the \`configHash\` from your latest config read or write) a draft
-\`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
+assumption (above), then add a draft \`mcpServers\` entry to your single
+initial config write (or \`patch_config\` it to \`/mcpServers/-\`, with the
+\`configHash\` from your latest config read or write, if the config is
+already written) using \`name\`, \`url\`, \`transport\`,
 \`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
 \`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
 authenticate yet. Include the credential in the trailing \`finish_setup\` call;
@@ -248,15 +253,24 @@ ${mcpServerSchemaText}
 
 ### Tool exposure and approval
 
-- Expose every available MCP tool by default: omit \`toolFilter\` unless the user
-  explicitly asks to restrict which tools are exposed. Do not infer an allowlist
-  from the requested capability.
-- For an explicit filter or selected approval list, use only exact, unprefixed
-  \`name\` values from \`selectedResult.tools\` or a successful
-  \`verify_mcp_server\` result.
-- Never prepend the server name. Never invent MCP tool names. \`toolFilter.tools\`
-  and \`approval.tools\` match original MCP names; the SDK adds the server prefix
-  only when exposing tools to the model.
+- Omit \`toolPermissions\` unless the user explicitly asks to require approval,
+  block a tool or category, or restrict which tools are exposed. Omission
+  allows all MCP tools without approval.
+- Treat requests to expose or allow only named tools as an allowlist. Set both
+  \`toolPermissions.categories.read\` and
+  \`toolPermissions.categories.write\` to \`"blocked"\`, then add each selected
+  tool to \`toolPermissions.tools\` as an \`"always_allow"\` override.
+- For other permission controls, set both
+  \`toolPermissions.categories.read\` and
+  \`toolPermissions.categories.write\`. Use \`"always_allow"\` for categories
+  the user did not restrict.
+- Use \`"require_approval"\` when the user asks to approve a category or tool
+  before execution. Use \`"blocked"\` when the user asks to hide or disable it.
+- Use category policies for broad read/write rules. Add \`toolPermissions.tools\`
+  overrides only for exceptions to those category rules.
+- For an exact tool override, use only an unprefixed \`name\` from
+  \`selectedResult.tools\` or a successful \`verify_mcp_server\` result. Never
+  prepend the server name and never invent MCP tool names.
 
 ### Credential flow
 
@@ -300,7 +314,8 @@ setup later:
 - Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
   connect to), then \`agent-context({ type: "config" })\` and \`patch_config\` the entry, preserving
   every other known field — \`name\`, \`transport\`, \`authentication\`, an
-  already-selected credential, and registry \`metadata\`.
+  already-selected credential, registry \`metadata\`, and any explicitly
+  configured \`toolPermissions\`.
 
 ### Selecting credentials
 
@@ -333,6 +348,8 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
   entry so the UI can render the correct server form.
 - A registry match proves server availability, not support for the requested
   capability; use the verified live tool list for that decision.
+- Describe an MCP server only by its name, or by text the user or the registry
+  gave. If you cannot identify it, do not state what it does.
 
 ## Verify
 

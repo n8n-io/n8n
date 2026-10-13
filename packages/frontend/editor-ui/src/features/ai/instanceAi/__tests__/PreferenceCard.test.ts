@@ -156,6 +156,7 @@ function preferenceRow(overrides: Partial<Preference> = {}): Preference {
 		projectId: null,
 		project: null,
 		source: 'aia',
+		createdBy: null,
 		scopes: [],
 		createdAt: '2026-09-24T00:00:00.000Z',
 		updatedAt: '2026-09-24T00:00:00.000Z',

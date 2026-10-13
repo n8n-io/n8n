@@ -51,6 +51,7 @@ export class DurableScheduler implements Scheduler {
 		eventService: EventService,
 	) {
 		const config = globalConfig.scheduler;
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
 		const tracer = createSchedulerTracer(tracing);
 		this.scheduler = enabled

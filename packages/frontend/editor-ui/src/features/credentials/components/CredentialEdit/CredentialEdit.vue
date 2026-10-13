@@ -1669,7 +1669,7 @@ const { width } = useElementSize(credNameRef);
 									(!isNewCredential && !hasUnsavedChanges && !isTesting) ||
 									!requiredPropertiesFilled
 								"
-								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
+								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'outline'"
 								:is-saving="isSaving || isTesting"
 								:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
 								:saving-label="
@@ -1681,7 +1681,7 @@ const { width } = useElementSize(credNameRef);
 								@click="saveCredential"
 							/>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-if="
 									currentCredential &&
 									!modalOptions?.destination &&
@@ -1737,6 +1737,8 @@ const { width } = useElementSize(credNameRef);
 								:credential-properties="credentialProperties"
 								:credential-data="credentialData"
 								:credential-id="credentialId"
+								:n8n-project-id="homeProject?.id"
+								:is-instance-credential="isInstanceCredential"
 								:is-managed="isEditingManagedCredential"
 								:show-validation-warning="showValidationWarning"
 								:auth-error="authError"

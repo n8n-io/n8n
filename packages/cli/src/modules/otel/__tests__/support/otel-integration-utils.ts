@@ -18,6 +18,9 @@ import type {
 } from 'n8n-workflow';
 import path from 'path';
 
+import { ActiveExecutions } from '@/active-executions';
+import { JobProcessor } from '@/scaling/job-processor';
+import type { Job } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 
@@ -123,8 +126,48 @@ export async function executeWorkflow(
 	} = {},
 ): Promise<string> {
 	const { mode = 'webhook', retryOf, tracingContext, triggerData } = options;
+
+	return await workflowRunner.run(
+		{
+			workflowData: workflow,
+			projectId,
+			executionMode: mode,
+			executionData: createTriggerExecutionData(workflow, triggerData),
+			retryOf,
+			tracingContext,
+		},
+		true,
+	);
+}
+
+export async function executeWorkflowOnWorker(
+	workflow: WorkflowEntity,
+	projectId: string,
+): Promise<string> {
+	const executionId = await Container.get(ActiveExecutions).add({
+		workflowData: workflow,
+		projectId,
+		executionMode: 'trigger',
+		executionData: createTriggerExecutionData(workflow),
+	});
+
+	const job = {
+		id: `job-${executionId}`,
+		data: { executionId, workflowId: workflow.id, loadStaticData: false },
+		progress: vi.fn(),
+	} as unknown as Job;
+	try {
+		await Container.get(JobProcessor).processJob(job);
+	} finally {
+		Container.get(ActiveExecutions).finalizeExecution(executionId);
+	}
+
+	return executionId;
+}
+
+function createTriggerExecutionData(workflow: WorkflowEntity, triggerData?: IDataObject) {
 	const triggerNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.manualTrigger')!;
-	const executionData = createRunExecutionData({
+	return createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [
 				{
@@ -138,18 +181,6 @@ export async function executeWorkflow(
 			startNodes: [{ name: triggerNode.name, sourceData: null }],
 		},
 	});
-
-	return await workflowRunner.run(
-		{
-			workflowData: workflow,
-			projectId,
-			executionMode: mode,
-			executionData,
-			retryOf,
-			tracingContext,
-		},
-		true,
-	);
 }
 
 export async function waitForExecution(

@@ -11,14 +11,17 @@ export function canStubNotFoundFailure(failure: CredentialResolutionFailure): bo
  * Classifies which unresolved credential references block the import, per missing-mode
  * policy. Read-only — never writes.
  */
+const rescueStubbable = (resolution: CredentialResolution): CredentialResolutionFailure[] =>
+	resolution.failures.filter((failure) => !canStubNotFoundFailure(failure));
+
 /* eslint-disable @typescript-eslint/naming-convention -- API credential missing mode keys */
 const BLOCKING_FAILURES: Record<
 	CredentialMissingMode,
 	(resolution: CredentialResolution) => CredentialResolutionFailure[]
 > = {
 	'must-preexist': (resolution) => resolution.failures,
-	'create-stub': (resolution) =>
-		resolution.failures.filter((failure) => !canStubNotFoundFailure(failure)),
+	'create-stub': rescueStubbable,
+	'create-with-values': rescueStubbable,
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -29,16 +32,11 @@ export function credentialBlockingFailures(
 	return BLOCKING_FAILURES[mode](resolution);
 }
 
-/**
- * The stubs the import creates: one stubbable `not_found` failure per source id (the last one
- * seen), and none unless the mode is `create-stub`. Apply writes these and the plan checks them
- * against policy, so both read this one list.
- */
 export function credentialsToStub(
 	mode: CredentialMissingMode,
 	resolution: CredentialResolution,
 ): CredentialResolutionFailure[] {
-	if (mode !== 'create-stub') return [];
+	if (!credentialMissingModeCreates(mode)) return [];
 
 	return [
 		...new Map(
@@ -47,6 +45,16 @@ export function credentialsToStub(
 				.map((failure) => [failure.sourceId, failure] as const),
 		).values(),
 	];
+}
+
+/** Whether the mode fills an unresolved reference by creating the credential. */
+export function credentialMissingModeCreates(mode: CredentialMissingMode): boolean {
+	return mode === 'create-stub' || mode === 'create-with-values';
+}
+
+/** Whether the mode seeds created credentials from the package's bundled expression data. */
+export function credentialMissingModeUsesPackageData(mode: CredentialMissingMode): boolean {
+	return mode === 'create-with-values';
 }
 
 /** Package workflow ids that should not be published because they use stubbed credentials. */

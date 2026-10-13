@@ -1175,6 +1175,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(workspace.init).toHaveBeenCalledTimes(1);
 		expect(setupSandboxWorkspace).toHaveBeenCalledTimes(1);
 
+		// Runtime skills and workspace setup share the verified bundles of the sandbox.
+		const { resolveVerifiedBundles } = (createLazyWorkspaceRuntimeSkillSource as Mock).mock
+			.calls[0]?.[0] as { resolveVerifiedBundles: () => Promise<unknown> };
+		const verifiedBundles = await resolveVerifiedBundles();
+		expect(verifiedBundles).toEqual(new Map());
+		const setupOptions = (setupSandboxWorkspace as Mock).mock.calls[0]?.[2] as {
+			verifiedBundles: unknown;
+		};
+		expect((setupSandboxWorkspace as Mock).mock.calls[0]?.[0]).toBe(workspace);
+		expect(setupOptions.verifiedBundles).toBe(verifiedBundles);
+
 		(createLazyRuntimeWorkspace as Mock).mockClear();
 		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
 		(createSandbox as Mock).mockClear();

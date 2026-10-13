@@ -29,6 +29,7 @@ import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { serializedAgentSchema } from '../spec/serialized/agent.schema';
 import { executeWorkflowNode } from './utils/test-builders';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 let owner: User;
 let project: Project;
@@ -89,8 +90,8 @@ async function setConfig(agent: Agent, config: Partial<AgentJsonConfig>) {
 		...agent.schema,
 		...config,
 	});
-	await repository.save({ id: agent.id, schema });
-	agent.schema = schema;
+	await repository.save({ id: agent.id, schema: storedAgentConfig(schema) });
+	agent.schema = storedAgentConfig(schema);
 }
 
 async function publish(agent: Agent) {
@@ -99,7 +100,7 @@ async function publish(agent: Agent) {
 		agentId: agent.id,
 		versionId: `${agent.id}_published`,
 		publishedBy: 'Package test',
-		schema: definition.schema,
+		schema: definition.schema && storedAgentConfig(definition.schema),
 		skills: definition.skills,
 		tools: definition.tools,
 	});

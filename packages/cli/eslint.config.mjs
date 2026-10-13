@@ -164,15 +164,6 @@ export default defineConfig(
 		},
 	},
 	{
-		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
-		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
-		// must fail CI. Entries are removed as each handler becomes a controller.
-		files: ['./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts'],
-		rules: {
-			'n8n-local-rules/require-public-api-controller': 'off',
-		},
-	},
-	{
 		files: ['./src/**/*.ts'],
 		ignores: ['./src/modules/engine-v2/**/*.ts'],
 		rules: {
@@ -314,13 +305,6 @@ export default defineConfig(
 			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],
-		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
-	},
-	{
-		// Shrink-only ratchet: periodic leader timers not yet migrated to system
-		// tasks. NEVER add to this list — new periodic leader work must be a
-		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
-		files: ['./src/services/pruning/executions-pruning.service.ts'],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
 	{

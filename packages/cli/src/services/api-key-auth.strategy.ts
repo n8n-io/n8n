@@ -66,6 +66,7 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 			scopes: apiKeyRecord.user.role.scopes.map((s) => s.slug),
 			subject: apiKeyRecord.user,
 			apiKeyScopes: apiKeyRecord.scopes ?? [],
+			apiKeyId: apiKeyRecord.id,
 		};
 	}
 

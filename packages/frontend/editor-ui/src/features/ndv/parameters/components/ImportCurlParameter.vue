@@ -19,7 +19,7 @@ function onImportCurlClicked() {
 <template>
 	<div :class="$style.importSection">
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			:label="i18n.baseText('importCurlParameter.label')"
 			:disabled="isReadOnly"
 			size="xsmall"

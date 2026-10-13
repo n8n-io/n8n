@@ -1,7 +1,24 @@
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
+import { extractResourceLocatorValue } from '../helpers';
 import { resolveLakebaseRestBase } from '../../transport';
+
+/**
+ * The execute-time resolvers below take an item index, which a dropdown request does
+ * not have, so load options read the locators the editor currently holds instead.
+ */
+export function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
+	const read = (name: string) =>
+		extractResourceLocatorValue(context.getCurrentNodeParameter(name)) || undefined;
+	return {
+		project: read('lakebaseProject'),
+		branch: read('lakebaseBranch'),
+		database: read('lakebaseDatabase'),
+		schema: read('lakebaseSchema'),
+		table: read('lakebaseTable'),
+	};
+}
 
 function readLocator(
 	context: IExecuteFunctions,

@@ -1,5 +1,6 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
@@ -26,6 +27,7 @@ const emptyExecutionData = {
 } as unknown as IRunExecutionData;
 
 const nodeTypes = mock<INodeTypes>();
+const workflowRepository = mock<WorkflowRepository>();
 
 function createWorkflowInstance() {
 	return new Workflow({
@@ -45,6 +47,8 @@ function makeOtelSettingsService(
 		enabled: true,
 		productionExecutionsOnly: false,
 		includeNodeSpans: true,
+		emitWorkflowStartSpan: false,
+		emitNodeStartSpan: false,
 		exporterProtocol: 'http/protobuf',
 		exporterEndpoint: 'http://localhost:4318',
 		exporterTracingPath: '/v1/traces',
@@ -109,6 +113,7 @@ describe('OtelLifecycleHandler', () => {
 				mock<OtelService>(),
 				otelSettingsService,
 				ownershipService,
+				workflowRepository,
 				logger,
 				licenseState,
 				mock<EventService>(),
@@ -128,6 +133,34 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ project: { id: 'proj-1' } }),
 			);
+		});
+
+		it('should pass the project name to the tracer for a team project', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'proj-1',
+				name: 'Finance',
+				type: 'team',
+			} as never);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ project: expect.objectContaining({ name: 'Finance' }) }),
+			);
+		});
+
+		it('should not pass the project name to the tracer for a personal project', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce({
+				id: 'proj-1',
+				name: 'Jane Doe <jane@example.com>',
+				type: 'personal',
+			} as never);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow.mock.calls[0][0].project?.name).toBeUndefined();
 		});
 
 		it('should pass project customAttributes to the tracer when project has telemetry tags', async () => {
@@ -224,6 +257,49 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should pass the saved identity of the execution itself to the tracer', async () => {
+			const identity = {
+				'n8n.execution.id': 'exec-sub',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Before',
+			};
+			traceContextService.get.mockResolvedValueOnce({
+				traceparent: '00-bbbb651916cd43dd8448eb211c80319c-bbbb67aa0ba902b7-01',
+				identity,
+			});
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ savedIdentity: identity }),
+			);
+		});
+
+		it('should pass the current workflow name when the execution has a saved identity', async () => {
+			traceContextService.get.mockResolvedValueOnce({
+				traceparent: '00-bbbb651916cd43dd8448eb211c80319c-bbbb67aa0ba902b7-01',
+				identity: { 'n8n.execution.id': 'exec-1', 'n8n.workflow.id': 'wf-1' },
+			});
+			workflowRepository.findByIds.mockResolvedValueOnce([
+				{ id: 'wf-1', name: 'Renamed' } as WorkflowEntity,
+			]);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1'], { fields: ['name'] });
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ workflow: expect.objectContaining({ name: 'Renamed' }) }),
+			);
+		});
+
+		it('should not look up the workflow name for the first segment of an execution', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+		});
+
 		it('should inherit parent tracingContext for sub-workflows', async () => {
 			traceContextService.get.mockResolvedValueOnce(parentTracingContext);
 
@@ -241,6 +317,22 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ tracingContext: parentTracingContext }),
 			);
+		});
+
+		it('should not pass the saved identity of the parent to the tracer for sub-workflows', async () => {
+			traceContextService.get.mockResolvedValueOnce({
+				...parentTracingContext,
+				identity: { 'n8n.execution.id': 'exec-parent', 'n8n.workflow.id': 'wf-parent' },
+			});
+
+			await handler.onWorkflowStart({
+				...baseCtx,
+				executionData: {
+					parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+				} as IRunExecutionData,
+			});
+
+			expect(tracer.startWorkflow.mock.calls[0][0].savedIdentity).toBeUndefined();
 		});
 
 		it('should inherit parent tracingContext for error workflows, linking the span to the failed execution', async () => {
@@ -282,6 +374,38 @@ describe('OtelLifecycleHandler', () => {
 
 			expect(traceContextService.get).toHaveBeenCalledTimes(1);
 			expect(traceContextService.get).toHaveBeenCalledWith('exec-sub');
+		});
+
+		it('should not ask for a workflow start span when the flag is off', async () => {
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: false }),
+			);
+		});
+
+		it('should ask for a workflow start span when the flag is on', async () => {
+			otelSettingsService._settings.emitWorkflowStartSpan = true;
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart(baseCtx);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
+		});
+
+		it('should ask for a workflow start span without a workflow instance (queue-mode main)', async () => {
+			otelSettingsService._settings.emitWorkflowStartSpan = true;
+			traceContextService.get.mockResolvedValueOnce(undefined);
+
+			await handler.onWorkflowStart({ ...baseCtx, workflowInstance: undefined });
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
 		});
 
 		it('should always persist generated spanContext', async () => {
@@ -426,6 +550,7 @@ describe('OtelLifecycleHandler', () => {
 				mock<OtelService>(),
 				otelSettingsService,
 				ownershipService,
+				workflowRepository,
 				logger,
 				licenseState,
 				mock<EventService>(),
@@ -558,6 +683,80 @@ describe('OtelLifecycleHandler', () => {
 			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
 		});
 
+		it('should pass the saved identity to the tracer on resume', async () => {
+			const identity = {
+				'n8n.execution.id': 'exec-resume',
+				'n8n.workflow.id': 'wf-1',
+				'n8n.workflow.name': 'Before',
+			};
+			traceContextService.get.mockResolvedValueOnce({ ...prePauseContext, identity });
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'After', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ savedIdentity: identity }),
+			);
+		});
+
+		it('should pass the current workflow name on resume', async () => {
+			traceContextService.get.mockResolvedValueOnce(prePauseContext);
+			workflowRepository.findByIds.mockResolvedValueOnce([
+				{ id: 'wf-1', name: 'Renamed' } as WorkflowEntity,
+			]);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Before', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ workflow: expect.objectContaining({ name: 'Renamed' }) }),
+			);
+		});
+
+		it('should keep the saved workflow name on resume if the name lookup fails', async () => {
+			traceContextService.get.mockResolvedValueOnce(prePauseContext);
+			workflowRepository.findByIds.mockRejectedValueOnce(new Error('db down'));
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Before', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ workflow: expect.objectContaining({ name: 'Before' }) }),
+			);
+		});
+
+		it('should ask for a workflow start span on resume when the flag is on', async () => {
+			otelSettingsService._settings.emitWorkflowStartSpan = true;
+			traceContextService.get.mockResolvedValueOnce(prePauseContext);
+
+			await handler.onWorkflowResume({
+				type: 'workflowExecuteResume',
+				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
+				workflowInstance: createWorkflowInstance(),
+				executionData: undefined as never,
+				executionId: 'exec-resume',
+			} as never);
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
+		});
+
 		it('should start a root span when no pre-wait context is persisted', async () => {
 			traceContextService.get.mockResolvedValueOnce(undefined);
 
@@ -594,6 +793,7 @@ describe('OtelLifecycleHandler', () => {
 				mock<OtelService>(),
 				otelSettingsService,
 				ownershipService,
+				workflowRepository,
 				logger,
 				licenseState,
 				mock<EventService>(),
@@ -690,6 +890,7 @@ describe('OtelLifecycleHandler', () => {
 				mock<OtelService>(),
 				makeOtelSettingsService(overrides),
 				ownershipService,
+				workflowRepository,
 				logger,
 				licenseState,
 				eventService ?? mock<EventService>(),
@@ -848,6 +1049,7 @@ describe('OtelLifecycleHandler', () => {
 				mock<OtelService>(),
 				otelSettingsService,
 				ownershipService,
+				workflowRepository,
 				logger,
 				licenseState,
 				mock<EventService>(),
@@ -863,6 +1065,7 @@ describe('OtelLifecycleHandler', () => {
 				mock<OtelService>(),
 				otelSettingsService,
 				ownershipService,
+				workflowRepository,
 				logger,
 				licenseState,
 				mock<EventService>(),
@@ -878,7 +1081,21 @@ describe('OtelLifecycleHandler', () => {
 		it('should call tracer.startNode with the resolved node', () => {
 			handler.onNodeStart(makeStartCtx());
 
-			expect(tracer.startNode).toHaveBeenCalledWith({ executionId: 'exec-1', node });
+			expect(tracer.startNode).toHaveBeenCalledWith({
+				executionId: 'exec-1',
+				node,
+				emitStartSpan: false,
+			});
+		});
+
+		it('should ask for a node start span when the flag is on', () => {
+			otelSettingsService._settings.emitNodeStartSpan = true;
+
+			handler.onNodeStart(makeStartCtx());
+
+			expect(tracer.startNode).toHaveBeenCalledWith(
+				expect.objectContaining({ emitStartSpan: true }),
+			);
 		});
 
 		it('should not call tracer.startNode when node is not found in workflow', () => {
@@ -1067,6 +1284,7 @@ describe('productionExecutionsOnly filter', () => {
 			mock<OtelService>(),
 			otelSettingsService,
 			ownershipService,
+			workflowRepository,
 			logger,
 			licenseState,
 			mock<EventService>(),
@@ -1160,6 +1378,7 @@ describe('onReloadOtelConfig', () => {
 			otelService,
 			makeOtelSettingsService(),
 			mock<OwnershipService>(),
+			workflowRepository,
 			mock<Logger>(),
 			licenseState,
 			mock<EventService>(),

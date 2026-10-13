@@ -21,7 +21,7 @@ type DataTablePackageKeyHandling = {
 };
 
 type DataTableColumnPackageKeyHandling = {
-	id: 'exclude';
+	id: 'copy';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	dataTableId: 'exclude';
@@ -50,6 +50,7 @@ export class DataTableSerializer {
 			.sort((a, b) => a.index - b.index)
 			.map((column) =>
 				serializeColumnPayload({
+					id: column.id,
 					name: column.name,
 					type: column.type,
 					index: column.index,
