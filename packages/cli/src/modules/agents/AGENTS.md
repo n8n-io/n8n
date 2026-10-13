@@ -11,6 +11,7 @@ Guidance for the agents module (`packages/cli/src/modules/agents`). See the [cli
 
 - `N8N_SKILLS_HUB_ENABLED` (`AgentsConfig.skillsHubEnabled`, default off) selects where skills live. `AgentSkillRefsService.usesSkillsHub` reads it. There are no double writes: data written with one setting is not visible with the other.
 - Hub on: skills live in the skills hub (`skill`, `skill_version`, `skill_file`). A draft keeps its skill refs in `agent_skill_dependency`, in attach order (`createdAt`). A published version keeps its pins in `agent_version_skill_dependency`, in the same order.
+- Hub on: a skill that an agent page creates is available to the project, to that agent only (`skill.agentId`), or to the instance (`availableTo` on the create request, default `project`). A duplicate of an agent gets its own copy of each agent-only skill.
 - Hub off: the refs are the `skills` key of `agents.schema` and `agent_history.schema`, and the bodies are the `agents.skills` and `agent_history.skills` columns, as before the skills hub. A ref with `enabled: false` is hidden, and its body stays in the column.
 - Only `AgentSkillRefsService` reads the `skills` key of a `StoredAgentConfig`.
 - Read and write the skill refs, and read the skill bodies, only through `AgentSkillRefsService`. A draft runs the latest saved version of each skill, or its pin (`versionId`). A published version runs its pins.

@@ -2,7 +2,7 @@
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { TransactionRunner } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type TransactionRunner, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
@@ -142,7 +142,13 @@ describe('AgentSkillsService', () => {
 				['skill_new1', 'Summarize Notes'],
 				['skill_new2', 'Second Skill'],
 			]);
-			expect(skillRefs.createSkills).toHaveBeenCalledWith(agent, [skill, second], 'user-1', {});
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(
+				agent,
+				[skill, second],
+				'user-1',
+				'project',
+				{},
+			);
 			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
 				projectId,
 			});
@@ -169,7 +175,30 @@ describe('AgentSkillsService', () => {
 			);
 
 			expect(result.skill).toEqual(skill);
-			expect(skillRefs.createSkills).toHaveBeenCalledWith(expect.anything(), [skill], 'user-1', {});
+			expect(skillRefs.createSkills).toHaveBeenCalledWith(
+				expect.anything(),
+				[skill],
+				'user-1',
+				'project',
+				{},
+			);
+		});
+
+		it('refuses an instance skill without the global skill create permission', async () => {
+			givenAgent({ schema: baseConfig });
+
+			const member = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+			await expect(
+				service.createAndAttachSkill(
+					agentId,
+					projectId,
+					skill,
+					{ ...context, user: member },
+					'instance',
+				),
+			).rejects.toThrow('You are not allowed to create skills for the whole instance.');
+			expect(skillRefs.createSkills).not.toHaveBeenCalled();
 		});
 
 		it('rejects the batch without writing when the agent has no config yet', async () => {

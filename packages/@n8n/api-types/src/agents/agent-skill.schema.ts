@@ -85,3 +85,11 @@ export const agentSkillShape = {
 };
 
 export const agentSkillSchema = z.object(agentSkillShape).strict();
+
+export const agentSkillAvailabilitySchema = z.enum(['project', 'agent', 'instance']);
+
+export type AgentSkillAvailability = z.infer<typeof agentSkillAvailabilitySchema>;
+
+export const createAgentSkillSchema = agentSkillSchema.extend({
+	availableTo: agentSkillAvailabilitySchema.optional(),
+});

@@ -1,6 +1,7 @@
 import {
 	agentSkillSchema,
 	type AgentJsonSkillConfig,
+	type AgentSkillAvailability,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 } from '@n8n/api-types';
@@ -11,6 +12,7 @@ import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { hasGlobalScope } from '@n8n/permissions';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
@@ -99,8 +101,15 @@ export class AgentSkillsService {
 		projectId: string,
 		skill: AgentSkill,
 		context: AgentMutationTelemetryContext,
+		availableTo: AgentSkillAvailability = 'project',
 	): Promise<AgentSkillMutationResponse> {
-		const { results } = await this.createSkillsBatch(agentId, projectId, [skill], context);
+		const { results } = await this.createSkillsBatch(
+			agentId,
+			projectId,
+			[skill],
+			context,
+			availableTo,
+		);
 		return results[0];
 	}
 
@@ -109,6 +118,7 @@ export class AgentSkillsService {
 		projectId: string,
 		skills: AgentSkill[],
 		context: AgentMutationTelemetryContext,
+		availableTo: AgentSkillAvailability = 'project',
 	): Promise<{ results: AgentSkillMutationResponse[]; saved: Agent; skillRefs: AgentSkillRefs }> {
 		if (skills.length === 0) {
 			throw new UserError('At least one skill is required.');
@@ -124,7 +134,7 @@ export class AgentSkillsService {
 
 		const bodies = skills.map((skill) => toStoredSkill(this.validateSkill(skill)));
 		if (this.agentSkillRefs.usesSkillsHub) {
-			await this.assertCanCreateSkills(context.user, entity.projectId);
+			await this.assertCanCreateSkills(context.user, entity.projectId, availableTo);
 		}
 
 		const previous = await this.agentSkillRefs.readDraft(entity, {});
@@ -134,7 +144,13 @@ export class AgentSkillsService {
 		markAgentDraftDirty(entity);
 		const { ids, skillRefs } = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
-			const created = await this.agentSkillRefs.createSkills(entity, bodies, context.user.id, ctx);
+			const created = await this.agentSkillRefs.createSkills(
+				entity,
+				bodies,
+				context.user.id,
+				availableTo,
+				ctx,
+			);
 			const nextRefs: AgentJsonSkillConfig[] = [
 				...(previous.skillRefs ?? []),
 				...created.map((id) => ({ type: 'skill' as const, id })),
@@ -369,7 +385,17 @@ export class AgentSkillsService {
 		return result.data;
 	}
 
-	private async assertCanCreateSkills(user: User, projectId: string): Promise<void> {
+	private async assertCanCreateSkills(
+		user: User,
+		projectId: string,
+		availableTo: AgentSkillAvailability,
+	): Promise<void> {
+		if (availableTo === 'instance') {
+			if (!hasGlobalScope(user, 'skill:create')) {
+				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
+			}
+			return;
+		}
 		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
 			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}

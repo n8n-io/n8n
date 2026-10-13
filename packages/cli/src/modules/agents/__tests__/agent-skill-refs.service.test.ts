@@ -27,7 +27,7 @@ const agent = { id: 'agent-1', projectId: 'project-1', schema: baseConfig } as u
 
 function row(skillId: string, versionId: string, name: string): ResolvedSkillRow {
 	return {
-		skill: mock<Skill>({ id: skillId }),
+		skill: mock<Skill>({ id: skillId, agentId: null }),
 		version: mock<SkillVersion>({
 			id: versionId,
 			skillId,
@@ -286,7 +286,7 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('keeps refs to hub skills and creates hub skills for refs with only a body', async () => {
-			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
 
 			const refs = await service.createDraftRefs(
 				agent,
@@ -303,7 +303,7 @@ describe('AgentSkillRefsService', () => {
 			expect(skillService.create).toHaveBeenCalledTimes(1);
 			expect(skillService.create).toHaveBeenCalledWith(
 				{
-					target: { userId: null, projectId: 'project-1' },
+					target: { userId: null, projectId: 'project-1', agentId: null },
 					skill: body,
 					source: 'agent',
 					createdById: 'user-1',
@@ -342,13 +342,39 @@ describe('AgentSkillRefsService', () => {
 		});
 
 		it('needs no skill permission for refs to hub skills', async () => {
-			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared', agentId: null })]);
 			vi.mocked(userHasScopes).mockResolvedValue(false);
 
 			await expect(
 				service.createDraftRefs(agent, [{ type: 'skill', id: 'shared' }], {}, user, ctx),
 			).resolves.toEqual([{ type: 'skill', id: 'shared' }]);
 			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('copies a skill of another agent only for the new agent', async () => {
+			skillRepository.findByIds.mockResolvedValue([
+				mock<Skill>({ id: 'private', agentId: 'agent-source' }),
+			]);
+			skillService.resolveForAgentDraft.mockResolvedValue({ private: body });
+
+			const refs = await service.createDraftRefs(
+				agent,
+				[{ type: 'skill', id: 'private' }],
+				{},
+				user,
+				ctx,
+			);
+
+			expect(skillService.create).toHaveBeenCalledWith(
+				{
+					target: { userId: null, projectId: 'project-1', agentId: 'agent-1' },
+					skill: body,
+					source: 'agent',
+					createdById: 'user-1',
+				},
+				ctx,
+			);
+			expect(refs).toEqual([{ type: 'skill', id: 'skill_created' }]);
 		});
 
 		it('creates no skill without a user', async () => {
@@ -364,6 +390,25 @@ describe('AgentSkillRefsService', () => {
 				),
 			).resolves.toEqual([]);
 			expect(skillService.create).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createSkills', () => {
+		it.each([
+			['project', { userId: null, projectId: 'project-1', agentId: null }],
+			['agent', { userId: null, projectId: 'project-1', agentId: 'agent-1' }],
+			['instance', { userId: null, projectId: null, agentId: null }],
+		] as const)('creates a hub skill available to %s', async (availableTo, target) => {
+			const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
+			skillService.create.mockResolvedValue('skill_created');
+
+			await expect(
+				service.createSkills(agent, [body], 'user-1', availableTo, ctx),
+			).resolves.toEqual(['skill_created']);
+			expect(skillService.create).toHaveBeenCalledWith(
+				{ target, skill: body, source: 'agent', createdById: 'user-1' },
+				ctx,
+			);
 		});
 	});
 
@@ -476,7 +521,7 @@ describe('AgentSkillRefsService', () => {
 		it('creates skills as bodies on the agent row', async () => {
 			const draft = legacyAgent([], {} as never);
 
-			const ids = await service.createSkills(draft, [notes], 'user-1', ctx);
+			const ids = await service.createSkills(draft, [notes], 'user-1', 'agent', ctx);
 
 			expect(draft.skills).toEqual({ [ids[0]]: notes });
 			expect(agentRepository.updateDraftSkills).toHaveBeenCalledWith(draft, ctx);

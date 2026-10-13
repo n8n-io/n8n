@@ -58,11 +58,18 @@ export class AgentsSkillsController {
 			agentId,
 			'create skill for',
 		);
-		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
-			user: req.user,
-			modifiedBy: 'user',
-			pushRef: req.headers?.['push-ref'],
-		});
+		const { availableTo, ...skill } = payload;
+		return await this.agentSkillsService.createAndAttachSkill(
+			agentId,
+			projectId,
+			skill,
+			{
+				user: req.user,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+			availableTo,
+		);
 	}
 
 	@Patch('/:agentId/skills/:skillId')

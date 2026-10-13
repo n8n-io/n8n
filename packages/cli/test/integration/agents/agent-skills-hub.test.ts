@@ -304,6 +304,37 @@ describe('Agent skills in the skills hub', () => {
 		}
 	});
 
+	it('keeps a skill for this agent only, and copies it for a duplicate', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Private'),
+			context,
+			'agent',
+		);
+		const [hubSkill] = await Container.get(SkillRepository).findByIds([created.id]);
+		expect(hubSkill).toMatchObject({ projectId: project.id, agentId: agent.id });
+
+		const other = await createAgent([]);
+		await expect(
+			skillRefs.replaceDraftRefs(other, [{ type: 'skill', id: created.id }], {}),
+		).rejects.toThrow('is not available to this agent');
+
+		const duplicate = await agentsService.create(project.id, 'Copy', {
+			actor: actor(),
+			schema: { ...config, skills: [{ type: 'skill', id: created.id }] },
+			user: owner,
+		});
+		const [copyRef] = await skillRefs.refsForDraft(duplicate, {});
+		expect(copyRef.id).not.toBe(created.id);
+		const [copy] = await Container.get(SkillRepository).findByIds([copyRef.id]);
+		expect(copy).toMatchObject({ projectId: project.id, agentId: duplicate.id });
+		const { skills } = await skillRefs.readDraft(duplicate, {});
+		expect(Object.values(skills)).toEqual([body('Private')]);
+	});
+
 	it('shares the skills of a duplicated agent', async () => {
 		const skill = await createSkill(body('Shared'));
 		const original = await createAgent([skill]);

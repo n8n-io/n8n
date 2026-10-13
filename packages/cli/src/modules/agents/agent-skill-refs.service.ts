@@ -1,4 +1,9 @@
-import type { AgentJsonSkillConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
+import type {
+	AgentJsonSkillConfig,
+	AgentSkill,
+	AgentSkillAvailability,
+	StoredAgentConfig,
+} from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -216,10 +221,11 @@ export class AgentSkillRefsService {
 
 	/**
 	 * Create with a config (duplicate, import, eval seeding). A ref to a hub
-	 * skill stays a ref. A ref with a body but no hub skill gets a new hub skill
-	 * in the agent's project, and the ref then points to the new id. A ref with
-	 * neither is dropped, and so is a ref with only a body when no user creates
-	 * the skill. The creator needs `projectSkill:create` on the agent's project to
+	 * skill stays a ref. A ref to a skill of another agent only gets a copy for
+	 * this agent only. A ref with a body but no hub skill gets a new hub skill
+	 * in the agent's project. A new skill gets a new id, and the ref points to
+	 * it. A ref with neither is dropped, and so is a ref with only a body when
+	 * no user creates the skill. The creator needs `projectSkill:create` on the agent's project to
 	 * create a skill. Returns the refs that the draft now has.
 	 */
 	async createDraftRefs(
@@ -236,21 +242,35 @@ export class AgentSkillRefsService {
 			await this.writeLegacyDraft(agent, agent.schema, kept, pickBodies(bodies, kept), ctx);
 			return readLegacyRefs(agent.schema);
 		}
-		const known = new Set(
+		const found = new Map(
 			(
 				await this.skillRepository.findByIds(
 					refs.map((ref) => ref.id),
 					ctx,
 				)
-			).map((skill) => skill.id),
+			).map((skill) => [skill.id, skill]),
 		);
+		const otherAgentSkillIds = refs.flatMap((ref) => {
+			const skill = found.get(ref.id);
+			return skill?.agentId && skill.agentId !== agent.id ? [ref.id] : [];
+		});
+		const otherAgentBodies =
+			otherAgentSkillIds.length > 0
+				? await this.skillService.resolveForAgentDraft(
+						otherAgentSkillIds.map((id) => ({ id })),
+						ctx,
+					)
+				: {};
 		const next: AgentJsonSkillConfig[] = [];
 		for (const ref of refs) {
-			if (known.has(ref.id)) {
+			const skill = found.get(ref.id);
+			const copiesAgentSkill = otherAgentSkillIds.includes(ref.id);
+			if (skill && !copiesAgentSkill) {
 				next.push({ type: 'skill', id: ref.id });
 				continue;
 			}
-			const body = Object.hasOwn(bodies, ref.id) ? bodies[ref.id] : undefined;
+			const source = copiesAgentSkill ? otherAgentBodies : bodies;
+			const body = Object.hasOwn(source, ref.id) ? source[ref.id] : undefined;
 			if (!body || creator === null) continue;
 			if (
 				!(await userHasScopes(creator, ['projectSkill:create'], false, {
@@ -261,7 +281,11 @@ export class AgentSkillRefsService {
 			}
 			const id = await this.skillService.create(
 				{
-					target: { userId: null, projectId: agent.projectId },
+					target: {
+						userId: null,
+						projectId: agent.projectId,
+						agentId: copiesAgentSkill ? agent.id : null,
+					},
 					skill: body,
 					source: 'agent',
 					createdById: creator.id,
@@ -278,6 +302,7 @@ export class AgentSkillRefsService {
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
 		skills: AgentSkill[],
 		creatorId: string,
+		availableTo: AgentSkillAvailability,
 		ctx: OperationContext,
 	): Promise<string[]> {
 		if (!this.usesSkillsHub) {
@@ -296,7 +321,11 @@ export class AgentSkillRefsService {
 			ids.push(
 				await this.skillService.create(
 					{
-						target: { userId: null, projectId: agent.projectId },
+						target: {
+							userId: null,
+							projectId: availableTo === 'instance' ? null : agent.projectId,
+							agentId: availableTo === 'agent' ? agent.id : null,
+						},
 						skill,
 						source: 'agent',
 						createdById: creatorId,
