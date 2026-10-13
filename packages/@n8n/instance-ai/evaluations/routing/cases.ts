@@ -65,7 +65,7 @@ const routingTagsSchema = z
 		clarity: z
 			.array(z.enum(ROUTING_CLARITIES))
 			.max(1, 'needs at most one clarity:<level> tag')
-			.transform((levels) => levels[0]),
+			.transform((levels) => levels.at(0)),
 	})
 	// The bucket always passes, so case files need not repeat it. A clarify case
 	// keeps only its own tokens: most accept only `clarify:open`, and plain
