@@ -54,6 +54,7 @@ const buildRuntime = (
 		provisionApp: vi.fn(),
 		loadSubscriptions: vi.fn(),
 		provisionBot: vi.fn(),
+		reportManualBotRoute: vi.fn(),
 	};
 };
 

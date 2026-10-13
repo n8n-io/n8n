@@ -496,6 +496,9 @@ describe('TeamsBotProvisioningService', () => {
 			);
 
 			await expect(service.provisionBot(provisionOptions)).rejects.toThrow(BadRequestError);
+			// The token is the first act with the sign-in, and redeeming it rotates
+			// the refresh token in the customer's directory. Nothing ran.
+			expect(tokens.acquire).not.toHaveBeenCalled();
 			expect(arm.request).not.toHaveBeenCalled();
 		});
 	});
