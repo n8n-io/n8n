@@ -78,20 +78,14 @@ export interface ShadowEvaluator {
 }
 
 // Expression code can set `name` to any text, so only these names leave the engine.
-const KNOWN_ERROR_CLASSES = new Set([
-	'Error',
-	'AggregateError',
-	'EvalError',
-	'InternalError',
-	'RangeError',
-	'ReferenceError',
-	'SyntaxError',
-	'TypeError',
-	'URIError',
-	'ExpressionError',
-	'ExpressionExtensionError',
-	'UserError',
-]);
+const KNOWN_ERROR_CLASSES = new Set(
+	[
+		'Error AggregateError EvalError InternalError RangeError ReferenceError SyntaxError',
+		'TypeError URIError ExpressionError ExpressionExtensionError UserError',
+	]
+		.join(' ')
+		.split(' '),
+);
 
 function errorClassOf(error: unknown): string {
 	// Timeout and memory errors share the name `ExpressionError`, so classify them first.
@@ -379,18 +373,11 @@ export class Expression {
 		}
 	}
 
-	private static async buildEvaluator(options: {
-		engine: 'vm' | 'quickjs';
-		bridgeTimeout: number;
-		bridgeMemoryLimit: number;
-		poolSize: number;
-		maxCodeCacheSize: number;
-		observability?: ObservabilityProvider;
-		idleTimeoutMs?: number;
-		runtimeBundle?: string;
-		lazyAcquire?: boolean;
-		compileCache?: boolean;
-	}): Promise<IExpressionEvaluator> {
+	private static async buildEvaluator(
+		options: Omit<Parameters<typeof Expression.initExpressionEngine>[0], 'engine'> & {
+			engine: 'vm' | 'quickjs';
+		},
+	): Promise<IExpressionEvaluator> {
 		// Dynamic import to avoid loading expression-runtime in browser environments
 		const runtime = await import('@n8n/expression-runtime');
 		const createBridge =

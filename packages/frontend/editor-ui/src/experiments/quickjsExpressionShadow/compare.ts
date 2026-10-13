@@ -160,31 +160,11 @@ function getKnownMethods(): Set<string> {
 	if (knownMethods) return knownMethods;
 
 	const names = new Set(N8N_METHODS);
-	const owners: object[] = [
-		Object,
-		Object.prototype,
-		Array,
-		Array.prototype,
-		String,
-		String.prototype,
-		Number,
-		Number.prototype,
-		Boolean.prototype,
-		Date,
-		Date.prototype,
-		RegExp.prototype,
-		Map.prototype,
-		Set.prototype,
-		Math,
-		JSON,
-		DateTime,
-		DateTime.prototype,
-		Duration,
-		Duration.prototype,
-		Interval,
-		Interval.prototype,
-	];
-	for (const owner of owners) {
+	const statics: object[] = [Object, Array, String, Number, Date, Math, JSON];
+	const classes = [Object, Array, String, Number, Boolean, Date, RegExp, Map, Set];
+	const luxon = [DateTime, Duration, Interval];
+	const prototypes = [...classes, ...luxon].map((type): object => type.prototype);
+	for (const owner of [...statics, ...luxon, ...prototypes]) {
 		for (const name of Object.getOwnPropertyNames(owner)) names.add(name);
 	}
 	for (const extensions of ExpressionExtensions) {
