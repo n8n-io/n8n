@@ -139,6 +139,33 @@ export type NodeExecuteAfterData = {
 	};
 };
 
+/**
+ * Throttled snapshots of child-node progress during a sub-workflow execution,
+ * for the parent's "Execute Sub-workflow" node. Only the latest state in each
+ * window is sent, and a child that ends within the first window sends nothing.
+ * The parent's own node events end the overlay, so there is no "finished" message.
+ */
+export type SubworkflowNodeProgress = {
+	type: 'subworkflowNodeProgress';
+	data: {
+		/** Execution whose editor session displays the overlay. */
+		parentExecutionId: string;
+		/** Name of the "Execute Sub-workflow" node in the parent workflow. */
+		parentNodeName: string;
+		/** Child sub-execution id. */
+		executionId: string;
+		/** Child node that most recently started. */
+		currentNodeName: string;
+		/**
+		 * Count of distinct child nodes reached so far, not an execution-order index.
+		 * A loop re-runs the same nodes, so the count parks while it iterates.
+		 */
+		currentNodeIndex: number;
+		/** Upper bound on the child nodes that can run. Branches make it an over-estimate. */
+		totalNodes: number;
+	};
+};
+
 export type ExecutionPushMessage =
 	| ExecutionStarted
 	| ExecutionWaiting
@@ -147,4 +174,5 @@ export type ExecutionPushMessage =
 	| AgentNodeProgress
 	| NodeExecuteBefore
 	| NodeExecuteAfter
-	| NodeExecuteAfterData;
+	| NodeExecuteAfterData
+	| SubworkflowNodeProgress;
