@@ -462,6 +462,20 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	it('keeps the agent scope in the credentials fetch', () => {
+		workflowsStore.isNewWorkflow = true;
+		projectsStore.currentProject = { id: 'project-1' } as Project;
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {};
+
+		renderComponent({ props: { node: httpNode, forAgent: true } }, { merge: true });
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			forAgent: true,
+		});
+	});
+
 	it('should fall back to the personal project for an unsaved workflow without a current project', () => {
 		workflowsStore.isNewWorkflow = true;
 		projectsStore.currentProject = null;
