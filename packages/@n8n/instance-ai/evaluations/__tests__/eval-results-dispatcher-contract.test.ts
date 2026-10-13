@@ -6,6 +6,8 @@ import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
 import { AGENT_ARTIFACT_CASE_CAP_BYTES } from '../harness/artifacts/agent-artifact';
+import type { RoutingCase } from '../routing/cases';
+import { writeRoutingEvalResults } from '../routing/eval-results';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -133,6 +135,8 @@ function iteration2(): WorkflowTestCaseResult {
 interface DispatcherView {
 	experimentName?: string;
 	testCases: Array<{
+		testCaseFile?: string;
+		status?: string;
 		buildSuccessCount: number;
 		workflowJson?: { id: string };
 		agentArtifact?: Record<string, unknown>;
@@ -148,6 +152,7 @@ interface DispatcherView {
 			expectation: string;
 			pass: boolean;
 			reason: string;
+			incomplete?: boolean;
 			attribution?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
@@ -446,5 +451,122 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
 		expect(tc.buildTurnsPerRun).toEqual([5, null]);
+	});
+});
+
+describe('eval-results.json — dispatcher contract (routing)', () => {
+	const routingCase: RoutingCase = {
+		id: 'route-agent-support-inbox',
+		userMessage: 'Answer our support inbox.',
+		bucket: 'agent',
+		accepts: ['agent', 'clarify:agent'],
+		after: ['agent'],
+		clarity: 'hidden',
+	};
+
+	it('writes one test case per routing case and one verdict per trial', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const jsonPath = writeRoutingEvalResults(
+			dir,
+			[
+				{
+					routingCase,
+					trials: [
+						{
+							resolution: {
+								route: 'agent',
+								evidence: 'build-agent call',
+								judgeReason: 'It builds an Agent.',
+							},
+							passed: true,
+							turn: { streamStatus: 'stopped-on-route' },
+						},
+						{
+							resolution: { route: 'workflow', evidence: 'build-workflow call' },
+							passed: false,
+							turn: { streamStatus: 'stopped-on-route' },
+						},
+						{
+							resolution: { route: 'none', evidence: 'end of turn (timed-out), judge failed' },
+							passed: false,
+							turn: { streamStatus: 'timed-out', runError: 'Run timed out' },
+						},
+					],
+				},
+			],
+			3,
+			1234,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases).toHaveLength(1);
+		const tc = report.testCases[0];
+		expect(tc.testCaseFile).toBe('route-agent-support-inbox');
+		expect(tc.status).toBe('verified');
+		expect(tc.totalRuns).toBe(3);
+		// The same text that LangTracer stores for the case. The trial without a route is not evaluated.
+		const expectation = 'Routes to one of: agent, clarify:agent';
+		expect(tc.buildExpectations).toEqual([
+			expect.objectContaining({ expectation, passCount: 1, evaluatedCount: 2 }),
+		]);
+		expect(tc.buildExpectationResultsPerRun).toEqual([
+			[
+				{
+					expectation,
+					pass: true,
+					reason: 'Route agent from build-agent call. Judge: It builds an Agent.',
+				},
+			],
+			[
+				{
+					expectation,
+					pass: false,
+					reason: 'Route workflow from build-workflow call.',
+					attribution: 'builder_issue',
+				},
+			],
+			[
+				{
+					expectation,
+					pass: false,
+					reason:
+						'Not graded: no route from end of turn (timed-out), judge failed (Run timed out).',
+					incomplete: true,
+					attribution: 'timeout',
+				},
+			],
+		]);
+	});
+
+	it('marks a case with no graded trial as not verified', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const jsonPath = writeRoutingEvalResults(
+			dir,
+			[
+				{
+					routingCase,
+					trials: [
+						{
+							resolution: {
+								route: 'none',
+								evidence: 'end of turn (completed), judge failed',
+								judgeError: 'judge overloaded',
+							},
+							passed: false,
+							turn: { streamStatus: 'completed' },
+						},
+					],
+				},
+			],
+			1,
+			1234,
+		);
+		const tc = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8')).testCases[0];
+
+		expect(tc.status).toBe('notVerified');
+		expect(tc.buildExpectationResultsPerRun[0]?.[0]).toMatchObject({
+			incomplete: true,
+			attribution: 'verification_gap',
+		});
 	});
 });

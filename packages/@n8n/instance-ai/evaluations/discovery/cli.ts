@@ -7,6 +7,7 @@
 //   pnpm eval:discovery --filter slack-oauth --verbose
 //   pnpm eval:discovery --trials 5
 //   pnpm eval:discovery --cases-dir <dir>              # routing mode
+//   pnpm eval:discovery --cases-dir <dir> --output-dir <dir>
 //
 // Loads scenarios from evaluations/data/discovery/, runs each scenario × N
 // trials via the in-process runner, reports per-scenario pass-rates, exits
@@ -17,8 +18,10 @@
 // the format LangTracer exports. A judge ends each trial as soon as the
 // Assistant picks a route. When a case has stage directions, the user proxy
 // answers up to 2 accepted questions: on the card in the same run, or in a
-// reply turn of the same thread after a question in text. The CLI prints a pass rate per bucket.
-// It always exits 0: it measures routing and does not gate a merge.
+// reply turn of the same thread after a question in text. The CLI prints a pass rate per bucket,
+// and per clarity level in each bucket. `--output-dir` also writes `eval-results.json` for
+// LangTracer (see ../routing/eval-results.ts). It always exits 0: it measures routing and does
+// not gate a merge.
 // ---------------------------------------------------------------------------
 
 import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
@@ -30,9 +33,10 @@ import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
 import {
 	loadRoutingCases,
 	ROUTING_BUCKETS,
-	type RoutingBucket,
+	ROUTING_CLARITIES,
 	type RoutingCase,
 } from '../routing/cases';
+import { writeRoutingEvalResults, type RoutingCaseResult } from '../routing/eval-results';
 import {
 	afterQuestion,
 	answeredQuestions,
@@ -66,6 +70,8 @@ interface CliArgs {
 	failOnZeroPass: boolean;
 	/** Folder of routing cases. Set switches the CLI to routing mode. */
 	casesDir?: string;
+	/** Routing mode writes `eval-results.json` here. */
+	outputDir?: string;
 }
 
 const DEFAULT_MODEL = process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-6';
@@ -165,6 +171,9 @@ function parseArgs(argv: string[]): CliArgs {
 					console.error('--cases-dir needs a directory of routing cases.');
 					process.exit(1);
 				}
+				break;
+			case '--output-dir':
+				args.outputDir = argv[++i];
 				break;
 			default:
 				break;
@@ -404,7 +413,8 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 		`Running ${String(cases.length)} routing case(s) × ${String(args.trials)} trial(s) (model: ${args.modelId}, concurrency: ${String(args.concurrency)}).\n`,
 	);
 
-	const results: Array<{ bucket: RoutingBucket; passed: boolean }> = [];
+	const startedAt = Date.now();
+	const results: Array<RoutingCaseResult & { passed: boolean }> = [];
 	let runErrors = 0;
 	let judgeErrors = 0;
 
@@ -433,19 +443,33 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 			if (turn.runError) console.log(`     run error: ${turn.runError}`);
 		}
 
-		results.push({ bucket: routingCase.bucket, passed });
+		results.push({ routingCase, trials, passed });
 	}
 
 	console.log('\n=== Routing summary (a case passes when 2/3 of its trials pass) ===');
 	const summaryLine = (name: string, rows: typeof results) =>
 		console.log(`  ${name.padEnd(8)} ${percent(rows.filter((r) => r.passed).length, rows.length)}`);
 	for (const name of ROUTING_BUCKETS) {
-		const rows = results.filter((r) => r.bucket === name);
-		if (rows.length > 0) summaryLine(name, rows);
+		const rows = results.filter((r) => r.routingCase.bucket === name);
+		if (rows.length === 0) continue;
+		summaryLine(name, rows);
+		for (const clarity of ROUTING_CLARITIES) {
+			const cell = rows.filter((r) => r.routingCase.clarity === clarity);
+			if (cell.length > 0) summaryLine(`  ${clarity}`, cell);
+		}
 	}
 	summaryLine('total', results);
 	if (runErrors > 0 || judgeErrors > 0) {
 		console.log(`Errored trials: ${String(runErrors)} run, ${String(judgeErrors)} judge.`);
+	}
+	if (args.outputDir) {
+		const jsonPath = writeRoutingEvalResults(
+			args.outputDir,
+			results,
+			args.trials,
+			Date.now() - startedAt,
+		);
+		console.log(`Results: ${jsonPath}`);
 	}
 }
 
