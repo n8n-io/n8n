@@ -156,9 +156,9 @@ function onDrop(files: File[] | null, event: DragEvent) {
 	flex: 1;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--spacing--md);
-	padding: var(--spacing--xl);
+	padding: var(--spacing--md) var(--spacing--lg);
 	min-width: 0;
 }
 
