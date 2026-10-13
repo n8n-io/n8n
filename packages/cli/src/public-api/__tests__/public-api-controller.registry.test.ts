@@ -33,6 +33,7 @@ import {
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
+import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -58,6 +59,7 @@ describe('PublicApiControllerRegistry', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			eventService,
+			mock<PublicApiRateLimitService>({ createMiddlewares: () => [] }),
 		).activate(router, 'v1');
 		// mirrors the production mount, `apiController.use('/api/v1', ..., controllerRouter)`
 		app.use('/api/v1', router);
