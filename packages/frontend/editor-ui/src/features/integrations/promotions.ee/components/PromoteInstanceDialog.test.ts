@@ -1,6 +1,6 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -61,6 +61,23 @@ describe('PromoteInstanceDialog', () => {
 
 		await userEvent.type(input, 'Deploy today');
 		expect(getByTestId('promote-confirm-button')).toBeEnabled();
+	});
+
+	it('submits the body form from the footer button', async () => {
+		api.promotePackage.mockResolvedValue(promoteResult('main'));
+		const { findByTestId, getByTestId } = renderComponent();
+
+		await userEvent.type(await findByTestId('promote-commit-message'), 'Deploy today');
+		const button = getByTestId('promote-confirm-button');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'promote-instance-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() =>
+			expect(api.promotePackage).toHaveBeenCalledWith(expect.anything(), 'connection-1', {
+				commitMessage: 'Deploy today',
+			}),
+		);
 	});
 
 	it('promotes with the trimmed message and reports success', async () => {
