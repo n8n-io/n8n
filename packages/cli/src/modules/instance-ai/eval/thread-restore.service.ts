@@ -280,8 +280,8 @@ export class EvalThreadRestoreService {
 	}
 
 	/** Recreate each seed agent from its config. A seed skill body becomes a new
-	 *  skill in the thread project, and the agent ref points to the new id. Rolls
-	 *  back on failure.
+	 *  skill of that agent only, and the agent ref points to the new id. Deleting
+	 *  the agent deletes the skill, so a rollback on failure leaves no skills behind.
 	 *  Names are not uniquified as seed data tables' are; see `remapSeedArtifactIds`. */
 	async restoreAgents(
 		agents: InstanceAiEvalSeedAgent[],
