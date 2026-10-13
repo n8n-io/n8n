@@ -82,6 +82,8 @@ describe('AgentRepository', () => {
 	});
 
 	afterEach(async () => {
+		// The rollout keeps the flag it read, so set it back off for the next test.
+		await setSkillsHubFlag(false);
 		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
