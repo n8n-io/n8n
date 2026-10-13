@@ -174,6 +174,7 @@ function onInteractOutside(event: Event) {
 
 		<N8nDialogBody
 			ref="bodyRoot"
+			:class="[$style.body, hasFooter && $style.bodyAboveFooter]"
 			:data-flush="props.bodyFlush ? 'true' : undefined"
 			:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 			data-testid="agent-modal-body"
@@ -212,15 +213,8 @@ function onInteractOutside(event: Event) {
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
-.dialog {
-	/* Picker lists read these so their scrollbar can sit on the dialog edge. */
-	--agent-modal-body--padding-inline: var(--spacing--lg);
-	--agent-modal-body--padding-block-end: var(--spacing--md);
-}
-
-.dialog.dialog {
+[role='dialog'].dialog {
 	--n8n-dialog-region--padding: 0;
-	/* The dialog content rule sets these from its own padding. Match the header inset instead. */
 	--n8n-dialog-close--inset-block-start: calc(
 		var(--spacing--md) + (var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
 	);
@@ -231,9 +225,6 @@ function onInteractOutside(event: Event) {
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--md) var(--spacing--lg);
-}
-
-.header.header {
 	padding-inline-end: calc(
 		var(--spacing--lg) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs)
 	);
@@ -302,8 +293,9 @@ function onInteractOutside(event: Event) {
 	padding: var(--spacing--md) var(--spacing--lg);
 }
 
-/* One body. The design-system body is the scroll owner. Header bottom padding is the space above it. */
-.dialog :global([data-slot='dialog-body']) {
+.body {
+	--agent-modal-body--padding-inline: var(--spacing--lg);
+	--agent-modal-body--padding-block-end: var(--spacing--md);
 	box-sizing: border-box;
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
@@ -313,24 +305,20 @@ function onInteractOutside(event: Event) {
 	@include scrollbar-mixins.scroll-bar;
 }
 
-.dialog:global(:has([data-slot='dialog-footer'])) {
+.bodyAboveFooter[data-slot='dialog-body'][data-scrollable] {
 	--agent-modal-body--padding-block-end: 0;
-}
-
-.dialog:global(:has([data-slot='dialog-footer'])) :global([data-slot='dialog-body']) {
 	padding-block-end: 0;
 }
 
-.dialog:global(:has([data-slot='dialog-body'][data-flush='true']))
-	:global([data-slot='dialog-body']) {
+.body[data-flush='true'][data-slot='dialog-body'][data-scrollable] {
 	padding: 0;
 }
 
-.dialog :global([data-slot='dialog-body'][data-scrollable='false']) {
+.body[data-scrollable='false'] {
 	overflow: hidden;
 }
 
-.dialog :global([data-slot='dialog-body'] .n8n-markdown) {
+.body :global(.n8n-markdown) {
 	@include scrollbar-mixins.scroll-bar;
 }
 
@@ -354,15 +342,15 @@ function onInteractOutside(event: Event) {
 }
 
 @media (max-width: 480px) {
-	.dialog {
+	.body {
 		--agent-modal-body--padding-inline: var(--spacing--md);
 	}
 
-	.dialog.dialog {
+	[role='dialog'].dialog {
 		--n8n-dialog-close--inset-inline-end: var(--spacing--md);
 	}
 
-	.header.header {
+	.header {
 		padding-inline-start: var(--spacing--md);
 		padding-inline-end: calc(
 			var(--spacing--md) + var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs)
@@ -382,7 +370,7 @@ function onInteractOutside(event: Event) {
 	.footerActions {
 		width: 100%;
 
-		:global(.button) {
+		button {
 			flex: 1;
 		}
 	}
