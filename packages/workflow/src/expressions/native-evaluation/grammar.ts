@@ -199,7 +199,13 @@ export const RESERVED_NAMES = new Set<string>([
 	'undefined',
 ]);
 
-export const TIME_MEMBERS = captureGetters(DateTime.prototype, [
+// A test that mocks luxon leaves DateTime without a prototype; the lists are
+// then empty and every time root declines.
+const capturedProto: unknown = Reflect.get(DateTime ?? {}, 'prototype');
+const dateTimeProto: object =
+	typeof capturedProto === 'object' && capturedProto !== null ? capturedProto : {};
+
+export const TIME_MEMBERS = captureGetters(dateTimeProto, [
 	'year',
 	'month',
 	'day',
@@ -218,7 +224,7 @@ export const TIME_MEMBERS = captureGetters(DateTime.prototype, [
 // which the grammar has no literal for. toString() is toISO(). Like
 // CALLABLE_METHODS, the names stay disjoint from the expression extensions
 // (plus/minus/format are extensions in the engines, not Luxon's).
-export const TIME_METHODS = captureMethods(DateTime.prototype, [
+export const TIME_METHODS = captureMethods(dateTimeProto, [
 	'toMillis',
 	'toSeconds',
 	'toUnixInteger',
