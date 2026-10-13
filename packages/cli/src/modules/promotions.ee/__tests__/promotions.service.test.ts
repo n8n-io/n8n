@@ -34,7 +34,7 @@ import { WorkingCopyUpdater } from '../working-copy-updater';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
-	return { ...fs, rm: vi.fn(fs.rm) };
+	return { ...fs, rm: vi.fn(fs.rm), stat: vi.fn(fs.stat) };
 });
 
 const CONFIG_ID = 'cfg1';
@@ -149,6 +149,7 @@ describe('PromotionsService', () => {
 
 	afterEach(async () => {
 		vi.mocked(rm).mockReset();
+		vi.mocked(stat).mockReset();
 		await rm(n8nFolder, { recursive: true, force: true });
 	});
 
@@ -668,17 +669,23 @@ describe('PromotionsService', () => {
 			);
 		});
 
-		it('refuses a selection when the branch has no package', async () => {
-			await mkdir(repositoryFolder, { recursive: true });
+		it('fails without exporting when the package folder cannot be read', async () => {
+			const readError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+			const { stat: realStat } =
+				await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+			vi.mocked(stat).mockImplementation(async (target, options) => {
+				if (target === packageFolder) throw readError;
+				return await realStat(target, options);
+			});
 			ownedByP1('w1');
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w1'],
-					commitMessage: 'first selective',
+					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('Promote the instance first');
+			).rejects.toBe(readError);
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
