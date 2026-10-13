@@ -1,7 +1,9 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
-import type { RuntimeBridge } from '../../types';
+import type { BridgeConfig, RuntimeBridge } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -14,8 +16,8 @@ const NATIVE_OVERFLOW = /Maximum call stack size exceeded/;
 describe('QuickJsBridge after a host error in a guest call', () => {
 	const bridges: RuntimeBridge[] = [];
 
-	async function newBridge(): Promise<QuickJsBridge> {
-		const bridge = new QuickJsBridge({ timeout: 5000 });
+	async function newBridge(config: BridgeConfig = {}): Promise<QuickJsBridge> {
+		const bridge = new QuickJsBridge({ timeout: 5000, ...config });
 		bridges.push(bridge);
 		await bridge.initialize();
 		return bridge;
@@ -87,7 +89,30 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		await waitForReplacementModule();
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
 	});
+
+	it('should rebuild the runtime from the runtime bundle that the bridge was given', async () => {
+		const bundle = await readRuntimeBundle();
+		const markedBundle = (marker: string) => `${bundle}\n;globalThis.__bundleMarker = '${marker}';`;
+		const bridge = await newBridge({ runtimeBundle: markedBundle('own') });
+		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
+
+		// This bridge initializes last, so the process-wide bundle cache holds its bundle.
+		await newBridge({ runtimeBundle: markedBundle('other') });
+
+		expect(bridge.execute('return globalThis.__bundleMarker;', {})).toBe('own');
+	});
 });
+
+async function readRuntimeBundle(): Promise<string> {
+	let dir = __dirname;
+	while (dir !== path.dirname(dir)) {
+		try {
+			return await readFile(path.join(dir, 'dist', 'bundle', 'runtime.iife.js'), 'utf-8');
+		} catch {}
+		dir = path.dirname(dir);
+	}
+	throw new Error('runtime bundle not found for test setup');
+}
 
 describe('ExpressionEvaluator on QuickJS after native stack overflows', () => {
 	it('should keep evaluating in later executions', async () => {

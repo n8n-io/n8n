@@ -511,6 +511,9 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * one on a new module.
 	 */
 	private broken = false;
+
+	/** The bundle that the runtime loaded. A rebuild loads it again. */
+	private runtimeBundle: string | undefined;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
 
@@ -606,6 +609,7 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Load runtime bundle (DateTime, extend, SafeObject, proxy system, buildContext)
 		this.loadRuntimeBundle(runtimeBundle);
+		this.runtimeBundle = runtimeBundle;
 
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
@@ -1413,7 +1417,12 @@ export class QuickJsBridge implements RuntimeBridge {
 				'Expression evaluation failed: the expression engine is restarting after an earlier error. Try again.',
 			);
 		}
-		this.initializeSync();
+		if (this.runtimeBundle === undefined) {
+			throw new Error('Bridge not initialized. Call initialize() first.');
+		}
+		// The process-wide bundle cache holds the bundle of the bridge that
+		// initialized last, which can differ from the bundle of this bridge.
+		this.setupContext(_quickjsWasm, this.runtimeBundle);
 	}
 
 	/**
