@@ -80,8 +80,15 @@ function issue(
 	path: string,
 	capability: AgentConfigValidationIssue['capability'],
 	reason?: string,
+	subject?: string,
 ): AgentConfigValidationIssue {
-	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
+	return {
+		code,
+		path,
+		capability,
+		...(reason === undefined ? {} : { reason }),
+		...(subject === undefined ? {} : { subject }),
+	};
 }
 
 function agentIssue(
@@ -681,6 +688,7 @@ export class AgentValidationService {
 					`tools.${index}.node.nodeType`,
 					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
 					ownViolation ? restrictionReason(ownViolation) : 'restricted_by_inline_tool',
+					violation.subject,
 				),
 			);
 		}
@@ -697,6 +705,7 @@ export class AgentValidationService {
 					`mcpServers.${index}`,
 					{ kind: 'mcpServer', id: servers[index].name, index },
 					restrictionReason(violation),
+					violation.subject,
 				),
 			);
 		}
