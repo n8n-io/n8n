@@ -29,9 +29,12 @@ one-paragraph description.
   and what happens when it's unset or wrong. Don't explain why the code is
   written the way it is.
 - **No code references.** No file names, class names, function names,
-  constants, license keys, or other identifiers from the code base. The
-  reader can't open the source. Details for developers go in a regular `//`
-  comment on the implementation, not in the JSDoc.
+  constants, license keys, or other internals the reader can't open. Values
+  the operator types into the variable are fine and often needed, for example
+  a credential type ID like `googleOAuth2Api` or a mode like `postgresdb`.
+  The test: would the operator paste this into a config file, or would they
+  need the source to know what it means? Details for developers go in a
+  regular `//` comment on the implementation, not in the JSDoc.
 - **No attack scenarios.** Say what the setting protects, not how an
   attacker would exploit it. This is a public page.
 - **Don't repeat the default.** The default renders in its own column. Don't
