@@ -287,6 +287,47 @@ describe('AgentSkillsService', () => {
 			skillService.save.mockResolvedValue(saveResult());
 		});
 
+		it('changes where the skill can be added without saving a new version', async () => {
+			const agent = givenAgent({
+				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+			});
+			skillRefs.availabilityOf.mockResolvedValue('project');
+
+			await service.updateSkill(
+				agentId,
+				projectId,
+				'skill_a',
+				{},
+				context,
+				undefined,
+				undefined,
+				'agent',
+			);
+
+			expect(skillService.assertCanEdit).toHaveBeenCalledWith(user, ['skill_a']);
+			expect(skillRefs.setAvailability).toHaveBeenCalledWith(agent, 'skill_a', 'agent', {});
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing when the skill keeps where it can be added', async () => {
+			givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
+			skillRefs.availabilityOf.mockResolvedValue('agent');
+
+			await service.updateSkill(
+				agentId,
+				projectId,
+				'skill_a',
+				{},
+				context,
+				undefined,
+				undefined,
+				'agent',
+			);
+
+			expect(skillRefs.setAvailability).not.toHaveBeenCalled();
+			expect(skillService.save).not.toHaveBeenCalled();
+		});
+
 		it('updates the body on the agent row when the skills hub is off', async () => {
 			Object.assign(skillRefs, { usesSkillsHub: false });
 			const agent = givenAgent({

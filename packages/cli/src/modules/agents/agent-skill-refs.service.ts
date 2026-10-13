@@ -7,7 +7,7 @@ import type {
 import { AgentsConfig } from '@n8n/config';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { deepCopy, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -321,11 +321,7 @@ export class AgentSkillRefsService {
 			ids.push(
 				await this.skillService.create(
 					{
-						target: {
-							userId: null,
-							projectId: availableTo === 'instance' ? null : agent.projectId,
-							agentId: availableTo === 'agent' ? agent.id : null,
-						},
+						target: targetFor(agent, availableTo),
 						skill,
 						source: 'agent',
 						createdById: creatorId,
@@ -372,6 +368,33 @@ export class AgentSkillRefsService {
 		await this.skillService.pinForPublish(agentVersionId, versionByRef, ctx);
 	}
 
+	async availabilityOf(
+		skillId: string,
+		ctx: OperationContext,
+	): Promise<AgentSkillAvailability | undefined> {
+		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
+		if (!skill || skill.userId !== null) return undefined;
+		if (skill.agentId) return 'agent';
+		return skill.projectId ? 'project' : 'instance';
+	}
+
+	async setAvailability(
+		agent: Pick<Agent, 'id' | 'projectId'>,
+		skillId: string,
+		availableTo: AgentSkillAvailability,
+		ctx: OperationContext,
+	): Promise<void> {
+		const otherAgentIds = (await this.skillRepository.findUsingAgentIds(skillId, ctx)).filter(
+			(id) => id !== agent.id,
+		);
+		if (otherAgentIds.length > 0) {
+			throw new ConflictError(
+				'Other agents use this skill. Detach it from those agents first, then change where it can be added.',
+			);
+		}
+		await this.skillRepository.updateTarget(skillId, targetFor(agent, availableTo), ctx);
+	}
+
 	private async writeLegacyDraft(
 		agent: Pick<Agent, 'id' | 'schema' | 'skills'>,
 		schema: StoredAgentConfig,
@@ -399,6 +422,14 @@ export class AgentSkillRefsService {
 			ctx,
 		);
 	}
+}
+
+function targetFor(agent: Pick<Agent, 'id' | 'projectId'>, availableTo: AgentSkillAvailability) {
+	return {
+		userId: null,
+		projectId: availableTo === 'instance' ? null : agent.projectId,
+		agentId: availableTo === 'agent' ? agent.id : null,
+	};
 }
 
 function readLegacyRefs(schema: StoredAgentConfig | null): AgentJsonSkillConfig[] {

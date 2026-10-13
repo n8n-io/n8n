@@ -196,6 +196,7 @@ export class AgentSkillsService {
 		context: AgentMutationTelemetryContext,
 		baseSkillHash?: string,
 		instructionEdits?: SkillInstructionEdit[],
+		availableTo?: AgentSkillAvailability,
 	): Promise<AgentSkillMutationResponse> {
 		const entity = await getAgentOrThrow(
 			this.agentRepository,
@@ -224,7 +225,16 @@ export class AgentSkillsService {
 		if ('references' in updates && !updates.references?.length) delete updated.references;
 		this.validateSkill(updated);
 
+		const nextAvailability = await this.availabilityChange(skillId, availableTo);
+		if (nextAvailability) {
+			await this.skillService.assertCanEdit(context.user, [skillId]);
+			await this.assertCanCreateSkills(context.user, entity.projectId, nextAvailability);
+		}
+
 		if (isEqual(existing, updated)) {
+			if (nextAvailability) {
+				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, {});
+			}
 			return {
 				id: skillId,
 				skill: existing,
@@ -253,6 +263,9 @@ export class AgentSkillsService {
 
 		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
+			if (nextAvailability) {
+				await this.agentSkillRefs.setAvailability(entity, skillId, nextAvailability, ctx);
+			}
 			if (pinned) {
 				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
 				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
@@ -340,6 +353,15 @@ export class AgentSkillsService {
 		);
 
 		this.logger.debug('Detached agent skill', { agentId, projectId, skillId });
+	}
+
+	private async availabilityChange(
+		skillId: string,
+		availableTo: AgentSkillAvailability | undefined,
+	): Promise<AgentSkillAvailability | undefined> {
+		if (availableTo === undefined || !this.agentSkillRefs.usesSkillsHub) return undefined;
+		const current = await this.agentSkillRefs.availabilityOf(skillId, {});
+		return current === availableTo ? undefined : availableTo;
 	}
 
 	private async updateLegacySkill(

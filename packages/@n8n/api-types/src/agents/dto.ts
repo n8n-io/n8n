@@ -10,7 +10,12 @@ import {
 } from './agent-chat-attachments.constants';
 import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integration.schema';
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
-import { agentSkillSchema, agentSkillShape, createAgentSkillSchema } from './agent-skill.schema';
+import {
+	agentSkillAvailabilitySchema,
+	agentSkillSchema,
+	agentSkillShape,
+	createAgentSkillSchema,
+} from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -200,6 +205,13 @@ const updateAgentSkillShape = {
 
 const updateAgentSkillSchema = z.object(updateAgentSkillShape).strict();
 
+const updateAttachedAgentSkillShape = {
+	...updateAgentSkillShape,
+	availableTo: agentSkillAvailabilitySchema.optional(),
+};
+
+const updateAttachedAgentSkillSchema = z.object(updateAttachedAgentSkillShape).strict();
+
 export class CreateAgentSkillDto extends Z.class(createAgentSkillSchema.shape) {
 	static override schema = createAgentSkillSchema;
 
@@ -229,6 +241,22 @@ export class UpdateAgentSkillDto extends Z.class(updateAgentSkillShape) {
 
 	static override parse(data: unknown) {
 		return updateAgentSkillSchema.parse(data);
+	}
+}
+
+export class UpdateAttachedAgentSkillDto extends Z.class(updateAttachedAgentSkillShape) {
+	static override schema = updateAttachedAgentSkillSchema;
+
+	constructor(data: z.infer<typeof updateAttachedAgentSkillSchema>) {
+		super(updateAttachedAgentSkillSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return updateAttachedAgentSkillSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return updateAttachedAgentSkillSchema.parse(data);
 	}
 }
 

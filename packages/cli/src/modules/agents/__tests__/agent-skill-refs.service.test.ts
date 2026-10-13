@@ -412,6 +412,29 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('setAvailability', () => {
+		it('moves a skill that only this agent uses', async () => {
+			skillRepository.findUsingAgentIds.mockResolvedValue(['agent-1']);
+
+			await service.setAvailability(agent, 'skill_a', 'agent', ctx);
+
+			expect(skillRepository.updateTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ userId: null, projectId: 'project-1', agentId: 'agent-1' },
+				ctx,
+			);
+		});
+
+		it('refuses to move a skill that another agent uses', async () => {
+			skillRepository.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+			await expect(service.setAvailability(agent, 'skill_a', 'instance', ctx)).rejects.toThrow(
+				'Other agents use this skill.',
+			);
+			expect(skillRepository.updateTarget).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('pinDraftForPublish', () => {
 		it('pins each draft ref to the version it runs, in draft order', async () => {
 			skillRepository.findDependencies.mockResolvedValue(

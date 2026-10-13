@@ -335,6 +335,41 @@ describe('Agent skills in the skills hub', () => {
 		expect(Object.values(skills)).toEqual([body('Private')]);
 	});
 
+	it('changes where a skill can be added only while no other agent uses it', async () => {
+		const agent = await createAgent([]);
+		const context = { user: editor, modifiedBy: 'user' as const };
+		const created = await agentSkillsService.createAndAttachSkill(
+			agent.id,
+			project.id,
+			body('Movable'),
+			context,
+		);
+
+		const update = async (availableTo: 'project' | 'agent' | 'instance') =>
+			await agentSkillsService.updateSkill(
+				agent.id,
+				project.id,
+				created.id,
+				{},
+				context,
+				undefined,
+				undefined,
+				availableTo,
+			);
+
+		await update('agent');
+		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+			projectId: project.id,
+			agentId: agent.id,
+		});
+		await update('project');
+		await createAgent([created.id]);
+		await expect(update('agent')).rejects.toThrow('Other agents use this skill.');
+		expect((await Container.get(SkillRepository).findByIds([created.id]))[0]).toMatchObject({
+			agentId: null,
+		});
+	});
+
 	it('shares the skills of a duplicated agent', async () => {
 		const skill = await createSkill(body('Shared'));
 		const original = await createAgent([skill]);
