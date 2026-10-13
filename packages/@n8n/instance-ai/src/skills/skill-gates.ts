@@ -17,10 +17,15 @@ export const CONFIG_EVAL_PLAYBOOK_SKILL_ID = 'config-eval-playbook';
  */
 export const INSTANCE_AWARENESS_SKILL_ID = 'instance-awareness';
 
+/** Skill folder ids that only work when the Agents module is active. */
+export const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
+
 /** Resolved feature flags that gate one or more runtime skills. */
 export interface InstanceAiSkillFlags {
 	configEvalsEnabled: boolean;
 	instanceContextEnabled: boolean;
+	/** Whether the host has the Agents module active. */
+	agentsModuleEnabled: boolean;
 }
 
 /** Skill ids to hide from a user's catalog given their resolved flags. */
@@ -30,5 +35,6 @@ export function disabledInstanceAiSkillIds(flags: InstanceAiSkillFlags): string[
 		disabled.push(CONFIG_EVALS_SKILL_ID, CONFIG_EVAL_PLAYBOOK_SKILL_ID);
 	}
 	if (!flags.instanceContextEnabled) disabled.push(INSTANCE_AWARENESS_SKILL_ID);
+	if (!flags.agentsModuleEnabled) disabled.push(...AGENTS_MODULE_SKILL_IDS);
 	return disabled;
 }

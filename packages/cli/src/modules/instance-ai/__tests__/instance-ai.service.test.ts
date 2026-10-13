@@ -267,6 +267,7 @@ import {
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
+	disabledInstanceAiSkillIds,
 	loadInstanceAiPromptSkills,
 	resumeAgentRun,
 	streamAgentRun,
@@ -1036,6 +1037,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(createSandbox as Mock).mockResolvedValue(sandbox);
 		(createWorkspace as Mock).mockReturnValue(workspace);
 		(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+		const agentsModuleActive = snapshotMode === 'seeded';
+		const getFromContainer = Container.get.bind(Container);
+		const containerGet = vi
+			.spyOn(Container, 'get')
+			.mockImplementation(((token: unknown) =>
+				token === ModuleRegistry
+					? { isActive: (name: string) => name !== 'agents' || agentsModuleActive }
+					: getFromContainer(token as never)) as typeof Container.get);
+		onTestFinished(() => containerGet.mockRestore());
 
 		const environment = await service.createExecutionEnvironment(
 			fakeUser,
@@ -1048,6 +1058,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			boundGates,
 			undefined,
 			resumeAgentBuild,
+		);
+		// The Agents module skills follow the module registry, not an env variable.
+		expect(disabledInstanceAiSkillIds).toHaveBeenCalledWith(
+			expect.objectContaining({ agentsModuleEnabled: agentsModuleActive }),
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
