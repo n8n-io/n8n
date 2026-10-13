@@ -63,9 +63,11 @@ const {
 	fetchUsableCredentialsMock,
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
+	loadNodeTypesIfNotLoadedMock,
 	setCredentialsMock,
 	agentPermissionsMock,
 } = vi.hoisted(() => ({
+	loadNodeTypesIfNotLoadedMock: vi.fn(),
 	fetchUsableCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
@@ -508,6 +510,9 @@ async function renderView({
 			proxyEnabled: false,
 		},
 	};
+	const { useNodeTypesStore } = await import('@/app/stores/nodeTypes.store');
+	loadNodeTypesIfNotLoadedMock.mockResolvedValue(undefined);
+	useNodeTypesStore().loadNodeTypesIfNotLoaded = loadNodeTypesIfNotLoadedMock;
 	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
 		props,
@@ -1253,6 +1258,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await expect(
 			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
 		).rejects.toThrow('save failed');
+	});
+
+	it('loads node types when the page opens', async () => {
+		loadNodeTypesIfNotLoadedMock.mockClear();
+
+		await renderView();
+
+		expect(loadNodeTypesIfNotLoadedMock).toHaveBeenCalled();
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {

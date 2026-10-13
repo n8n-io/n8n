@@ -2,7 +2,10 @@
 
 Read the [quality](../../AGENTS.md) and [testing](../AGENTS.md) instructions first. Use the [suite map](README.md#choose-a-suite) to choose a project.
 
-## Place tests by runner
+## Place suites and shared tooling
+
+- Efficiency suites can live in `../../efficiency/` and reuse the `n8n-playwright` exports.
+- Keep shared reporting and lifecycle fixtures in this package. Do not import the product configuration from another workspace.
 
 - Keep product UI and API journeys in `tests/e2e/`.
 - Keep database, queue, multi-main, encryption, and process lifecycle tests in `tests/infrastructure/`.

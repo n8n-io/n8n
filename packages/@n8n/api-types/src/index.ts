@@ -343,6 +343,7 @@ export type {
 	BreakingChangeVersion,
 	MigrationFindingStatus,
 	MigrationFindingTriageStatus,
+	MigrationFindingListedStatus,
 	WorkflowMigrationResult,
 } from './schemas/breaking-changes.schema';
 
@@ -352,6 +353,7 @@ export {
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
+	migrationFindingListedStatusSchema,
 	migrationOwnerSourceSchema,
 } from './schemas/breaking-changes.schema';
 
@@ -735,11 +737,17 @@ export {
 } from './schemas/instance-ai-setup-credential-selection';
 
 export type {
+	McpRegistryDiscoveredConnection,
+	McpRegistryDiscoveredTool,
+	McpRegistryDiscoveryFailureReason,
+	McpRegistryDiscoveryRequest,
+	McpRegistryDiscoveryResponse,
 	McpRegistryServerStatus,
 	McpRegistryServerIconResponse,
 	McpRegistryServerToolResponse,
 	McpRegistryServerResponse,
 } from './schemas/mcp-registry.schema';
+export { mcpRegistryDiscoveryRequestSchema } from './schemas/mcp-registry.schema';
 
 export {
 	createInitialState,
@@ -749,6 +757,7 @@ export {
 	stateFromAgentTree,
 	normalizeLegacyReasoningTimeline,
 	normalizeAgentTree,
+	orchestratorAgentId,
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState } from './schemas/agent-run-reducer';

@@ -24,6 +24,7 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 			data: {
 				tools: [],
 				mcpServers: [],
+				projectId: '',
 				onConfirm: () => {},
 			},
 		},
