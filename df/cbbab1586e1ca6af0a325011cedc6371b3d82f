@@ -1,0 +1,28 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_2397c9db9d923f::t_b2c6c10b48639a 8,29,32,34
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_2397c9db9d923f::t_b2c6c10b48639a 28-30,275-289
+  s_2397c9db9d923f::t_de3dd7fa821e71 27
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow-resolver.test.ts
+  s_2397c9db9d923f::t_51176db24b2da2 13-16,100-101,106-107,122-126,134-163,177-181,202-206,226-227,247-248,266-267,275,285-289,306-307,324-325,344-345,362-363,379-380
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_2397c9db9d923f::t_3f80ef77570c1f 177,179-182,185,196-211,372-376,388,390-393,397,417-422,426-429
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_2397c9db9d923f::t_b2c6c10b48639a 15,20-24,47-49,53-54,73,76-80,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dfcbbab1586e1ca6af0a325011cedc6371b3d82f",
+  "prompts": {},
+  "sessions": {
+    "s_2397c9db9d923f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

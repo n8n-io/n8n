@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Jenkins/test/Jenkins.node.test.ts
+  s_2e1fa95fc44f8f::t_85559107f4bde9 45-50
+packages/nodes-base/nodes/Jenkins/Jenkins.node.ts
+  s_2e1fa95fc44f8f::t_b9b2a144f5beea 401-411
+  s_2e1fa95fc44f8f::t_d84ecf7508c9e2 450-453
+  s_2e1fa95fc44f8f::t_2e7ae10eb3d5cd 427
+  s_2e1fa95fc44f8f::t_ca8374284f8aa7 14,16
+  s_2e1fa95fc44f8f::t_c5aaf31002e2df 502
+  s_2e1fa95fc44f8f::t_d70554517eba63 632,637,640-645
+  s_2e1fa95fc44f8f::t_a9fac37c088fbb 516
+  s_2e1fa95fc44f8f::t_fd633ebab88510 541,564,584,589,594,606,618,623
+packages/nodes-base/nodes/Jenkins/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_7269fa6aa4cb56 9-10,12,14-16,21,25,28
+  s_2e1fa95fc44f8f::t_deafbf435d593d 37
+packages/nodes-base/nodes/Jenkins/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_c3d38475c72601 2
+  s_2e1fa95fc44f8f::t_bbb9f9b0cd4960 5,16,23-37
+  s_2e1fa95fc44f8f::t_e128a32dce1faf 19
+  s_2e1fa95fc44f8f::t_f4d05c96899d28 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f843a589e018d6acecb11f5d580c0896b911e21",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

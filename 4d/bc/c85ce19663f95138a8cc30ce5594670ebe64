@@ -1,0 +1,72 @@
+packages/@n8n/db/src/repositories/__tests__/idempotency-key.repository.test.ts
+  s_21273752556f4e::t_431e6f5c65f503 17-28,32-41,44,46-47,49-53,55-59,66,72
+  s_21273752556f4e::t_2fec614c7e4618 16,45,48,54,60,64-65,67,74
+  s_4becfe847c1137::t_730688950dedfb 1-15,29-31,42-43,61-63,68-71,73,75-79
+packages/@n8n/db/src/entities/index.ts
+  s_4becfe847c1137::t_d0292c69238e5b 135
+  s_4becfe847c1137::t_5731a44d704a37 43
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_4becfe847c1137::t_85f20bcfe5afb6 38
+  s_4becfe847c1137::t_0f8fd36aa54f03 6
+packages/cli/test/integration/public-api/idempotency-key-cleanup.test.ts
+  s_4becfe847c1137::t_02694db95396d0 1-8,10-22,24-49,51-56,58-63,65-70,73,76-81,84-85,87-105
+  s_21273752556f4e::t_24abe0fd008a36 23
+  s_21273752556f4e::t_0f10fb399cf5fb 64,71,74-75
+  s_4becfe847c1137::t_f27c8491373ae1 72,83,86
+  s_21273752556f4e::t_548b4553f281e6 9
+  s_21273752556f4e::t_c985ce87ce615a 57
+  s_21273752556f4e::t_30a98cb9e3d9e3 50
+  s_21273752556f4e::t_44841aca6dd501 82
+packages/@n8n/db/src/entities/idempotency-key.ts
+  s_4becfe847c1137::t_9b77e7c8973017 1,9-13
+  s_4becfe847c1137::t_6ff0edff0c1555 14
+packages/cli/src/public-api/__tests__/idempotency-key-cleanup.task.test.ts
+  s_4becfe847c1137::t_52d05f5b5174f6 1-2,4-6,8-9,11-16,18-29,32-35,38-42,44-47,49-52,54-59,62-66
+  s_21273752556f4e::t_fed47d4757cb62 3,7,10,17,31,36-37,43,53,61
+  s_21273752556f4e::t_7ebee18f09eec7 30,48,60
+packages/cli/src/public-api/idempotency-key-cleanup.task.ts
+  s_21273752556f4e::t_9e2a9629aebbe1 39
+  s_21273752556f4e::t_d4f45088ddb24a 3,7-8,34,41
+  s_4becfe847c1137::t_46429cdc342af5 1-2,4-6,9-33,35-38,40,42,45-47
+  s_21273752556f4e::t_84348ea3937c02 43-44
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_4becfe847c1137::t_a4c31c6bd6d361 4
+  s_4becfe847c1137::t_e726dc64d5a884 33
+packages/@n8n/db/src/repositories/idempotency-key.repository.ts
+  s_4becfe847c1137::t_c178534d2ccdea 6,13-14,17,20,37
+  s_21273752556f4e::t_20b742a4d91d31 15,18-19,21-22,29
+  s_4becfe847c1137::t_74e9391a793cf2 16
+  s_21273752556f4e::t_b4dba6b7c4375c 23-28,30-36
+  s_4becfe847c1137::t_ae156a2d5fe4f7 38
+packages/cli/src/public-api/__tests__/idempotency-key.service.test.ts
+  s_21273752556f4e::t_8dec98671003d8 1-48
+packages/@n8n/config/src/configs/logging.config.ts
+  s_4becfe847c1137::t_1d2a7197a69b63 61
+packages/cli/src/public-api/idempotency-key.service.ts
+  s_21273752556f4e::t_63170fde8892cb 1-19,21,24,28-29
+  s_21273752556f4e::t_fd031638091636 20,22-23,25-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dbcc85ce19663f95138a8cc30ce5594670ebe64",
+  "prompts": {},
+  "sessions": {
+    "s_21273752556f4e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9a0dcb6-48c9-4a0a-97b7-4ae46c130370",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    },
+    "s_4becfe847c1137": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bfb21754-81f6-4f48-9f32-7720fc4b4e6a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

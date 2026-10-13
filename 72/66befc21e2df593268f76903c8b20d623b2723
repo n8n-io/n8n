@@ -1,0 +1,47 @@
+packages/nodes-base/nodes/Chargebee/test/workflow/Chargebee.workflow.test.ts
+  s_2e1fa95fc44f8f::t_740850d8f355d9 1-39
+packages/nodes-base/nodes/Cal/test/CalTrigger.requests.test.ts
+  s_2e1fa95fc44f8f::t_1a775213106309 1-64
+  s_2e1fa95fc44f8f::t_9ce9a6b5e1f6fb 65-67
+  s_011c996fdfa425::t_648a81ad032387 68-69
+packages/nodes-base/nodes/Box/__test__/workflow/Box.workflow.test.ts
+  s_2e1fa95fc44f8f::t_390e705570b1a8 1-66
+  s_2e1fa95fc44f8f::t_724ca43b2da15d 67-69
+  s_097953de0a96e2::t_e7c2b8f28681bf 70
+packages/nodes-base/nodes/Box/__test__/workflow/requests.workflow.json
+  s_097953de0a96e2::t_e54191653881dc 1-451
+packages/nodes-base/nodes/Chargebee/test/workflow/requests.workflow.json
+  s_097953de0a96e2::t_48b745fafa1793 1-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7266befc21e2df593268f76903c8b20d623b2723",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_097953de0a96e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aac90f73f2622c71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

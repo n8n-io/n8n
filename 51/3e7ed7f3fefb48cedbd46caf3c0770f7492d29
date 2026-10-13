@@ -1,0 +1,182 @@
+packages/@n8n/cli/src/commands/package/export.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 77,81-82,84,87-88,113-114,136-137,146-147
+packages/cli/src/events/maps/relay.event-map.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 149,161
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1404,1419,1427
+packages/@n8n/telemetry/src/events/agents.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 18-45,206-209,249-252,254,269-275
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 9,12,26,48,71,107-112,115,121,127,131,155,185
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 31-32,250,254-255
+packages/workflow/src/expressions/native-evaluation/parser.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 8,11,14,17,30-33,37,57-61,73-90,195-226,245-247,252-262,271,326-332,334-335,341-343,357,359-360
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/auto-included-workflow-resolver.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 18,110,366
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-dependency-resolver.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 71,89,105,133,180,199,219
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 450,906
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_f6cb9d564dd95e::t_5724558f57b282 3,7,11-19,22-33,35,49
+packages/cli/test/integration/public-api/n8n-packages-export-agents.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1-380
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1,39-42,44-45,47-62,166-173,175-185
+packages/cli/src/modules/agents/__tests__/agent-tool-approval.service.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 89-122,125-126,139,142-146
+packages/cli/src/interfaces.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 224,262
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-dependency-resolver.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 9,20,31
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 33-34,200,208-209,309-310
+packages/workflow/src/expressions/native-evaluation/index.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 5,10-16,24-32,169-170,174,188
+packages/workflow/test/native-evaluation-corpus-coverage.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 21,75,100-105,248-260
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1312,1332,1335,1354,1378,1702
+packages/cli/src/modules/n8n-packages/entities/agent/__tests__/agent.exporter.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 14,76-80,115,122,130,146
+packages/nodes-base/nodes/Databricks/transport/index.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 7-9
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 2,15,47,66-67,94,137,398-402,607-617,661-664,806-807,870-871,1889-1894,1912-1914
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 3235,3239,3255,3270,3279
+packages/cli/src/modules/n8n-packages/__tests__/export-stable-targets.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 176
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1,10,30,57,68,188-198
+packages/@n8n/cli/docs/commands/package.md
+  s_f6cb9d564dd95e::t_5724558f57b282 32-33,40-47,49-53
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1268
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-package.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 27,132-134,137
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 311,980
+packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 143
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 336,341,348,415,420,425
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 11,23,219
+packages/cli/src/modules/agents/utils/agent-execution-counter.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 12-13,22,30,38
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-tags.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 202
+packages/nodes-base/nodes/Databricks/methods/listSearch.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1-2,4,23-30,455,460,486,548,574-765
+packages/@n8n/cli/src/client.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 53-54,756-757,767-768
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 190,196,219,237,253
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 20-21,235,270,275-276,294,558,627-628
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-data-tables.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 215
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 14,50-51,82,148,159,198-199,202,207-213,219-224,230-237,244,246,248,252,256,270-273,276,286,294,305,325,330,332,353,371,380,386,406,418,427-499,689,697,700
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 112-113,125-126,139,141,144-154,156,158-163,165-173,175-180,183-196,209,250,288,317,355,366-367,369-375,378-389,401,409-410,415,418-425,429-445
+packages/workflow/src/expressions/native-evaluation/evaluator.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 6,9-10,29-52,120-121,144,156-171,209-210,212,250-251,336-340,351-356,369,378,383-419,432-434,436,439,441,449-450,463-465,471-477,480-481,485,487,489,493,498,500,504,506,508,510,512,514-516,518-527,536,538
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 19-20,51,79,97,116,120,125,135,139,144,154-155,159,163,172-173,191,210,228,245,250,254,263,281,298,316,333,351,376
+packages/nodes-base/nodes/Databricks/actions/lakebase/helpers.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1-38
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-version-policy.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 4,7-8,49,52-53,57,59,69
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-version-policy.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 3,20,42,64
+packages/@n8n/permissions/src/constants.ee.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 107
+packages/cli/src/telemetry/index.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 74-79,81,85,107,351,361-367,374-386,467,474-483,498,502-513,515-521
+packages/workflow/src/expressions/native-evaluation/grammar.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 43-54,114-116,158-171,184-194
+  s_f6cb9d564dd95e::t_f04c449e3c984a 195
+packages/nodes-base/nodes/Databricks/transport/lakebase.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 37-45,54
+packages/workflow/test/native-evaluation-fuzz.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 18,87-120,126-134
+packages/nodes-base/nodes/Databricks/resources/lakebase/parameters.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1-146
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 18,31,34-35,45
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 184,282
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 4,29-30
+packages/nodes-base/nodes/Databricks/test/lakebasePickers.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1-698
+packages/workflow/test/native-evaluation-corpus.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 191-235,284-295,353-392,407-409
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 72,94,111,128,144,161,183,219,251,274,295,316,349,384,409,438
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 38,58-59,138,154,164,221,229-230,250,258-259,353,361-362,391,402,410-411,423,433,489,497-498,518,526-527,547,555-556,576,584-585
+packages/cli/src/modules/agents/agent-tool-approval.service.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 25-26,41
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 2-8,51,53,56-66
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 16,80,107,130,150,167,184,200,241,293,326,360,382,407
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 4-8,12-18,139-144,147,151,155,158-159,164,168
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 17,113,136,155
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_f6cb9d564dd95e::t_5724558f57b282 4-6,8-17,40-42,52,63,70-75,78,86-95
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 97-98,100,102,106-107,109,111,113,206-207,209,235,245-246,252-253,445
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1113,1149
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 10,29,62,75
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 16,51,67,141,149,229,238,249
+packages/nodes-base/nodes/Databricks/Databricks.node.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 24,116
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1903,1960-1976,3932-3943,3945-3953,3955-3964,3966-3987
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder.exporter.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 53,72,107,155,198,221
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 10,118,187
+packages/nodes-base/nodes/Databricks/transport/lakebaseEndpoint.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 1-89
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 10,12-13,64-67,82-85,215-217,258-282,476-586,601
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 21,26,34,45-47,90,102,108-112,115-118,123,131,138-139,149
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 23,198,240,264,630,700,838-839
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 553,584,632,673,736,967,980,1026,1054,1077,1105,1132-1133,1159
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 486,494,499-510,515-537,540-546,552-553,559,562-566,570-577,600,610,613-618,631,640,642-651,709-715,721,738,747-751,753-772,774,819,831,849,858
+packages/nodes-base/nodes/Databricks/resources/index.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 15
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_f6cb9d564dd95e::t_5724558f57b282 6,12,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "513e7ed7f3fefb48cedbd46caf3c0770f7492d29",
+  "prompts": {},
+  "sessions": {
+    "s_f6cb9d564dd95e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3ea24e9-93d6-4835-b1aa-4d5102b51b13",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
