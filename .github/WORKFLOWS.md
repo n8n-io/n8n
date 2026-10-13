@@ -236,14 +236,6 @@ parallelism). See the `--build-via-mcp` section in
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
-### Manual Triggers (PR Comments)
-
-| Command            | Workflow                     | Permissions         |
-|--------------------|------------------------------|---------------------|
-| `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
-
-**Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
-
 ### Label Triggers
 
 | Label                 | Workflow                     | Effect                                             |
@@ -419,6 +411,7 @@ Run-workflow dropdown, which only a user with write access can pick.
 |-----------------------------|---------------------------------------------------------|
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `test-image-efficiency.yml` | Measure n8n and runners image size and layer waste with Dive |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 | `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
 
@@ -453,10 +446,6 @@ test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
 
 test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
-    └──────────────────────────▶  test-workflows-callable.yml
-
-PR Comment Dispatchers (triggered by /command in PR comments):
-test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
 
@@ -1266,12 +1255,6 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 ---
 
 ## Future Vision
-
-### Redundancy Review
-
-Comment trigger (`/test-workflows`) is a workaround.
-
-Long-term: Main CI should be reliable enough to not need these.
 
 ### Workflow Testability
 

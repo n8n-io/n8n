@@ -1,4 +1,5 @@
 import type { InstanceAiThreadSummary, AgentN8nChatThreadSummary } from '@n8n/api-types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import type { useI18n } from '@n8n/i18n';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../constants';
@@ -22,6 +23,15 @@ export function chatItemRoute(item: RecentChatItem) {
 export function chatItemTitle(item: RecentChatItem, i18n: ReturnType<typeof useI18n>): string {
 	if (item.kind === 'assistant') return item.thread.title;
 	return item.thread.title ?? i18n.baseText('commandBar.instanceAi.newThread');
+}
+
+/** The agent thread row menu, shared by every surface that lists them: delete only. */
+export function agentThreadActions(
+	i18n: ReturnType<typeof useI18n>,
+): Array<ActionDropdownItem<'delete'>> {
+	return [
+		{ id: 'delete', label: i18n.baseText('instanceAi.sidebar.deleteThread'), icon: 'trash-2' },
+	];
 }
 
 export type MergeRecentChatsOptions = {

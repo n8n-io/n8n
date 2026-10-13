@@ -15,6 +15,7 @@ import { agentTaskSchema } from './agent-task.schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
+import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
 
 export class AgentsSettingsDto extends Z.class({
@@ -64,6 +65,7 @@ export type AgentSessionOrigin = (typeof AGENT_SESSION_ORIGINS)[number];
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
+		ids: z.array(z.string().min(1)).min(1).max(50).optional(),
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 	})
@@ -126,6 +128,7 @@ export class ListN8nChatThreadsQueryDto extends Z.class({
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
+	search: threadTitleSearchSchema,
 }) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -255,6 +258,12 @@ const agentChatMessageShape = {
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
 		.optional(),
+	/**
+	 * Per-message context from the client (for example the user's time zone).
+	 * The Agents layer does not read it. A system agent's provider defines its
+	 * shape and validates it. Project agents ignore it.
+	 */
+	clientContext: z.record(z.unknown()).optional(),
 };
 
 const agentChatMessageSchema = z
@@ -361,6 +370,34 @@ export class AgentConnectIntegrationDto extends Z.class(agentConnectIntegrationS
  */
 export class AgentTeamsPackageDto extends Z.class({
 	credentialId: z.string().min(1).optional(),
+	settings: AgentTeamsSettingsSchema.optional(),
+}) {}
+
+/**
+ * Reaches Microsoft inside a URL path, so the shape is checked here rather than
+ * escaped at each use: Microsoft issues these as GUIDs, and nothing else is a
+ * legitimate value.
+ */
+const microsoftId = z.string().uuid();
+
+/** Names the Microsoft sign-in the Entra app is registered with. */
+export class AgentTeamsProvisionAppDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+}) {}
+
+/**
+ * The Entra app the bot signs for is named explicitly because the bot is
+ * created before the channel is connected, so the agent holds no credential yet.
+ */
+export class AgentTeamsProvisionBotDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+	credentialId: z.string().min(1),
+	subscriptionId: microsoftId,
+}) {}
+
+export class AgentTeamsPublishDto extends Z.class({
+	managerCredentialId: z.string().min(1),
+	credentialId: z.string().min(1),
 	settings: AgentTeamsSettingsSchema.optional(),
 }) {}
 

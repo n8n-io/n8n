@@ -11,6 +11,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "agent:publish",
   "agent:unpublish",
   "agent:manage",
+  "agent:export",
   "aiAssistant:manage",
   "aiPreference:create",
   "aiPreference:read",

@@ -1,8 +1,11 @@
 operationId: listNodeTypePolicyDocuments
 tags:
   - NodeTypePolicy
-summary: List node type policy documents
-description: Returns a cursor-paginated list of reusable policy documents.
+summary: 'Beta: List node type policy documents'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns a cursor-paginated list of reusable policy documents.
 x-required-scope: nodeTypePolicy:manage
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -16,7 +19,88 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/policyDocumentListPublicDto.generated.yml
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  kind:
+                    type: string
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        action:
+                          type: string
+                          enum:
+                            - allow
+                            - deny
+                            - delegate
+                        selector:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - name
+                                value:
+                                  type: string
+                                  minLength: 1
+                              required:
+                                - kind
+                                - value
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - package
+                                value:
+                                  type: string
+                                  minLength: 1
+                              required:
+                                - kind
+                                - value
+                          type: object
+                      required:
+                        - id
+                        - action
+                        - selector
+                  version:
+                    type: integer
+                    minimum: 0
+                    exclusiveMinimum: true
+                  updatedBy:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - kind
+                  - rules
+                  - version
+                  - updatedBy
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

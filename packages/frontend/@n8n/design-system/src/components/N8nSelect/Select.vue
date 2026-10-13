@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
 import type { ComponentPublicInstance, PropType, Ref } from 'vue';
-import { computed, ref, useAttrs } from 'vue';
+import { computed, onMounted, onUpdated, ref, useAttrs } from 'vue';
 
 import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
 import type { SelectSize } from '../../types';
@@ -83,6 +83,26 @@ const innerSelect: Ref<InnerSelectRef | null> = ref(null);
 const setInnerSelect = (el: Element | ComponentPublicInstance | null) => {
 	innerSelect.value = (el as InnerSelectRef | null) ?? null;
 };
+
+const syncControlAriaAttributes = () => {
+	const selectWrapper = innerSelect.value?.$refs.selectWrapper;
+	if (!(selectWrapper instanceof HTMLElement)) return;
+
+	const input = selectWrapper.querySelector('input[role="combobox"]');
+	if (!input) return;
+
+	for (const attribute of ['aria-invalid', 'aria-describedby', 'aria-busy']) {
+		const value = attrs[attribute];
+		if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+			input.setAttribute(attribute, String(value));
+		} else {
+			input.removeAttribute(attribute);
+		}
+	}
+};
+
+onMounted(syncControlAriaAttributes);
+onUpdated(syncControlAriaAttributes);
 
 const listeners = computed(() => {
 	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {

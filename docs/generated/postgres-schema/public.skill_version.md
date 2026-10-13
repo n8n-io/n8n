@@ -103,13 +103,13 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.skill" {
+  varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id
   varchar_36_ projectId FK
   varchar_16_ source
   timestamp_3__with_time_zone updatedAt
-  uuid userId FK
 }
 ```
 

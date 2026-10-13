@@ -15,6 +15,14 @@ import {
 	CHAT_VIEW,
 	CHAT_WORKFLOW_AGENTS_VIEW,
 } from '@/features/ai/chatHub/constants';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENTS_LIST_VIEW,
+	PROJECT_AGENTS,
+} from '@/features/agents/constants';
 import { useNodeCommands } from './useNodeCommands';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
@@ -27,6 +35,7 @@ import { useGenericCommands } from './useGenericCommands';
 import { useRecentResources } from './useRecentResources';
 import { useChatHubCommands } from './useChatHubCommands';
 import { useInstanceAiCommands } from './useInstanceAiCommands';
+import { useAgentNavigationCommands } from './useAgentNavigationCommands';
 import { rankItems } from '../commandBar.utils';
 import type {
 	CommandBarItem,
@@ -61,6 +70,14 @@ const CREDENTIAL_VIEWS: string[] = [
 	VIEWS.SHARED_CREDENTIALS,
 ];
 const DATA_TABLE_VIEWS: string[] = [PROJECT_DATA_TABLES, DATA_TABLE_VIEW];
+const AGENT_VIEWS: string[] = [
+	AGENTS_LIST_VIEW,
+	PROJECT_AGENTS,
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+];
 const CHAT_VIEWS: string[] = [
 	CHAT_VIEW,
 	CHAT_CONVERSATION_VIEW,
@@ -114,6 +131,7 @@ export function useCommandBar() {
 	const credentialNavigationGroup = useCredentialNavigationCommands({ currentProjectName });
 	const executionNavigationGroup = useExecutionNavigationCommands();
 	const projectNavigationGroup = useProjectNavigationCommands();
+	const agentNavigationGroup = useAgentNavigationCommands({ currentProjectName });
 	const genericCommandGroup = useGenericCommands();
 	const recentResourcesGroup = useRecentResources();
 	const chatHubCommandGroup = useChatHubCommands();
@@ -139,38 +157,24 @@ export function useCommandBar() {
 		return [];
 	});
 
+	const leadingNavigationGroup = computed<CommandGroup | undefined>(() => {
+		if (isCanvasView.value) return nodeCommandGroup;
+		if (CREDENTIAL_VIEWS.includes(routeName.value)) return credentialNavigationGroup;
+		if (DATA_TABLE_VIEWS.includes(routeName.value)) return dataTableNavigationGroup;
+		if (AGENT_VIEWS.includes(routeName.value)) return agentNavigationGroup;
+		return undefined;
+	});
+
 	const navigationGroups = computed<CommandGroup[]>(() => {
-		if (isCanvasView.value) {
-			return [
-				nodeCommandGroup,
-				workflowNavigationGroup,
-				projectNavigationGroup,
-				credentialNavigationGroup,
-				dataTableNavigationGroup,
-			];
-		}
-		if (CREDENTIAL_VIEWS.includes(routeName.value)) {
-			return [
-				credentialNavigationGroup,
-				workflowNavigationGroup,
-				projectNavigationGroup,
-				dataTableNavigationGroup,
-			];
-		}
-		if (DATA_TABLE_VIEWS.includes(routeName.value)) {
-			return [
-				dataTableNavigationGroup,
-				workflowNavigationGroup,
-				projectNavigationGroup,
-				credentialNavigationGroup,
-			];
-		}
-		return [
+		const groups = [
 			workflowNavigationGroup,
+			agentNavigationGroup,
 			projectNavigationGroup,
 			credentialNavigationGroup,
 			dataTableNavigationGroup,
 		];
+		const leading = leadingNavigationGroup.value;
+		return leading ? [leading, ...groups.filter((group) => group !== leading)] : groups;
 	});
 
 	const actionGroups = computed<CommandGroup[]>(() => [

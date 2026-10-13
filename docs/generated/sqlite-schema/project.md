@@ -263,13 +263,13 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK
   varchar_36_ projectId FK
   varchar_16_ source
   datetime_3_ updatedAt
-  varchar userId FK
 }
 "type_availability_policy_scope" {
   datetime_3_ createdAt
