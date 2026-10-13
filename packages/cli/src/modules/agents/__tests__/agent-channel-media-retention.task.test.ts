@@ -146,6 +146,28 @@ describe('AgentChannelMediaRetentionTask', () => {
 		);
 	});
 
+	it('logs a failure and continues with the next agent', async () => {
+		const error = new Error('storage down');
+		agentRepository.findWithIntegrationType.mockResolvedValue([
+			{ id: 'agent-1', integrations: [whatsApp()] },
+			{ id: 'agent-2', integrations: [whatsApp()] },
+		]);
+		attachmentService.deleteFromSourceCreatedBefore.mockRejectedValueOnce(error);
+
+		await task.run(signal);
+
+		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
+		expect(attachmentService.deleteFromSourceCreatedBefore).toHaveBeenLastCalledWith(
+			{ agentId: 'agent-2', source: 'whatsapp' },
+			expect.any(Date),
+			signal,
+		);
+		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(expect.any(String), {
+			agentId: 'agent-1',
+			error,
+		});
+	});
+
 	it('logs the count only when it deletes media', async () => {
 		agentRepository.findWithIntegrationType.mockResolvedValue([
 			{ id: 'agent-1', integrations: [whatsApp()] },

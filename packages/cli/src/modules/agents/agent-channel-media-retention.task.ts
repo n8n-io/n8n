@@ -43,15 +43,23 @@ export class AgentChannelMediaRetentionTask implements SystemTask {
 
 			const { mediaRetentionDays } = resolveWhatsAppSettings(integration.settings);
 			const before = new Date(Date.now() - mediaRetentionDays * Time.days.toMilliseconds);
-			const deleted = await this.attachmentService.deleteFromSourceCreatedBefore(
-				{ agentId: agent.id, source: 'whatsapp' },
-				before,
-				signal,
-			);
-			if (deleted > 0) {
-				this.logger.debug('[AgentChannelMediaRetention] Deleted expired WhatsApp media', {
+			// One agent's storage failure must not skip the rest; its rows stay for the next run.
+			try {
+				const deleted = await this.attachmentService.deleteFromSourceCreatedBefore(
+					{ agentId: agent.id, source: 'whatsapp' },
+					before,
+					signal,
+				);
+				if (deleted > 0) {
+					this.logger.debug('[AgentChannelMediaRetention] Deleted expired WhatsApp media', {
+						agentId: agent.id,
+						deleted,
+					});
+				}
+			} catch (error) {
+				this.logger.warn('[AgentChannelMediaRetention] Failed to delete expired WhatsApp media', {
 					agentId: agent.id,
-					deleted,
+					error,
 				});
 			}
 		}
