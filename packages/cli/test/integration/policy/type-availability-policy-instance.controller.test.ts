@@ -104,7 +104,7 @@ describe('node type availability policy instance controller RBAC', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put('/node-type-policies/scopes/does-not-exist/attachments')
-			.send({ attachments: [] });
+			.send({ attachments: [], version: 0 });
 
 		expect(response.statusCode).toBe(403);
 	});
@@ -363,7 +363,10 @@ describe('node type availability policy instance controller admin happy path', (
 
 		const response = await agent
 			.put(`/node-type-policies/scopes/${instance.body.data.scopeId}/attachments`)
-			.send({ attachments: [{ policyId: other.id, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId: other.id, priority: 0, isFloor: false }],
+				version: instance.body.data.version,
+			});
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -385,7 +388,7 @@ describe('node type availability policy instance controller admin happy path', (
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${otherScope.id}/attachments`)
-			.send({ attachments: [] });
+			.send({ attachments: [], version: otherScope.version });
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -493,7 +496,10 @@ describe('node type availability policy instance controller admin happy path', (
 		await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 5, isFloor: false }] });
+			.send({
+				attachments: [{ policyId, priority: 5, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 
 		const response = await testServer
 			.authAgentFor(owner)
@@ -564,7 +570,10 @@ describe('node type availability policy instance controller admin happy path', (
 		const response = await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
-			.send({ attachments: [{ policyId, priority: 1, isFloor: false }] });
+			.send({
+				attachments: [{ policyId, priority: 1, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 
 		expect(response.statusCode).toBe(200);
 		expect(emitSpy).toHaveBeenCalledWith(

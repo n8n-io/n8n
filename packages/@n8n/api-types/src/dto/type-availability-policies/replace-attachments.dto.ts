@@ -10,6 +10,7 @@ const policyAttachmentInputSchema = z.object({
 
 const replaceAttachmentsShape = {
 	attachments: z.array(policyAttachmentInputSchema),
+	version: z.number().int().min(0),
 };
 
 /**
