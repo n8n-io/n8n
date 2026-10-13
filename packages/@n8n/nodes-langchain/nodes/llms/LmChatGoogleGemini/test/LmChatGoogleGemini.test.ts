@@ -2,15 +2,6 @@ import type { IExecuteSingleFunctions, INodeExecutionData, PostReceiveAction } f
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
 
-// Stands in for an entry in the shared FEATURED_MODELS list.
-vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
-	pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
-		...models.filter((model) => getModelId(model) === 'models/gemini-featured'),
-		...models.filter((model) => getModelId(model) !== 'models/gemini-featured'),
-	],
-}));
-
 describe('LmChatGoogleGemini', () => {
 	it('should send every model field to the provider catalog with a Gemini 3.x floor', () => {
 		const hints = new LmChatGoogleGemini().description.properties
@@ -40,12 +31,20 @@ describe('LmChatGoogleGemini', () => {
 			(p) => p.name === 'modelName',
 		);
 		const options: INodeExecutionData[] = [
-			{ json: { name: 'models/gemini-zeta', value: 'models/gemini-zeta', displayName: '' } },
+			{
+				json: {
+					name: 'models/gemini-zeta',
+					value: 'models/gemini-zeta',
+					displayName: '',
+					priority: '',
+				},
+			},
 			{
 				json: {
 					name: 'models/gemini-featured',
 					value: 'models/gemini-featured',
 					displayName: 'gemini-featured',
+					priority: 10,
 				},
 			},
 			{ json: { name: 'models/gemini-2.5-pro', value: 'models/gemini-2.5-pro' } },
@@ -67,7 +66,7 @@ describe('LmChatGoogleGemini', () => {
 
 			const result = await labelModels.call({} as IExecuteSingleFunctions, options, {} as never);
 
-			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id.
+			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id. A priority pins a model.
 			expect(result.map((option) => option.json)).toEqual([
 				{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
 				{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },

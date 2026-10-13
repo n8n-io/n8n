@@ -1,4 +1,4 @@
-import { FEATURED_MODELS, getModelDisplayName, pinFeaturedModels } from '../model-picker-overrides';
+import { getModelDisplayName, pinPrioritizedModels } from '../model-picker-overrides';
 
 describe('getModelDisplayName', () => {
 	it('returns the product name of a named model', () => {
@@ -17,34 +17,26 @@ describe('getModelDisplayName', () => {
 	});
 });
 
-describe('pinFeaturedModels', () => {
-	beforeEach(() => {
-		FEATURED_MODELS.google = ['gemini-featured'];
-	});
+describe('pinPrioritizedModels', () => {
+	it('moves models with a priority to the front, highest first, and keeps the order of the rest', () => {
+		const models = [
+			{ id: 'b' },
+			{ id: 'low', priority: 1 },
+			{ id: 'a' },
+			{ id: 'high', priority: 10 },
+		];
 
-	afterEach(() => {
-		delete FEATURED_MODELS.google;
-	});
-
-	it('moves featured models to the front and keeps the order of the rest', () => {
-		const models = ['models/gemini-2.5-flash', 'models/gemini-featured', 'models/gemini-2.5-pro'];
-
-		expect(pinFeaturedModels('google', models, (model) => model)).toEqual([
-			'models/gemini-featured',
-			'models/gemini-2.5-flash',
-			'models/gemini-2.5-pro',
+		expect(pinPrioritizedModels(models, (model) => model.priority).map((m) => m.id)).toEqual([
+			'high',
+			'low',
+			'b',
+			'a',
 		]);
 	});
 
-	it('ignores inherited object properties', () => {
-		const models = ['toString', 'gemini-2.5-pro'];
+	it('ignores priorities that are not finite numbers', () => {
+		const models = [{ id: 'a', priority: '5' }, { id: 'b', priority: Number.NaN }, { id: 'c' }];
 
-		expect(pinFeaturedModels('constructor', models, (model) => model)).toEqual(models);
-	});
-
-	it('leaves lists without featured models unchanged', () => {
-		const models = [{ id: 'gpt-5' }, { id: 'gpt-4.1' }];
-
-		expect(pinFeaturedModels('openai', models, (model) => model.id)).toEqual(models);
+		expect(pinPrioritizedModels(models, (model) => model.priority)).toEqual(models);
 	});
 });

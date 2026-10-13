@@ -141,9 +141,10 @@ export class AgentModelCatalogService {
 			// The gateway names the models it serves; a name that only repeats the id does not count.
 			const liveName = normalizeProviderModelId(provider, live.name);
 			const gatewayName = liveName && liveName !== id ? liveName : undefined;
+			const priority = live.priority !== undefined ? { priority: live.priority } : {};
 			return catalogMatch
-				? { ...catalogMatch, id, ...(gatewayName ? { name: gatewayName } : {}) }
-				: { id, name: gatewayName ?? id, toolCall: true };
+				? { ...catalogMatch, id, ...(gatewayName ? { name: gatewayName } : {}), ...priority }
+				: { id, name: gatewayName ?? id, toolCall: true, ...priority };
 		});
 	}
 

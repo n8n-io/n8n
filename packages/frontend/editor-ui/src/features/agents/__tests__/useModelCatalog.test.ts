@@ -135,16 +135,14 @@ describe('useModelCatalog', () => {
 		);
 	});
 
-	it('lists featured models first and the rest by name', async () => {
-		const { FEATURED_MODELS } = await import('@n8n/api-types');
-		FEATURED_MODELS.google = ['gemini-featured'];
+	it('lists models with a priority first and the rest by name', async () => {
 		mocks.getModelCatalog.mockResolvedValue({});
 		mocks.getProviderModels.mockResolvedValue({
 			provider: 'google',
 			verified: true,
 			models: [
 				model('gemini-2.5-pro', 'Gemini 2.5 Pro'),
-				model('gemini-featured', 'Gemini Featured'),
+				{ ...model('gemini-featured', 'Gemini Featured'), priority: 10 },
 				model('gemini-2.5-flash', 'Gemini 2.5 Flash'),
 			],
 		});
@@ -162,7 +160,6 @@ describe('useModelCatalog', () => {
 			'gemini-2.5-flash',
 			'gemini-2.5-pro',
 		]);
-		delete FEATURED_MODELS.google;
 	});
 
 	it('returns a verified provider default only when it remains in the picker list', async () => {

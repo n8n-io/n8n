@@ -1,4 +1,4 @@
-import { getGoogleModelLabel, pinGoogleModels } from '@n8n/ai-utilities/model-discovery';
+import { getGoogleModelLabel, pinPrioritizedModels } from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
@@ -18,25 +18,27 @@ async function baseModelSearch(
 			pageSize: 1000,
 		},
 	})) as {
-		models: Array<{ name: string; displayName?: string }>;
+		models: Array<{ name: string; displayName?: string; priority?: number }>;
 	};
 
-	let results = response.models
+	let entries = response.models
 		.filter((model) => modelFilter(model.name))
 		.map((model) => ({
-			name: getGoogleModelLabel(model.name, model.displayName),
-			value: model.name,
+			result: { name: getGoogleModelLabel(model.name, model.displayName), value: model.name },
+			priority: model.priority,
 		}));
 	if (filter) {
 		const query = filter.toLowerCase();
-		results = results.filter(
-			(result) =>
+		entries = entries.filter(
+			({ result }) =>
 				result.name.toLowerCase().includes(query) || result.value.toLowerCase().includes(query),
 		);
 	}
 
-	results.sort((a, b) => a.name.localeCompare(b.name));
-	return { results: pinGoogleModels(results, (result) => result.value) };
+	entries.sort((a, b) => a.result.name.localeCompare(b.result.name));
+	return {
+		results: pinPrioritizedModels(entries, (entry) => entry.priority).map((entry) => entry.result),
+	};
 }
 
 export async function modelSearch(

@@ -1,4 +1,3 @@
-import { FEATURED_MODELS } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 
 import { isOpenAiCustomEndpoint, listModelsForProvider, MODEL_DISCOVERY_PROVIDERS } from '../index';
@@ -179,27 +178,26 @@ describe('model-discovery', () => {
 			]);
 		});
 
-		it('labels models with their product name and lists featured models first', async () => {
-			FEATURED_MODELS.google = ['gemini-featured'];
+		it('lists models with a priority first and passes the priority on', async () => {
 			const fetch = mockFetch({
 				models: [
 					{ name: 'models/gemini-2.5-pro', supportedGenerationMethods: ['generateContent'] },
-					{ name: 'models/gemini-featured', supportedGenerationMethods: ['generateContent'] },
+					{
+						name: 'models/gemini-featured',
+						priority: 10,
+						supportedGenerationMethods: ['generateContent'],
+					},
 					{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] },
 				],
 			});
 
-			try {
-				const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
 
-				expect(models).toEqual([
-					{ id: 'models/gemini-featured', name: 'models/gemini-featured' },
-					{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-					{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-				]);
-			} finally {
-				delete FEATURED_MODELS.google;
-			}
+			expect(models).toEqual([
+				{ id: 'models/gemini-featured', name: 'models/gemini-featured', priority: 10 },
+				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+			]);
 		});
 	});
 

@@ -320,13 +320,13 @@ describe('AgentModelCatalogService', () => {
 		]);
 	});
 
-	it('prefers the gateway name over the catalog name for a managed model', async () => {
+	it('prefers the gateway name over the catalog name and keeps its priority for a managed model', async () => {
 		const { service, lookupService } = makeService();
 		lookupService.lookup.mockResolvedValue({
 			status: 'success',
 			policy: 'managed',
 			models: [
-				{ name: 'Gemini 2.5 Flash (Gateway)', value: 'models/gemini-2.5-flash' },
+				{ name: 'Gemini 2.5 Flash (Gateway)', value: 'models/gemini-2.5-flash', priority: 10 },
 				{ name: 'models/gemini-2.5-flash-lite', value: 'models/gemini-2.5-flash-lite' },
 			],
 		});
@@ -343,6 +343,7 @@ describe('AgentModelCatalogService', () => {
 				id: 'gemini-2.5-flash',
 				name: 'Gemini 2.5 Flash (Gateway)',
 				reasoning: true,
+				priority: 10,
 			}),
 			expect.objectContaining({ id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' }),
 		]);

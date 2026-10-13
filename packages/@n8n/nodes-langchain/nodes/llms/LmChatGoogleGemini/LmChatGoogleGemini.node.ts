@@ -20,7 +20,7 @@ import {
 } from '@n8n/ai-utilities';
 import {
 	getGoogleModelLabel,
-	pinGoogleModels,
+	pinPrioritizedModels,
 	shouldIncludeGoogleModel,
 } from '@n8n/ai-utilities/model-discovery';
 
@@ -41,24 +41,22 @@ async function filterChatModels(
 	);
 }
 
-/** Show models under their product name, sorted by it, with featured models first. */
+/** Show models under their product name, sorted by it, with prioritized models first. */
 async function labelModels(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const labelled: INodeExecutionData[] = items.map((item) => {
-		// `displayName` only carries the API's name to here; options do not keep it.
-		const { displayName, ...option } = item.json;
-		return {
-			...item,
-			json:
-				typeof option.value === 'string'
-					? { ...option, name: getGoogleModelLabel(option.value, displayName) }
-					: option,
-		};
+	const labelled = items.map((item) => {
+		// `displayName` and `priority` only carry the API's values to here; options do not keep them.
+		const { displayName, priority, ...option } = item.json;
+		const json =
+			typeof option.value === 'string'
+				? { ...option, name: getGoogleModelLabel(option.value, displayName) }
+				: option;
+		return { item: { ...item, json }, priority };
 	});
-	labelled.sort((a, b) => String(a.json.name).localeCompare(String(b.json.name)));
-	return pinGoogleModels(labelled, (item) => String(item.json.value));
+	labelled.sort((a, b) => String(a.item.json.name).localeCompare(String(b.item.json.name)));
+	return pinPrioritizedModels(labelled, (entry) => entry.priority).map((entry) => entry.item);
 }
 
 function errorDescriptionMapper(error: NodeError) {
@@ -103,6 +101,7 @@ const modelRLC: INodeProperties = {
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
 								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
 						labelModels,
@@ -154,6 +153,7 @@ const modelRLCV2: INodeProperties = {
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
 								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
 						labelModels,

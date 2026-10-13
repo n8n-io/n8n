@@ -16,12 +16,6 @@ export const MODEL_DISPLAY_NAMES: Record<string, Record<string, string>> = {
 	},
 };
 
-/**
- * Newly launched models that model pickers list first, keyed by provider and
- * bare model id. Remove an entry once the launch is over.
- */
-export const FEATURED_MODELS: Record<string, string[]> = {};
-
 /** Google's models API returns ids as `models/<id>`. */
 const toBareModelId = (modelId: string) => modelId.replace(/^models\//, '');
 
@@ -34,13 +28,26 @@ export function getModelDisplayName(provider: string, modelId: string): string |
 	return names && Object.hasOwn(names, bareModelId) ? names[bareModelId] : undefined;
 }
 
-/** Moves featured models to the front, keeping the order of the rest. */
-export function pinFeaturedModels<T>(
-	provider: string,
-	models: T[],
-	getModelId: (model: T) => string,
-): T[] {
-	const featured = Object.hasOwn(FEATURED_MODELS, provider) ? FEATURED_MODELS[provider] : [];
-	const isFeatured = (model: T) => featured.includes(toBareModelId(getModelId(model)));
-	return [...models.filter(isFeatured), ...models.filter((model) => !isFeatured(model))];
+/**
+ * Moves models that have a priority to the front, highest first, and keeps the
+ * order of the rest. A models API reports a priority to promote a model, for
+ * example at its launch.
+ */
+export function pinPrioritizedModels<T>(models: T[], getPriority: (model: T) => unknown): T[] {
+	const entries = models.map((model) => {
+		const priority = getPriority(model);
+		return {
+			model,
+			priority: typeof priority === 'number' && Number.isFinite(priority) ? priority : null,
+		};
+	});
+	const prioritized = entries
+		.flatMap((entry) =>
+			entry.priority === null ? [] : [{ model: entry.model, priority: entry.priority }],
+		)
+		.sort((a, b) => b.priority - a.priority);
+	return [
+		...prioritized.map((entry) => entry.model),
+		...entries.filter((entry) => entry.priority === null).map((entry) => entry.model),
+	];
 }

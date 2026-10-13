@@ -1,4 +1,4 @@
-import { getModelDisplayName, pinFeaturedModels } from '@n8n/api-types';
+import { getModelDisplayName, pinPrioritizedModels } from '@n8n/api-types';
 
 import { baseUrl, byName, getJson } from '../request';
 import type { ListModelsFn } from '../types';
@@ -41,23 +41,37 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 		options,
 		'google',
 	)) as {
-		models?: Array<{ name?: unknown; displayName?: unknown; supportedGenerationMethods?: unknown }>;
+		models?: Array<{
+			name?: unknown;
+			displayName?: unknown;
+			priority?: unknown;
+			supportedGenerationMethods?: unknown;
+		}>;
 	};
 
 	const models = (data.models ?? [])
 		.filter(
 			(
 				model,
-			): model is { name: string; displayName?: unknown; supportedGenerationMethods?: unknown } =>
+			): model is {
+				name: string;
+				displayName?: unknown;
+				priority?: unknown;
+				supportedGenerationMethods?: unknown;
+			} =>
 				typeof model.name === 'string' &&
 				shouldIncludeGoogleModel({
 					name: model.name,
 					supportedGenerationMethods: model.supportedGenerationMethods,
 				}),
 		)
-		.map((model) => ({ id: model.name, name: getGoogleModelLabel(model.name, model.displayName) }))
+		.map((model) => ({
+			id: model.name,
+			name: getGoogleModelLabel(model.name, model.displayName),
+			...(typeof model.priority === 'number' ? { priority: model.priority } : {}),
+		}))
 		.sort(byName);
-	return pinGoogleModels(models, (model) => model.id);
+	return pinPrioritizedModels(models, (model) => model.priority);
 };
 
 /**
@@ -71,9 +85,4 @@ export function getGoogleModelLabel(modelId: string, displayName?: unknown): str
 		return apiName;
 	}
 	return getModelDisplayName('google', modelId) ?? modelId;
-}
-
-/** Moves featured Google models to the top of a model list. */
-export function pinGoogleModels<T>(models: T[], getModelId: (model: T) => string): T[] {
-	return pinFeaturedModels('google', models, getModelId);
 }

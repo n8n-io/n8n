@@ -11,15 +11,6 @@ import {
 } from './listSearch';
 import * as transport from '../transport';
 
-// Stands in for an entry in the shared FEATURED_MODELS list.
-vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
-	pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
-		...models.filter((model) => getModelId(model) === 'models/gemini-featured'),
-		...models.filter((model) => getModelId(model) !== 'models/gemini-featured'),
-	],
-}));
-
 const mockResponse = {
 	models: [
 		{
@@ -115,7 +106,7 @@ describe('GoogleGemini -> listSearch', () => {
 			apiRequestMock.mockResolvedValue({
 				models: [
 					{ name: 'models/gemini-zeta' },
-					{ name: 'models/gemini-featured', displayName: 'gemini-featured' },
+					{ name: 'models/gemini-featured', displayName: 'gemini-featured', priority: 10 },
 					{ name: 'models/gemini-2.5-pro' },
 					{ name: 'models/gemini-api-named', displayName: 'Gemini Api Named' },
 				],
@@ -123,7 +114,7 @@ describe('GoogleGemini -> listSearch', () => {
 
 			const result = await modelSearch.call(mockExecuteFunctions);
 
-			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id.
+			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id. A priority pins a model.
 			expect(result).toEqual({
 				results: [
 					{ name: 'models/gemini-featured', value: 'models/gemini-featured' },

@@ -73,9 +73,9 @@ export { listDeepSeekModels } from './providers/deepseek';
 export {
 	getGoogleModelLabel,
 	listGoogleModels,
-	pinGoogleModels,
 	shouldIncludeGoogleModel,
 } from './providers/google';
+export { pinPrioritizedModels } from '@n8n/api-types';
 export { listGroqModels } from './providers/groq';
 export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';
