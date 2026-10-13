@@ -244,6 +244,8 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.name.isEmpty() }}',
 	'={{ $json.item.name.hash() }}',
 	'={{ $json.item.name.toTitleCase() }}',
+	"={{ ($json.item.missing || '').toTitleCase() }}",
+	"={{ ($json.item.active ? $json.item.name : '').toTitleCase() }}",
 	'={{ $json.item.name.toJsonString() }}',
 	'={{ $json.item.my_object.toJsonString() }}',
 	'={{ $json.item.my_object.keys() }}',
@@ -260,9 +262,6 @@ export const HANDLED_CORPUS: string[] = [
 // Fits the subset, but a runtime value falls outside what the parse proved:
 // evaluation bails and the engine result must come back unchanged.
 export const RUNTIME_BAILOUT_CORPUS: string[] = [
-	// A root is a proxy: the engine hands it to extend() its own way.
-	'={{ $vars.toJsonString() }}',
-	'={{ $vars.isEmpty() }}',
 	// The receiver is above the content cap.
 	'={{ $json.item.huge.toJsonString() }}',
 	// Allowlisted method on a receiver of another type.
@@ -323,6 +322,14 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 ];
 
 export const DECLINED_CORPUS: string[] = [
+	// A root is a proxy the engines hand to extend() in their own way, and a
+	// logical or conditional receiver can still yield one.
+	'={{ $vars.toJsonString() }}',
+	'={{ $vars.isEmpty() }}',
+	"={{ ($json.item.missing || $parameter).hasField('nope') }}",
+	'={{ ($json.item.missing || $parameter).toJsonString() }}',
+	'={{ ($json.item.active ? $json : $vars).toJsonString() }}',
+	'={{ ($json.item.missing ?? $json).isEmpty() }}',
 	// BigInt literals are not part of the subset.
 	'={{ 1n }}',
 	// Node references stand only under .item / first() / last() / all() (or

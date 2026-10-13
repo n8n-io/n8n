@@ -407,13 +407,11 @@ function evalArgs(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
  * the receiver holds: an own property does not shadow it, and a missing
  * receiver is extend()'s own error, not a TypeError. Every extension is at
  * most linear in its receiver, so the receiver's content is the work charged
- * and the pre-flight bound. The roots are proxies, which the engines hand to
- * extend() in their own way, and a result the engines would copy differently
- * (a Date, a class instance, an iterator) is theirs too.
+ * and the pre-flight bound. A receiver that can be a root proxy is declined
+ * at parse time (mayBeRoot), and a result the engines would copy
+ * differently (a Date, a class instance, an iterator) is theirs too.
  */
 function evalExtension(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
-	if (node.receiver.kind === 'root') throw new EngineFallbackError();
-
 	const receiver = evalNode(node.receiver, env);
 	if (node.optional && (receiver === null || receiver === undefined)) {
 		throw chainShortCircuit;

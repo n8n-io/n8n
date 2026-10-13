@@ -289,6 +289,13 @@ function parseCall(
 	const receiver = parse(callee.object);
 	if (receiver === null) return null;
 
+	// A root is a proxy the engines hand to extend() in their own way, so an
+	// extension call on a receiver that can evaluate to one stays on the
+	// engine (the syntax has to be checked: a logical or conditional receiver
+	// can still yield a root at runtime, and the host $json proxy is built on
+	// every access, so there is no instance to compare against).
+	if (EXTENSION_METHODS.has(method) && mayBeRoot(receiver)) return null;
+
 	// `a?.m()` marks the member optional, `a.m?.()` marks the call optional;
 	// both short-circuit on a missing receiver, so one flag carries both.
 	const optional = node.optional === true || callee.optional === true;
@@ -310,6 +317,12 @@ function parseCall(
 
 	return { kind: 'call', receiver, method, args, optional };
 }
+
+const mayBeRoot = (node: SimpleNode): boolean =>
+	node.kind === 'root' ||
+	(node.kind === 'chain' && mayBeRoot(node.expression)) ||
+	(node.kind === 'logical' && (mayBeRoot(node.left) || mayBeRoot(node.right))) ||
+	(node.kind === 'conditional' && (mayBeRoot(node.consequent) || mayBeRoot(node.alternate)));
 
 // The wrapper esprima puts around every optional chain. It is the boundary an
 // optional hop short-circuits to: `a?.b.c` yields undefined for a missing
