@@ -56,6 +56,7 @@ export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
 export { UpdateMigrationFindingStatusesRequestDto } from './breaking-changes/update-migration-finding-statuses-request.dto';
 export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
+export { NotifyMigrationOwnersRequestDto } from './breaking-changes/notify-migration-owners-request.dto';
 
 export {
 	AuditPublicDto,
@@ -188,6 +189,8 @@ export {
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
+	AI_PREFERENCES_SORT_OPTIONS,
+	type AiPreferenceSortOption,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {

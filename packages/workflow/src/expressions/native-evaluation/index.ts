@@ -13,6 +13,7 @@ export {
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 	MAX_WORK,
+	TIME_METHODS,
 } from './grammar';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
@@ -21,6 +22,7 @@ export {
 // The subset is data path access on the data roots (`$json`, `$parameter`,
 // `$vars`, `$binary`, `$itemIndex`, `$runIndex`) and on node references
 // (`$('Name').item`, `$('Name').first()`, `$input.item`, `$node['Name'].json`),
+// primitive reads off the time roots (`$now.toMillis()`, `$today.year`),
 // literals (array literals of literals included), a fixed set of operators,
 // calls to a closed allowlist of native string/number/array methods, and the
 // five array iterators (some/every/find/filter/map) with a one-parameter

@@ -134,6 +134,16 @@ const addButtonLabel = computed(() =>
 		interpolate: { client: activeClient.value?.name ?? '' },
 	}),
 );
+const sharedConfigFileDescriptionKeys: Partial<Record<string, BaseTextKey>> = {
+	antigravity: 'settings.mcp.connectDialog.configure.antigravity.description',
+	devin: 'settings.mcp.connectDialog.configure.devin.description',
+};
+const configureDescription = computed(() =>
+	i18n.baseText(
+		sharedConfigFileDescriptionKeys[activeClient.value?.id ?? ''] ??
+			'settings.mcp.connectDialog.configure.description',
+	),
+);
 const serverUrlDescription = computed(() =>
 	i18n.baseText('settings.mcp.connectDialog.serverUrl.description', {
 		interpolate: { client: activeClient.value?.name ?? '' },
@@ -354,11 +364,7 @@ const serverUrlDescription = computed(() =>
 						layout="vertical"
 						:show-divider="false"
 						:title="i18n.baseText('settings.mcp.connectDialog.configure.title')"
-						:description="
-							activeClient.id === 'antigravity'
-								? i18n.baseText('settings.mcp.connectDialog.configure.antigravity.description')
-								: i18n.baseText('settings.mcp.connectDialog.configure.description')
-						"
+						:description="configureDescription"
 					>
 						<template #action>
 							<McpConfigSnippet

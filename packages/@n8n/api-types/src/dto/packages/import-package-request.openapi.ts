@@ -23,6 +23,12 @@ export const importPackageRequestFieldDocs = {
 		description:
 			'What to do when a credential reference cannot be resolved. `create-stub` (default) ' +
 			'creates empty credential placeholders in the target project for missing references. ' +
+			'`create-with-values` also creates them, seeded from the expression data bundled in the ' +
+			'package (see the export option `credentialExportPolicy`); a reference the package ' +
+			'carries no data for falls back to an empty stub. Seeded credentials are listed under ' +
+			'`credentials.seeded` and only allow workflow publishing when the package confirms ' +
+			'that all source data was retained. Partial or unverified data blocks publishing ' +
+			'with `stub-credential`. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	bindings: {

@@ -86,9 +86,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('Retrieve the instance credential type policy')
+	@ApiSummary('Beta: Retrieve the instance credential type policy')
 	@ApiDescription(
-		'Returns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
+		'**Beta** — breaking changes may still occur without major version bump.\n\nReturns the composed instance-scope policy: its default action and the rules of every attached policy document in evaluation order. An instance that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyEffectivePublicDto)
@@ -108,9 +108,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('Replace the instance credential type policy')
+	@ApiSummary('Beta: Replace the instance credential type policy')
 	@ApiDescription(
-		'Sets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
+		'**Beta** — breaking changes may still occur without major version bump.\n\nSets the instance default action and replaces the rules of its single policy document, creating both on first write. `version` must equal the version last read; a stale value is rejected with 409. Rule ids must be unique within the list.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyEffectiveWriteResultPublicDto)
@@ -142,9 +142,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@ProjectScope('credentialTypePolicy:manage')
-	@ApiSummary("Retrieve a project's credential type policy")
+	@ApiSummary("Beta: Retrieve a project's credential type policy")
 	@ApiDescription(
-		"Returns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
+		"**Beta** — breaking changes may still occur without major version bump.\n\nReturns the project's own composed policy, not the result of combining it with the instance policy. A project that was never configured reports `scopeId: null`, no rules, `defaultAction: allow`, and `version: 0`.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyEffectivePublicDto)
@@ -171,9 +171,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@ProjectScope('credentialTypePolicy:manage')
-	@ApiSummary("Replace a project's credential type policy")
+	@ApiSummary("Beta: Replace a project's credential type policy")
 	@ApiDescription(
-		"Sets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
+		"**Beta** — breaking changes may still occur without major version bump.\n\nSets the project's default action and replaces the rules of its single policy document, creating both on first write. The `delegate` action is not accepted at project scope. `version` must equal the version last read; a stale value is rejected with 409, as is a project document that is shared with another scope.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyEffectiveWriteResultPublicDto)
@@ -206,8 +206,10 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('List credential type policy documents')
-	@ApiDescription('Returns a cursor-paginated list of reusable policy documents.')
+	@ApiSummary('Beta: List credential type policy documents')
+	@ApiDescription(
+		'**Beta** — breaking changes may still occur without major version bump.\n\nReturns a cursor-paginated list of reusable policy documents.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
@@ -234,9 +236,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('Create a credential type policy document')
+	@ApiSummary('Beta: Create a credential type policy document')
 	@ApiDescription(
-		'Creates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
+		'**Beta** — breaking changes may still occur without major version bump.\n\nCreates a reusable policy document that is not yet attached to any scope. Rule ids must be unique within the list. `warnings` lists rules that an earlier rule already shadows.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, CredentialTypePolicyDocumentWriteResultPublicDto)
@@ -259,7 +261,8 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('Retrieve a credential type policy document')
+	@ApiSummary('Beta: Retrieve a credential type policy document')
+	@ApiDescription('**Beta** — breaking changes may still occur without major version bump.')
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
@@ -281,9 +284,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('Replace the rules of a credential type policy document')
+	@ApiSummary('Beta: Replace the rules of a credential type policy document')
 	@ApiDescription(
-		"Replaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
+		"**Beta** — breaking changes may still occur without major version bump.\n\nReplaces the document's whole rule list. `version` must equal the version last read; a stale value is rejected with 409. Every scope the document is attached to has its version bumped. A `delegate` rule is rejected when the document is attached to a project scope.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyDocumentWriteResultPublicDto)
@@ -311,9 +314,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary('Delete a credential type policy document')
+	@ApiSummary('Beta: Delete a credential type policy document')
 	@ApiDescription(
-		'Deletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.',
+		'**Beta** — breaking changes may still occur without major version bump.\n\nDeletes a policy document. A document that is still attached to a scope is rejected with 409; detach it first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(204)
@@ -332,9 +335,9 @@ export class CredentialTypePoliciesPublicController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('credentialTypePolicy:manage')
 	@GlobalScope('credentialTypePolicy:manage')
-	@ApiSummary("Replace a scope's attached policy documents")
+	@ApiSummary("Beta: Replace a scope's attached policy documents")
 	@ApiDescription(
-		"Replaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
+		"**Beta** — breaking changes may still occur without major version bump.\n\nReplaces every attachment on a scope. `scopeId` comes from the scope's `GET` response once it has been written. Each `policyId` and each `(isFloor, priority)` pair must be unique within the list. Last write wins; the scope's version is bumped.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, CredentialTypePolicyAttachmentsPublicDto)
