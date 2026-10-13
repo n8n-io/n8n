@@ -239,7 +239,7 @@ describe('promotion-connection apply command', () => {
 
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
-			'Apply deletes these projects with everything in them:\n' + '  Sales',
+			'Apply deletes these projects with everything in them:\n' + '  Sales (proj-2)',
 		);
 		expect(message).toContain(
 			"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",

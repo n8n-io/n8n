@@ -81,7 +81,7 @@ function blockedMessage(
 		...(projectDeletions.length > 0
 			? [
 					'Apply deletes these projects with everything in them:',
-					...projectDeletions.map(({ project }) => `  ${project.name}`),
+					...projectDeletions.map(({ project }) => `  ${project.name} (${project.id})`),
 				]
 			: []),
 		'Run with --json for the details. After you resolve them, run:',
