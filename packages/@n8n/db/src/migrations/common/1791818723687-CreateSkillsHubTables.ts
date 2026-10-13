@@ -47,11 +47,12 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 					.comment(
 						'Set when only this agent can use the skill. projectId is then NULL: the agent holds the project',
 					),
+				// No CHECK on the values: new sources (upload, Git sync, AI-written) must not
+				// recreate the table on SQLite. The service validates them.
 				column('source')
 					.varchar(16)
-					.notNull.withEnumCheck(['ui', 'agent'])
-					.comment(
-						'How the skill was created: "ui" (the skills hub) or "agent" (the agent builder or the migration)',
+					.notNull.comment(
+						'How the skill was created, set by the server: "ui" (the skills hub) or "agent" (the agent builder or the copy of agent skills)',
 					),
 				column('createdById').uuid.comment('Author. NULL after the author is deleted'),
 			)
