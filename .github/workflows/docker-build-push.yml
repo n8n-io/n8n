@@ -708,7 +708,8 @@ jobs:
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
-       needs.determine-build-context.outputs.release_type == 'nightly')
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -819,7 +820,8 @@ jobs:
       needs.create_multi_arch_manifest.result == 'success' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
-       needs.determine-build-context.outputs.release_type == 'nightly')
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       github.event_name == 'workflow_dispatch')
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
     permissions:
