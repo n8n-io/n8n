@@ -17,6 +17,7 @@ const CANONICAL_OWNERS = new Set([
 	'Lifecycle & Governance',
 	'Docs',
 	'Catalysts',
+	'Developer Platform',
 	'NODES',
 	'Payday',
 	'Adore',

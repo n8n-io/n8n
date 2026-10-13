@@ -60,7 +60,7 @@ describe('AiPreferenceRepository', () => {
 					{ userId: 'user-1', id: In(['a', 'b']) },
 					{ projectId: In(['p-1']), id: In(['a', 'b']) },
 				],
-				relations: { project: true, user: true },
+				relations: { project: true, user: true, createdBy: true },
 				order: { createdAt: 'ASC', id: 'ASC' },
 				skip: 0,
 				take: 2,
@@ -107,6 +107,24 @@ describe('AiPreferenceRepository', () => {
 				expect.objectContaining({
 					where: [{ userId: IsNull(), projectId: IsNull() }, { userId: 'user-1' }],
 				}),
+			);
+		});
+
+		it('orders the page by the requested sort', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await repository.findPageVisible({
+				userId: 'user-1',
+				projectIds: [],
+				allUsers: false,
+				skip: 0,
+				take: 10,
+				sortBy: 'updatedAt:desc',
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(
+				AiPreference,
+				expect.objectContaining({ order: { updatedAt: 'DESC', id: 'DESC' } }),
 			);
 		});
 	});

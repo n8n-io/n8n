@@ -1,9 +1,12 @@
-import { defineComponent, ref } from 'vue';
+import { defineComponent, reactive, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
-import { usePagedN8nChatThreads } from './usePagedN8nChatThreads';
+import {
+	usePagedN8nChatThreads,
+	type UsePagedN8nChatThreadsOptions,
+} from './usePagedN8nChatThreads';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-1' } }),
@@ -14,6 +17,13 @@ vi.mock('../composables/useAgentApi', () => ({
 	listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
 }));
 
+// `reactive`, not a plain Set: mirrors the real store's ref-wrapped Set, so a
+// mutation is seen by the pager's `computed` the same way it would in production.
+const deletedThreadIds = reactive(new Set<string>());
+vi.mock('./n8nChatThreads.store', () => ({
+	useAgentN8nChatThreadsStore: () => ({ deletedThreadIds }),
+}));
+
 const thread = (id: string, updatedAt = '2026-01-01T00:00:00.000Z') => ({
 	id,
 	title: `Thread ${id}`,
@@ -21,12 +31,13 @@ const thread = (id: string, updatedAt = '2026-01-01T00:00:00.000Z') => ({
 	agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
 });
 
-// `watch` (used for the `agentId` reset) needs a live effect scope, so the composable
-// is exercised through a tiny host component, same pattern as `useMergedChatHistory.test.ts`.
-function mountComposable(agentId?: () => string | undefined) {
+// `watch` (used for the `agentId`/`search` reset) needs a live effect scope, so the
+// composable is exercised through a tiny host component, same pattern as
+// `useMergedChatHistory.test.ts`.
+function mountComposable(options: Partial<UsePagedN8nChatThreadsOptions> = {}) {
 	const TestComponent = defineComponent({
 		setup() {
-			return usePagedN8nChatThreads({ agentId, pageSize: 2 });
+			return usePagedN8nChatThreads({ pageSize: 2, ...options });
 		},
 		template: '<div />',
 	});
@@ -36,6 +47,7 @@ function mountComposable(agentId?: () => string | undefined) {
 describe('usePagedN8nChatThreads', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		deletedThreadIds.clear();
 	});
 
 	it('loads the first page with no cursor', async () => {
@@ -182,26 +194,109 @@ describe('usePagedN8nChatThreads', () => {
 		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('new')]));
 	});
 
-	it("resets paging and clears the previous agent's items when agentId changes", async () => {
+	it("resets paging and clears the previous agent's items when agentId changes, without fetching", async () => {
 		const agentId = ref<string | undefined>('agent-1');
 		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: 'cursor-1' });
-		const wrapper = mountComposable(() => agentId.value);
+		const wrapper = mountComposable({ agentId: () => agentId.value });
 		wrapper.vm.loadNext();
 		await vi.waitFor(() => expect(wrapper.vm.items).toHaveLength(1));
 
+		listN8nChatThreadsMock.mockClear();
 		agentId.value = 'agent-2';
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.vm.items).toEqual([]);
+		expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
 		expect(wrapper.vm.hasMore).toBe(true);
 
-		listN8nChatThreadsMock.mockClear();
 		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t2')], nextCursor: null });
 		wrapper.vm.loadNext();
 		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('t2')]));
 		expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ cursor: undefined, agentId: 'agent-2' }),
+		);
+	});
+
+	it('clears and reloads when the search term changes', async () => {
+		const search = ref<string | undefined>(undefined);
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t1')], nextCursor: 'cursor-1' });
+		const wrapper = mountComposable({ search: () => search.value });
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('t1')]));
+
+		let resolveSearch:
+			| ((value: { data: Array<ReturnType<typeof thread>>; nextCursor: null }) => void)
+			| undefined;
+		listN8nChatThreadsMock.mockImplementationOnce(
+			async () =>
+				await new Promise((resolve) => {
+					resolveSearch = resolve;
+				}),
+		);
+		search.value = 'refund';
+		await wrapper.vm.$nextTick();
+		// The old list never shows under the new term.
+		expect(wrapper.vm.items).toEqual([]);
+
+		resolveSearch?.({ data: [thread('t2')], nextCursor: null });
+		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('t2')]));
+		expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ cursor: undefined, search: 'refund' }),
+		);
+	});
+
+	it('drops a deleted id from items without disturbing the cursor', async () => {
+		listN8nChatThreadsMock
+			.mockResolvedValueOnce({ data: [thread('t1'), thread('t2')], nextCursor: 'cursor-1' })
+			.mockResolvedValueOnce({ data: [thread('t3')], nextCursor: null });
+		const wrapper = mountComposable();
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.items).toHaveLength(2));
+
+		deletedThreadIds.add('t1');
+		await wrapper.vm.$nextTick();
+		expect(wrapper.vm.items.map((t: { id: string }) => t.id)).toEqual(['t2']);
+
+		// The deleted id never resurfaces de-dup, and the next page still starts from
+		// the cursor the raw (unfiltered) list returned — paging is unaffected.
+		wrapper.vm.loadNext();
+		await vi.waitFor(() =>
+			expect(wrapper.vm.items.map((t: { id: string }) => t.id)).toEqual(['t2', 't3']),
+		);
+		expect(listN8nChatThreadsMock).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.objectContaining({ cursor: 'cursor-1' }),
+		);
+	});
+
+	it('disabled: a search change clears items but does not request; enabling later allows loadNext to fetch', async () => {
+		const enabled = ref(true);
+		const search = ref<string | undefined>(undefined);
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('old')], nextCursor: null });
+		const wrapper = mountComposable({ enabled: () => enabled.value, search: () => search.value });
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('old')]));
+		listN8nChatThreadsMock.mockClear();
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t1')], nextCursor: null });
+
+		enabled.value = false;
+		search.value = 'refund';
+		await wrapper.vm.$nextTick();
+		expect(wrapper.vm.items).toEqual([]);
+		expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
+
+		// A manual loadNext() while disabled is also a no-op.
+		wrapper.vm.loadNext();
+		expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
+
+		enabled.value = true;
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('t1')]));
+		expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ search: 'refund' }),
 		);
 	});
 });

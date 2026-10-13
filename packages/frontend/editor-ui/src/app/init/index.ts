@@ -266,6 +266,8 @@ export async function initializeAuthenticatedFeatures(
 		await coordinator.loadNodeTypes(rootStore.baseUrl);
 	}
 
+	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+
 	authenticatedFeaturesInitialized = true;
 }
 

@@ -32,6 +32,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -74,6 +75,7 @@ export class WorkflowCreationService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async prepareBatchContext(
@@ -222,6 +224,7 @@ export class WorkflowCreationService {
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
 			rules,
 		);
+		this.deprecatedNodesValidationService.validateOnCreate(newWorkflow.nodes, newWorkflow.id);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 			if (!batchContext) {

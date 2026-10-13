@@ -40,6 +40,11 @@ describe('ContinueApplyPackageDto', () => {
 		});
 	});
 
+	it('accepts a confirmation of destructive data table changes', () => {
+		const body = { expectedSource, confirmDestructiveChanges: true };
+		expect(ContinueApplyPackageDto.parse(body)).toEqual(body);
+	});
+
 	it.each([
 		{},
 		{ expectedSource: {} },
@@ -82,6 +87,7 @@ describe('ApplyPackageDto', () => {
 		{ force: true },
 		{ expectedSource: {} },
 		{ expectedSource: { ...expectedSource, commitSha: 'HEAD' } },
+		{ expectedSource, confirmDestructiveChanges: true },
 	])('rejects unsupported or incomplete fields: %j', (body) => {
 		expect(ApplyPackageDto.safeParse(body).success).toBe(false);
 	});
@@ -142,11 +148,27 @@ describe('ApplySelectionDto', () => {
 		const workflowIds = ['workflow1'];
 		expect(ApplySelectionDto.parse({ workflowIds })).toEqual({ workflowIds });
 	});
+
+	it('rejects a confirmation of destructive data table changes', () => {
+		expect(
+			ApplySelectionDto.safeParse({ workflowIds: ['workflow1'], confirmDestructiveChanges: true })
+				.success,
+		).toBe(false);
+	});
 });
 
 describe('ContinueApplySelectionDto', () => {
 	it('requires the reviewed source', () => {
 		expect(ContinueApplySelectionDto.safeParse({ workflowIds: ['workflow1'] }).success).toBe(false);
+	});
+
+	it('accepts a confirmation of destructive data table changes', () => {
+		const body = {
+			workflowIds: ['workflow1'],
+			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
+			confirmDestructiveChanges: true,
+		};
+		expect(ContinueApplySelectionDto.parse(body)).toEqual(body);
 	});
 });
 

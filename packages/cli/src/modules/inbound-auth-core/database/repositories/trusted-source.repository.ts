@@ -123,6 +123,25 @@ export class TrustedSourceRepository {
 		return await this.table.managerFor(ctx).save(TrustedSourceEntity, this.table.create(row));
 	}
 
+	/**
+	 * Inserts the row unless one already holds its id, name or issuer. Concurrent seeders on several
+	 * processes: the losers' inserts are no-ops. `values` skips `@BeforeInsert`, so the caller
+	 * passes the id; the timestamps take their database defaults.
+	 */
+	async insertIfAbsent(
+		row: NewTrustedSourceRow & Pick<TrustedSourceEntity, 'id'>,
+		ctx: OperationContext = {},
+	) {
+		await this.table
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.insert()
+			.into(TrustedSourceEntity)
+			.values(row)
+			.orIgnore()
+			.execute();
+	}
+
 	async updateById(id: string, changes: TrustedSourceRowChanges, ctx: OperationContext = {}) {
 		await this.table.managerFor(ctx).update(TrustedSourceEntity, { id }, changes);
 	}

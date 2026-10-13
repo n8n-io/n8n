@@ -159,6 +159,16 @@ export class ScheduledJob extends WithTimestamps {
 	maxAttempts: number;
 
 	/**
+	 * How long, in seconds, one attempt of an occurrence may run before the executor
+	 * stops it. Copied onto each occurrence this job materializes.
+	 *
+	 * Pinned to a literal, not the config default, so a later change to the default
+	 * can't retroactively change what this entity declares.
+	 */
+	@Column({ type: 'int', default: 300 })
+	timeoutSeconds: number;
+
+	/**
 	 * How many of this job's occurrences may run at the same time. `null` means no
 	 * limit.
 	 *

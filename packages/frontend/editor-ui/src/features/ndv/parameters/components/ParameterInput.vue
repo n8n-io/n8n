@@ -62,6 +62,7 @@ import {
 	formatAsExpression,
 	getParameterTypeOption,
 	isResourceLocatorParameterType,
+	isObjectInPlainParameter,
 	isValidParameterOption,
 	parseFromExpression,
 	shouldSkipParamValidation,
@@ -507,14 +508,15 @@ const displayValue = computed(() => {
 	}
 
 	let returnValue;
-	if (!isModelValueExpression.value) {
-		returnValue = isResourceLocatorParameter.value
-			? isResourceLocatorValue(props.modelValue)
-				? props.modelValue.value
-				: ''
-			: props.modelValue;
-	} else {
+	if (isModelValueExpression.value) {
 		returnValue = props.expressionEvaluated;
+	} else if (isResourceLocatorParameter.value) {
+		returnValue = isResourceLocatorValue(props.modelValue) ? props.modelValue.value : '';
+	} else if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		// Saved workflows can still hold a value carried over from a same-named parameter
+		returnValue = JSON.stringify(props.modelValue);
+	} else {
+		returnValue = props.modelValue;
 	}
 
 	if (props.parameter.type === 'credentialsSelect' && typeof props.modelValue === 'string') {
@@ -655,7 +657,10 @@ const getIssues = computed<string[]>(() => {
 		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
-	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
+	if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		issues.parameters = issues.parameters ?? {};
+		issues.parameters[props.parameter.name] = [i18n.baseText('parameterInput.valueTypeMismatch')];
+	} else if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
 		issues.parameters = issues.parameters ?? {};
 
 		const issue = i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');

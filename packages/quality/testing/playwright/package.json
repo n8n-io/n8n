@@ -1,6 +1,12 @@
 {
   "name": "n8n-playwright",
   "private": true,
+  "exports": {
+    "./config": "./quality-config.ts",
+    "./test": "./quality-test.ts",
+    "./cli": "./fixtures/cli.ts",
+    "./metrics": "./utils/metrics.ts"
+  },
   "scripts": {
     "dev": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=e2e",
     "test:dev-server-smoke": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=dev-server-smoke",
@@ -83,6 +89,7 @@
     "axe-html-reporter": "^2.2.11",
     "debug": "^4.3.4",
     "eslint-plugin-playwright": "catalog:e2e",
+    "execa": "10.1.0",
     "flatted": "catalog:",
     "generate-schema": "2.6.0",
     "jsonwebtoken": "catalog:",
