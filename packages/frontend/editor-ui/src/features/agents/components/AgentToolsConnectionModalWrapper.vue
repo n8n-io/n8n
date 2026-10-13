@@ -57,6 +57,7 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { inlineAgentToolTypes } from '../utils/inlineAgentToolTypes';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
@@ -748,9 +749,19 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
-		restriction: getNodeItemRestriction(nodeType.name),
+		// A connected tool can embed an inline agent, so its own type is not the whole answer.
+		restriction: getNodeItemRestriction(nodeType.name) ?? embeddedRestriction(node),
 	};
 	return item;
+}
+
+/** The verdict of the first denied type an inline agent inside this node would run. */
+function embeddedRestriction(node: INode): ReturnType<typeof getNodeItemRestriction> {
+	for (const type of inlineAgentToolTypes(node.type, node.parameters)) {
+		const restriction = getNodeItemRestriction(type);
+		if (restriction) return restriction;
+	}
+	return undefined;
 }
 
 function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | null {

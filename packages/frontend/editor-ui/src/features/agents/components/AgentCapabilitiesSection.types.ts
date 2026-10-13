@@ -33,6 +33,8 @@ export type ToolRowItem = {
 	restrictedScope?: NodeTypeAvailabilityScope;
 	/** The type name the restriction popover shows. */
 	restrictedTypeLabel: string;
+	/** Set only when the row itself is allowed and something it embeds is denied. */
+	restrictedMessage: string;
 };
 
 type ToolRowBase = {
@@ -55,6 +57,8 @@ type ToolRowBase = {
 	restrictedScope?: NodeTypeAvailabilityScope;
 	/** The type name the restriction popover shows. */
 	restrictedTypeLabel: string;
+	/** Set only when the row itself is allowed and something it embeds is denied. */
+	restrictedMessage: string;
 };
 
 export type GroupedToolRow = ToolRowBase & {
@@ -81,5 +85,6 @@ export type ToolMenuItem = DropdownMenuItemProps<
 		restricted: boolean;
 		restrictedScope?: NodeTypeAvailabilityScope;
 		restrictedTypeLabel: string;
+		restrictedMessage: string;
 	}
 >;

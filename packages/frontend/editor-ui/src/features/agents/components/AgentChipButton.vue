@@ -27,6 +27,11 @@ const props = withDefaults(
 		restrictedScope?: NodeTypeAvailabilityScope;
 		/** The name the restriction popover shows. Falls back to the chip's own label. */
 		restrictedTypeLabel?: string;
+		/**
+		 * Set when the entry itself is allowed and only something it embeds is denied. The lock then
+		 * carries this text instead of the node popover, which would name the wrong node type.
+		 */
+		restrictedMessage?: string;
 		clickable?: boolean;
 	}>(),
 	{
@@ -41,6 +46,7 @@ const props = withDefaults(
 		restricted: false,
 		restrictedScope: undefined,
 		restrictedTypeLabel: '',
+		restrictedMessage: '',
 		clickable: true,
 	},
 );
@@ -101,7 +107,17 @@ const emit = defineEmits<{
 		</N8nText>
 		<!-- The lock explains the chip; it must not also open what the chip opens. -->
 		<span v-if="props.restricted" :class="$style.lock" @click.stop>
+			<N8nTooltip v-if="props.restrictedMessage" placement="top">
+				<N8nIcon
+					icon="lock"
+					size="xsmall"
+					:class="$style.lockIcon"
+					data-test-id="agent-chip-inline-restricted-icon"
+				/>
+				<template #content>{{ props.restrictedMessage }}</template>
+			</N8nTooltip>
 			<RestrictedNodePopover
+				v-else
 				:node-type-name="props.restrictedTypeLabel"
 				:scope="props.restrictedScope"
 				:anchor="chipRef"
@@ -164,6 +180,10 @@ const emit = defineEmits<{
 	display: inline-flex;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+.lockIcon {
+	color: var(--color--text--tint-1);
 }
 
 // Matches the dimming of a restricted row in the tool pickers.

@@ -30,6 +30,7 @@ const PREVIEW_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.builder.preview.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	restricted_by_instance: 'agents.builder.preview.issue.restrictedByInstance' as BaseTextKey,
 	restricted_by_project: 'agents.builder.preview.issue.restrictedByProject' as BaseTextKey,
+	restricted_by_inline_tool: 'agents.builder.preview.issue.restrictedByInlineTool' as BaseTextKey,
 };
 
 const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
@@ -40,6 +41,7 @@ const PUBLISH_REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 		'agents.publish.issue.agent.credential.azureClassicEndpoint' as BaseTextKey,
 	restricted_by_instance: 'agents.publish.issue.restrictedByInstance' as BaseTextKey,
 	restricted_by_project: 'agents.publish.issue.restrictedByProject' as BaseTextKey,
+	restricted_by_inline_tool: 'agents.publish.issue.restrictedByInlineTool' as BaseTextKey,
 };
 
 const CORE_PATH_KEYS: Record<string, BaseTextKey> = {

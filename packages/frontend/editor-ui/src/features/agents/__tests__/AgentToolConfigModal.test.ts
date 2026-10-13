@@ -705,6 +705,49 @@ describe('AgentToolConfigModal', () => {
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		});
 
+		it('explains an inline restriction but keeps the tool editable, so it can be repaired', async () => {
+			// The tool's own type is allowed; the agent it embeds holds the denied type.
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.mySql': 'instance' });
+			const { container, getByTestId, queryByTestId } = renderModal({
+				valid: true,
+				ref: toolRef({
+					nodeType: 'n8n-nodes-base.messageAnAgentTool',
+					credentials: {},
+					nodeParameters: {
+						agentSource: 'inline',
+						inlineAgent: {
+							config: {
+								tools: [
+									{
+										type: 'node',
+										name: 'inline_query',
+										node: { nodeType: 'n8n-nodes-base.mySql', nodeParameters: {} },
+									},
+								],
+							},
+						},
+					},
+				}),
+			});
+			await nextTick();
+
+			expect(getByTestId('inline-restricted-tool-callout').textContent).toContain(
+				'agents.toolConfig.restrictedInlineTool',
+			);
+			expect(queryByTestId('restricted-tool-callout')).toBeNull();
+			expect(getByTestId('node-tool-settings-content')).toHaveAttribute('data-read-only', 'false');
+			const saveBtn = getNativeTestId(container, 'agent-tool-config-save') as HTMLButtonElement;
+			expect(saveBtn.disabled).toBe(false);
+		});
+
+		it('shows no inline callout when nothing is restricted', async () => {
+			mockRestrictedNodeTypes();
+			const { queryByTestId } = renderModal({ valid: true });
+			await nextTick();
+
+			expect(queryByTestId('inline-restricted-tool-callout')).toBeNull();
+		});
+
 		it('leaves an unrestricted tool editable', async () => {
 			mockRestrictedNodeTypes();
 			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });

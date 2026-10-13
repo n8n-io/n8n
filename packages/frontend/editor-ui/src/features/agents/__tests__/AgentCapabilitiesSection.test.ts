@@ -36,6 +36,7 @@ function createNodeType(name: string, displayName: string): SimplifiedNodeType {
 const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
+	isNodeTypeRestricted: (name: string) => storeRestrictions.has(name),
 	RestrictedNodePopover: {
 		name: 'RestrictedNodePopover',
 		props: ['nodeTypeName', 'scope', 'anchor', 'side', 'markerSize'],
@@ -1552,6 +1553,17 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		expect(lock.attributes('data-node-type')).toBe('Slack');
 	});
 
+	it('dims the restricted chip', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_instance')],
+		});
+		await flushPromises();
+
+		const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+		expect(chip.classes().some((c) => c.includes('restricted'))).toBe(true);
+	});
+
 	it('shows the lock alone, without the error icon of an invalid chip', async () => {
 		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
 		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
@@ -1657,6 +1669,73 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		expect(wrapper.find('[data-testid="node-restricted-icon"]').attributes('data-scope')).toBe(
 			'instance',
 		);
+	});
+
+	it('labels an inline restriction with plain text, not the node popover', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('ask_billing_agent')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'restricted_by_inline_tool')],
+		});
+		await flushPromises();
+
+		// Plain text, because naming the tool's own node type in the popover would be wrong.
+		expect(wrapper.find('[data-test-id="agent-chip-inline-restricted-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(false);
+	});
+
+	it('keeps a restricted tool out of the group of its allowed same-type siblings', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		// Same node type, but only the first embeds something denied.
+		const wrapper = mountSection(
+			[slackTool('ask_billing_agent'), slackTool('message_an_agent')],
+			{},
+			null,
+			[],
+			[],
+			{ validationIssues: [restrictedToolIssue(0, 'restricted_by_inline_tool')] },
+		);
+		await flushPromises();
+
+		const chips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
+		expect(chips).toHaveLength(2);
+		expect(
+			chips.filter((c) => c.find('[data-test-id="agent-chip-inline-restricted-icon"]').exists()),
+		).toHaveLength(1);
+	});
+
+	it('keeps an inline lock while an unsaved edit clears the issues', async () => {
+		getNodeType.mockReturnValue(
+			createNodeType('n8n-nodes-base.messageAnAgentTool', 'Message an Agent Tool'),
+		);
+		// The embedding tool is allowed; only what it holds is denied.
+		storeRestrictions.set('n8n-nodes-base.mySql', { scope: 'instance' });
+		const embedding: AgentJsonToolRef = {
+			type: 'node',
+			name: 'ask_billing_agent',
+			node: {
+				nodeType: 'n8n-nodes-base.messageAnAgentTool',
+				nodeTypeVersion: 1,
+				nodeParameters: {
+					agentSource: 'inline',
+					inlineAgent: {
+						config: {
+							tools: [
+								{
+									type: 'node',
+									name: 'inline_query',
+									node: { nodeType: 'n8n-nodes-base.mySql', nodeParameters: {} },
+								},
+							],
+						},
+					},
+				},
+			},
+		};
+		const wrapper = mountSection([embedding], {}, null, [], [], { validationIssues: [] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-chip-inline-restricted-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="node-restricted-icon"]').exists()).toBe(false);
 	});
 
 	it('locks an MCP server chip whose node type a policy denies', async () => {
