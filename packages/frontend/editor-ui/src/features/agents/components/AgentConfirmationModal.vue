@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nAlertDialog, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import AgentModal from './modals/AgentModal.vue';
 
@@ -9,7 +9,6 @@ export type AgentConfirmationModalData = {
 	description: string;
 	confirmButtonText: string;
 	cancelButtonText: string;
-	destructive?: boolean;
 	onConfirm?: () => unknown | Promise<unknown>;
 	onCancel?: () => unknown | Promise<unknown>;
 	onClose?: () => unknown | Promise<unknown>;
@@ -29,7 +28,9 @@ function closeModal() {
 }
 
 async function onCancel() {
+	if (submitting.value) return;
 	await props.data.onCancel?.();
+	if (submitting.value) return;
 	closeModal();
 }
 
@@ -46,30 +47,16 @@ async function onConfirm() {
 }
 
 async function onOpenChange(open: boolean) {
-	if (open) return;
+	if (open || submitting.value) return;
 	const shouldClose = await props.data.onClose?.();
+	// A confirm request can start while onClose is still running.
+	if (submitting.value) return;
 	if (shouldClose !== false) closeModal();
 }
 </script>
 
 <template>
-	<N8nAlertDialog
-		v-if="props.data.destructive"
-		:open="modalOpen"
-		:title="props.data.title"
-		:description="props.data.description"
-		:action-label="props.data.confirmButtonText"
-		:cancel-label="props.data.cancelButtonText"
-		action-variant="destructive"
-		:loading="submitting"
-		size="medium"
-		data-testid="agent-confirmation-modal"
-		@action="onConfirm"
-		@cancel="onCancel"
-		@update:open="onOpenChange"
-	/>
 	<AgentModal
-		v-else
 		:open="modalOpen"
 		:title="props.data.title"
 		:busy="submitting"
