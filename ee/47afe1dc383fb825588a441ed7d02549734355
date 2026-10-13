@@ -1,0 +1,62 @@
+packages/cli/src/utils/__tests__/container-limits.test.ts
+  s_1c3454caac6e1f::t_4d11c98f82365f 6-48
+  s_ec3a17488104de::t_1c374c88186e4e 1-5,49-83
+  s_ec3a17488104de::t_ca40141512f8a3 84
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1c3454caac6e1f::t_ef4e130d3092fe 63
+  s_1c3454caac6e1f::t_33d0ac2563588f 1779
+  s_1c3454caac6e1f::t_16566b6ba5b7fc 1816-1817
+  s_1c3454caac6e1f::t_e5edb8562f062b 64,1780-1793,1799-1800
+packages/cli/src/utils/container-limits.ts
+  s_1c3454caac6e1f::t_6876f4347c0222 1-32,39-51
+  s_ec3a17488104de::t_75838e0164a44e 33-38
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1c3454caac6e1f::t_da686cfab8ff2d 3550-3563
+  s_1c3454caac6e1f::t_0c0e6433557654 3666-3667
+  s_1c3454caac6e1f::t_4adc0c572c8a81 46-52
+  s_1c3454caac6e1f::t_8d303d73aa73cc 3564-3603
+packages/cli/src/scaling/worker-status.service.ee.ts
+  s_1c3454caac6e1f::t_560b74f8f84179 11
+  s_1c3454caac6e1f::t_03bb5c1f51834b 64
+packages/@n8n/telemetry/src/events/instance.ts
+  s_1c3454caac6e1f::t_6d8006b5adadc6 53-62
+  s_1c3454caac6e1f::t_0a91b062e43668 20-27
+packages/cli/src/utils/__tests__/detect-managed-services.test.ts
+  s_1c3454caac6e1f::t_e164b208737be6 1-41
+  s_1c3454caac6e1f::t_28ad387821f57a 42-44
+  s_1c3454caac6e1f::t_cdb4b884aee750 45
+packages/cli/src/utils/detect-managed-services.ts
+  s_1c3454caac6e1f::t_220dd8b0299fd1 1-36
+packages/@n8n/db/src/connection/db-connection.ts
+  s_1c3454caac6e1f::t_58c1608079fb49 24-31
+  s_1c3454caac6e1f::t_2e17a1eb429efe 102-124
+  s_1c3454caac6e1f::t_6fbdc0bc322047 125-126
+packages/@n8n/db/src/index.ts
+  s_1c3454caac6e1f::t_92eef2d50f1540 47
+packages/@n8n/db/src/connection/__tests__/db-connection.test.ts
+  s_1c3454caac6e1f::t_9601f8bbc548aa 385-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee47afe1dc383fb825588a441ed7d02549734355",
+  "prompts": {},
+  "sessions": {
+    "s_1c3454caac6e1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d254c449-dcec-42ba-b84b-c9e5c08ccf70",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_ec3a17488104de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e85f3596-80d0-47ee-92ad-8b347ad82b76",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

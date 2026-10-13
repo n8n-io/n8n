@@ -1,0 +1,33 @@
+packages/cli/test/integration/agents/agent-chat-cancellation.api.test.ts
+  s_fbba0b32ee6f59::t_56fe77d2724ca6 76-83
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_fbba0b32ee6f59::t_b8405f211eb28a 85
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_fbba0b32ee6f59::t_7ccdb8e39ff0ae 116,123-128,134
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_fbba0b32ee6f59::t_b8405f211eb28a 103-106
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_fbba0b32ee6f59::t_7ccdb8e39ff0ae 120
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_fbba0b32ee6f59::t_56fe77d2724ca6 175
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_fbba0b32ee6f59::t_417c98ddee241f 22,60
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_fbba0b32ee6f59::t_953995504c6b8a 376-381,383,385,387,389-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "419105ed9cad9d7b9d0de56a92a1daa84a1e8be5",
+  "prompts": {},
+  "sessions": {
+    "s_fbba0b32ee6f59": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10c3a-c169-7050-86b8-0b78c91b308c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

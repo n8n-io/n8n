@@ -1,0 +1,26 @@
+packages/modules/inbox/frontend/src/views/InboxView.test.ts
+  s_5bccbc7a699958::t_c95178bd964e63 230,237
+packages/modules/inbox/frontend/src/views/InboxView.vue
+  s_5bccbc7a699958::t_6f0657900f3ee6 115-118
+packages/modules/inbox/frontend/src/inbox.store.test.ts
+  s_5bccbc7a699958::t_72d157bc9bdeba 341-342,344-345
+  s_5bccbc7a699958::t_c95178bd964e63 321-340,343,346-347
+packages/modules/inbox/frontend/src/inbox.store.ts
+  s_5bccbc7a699958::t_5249c446f7ee05 245-246,249,253,257-260,263-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95b2acaaf70a7b51512413566d21be6b8dbfcbd5",
+  "prompts": {},
+  "sessions": {
+    "s_5bccbc7a699958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e5b0e58-2af3-4528-9c2d-65dc92577865",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

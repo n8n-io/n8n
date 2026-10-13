@@ -1,0 +1,37 @@
+packages/cli/src/modules/provisioning.ee/__tests__/provisioning.module.test.ts
+  s_60f5633681e4e3::t_2a7f2f4bf2b4b1 1-35
+packages/cli/src/modules/provisioning.ee/role-resolver-types.ts
+  s_60f5633681e4e3::t_168208c27229fa 1-9
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_60f5633681e4e3::t_168208c27229fa 9,110-118
+  s_60f5633681e4e3::t_332133561e4e3a 119-120
+packages/cli/src/services/__tests__/role-mapping-proxy.service.test.ts
+  s_60f5633681e4e3::t_2a7f2f4bf2b4b1 1-18
+packages/cli/src/modules/provisioning.ee/__tests__/role-resolver.service.ee.test.ts
+  s_60f5633681e4e3::t_a93076f9f097a7 67,272,305,324,347,367,390,410,453,471,475,503-525,529,550,557,717,743
+packages/cli/src/modules/provisioning.ee/role-resolver.service.ee.ts
+  s_60f5633681e4e3::t_168208c27229fa 2,27,29,44,54
+packages/cli/src/services/role-mapping-proxy.service.ts
+  s_60f5633681e4e3::t_168208c27229fa 1-86
+packages/cli/src/modules/provisioning.ee/role-mapping-provider.ee.ts
+  s_60f5633681e4e3::t_168208c27229fa 1-37
+packages/cli/test/integration/inbound-auth-core/trusted-source-identity.service.integration.test.ts
+  s_60f5633681e4e3::t_2a7f2f4bf2b4b1 26,28,136-139,926-967
+  s_60f5633681e4e3::t_d719fbcb2609cd 968
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70df1c477ef6508fd467bc97efbcd403d0113d73",
+  "prompts": {},
+  "sessions": {
+    "s_60f5633681e4e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233f5aab-347d-4e5c-a26e-befd59b0253f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

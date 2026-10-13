@@ -1,0 +1,42 @@
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_96959332022b42 152-170,175
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_8631ec10eb1199::t_b8087f587f606d 753,761-762,778,783-784,798,802-807,818,821,826-827,832-836,838,841,846,850,853,856-857,866-868,874,876-893,895,898,900,904,906-912,915,917-921,924-925,928,930-933,936,938,940,943,954
+packages/@n8n/decorators/src/controller/index.ts
+  s_8631ec10eb1199::t_fa16d7398e787c 24
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_8631ec10eb1199::t_268e04424571b7 31
+packages/cli/src/public-api/media-types/binary-response.ts
+  s_8631ec10eb1199::t_85f2c81a7e0c61 5,16-23,25-26,47,59,67,74,78,83
+  s_8631ec10eb1199::t_259d268745620a 43-45
+  s_8631ec10eb1199::t_b5c45d6ff45b02 75-77
+  s_8631ec10eb1199::t_284c32342f224f 80-82
+  s_8631ec10eb1199::t_f4766673a490e0 1,4,7-13,30,32,37,39-40,46,48-52,55,58,60-61,65-66,68-72
+  s_8631ec10eb1199::t_d41fe8ff37d127 57
+  s_8631ec10eb1199::t_34bae458ccc08f 79
+  s_8631ec10eb1199::t_69b89fecfb07bf 56
+  s_8631ec10eb1199::t_d95fbc01b91fda 64
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_8631ec10eb1199::t_4eae74cce3bbff 23,125-126,131
+.agents/skills/public-api/SKILL.md
+  s_8631ec10eb1199::t_268e04424571b7 112
+packages/@n8n/decorators/src/controller/types.ts
+  s_8631ec10eb1199::t_fa16d7398e787c 5,28,32-35
+  s_8631ec10eb1199::t_fff9063ac3f525 36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e02d95cc65eb2189e521c08e53fca825ee039a20",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

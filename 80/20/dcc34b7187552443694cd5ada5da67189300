@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Mailjet/test/Mailjet.workflow.test.ts
+  s_2e1fa95fc44f8f::t_050006573476e7 1-41
+packages/nodes-base/nodes/Marketstack/test/Marketstack.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b379b290630929 1-40
+packages/nodes-base/nodes/Mailjet/test/Mailjet.workflow.json
+  s_2e1fa95fc44f8f::t_5ab09c1e7955f5 1-113
+packages/nodes-base/nodes/Marketstack/test/Marketstack.workflow.json
+  s_2e1fa95fc44f8f::t_9e4e282bf84857 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8020dcc34b7187552443694cd5ada5da67189300",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

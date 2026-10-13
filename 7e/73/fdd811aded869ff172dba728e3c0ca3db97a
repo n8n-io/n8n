@@ -1,0 +1,24 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/request-target.test.ts
+  s_2e1fa95fc44f8f::t_d9a9744e3ca37f 1,26-35
+  s_2e1fa95fc44f8f::t_16a12e8044cbfd 36-38
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/request-target.ts
+  s_2e1fa95fc44f8f::t_d9a9744e3ca37f 5-6,10-12,15,20,34-35
+packages/@n8n/eslint-config/request-target.formatter.mjs
+  s_2e1fa95fc44f8f::t_660911ba1a71b4 17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e73fdd811aded869ff172dba728e3c0ca3db97a",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
