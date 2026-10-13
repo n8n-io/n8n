@@ -343,6 +343,8 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
   entry so the UI can render the correct server form.
 - A registry match proves server availability, not support for the requested
   capability; use the verified live tool list for that decision.
+- Describe an MCP server only by its name, or by text the user or the registry
+  gave. If you cannot identify it, do not state what it does.
 
 ## Verify
 
