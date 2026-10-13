@@ -42,7 +42,7 @@ import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import {
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
-	RestrictedNodePopover,
+	SCOPE_LABEL_KEY,
 } from '@n8n/frontend-module-type-availability-policies';
 
 import AgentChipButton from './AgentChipButton.vue';
@@ -200,7 +200,7 @@ function storedRestriction(entry: CapabilityToolEntry): ChipRestriction | null {
 	const nodeType = toolNodeType(entry);
 	if (nodeType) {
 		const own = getNodeTypeRestriction(nodeType.name);
-		if (own) return { restricted: true, scope: own.scope, message: '' };
+		if (own) return { restricted: true, scope: own.scope, message: '', subject: nodeType.name };
 	}
 
 	if (entry.kind === 'mcpServer' || entry.tool.type !== 'node') return null;
@@ -214,6 +214,7 @@ function storedRestriction(entry: CapabilityToolEntry): ChipRestriction | null {
 				restricted: true,
 				scope: undefined,
 				message: i18n.baseText('agents.builder.validation.issue.restrictedByInlineTool'),
+				subject: '',
 			}
 		: null;
 }
@@ -223,6 +224,8 @@ type ChipRestriction = {
 	scope: NodeTypeAvailabilityScope | undefined;
 	/** Set only when the entry itself is allowed and something it embeds is denied. */
 	message: string;
+	/** The denied node type, which the entry does not always run as. Empty when unknown. */
+	subject: string;
 };
 
 function reportedRestriction(issue: AgentConfigValidationIssue): ChipRestriction {
@@ -233,9 +236,25 @@ function reportedRestriction(issue: AgentConfigValidationIssue): ChipRestriction
 			restricted: true,
 			scope: undefined,
 			message: i18n.baseText('agents.builder.validation.issue.restrictedByInlineTool'),
+			subject: '',
 		};
 	}
-	return { restricted: true, scope: restrictionScope(issue), message: '' };
+	return {
+		restricted: true,
+		scope: restrictionScope(issue),
+		message: '',
+		subject: issue.subject ?? '',
+	};
+}
+
+function restrictedTypeLabel(
+	restriction: ChipRestriction,
+	entry: CapabilityToolEntry,
+	nodeType = toolNodeType(entry),
+): string {
+	if (!restriction.subject) return toolTypeLabel(entry, nodeType);
+	const denied = nodeTypesStore.getNodeType(restriction.subject);
+	return denied?.displayName.replace(/ Tool$/, '') ?? restriction.subject;
 }
 
 function toolRestriction(entry: CapabilityToolEntry): ChipRestriction {
@@ -246,7 +265,9 @@ function toolRestriction(entry: CapabilityToolEntry): ChipRestriction {
 			: restrictedTools.value.get(entry.index);
 	if (reported) return reportedRestriction(reported);
 
-	return storedRestriction(entry) ?? { restricted: false, scope: undefined, message: '' };
+	return (
+		storedRestriction(entry) ?? { restricted: false, scope: undefined, message: '', subject: '' }
+	);
 }
 
 async function ensureSubAgentNamesLoaded() {
@@ -398,7 +419,8 @@ function buildCapabilityToolRows(entries: CapabilityToolEntry[]): ToolRow[] {
 				restricted: restriction.restricted,
 				restrictedScope: restriction.scope,
 				restrictedMessage: restriction.message,
-				restrictedTypeLabel: toolTypeLabel(entry, nodeType),
+				// Name the type the policy denied; it is not always the one this entry displays.
+				restrictedTypeLabel: restrictedTypeLabel(restriction, entry, nodeType),
 			};
 		}),
 	);
@@ -462,6 +484,15 @@ function fromTargetKey(key: string): ToolOpenTarget | null {
 		toolType,
 		id: decodeURIComponent(encodedId),
 	};
+}
+
+function menuRestrictionText(data: ToolMenuItem['data']): string {
+	if (!data) return '';
+	if (data.restrictedMessage) return data.restrictedMessage;
+	const scopeKey = data.restrictedScope && SCOPE_LABEL_KEY[data.restrictedScope];
+	return [data.restrictedTypeLabel, scopeKey ? i18n.baseText(scopeKey) : '']
+		.filter(Boolean)
+		.join(' — ');
 }
 
 function toolMenuItems(tool: ToolRow): ToolMenuItem[] {
@@ -692,24 +723,10 @@ function openExistingSubAgentModal(subAgent: {
 													:text="i18n.baseText('agents.builder.capabilities.deactivated')"
 													:clickable="false"
 												/>
-												<N8nTooltip
-													v-else-if="item.data?.restricted && item.data.restrictedMessage"
-													placement="left"
-												>
-													<N8nIcon
-														icon="lock"
-														size="xsmall"
-														data-test-id="agent-chip-inline-restricted-icon"
-													/>
-													<template #content>{{ item.data.restrictedMessage }}</template>
+												<N8nTooltip v-else-if="item.data?.restricted" placement="left">
+													<N8nIcon icon="lock" size="xsmall" data-test-id="node-restricted-icon" />
+													<template #content>{{ menuRestrictionText(item.data) }}</template>
 												</N8nTooltip>
-												<RestrictedNodePopover
-													v-else-if="item.data?.restricted"
-													:node-type-name="item.data.restrictedTypeLabel"
-													:scope="item.data.restrictedScope"
-													side="left"
-													marker-size="xsmall"
-												/>
 												<N8nTooltip
 													v-else-if="item.data?.invalid"
 													:disabled="(item.data.invalidReasons ?? []).length === 0"
