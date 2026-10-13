@@ -756,7 +756,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 
 		/** A sign-in that has to be redone locks the steps above it, and this one. */
 		it('locks the last step behind a sign-in that has to be redone', async () => {
-			const { getByTestId } = render({
+			const { getByTestId, getAllByText, queryByText } = render({
 				modelValue: 'cred-1',
 				setup: setupState({
 					managerCredentials: [{ ...connectedCredential, reconnectRequired: true }],
@@ -764,8 +764,12 @@ describe('AgentChannelTeamsManagedSetup', () => {
 				channelConnected: true,
 			});
 
-			await waitFor(() => expect(getByTestId('teams-managed-locked-finish')).toBeVisible());
-			expect(getByTestId('teams-managed-done')).toBeDisabled();
+			await waitFor(() => expect(getByTestId('teams-managed-done')).toBeDisabled());
+			// The step says why it is locked once, and not that the app is missing.
+			expect(
+				getAllByText('agents.channels.teams.managed.connect.lockedBySignIn').length,
+			).toBeGreaterThan(0);
+			expect(queryByText('agents.channels.teams.managed.finish.locked')).not.toBeInTheDocument();
 		});
 
 		it('says what to do when Teams has no Upload an app option', async () => {

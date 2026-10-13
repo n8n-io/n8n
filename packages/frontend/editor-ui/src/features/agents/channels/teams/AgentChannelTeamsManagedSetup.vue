@@ -230,6 +230,18 @@ const currentSettings = computed<AgentTeamsIntegrationSettings>(() => ({
 	...availability.value,
 }));
 
+/** True once there is a channel to come back to, so leaving loses nothing. */
+const persisted = ref(false);
+
+/**
+ * Leaving is allowed once there is something worth saving: a package handed
+ * over, or an app already in the catalogue. The second case is the one a
+ * re-run lands in -- Microsoft keeps the app through a disconnect, so nothing
+ * here writes the channel again, and without Done there is no way to bind the
+ * credential back to the agent at all.
+ */
+const canFinish = computed(() => persisted.value || published.value);
+
 /**
  * Every step after the first runs on the sign-in, so a sign-in that has to be
  * redone locks them rather than leaving one of them looking actionable. A step
@@ -251,9 +263,10 @@ const statusOf = computed<Record<string, 'complete' | 'active' | 'locked'>>(() =
 		// itself finished -- the user says when it is. Gated on the sign-in like
 		// the steps above: one that has to be redone locks them, and leaving
 		// this one actionable would read as the odd one out.
+		// Done saves through the modal, which writes only when `canFinish` holds,
+		// so the step unlocks on that and nothing else.
 		finish:
-			connected.value &&
-			(installRoute.value === 'downloaded' || published.value || props.channelConnected === true)
+			connected.value && (canFinish.value || props.channelConnected === true)
 				? ('active' as const)
 				: ('locked' as const),
 	};
@@ -263,7 +276,11 @@ const awaitingCatalog = computed(() => installRoute.value !== 'downloaded' && pu
 
 const finishDescription = computed(() => {
 	if (statusOf.value.finish === 'locked')
-		return i18n.baseText('agents.channels.teams.managed.finish.locked');
+		return i18n.baseText(
+			reconnectRequired.value
+				? 'agents.channels.teams.managed.connect.lockedBySignIn'
+				: 'agents.channels.teams.managed.finish.locked',
+		);
 	if (awaitingCatalog.value) {
 		return organization.value
 			? i18n.baseText('agents.channels.teams.managed.finish.published', {
@@ -476,9 +493,6 @@ const provisionBot = async () =>
 		await props.runtime.provisionBot(subscriptionId.value);
 	});
 
-/** True once there is a channel to come back to, so leaving loses nothing. */
-const persisted = ref(false);
-
 /**
  * Publishes, and stops there. Adding the app to someone's Teams is the step
  * after, and the design keeps the two apart: publishing is a decision about
@@ -523,14 +537,6 @@ watch(
 
 // Read by the channel modal when it saves, so the availability chosen here is
 // what gets stored rather than the defaults.
-/**
- * Leaving is allowed once there is something worth saving: a package handed
- * over, or an app already in the catalogue. The second case is the one a
- * re-run lands in -- Microsoft keeps the app through a disconnect, so nothing
- * here writes the channel again, and without Done there is no way to bind the
- * credential back to the agent at all.
- */
-const canFinish = computed(() => persisted.value || published.value);
 
 defineExpose({ currentSettings, keepOpenAfterConnect: true, canFinish });
 
@@ -814,7 +820,7 @@ const downloadPackage = async () =>
 								>{{
 									i18n.baseText('agents.channels.teams.managed.createBot.noSubscriptionLink')
 								}}</N8nLink
-							>.
+							>{{ i18n.baseText('agents.channels.teams.managed.createBot.noSubscriptionAfter') }}
 						</N8nText>
 					</template>
 				</div>
@@ -990,14 +996,6 @@ const downloadPackage = async () =>
 							{{ i18n.baseText('agents.channels.teams.managed.finish.soonerAfter') }}
 						</N8nText>
 					</template>
-					<N8nText
-						v-else-if="reconnectRequired"
-						size="small"
-						color="text-light"
-						data-testid="teams-managed-locked-finish"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.connect.lockedBySignIn') }}
-					</N8nText>
 					<N8nButton
 						variant="outline"
 						size="medium"

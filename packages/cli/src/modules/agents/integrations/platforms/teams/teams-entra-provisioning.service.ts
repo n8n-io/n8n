@@ -186,7 +186,7 @@ export class TeamsEntraProvisioningService {
 		// Graph hands the status back rather than throwing, so a refusal would
 		// otherwise read as an empty directory and be blamed on the account type.
 		if (!organization.ok) {
-			throw new OperationalError('Could not read the organisation this account belongs to.');
+			throw new OperationalError('Could not read the organization this account belongs to.');
 		}
 		const first = isRecord(organization.body)
 			? (organization.body.value as unknown[] | undefined)?.[0]
@@ -420,8 +420,8 @@ export class TeamsEntraProvisioningService {
 		throw withTeamsFailure(
 			new UserError(
 				lastCode === 'Authorization_RequestDenied'
-					? 'This organisation does not allow n8n to add a client secret. Use the manual setup.'
-					: 'This organisation refused every client secret lifetime n8n offered. Use the manual setup.',
+					? 'This organization does not allow n8n to add a client secret. Use the manual setup.'
+					: 'This organization refused every client secret lifetime n8n offered. Use the manual setup.',
 			),
 			'secrets_refused',
 		);
@@ -435,7 +435,7 @@ export class TeamsEntraProvisioningService {
 			!response.ok &&
 			graphErrorCode(response.body) !== 'Request_MultipleObjectsWithSameKeyValue'
 		) {
-			throw new OperationalError('Could not finish registering the app in this organisation.');
+			throw new OperationalError('Could not finish registering the app in this organization.');
 		}
 	}
 

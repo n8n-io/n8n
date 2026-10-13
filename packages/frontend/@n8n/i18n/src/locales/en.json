@@ -9693,6 +9693,7 @@
 	"agents.channels.teams.managed.createBot.summary": "Your bot {botName} is running in Azure.",
 	"agents.channels.teams.managed.createBot.noSubscription": "Your Microsoft account doesn’t have access to an Azure subscription. Ask your Azure admin for Contributor access to one, or use",
 	"agents.channels.teams.managed.createBot.noSubscriptionLink": "your own Microsoft app",
+	"agents.channels.teams.managed.createBot.noSubscriptionAfter": ".",
 	"agents.channels.teams.managed.createBot.progress": "Creating Azure Bot, this can take up to a minute…",
 	"agents.channels.teams.managed.createApp.progress": "Creating Teams app, this can take up to 30 seconds…",
 	"agents.channels.teams.managed.createBot.noSubscriptionsFound": "No subscriptions found",

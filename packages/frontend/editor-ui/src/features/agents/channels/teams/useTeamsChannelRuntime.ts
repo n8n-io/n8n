@@ -91,6 +91,8 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	const loading = ref(false);
 	const provisionedApp = ref<TeamsProvisionedAppSummary | null>(null);
 	const botSetupState = ref<TeamsAgentSetupState | null>(null);
+	// The modal keeps this runtime across agents, so the state says whose it is.
+	const botSetupStateFor = ref('');
 	const provisionedBot = ref<TeamsProvisionedBotSummary | null>(null);
 	const subscriptions = ref<TeamsAzureSubscription[]>([]);
 	const catalogState = ref<TeamsCatalogState | null>(null);
@@ -141,15 +143,20 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 			requestedFor === [context.projectId.value, context.agentId.value].join('|');
 		loading.value = true;
 		// Without a credential, so the install card has the agent's name before any
-		// app exists. Skipped once set: provisioning's read is for its credential.
-		if (!botSetupState.value) {
+		// app exists. Skipped once this agent has one: provisioning's read is for
+		// its credential. An agent not saved yet has nothing to read until the
+		// sign-in saves it and loads again.
+		if (botSetupStateFor.value !== requestedFor) {
+			botSetupState.value = null;
 			void getTeamsSetupState(
 				rootStore.restApiContext,
 				context.projectId.value,
 				context.agentId.value,
 			)
 				.then((state) => {
-					if (isCurrent() && !botSetupState.value) botSetupState.value = state;
+					if (!isCurrent() || botSetupStateFor.value === requestedFor) return;
+					botSetupState.value = state;
+					botSetupStateFor.value = requestedFor;
 				})
 				.catch(() => {});
 		}
@@ -276,6 +283,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		);
 		if (readFor !== contextKey()) return false;
 		botSetupState.value = setupState;
+		botSetupStateFor.value = [context.projectId.value, context.agentId.value].join('|');
 		return true;
 	}
 
