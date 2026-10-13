@@ -303,3 +303,185 @@ describe('Switch Case fluent API', () => {
 		});
 	});
 });
+
+describe('inline chains that end in a Switch node', () => {
+	const switchNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.switch', version: 3.2, config: { name } }) as SwitchNode;
+	const noOp = (name: string) =>
+		node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name } });
+	const setNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name } });
+	const manualTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+	const webhookTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { name } });
+	const scheduleTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name } });
+
+	it('connects the previous node to the chain head, not the Switch node', () => {
+		const t = manualTrigger('Start');
+		const prep = setNode('Prep');
+		const sw = switchNode('My Switch');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(prep.to(sw).onCase!(0, caseA).onCase(1, caseB));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Case A', 'Case B', 'My Switch', 'Prep', 'Start']);
+
+		// The trigger enters the chain at its head, and the chain reaches the Switch
+		expect(json.connections['Start'].main[0]![0].node).toBe('Prep');
+		expect(json.connections['Prep'].main[0]![0].node).toBe('My Switch');
+		expect(json.connections['My Switch'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['My Switch'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('connects the prefix node to the Switch node when the chain tail is an existing builder', () => {
+		// t.to(builder) makes the builder the chain tail; .onCase then returns that
+		// same builder with the chain recorded as a feeder. The chain-internal edge
+		// must land on the Switch node, not resolve back to the chain head (self-loop).
+		const t = manualTrigger('Start');
+		const sw = switchNode('My Switch');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+
+		const builder = sw.onCase!(0, caseA);
+		const wf = workflow('test-id', 'Test').add(t.to(builder).onCase!(1, caseB));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Case A', 'Case B', 'My Switch', 'Start']);
+
+		expect(json.connections['Start'].main[0]![0].node).toBe('My Switch');
+		expect(json.connections['My Switch'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['My Switch'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('serializes an incoming connection to the renamed chain head after a name collision', () => {
+		// The chain head 'Prep' collides with an existing node and is renamed 'Prep 1'.
+		// A workflow-level .to() must resolve the composite entry to the renamed key.
+		const t = manualTrigger('Start');
+		const existingPrep = setNode('Prep');
+		const prep = setNode('Prep');
+		const sw = switchNode('Router');
+		const handler = noOp('Handler');
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(existingPrep)
+			.to(prep.to(sw).onCase!(0, handler));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Handler', 'Prep', 'Prep 1', 'Router', 'Start']);
+
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Prep 1');
+		expect(json.connections['Prep 1'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Handler');
+	});
+
+	it('serializes a node-declared connection to the renamed chain head after a name collision', () => {
+		// Same collision, but the edge into the composite is declared on a node
+		// (source.to(composite)) instead of at the workflow level.
+		const t = manualTrigger('Start');
+		const existingPrep = setNode('Prep');
+		const source = setNode('Source');
+		const prep = setNode('Prep');
+		const sw = switchNode('Router');
+		const handler = noOp('Handler');
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(existingPrep)
+			.add(source.to(prep.to(sw).onCase!(0, handler)));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Handler', 'Prep', 'Prep 1', 'Router', 'Source', 'Start']);
+
+		expect(json.connections['Source'].main[0]![0].node).toBe('Prep 1');
+		expect(json.connections['Prep 1'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Handler');
+	});
+
+	it('keeps a second chain connected to the Switch node when the first chain adds a case', () => {
+		// Two chains share one builder object. When one chain calls .onCase, it becomes
+		// one of the builder's feeders. The other chain's edge must still land
+		// on the Switch node, not on the claiming chain's head.
+		const sw = switchNode('Router');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+
+		const branch = sw.onCase!(0, caseA);
+		const fromWebhook = webhook.to(branch);
+		const fromSchedule = schedule.to(branch);
+
+		const json = workflow('id', 'w').add(fromWebhook.onCase!(1, caseB)).add(fromSchedule).toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['Router'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('routes a case edge into a shared builder to the Switch node, not the claiming chain head', () => {
+		// A builder claimed by a feeder chain (webhook.to(branch).onCase(...)) can also
+		// be referenced as a case target of another Switch. That case edge must land on
+		// the builder's Switch node, not on the feeder chain's head.
+		const t = manualTrigger('Start');
+		const outer = switchNode('Outer Router');
+		const ok = noOp('OK');
+		const sw = switchNode('Router');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+		const webhook = webhookTrigger('Webhook');
+
+		const branch = sw.onCase!(0, caseA);
+		const claimed = webhook.to(branch).onCase!(1, caseB);
+
+		const json = workflow('id', 'w')
+			.add(t)
+			.to(outer.onCase!(0, ok).onCase(1, branch))
+			.add(claimed)
+			.toJSON();
+
+		expect(json.connections['Outer Router'].main[0]![0].node).toBe('OK');
+		expect(json.connections['Outer Router'].main[1]![0].node).toBe('Router');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Router'].main[0]![0].node).toBe('Case A');
+		expect(json.connections['Router'].main[1]![0].node).toBe('Case B');
+	});
+
+	it('routes a workflow cursor edge into a shared builder to the Switch node', () => {
+		// wf.add(schedule).to(sharedBuilder): the cursor edge resolves through the
+		// composite head. A builder claimed by another chain must expose the Switch
+		// node as its entry, not the claiming chain's head.
+		const sw = switchNode('Router');
+		const caseA = noOp('Case A');
+		const caseB = noOp('Case B');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+
+		const branch = sw.onCase!(0, caseA);
+		const fromWebhook = webhook.to(branch);
+
+		const json = workflow('id', 'w')
+			.add(fromWebhook.onCase!(1, caseB))
+			.add(schedule)
+			.to(branch)
+			.toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Router');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Router');
+	});
+});

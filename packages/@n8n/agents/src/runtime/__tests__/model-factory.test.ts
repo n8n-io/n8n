@@ -1,6 +1,12 @@
+import { createGoogleVertex } from '@ai-sdk/google-vertex';
 import type { LanguageModel } from 'ai';
 
-import { createEmbeddingModel, createModel } from '../model/model-factory';
+import {
+	createEmbeddingModel,
+	createModel,
+	supportsSplitSystemMessages,
+} from '../model/model-factory';
+import { forgetEndpointApiStyles } from '../model/openai-api-style';
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -25,29 +31,43 @@ vi.mock('@ai-sdk/anthropic', () => ({
 	}),
 }));
 
-vi.mock('@ai-sdk/openai', () => ({
-	createOpenAI: (opts?: ProviderOpts) =>
-		Object.assign(
-			(model: string) => ({
+vi.mock('@ai-sdk/openai', () => {
+	// The stubs really call the endpoint: `doGenerate`/`doStream` POST through the
+	// injected fetch to the path their API lives on, and throw an ai-sdk-shaped
+	// error (an `APICallError` carries `statusCode`) when the endpoint rejects it.
+	const buildModel =
+		(opts: ProviderOpts | undefined, api?: 'chat-completions') => (model: string) => {
+			const callEndpoint = async () => {
+				const base = (opts?.baseURL ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
+				const url = `${base}${api === 'chat-completions' ? '/chat/completions' : '/responses'}`;
+				const response = await (opts?.fetch ?? globalThis.fetch)(url, { method: 'POST' });
+				if (!response.ok) {
+					throw Object.assign(new Error(`Endpoint returned ${response.status}`), {
+						statusCode: response.status,
+						url,
+					});
+				}
+				return { api, url };
+			};
+			return {
 				provider: 'openai',
 				modelId: model,
+				api,
 				apiKey: opts?.apiKey,
 				baseURL: opts?.baseURL,
 				fetch: opts?.fetch,
 				headers: opts?.headers,
 				specificationVersion: 'v3',
-			}),
-			{
-				chat: (model: string) => ({
-					provider: 'openai',
-					modelId: model,
-					api: 'chat-completions',
-					apiKey: opts?.apiKey,
-					baseURL: opts?.baseURL,
-					fetch: opts?.fetch,
-					headers: opts?.headers,
-					specificationVersion: 'v3',
-				}),
+				supportedUrls: {},
+				doGenerate: callEndpoint,
+				doStream: callEndpoint,
+			};
+		};
+
+	return {
+		createOpenAI: (opts?: ProviderOpts) =>
+			Object.assign(buildModel(opts), {
+				chat: buildModel(opts, 'chat-completions'),
 				embeddingModel: (model: string) => ({
 					provider: 'openai',
 					modelId: model,
@@ -55,9 +75,9 @@ vi.mock('@ai-sdk/openai', () => ({
 					baseURL: opts?.baseURL,
 					specificationVersion: 'v2',
 				}),
-			},
-		),
-}));
+			}),
+	};
+});
 
 vi.mock('@ai-sdk/google', () => ({
 	createGoogle: (opts?: ProviderOpts) => (model: string) => ({
@@ -68,6 +88,15 @@ vi.mock('@ai-sdk/google', () => ({
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
 	}),
+}));
+
+vi.mock('@ai-sdk/google-vertex', () => ({
+	createGoogleVertex: vi.fn((opts: Record<string, unknown>) => (model: string) => ({
+		...opts,
+		provider: 'google-vertex',
+		modelId: model,
+		specificationVersion: 'v4',
+	})),
 }));
 
 vi.mock('@ai-sdk/xai', () => ({
@@ -140,6 +169,8 @@ vi.mock('@ai-sdk/azure', () => ({
 		apiVersion?: string;
 		baseURL?: string;
 		useDeploymentBasedUrls?: boolean;
+		tokenProvider?: () => Promise<string>;
+		fetch?: typeof globalThis.fetch;
 	}) => ({
 		// The factory calls `.chat(model)` (chat completions over deployment
 		// URLs), not the default responses model. Surface that via the
@@ -152,6 +183,8 @@ vi.mock('@ai-sdk/azure', () => ({
 			apiVersion: opts?.apiVersion,
 			baseURL: opts?.baseURL,
 			useDeploymentBasedUrls: opts?.useDeploymentBasedUrls,
+			tokenProvider: opts?.tokenProvider,
+			fetch: opts?.fetch,
 			builder: 'chat',
 			specificationVersion: 'v3',
 		}),
@@ -166,6 +199,21 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 		baseURL: opts?.baseURL,
 		fetch: opts?.fetch,
 		specificationVersion: 'v3',
+	}),
+}));
+
+// Entra OAuth2 token mint: stubbed so the model-factory's tokenProvider
+// returns a fixed bearer token without a live HTTP call to Entra.
+const { mockClientOAuth2 } = vi.hoisted(() => ({
+	mockClientOAuth2: {
+		credentials: {
+			getToken: vi.fn(),
+		},
+	},
+}));
+vi.mock('@n8n/client-oauth2', () => ({
+	ClientOAuth2: vi.fn(function () {
+		return mockClientOAuth2;
 	}),
 }));
 
@@ -261,6 +309,24 @@ vi.mock('undici', () => ({
 	ProxyAgent: mockProxyAgent,
 }));
 
+/** What the mocked OpenAI stubs report back about the endpoint they reached. */
+type EndpointModel = {
+	doGenerate: (options: unknown) => Promise<{ api?: string; url: string }>;
+	doStream: (options: unknown) => Promise<{ api?: string; url: string }>;
+};
+
+/** Mock HTTP: `routes` maps a request path to the status the fake server answers. */
+function fakeEndpoint(routes: Record<string, number>) {
+	const paths: string[] = [];
+	const fetchFn = (async (input: unknown) => {
+		const { pathname } = new URL(String(input));
+		paths.push(pathname);
+		await Promise.resolve();
+		return new Response('{}', { status: routes[pathname] ?? 404 });
+	}) as typeof globalThis.fetch;
+	return { fetchFn, paths };
+}
+
 describe('createModel', () => {
 	const originalEnv = process.env;
 
@@ -281,23 +347,9 @@ describe('createModel', () => {
 		expect(model.modelId).toBe('claude-opus-5');
 	});
 
-	it('should accept an object config with baseURL', () => {
-		const model = createModel({
-			id: 'openai/gpt-4o',
-			apiKey: 'sk-test',
-			baseURL: 'https://custom.endpoint.com/v1',
-		}) as unknown as Record<string, unknown>;
-		expect(model.provider).toBe('openai');
-		expect(model.baseURL).toBe('https://custom.endpoint.com/v1');
-		// Custom endpoints are OpenAI-COMPATIBLE servers: they speak
-		// /chat/completions, not OpenAI's Responses API.
-		expect(model.api).toBe('chat-completions');
-	});
-
 	it('uses the Responses API when a baseURL explicitly serves it', () => {
 		// The n8n Connect gateway proxies real OpenAI, so it sets a baseURL but does
-		// serve /responses. /chat/completions rejects reasoning effort once tools
-		// are attached, so the heuristic has to be overridable.
+		// serve /responses. An explicit `apiStyle` pins that and skips the probe.
 		const model = createModel({
 			id: 'openai/gpt-5-mini',
 			apiKey: 'gateway-jwt',
@@ -313,6 +365,9 @@ describe('createModel', () => {
 			id: 'openai/mock-model',
 			apiKey: 'sk-test',
 			url: 'http://127.0.0.1:1234/v1',
+			// Pinned, so the alias is asserted on the adapter itself instead of on the
+			// wrapper the automatic choice returns.
+			apiStyle: 'chat',
 		}) as unknown as Record<string, unknown>;
 		expect(model.baseURL).toBe('http://127.0.0.1:1234/v1');
 		expect(model.api).toBe('chat-completions');
@@ -336,6 +391,107 @@ describe('createModel', () => {
 			apiKey: 'sk-test',
 		}) as unknown as Record<string, unknown>;
 		expect(model.api).toBeUndefined();
+	});
+
+	describe('openai endpoint selection', () => {
+		// Endpoint answers are shared across model instances for the whole process.
+		beforeEach(forgetEndpointApiStyles);
+
+		const build = (creds: Record<string, unknown>, fetchFn: typeof globalThis.fetch) =>
+			createModel(
+				{ id: 'openai/gpt-5.6', apiKey: 'sk-fake', ...creds },
+				fetchFn,
+			) as unknown as EndpointModel;
+
+		it('uses the Responses API on a custom endpoint that serves it', async () => {
+			// Reported failure: a proxy in front of real OpenAI was pinned to
+			// /chat/completions, which rejects reasoning effort once tools are attached.
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/responses': 200 });
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				url: 'https://proxy.example/v1/responses',
+			});
+			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('moves to chat completions when the endpoint has no /responses route', async () => {
+			// OpenAI-COMPATIBLE servers (LM Studio, vLLM, Ollama) must keep working.
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).resolves.toMatchObject({
+				api: 'chat-completions',
+				url: 'http://127.0.0.1:1234/v1/chat/completions',
+			});
+			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
+		});
+
+		it('moves to chat completions on a streaming call too', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+
+			await expect(model.doStream({ prompt: [] })).resolves.toMatchObject({
+				api: 'chat-completions',
+			});
+			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions']);
+		});
+
+		it('probes the endpoint one time, then stays on chat completions', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'http://127.0.0.1:1234/v1' }, fetchFn);
+
+			await model.doGenerate({ prompt: [] });
+			await model.doStream({ prompt: [] });
+			expect(paths).toEqual(['/v1/responses', '/v1/chat/completions', '/v1/chat/completions']);
+		});
+
+		it.each([401, 403, 429, 500])('reports a %i without a second endpoint', async (status) => {
+			// Auth, rate-limit and server failures say nothing about the API style.
+			const { fetchFn, paths } = fakeEndpoint({
+				'/v1/responses': status,
+				'/v1/chat/completions': 200,
+			});
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow(`Endpoint returned ${status}`);
+			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('reports a network failure without a second endpoint', async () => {
+			const fetchFn = vi.fn(async () => {
+				await Promise.resolve();
+				throw new Error('ECONNREFUSED');
+			}) as unknown as typeof globalThis.fetch;
+			const model = build({ url: 'https://proxy.example/v1' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('ECONNREFUSED');
+			expect(fetchFn).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps an explicit chat override on /chat/completions', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'https://proxy.example/v1', apiStyle: 'chat' }, fetchFn);
+
+			await model.doGenerate({ prompt: [] });
+			expect(paths).toEqual(['/v1/chat/completions']);
+		});
+
+		it('keeps an explicit responses override on /responses and reports its error', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({ url: 'https://proxy.example/v1', apiStyle: 'responses' }, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('Endpoint returned 404');
+			expect(paths).toEqual(['/v1/responses']);
+		});
+
+		it('keeps the official API on /responses without a probe', async () => {
+			const { fetchFn, paths } = fakeEndpoint({ '/v1/chat/completions': 200 });
+			const model = build({}, fetchFn);
+
+			await expect(model.doGenerate({ prompt: [] })).rejects.toThrow('Endpoint returned 404');
+			expect(paths).toEqual(['/v1/responses']);
+		});
 	});
 
 	it('should pass through a prebuilt LanguageModel', () => {
@@ -758,6 +914,125 @@ describe('createModel', () => {
 		});
 	});
 
+	describe('azure-openai Entra OAuth2', () => {
+		const entraCreds = {
+			oauthClientId: 'client-id',
+			oauthClientSecret: 'client-secret',
+			oauthAccessTokenUrl: 'https://login.microsoftonline.com/tenant/oauth2/v2.0/token',
+			oauthScope: 'https://cognitiveservices.azure.com/.default',
+			oauthAuthentication: 'body' as const,
+			oauthTokenData: { access_token: 'stored-token' },
+		};
+
+		beforeEach(() => {
+			mockClientOAuth2.credentials.getToken.mockResolvedValue({
+				data: { access_token: 'minted-bearer' },
+			});
+		});
+
+		afterEach(() => {
+			mockClientOAuth2.credentials.getToken.mockReset();
+		});
+
+		it('passes a tokenProvider (not apiKey) to createAzure for classic Entra', () => {
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				endpointType: 'classic',
+				...entraCreds,
+			}) as unknown as Record<string, unknown>;
+
+			expect(model.provider).toBe('azure-openai');
+			expect(model.builder).toBe('chat');
+			expect(model.apiKey).toBeUndefined();
+			expect(model.tokenProvider).toBeInstanceOf(Function);
+			expect(model.useDeploymentBasedUrls).toBe(true);
+		});
+
+		it('mints a bearer token via @n8n/client-oauth2 client-credentials on call', async () => {
+			const model = createModel({
+				id: 'azure-openai/gpt-4o',
+				resourceName: 'my-resource',
+				apiVersion: '2024-02-01',
+				endpointType: 'classic',
+				...entraCreds,
+			}) as unknown as { tokenProvider: () => Promise<string> };
+
+			const token = await model.tokenProvider();
+			expect(token).toBe('minted-bearer');
+			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('wraps fetch with a Bearer header for Foundry Entra', async () => {
+			const foundryURL = 'https://my-resource.services.ai.azure.com/openai/v1';
+			let capturedHeaders: Headers | undefined;
+			const baseFetch = vi.fn(async (_input: unknown, init?: RequestInit) => {
+				capturedHeaders = new Headers(init?.headers);
+				return new Response('{}', { status: 200 });
+			}) as unknown as typeof globalThis.fetch;
+
+			const model = createModel(
+				{
+					id: 'azure-openai/gpt-4o',
+					endpointType: 'foundry',
+					baseURL: foundryURL,
+					...entraCreds,
+				},
+				baseFetch,
+			) as unknown as { fetch: typeof globalThis.fetch; apiKey?: string };
+
+			// Foundry Entra routes through @ai-sdk/openai-compatible, which has no
+			// tokenProvider slot, so the factory wraps the transport with a Bearer.
+			expect(model.apiKey).toBeUndefined();
+			expect(model.fetch).toBeInstanceOf(Function);
+
+			await model.fetch('https://example.com', { headers: { 'x-foo': 'bar' } });
+			expect(capturedHeaders?.get('Authorization')).toBe('Bearer minted-bearer');
+			expect(capturedHeaders?.get('x-foo')).toBe('bar');
+			expect(mockClientOAuth2.credentials.getToken).toHaveBeenCalledTimes(1);
+		});
+
+		it('rejects credentials that supply both apiKey and Entra', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpointType: 'classic',
+					...entraCreds,
+				}),
+			).toThrow(/Use only one of apiKey or Entra OAuth2/);
+		});
+
+		it('rejects Entra credentials missing clientId', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpointType: 'classic',
+					...entraCreds,
+					oauthClientId: undefined,
+				}),
+			).toThrow(/clientId is required for Entra/);
+		});
+
+		it('rejects Entra credentials missing accessTokenUrl', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					resourceName: 'my-resource',
+					apiVersion: '2024-02-01',
+					endpointType: 'classic',
+					...entraCreds,
+					oauthAccessTokenUrl: undefined,
+				}),
+			).toThrow(/accessTokenUrl is required for Entra/);
+		});
+	});
+
 	describe('aws-bedrock', () => {
 		it('should create model with AWS credentials', () => {
 			const model = createModel({
@@ -791,6 +1066,74 @@ describe('createModel', () => {
 				}),
 			).toThrow(/Invalid credentials for provider "aws-bedrock"/);
 		});
+	});
+
+	describe('google-vertex', () => {
+		const credentials = {
+			id: 'google-vertex/gemini-3-flash-preview',
+			project: 'selected-project',
+			location: 'europe-west4',
+			clientEmail: 'agent@selected-project.iam.gserviceaccount.com',
+			privateKey: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+		};
+
+		it('uses the selected service account, project, region, and guarded transport', () => {
+			vi.stubEnv('GOOGLE_VERTEX_API_KEY', 'ambient-key');
+			vi.stubEnv('GOOGLE_VERTEX_PROJECT', 'ambient-project');
+			vi.stubEnv('GOOGLE_VERTEX_LOCATION', 'ambient-region');
+			const guardedFetch = vi.fn<typeof globalThis.fetch>();
+			try {
+				const model = createModel(credentials, guardedFetch);
+				expect(model).toMatchObject({
+					modelId: 'gemini-3-flash-preview',
+					apiKey: '',
+					project: 'selected-project',
+					location: 'europe-west4',
+					fetch: guardedFetch,
+					googleAuthOptions: {
+						credentials: {
+							client_email: credentials.clientEmail,
+							private_key: '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----\n',
+						},
+					},
+				});
+			} finally {
+				vi.unstubAllEnvs();
+			}
+		});
+
+		it.each(['project', 'location', 'clientEmail', 'privateKey'])(
+			'requires an explicit %s before model execution',
+			(field) => {
+				expect(() => createModel({ ...credentials, [field]: '' })).toThrow(
+					'Invalid credentials for provider "google-vertex"',
+				);
+			},
+		);
+
+		it.each([
+			'global',
+			'eu',
+			'us',
+			'us-central1',
+			'europe-west12',
+			'northamerica-northeast1',
+			'me-central2',
+		])('accepts location %s', (location) => {
+			expect(createModel({ ...credentials, location })).toMatchObject({ location });
+		});
+
+		it.each(['us-central', 'US-central1', 'us-central1-a', 'us.central1', 'us/central1'])(
+			'rejects invalid location %s before provider creation',
+			(location) => {
+				vi.mocked(createGoogleVertex).mockClear();
+
+				expect(() => createModel({ ...credentials, location })).toThrow(
+					/Invalid credentials for provider "google-vertex"[\s\S]*location/,
+				);
+				expect(createGoogleVertex).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('google-vertex-anthropic', () => {
@@ -861,6 +1204,20 @@ describe('createModel', () => {
 		it('should throw when model has no slash', () => {
 			expect(() => createModel('anthropic-only')).toThrow(/expected "provider\/model-name"/);
 		});
+	});
+});
+
+describe('supportsSplitSystemMessages', () => {
+	it.each([
+		['anthropic/claude-sonnet-4-5', true],
+		['google-vertex-anthropic/claude-opus-4-8', true],
+		['google-vertex/claude-sonnet-4-5', true],
+		['google-vertex/claude-opus-5@default', true],
+		['google-vertex/gemini-3-flash-preview', false],
+		['google-vertex/mistral-large-2411', false],
+		['google-vertex/xai/grok-4', false],
+	] as const)('checks split system messages for %s', (model, expected) => {
+		expect(supportsSplitSystemMessages(model)).toBe(expected);
 	});
 });
 

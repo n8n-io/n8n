@@ -8,7 +8,8 @@
  * Image refs + digests come from the environment (set by docker-build-push.yml).
  * An image with no digest (not built for this release type) is skipped.
  *
- * Usage: node .github/scripts/attest-image-sbom.mjs   (run from the repo root)
+ * Usage: node .github/scripts/attest-image-sbom.mjs [--validate-only]
+ *   (run from the repo root)
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -62,7 +63,10 @@ export function assertSbomIsUsable(sbomPath, label) {
 	}
 }
 
-function attest({ label, image, digest }) {
+export function processTarget(
+	{ label, image, digest },
+	{ shouldAttest = true, runCommand = run, assertUsable = assertSbomIsUsable } = {},
+) {
 	const ref = `${image}@${digest}`;
 	const out = path.join(REPO_ROOT, `sbom-${label}.cdx.json`);
 	console.log(`::group::SBOM for ${label} (${ref})`);
@@ -71,14 +75,14 @@ function attest({ label, image, digest }) {
 	// names the failing image renders inside a collapsed section.
 	try {
 		// Pull the (host-arch) image and scan its filesystem: OS packages + npm.
-		run('docker', ['pull', ref]);
+		runCommand('docker', ['pull', ref]);
 		// `docker:` pins the scan to the image just pulled. A bare ref lets syft's
 		// own provider order decide, and it may resolve the multi-arch index from
 		// the registry instead — describing a different manifest than the one
 		// cosign then attests to.
 		// syft reads licenses from the LICENSE files on disk, so this scan makes no
 		// registry requests. `-file` excludes its per-file catalogue, ~4000 entries.
-		run('syft', [
+		runCommand('syft', [
 			`docker:${ref}`,
 			'-o',
 			`cyclonedx-json@1.6=${out}`,
@@ -90,50 +94,65 @@ function attest({ label, image, digest }) {
 		// Resolve first-party + override licenses (lenient: this image holds only a
 		// subset of the npm closure, so absent overrides are not stale pins) and drop
 		// scanner filesystem phantoms.
-		run(process.execPath, [ENRICH, out, '--lenient-config', '--drop-phantom-npm']);
+		runCommand(process.execPath, [ENRICH, out, '--lenient-config', '--drop-phantom-npm']);
 
 		// Release-blocking gate, scoped to npm — OS packages carry upstream-distro
 		// license strings we don't control, so they're inventoried but not gated.
-		run(process.execPath, [CHECK, out, ...ALLOW_REFS, '--enforce-prefix=pkg:npm/']);
-		assertSbomIsUsable(out, label);
+		runCommand(process.execPath, [CHECK, out, ...ALLOW_REFS, '--enforce-prefix=pkg:npm/']);
+		assertUsable(out, label);
 
 		// --replace, so re-running after a mid-loop failure does not leave the
 		// digest carrying two CycloneDX attestations.
-		run('cosign', [
-			'attest',
-			'--yes',
-			'--replace',
-			'--type',
-			'cyclonedx',
-			'--predicate',
-			out,
-			ref,
-		]);
+		if (shouldAttest) {
+			runCommand('cosign', [
+				'attest',
+				'--yes',
+				'--replace',
+				'--type',
+				'cyclonedx',
+				'--predicate',
+				out,
+				ref,
+			]);
+		}
 	} finally {
 		console.log('::endgroup::');
 	}
 }
 
-function main() {
-	const targets = parseTargets(process.env);
-	if (targets.length === 0) {
-		console.log('No images with digests to attest — skipping.');
-		return;
-	}
+export function processTargets(targets, options = {}) {
+	const action = options.shouldAttest === false ? 'validation' : 'attestation';
+	const process = options.processTarget ?? processTarget;
 	// Attempt every image, then report. Aborting on the first failure leaves the
-	// later images silently unattested and hides whether they would have passed.
+	// later images silently unvalidated and hides whether they would have passed.
 	const failed = [];
 	for (const target of targets) {
 		try {
-			attest(target);
+			process(target, options);
 		} catch (err) {
 			failed.push(`${target.label}: ${err.message}`);
-			console.log(`::error title=SBOM attestation::${target.label}: ${err.message}`);
+			console.log(`::error title=SBOM ${action}::${target.label}: ${err.message}`);
 		}
 	}
 	if (failed.length > 0) {
-		throw new Error(`${failed.length} of ${targets.length} image(s) failed:\n  ${failed.join('\n  ')}`);
+		throw new Error(
+			`${failed.length} of ${targets.length} image(s) failed:\n  ${failed.join('\n  ')}`,
+		);
 	}
+}
+
+export function main({
+	env = process.env,
+	args = process.argv.slice(2),
+	processAll = processTargets,
+} = {}) {
+	const shouldAttest = !args.includes('--validate-only');
+	const targets = parseTargets(env);
+	if (targets.length === 0) {
+		console.log(`No images with digests to ${shouldAttest ? 'attest' : 'validate'} - skipping.`);
+		return;
+	}
+	processAll(targets, { shouldAttest });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

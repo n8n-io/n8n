@@ -1,49 +1,98 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@n8n/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants/modals';
 import Modal from '@/app/components/Modal.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { N8nButton, N8nCheckbox, N8nInput, N8nSwitch, N8nText } from '@n8n/design-system';
-import type { PromotableResourceStatus } from '@n8n/api-types';
+import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	PROMOTION_BRANCH_PREFIX,
+	type PromotableResourceStatus,
+	type PromotionDirection,
+} from '@n8n/api-types';
 import { usePromotionChanges } from '../composables/usePromotionChanges';
+import { promotionEventBus } from '../promotions.eventBus';
+import { applyProjectSelection } from '../promotionsSettings.api';
+import { getPromoteErrorMessage } from '../promoteErrorMessage';
+import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
+import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
 interface Props {
 	modalName: string;
 	data: {
 		projectId: string;
+		direction: PromotionDirection;
 	};
 }
 
 const props = defineProps<Props>();
+const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
-const toast = useToast();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rootStore = useRootStore();
+const message = useMessage();
+const toast = useToast();
 const modalBus = createEventBus();
 
-const createBranch = ref(false);
-const isPromoting = ref(false);
+const { direction } = props.data;
+const isIncoming = direction === 'apply';
+const isApplying = ref(false);
+const blockedResult = shallowRef<BlockedApplyResult>();
+// Continue must apply the selection that produced the preflight, not the live one.
+const blockedWorkflowIds = shallowRef<string[]>([]);
 
 const {
 	changes,
+	commitSha,
+	source,
 	filteredChanges,
 	isLoading,
+	isSubmitting,
 	error,
 	searchQuery,
+	lastRefreshedAt,
 	selectedIds,
 	selectedCount,
 	allSelected,
 	someSelected,
 	fetchChanges,
+	submitSelection,
 	toggleSelected,
 	toggleSelectAll,
-	promote,
-} = usePromotionChanges(props.data.projectId);
+} = usePromotionChanges(props.data.projectId, direction);
+
+// The selection is locked while a promote or an apply request runs.
+const isSelectionLocked = computed(() => isSubmitting.value || isApplying.value);
+
+function onToggleSelected(id: string) {
+	if (isSelectionLocked.value) return;
+	toggleSelected(id);
+}
+
+function onToggleSelectAll() {
+	if (isSelectionLocked.value) return;
+	toggleSelectAll();
+}
+
+const title = i18n.baseText(
+	isIncoming ? 'promotions.modal.incoming.title' : 'promotions.modal.title',
+);
+const emptyTitle = i18n.baseText(
+	isIncoming ? 'promotions.modal.incoming.empty' : 'promotions.modal.empty',
+);
+const emptyDescription = i18n.baseText(
+	isIncoming ? 'promotions.modal.incoming.empty.description' : 'promotions.modal.empty.description',
+);
 
 // No visible rows despite a loaded, non-empty change set means the search excluded everything.
 const hasNoSearchResults = computed(
@@ -86,34 +135,182 @@ function getPromoteButtonLabel(): string {
 	});
 }
 
+function getApplySelectedButtonLabel(): string {
+	if (selectedCount.value === 1) {
+		return i18n.baseText('promotions.modal.incoming.applySelectedSingle');
+	}
+	return i18n.baseText('promotions.modal.incoming.applySelected', {
+		interpolate: { count: String(selectedCount.value) },
+	});
+}
+
 function isSelected(id: string): boolean {
 	return selectedIds.value.has(id);
 }
 
-async function onPromote() {
-	isPromoting.value = true;
-	try {
-		await promote(createBranch.value);
-		toast.showMessage({
-			title: i18n.baseText('promotions.modal.promoteSuccess'),
-			type: 'success',
-		});
-		uiStore.closeModal(props.modalName);
-	} catch (e) {
-		toast.showError(
-			e instanceof Error ? e : new Error(String(e)),
-			i18n.baseText('promotions.modal.promoteError'),
-		);
-	} finally {
-		isPromoting.value = false;
-	}
+const isPromoteDisabled = computed(
+	() =>
+		isSubmitting.value ||
+		isLoading.value ||
+		!!error.value ||
+		changes.value.length === 0 ||
+		selectedCount.value === 0,
+);
+
+function beforeClose() {
+	if (isSubmitting.value) return false;
+	return true;
 }
 
 function onClose() {
+	if (beforeClose() === false) return;
 	uiStore.closeModal(props.modalName);
 }
 
+function getPromoteSuccessMessage(branchName: string): string {
+	if (branchName.startsWith(PROMOTION_BRANCH_PREFIX)) {
+		return i18n.baseText('promotions.modal.toast.success.messageNewBranch');
+	}
+	return i18n.baseText('promotions.modal.toast.success.message', {
+		interpolate: { branch: branchName },
+	});
+}
+
+async function onPromote() {
+	if (isPromoteDisabled.value) return;
+
+	try {
+		const result = await submitSelection();
+		if (!result) return;
+
+		promotionEventBus.emit('promoted', { projectId: props.data.projectId });
+		toast.showMessage({
+			title: i18n.baseText('promotions.modal.toast.success.title'),
+			message: getPromoteSuccessMessage(result.git.branchName),
+			type: 'success',
+		});
+		onClose();
+	} catch (promoteError) {
+		const title = i18n.baseText('promotions.modal.promoteError');
+		const promoteFailureMessage = getPromoteErrorMessage(promoteError, changes.value, i18n);
+		if (promoteFailureMessage) {
+			toast.showMessage(
+				{ title, message: promoteFailureMessage, type: 'error', duration: 0 },
+				false,
+			);
+		} else {
+			toast.showError(promoteError, title);
+		}
+	}
+}
+
 async function onRefresh() {
+	await fetchChanges();
+}
+
+// The open views refresh once the outcome for this project is known, so none of them
+// asks for a project the package removed.
+async function announceApplied() {
+	const { projectId } = props.data;
+	try {
+		const project = await projectsStore.fetchProject(projectId);
+		promotionEventBus.emit('applied', { projectId, project });
+	} catch (error) {
+		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+			toast.showMessage({
+				title: i18n.baseText('promotions.applied.projectRemoved'),
+				type: 'info',
+			});
+			promotionEventBus.emit('projectRemoved', { projectId });
+			return;
+		}
+		// The apply went through, so the views still refresh. Only the header keeps its name.
+		promotionEventBus.emit('applied', { projectId });
+	}
+}
+
+async function onApplied(result: AppliedResult) {
+	const { workflows } = result.counts;
+	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
+	const interpolate = {
+		created: String(workflows.created),
+		updated: String(workflows.updated),
+		archived: String(workflows.archived),
+		deleted: String(workflows.deleted),
+		notPublished: String(notPublished),
+	};
+	// A workflow can be imported and still fail to publish, so success alone would mislead.
+	toast.showMessage({
+		title: i18n.baseText('promotions.modal.incoming.applied.title'),
+		message: i18n.baseText(
+			notPublished
+				? 'promotions.modal.incoming.applied.messageNotPublished'
+				: 'promotions.modal.incoming.applied.message',
+			{ interpolate },
+		),
+		type: notPublished ? 'warning' : 'success',
+	});
+	// Close before the project lookup, so the stale change list does not show again.
+	onClose();
+	await announceApplied();
+}
+
+async function onSourceChanged() {
+	blockedResult.value = undefined;
+	await fetchChanges();
+	toast.showMessage({
+		title: i18n.baseText('promotions.modal.incoming.paused.title'),
+		message: i18n.baseText('promotions.modal.incoming.paused.source-changed'),
+		type: 'warning',
+	});
+}
+
+/** Applies only the selected workflows. Unselected content on the instance is left as is. */
+async function onApplySelected() {
+	const confirmed = await message.confirm(
+		i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
+		i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText(
+				'promotions.modal.incoming.confirmSelected.confirmButtonText',
+			),
+			cancelButtonText: i18n.baseText('promotions.modal.close'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	isApplying.value = true;
+	const workflowIds = Array.from(selectedIds.value);
+	try {
+		// Pin the reviewed commit on the source the preview resolved: a branch that moved since
+		// the preview is reported, not applied.
+		const expectedSource =
+			commitSha.value && source.value ? { ...source.value, commitSha: commitSha.value } : undefined;
+		const result = await applyProjectSelection(rootStore.publicApiContext, props.data.projectId, {
+			workflowIds,
+			expectedSource,
+		});
+		if (result.status === 'applied') {
+			await onApplied(result);
+			return;
+		}
+		if (result.status === 'blocked') {
+			blockedWorkflowIds.value = workflowIds;
+			blockedResult.value = result;
+			return;
+		}
+		// A changed source needs a fresh review.
+		toast.showMessage({
+			title: i18n.baseText('promotions.modal.incoming.paused.title'),
+			message: i18n.baseText('promotions.modal.incoming.paused.source-changed'),
+			type: 'warning',
+		});
+	} catch (applyError) {
+		toast.showError(applyError, i18n.baseText('promotions.modal.incoming.applyError'));
+	} finally {
+		isApplying.value = false;
+	}
+	// The modal stays open after a paused or failed apply, so the list must show what is left.
 	await fetchChanges();
 }
 
@@ -124,9 +321,14 @@ onMounted(async () => {
 
 <template>
 	<Modal
+		v-if="!blockedResult"
+		:before-close="() => !isApplying && !isSubmitting"
 		:name="modalName"
-		:title="i18n.baseText('promotions.modal.title')"
+		:title="title"
 		:event-bus="modalBus"
+		:show-close="!isApplying && !isSubmitting"
+		:close-on-click-modal="!isApplying && !isSubmitting"
+		:close-on-press-escape="!isApplying && !isSubmitting"
 		width="640px"
 		height="80vh"
 		max-height="680px"
@@ -138,22 +340,35 @@ onMounted(async () => {
 					<N8nCheckbox
 						:model-value="allSelected"
 						:indeterminate="someSelected"
+						:disabled="isSelectionLocked"
 						data-test-id="promotion-select-all"
-						@update:model-value="toggleSelectAll"
+						@update:model-value="onToggleSelectAll"
 					/>
 					<N8nInput
 						v-model="searchQuery"
 						:placeholder="i18n.baseText('promotions.modal.search.placeholder')"
 						size="small"
 						clearable
+						:disabled="isSubmitting"
 						data-test-id="promotion-search"
 						:class="$style.searchInput"
 					/>
+					<N8nText
+						v-if="lastRefreshedAt"
+						size="small"
+						color="text-light"
+						:class="$style.lastRefreshed"
+						data-test-id="promotion-last-refreshed"
+					>
+						{{ i18n.baseText('promotions.modal.lastRefreshed') }}
+						<TimeAgo :date="lastRefreshedAt" live />
+					</N8nText>
 					<N8nButton
 						variant="subtle"
 						size="small"
 						icon="refresh-cw"
 						data-test-id="promotion-refresh"
+						:disabled="isLoading || isSubmitting"
 						@click="onRefresh"
 					>
 						{{ i18n.baseText('promotions.modal.refresh') }}
@@ -176,6 +391,7 @@ onMounted(async () => {
 							variant="subtle"
 							size="small"
 							data-test-id="promotion-retry"
+							:disabled="isSubmitting"
 							@click="onRefresh"
 						>
 							{{ i18n.baseText('promotions.modal.retry') }}
@@ -186,10 +402,10 @@ onMounted(async () => {
 				<template v-else-if="changes.length === 0">
 					<div :class="$style.empty">
 						<N8nText size="medium" bold>
-							{{ i18n.baseText('promotions.modal.empty') }}
+							{{ emptyTitle }}
 						</N8nText>
 						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('promotions.modal.empty.description') }}
+							{{ emptyDescription }}
 						</N8nText>
 					</div>
 				</template>
@@ -211,15 +427,17 @@ onMounted(async () => {
 								:class="[
 									$style.row,
 									isSelected(change.id) && $style.rowSelected,
+									isSelectionLocked && $style.rowDisabled,
 									index === 0 && $style.rowFirst,
 									index === filteredChanges.length - 1 && $style.rowLast,
 								]"
 								data-test-id="promotion-change-row"
-								@click="toggleSelected(change.id)"
+								@click="onToggleSelected(change.id)"
 							>
 								<N8nCheckbox
 									:model-value="isSelected(change.id)"
-									@update:model-value="toggleSelected(change.id)"
+									:disabled="isSelectionLocked"
+									@update:model-value="onToggleSelected(change.id)"
 									@click.stop
 								/>
 
@@ -251,7 +469,7 @@ onMounted(async () => {
 											color="text-light"
 											>·</N8nText
 										>
-										<N8nText size="small" color="text-light">
+										<N8nText v-if="change.updatedAt" size="small" color="text-light">
 											<TimeAgo :date="change.updatedAt" />
 										</N8nText>
 										<template v-if="change.dependencyCount > 0">
@@ -272,21 +490,32 @@ onMounted(async () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<div :class="$style.footerLeft">
-					<N8nSwitch
-						v-model="createBranch"
-						:label="i18n.baseText('promotions.modal.createBranch')"
-						size="small"
-						data-test-id="promotion-create-branch"
-					/>
+					<N8nText v-if="selectedCount > 0" size="small" color="text-light">
+						{{
+							i18n.baseText('promotions.modal.incoming.selected', {
+								interpolate: { count: String(selectedCount) },
+							})
+						}}
+					</N8nText>
 				</div>
 				<div :class="$style.footerRight">
-					<N8nButton variant="subtle" @click="onClose">
+					<N8nButton variant="subtle" :disabled="isSubmitting" @click="onClose">
 						{{ i18n.baseText('promotions.modal.close') }}
 					</N8nButton>
 					<N8nButton
-						:disabled="selectedCount === 0 || isLoading || !!error || isPromoting"
-						:loading="isPromoting"
+						v-if="isIncoming"
+						:loading="isApplying"
+						:disabled="isLoading || !!error || selectedCount === 0"
+						data-test-id="promotion-apply-selected"
+						@click="onApplySelected"
+					>
+						{{ getApplySelectedButtonLabel() }}
+					</N8nButton>
+					<N8nButton
+						v-else
 						data-test-id="promotion-submit"
+						:disabled="isPromoteDisabled"
+						:loading="isSubmitting"
 						@click="onPromote"
 					>
 						{{ getPromoteButtonLabel() }}
@@ -295,6 +524,23 @@ onMounted(async () => {
 			</div>
 		</template>
 	</Modal>
+	<PromotionBindingsFlow
+		v-else
+		:open="true"
+		:blocked-result="blockedResult"
+		:continue-with="{
+			kind: 'selection',
+			projectId: props.data.projectId,
+			workflowIds: blockedWorkflowIds,
+		}"
+		@update:open="
+			(open) => {
+				if (!open) blockedResult = undefined;
+			}
+		"
+		@applied="onApplied"
+		@source-changed="onSourceChanged"
+	/>
 </template>
 
 <style lang="scss">
@@ -351,6 +597,11 @@ onMounted(async () => {
 .searchInput {
 	flex: 1;
 	margin-inline: calc(var(--input--padding) * -1) 0 0;
+}
+
+.lastRefreshed {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .loading {

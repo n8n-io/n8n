@@ -1,38 +1,56 @@
 import {
 	agentSkillSchema,
 	type AgentJsonConfig,
+	type AgentJsonSkillConfig,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Container, Service } from '@n8n/di';
+import { TransactionRunner } from '@n8n/db';
+import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import {
-	AgentModificationTelemetryService,
 	type AgentMutationTelemetryContext,
-	diffAgentConfigParts,
+	buildAgentMutationEvent,
+	captureAgentMutation,
+	type AgentMutationSnapshot,
 } from './agent-modification-telemetry.service';
+import { AgentSaveCompletionService } from './agent-save-completion.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
-import { isUnconfiguredAgent } from './utils/agent-capabilities';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
+import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
+import { composeJsonConfig } from './json-config/agent-config-composition';
+import type { AgentSkillRefs } from './json-config/agent-document';
 import { generateAgentResourceId } from './utils/agent-resource-id';
+import {
+	applySkillInstructionEdits,
+	type SkillInstructionEdit,
+} from './utils/skill-instruction-edits';
 
 @Service()
 export class AgentSkillsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly saveCompletion: AgentSaveCompletionService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		return entity.skills ?? {};
 	}
@@ -51,23 +69,33 @@ export class AgentSkillsService {
 		skill: AgentSkill,
 		context: AgentMutationTelemetryContext,
 	): Promise<AgentSkillMutationResponse> {
-		const [result] = await this.createSkillsBatch(agentId, projectId, [skill], false, context);
-		return result;
+		const { results } = await this.createSkillsBatch(agentId, projectId, [skill], false, context);
+		return results[0];
 	}
 
 	/**
-	 * Create multiple skill bodies in one load/save/cache-clear. All-or-nothing:
-	 * every skill is validated (including name uniqueness against existing
-	 * skills and within the batch) before any mutation. Does not attach config
-	 * refs — mirrors `createSkill`, just batched.
+	 * Create multiple skill bodies and attach a config ref for each one, in one
+	 * load/save/cache-clear. All-or-nothing: every skill is validated (including
+	 * name uniqueness against existing skills and within the batch) before any
+	 * mutation.
 	 */
-	async createSkills(
+	async createAndAttachSkills(
 		agentId: string,
 		projectId: string,
 		skills: AgentSkill[],
 		context: AgentMutationTelemetryContext,
-	): Promise<AgentSkillMutationResponse[]> {
-		return await this.createSkillsBatch(agentId, projectId, skills, false, context);
+	): Promise<{ skills: AgentSkillMutationResponse[]; configHash: string | null }> {
+		const { results, saved, skillRefs } = await this.createSkillsBatch(
+			agentId,
+			projectId,
+			skills,
+			true,
+			context,
+		);
+		return {
+			skills: results,
+			configHash: getAgentConfigHash(composeJsonConfig(saved, skillRefs)),
+		};
 	}
 
 	async createAndAttachSkill(
@@ -76,12 +104,12 @@ export class AgentSkillsService {
 		skill: AgentSkill,
 		context: AgentMutationTelemetryContext,
 	): Promise<AgentSkillMutationResponse> {
-		const [result] = await this.createSkillsBatch(agentId, projectId, [skill], true, context);
-		return result;
+		const { results } = await this.createSkillsBatch(agentId, projectId, [skill], true, context);
+		return results[0];
 	}
 
 	/**
-	 * Shared implementation behind `createSkill`, `createSkills`, and
+	 * Shared implementation behind `createSkill`, `createAndAttachSkills`, and
 	 * `createAndAttachSkill`. Rejects an empty batch before touching the
 	 * repository. Saves once and clears the runtime cache once.
 	 */
@@ -91,13 +119,17 @@ export class AgentSkillsService {
 		skills: AgentSkill[],
 		attach: boolean,
 		context: AgentMutationTelemetryContext,
-	): Promise<AgentSkillMutationResponse[]> {
+	): Promise<{ results: AgentSkillMutationResponse[]; saved: Agent; skillRefs: AgentSkillRefs }> {
 		if (skills.length === 0) {
 			throw new UserError('At least one skill is required.');
 		}
 
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 		if (attach && !entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		for (const skill of skills) {
@@ -105,32 +137,23 @@ export class AgentSkillsService {
 		}
 		this.assertBatchSkillNamesAreUnique(entity.skills ?? {}, skills);
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		const previous = captureAgentMutation(entity, previousSkillRefs);
 
 		const results = skills.map((skill) => ({ id: this.addSkill(entity, skill), skill }));
+		let skillRefs = previousSkillRefs;
 		if (attach) {
-			for (const { id } of results) this.attachSkillRef(entity, id);
+			for (const { id } of results) skillRefs = this.attachSkillRef(skillRefs, id);
 		}
 
-		markAgentDraftDirty(entity);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		await this.clearRuntimes(agentId);
-		this.modificationTelemetry.record({
-			agent: saved,
+		const saved = await this.saveSkillChanges(
+			entity,
 			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ skills: true },
-			),
-			wasUnconfigured,
-		});
+			context,
+			previous,
+			previousSkillRefs,
+			attach ? { refs: skillRefs } : undefined,
+		);
 
 		this.logger.debug(attach ? 'Created and attached agent skill' : 'Created agent skills', {
 			agentId,
@@ -138,7 +161,15 @@ export class AgentSkillsService {
 			skillIds: results.map((r) => r.id),
 		});
 
-		return results.map((r) => ({ ...r, versionId: saved.versionId }));
+		return {
+			results: results.map((r) => ({
+				...r,
+				skillHash: getAgentSkillHash(r.skill),
+				versionId: saved.versionId,
+			})),
+			saved,
+			skillRefs,
+		};
 	}
 
 	async updateSkill(
@@ -147,53 +178,61 @@ export class AgentSkillsService {
 		skillId: string,
 		updates: Partial<AgentSkill>,
 		context: AgentMutationTelemetryContext,
+		baseSkillHash?: string,
+		instructionEdits?: SkillInstructionEdit[],
 	): Promise<AgentSkillMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const existing = entity.skills?.[skillId];
 		if (!existing) throw new NotFoundError('Skill not found');
+		if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(existing)) {
+			throw new ConflictError('Skill was changed elsewhere; reload to get the latest version');
+		}
 
 		const updated = { ...existing, ...updates };
+		if (instructionEdits?.length) {
+			if (updates.instructions !== undefined) {
+				throw new UserError('Pass either instructions or instructionEdits, not both.');
+			}
+			updated.instructions = applySkillInstructionEdits(existing.instructions, instructionEdits);
+		}
 		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
 		if ('references' in updates && !updates.references?.length) delete updated.references;
 		this.validateSkill(updated);
 		this.assertSkillNameIsUnique(entity.skills ?? {}, updated.name, skillId);
 
 		if (isEqual(existing, updated)) {
-			return { id: skillId, skill: updated, versionId: entity.versionId };
+			return {
+				id: skillId,
+				skill: updated,
+				skillHash: getAgentSkillHash(updated),
+				versionId: entity.versionId,
+			};
 		}
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const skillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		const previous = captureAgentMutation(entity, skillRefs);
 
 		entity.skills = {
 			...(entity.skills ?? {}),
 			[skillId]: updated,
 		};
 
-		markAgentDraftDirty(entity);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		await this.clearRuntimes(agentId);
-		this.modificationTelemetry.record({
-			agent: saved,
-			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ skills: true },
-			),
-			wasUnconfigured,
-		});
+		const saved = await this.saveSkillChanges(entity, projectId, context, previous, skillRefs);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
-		return { id: skillId, skill: updated, versionId: saved.versionId };
+		return {
+			id: skillId,
+			skill: updated,
+			skillHash: getAgentSkillHash(updated),
+			versionId: saved.versionId,
+		};
 	}
 
 	async deleteSkill(
@@ -202,40 +241,33 @@ export class AgentSkillsService {
 		skillId: string,
 		context: AgentMutationTelemetryContext,
 	): Promise<void> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const entity = await getAgentOrThrow(
+			this.agentRepository,
+			agentId,
+			projectId,
+			'Agent not found',
+		);
 
 		const skills = { ...(entity.skills ?? {}) };
 		if (!skills[skillId]) throw new NotFoundError('Skill not found');
 
-		const previousSchema = entity.schema ?? null;
-		const previousIntegrations = entity.integrations ?? [];
-		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
+		const previousSkillRefs = await this.agentSkillRefs.refsForDraft(entity, {});
+		const previous = captureAgentMutation(entity, previousSkillRefs);
 
 		delete skills[skillId];
 		entity.skills = skills;
 
-		if (entity.schema?.skills) {
-			entity.schema.skills = entity.schema.skills.filter((t) => t.id !== skillId);
-		}
-
-		markAgentDraftDirty(entity);
-		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
-		await this.clearRuntimes(agentId);
-		this.modificationTelemetry.record({
-			agent: saved,
+		// A config without a skill list keeps no skill list after a delete.
+		await this.saveSkillChanges(
+			entity,
 			projectId,
-			user: context.user,
-			by: context.modifiedBy,
-			changedParts: diffAgentConfigParts(
-				previousSchema,
-				saved.schema,
-				previousIntegrations,
-				saved.integrations ?? [],
-				{ skills: true },
-			),
-			wasUnconfigured,
-		});
+			context,
+			previous,
+			previousSkillRefs,
+			previousSkillRefs
+				? { refs: previousSkillRefs.filter((ref) => ref.id !== skillId) }
+				: undefined,
+		);
 
 		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
@@ -308,17 +340,40 @@ export class AgentSkillsService {
 		}
 	}
 
-	private attachSkillRef(entity: Agent, skillId: string): void {
-		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
-
-		entity.schema.skills = [
-			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
+	private attachSkillRef(skillRefs: AgentSkillRefs, skillId: string): AgentJsonSkillConfig[] {
+		return [
+			...(skillRefs ?? []).filter((ref) => ref.id !== skillId),
 			{ type: 'skill', id: skillId },
 		];
 	}
 
-	private async clearRuntimes(agentId: string): Promise<void> {
-		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
-		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
+	/**
+	 * Write the skill refs only when the caller gives `nextSkillRefs`.
+	 * Without `nextSkillRefs`, the refs stay as `currentSkillRefs`.
+	 */
+	private async saveSkillChanges(
+		entity: Agent,
+		projectId: string,
+		context: AgentMutationTelemetryContext,
+		previous: AgentMutationSnapshot,
+		currentSkillRefs: AgentSkillRefs,
+		nextSkillRefs?: { refs: AgentSkillRefs },
+	): Promise<Agent> {
+		markAgentDraftDirty(entity);
+		const saved = await this.transactionRunner.run({}, async (ctx) => {
+			await saveAgentDraftFenced(this.agentRepository, entity, ctx);
+			if (nextSkillRefs) {
+				await this.agentSkillRefs.replaceDraftRefs(entity, nextSkillRefs.refs, ctx);
+			}
+			return entity;
+		});
+		const savedSkillRefs = nextSkillRefs ? nextSkillRefs.refs : currentSkillRefs;
+		await this.saveCompletion.bodySaved(
+			buildAgentMutationEvent(saved, savedSkillRefs, projectId, context, previous, {
+				skills: true,
+			}),
+			context.pushRef,
+		);
+		return saved;
 	}
 }

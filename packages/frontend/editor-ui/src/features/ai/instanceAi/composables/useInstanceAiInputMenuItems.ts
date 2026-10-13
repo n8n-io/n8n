@@ -1,10 +1,10 @@
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
@@ -15,6 +15,7 @@ import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
+import { useMcpServerConnect } from './useMcpServerConnect';
 import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
@@ -28,27 +29,26 @@ export type InputMenuItem = DropdownMenuItemProps<string, InputMenuItemData>;
 export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	const i18n = useI18n();
 	const uiStore = useUIStore();
+	const router = useRouter();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
+	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 	const computerUseTelemetry = useInstanceAiComputerUseTelemetry();
-	const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
-	const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
-	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
 
 	void settingsStore.fetch();
-	if (isMcpFeatureEnabled.value) void mcpStore.fetchConnectionsLazy();
+	watch(
+		() => settingsStore.isMcpAvailable,
+		(isAvailable) => {
+			if (isAvailable) void mcpStore.fetchConnectionsLazy();
+		},
+		{ immediate: true },
+	);
 
-	const isMcpAvailable = computed(
-		() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled === true,
-	);
-	const isComputerUseAvailable = computed(
-		() => isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin,
-	);
-	const isBrowserUseAvailable = computed(
-		() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
-	);
+	// The store owns this, so the + menu and the message payload cannot disagree.
+	const isComputerUseAvailable = computed(() => settingsStore.isComputerUseAvailable);
+	const isBrowserUseAvailable = computed(() => settingsStore.isBrowserUseAvailable);
 	async function openComputerSetup() {
 		if (settingsStore.isLocalGatewayDisabled) {
 			await settingsStore.persistLocalGatewayPreference(false);
@@ -61,6 +61,11 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 	function openToolsModal() {
 		mcpTelemetry.trackToolsListOpened('input_menu');
 		uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
+	}
+
+	function openPreferenceSettings() {
+		// A new tab keeps the chat and its unsent draft.
+		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }).href, '_blank');
 	}
 
 	function createConnectionItem({
@@ -130,7 +135,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
-		if (isMcpAvailable.value) {
+		if (settingsStore.isMcpAvailable) {
 			count += mcpStore.connections.filter(({ status }) => status === 'disconnected').length;
 		}
 		if (
@@ -158,7 +163,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 			},
 		];
 
-		if (isMcpAvailable.value) {
+		if (settingsStore.isMcpAvailable) {
 			const tools: InputMenuItem[] = mcpStore.connections.map((connection) => ({
 				id: `mcp-${connection.id}`,
 				label: connection.serverTitle,
@@ -195,6 +200,7 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 						divided: true,
 						data: {
 							action: async () => {
+								ignorePendingConnectResult(connection.serverSlug);
 								await mcpStore.disconnect(connection.id);
 							},
 						},
@@ -273,6 +279,16 @@ export function useInstanceAiInputMenuItems(attachFiles: () => void) {
 					disconnect: settingsStore.disconnectBrowserUse,
 				}),
 			);
+		}
+
+		if (isContextPreferencesEnabled()) {
+			items.push({
+				id: 'preferences',
+				label: i18n.baseText('instanceAi.inputMenu.preferences.label'),
+				icon: { type: 'icon', value: 'brain' },
+				divided: true,
+				data: { action: openPreferenceSettings },
+			});
 		}
 
 		return items;

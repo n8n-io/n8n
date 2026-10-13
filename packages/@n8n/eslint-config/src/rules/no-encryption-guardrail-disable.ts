@@ -1,9 +1,6 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 const TARGET_RULES = [
-	'no-legacy-cipher-methods',
-	'no-misplaced-cipher-primitives',
-	'no-deployment-key-delete',
 	// A `-next-line` directive naming this rule cannot suppress the report
 	// this rule emits at the directive's own line.
 	'no-encryption-guardrail-disable',
@@ -28,7 +25,7 @@ const TEST_FILE_PATTERN = /(\.(test|spec)\.ts$)|([\\/]__tests__[\\/])|([\\/]test
  * so bare or self-naming directives of those forms swallow this rule's report,
  * and a package-level `'off'` override is invisible to lint altogether. The
  * authoritative check is the code-health rule `encryption-boundary`
- * (packages/testing/code-health): it scans the source out of band for every
+ * (packages/quality/policy/code-health): it scans the source out of band for every
  * directive form and verifies that each package that can reach the primitives
  * composes the boundary config at error severity.
  */

@@ -385,7 +385,7 @@ export function splitInBatches(
 		);
 	}
 	// Otherwise, treat it as a SplitInBatchesFactoryConfig (new { version, config } pattern)
-	return new SplitInBatchesBuilderImpl(configOrNode as SplitInBatchesFactoryConfig);
+	return new SplitInBatchesBuilderImpl(configOrNode);
 }
 
 /**
@@ -431,10 +431,10 @@ function extractNodesFromTarget(
 	if (isSplitInBatchesBuilderShape(target)) {
 		const nodes: Array<NodeInstance<string, string, unknown>> = [target.sibNode];
 		for (const doneBatch of target._doneBatches) {
-			nodes.push(...extractNodesFromTarget(doneBatch as BranchTarget));
+			nodes.push(...extractNodesFromTarget(doneBatch));
 		}
 		for (const eachBatch of target._eachBatches) {
-			nodes.push(...extractNodesFromTarget(eachBatch as BranchTarget));
+			nodes.push(...extractNodesFromTarget(eachBatch));
 		}
 		if (target._doneTarget !== undefined) {
 			nodes.push(...extractNodesFromTarget(target._doneTarget));

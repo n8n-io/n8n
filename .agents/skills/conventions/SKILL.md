@@ -45,6 +45,9 @@ throw new UnexpectedError('message', { extra: { context } });
 **Testing:**
 - Vitest (unit), Playwright (E2E)
 - Mock external dependencies
+- Keep filesystem tests in a test-owned temporary directory
+- Set `N8N_USER_FOLDER` before importing settings code
+- Trace branches activated by mocks and isolate every reachable mutation
 - Work from package directory: `pushd packages/cli && pnpm test`
 
 **Database:**
@@ -69,7 +72,8 @@ pnpm lint                    # Before commit
 | Package | Purpose |
 |---------|---------|
 | `packages/cli` | Backend API |
-| `packages/frontend/editor-ui` | Vue 3 frontend |
+| `packages/frontend/editor-ui` | Vue 3 frontend shell |
+| `packages/modules/<name>/frontend` | Frontend feature modules. Guide: `packages/@n8n/module-cli/frontend-module-guide.md` |
 | `packages/@n8n/api-types` | Shared types |
 | `packages/@n8n/db` | TypeORM entities |
 | `packages/workflow` | Core interfaces |

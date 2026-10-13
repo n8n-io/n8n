@@ -193,8 +193,10 @@ export class OnePasswordProvider extends SecretsProvider {
 		return name in this.cachedSecrets;
 	}
 
-	getSecretNames() {
-		return Object.keys(this.cachedSecrets);
+	getSecretNames(): string[] {
+		return Object.entries(this.cachedSecrets).flatMap(([itemName, fields]) =>
+			Object.keys(fields).map((fieldName) => `${itemName}.${fieldName}`),
+		);
 	}
 
 	private async verifyConnection(): Promise<void> {

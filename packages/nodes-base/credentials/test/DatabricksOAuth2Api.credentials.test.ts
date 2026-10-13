@@ -1,4 +1,4 @@
-import { databricksUserAgent } from '../../nodes/Databricks/constants';
+import { DATABRICKS_PARTNER_USER_AGENT } from '../../nodes/Databricks/constants';
 import { DatabricksOAuth2Api } from '../DatabricksOAuth2Api.credentials';
 
 describe('DatabricksOAuth2Api Credential', () => {
@@ -7,7 +7,7 @@ describe('DatabricksOAuth2Api Credential', () => {
 
 	it('should send the partner User-Agent on the credential test', () => {
 		expect(databricksOAuth2Api.test.request.headers).toEqual({
-			'User-Agent': databricksUserAgent(),
+			'User-Agent': DATABRICKS_PARTNER_USER_AGENT,
 		});
 	});
 

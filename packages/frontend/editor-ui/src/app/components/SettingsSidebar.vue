@@ -50,6 +50,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .container {
 	min-width: $sidebar-expanded-width;
 	height: 100%;

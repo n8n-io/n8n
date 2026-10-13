@@ -10,6 +10,10 @@ import {
 	MAX_VERIFY_ATTEMPTS,
 	terminalRemediationFromState,
 } from '../../../workflow-loop/remediation';
+import {
+	canVerifyPendingSetup,
+	stateForPendingSetupVerification,
+} from '../../../workflow-loop/setup-verification-policy';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 
 export interface ResolvedVerificationTarget {
@@ -73,25 +77,21 @@ export async function resolveVerificationTarget(
 	}
 
 	const resolvedInput: ResolvedVerifyInput = { ...input, workItemId: buildOutcome.workItemId };
-	const stateBefore = await context.workflowTaskService.getWorkflowLoopState(
+	let stateBefore = await context.workflowTaskService.getWorkflowLoopState(
 		resolvedInput.workItemId,
 	);
-	const terminalRemediation =
-		stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
-			? terminalRemediationFromState(stateBefore, context.runId)
+	const setupVerificationState =
+		context.setupPanelEnabled === true && stateBefore
+			? stateForPendingSetupVerification(stateBefore, buildOutcome, context.runId)
 			: undefined;
-	if (terminalRemediation) {
-		return {
-			kind: 'blocked',
-			result: {
-				success: false,
-				resolvedWorkItemId: resolvedInput.workItemId,
-				error: terminalRemediation.guidance,
-				remediation: terminalRemediation,
-				guidance: terminalRemediation.guidance,
-			},
-		};
-	}
+	const terminalRemediation = setupVerificationState
+		? terminalRemediationFromState(setupVerificationState)
+		: stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
+			? terminalRemediationFromState(
+					stateBefore,
+					context.setupPanelEnabled === true ? undefined : context.runId,
+				)
+			: undefined;
 
 	if (!buildOutcome.workflowId) {
 		return {
@@ -136,6 +136,46 @@ export async function resolveVerificationTarget(
 				error: remediation.guidance,
 				remediation,
 				guidance: remediation.guidance,
+			},
+		};
+	}
+
+	let verificationBlocker = terminalRemediation;
+	if (
+		!verificationBlocker &&
+		context.setupPanelEnabled === true &&
+		stateBefore &&
+		(canVerifyPendingSetup(buildOutcome) || stateBefore.runId !== context.runId)
+	) {
+		const started = await context.workflowTaskService.beginVerification(
+			buildOutcome,
+			stateBefore,
+			context.runId,
+		);
+		if (started) {
+			stateBefore = await context.workflowTaskService.getWorkflowLoopState(
+				resolvedInput.workItemId,
+			);
+		} else {
+			verificationBlocker = createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'verification_state_changed',
+				guidance:
+					'The work item changed before verification could start. Read its current state before continuing.',
+			});
+		}
+	}
+
+	if (verificationBlocker) {
+		return {
+			kind: 'blocked',
+			result: {
+				success: false,
+				resolvedWorkItemId: resolvedInput.workItemId,
+				error: verificationBlocker.guidance,
+				remediation: verificationBlocker,
+				guidance: verificationBlocker.guidance,
 			},
 		};
 	}

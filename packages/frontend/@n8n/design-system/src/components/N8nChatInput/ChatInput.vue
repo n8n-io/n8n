@@ -55,6 +55,8 @@ export interface N8nChatInputProps {
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
 	stopButtonTestId?: string;
+	/** Test id for the native textarea. Fallthrough attrs land on the wrapper. */
+	inputTestId?: string;
 }
 
 const INFINITE_CREDITS = -1;
@@ -78,6 +80,7 @@ const props = withDefaults(defineProps<N8nChatInputProps>(), {
 	submitDisabled: undefined,
 	sendButtonTestId: 'send-message-button',
 	stopButtonTestId: 'send-message-button',
+	inputTestId: undefined,
 });
 
 const emit = defineEmits<{
@@ -292,6 +295,11 @@ function focusInput(options?: FocusOptions) {
 	textareaRef.value?.focus(options);
 }
 
+/** Returns the native textarea while the component is mounted. */
+function getInputElement(): HTMLTextAreaElement | undefined {
+	return textareaRef.value;
+}
+
 // Each layout measures to a different height, so switching leaves a stale one.
 // Slot-driven switches aren't reactive, so re-check on render, not in a watcher.
 let renderedLayout = effectiveLayout();
@@ -314,6 +322,7 @@ onMounted(() => {
 
 defineExpose({
 	focusInput,
+	getInputElement,
 });
 </script>
 
@@ -342,6 +351,7 @@ defineExpose({
 				<textarea
 					ref="textareaRef"
 					v-model="textValue"
+					:data-test-id="inputTestId"
 					:class="[
 						$style.textarea,
 						{

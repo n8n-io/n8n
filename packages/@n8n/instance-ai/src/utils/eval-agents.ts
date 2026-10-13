@@ -1,7 +1,9 @@
 /** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
+import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 
+import { evalUsageGuardrail } from './eval-usage';
 import { parseModelHeadersJson } from './parse-model-headers';
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
 
@@ -56,7 +58,7 @@ function isResolvingBuilderModel(modelId: string): boolean {
 }
 
 function getApiKey(modelId: string): string {
-	const [provider] = modelId.split('/');
+	const provider = getProviderPrefix(modelId);
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
 	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
 	const anthropicLegacy = provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined;
@@ -105,12 +107,7 @@ function allowsKeylessCustomEndpoint(provider: string): boolean {
 
 export function resolveEvalModelConfig(model?: string): EvalModelConfig {
 	const modelId = getModelId(model);
-	const [provider, ...rest] = modelId.split('/');
-	const joinedProviderModelId = rest.join('/');
-	let providerModelId = modelId;
-	if (joinedProviderModelId.length > 0) {
-		providerModelId = joinedProviderModelId;
-	}
+	const { provider, model: providerModelId } = splitModelId(modelId);
 	// Builder endpoint (URL/headers) only applies when resolving that builder model.
 	// A dedicated Anthropic eval model must hit Anthropic, not the custom/Foundry base.
 	const attachBuilderEndpoint = isResolvingBuilderModel(modelId);
@@ -178,6 +175,8 @@ export function createEvalAgent(
 	}
 
 	applyAgentThinking(agent, model);
+	// `configuration()` replaces the defaults it was given before: put any other default option in this call.
+	agent.configuration({ guardrails: { hooks: [evalUsageGuardrail(name)] } });
 
 	return agent;
 }

@@ -18,12 +18,7 @@ type PortMessage = SyncMessage;
  * Type guard to validate incoming MessagePort messages
  */
 function isPortMessage(data: unknown): data is PortMessage {
-	return (
-		typeof data === 'object' &&
-		data !== null &&
-		'type' in data &&
-		(data as { type: unknown }).type === 'sync'
-	);
+	return typeof data === 'object' && data !== null && 'type' in data && data.type === 'sync';
 }
 
 /**

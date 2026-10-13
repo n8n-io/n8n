@@ -30,11 +30,10 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 
 @RestController('/users')
@@ -151,6 +150,7 @@ export class UsersController {
 		}
 
 		const token = this.jwtService.sign(
+			'invite',
 			{
 				inviterId,
 				inviteeId,

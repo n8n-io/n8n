@@ -13,6 +13,7 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { ProjectRepository, WorkflowRepository, type Project, type User } from '@n8n/db';
 import type {
 	PolicyCheckResult,
@@ -88,6 +89,8 @@ let authOwnerAgent: SuperAgentTest;
 let publicApiAgent: SuperAgentTest;
 let activeWorkflowManager: ActiveWorkflowManager;
 let workflowRepository: WorkflowRepository;
+const workflowsConfig = Container.get(WorkflowsConfig);
+const originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
 
 const scheduleNode = (name: string): INode => ({
 	id: uuid(),
@@ -123,6 +126,14 @@ beforeAll(async () => {
 	Container.get(InstanceSettings).markAsLeader();
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	workflowRepository = Container.get(WorkflowRepository);
+
+	// Registration is asserted through `ActiveWorkflowManager`, the legacy activation
+	// path. The publication applier enforces the same check in its own unit tests.
+	workflowsConfig.useWorkflowPublicationService = false;
+});
+
+afterAll(() => {
+	workflowsConfig.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 beforeEach(() => {

@@ -1,6 +1,7 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import {
+	ADD_EMPTY_GROUP_NODE_CREATOR_ITEM,
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
 	AI_TRANSFORM_NODE_TYPE,
@@ -9,18 +10,26 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { AIView, HitlToolView } from './viewsData';
+import {
+	AIView,
+	HitlToolView,
+	isNodeViewItem,
+	isNodeViewSection,
+	RegularView,
+	TriggerView,
+} from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
+const isNodeTypeModuleDisabled = vi.fn();
 
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent V2',
-	hidden: true,
+	displayName: 'Message an Agent',
+	codex: { subcategories: { AI: [AI_CATEGORY_AGENTS] } },
 });
 
 const otherNodes = (
@@ -54,7 +63,8 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		allLatestNodeTypes: [aiTransformNode, ...otherNodes],
+		allLatestNodeTypes: [aiTransformNode, ...otherNodes, messageAnAgentNode],
+		isNodeTypeModuleDisabled,
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},
@@ -86,6 +96,7 @@ describe('viewsData', () => {
 
 			return null;
 		});
+		isNodeTypeModuleDisabled.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -103,13 +114,7 @@ describe('viewsData', () => {
 			expect(result.items.some((item) => item.key === AI_TRANSFORM_NODE_TYPE)).toBe(false);
 		});
 
-		test('should include Message an Agent node before the agent node when agents module is active', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
-			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
-				(name: string) => name === 'agents',
-			);
-
+		test('should list Message an Agent first among the agent nodes', () => {
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
@@ -121,10 +126,10 @@ describe('viewsData', () => {
 			expect(messageIdx).toBeLessThan(agentIdx);
 		});
 
-		test('should not include Message an Agent node when agents module is inactive', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
+		test('should not include Message an Agent node when its module is disabled', () => {
+			isNodeTypeModuleDisabled.mockImplementation(
+				(nodeType: string) => nodeType === MESSAGE_AN_AGENT_NODE_TYPE,
+			);
 
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
@@ -180,10 +185,11 @@ describe('viewsData', () => {
 			const nodes: SimplifiedNodeType[] = [hitlToolNode, regularNode] as SimplifiedNodeType[];
 
 			const result = HitlToolView(nodes);
+			const [item] = result.items.filter(isNodeViewItem);
 
 			expect(result.items).toHaveLength(1);
-			expect(result.items[0].properties.name).toBe('slackHitlTool');
-			expect(result.items[0].properties.displayName).toBe('Slack');
+			expect(item.properties.name).toBe('slackHitlTool');
+			expect(item.properties.displayName).toBe('Slack');
 		});
 
 		test('should sort HITL tool nodes by displayName alphabetically', () => {
@@ -207,11 +213,12 @@ describe('viewsData', () => {
 			] as SimplifiedNodeType[];
 
 			const result = HitlToolView(nodes);
+			const items = result.items.filter(isNodeViewItem);
 
 			expect(result.items).toHaveLength(3);
-			expect(result.items[0].properties.displayName).toBe('Discord');
-			expect(result.items[1].properties.displayName).toBe('Email');
-			expect(result.items[2].properties.displayName).toBe('Slack');
+			expect(items[0].properties.displayName).toBe('Discord');
+			expect(items[1].properties.displayName).toBe('Email');
+			expect(items[2].properties.displayName).toBe('Slack');
 		});
 
 		test('should return correct view structure with title and nodeIcon', () => {
@@ -231,6 +238,38 @@ describe('viewsData', () => {
 				name: 'badge-check',
 			});
 			expect(result.items).toHaveLength(1);
+		});
+	});
+
+	describe('RegularView', () => {
+		test('offers add-trigger and group actions after the node categories', () => {
+			const result = RegularView([]);
+			const triggerSection = result.items.at(-2);
+			const groupItem = result.items.at(-1);
+
+			expect(triggerSection && isNodeViewSection(triggerSection)).toBe(true);
+			if (!triggerSection || !isNodeViewSection(triggerSection)) return;
+			expect(triggerSection.hideHeader).toBe(true);
+			expect(triggerSection.children[0].uuid).toBe('additional-workflow-elements-trigger');
+			expect(triggerSection.children[0].key).toBe('Trigger');
+			expect(groupItem?.key).toBe(ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
+			expect(groupItem?.type).toBe('command');
+			if (!groupItem || !isNodeViewItem(groupItem)) return;
+			expect(groupItem.properties).toMatchObject({
+				title: 'Group',
+				icon: 'group',
+				description: 'Add an organisational container to your workflow',
+			});
+		});
+	});
+
+	describe('TriggerView', () => {
+		it('offers the group command', () => {
+			const result = TriggerView();
+			const groupItem = result.items.at(-1);
+
+			expect(groupItem?.key).toBe(ADD_EMPTY_GROUP_NODE_CREATOR_ITEM);
+			expect(groupItem?.type).toBe('command');
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
+import type { BuiltTool, CredentialListItem, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
@@ -16,22 +16,9 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
+import type { CredentialSetupDeps } from './setup-tool.types';
 
-export interface AskCredentialToolDeps {
-	credentialService: InstanceAiCredentialService;
-	/** Project the agent lives in — scopes the FE credential picker. */
-	projectId: string;
-	isCredentialTypeKnown?: (credentialType: string) => boolean;
-	/**
-	 * Credential ids of the agent's configured chat channel integrations. When
-	 * one of them matches the requested credential type, it is reused for the
-	 * tool instead of asking the user to pick a credential.
-	 */
-	listIntegrationCredentialIds?: () => Promise<string[]>;
-	track: BuilderTrackFn;
-}
-
-export interface AskEmbeddingCredentialToolDeps extends AskCredentialToolDeps {
+export interface AskEmbeddingCredentialToolDeps extends CredentialSetupDeps {
 	isAssistantProxyEnabled: () => boolean;
 }
 
@@ -40,7 +27,7 @@ type AskCredentialToolResult =
 	| {
 			credentialId: string;
 			credentialName: string;
-			credentials: Record<string, { id: string; name: string }>;
+			credentials: Record<string, Pick<CredentialListItem, 'id' | 'name'>>;
 	  };
 
 function withNodeCredentialMap(
@@ -63,7 +50,7 @@ async function listExistingCredentials(
 	credentialService: InstanceAiCredentialService,
 	projectId: string,
 	credentialType: string,
-): Promise<Array<{ id: string; name: string }>> {
+): Promise<Array<Pick<CredentialListItem, 'id' | 'name'>>> {
 	const all = await credentialService.list({ type: credentialType, projectId });
 	return all.map((c) => ({ id: c.id, name: c.name }));
 }
@@ -109,7 +96,7 @@ async function resolveResume(
 async function resolveCredentialSelection(
 	input: AskCredentialInput,
 	ctx: InterruptibleToolContext<CredentialSuspendPayload, CredentialResumeData>,
-	deps: AskCredentialToolDeps,
+	deps: CredentialSetupDeps,
 ): Promise<AskCredentialToolResult> {
 	if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
 		return await resolveResume(
@@ -172,7 +159,7 @@ async function resolveCredentialSelection(
 	});
 }
 
-export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
+export function buildAskCredentialTool(deps: CredentialSetupDeps): BuiltTool {
 	return new Tool(ASK_CREDENTIAL_TOOL_NAME)
 		.description(
 			'Show a credential picker card in the chat UI and suspend until the user selects ' +

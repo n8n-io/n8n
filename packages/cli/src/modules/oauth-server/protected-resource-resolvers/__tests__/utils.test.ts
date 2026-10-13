@@ -1,9 +1,13 @@
+import type { Logger } from '@n8n/backend-common';
+import { mock } from 'vitest-mock-extended';
+
 import {
 	methodQueryString,
 	parseMethodParam,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from '../utils';
 
@@ -73,6 +77,45 @@ describe('resourceUrlToWebhookPath', () => {
 				'https://host.example/',
 			),
 		).toBe('/webhook/abc');
+	});
+});
+
+describe('webhookPathFromResourceUrl', () => {
+	const logger = mock<Logger>();
+
+	beforeEach(() => {
+		logger.debug.mockClear();
+	});
+
+	test('should return the path and not log for a URL under the base URL', () => {
+		expect(
+			webhookPathFromResourceUrl(
+				'https://host.example/n8n/webhook/abc?method=GET',
+				'https://host.example/n8n/',
+				logger,
+			),
+		).toBe('/webhook/abc');
+		expect(logger.debug).not.toHaveBeenCalled();
+	});
+
+	test('should log and return undefined for a URL outside the base URL', () => {
+		expect(
+			webhookPathFromResourceUrl(
+				'https://evil.example/webhook/abc',
+				'https://host.example/',
+				logger,
+			),
+		).toBeUndefined();
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Resource URL is not under the webhook base URL: https://evil.example/webhook/abc',
+		);
+	});
+
+	test('should log and return undefined for a malformed resource URL', () => {
+		expect(
+			webhookPathFromResourceUrl('not-a-url', 'https://host.example/', logger),
+		).toBeUndefined();
+		expect(logger.debug).toHaveBeenCalledTimes(1);
 	});
 });
 

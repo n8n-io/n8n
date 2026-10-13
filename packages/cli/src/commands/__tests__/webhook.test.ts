@@ -10,8 +10,9 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from '../base-command';
@@ -26,8 +27,8 @@ dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);
@@ -41,6 +42,7 @@ mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) });
 mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) });
 mockInstance(MessageEventBus, { initialize: vi.fn().mockResolvedValue(undefined) });
 mockInstance(LogStreamingEventRelay);
+const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 describe('Webhook', () => {
 	beforeEach(() => {
@@ -78,14 +80,23 @@ describe('Webhook', () => {
 		});
 
 		it('should call markAsReady after server starts', async () => {
-			// run() blocks forever with `await new Promise(() => {})`,
-			// so we don't await it — just let microtasks settle
+			// run() blocks forever with `await new Promise(() => {})`, so we don't
+			// await it - we poll until the step under test has happened.
 			void new Webhook().run();
 
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await vi.waitFor(() => expect(mockWebhookServer.markAsReady).toHaveBeenCalled());
 
 			expect(mockWebhookServer.start).toHaveBeenCalled();
-			expect(mockWebhookServer.markAsReady).toHaveBeenCalled();
+		});
+
+		it('should start the system tasks once the server is up', async () => {
+			void new Webhook().run();
+
+			await vi.waitFor(() => expect(systemTaskRunner.init).toHaveBeenCalledTimes(1));
+
+			expect(mockWebhookServer.start.mock.invocationCallOrder[0]).toBeLessThan(
+				systemTaskRunner.init.mock.invocationCallOrder[0],
+			);
 		});
 	});
 
@@ -100,7 +111,8 @@ describe('Webhook', () => {
 			baseInitSpy.mockRestore();
 		});
 
-		it('should call executionContextHookRegistry.init before LoadNodesAndCredentials.postProcessLoaders', async () => {
+		/** A webhook command whose init steps are all stubbed. */
+		const createWebhook = () => {
 			const webhook = new Webhook();
 
 			// @ts-expect-error - Accessing protected property for testing
@@ -127,6 +139,11 @@ describe('Webhook', () => {
 			webhook.executionContextHookRegistry = {
 				init: vi.fn().mockResolvedValue(undefined),
 			};
+			return webhook;
+		};
+
+		it('should call executionContextHookRegistry.init before LoadNodesAndCredentials.postProcessLoaders', async () => {
+			const webhook = createWebhook();
 
 			await webhook.init();
 
@@ -138,6 +155,21 @@ describe('Webhook', () => {
 			expect(postProcessMock).toHaveBeenCalled();
 			expect(hookInitMock.mock.invocationCallOrder[0]).toBeLessThan(
 				postProcessMock.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should register pubsub event handlers again after the modules initialize', async () => {
+			const webhook = createWebhook();
+
+			await webhook.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModulesMock = webhook.moduleRegistry.initModules as Mock;
+			const registryInitMock = Container.get(PubSubRegistry).init as Mock;
+
+			expect(registryInitMock).toHaveBeenCalledTimes(1);
+			expect(initModulesMock.mock.invocationCallOrder[0]).toBeLessThan(
+				registryInitMock.mock.invocationCallOrder[0],
 			);
 		});
 	});

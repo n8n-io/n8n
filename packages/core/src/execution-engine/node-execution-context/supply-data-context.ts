@@ -157,7 +157,19 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.abortSignal,
 			this.parentNode,
 		);
-		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
+		void context
+			.addExecutionDataFunctions(
+				'input',
+				replacements.inputData,
+				NodeConnectionTypes.AiTool,
+				context.node.name,
+				context.getNextRunIndex(),
+			)
+			.catch((error: Error) => {
+				context.logger.warn(
+					`There was a problem logging input data of node "${context.node.name}": ${error.message}`,
+				);
+			});
 		return context;
 	}
 
@@ -325,7 +337,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			}
 			taskData.data = {
 				[connectionType]: data,
-			} as ITaskDataConnections;
+			};
 		}
 
 		if (type === 'output') {
@@ -338,7 +350,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 				// TODO: remove inputOverride
 				taskData.inputOverride = {
 					[connectionType]: data,
-				} as ITaskDataConnections;
+				};
 			}
 
 			if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {

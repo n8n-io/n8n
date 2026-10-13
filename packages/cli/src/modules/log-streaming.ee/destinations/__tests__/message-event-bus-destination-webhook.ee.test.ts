@@ -156,6 +156,8 @@ describe('MessageEventBusDestinationWebhook', () => {
 				'internal',
 				undefined,
 				false,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
 			);
 			expect(credentialsHelper.authenticate).toHaveBeenCalledWith(
 				decrypted,

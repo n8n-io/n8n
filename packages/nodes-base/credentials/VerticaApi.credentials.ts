@@ -10,11 +10,12 @@ export class VerticaApi implements ICredentialType {
 
 	displayName = 'Vertica API';
 
-	documentationUrl = 'vertica';
+	documentationUrl =
+		'https://docs.n8n.io/integrations/builtin/custom-api-actions-for-existing-nodes';
 
 	httpRequestNode = {
 		name: 'Vertica',
-		docsUrl: 'vertica',
+		docsUrl: 'https://docs.vertica.com/latest/en/admin/managing-db/https-service/https-endpoints/',
 		apiBaseUrlPlaceholder: 'http://<server>:<port>/v1/',
 	};
 

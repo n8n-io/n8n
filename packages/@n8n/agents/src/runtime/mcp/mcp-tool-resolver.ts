@@ -60,9 +60,11 @@ export class McpToolResolver {
 			handler,
 			toMessage,
 			toModelOutput,
+			outputTrust: 'untrusted',
 			mcpTool: true,
 			mcpServerName: connection.name,
 			mcpToolName: originalName,
+			...(tool.annotations ? { mcpAnnotations: tool.annotations } : {}),
 		};
 
 		return builtTool;

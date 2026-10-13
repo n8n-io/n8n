@@ -44,7 +44,7 @@ const getMarkdownAttributes = (attributes: EditorAttributes): EditorAttributes =
 
 export const useMarkdownEditor = (
 	props: Readonly<N8nMarkdownEditorProps>,
-	emit: SetupContext<N8nMarkdownEditorEmits>['emit'],
+	emit: SetupContext<Omit<N8nMarkdownEditorEmits, 'update:collapsed'>>['emit'],
 ) => {
 	const baseExtensions = [
 		StarterKit,

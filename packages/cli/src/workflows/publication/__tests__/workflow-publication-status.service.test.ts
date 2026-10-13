@@ -1,4 +1,6 @@
 import type {
+	OperationContext,
+	Transaction,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatus,
@@ -49,6 +51,23 @@ describe('WorkflowPublicationStatusService', () => {
 			...overrides,
 		} as WorkflowPublicationTriggerStatus;
 	}
+
+	it('reads publication state through the active transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+		triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
+
+		await service.getStatus(WORKFLOW_ID, ctx);
+
+		expect(outboxRepository.findInFlightByWorkflowId).toHaveBeenCalledExactlyOnceWith(
+			WORKFLOW_ID,
+			ctx,
+		);
+		expect(triggerStatusRepository.findByWorkflowId).toHaveBeenCalledExactlyOnceWith(
+			WORKFLOW_ID,
+			ctx,
+		);
+	});
 
 	describe('never published (no rows, no in-flight publication)', () => {
 		it('returns not_published with null versions', async () => {

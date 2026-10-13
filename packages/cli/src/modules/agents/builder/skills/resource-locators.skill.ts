@@ -13,7 +13,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 			'get_node_types',
 			'ask_credential',
 			'get_resource_locator_options',
-			'read_config',
+			'agent-context',
 			'patch_config',
 		],
 		allowedTools: [
@@ -22,7 +22,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 			'ask_credential',
 			'get_resource_locator_options',
 			'ask_questions',
-			'read_config',
+			'agent-context',
 			'patch_config',
 			'write_config',
 		],

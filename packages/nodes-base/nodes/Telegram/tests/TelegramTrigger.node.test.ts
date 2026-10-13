@@ -553,6 +553,43 @@ describe('TelegramTrigger', () => {
 		});
 	});
 
+	describe('checkExists', () => {
+		const webhookUrl = 'https://example.com/webhook/abc/webhook';
+
+		const createHookFunctions = () =>
+			mock<IHookFunctions>({
+				getNodeWebhookUrl: vi.fn().mockReturnValue(webhookUrl),
+				getNode: vi.fn().mockReturnValue({ id: '2', typeVersion: 1.5 }),
+				getWorkflow: vi.fn().mockReturnValue({ id: '1' }),
+			});
+
+		test('should return true when the registered URL matches', async () => {
+			vi.mocked(apiRequest).mockResolvedValueOnce({ ok: true, result: { url: webhookUrl } });
+
+			const telegramTrigger = new TelegramTrigger();
+
+			await expect(
+				telegramTrigger.webhookMethods.default.checkExists.call(createHookFunctions()),
+			).resolves.toBe(true);
+		});
+
+		// The credential lets the user point the Base URL at any host, so a 2xx response
+		// can carry a body that is not a getWebhookInfo payload.
+		test.each([
+			['a body that is not JSON', '<html>Access denied</html>'],
+			['a payload without a result', { ok: false, description: 'Unauthorized' }],
+			['an empty object', {}],
+		])('should return false for %s', async (_description, response) => {
+			vi.mocked(apiRequest).mockResolvedValueOnce(response);
+
+			const telegramTrigger = new TelegramTrigger();
+
+			await expect(
+				telegramTrigger.webhookMethods.default.checkExists.call(createHookFunctions()),
+			).resolves.toBe(false);
+		});
+	});
+
 	describe('create', () => {
 		test('should set drop_pending_updates for version 1.3', async () => {
 			const telegramTrigger = new TelegramTrigger();

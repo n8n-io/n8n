@@ -13,6 +13,7 @@ type CredentialPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
+	description: 'exclude';
 	data: 'transform';
 	type: 'copy';
 	shared: 'exclude';
@@ -22,6 +23,7 @@ type CredentialPackageKeyHandling = {
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
+	pendingAuthorizationExpiresAt: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<

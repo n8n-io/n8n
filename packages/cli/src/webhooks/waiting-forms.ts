@@ -4,8 +4,7 @@ import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { applyCors } from '@/utils/cors.util';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
@@ -110,6 +109,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			const workflow = this.createWorkflow(execution.workflowData);
 			const completionPage = this.findCompletionPage(

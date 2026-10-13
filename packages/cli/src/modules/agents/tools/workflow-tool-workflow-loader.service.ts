@@ -49,7 +49,11 @@ export class WorkflowToolWorkflowLoader {
 					`Workflow "${workflow.name}" is not published. Publish it so the published agent can use it.`,
 				);
 			}
-			Object.assign(workflow, { nodes: published.nodes, connections: published.connections });
+			Object.assign(workflow, {
+				versionId: published.versionId,
+				nodes: published.nodes,
+				connections: published.connections,
+			});
 		}
 
 		return Object.assign(workflow, { pinData: undefined });

@@ -84,6 +84,7 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
+		promptVersion?: string,
 	) => void;
 }
 
@@ -267,6 +268,7 @@ export class InstanceAiTerminalOutcomeService {
 	async finishInvalidConfirmationRun(args: {
 		threadId: string;
 		runId: string;
+		promptVersion?: string;
 		abortController: AbortController;
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
@@ -282,6 +284,7 @@ export class InstanceAiTerminalOutcomeService {
 			args.runId,
 			'errored',
 			'I need your input to continue, but I could not display the prompt. Please try again.',
+			args.promptVersion,
 		);
 		return {
 			status: 'error',

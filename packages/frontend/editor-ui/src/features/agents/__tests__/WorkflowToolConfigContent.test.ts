@@ -2,17 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { defineComponent, h, nextTick, ref, shallowRef } from 'vue';
+import { EditorView } from '@codemirror/view';
 import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowToolConfigContent from '../components/WorkflowToolConfigContent.vue';
+import WorkflowToolInputs from '../components/WorkflowToolInputs.vue';
+import AgentToolConfigForm from '../components/AgentToolConfigForm.vue';
 import type { WorkflowToolRef } from '../types';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
 	return {
 		...actual,
+		useRoute: () => ({ params: {}, query: {}, meta: {} }),
 		useRouter: () => ({
 			resolve: ({ params }: { params: { workflowId: string } }) => ({
 				href: `/workflow/${params.workflowId}`,
@@ -21,11 +26,11 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-vi.mock('@n8n/i18n', () => {
-	const i18n = {
-		baseText: (key: string) => key,
-	};
-	return { useI18n: () => i18n, i18n, i18nInstance: { install: vi.fn() } };
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/i18n')>();
+	const i18n = Object.create(actual.i18n) as typeof actual.i18n;
+	i18n.baseText = (key: string) => key;
+	return { ...actual, useI18n: () => i18n, i18n };
 });
 
 // Element Plus' select is unusable in jsdom, so only the select/option pair is
@@ -85,6 +90,27 @@ function workflow(
 }
 
 const renderComponent = createComponentRenderer(WorkflowToolConfigContent);
+
+function renderForm(initialRef: WorkflowToolRef) {
+	const form = ref<InstanceType<typeof AgentToolConfigForm>>();
+	const onConfirm = vi.fn();
+	const render = createComponentRenderer(
+		defineComponent({
+			setup: () => () =>
+				h('div', [
+					h(AgentToolConfigForm, { ref: form, data: { toolRef: initialRef, onConfirm } }),
+					h('button', { onClick: () => form.value?.confirm() }, 'Save'),
+				]),
+		}),
+	);
+	return { ...render(), onConfirm, form };
+}
+
+function editExpression(field: HTMLElement, expression: string) {
+	const content = field.querySelector<HTMLElement>('.cm-content')!;
+	const editor = EditorView.findFromDOM(content)!;
+	editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: expression } });
+}
 
 function createRef(overrides: Partial<WorkflowToolRef> = {}): WorkflowToolRef {
 	return {
@@ -382,9 +408,11 @@ describe('WorkflowToolConfigContent', () => {
 				]),
 			]);
 
-			const { findByTestId } = renderComponent({ props: { initialRef: createRef() } });
+			const { findByTestId, getByTestId } = renderComponent({ props: { initialRef: createRef() } });
 
-			expect(await findByTestId('agent-workflow-tool-inputs')).toBeTruthy();
+			expect(await findByTestId('agent-workflow-tool-inputs')).not.toBeVisible();
+			await fireEvent.click(getByTestId('agent-workflow-tool-advanced'));
+			expect(getByTestId('agent-workflow-tool-inputs')).toBeVisible();
 			expect(await findByTestId('agent-workflow-tool-input-chatId')).toBeTruthy();
 			expect(await findByTestId('agent-workflow-tool-input-botName')).toBeTruthy();
 		});
@@ -405,11 +433,159 @@ describe('WorkflowToolConfigContent', () => {
 				},
 			});
 
-			await findByTestId('agent-workflow-tool-input-value-botName');
-			expect(
-				(getByTestId('agent-workflow-tool-input-value-botName') as HTMLInputElement).value,
-			).toBe('Jarvis');
+			const field = await findByTestId('agent-workflow-tool-input-botName');
+			await fireEvent.click(getByTestId('agent-workflow-tool-advanced'));
+			expect(within(field).getByRole('textbox')).toHaveValue('Jarvis');
 		});
+
+		it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(
+			'configures and reopens an input named %s',
+			async (name) => {
+				const inputs = shallowRef<NonNullable<WorkflowToolRef['inputs']>>({});
+				const inputType = ref('string');
+				const render = createComponentRenderer(
+					defineComponent({
+						setup: () => () =>
+							h(WorkflowToolInputs, {
+								fields: [{ name, type: inputType.value }],
+								toolName: 'Notify Sales',
+								submitted: false,
+								modelValue: inputs.value,
+								'onUpdate:modelValue': (updated: NonNullable<WorkflowToolRef['inputs']>) => {
+									inputs.value = updated;
+								},
+							}),
+					}),
+				);
+				const view = render();
+				const field = view.getByTestId(`agent-workflow-tool-input-${name}`);
+				await fireEvent.click(
+					within(field).getByRole('button', {
+						name: 'parameterOverride.editValue',
+					}),
+				);
+				expect(within(field).getByRole('textbox')).toHaveValue('');
+				expect(inputs.value).toEqual({ [name]: { mode: 'fixed', value: '' } });
+				await fireEvent.update(within(field).getByRole('textbox'), 'Literal value');
+				expect(inputs.value).toEqual({ [name]: { mode: 'fixed', value: 'Literal value' } });
+
+				view.unmount();
+				const reopened = render();
+				const savedField = reopened.getByTestId(`agent-workflow-tool-input-${name}`);
+				await waitFor(() =>
+					expect(within(savedField).getByRole('textbox')).toHaveValue('Literal value'),
+				);
+				await fireEvent.click(
+					within(savedField).getByRole('button', {
+						name: 'parameterOverride.applyOverrideButtonTooltip',
+					}),
+				);
+				expect(inputs.value).toEqual({});
+				await fireEvent.update(within(savedField).getByRole('textbox'), 'Input guidance');
+				expect(inputs.value).toEqual({ [name]: { mode: 'ai', description: 'Input guidance' } });
+
+				inputType.value = 'object';
+				await nextTick();
+				await fireEvent.click(
+					within(savedField).getByRole('button', { name: 'parameterOverride.editValue' }),
+				);
+				const rawValue = '{ "answer": 42 }';
+				editExpression(savedField, rawValue);
+				await waitFor(() =>
+					expect(inputs.value).toEqual({ [name]: { mode: 'fixed', value: { answer: 42 } } }),
+				);
+				await nextTick();
+				const content = savedField.querySelector<HTMLElement>('.cm-content')!;
+				expect(EditorView.findFromDOM(content)?.state.doc.toString()).toBe(rawValue);
+			},
+		);
+
+		it('saves and reopens all binding modes without changing the original reference', async () => {
+			setProjectWorkflows([
+				workflowWithInputs('Notify Sales', [
+					{ name: 'query', type: 'string' },
+					{ name: 'label', type: 'string' },
+					{ name: 'count', type: 'number' },
+				]),
+			]);
+			const initialRef = createRef();
+			const view = renderForm(initialRef);
+			await view.findByTestId('agent-workflow-tool-inputs');
+			await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+			await fireEvent.update(
+				within(view.getByTestId('agent-workflow-tool-input-query')).getByRole('textbox'),
+				'Input guidance',
+			);
+			const label = within(view.getByTestId('agent-workflow-tool-input-label'));
+			await fireEvent.click(label.getByRole('button', { name: 'parameterOverride.editValue' }));
+			await fireEvent.update(label.getByRole('textbox'), '={{ literal }}');
+			const count = view.getByTestId('agent-workflow-tool-input-count');
+			await fireEvent.click(
+				within(count).getByRole('button', { name: 'parameterOverride.editValue' }),
+			);
+			await fireEvent.click(within(count).getByText('parameterInput.expression'));
+			editExpression(count, '{{ $json.query.length }}');
+			await waitFor(() => expect(view.form.value?.canSave).toBe(true));
+			await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+			await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+			expect(view.onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({
+					inputs: {
+						query: { mode: 'ai', description: 'Input guidance' },
+						label: { mode: 'fixed', value: '={{ literal }}' },
+						count: { mode: 'expression', value: '={{ $json.query.length }}' },
+					},
+				}),
+			);
+			expect(initialRef.inputs).toBeUndefined();
+			const saved = view.onConfirm.mock.calls[0][0] as WorkflowToolRef;
+			view.unmount();
+			const reopened = renderForm(saved);
+			await reopened.findByTestId('agent-workflow-tool-inputs');
+			await fireEvent.click(reopened.getByTestId('agent-workflow-tool-advanced'));
+			expect(
+				within(reopened.getByTestId('agent-workflow-tool-input-query')).getByRole('textbox'),
+			).toHaveValue('Input guidance');
+			expect(
+				within(reopened.getByTestId('agent-workflow-tool-input-label')).getByRole('textbox'),
+			).toHaveValue('={{ literal }}');
+			expect(reopened.getByTestId('agent-workflow-tool-input-count')).toHaveTextContent(
+				'$json.query.length',
+			);
+		});
+
+		it.each([
+			{ mode: 'expression', value: '=' },
+			{ mode: 'fixed', value: 'not a number' },
+		] as const)(
+			'validates $mode inputs on Save and preserves them when loading fails',
+			async (binding) => {
+				const inputs: WorkflowToolRef['inputs'] = { count: binding };
+				setProjectWorkflows([
+					workflowWithInputs('Notify Sales', [{ name: 'count', type: 'number' }]),
+				]);
+				const view = renderForm(createRef({ inputs }));
+				await view.findByTestId('agent-workflow-tool-inputs');
+				for (let attempt = 0; attempt < 2; attempt++) {
+					await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+					expect(view.onConfirm).not.toHaveBeenCalled();
+					expect(view.getByTestId('agent-workflow-tool-advanced')).toHaveAttribute(
+						'aria-expanded',
+						'true',
+					);
+					await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+				}
+				view.unmount();
+				mockedStore(useWorkflowsListStore).searchWorkflows = vi
+					.fn()
+					.mockRejectedValue(new Error('offline'));
+				const failedLoad = renderForm(createRef({ inputs }));
+				await fireEvent.click(failedLoad.getByTestId('agent-workflow-tool-advanced'));
+				await failedLoad.findByText('agents.toolConfig.workflow.inputs.loadError');
+				await fireEvent.click(failedLoad.getByRole('button', { name: 'Save' }));
+				expect(failedLoad.onConfirm).toHaveBeenCalledWith(expect.objectContaining({ inputs }));
+			},
+		);
 
 		it('does not render input bindings for passthrough workflows', async () => {
 			setProjectWorkflows([

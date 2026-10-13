@@ -1,3 +1,4 @@
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import {
 	UNLIMITED_CREDITS,
 	isMoonshotaiKimiK3ModelId,
@@ -122,8 +123,7 @@ export class InstanceAiModelService {
 		const modelId = typeof config === 'string' ? config : 'id' in config ? config.id : null;
 		if (!modelId) return undefined;
 
-		const [provider, ...rest] = modelId.split('/');
-		const modelName = rest.join('/');
+		const { provider, model: modelName } = splitModelId(modelId);
 		const apiKey = typeof config === 'object' && 'apiKey' in config ? config.apiKey : undefined;
 		const baseURL = typeof config === 'object' && 'url' in config ? config.url : undefined;
 		if (provider !== 'anthropic') return undefined;

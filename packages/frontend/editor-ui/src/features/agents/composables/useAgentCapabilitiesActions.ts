@@ -15,7 +15,7 @@ import {
 } from '../constants';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
-import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
+import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 import type {
 	AgentResource,
@@ -85,6 +85,18 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * Hosts whose agent always exists omit it.
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
+	/**
+	 * Flushes pending agent edits before an API mutation that also writes the
+	 * agent config. This prevents the mutation from advancing the config hash
+	 * ahead of a queued config save.
+	 */
+	beforeAgentMutation?: () => Promise<void>;
+	/**
+	 * Reloads agent-owned state after an API mutation that writes both a sidecar
+	 * resource and the agent config. The reload updates the config hash without
+	 * scheduling a duplicate config write.
+	 */
+	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
@@ -107,6 +119,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		localSkills,
 		supportsToolApproval,
 		ensureAgentPersisted,
+		beforeAgentMutation,
+		refreshAgentAfterMutation,
 		validationIssues,
 		telemetry,
 	} = deps;
@@ -117,7 +131,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const nodeTypesStore = useNodeTypesStore();
 	const { showError, showMessage } = useToast();
 
-	function onOpenAddToolModal() {
+	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
 		const targetAgentId = agentId.value;
@@ -125,6 +139,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		uiStore.openModalWithData({
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
+				mode,
 				tools: localConfig.value?.tools ?? [],
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
@@ -189,7 +204,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						nextTools[toolIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
 					},
-					onRemove: () => onRemoveTool(toolIndex),
+					onRemove: () => {
+						if (!localConfig.value?.tools?.[toolIndex]) return;
+						onRemoveTool(toolIndex);
+					},
 				},
 			});
 			return;
@@ -230,41 +248,39 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					nextMcpServers[mcpServerIndex] = updatedServer;
 					scheduleConfigUpdate({ mcpServers: nextMcpServers });
 				},
-				onRemove: () => {
-					const nextMcpServers = (localConfig.value?.mcpServers ?? []).filter(
-						(_, i) => i !== mcpServerIndex,
-					);
-					scheduleConfigUpdate({ mcpServers: nextMcpServers });
-				},
+				onRemove: () => onRemoveTool((localConfig.value?.tools ?? []).length + mcpServerIndex),
 			},
 		});
 	}
 
-	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
-		// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
-		// non-array `skills`, skip malformed refs, and resolve bodies by own key
-		// only so ids like "constructor" can't surface prototype members.
-		const rawRefs = localConfig.value?.skills;
-		const refs = Array.isArray(rawRefs) ? rawRefs : [];
-		const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
-		const seen = new Set<string>();
-		const out: Array<{ id: string; skill: AgentSkill }> = [];
+	const appliedSkills = computed<Array<{ id: string; skill: AgentSkill; enabled?: boolean }>>(
+		() => {
+			// Inline hosts read refs from unvalidated node-parameter JSON: tolerate a
+			// non-array `skills`, skip malformed refs, and resolve bodies by own key
+			// only so ids like "constructor" can't surface prototype members.
+			const rawRefs = localConfig.value?.skills;
+			const refs = Array.isArray(rawRefs) ? rawRefs : [];
+			const bodies = localSkills?.bodies.value ?? agent.value?.skills ?? {};
+			const seen = new Set<string>();
+			const out: Array<{ id: string; skill: AgentSkill; enabled?: boolean }> = [];
 
-		for (const skillRef of refs) {
-			if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
-			seen.add(skillRef.id);
-			out.push({
-				id: skillRef.id,
-				skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
-					name: skillRef.id,
-					description: '',
-					instructions: '',
-				},
-			});
-		}
+			for (const skillRef of refs) {
+				if (typeof skillRef?.id !== 'string' || !skillRef.id || seen.has(skillRef.id)) continue;
+				seen.add(skillRef.id);
+				out.push({
+					id: skillRef.id,
+					enabled: skillRef.enabled,
+					skill: (Object.hasOwn(bodies, skillRef.id) ? bodies[skillRef.id] : undefined) ?? {
+						name: skillRef.id,
+						description: '',
+						instructions: '',
+					},
+				});
+			}
 
-		return out;
-	});
+			return out;
+		},
+	);
 
 	function onOpenSkillFromList(id: string) {
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
@@ -386,9 +402,16 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onRemoveTool(index: number) {
 		const currentTools = localConfig.value?.tools ?? [];
-		if (index < 0 || index >= currentTools.length) return;
-		const nextTools = currentTools.filter((_, i) => i !== index);
-		scheduleConfigUpdate({ tools: nextTools });
+		if (index < 0) return;
+		if (index < currentTools.length) {
+			scheduleConfigUpdate({ tools: currentTools.filter((_, i) => i !== index) });
+			return;
+		}
+
+		const mcpServers = localConfig.value?.mcpServers ?? [];
+		const mcpServerIndex = index - currentTools.length;
+		if (mcpServerIndex >= mcpServers.length) return;
+		scheduleConfigUpdate({ mcpServers: mcpServers.filter((_, i) => i !== mcpServerIndex) });
 	}
 
 	function onRemoveSkill(id: string) {
@@ -404,6 +427,14 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		scheduleConfigUpdate({ tasks: nextTasks });
 	}
 
+	function onToggleSkill({ id, enabled }: { id: string; enabled: boolean }) {
+		scheduleConfigUpdate({
+			skills: (localConfig.value?.skills ?? []).map((ref) =>
+				ref.id === id ? { ...ref, enabled } : ref,
+			),
+		});
+	}
+
 	function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
 
@@ -413,6 +444,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		// still the current one.
 		const targetProjectId = projectId.value;
 		const targetAgentId = agentId.value;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
 
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
@@ -423,7 +456,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				existingSkillNames: appliedSkillNames(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					if (localSkills) {
-						if (agentId.value !== targetAgentId) return;
+						if (!isCurrentTarget()) return;
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						if (hasDuplicateSkillName(sanitizedSkill.name)) {
 							showDuplicateSkillNameError(sanitizedSkill.name);
@@ -432,20 +465,26 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
-						showMessage({
-							title: locale.baseText('agents.builder.skills.added'),
-							type: 'success',
-						});
 						return;
 					}
 
 					void (async () => {
 						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;
+						let skillHash: string;
 						let versionId: string | null;
 						let skillId: string;
 						try {
+							await beforeAgentMutation?.();
+						} catch {
+							// The host owns the autosave error message. Do not also report
+							// this as a skill-creation failure.
+							return;
+						}
+						if (!isCurrentTarget()) return;
+						try {
 							await ensureAgentPersisted?.();
+							if (!isCurrentTarget()) return;
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
 								targetProjectId,
@@ -454,27 +493,42 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							);
 							skillId = result.id;
 							created = result.skill;
+							skillHash = result.skillHash;
 							versionId = result.versionId;
 						} catch (error) {
 							showError(error, locale.baseText('agents.builder.skills.create.error'));
 							return;
 						}
-						if (agent.value?.id !== targetAgentId) return;
+						if (!isCurrentTarget() || agent.value?.id !== targetAgentId) return;
 						agent.value = {
 							...agent.value,
 							versionId,
+							skillHashes: {
+								...(agent.value.skillHashes ?? {}),
+								[skillId]: skillHash,
+							},
 							skills: {
 								...(agent.value.skills ?? {}),
 								[skillId]: created,
 							},
 						};
-						scheduleConfigUpdate({
-							skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id: skillId }],
-						});
-						showMessage({
-							title: locale.baseText('agents.builder.skills.added'),
-							type: 'success',
-						});
+						let refreshed = true;
+						try {
+							refreshed =
+								(await refreshAgentAfterMutation?.(targetProjectId, targetAgentId)) ?? true;
+						} catch (error) {
+							showError(error, locale.baseText('agents.builder.loadError'));
+							return;
+						}
+						if (refreshed && isCurrentTarget() && localConfig.value) {
+							localConfig.value = {
+								...localConfig.value,
+								skills: [
+									...(localConfig.value.skills ?? []).filter((ref) => ref.id !== skillId),
+									{ type: 'skill', id: skillId },
+								],
+							};
+						}
 					})();
 				},
 			},
@@ -499,6 +553,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onOpenSkillFromList,
 		onRemoveSkill,
 		onToggleTask,
+		onToggleSkill,
 		onConnectedTriggersUpdate,
 		onTriggerAdded,
 	};

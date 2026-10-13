@@ -111,5 +111,23 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'body',
 		},
+		{
+			displayName: 'Marketplace Name',
+			name: 'marketplaceName',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Marketplace Organization ID',
+			name: 'marketplaceOrganizationId',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Marketplace App ID',
+			name: 'marketplaceAppId',
+			type: 'hidden',
+			default: '',
+		},
 	];
 }

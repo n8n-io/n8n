@@ -1,4 +1,4 @@
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@n8n/backend-services';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
@@ -68,6 +68,7 @@ export function emitPackageImportedEvent(
 		(total, plan) => total + plan.creations.length,
 		0,
 	);
+	const dataTablesUpdated = dataTablePlans.reduce((total, plan) => total + plan.updates.length, 0);
 
 	const variableRequirements = scopes.reduce(
 		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
@@ -154,6 +155,7 @@ export function emitPackageImportedEvent(
 			dataTables: {
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
+				updated: dataTablesUpdated,
 				requirements: dataTableRequirements,
 			},
 			variables: {

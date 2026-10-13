@@ -64,7 +64,6 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
 			({
 				'agents.builder.agent.instructions.label': 'Instructions',
-				'agents.builder.agent.instructions.placeholder': 'Enter instructions here',
 				'agents.builder.agent.instructions.characterCount': `${options?.interpolate?.count ?? '0'} characters`,
 				'agents.builder.agent.model.defaultSelected.title': 'Default model selected',
 				'agents.builder.agent.model.defaultSelected.description':
@@ -75,6 +74,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nVisuallyHidden: { template: '<slot />', props: ['asChild'] },
 	N8nMarkdownEditor: {
 		name: 'N8nMarkdownEditor',
 		props: ['modelValue', 'variant', 'showToolbar', 'placeholder', 'readonly', 'maxHeight'],
@@ -110,10 +110,21 @@ vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
 }));
 
+// Per-test holders so Azure tests can supply credential records and decrypted
+// data (e.g. endpointType) without re-mocking the module.
+const { credentialsByIdHolder, credentialDataHolder } = vi.hoisted(() => ({
+	credentialsByIdHolder: {
+		value: {} as Record<string, { id: string; name: string; type: string }>,
+	},
+	credentialDataHolder: {
+		value: {} as Record<string, { data: Record<string, unknown> }>,
+	},
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		getCredentialById: () => undefined,
-		getCredentialData: async () => undefined,
+		getCredentialById: (id: string) => credentialsByIdHolder.value[id],
+		getCredentialData: async ({ id }: { id: string }) => credentialDataHolder.value[id],
 	}),
 }));
 
@@ -171,8 +182,9 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 function mountPanel(
 	instructions = '# Role\nHelp users.',
 	overrides: Partial<{
-		showInstructionsToolbar: boolean;
 		showModel: boolean;
+		showInstructions: boolean;
+		embedded: boolean;
 		config: Record<string, unknown>;
 	}> = {},
 ) {
@@ -215,9 +227,53 @@ describe('AgentInfoPanel', () => {
 		modelCatalog.value = makeCatalog();
 		credsHolder.value = { anthropic: 'credential-1' };
 		defaultModelHolder.value = null;
+		credentialsByIdHolder.value = {};
+		credentialDataHolder.value = {};
 	});
 
-	it('renders instructions as a contained markdown editor with a floating toolbar', () => {
+	it('keeps the card heading accessible in the builder', function rendersCardHeader() {
+		const wrapper = mountPanel(undefined, { showModel: true, embedded: false });
+		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
+
+		expect(header.props()).toMatchObject({
+			title: 'agents.builder.agent.title',
+			headerVisibility: 'visually-hidden',
+			description: undefined,
+		});
+		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
+		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
+	});
+
+	it('keeps the card heading accessible in embedded controls', function hidesEmbeddedHeader() {
+		const wrapper = mountPanel();
+		const header = wrapper.getComponent({ name: 'AgentPanelHeader' });
+
+		expect(header.props()).toMatchObject({
+			title: 'agents.builder.agent.title',
+			headerVisibility: 'visually-hidden',
+			description: undefined,
+		});
+		expect(wrapper.get('h3').text()).toBe('agents.builder.agent.title');
+		expect(wrapper.attributes('aria-labelledby')).toBe(wrapper.get('h3').attributes('id'));
+		expect(wrapper.text()).not.toContain('agents.builder.agent.description');
+	});
+
+	it.each([
+		{ showModel: true, showInstructions: true, hasDivider: true },
+		{ showModel: true, showInstructions: false, hasDivider: false },
+		{ showModel: false, showInstructions: true, hasDivider: false },
+		{ showModel: false, showInstructions: false, hasDivider: false },
+	])(
+		'shows a divider only between visible sections: $showModel / $showInstructions',
+		function rendersSectionDivider({ showModel, showInstructions, hasDivider }) {
+			const wrapper = mountPanel(undefined, { showModel, showInstructions });
+
+			expect(wrapper.find('[aria-hidden="true"]').exists()).toBe(hasDivider);
+		},
+	);
+
+	it('renders instructions as a contained markdown editor with a floating toolbar', function rendersInstructions() {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
@@ -225,31 +281,26 @@ describe('AgentInfoPanel', () => {
 			modelValue: '# Role\nHelp users.',
 			variant: 'contained',
 			showToolbar: 'floating',
-			maxHeight: '360px',
+			maxHeight: undefined,
+			placeholder: 'agents.builder.agent.instructions.placeholder',
 		});
-		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('characters');
-		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 
-	it('keeps the markdown toolbar floating when the instructions toolbar is enabled', () => {
-		const wrapper = mountPanel('# Role\nHelp users.', { showInstructionsToolbar: true });
-
-		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
-		expect(editor.props()).toMatchObject({
-			showToolbar: 'floating',
-			variant: 'contained',
-		});
-	});
-
-	it('does not pass placeholder text to the instructions editor', () => {
+	it('passes a placeholder to the empty instructions editor', function passesInstructionsPlaceholder() {
 		const wrapper = mountPanel('');
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
-		expect(editor.props('placeholder')).toBeUndefined();
-		expect(wrapper.text()).not.toContain('Enter instructions here');
+		expect(editor.props('placeholder')).toBe('agents.builder.agent.instructions.placeholder');
+	});
+
+	it('reports instructions input before its debounced config update', () => {
+		const wrapper = mountPanel('Cris');
+		wrapper.getComponent({ name: 'N8nMarkdownEditor' }).vm.$emit('update:modelValue', 'Crisp.');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {
@@ -276,6 +327,30 @@ describe('AgentInfoPanel', () => {
 			toolCallConcurrency: 2,
 			promptCaching: { enabled: true },
 		});
+		// A user-driven pick carries no meta — only an auto-applied default does.
+		expect(events.at(-1)?.[1]).toBeUndefined();
+	});
+
+	it('forwards the model selector\'s own "auto" source through to update:config', async () => {
+		const config: AgentJsonConfig = {
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'credential-1',
+			instructions: 'Help users.',
+		};
+		const wrapper = mountModelPanel(config);
+
+		// The selector resolves its own verified default after a credential
+		// selection and tags it 'auto' — the panel must forward that tag, not
+		// treat it like a direct user pick.
+		wrapper
+			.findComponent({ name: 'AgentModelSelector' })
+			.vm.$emit('change', { provider: 'anthropic', model: 'claude-3-haiku' }, 'auto');
+		await wrapper.vm.$nextTick();
+
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events).toHaveLength(1);
+		expect(events[0][1]).toEqual({ source: 'auto' });
 	});
 
 	it('preserves reasoning when selecting a model that supports it', async () => {
@@ -351,6 +426,7 @@ describe('AgentInfoPanel', () => {
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'credential-1',
 				}),
+				{ source: 'auto' },
 			]);
 		});
 
@@ -378,6 +454,7 @@ describe('AgentInfoPanel', () => {
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'credential-1',
 				}),
+				{ source: 'auto' },
 			]);
 			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(true);
 		});
@@ -406,6 +483,7 @@ describe('AgentInfoPanel', () => {
 					model: 'openai/gpt-5-mini',
 					credential: AI_GATEWAY_MANAGED_TAG,
 				}),
+				{ source: 'auto' },
 			]);
 		});
 
@@ -550,6 +628,190 @@ describe('AgentInfoPanel', () => {
 
 			const props = selectorProps(wrapper);
 			expect((props.credentials as Record<string, string>).anthropic).toBe('credential-1');
+		});
+	});
+
+	describe('azure-openai deployment name', () => {
+		// Seeds a usable Azure credential into the mocked credentials store and the
+		// localStorage-backed selection holder so `showDeploymentName` can resolve.
+		function seedAzureCredential(
+			id: string,
+			endpointType: 'classic' | 'foundry',
+			type: 'azureOpenAiApi' | 'azureEntraCognitiveServicesOAuth2Api' = 'azureOpenAiApi',
+		) {
+			credentialsByIdHolder.value[id] = { id, name: `Azure ${endpointType}`, type };
+			const data: Record<string, unknown> = { endpointType };
+			if (type === 'azureEntraCognitiveServicesOAuth2Api') {
+				// Entra credentials carry OAuth2 token data instead of an apiKey; the
+				// panel only reads `endpointType`, so this documents parity.
+				data.oauthTokenData = { access_token: 'stored' };
+			}
+			credentialDataHolder.value[id] = { data };
+			credsHolder.value['azure-openai'] = id;
+		}
+
+		function mountAzurePanel(credentialId: string, model = 'azure-openai/gpt-4o') {
+			return mountModelPanel({
+				name: 'Azure agent',
+				model,
+				credential: credentialId,
+				instructions: 'Help users.',
+			});
+		}
+
+		// The `azureEndpointType` watcher resolves `getCredentialData` asynchronously,
+		// so flush a tick before asserting field visibility.
+		async function flushAsync(wrapper: ReturnType<typeof mountPanel>) {
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+		}
+
+		it('shows the deployment-name field for a classic API-key credential', async () => {
+			seedAzureCredential('azure-key-1', 'classic', 'azureOpenAiApi');
+			const wrapper = mountAzurePanel('azure-key-1');
+			await flushAsync(wrapper);
+
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
+		});
+
+		it('shows the deployment-name field for a classic Entra credential', async () => {
+			seedAzureCredential('azure-entra-1', 'classic', 'azureEntraCognitiveServicesOAuth2Api');
+			const wrapper = mountAzurePanel('azure-entra-1');
+			await flushAsync(wrapper);
+
+			// Entra and API-key both carry `endpointType`, so they drive identical
+			// deployment-name logic.
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
+		});
+
+		it('hides the deployment-name field for a foundry API-key credential', async () => {
+			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');
+			const wrapper = mountAzurePanel('azure-foundry-1');
+			await flushAsync(wrapper);
+
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+		});
+
+		it('hides the deployment-name field for a foundry Entra credential', async () => {
+			seedAzureCredential(
+				'azure-foundry-entra-1',
+				'foundry',
+				'azureEntraCognitiveServicesOAuth2Api',
+			);
+			const wrapper = mountAzurePanel('azure-foundry-entra-1');
+			await flushAsync(wrapper);
+
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+		});
+
+		it('shows the deployment-name field when endpointType is unknown (no read access)', async () => {
+			// A shared credential without read access returns no decrypted data, so the
+			// watcher keeps 'unknown' — the field stays visible as a safe default.
+			credentialsByIdHolder.value['azure-shared-1'] = {
+				id: 'azure-shared-1',
+				name: 'Shared Azure',
+				type: 'azureOpenAiApi',
+			};
+			credsHolder.value['azure-openai'] = 'azure-shared-1';
+
+			const wrapper = mountAzurePanel('azure-shared-1');
+			await flushAsync(wrapper);
+
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(true);
+		});
+
+		it('hides the deployment-name field for the n8n Connect managed tag', async () => {
+			credsHolder.value['azure-openai'] = AI_GATEWAY_MANAGED_TAG;
+
+			const wrapper = mountModelPanel({
+				name: 'Azure agent',
+				model: 'azure-openai/gpt-4o',
+				credential: AI_GATEWAY_MANAGED_TAG,
+				instructions: 'Help users.',
+			});
+			await flushAsync(wrapper);
+
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+		});
+
+		it('hides the deployment-name field for a non-Azure provider', () => {
+			credsHolder.value = { anthropic: 'credential-1' };
+			credentialsByIdHolder.value['credential-1'] = {
+				id: 'credential-1',
+				name: 'Anthropic key',
+				type: 'anthropicApi',
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Anthropic agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+			});
+
+			expect(wrapper.find('[data-testid="agent-deployment-name-field"]').exists()).toBe(false);
+		});
+
+		it('seeds modelDeploymentName from the model id on a classic model change', async () => {
+			seedAzureCredential('azure-key-1', 'classic', 'azureOpenAiApi');
+			const wrapper = mountAzurePanel('azure-key-1');
+			await flushAsync(wrapper);
+
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'azure-openai',
+				model: 'gpt-4o',
+			});
+			await wrapper.vm.$nextTick();
+
+			const events = wrapper.emitted('update:config') ?? [];
+			const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(last.modelDeploymentName).toBe('gpt-4o');
+		});
+
+		it('does not seed modelDeploymentName on a foundry model change', async () => {
+			seedAzureCredential('azure-foundry-1', 'foundry', 'azureOpenAiApi');
+			const wrapper = mountAzurePanel('azure-foundry-1');
+			await flushAsync(wrapper);
+
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'azure-openai',
+				model: 'gpt-4o',
+			});
+			await wrapper.vm.$nextTick();
+
+			const events = wrapper.emitted('update:config') ?? [];
+			const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(last.modelDeploymentName).toBeUndefined();
+		});
+
+		it('emits modelDeploymentName when the deployment-name input changes', async () => {
+			seedAzureCredential('azure-key-1', 'classic', 'azureOpenAiApi');
+			// `immediateUpdates` skips the `setTimeout` debounce so the emit lands
+			// without flushing timers; the real `useDebounceFn` is already mocked
+			// immediate at the top of the file, but the deployment-name path uses
+			// `setTimeout` directly.
+			const wrapper = mount(AgentInfoPanel, {
+				props: {
+					config: {
+						name: 'Azure agent',
+						model: 'azure-openai/gpt-4o',
+						credential: 'azure-key-1',
+						instructions: 'Help users.',
+					},
+					projectId: 'project-1',
+					showInstructions: false,
+					embedded: true,
+					immediateUpdates: true,
+				},
+			});
+			await flushAsync(wrapper);
+
+			wrapper.findComponent({ name: 'N8nInput' }).vm.$emit('update:model-value', 'my-deploy');
+			await wrapper.vm.$nextTick();
+
+			const events = wrapper.emitted('update:config') ?? [];
+			const last = events.at(-1)?.[0] as Partial<AgentJsonConfig>;
+			expect(last.modelDeploymentName).toBe('my-deploy');
 		});
 	});
 });

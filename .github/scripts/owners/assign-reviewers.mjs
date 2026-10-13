@@ -94,7 +94,11 @@ export async function run(pullRequestNumber) {
 	await removeLabel(pullRequestNumber, AUTO_ASSIGN_LABEL);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export async function main() {
 	const pullRequestNumber = parseInt(ensureEnvVar('PULL_REQUEST_NUMBER'));
 	await run(pullRequestNumber);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+	await main();
 }

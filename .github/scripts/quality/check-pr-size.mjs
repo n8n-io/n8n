@@ -12,33 +12,14 @@
  *   1 – PR exceeds the limit with no valid override
  */
 
-import { minimatch } from 'minimatch';
 import { initGithub, getEventFromGithubEventPath } from '../github-helpers.mjs';
+import { matchesGlob } from '../glob.mjs';
+import { isTestFile, TEST_PATTERNS } from '../test-files.mjs';
+
+export { isTestFile, TEST_PATTERNS };
 
 export const SIZE_LIMIT = 1000;
 export const OVERRIDE_COMMAND = '/size-limit-override';
-
-export const TEST_PATTERNS = [
-	// Test files (by extension)
-	'**/*.test.ts',
-	'**/*.test.js',
-	'**/*.test.mjs',
-	'**/*.spec.ts',
-	'**/*.spec.js',
-	'**/*.spec.mjs',
-	// Test directories
-	'**/test/**',
-	'**/tests/**',
-	'**/__tests__/**',
-	// Snapshots
-	'**/__snapshots__/**',
-	'**/*.snap',
-	// Fixtures and mocks
-	'**/fixtures/**',
-	'**/__mocks__/**',
-	// Dedicated testing package
-	'packages/testing/**',
-];
 
 export const MISC_PATTERNS = [
 	// Lock file (can produce massive diffs on dependency changes)
@@ -49,10 +30,6 @@ export const MISC_PATTERNS = [
 
 export const EXCLUDE_PATTERNS = [...TEST_PATTERNS, ...MISC_PATTERNS];
 
-// Without `dot`, `**` refuses dot segments, so nothing under `.github/`
-// would ever match a pattern.
-const MATCH_OPTIONS = { dot: true };
-
 /**
  * Categorize a changed file for line statistics.
  *
@@ -60,8 +37,8 @@ const MATCH_OPTIONS = { dot: true };
  * @returns { 'testFiles' | 'misc' | 'sourceCode' }
  */
 export function categorizeFile(filename) {
-	if (TEST_PATTERNS.some((pattern) => minimatch(filename, pattern, MATCH_OPTIONS))) return 'testFiles';
-	if (MISC_PATTERNS.some((pattern) => minimatch(filename, pattern, MATCH_OPTIONS))) return 'misc';
+	if (isTestFile(filename)) return 'testFiles';
+	if (MISC_PATTERNS.some((pattern) => matchesGlob(filename, pattern))) return 'misc';
 	return 'sourceCode';
 }
 
@@ -102,11 +79,11 @@ export async function hasValidOverride(comments, getPermission) {
  */
 export function countFilteredAdditions(files, excludePatterns) {
 	return files
-		.filter((file) => !excludePatterns.some((pattern) => minimatch(file.filename, pattern, MATCH_OPTIONS)))
+		.filter((file) => !excludePatterns.some((pattern) => matchesGlob(file.filename, pattern)))
 		.reduce((sum, file) => sum + file.additions, 0);
 }
 
-async function main() {
+export async function main() {
 	const event = getEventFromGithubEventPath();
 	const pr = event.pull_request;
 	const { octokit, owner, repo } = initGithub();
@@ -173,7 +150,7 @@ async function main() {
 		console.log(
 			`::error::PR adds ${additions.toLocaleString()} lines (test files excluded), exceeding the ${SIZE_LIMIT.toLocaleString()}-line limit. Reduce PR size or ask a maintainer to comment \`${OVERRIDE_COMMAND}\`.`,
 		);
-		process.exit(1);
+		throw new Error(`PR exceeds the ${SIZE_LIMIT.toLocaleString()}-line size limit`);
 	} else {
 		if (botComment) {
 			await octokit.rest.issues.deleteComment({

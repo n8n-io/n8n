@@ -1,4 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -10,13 +11,17 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
+import type {
+	EmailChangeCompletedData,
+	EmailChangeConfirmationData,
+	InviteEmailData,
+	PasswordResetData,
+	SendEmailResult,
+} from './interfaces';
 import { NodeMailer } from './node-mailer';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { InternalServerError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
@@ -48,7 +53,10 @@ type TemplateName =
 	| 'project-shared'
 	| 'workflow-failure'
 	| 'api-key-revoked'
-	| 'mcp-client-revoked';
+	| 'mcp-client-revoked'
+	| 'email-change-requested'
+	| 'email-change-completed'
+	| 'agent-budget-alert';
 
 @Service()
 export class UserManagementMailer {
@@ -96,6 +104,26 @@ export class UserManagementMailer {
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template({ ...this.basePayload, ...passwordResetData }),
+		});
+	}
+
+	async emailChangeConfirmation(data: EmailChangeConfirmationData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+		const template = await this.getTemplate('email-change-requested');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Confirm your n8n email change',
+			body: template({ ...this.basePayload, ...data }),
+		});
+	}
+
+	async emailChangeCompleted(data: EmailChangeCompletedData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+		const template = await this.getTemplate('email-change-completed');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your n8n email was changed',
+			body: template({ ...this.basePayload, ...data }),
 		});
 	}
 
@@ -152,6 +180,29 @@ export class UserManagementMailer {
 				revokedBy: formatRevokedBy(revoker),
 				revokedAt: formatRevokedAt(new Date()),
 				mcpSettingsUrl: `${baseUrl}/settings/mcp`,
+			}),
+		});
+	}
+
+	async agentBudgetAlert(data: {
+		email: string;
+		firstName?: string | null;
+		agentName: string;
+		agentUrl: string;
+		alertThresholdPercent: number;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('agent-budget-alert');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your agent reached its monthly budget alert',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				agentName: data.agentName,
+				agentUrl: data.agentUrl,
+				percent: data.alertThresholdPercent,
 			}),
 		});
 	}

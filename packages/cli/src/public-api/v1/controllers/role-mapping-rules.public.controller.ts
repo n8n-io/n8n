@@ -5,6 +5,7 @@ import {
 	RoleMappingRuleListQueryPublicDto,
 	RoleMappingRulePublicDto,
 	UpdateRoleMappingRulePublicDto,
+	roleMappingRuleIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -26,7 +27,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { RoleMappingRuleResponse } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import {
@@ -120,7 +121,7 @@ export class RoleMappingRulesPublicController {
 	async moveRoleMappingRule(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('roleMappingRuleId') roleMappingRuleId: string,
+		@Param('roleMappingRuleId', roleMappingRuleIdParamSchema) roleMappingRuleId: string,
 		@Body body: MoveRoleMappingRuleDto,
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
@@ -147,7 +148,7 @@ export class RoleMappingRulesPublicController {
 	async updateRoleMappingRule(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('roleMappingRuleId') roleMappingRuleId: string,
+		@Param('roleMappingRuleId', roleMappingRuleIdParamSchema) roleMappingRuleId: string,
 		@Body body: UpdateRoleMappingRulePublicDto,
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
@@ -174,7 +175,7 @@ export class RoleMappingRulesPublicController {
 	async deleteRoleMappingRule(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('roleMappingRuleId') roleMappingRuleId: string,
+		@Param('roleMappingRuleId', roleMappingRuleIdParamSchema) roleMappingRuleId: string,
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 

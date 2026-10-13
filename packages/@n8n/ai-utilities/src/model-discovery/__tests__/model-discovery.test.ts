@@ -111,13 +111,34 @@ describe('model-discovery', () => {
 	});
 
 	describe('google', () => {
-		it('lists models from /v1beta/models with header auth, excluding embedding/imagen', async () => {
+		it('lists models from /v1beta/models with header auth, keeping only chat models', async () => {
 			const fetch = mockFetch({
 				models: [
-					{ name: 'models/gemini-2.5-flash', description: 'Fast' },
-					{ name: 'models/text-embedding-004', description: 'Embeddings' },
-					{ name: 'models/imagen-3', description: 'Images' },
-					{ name: 'models/gemini-2.5-pro', description: 'Smart' },
+					{
+						name: 'models/gemini-2.5-flash',
+						description: 'Fast',
+						supportedGenerationMethods: ['generateContent'],
+					},
+					{
+						name: 'models/text-embedding-004',
+						description: 'Embeddings',
+						supportedGenerationMethods: ['embedContent'],
+					},
+					{
+						name: 'models/imagen-3',
+						description: 'Images',
+						supportedGenerationMethods: ['predict'],
+					},
+					{
+						name: 'models/veo-2.0',
+						description: 'Video',
+						supportedGenerationMethods: ['predictLongRunning'],
+					},
+					{
+						name: 'models/gemini-2.5-pro',
+						description: 'Smart',
+						supportedGenerationMethods: ['generateContent'],
+					},
 				],
 			});
 

@@ -23,6 +23,8 @@ import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import { flushPromises } from '@vue/test-utils';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -66,6 +68,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/init/toastNotifier', () => ({
 	registerToastNotifier: vi.fn(),
+}));
+
+// The real one dynamically imports the QuickJS runtime bundle, which has no
+// place in this graph. It stays inert on the default `legacy` setting anyway.
+vi.mock('@/app/init/expressionEngine', () => ({
+	initializeExpressionEngine: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -191,6 +199,29 @@ describe('Init', () => {
 			});
 		});
 
+		it('should start the expression engine from the settings payload', async () => {
+			await initializeCore();
+
+			expect(initializeExpressionEngine).toHaveBeenCalledWith('legacy');
+		});
+
+		// Public settings omit the engine, so an unauthenticated boot leaves the
+		// legacy evaluator in place and the login hook is the first point where
+		// the choice is known.
+		it('should start the expression engine in the login hook with authenticated settings', async () => {
+			settingsStore.getSettings.mockImplementation(async () => {
+				settingsStore.settings.expressionEngine = 'quickjs';
+			});
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			expect(initializeExpressionEngine).toHaveBeenCalledTimes(2);
+			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
+		});
+
 		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {
 			const saml = { loginEnabled: false, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
@@ -288,6 +319,25 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
+		});
+
+		it('loads node types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {

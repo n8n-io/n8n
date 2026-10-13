@@ -1,0 +1,16 @@
+{
+	"name": "workflow-without-id-2",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0b6c9f38-5d7e-4a1b-9c2d-3e4f5a6b7c82",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300]
+		}
+	],
+	"connections": {},
+	"active": false,
+	"settings": {}
+}

@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

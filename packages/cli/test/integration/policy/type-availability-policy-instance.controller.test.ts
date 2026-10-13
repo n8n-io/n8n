@@ -1,24 +1,41 @@
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { NodeLoader } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
+import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
 	modules: ['type-availability-policies'],
-	enabledFeatures: [LICENSE_FEATURES.NODE_TYPE_POLICIES],
+	enabledFeatures: [LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES],
 });
 
 let owner: User;
 let member: User;
 
+const OTHER_KIND_RULE = {
+	id: 'other-r1',
+	action: 'deny' as const,
+	selector: { kind: 'name' as const, value: 'other.thing' },
+};
+
 beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
+
+	// A `package` rule is rejected at write time unless the package is actually loaded — see
+	// `n8n-nodes-base` used as a stand-in for "an installed package" below.
+	Container.get(LoadNodesAndCredentials).loaders = {
+		'n8n-nodes-base': mock<NodeLoader>({ known: { nodes: {}, credentials: {} } }),
+	};
 });
 
 afterEach(async () => {
@@ -109,11 +126,11 @@ describe('node type availability policy instance controller RBAC', () => {
 
 describe('node type availability policy instance controller license gating', () => {
 	afterEach(() => {
-		testServer.license.enable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
 	test('rejects an owner with 403 when the license feature is disabled', async () => {
-		testServer.license.disable(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
 		const response = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
 
@@ -158,7 +175,9 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.put('/node-type-policies/instance')
 			.send({
-				rules: [{ id: 'r2', action: 'allow', selector: { kind: 'package', value: 'x' } }],
+				rules: [
+					{ id: 'r2', action: 'allow', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+				],
 				defaultAction: 'deny',
 				version: first.body.data.version,
 			});
@@ -173,6 +192,85 @@ describe('node type availability policy instance controller admin happy path', (
 			'node-type-policy-document-updated',
 			expect.objectContaining({ updatedBy: owner.id }),
 		);
+	});
+
+	test('each accepted PUT /instance moves the version by exactly one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const rule = (id: string, value: string) => ({
+			id,
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value },
+		});
+
+		const unwritten = await agent.get('/node-type-policies/instance');
+		expect(unwritten.body.data.version).toBe(0);
+
+		// Each write sends the version the previous response reported. A client that tracks the
+		// version this way must never see a gap, or its next write looks stale to it.
+		const created = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [rule('r1', 'a.b')], defaultAction: 'allow', version: 0 });
+		expect(created.statusCode).toBe(200);
+		expect(created.body.data.version).toBe(1);
+
+		const rulesOnly = await agent.put('/node-type-policies/instance').send({
+			rules: [rule('r2', 'c.d')],
+			defaultAction: 'allow',
+			version: created.body.data.version,
+		});
+		expect(rulesOnly.statusCode).toBe(200);
+		expect(rulesOnly.body.data.version).toBe(2);
+
+		const actionOnly = await agent.put('/node-type-policies/instance').send({
+			rules: [rule('r2', 'c.d')],
+			defaultAction: 'deny',
+			version: rulesOnly.body.data.version,
+		});
+		expect(actionOnly.statusCode).toBe(200);
+		expect(actionOnly.body.data.version).toBe(3);
+
+		const persisted = await agent.get('/node-type-policies/instance');
+		expect(persisted.body.data.version).toBe(3);
+		expect(persisted.body.data.defaultAction).toBe('deny');
+		expect(persisted.body.data.rules).toEqual([rule('r2', 'c.d')]);
+	});
+
+	test('a PUT /instance that changes the rules and the default action together moves the version by one', async () => {
+		const agent = testServer.authAgentFor(owner);
+
+		const first = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		expect(first.statusCode).toBe(200);
+
+		const both = await agent.put('/node-type-policies/instance').send({
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } }],
+			defaultAction: 'deny',
+			version: first.body.data.version,
+		});
+
+		expect(both.statusCode).toBe(200);
+		expect(both.body.data.version).toBe(first.body.data.version + 1);
+	});
+
+	test('a PUT /instance that changes nothing still moves the version by one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const body = {
+			rules: [
+				{ id: 'r1', action: 'deny' as const, selector: { kind: 'name' as const, value: 'a.b' } },
+			],
+			defaultAction: 'allow' as const,
+		};
+
+		const first = await agent.put('/node-type-policies/instance').send({ ...body, version: 0 });
+		expect(first.statusCode).toBe(200);
+
+		const repeat = await agent
+			.put('/node-type-policies/instance')
+			.send({ ...body, version: first.body.data.version });
+
+		expect(repeat.statusCode).toBe(200);
+		expect(repeat.body.data.version).toBe(first.body.data.version + 1);
 	});
 
 	test('PUT /instance with a stale version returns 409', async () => {
@@ -221,6 +319,74 @@ describe('node type availability policy instance controller admin happy path', (
 			.authAgentFor(owner)
 			.get(`/node-type-policies/policies/${policyId}`);
 		expect(missing.statusCode).toBe(404);
+	});
+
+	test('a document of another kind is not reachable by id, and survives untouched', async () => {
+		const policyRepo = Container.get(TypeAvailabilityPolicyRepository);
+		const other = await policyRepo.createPolicy(
+			{ kind: 'other-kind', rules: [OTHER_KIND_RULE], updatedBy: owner.id },
+			{},
+		);
+		const agent = testServer.authAgentFor(owner);
+
+		const fetched = await agent.get(`/node-type-policies/policies/${other.id}`);
+		expect(fetched.statusCode).toBe(404);
+
+		const updated = await agent
+			.patch(`/node-type-policies/policies/${other.id}`)
+			.send({ rules: [], version: other.version });
+		expect(updated.statusCode).toBe(404);
+
+		const deleted = await agent.delete(`/node-type-policies/policies/${other.id}`);
+		expect(deleted.statusCode).toBe(404);
+
+		const list = await agent.get('/node-type-policies/policies');
+		expect(list.body.data).toEqual([]);
+
+		expect(await policyRepo.findByIdAndKind(other.id, 'other-kind', {})).toMatchObject({
+			kind: 'other-kind',
+			rules: [OTHER_KIND_RULE],
+			version: other.version,
+		});
+	});
+
+	test('PUT /scopes/:scopeId/attachments refuses a document of another kind', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const instance = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		const other = await Container.get(TypeAvailabilityPolicyRepository).createPolicy(
+			{ kind: 'other-kind', rules: [OTHER_KIND_RULE], updatedBy: owner.id },
+			{},
+		);
+
+		const response = await agent
+			.put(`/node-type-policies/scopes/${instance.body.data.scopeId}/attachments`)
+			.send({ attachments: [{ policyId: other.id, priority: 0, isFloor: false }] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	/**
+	 * `assertAttachableToScope` only compares an attached document's kind to the scope's, so an
+	 * empty attachment list would sail past it — this proves the scope lookup itself is
+	 * kind-scoped, closing the gap a `credentialTypePolicy:manage`-only caller could otherwise
+	 * use to clear or rewrite a node-types scope's attachments by guessing its scope id.
+	 */
+	test('PUT /scopes/:scopeId/attachments refuses a scope of another kind, even with no attachments', async () => {
+		const { scope: otherScope } = await Container.get(
+			TypeAvailabilityPolicyScopeRepository,
+		).createScopeIfAbsent(
+			{ kind: 'other-kind', projectId: null, defaultAction: 'allow', updatedBy: owner.id },
+			{},
+		);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.put(`/node-type-policies/scopes/${otherScope.id}/attachments`)
+			.send({ attachments: [] });
+
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('PATCH /policies/:policyId with a stale version returns 409 and writes nothing', async () => {

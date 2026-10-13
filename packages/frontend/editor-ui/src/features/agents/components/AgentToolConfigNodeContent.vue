@@ -4,10 +4,16 @@ import type { INode } from 'n8n-workflow';
 import { UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS } from '@n8n/api-types';
 
 import {
+	CUSTOM_API_CALL_KEY,
 	ResourceMapperRefreshEmptySchemaKey,
 	ResourceMapperSchemaAutoRefreshKey,
 } from '@/app/constants';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+
+const HIDDEN_AGENT_NODE_TOOL_OPERATIONS = [
+	...UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS,
+	CUSTOM_API_CALL_KEY,
+] as const;
 
 const props = defineProps<{
 	initialNode: INode;
@@ -16,6 +22,7 @@ const props = defineProps<{
 	contentTestId?: string;
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
+	readOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -54,9 +61,10 @@ defineExpose({
 		:initial-node="props.initialNode"
 		:existing-tool-names="props.existingToolNames"
 		:project-id="props.projectId"
-		:hidden-operations="UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS"
+		:hidden-operations="HIDDEN_AGENT_NODE_TOOL_OPERATIONS"
 		:parameter-issues="props.parameterIssues"
 		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
+		:read-only="props.readOnly"
 		:sync-node-to-ndv="true"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"

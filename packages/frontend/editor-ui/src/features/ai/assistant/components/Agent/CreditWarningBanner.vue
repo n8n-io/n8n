@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useCloudUbbActive } from '@n8n/stores/composables/useCloudUbbActive';
 import { round2 } from './creditFormatting';
 
 const props = withDefaults(
@@ -15,8 +16,11 @@ const props = withDefaults(
 		// renders as an inset box with squared-off bottom corners floating above the input.
 		variant?: 'attached' | 'standalone';
 		amountsHidden?: boolean;
+		/** Replaces the meter text. Used for the non-dismissible out-of-credits state. */
+		message?: string;
+		dismissible?: boolean;
 	}>(),
-	{ variant: 'standalone' },
+	{ variant: 'standalone', dismissible: true },
 );
 
 const emit = defineEmits<{
@@ -26,10 +30,24 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const cloudPlanStore = useCloudPlanStore();
+const { isActive: isCloudUbbActive } = useCloudUbbActive();
 
 const bannerText = computed(() => {
+	if (props.message) return props.message;
 	if (props.amountsHidden) {
 		return i18n.baseText('aiAssistant.builder.creditBanner.limitReachedText');
+	}
+
+	const remaining = String(round2(props.creditsRemaining ?? 0));
+
+	// Cloud UBB: the wallet's `creditsQuota` moves as top-ups deplete, so the
+	// legacy "{remaining}/{total} monthly credits left" would render a shrinking
+	// denominator and mislabel top-ups as monthly. Show just the remaining count.
+	// Trials don't hold top-ups, so the trial text keeps its stable fraction.
+	if (isCloudUbbActive.value && !cloudPlanStore.userIsTrialing) {
+		return i18n.baseText('aiAssistant.builder.creditBanner.textUbb', {
+			interpolate: { remaining },
+		});
 	}
 
 	const key = cloudPlanStore.userIsTrialing
@@ -37,7 +55,7 @@ const bannerText = computed(() => {
 		: 'aiAssistant.builder.creditBanner.text';
 	return i18n.baseText(key, {
 		interpolate: {
-			remaining: String(round2(props.creditsRemaining ?? 0)),
+			remaining,
 			total: String(round2(props.creditsQuota ?? 0)),
 		},
 	});
@@ -74,11 +92,12 @@ const tooltipContent = computed(() => {
 		<div :class="$style.content">
 			<!-- The numeric variants are a meter reading, so clipping them costs nothing. This one is
 			the only signal the capped cohort gets on landing, so it wraps rather than truncates. -->
-			<span :class="[$style.text, { [$style.wrapping]: props.amountsHidden }]">{{
-				bannerText
-			}}</span>
+			<span
+				:class="[$style.text, { [$style.wrapping]: props.amountsHidden || Boolean(props.message) }]"
+				>{{ bannerText }}</span
+			>
 			<N8nTooltip
-				v-if="!props.amountsHidden"
+				v-if="!props.amountsHidden && !props.message"
 				:content="tooltipContent"
 				placement="top"
 				:show-after="300"
@@ -100,6 +119,7 @@ const tooltipContent = computed(() => {
 			{{ ctaLabel }}
 		</N8nButton>
 		<N8nIcon
+			v-if="props.dismissible"
 			icon="x"
 			size="small"
 			:class="$style.closeIcon"

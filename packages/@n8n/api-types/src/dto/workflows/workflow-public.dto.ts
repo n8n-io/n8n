@@ -12,9 +12,11 @@ import {
 	pinDataOpenApi,
 	settingsOpenApi,
 	staticDataOpenApi,
+	workflowActiveDeprecationDocs,
 } from './workflow-public.openapi';
 import { nullableObjectGuardSchema, objectGuardSchema } from '../../schemas/object-guard.schema';
 import { Z } from '../../zod-class';
+import { projectPublicSchema } from '../project/project-public.dto';
 import { tagPublicSchema } from '../tag/tag-public.dto';
 
 // These fields can look different for every workflow, so we only check
@@ -48,35 +50,11 @@ const pinDataPublicSchema = nullableObjectPublicSchema.openapi(pinDataOpenApi);
 
 const metaPublicSchema = nullableObjectPublicSchema.openapi(metaOpenApi);
 
-const projectIconPublicSchema = z
-	.object({
-		type: z.enum(['emoji', 'icon']),
-		value: z.string(),
-	})
-	.nullable();
-
-const projectCustomTelemetryTagPublicSchema = z.object({
-	key: z.string(),
-	value: z.string(),
-});
-
-const workflowProjectPublicSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	type: z.enum(['personal', 'team']),
-	icon: projectIconPublicSchema,
-	description: z.string().nullable(),
-	customTelemetryTags: z.array(projectCustomTelemetryTagPublicSchema),
-	creatorId: z.string().nullable(),
-	createdAt: z.string().datetime(),
-	updatedAt: z.string().datetime(),
-});
-
 export const sharedWorkflowPublicSchema = z.object({
 	role: z.string(),
 	workflowId: z.string(),
 	projectId: z.string(),
-	project: workflowProjectPublicSchema,
+	project: projectPublicSchema,
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });
@@ -109,7 +87,7 @@ export const workflowPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	description: z.string().nullable(),
-	active: z.boolean(),
+	active: z.boolean().openapi(workflowActiveDeprecationDocs),
 	activeVersionId: z.string().nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),

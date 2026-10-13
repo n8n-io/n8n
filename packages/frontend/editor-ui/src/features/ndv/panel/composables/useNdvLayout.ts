@@ -135,6 +135,11 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		persistPanelSize();
 	};
 
+	const resetPanelSize = () => {
+		localStorage.removeItem(localStorageKey.value);
+		panelWidthPercentage.value = safePanelWidth(defaultPanelSize.value);
+	};
+
 	const onResize = (event: ResizeData) => {
 		const newMain = Math.max(minMainPanelWidthPercentage.value, pixelsToPercentage(event.width));
 		const initialLeft = panelWidthPercentage.value.left;
@@ -208,5 +213,6 @@ export function useNdvLayout(options: UseNdvLayoutOptions) {
 		onResize,
 		onDrag,
 		onResizeEnd,
+		resetPanelSize,
 	};
 }

@@ -13,8 +13,6 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit",
-    "build:unchecked": "pnpm run build",
     "build-node-dev": "tsc",
     "format": "biome format --write .",
     "format:check": "biome ci .",
@@ -43,9 +41,7 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/inquirer": "^7.0.1",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "dependencies": {
     "@n8n/di": "workspace:*",
@@ -56,7 +52,7 @@
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "replace-in-file": "^6.0.0",
-    "tmp-promise": "^3.0.3"
+    "tmp-promise": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

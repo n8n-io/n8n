@@ -129,11 +129,11 @@ describe('components', () => {
 			);
 		});
 
-		// ADO-5423: a single blank line in sticky markdown must keep collapsing
-		// to one block. When `\n\n` produces two separate <p> tags, the user-agent
-		// default margins stack on top of the theme spacing and notes gain the
-		// extra top padding / margin (and shifted UL) reported in the bug.
-		it('renders a single blank line as one block in sticky markdown (ADO-5423)', () => {
+		// ADO-5800: stickies in saved workflows were laid out against the legacy
+		// spacing semantics, where a single blank line is a real paragraph break.
+		// Sticky paragraph spacing comes from the `.sticky` theme margins, not
+		// from merging paragraphs into one block.
+		it('renders a single blank line as a paragraph break in sticky markdown (ADO-5800)', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
 					directives: {
@@ -148,7 +148,59 @@ describe('components', () => {
 			});
 
 			const paragraphs = wrapper.container.querySelectorAll('p');
-			expect(paragraphs).toHaveLength(1);
+			expect(paragraphs).toHaveLength(2);
+			expect(wrapper.container.textContent).not.toContain('\u00a0');
+		});
+
+		// ADO-5800: each blank line beyond the paragraph break renders as an
+		// &nbsp; line, so intentional vertical gaps in stickies keep their height.
+		it('renders extra blank lines as &nbsp; lines in sticky markdown (ADO-5800)', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: 'Line 1\n\n\n\nLine 2',
+					withMultiBreaks: true,
+					theme: 'sticky',
+				},
+			});
+
+			const paragraphs = wrapper.container.querySelectorAll('p');
+			expect(paragraphs).toHaveLength(2);
+			expect(paragraphs[1].textContent).toContain('\u00a0');
+			expect(paragraphs[1].querySelectorAll('br')).toHaveLength(2);
+		});
+
+		// ADO-5800: the sticky theme opts out of the shared `.n8n-markdown` styles
+		// so hand-sized notes in saved workflows keep their legacy layout.
+		it('does not apply the global n8n-markdown class in the sticky theme', () => {
+			const sticky = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: 'Some text',
+					theme: 'sticky',
+				},
+			});
+			expect(sticky.container.querySelector('.n8n-markdown')).toBeNull();
+
+			const regular = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: 'Some text',
+				},
+			});
+			expect(regular.container.querySelector('.n8n-markdown')).not.toBeNull();
 		});
 
 		// Pinning #27231: a blank line BETWEEN a list and following text must stay

@@ -1,10 +1,8 @@
 <script lang="ts" setup>
-import { N8nText } from '@n8n/design-system';
+import { N8nApprovalCard, type ApprovalOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useThread } from '../instanceAi.store';
-import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
@@ -104,23 +102,12 @@ function onSelect(key: string) {
 </script>
 
 <template>
-	<div v-if="!resolved">
-		<div :class="$style.body">
-			<N8nText tag="div" size="medium" bold>
-				{{ promptText }}
-			</N8nText>
-			<ConfirmationPreview>{{ previewText }}</ConfirmationPreview>
-		</div>
-
-		<ApprovalOptionList :options="options" @select="onSelect" />
-	</div>
+	<N8nApprovalCard
+		v-if="!resolved"
+		:title="promptText"
+		title-size="medium"
+		:description="previewText"
+		:options="options"
+		@select="onSelect"
+	/>
 </template>
-
-<style lang="scss" module>
-.body {
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-</style>

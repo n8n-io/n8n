@@ -29,9 +29,9 @@ function updateText(index: number, text: string) {
 	prompts.value = prompts.value.map((p, i) => (i === index ? { ...p, text } : p));
 }
 
-function updateIcon(index: number, icon: IconOrEmoji) {
+function updateIcon(index: number, icon: IconOrEmoji | undefined) {
 	prompts.value = prompts.value.map((p, i) =>
-		i === index ? { ...p, icon: icon as AgentIconOrEmoji } : p,
+		i === index ? { ...p, icon: icon as AgentIconOrEmoji | undefined } : p,
 	);
 }
 

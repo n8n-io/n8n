@@ -1,5 +1,6 @@
 import {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	type RuntimeSkillContent,
 	type RuntimeSkillDependenciesContract,
 	type RuntimeSkillInterfaceContract,
@@ -15,6 +16,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';
+import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
@@ -90,7 +92,6 @@ const LINKED_FILE_GROUPS = [
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 const N8N_SKILLS_DIR_TEMPLATE = '$' + '{N8N_SKILLS_DIR}';
 const N8N_WORKSPACE_DIR_TEMPLATE = '$' + '{N8N_WORKSPACE_DIR}';
-const LOAD_SKILL_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
 function isNonEmptyRecord(value: Record<string, unknown>): boolean {
 	return Object.keys(value).length > 0;
@@ -105,10 +106,41 @@ function toFrontmatterSection<T>(
 	return isNonEmptyRecord(output) ? output : undefined;
 }
 
+function referenceHost(
+	entry: RuntimeSkillRegistryEntry,
+	ownSkillsById: Map<string, MaterializedRuntimeSkill>,
+): MaterializedRuntimeSkill | undefined {
+	if (!entry.reference) return undefined;
+	const owner = ownSkillsById.get(entry.reference.owner);
+	if (owner) return owner;
+	for (const parentId of entry.parents ?? []) {
+		const parent = ownSkillsById.get(parentId);
+		if (parent) return parent;
+	}
+	return undefined;
+}
+
+/**
+ * Materialized locations keyed by skill id. A reference ships inside its
+ * host's directory, so it resolves to that file.
+ */
 function materializedSkillById(
 	materialized: MaterializedRuntimeSkill[],
+	registry: RuntimeSkillRegistry,
 ): Map<string, MaterializedRuntimeSkill> {
-	return new Map(materialized.map((skill) => [skill.id, skill]));
+	const ownSkillsById = new Map(materialized.map((skill) => [skill.id, skill]));
+	const byId = new Map(ownSkillsById);
+	for (const entry of registry.skills) {
+		const host = referenceHost(entry, ownSkillsById);
+		if (!entry.reference || !host) continue;
+		byId.set(entry.id, {
+			id: entry.id,
+			name: entry.name,
+			path: posixJoin(host.directory, entry.reference.path),
+			directory: host.directory,
+		});
+	}
+	return byId;
 }
 
 function safeSkillDirectory(entry: RuntimeSkillRegistryEntry): string {
@@ -137,7 +169,7 @@ function materializedSkillDirectory(skillsRoot: string, entry: RuntimeSkillRegis
 function safeLinkedFilePath(
 	directory: string,
 	entry: RuntimeSkillRegistryEntry,
-	linkedFile: RuntimeSkillLinkedFile,
+	linkedFile: Pick<RuntimeSkillLinkedFile, 'path'>,
 ): { relativePath: string; materializedPath: string } {
 	const raw = linkedFile.path;
 	if (
@@ -279,7 +311,7 @@ function materializedRegistry(
 	registry: RuntimeSkillRegistry,
 	materialized: MaterializedRuntimeSkill[],
 ): RuntimeSkillRegistry {
-	const materializedById = materializedSkillById(materialized);
+	const materializedById = materializedSkillById(materialized, registry);
 
 	return {
 		...registry,
@@ -306,7 +338,7 @@ function createMaterializedRuntimeSkillSource(
 	workspaceRoot: string,
 	skillsRoot: string,
 ): RuntimeSkillSource {
-	const materializedById = materializedSkillById(materialized);
+	const materializedById = materializedSkillById(materialized, registry);
 	const loadFile = source.loadFile;
 
 	return {
@@ -409,13 +441,13 @@ function warnIfExceedsLoadSkillLimit(
 	content: string,
 ): void {
 	const bytes = Buffer.byteLength(content, 'utf8');
-	if (bytes <= LOAD_SKILL_OUTPUT_LIMIT_BYTES) return;
+	if (bytes <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return;
 
 	logger.warn('Runtime skill file exceeds load_skill output limit', {
 		skill: entry.name,
 		path: filePath,
 		bytes,
-		maxBytes: LOAD_SKILL_OUTPUT_LIMIT_BYTES,
+		maxBytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	});
 }
 
@@ -430,8 +462,9 @@ export async function buildRuntimeSkillWorkspaceBundle({
 
 	const files = new Map<string, string>();
 
+	const ownSkillEntries = source.registry.skills.filter((entry) => !entry.reference);
 	const materialized = await Promise.all(
-		source.registry.skills.map(async (entry): Promise<MaterializedRuntimeSkill> => {
+		ownSkillEntries.map(async (entry): Promise<MaterializedRuntimeSkill> => {
 			const skill = await source.loadSkill(entry.id);
 			if (!skill) {
 				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
@@ -449,37 +482,75 @@ export async function buildRuntimeSkillWorkspaceBundle({
 			warnIfExceedsLoadSkillLimit(logger, entry, path, skillMarkdown);
 			files.set(path, skillMarkdown);
 
-			const linkedFiles = linkedFilesFor(entry);
-			if (linkedFiles.length > 0 && !source.loadFile) {
+			const linkedFiles = linkedFilesFor(entry).map((linkedFile) => {
+				const paths = safeLinkedFilePath(directory, entry, linkedFile);
+				const referenceEntry = source.registry.skills.find(
+					(candidate) =>
+						candidate.reference?.owner === entry.id &&
+						candidate.reference.path === paths.relativePath,
+				);
+				return { linkedFile, referenceEntry, ...paths };
+			});
+			if (linkedFiles.some(({ referenceEntry }) => !referenceEntry) && !source.loadFile) {
 				throw new Error(`Runtime skill "${entry.name}" has linked files but no file loader`);
 			}
 
 			await Promise.all(
-				linkedFiles.map(async (linkedFile) => {
-					const { relativePath, materializedPath } = safeLinkedFilePath(
-						directory,
-						entry,
-						linkedFile,
-					);
-					const content = await source.loadFile?.(entry.id, relativePath);
-					if (!content) {
+				linkedFiles.map(async ({ linkedFile, referenceEntry, relativePath, materializedPath }) => {
+					// Render references from skill content so prompt variants reach the file too.
+					const reference = referenceEntry ? await source.loadSkill(referenceEntry.id) : null;
+					const content = reference ? null : await source.loadFile?.(entry.id, relativePath);
+					if (!reference && !content) {
 						throw new Error(
 							`Runtime skill "${entry.name}" linked file is registered but cannot be loaded: ${linkedFile.path}`,
 						);
 					}
 
-					const materializedContent = substituteRuntimeSkillVars(
-						content.content,
-						directory,
-						workspaceRoot,
-						skillsRoot,
-					);
+					const materializedContent =
+						reference && referenceEntry
+							? renderRuntimeSkillMarkdown(
+									reference,
+									referenceEntry,
+									directory,
+									workspaceRoot,
+									skillsRoot,
+								)
+							: substituteRuntimeSkillVars(
+									content?.content ?? '',
+									directory,
+									workspaceRoot,
+									skillsRoot,
+								);
 					warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, materializedContent);
 					files.set(materializedPath, materializedContent);
 				}),
 			);
 
 			return { id: entry.id, name: entry.name, path, directory };
+		}),
+	);
+
+	const ownSkillsById = new Map(materialized.map((skill) => [skill.id, skill]));
+	await Promise.all(
+		source.registry.skills.map(async (entry) => {
+			if (!entry.reference || ownSkillsById.has(entry.reference.owner)) return;
+			const host = referenceHost(entry, ownSkillsById);
+			if (!host) return;
+
+			const reference = await source.loadSkill(entry.id);
+			if (!reference) {
+				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
+			}
+			const { materializedPath } = safeLinkedFilePath(host.directory, entry, entry.reference);
+			const content = renderRuntimeSkillMarkdown(
+				reference,
+				entry,
+				host.directory,
+				workspaceRoot,
+				skillsRoot,
+			);
+			warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, content);
+			files.set(materializedPath, content);
 		}),
 	);
 
@@ -524,30 +595,41 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	root,
 	logger,
 }: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
-	if (source.registry.skills.length === 0) return undefined;
-
-	return await materializeWorkspaceBundle({
-		workspace,
-		resourceLabel: RUNTIME_SKILL_FILE_LABEL,
-		logger,
-		loadPrebaked: async () =>
-			await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
-		buildBundle: async () => {
-			const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
-			if (!bundle) {
-				throw new Error('Expected runtime skill bundle after registry validation');
-			}
-			return bundle;
+	return await traceSandboxOperation(
+		'sync-skills',
+		{
+			inputs: { skillsHash: source.registry.skillsHash, skillCount: source.registry.skills.length },
+			processResult: (bundle) => ({
+				outputs: { skillCount: bundle?.skills.length ?? 0, fileCount: bundle?.files.size ?? 0 },
+			}),
 		},
-		materializedLogMessage: 'Materialized runtime skills into workspace',
-		materializedLogContext: (bundle) => ({
-			root,
-			skillsRoot: bundle.rootDir,
-			registryPath: bundle.registryPath,
-			skillsHash: bundle.skillsHash,
-			count: bundle.skills.length,
-		}),
-	});
+		async () => {
+			if (source.registry.skills.length === 0) return undefined;
+
+			return await materializeWorkspaceBundle({
+				workspace,
+				resourceLabel: RUNTIME_SKILL_FILE_LABEL,
+				logger,
+				loadPrebaked: async () =>
+					await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
+				buildBundle: async () => {
+					const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
+					if (!bundle) {
+						throw new Error('Expected runtime skill bundle after registry validation');
+					}
+					return bundle;
+				},
+				materializedLogMessage: 'Materialized runtime skills into workspace',
+				materializedLogContext: (bundle) => ({
+					root,
+					skillsRoot: bundle.rootDir,
+					registryPath: bundle.registryPath,
+					skillsHash: bundle.skillsHash,
+					count: bundle.skills.length,
+				}),
+			});
+		},
+	);
 }
 
 export function createLazyWorkspaceRuntimeSkillSource({
@@ -583,9 +665,7 @@ export function createLazyWorkspaceRuntimeSkillSource({
 		materializePromise ??= (async () => {
 			const root = await getWorkspaceRoot(runtimeWorkspace);
 			const options = { source, workspace: runtimeWorkspace, root, logger };
-			const result =
-				(await loadPrebakedRuntimeSkillsBundle(options)) ??
-				(await materializeRuntimeSkillsIntoWorkspace(options));
+			const result = await materializeRuntimeSkillsIntoWorkspace(options);
 			if (result) {
 				materialized = result;
 				workspaceSource.registry = result.source.registry;

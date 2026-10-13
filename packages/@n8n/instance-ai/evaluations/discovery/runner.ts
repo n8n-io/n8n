@@ -14,9 +14,18 @@
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
+//
+// Routing mode (`stopBeforeTool`) checks each orchestrator tool call before it
+// runs, and ends the run when the check says so (see ../routing/grade.ts).
+// `answerQuestions` lets the user proxy answer a question card.
+// Routing cases have no tool expectations, so they call `runOrchestratorTurn`
+// and skip the check. A routing case can seed the stub instance and the thread
+// (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
+import type { GuardrailsOptions } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 import {
@@ -28,6 +37,7 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
+import { buildTurnMessage, createSeededThread, type SeededThread } from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -37,7 +47,14 @@ import {
 	stubMcpServerConfigs,
 	type StubMcpRegistry,
 } from './stub-mcp-registry';
-import type { DiscoveryCheckResult, DiscoveryStreamStatus, DiscoveryTestCase } from './types';
+import {
+	ORCHESTRATOR_AGENT_ID,
+	type DiscoveryCheckResult,
+	type DiscoveryScenario,
+	type DiscoveryStreamStatus,
+	type DiscoveryTestCase,
+	type PendingToolCall,
+} from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
@@ -46,15 +63,17 @@ import {
 	normalizeStreamSource,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
-import { createAllTools } from '../../src/tools';
 import type {
+	BuilderTurnStream,
 	InstanceAiContext,
-	InstanceAiToolRegistry,
-	LocalGatewayStatus,
+	InstanceAiBuilderDelegate,
+	ComputerUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
+import { buildKnowledgeBaseWorkspaceBundle } from '../../src/knowledge-base/materialize-knowledge-base';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
@@ -92,6 +111,57 @@ export interface DiscoveryRunResult {
 export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
+	const turn = await runOrchestratorTurn(options);
+	const outcome = extractOutcomeFromEvents(turn.events);
+	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
+		streamStatus: turn.streamStatus,
+		timeoutMs: turn.timeoutMs,
+		...(turn.runError ? { runError: turn.runError } : {}),
+		unmatchedConfirmations: turn.unmatchedConfirmations,
+	});
+
+	return {
+		scenario: options.scenario,
+		check,
+		events: turn.events,
+		outcome,
+		durationMs: turn.durationMs,
+		streamStatus: turn.streamStatus,
+		...(turn.runError ? { runError: turn.runError } : {}),
+	};
+}
+
+export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scenario'> {
+	scenario: DiscoveryScenario;
+	/**
+	 * Runs before each orchestrator tool call, and the call waits for it.
+	 * `true` ends the run there, before the call runs.
+	 */
+	stopBeforeTool?: (call: PendingToolCall, events: readonly InstanceAiEvent[]) => Promise<boolean>;
+	/** Returns the resume data for a question card (`inputType: questions`). Unset uses the confirmation policy. */
+	answerQuestions?: (
+		suspension: SuspensionInfo,
+		events: CapturedEvent[],
+	) => Promise<Record<string, unknown>>;
+	/** The thread of the earlier turns of the same conversation. Unset starts a new thread. */
+	thread?: SeededThread;
+}
+
+export interface OrchestratorTurnResult {
+	events: CapturedEvent[];
+	/** The same events with their schema types. */
+	instanceEvents: InstanceAiEvent[];
+	durationMs: number;
+	streamStatus: DiscoveryStreamStatus;
+	runError?: string;
+	timeoutMs: number;
+	unmatchedConfirmations: string[];
+}
+
+/** Runs one orchestrator turn and returns what it published, with no check. */
+export async function runOrchestratorTurn(
+	options: OrchestratorTurnOptions,
+): Promise<OrchestratorTurnResult> {
 	const started = Date.now();
 	// Unset by default: the orchestrator legitimately explores past any small fixed cap
 	// (data-table-workflow needs >8 iterations). Unset still lands on the SDK's own
@@ -99,10 +169,12 @@ export async function runDiscoveryScenario(
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
+	const { stopBeforeTool, answerQuestions } = options;
 
 	const events: CapturedEvent[] = [];
+	const instanceEvents: InstanceAiEvent[] = [];
 
-	let streamStatus: DiscoveryRunResult['streamStatus'] = 'completed';
+	let streamStatus: DiscoveryStreamStatus = 'completed';
 	let runError: string | undefined;
 
 	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
@@ -117,19 +189,41 @@ export async function runDiscoveryScenario(
 			resolve('timed-out');
 		}, timeoutMs);
 	});
+	let stopRun = () => {};
+	const routeStopped = new Promise<'stopped-on-route'>((resolve) => {
+		stopRun = () => {
+			// Resolve first, so the race ends before the abort rejects the run.
+			resolve('stopped-on-route');
+			abortController.abort();
+		};
+	});
 
 	try {
-		const services = await createStubServices({ nodesJsonPath });
+		const services = await createStubServices({
+			nodesJsonPath,
+			seed: options.scenario.seed,
+			credentials: options.scenario.credentials,
+		});
+		// The build skill sends the agent to the knowledge base, which prod writes into the sandbox.
+		const knowledgeBase = await buildKnowledgeBaseWorkspaceBundle({
+			root: stubWorkspaceRoot,
+			logger: silentLogger(),
+		});
 		const mcpState = options.scenario.instanceState?.mcp;
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
-			workspace: createStubWorkspace(),
+			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
+			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};
 
 		mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
-		const threadId = 'discovery-thread-' + nanoid(6);
+		const seedMessages = options.scenario.seed?.messages ?? [];
+		const thread =
+			options.thread ??
+			(seedMessages.length > 0 ? await createSeededThread(seedMessages) : undefined);
+		const threadId = thread?.id ?? 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
 		const approvalResponders: ApprovalResponder[] = [
@@ -139,12 +233,12 @@ export async function runDiscoveryScenario(
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));
+			instanceEvents.push(event);
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks`, `eval-setup-with-agent`, and runtime skills. We provide stubs
-		// for the heavy fields: discovery scenarios measure first-step tool-call
-		// decisions, not background execution.
+		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
 			modelId: options.modelId,
@@ -160,18 +254,33 @@ export async function runDiscoveryScenario(
 			orchestrationContext,
 			mcpServers: stubMcpServerConfigs(mcpState ?? {}),
 			mcpManager,
-			// No memory: discovery measures stateless first-step tool dispatch.
+			// Memory only for a thread with history: discovery measures first-step tool dispatch.
 			memoryConfig: {},
+			...(thread ? { memory: thread.memory } : {}),
 			thinkingEnabled: false,
 		});
 
+		const guardrails: GuardrailsOptions | undefined = stopBeforeTool && {
+			hooks: [
+				{
+					beforeTool: async ({ toolCallId, toolName, input }) => {
+						const call = { toolCallId, toolName, args: isRecord(input) ? input : {} };
+						if (!(await stopBeforeTool(call, instanceEvents))) return undefined;
+						stopRun();
+						return { action: 'stop' as const, code: 'route-picked' };
+					},
+				},
+			],
+		};
 		const streamSource = normalizeStreamSource(
-			await agent.stream(options.scenario.userMessage, {
+			await agent.stream(buildTurnMessage(options.scenario), {
 				maxIterations: maxSteps,
+				...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
 				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
+				...(guardrails ? { guardrails } : {}),
 			}),
 		);
 
@@ -181,7 +290,7 @@ export async function runDiscoveryScenario(
 			context: {
 				threadId,
 				runId,
-				agentId: 'n8n-instance-agent',
+				agentId: ORCHESTRATOR_AGENT_ID,
 				eventBus,
 				signal: abortController.signal,
 				logger: silentLogger(),
@@ -189,16 +298,28 @@ export async function runDiscoveryScenario(
 			control: {
 				mode: 'auto',
 				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
-				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> =>
-					await Promise.resolve(
-						resolveConfirmation(suspensions.get(requestId), confirmationPolicy, approvalResponders),
-					),
+				// A resumed stream runs without the stream options, so the route check goes along.
+				buildResumeOptions: ({ agentRunId, suspension }) => ({
+					runId: agentRunId,
+					toolCallId: suspension.toolCallId,
+					...(guardrails ? { guardrails } : {}),
+				}),
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
+					const suspension = suspensions.get(requestId);
+					if (answerQuestions && suspension?.suspendPayload.inputType === 'questions') {
+						return await answerQuestions(suspension, events);
+					}
+					return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
+				},
 			},
 		});
 		void run.catch(() => {});
-		const result = await Promise.race([run, budgetExpired]);
+		const result = await Promise.race([run, budgetExpired, routeStopped]);
 
-		streamStatus = resolveStreamStatus(result, abortController.signal.aborted);
+		streamStatus =
+			result === 'stopped-on-route'
+				? result
+				: resolveStreamStatus(result, abortController.signal.aborted);
 	} catch (error) {
 		runError = error instanceof Error ? error.message : String(error);
 		streamStatus = abortController.signal.aborted ? 'timed-out' : 'errored';
@@ -207,24 +328,15 @@ export async function runDiscoveryScenario(
 		await mcpManager?.disconnect();
 	}
 
-	const observedEvents = [...events];
-	const outcome = extractOutcomeFromEvents(observedEvents);
-	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
-		streamStatus,
-		timeoutMs,
-		...(runError ? { runError } : {}),
-		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
-	});
-
+	// An abandoned stream can still publish, so copy what the run saw at its end.
 	return {
-		scenario: options.scenario,
-		check,
-		// An abandoned stream can still publish, so hand back what the verdict saw.
 		events: [...events],
-		outcome,
+		instanceEvents: [...instanceEvents],
 		durationMs: Date.now() - started,
 		streamStatus,
 		...(runError ? { runError } : {}),
+		timeoutMs,
+		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
 	};
 }
 
@@ -234,35 +346,75 @@ export async function runDiscoveryScenario(
 
 function applyInstanceState(
 	base: InstanceAiContext,
-	scenario: DiscoveryTestCase,
+	scenario: DiscoveryScenario,
 	mcpRegistry: StubMcpRegistry | undefined,
 ): InstanceAiContext {
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const localGateway: LocalGatewayStatus | undefined = state.localGateway;
-	const isConnected = localGateway?.status === 'connected';
-	const capabilities = isConnected ? localGateway.capabilities : [];
+	const computerUse: ComputerUseState | undefined = state.computerUse;
+	// Both channels can serve tools, so the stub server gets the union.
+	const liveToolCategories = computerUse
+		? Object.values(computerUse).flatMap((channel) =>
+				channel.status === 'connected' ? channel.toolCategories : [],
+			)
+		: [];
 
-	const localMcpServer = isConnected
-		? createStubLocalMcpServer({
-				capabilities: capabilities.filter(
-					(c): c is 'browser' | 'filesystem' | 'shell' =>
-						c === 'browser' || c === 'filesystem' || c === 'shell',
-				),
-			})
-		: base.localMcpServer;
+	const localMcpServer =
+		liveToolCategories.length > 0
+			? createStubLocalMcpServer({
+					capabilities: liveToolCategories.filter(
+						(c): c is 'browser' | 'filesystem' | 'shell' =>
+							c === 'browser' || c === 'filesystem' || c === 'shell',
+					),
+				})
+			: base.localMcpServer;
 
 	return {
 		...base,
-		...(localGateway ? { localGatewayStatus: localGateway } : {}),
+		...(computerUse ? { computerUseState: computerUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
+		...(state.folderExploration !== undefined
+			? { folderExplorationEnabled: state.folderExploration }
+			: {}),
 	};
 }
 
 function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+}
+
+function completedBuilderTurn(): BuilderTurnStream {
+	return {
+		fullStream: (async function* () {
+			await Promise.resolve();
+			yield {
+				type: 'tool-call',
+				toolCallId: 'discovery-write',
+				toolName: 'write_config',
+				input: {},
+			};
+			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
+		})(),
+		text: Promise.resolve('Agent configured for discovery evaluation.'),
+	};
+}
+
+function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+	return {
+		createAgent: async (name) =>
+			await Promise.resolve({
+				agentId: 'discovery-agent',
+				projectId: 'discovery-project',
+				name,
+			}),
+		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
+		findOpenSuspensions: async () => await Promise.resolve([]),
+		cancelOpenSuspension: async () => await Promise.resolve(),
+		resolveAgentName: async () => await Promise.resolve(undefined),
+	};
 }
 
 interface StubOrchestrationContextOptions {
@@ -277,13 +429,6 @@ interface StubOrchestrationContextOptions {
 function createStubOrchestrationContext(
 	opts: StubOrchestrationContextOptions,
 ): OrchestrationContext {
-	// Domain tools are passed to background agents such as eval-setup.
-	// Discovery scenarios measure the orchestrator's first-step dispatch decision;
-	// background execution is out of scope. We still populate domainTools faithfully
-	// so any background agent that does spawn has a coherent toolset (avoids hitting
-	// "no tools" errors that would confuse the diagnostic comment).
-	const domainTools: InstanceAiToolRegistry = createAllTools(opts.context);
-
 	const taskStorage: TaskStorage = {
 		// eslint-disable-next-line @typescript-eslint/require-await
 		get: async (): Promise<TaskList | null> => null,
@@ -295,18 +440,13 @@ function createStubOrchestrationContext(
 		threadId: opts.threadId,
 		runId: opts.runId,
 		userId: opts.context.userId,
-		orchestratorAgentId: 'n8n-instance-agent',
+		orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		domainTools,
 		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Discovery evals assert first-dispatch intent only. Production starts a
-		// detached background task here; the harness accepts the spawn so the tool
-		// can publish its `agent-spawned` event without executing the background agent.
-		spawnBackgroundTask: ({ taskId, agentId }) => ({ status: 'started', taskId, agentId }),
 		// Surface the localMcpServer so Computer Use browser tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
@@ -325,6 +465,6 @@ function toCapturedEvent(event: InstanceAiEvent): CapturedEvent {
 		type: event.type,
 		// `extractOutcomeFromEvents` reads `data.payload.toolName` etc. — our
 		// InstanceAiEvent already has that shape, so we pass it through directly.
-		data: event as unknown as Record<string, unknown>,
+		data: event,
 	};
 }

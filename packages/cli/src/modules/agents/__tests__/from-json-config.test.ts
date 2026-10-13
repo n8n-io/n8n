@@ -1,6 +1,7 @@
 import * as AgentsRuntime from '@n8n/agents';
 import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
 	SUB_AGENT_TASK_DIFFICULTIES,
@@ -11,6 +12,9 @@ import type { JSONSchema7 } from 'json-schema';
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import { buildVectorStore } from '../json-config/vector-store-factory';
+
+const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
+vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog }));
 
 vi.mock('../json-config/vector-store-factory', () => ({
 	buildVectorStore: vi.fn(),
@@ -114,7 +118,6 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						extract?: unknown;
 						reflect?: unknown;
 					};
 					titleGeneration?: {
@@ -200,6 +203,28 @@ describe('buildFromJson()', () => {
 		expect(snap.instructions).toBe('You are a test agent.');
 	});
 
+	it('appends the self-modification policy only for the preview chat', async () => {
+		const build = async (previewChat?: boolean) =>
+			(
+				await buildFromJson(
+					makeConfig(),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider: makeMockCredentialProvider(),
+						memoryFactory: makeMockMemoryFactory(),
+						previewChat,
+					},
+				)
+			).snapshot.instructions ?? '';
+
+		const preview = await build(true);
+		expect(preview).toContain('You are a test agent.');
+		expect(preview).toContain('Preview chat policy');
+		expect(await build(false)).toBe('You are a test agent.');
+		expect(await build()).toBe('You are a test agent.');
+	});
+
 	it('handles multi-slash model string for aggregator providers', async () => {
 		const agent = await buildFromJson(
 			makeConfig({ model: 'openrouter/amazon/nova-micro-v1' }),
@@ -235,7 +260,11 @@ describe('buildFromJson()', () => {
 	});
 
 	it('executes a custom tool handler and message transform', async () => {
-		const descriptor = makeToolDescriptor({ name: 'my_search', hasToMessage: true });
+		const descriptor = makeToolDescriptor({
+			name: 'my_search',
+			hasToMessage: true,
+			outputTrust: 'untrusted',
+		});
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'search_tool' }] });
 		const rawOutput = { matches: ['first', 'second'] };
 		const toolExecutor: ToolExecutor = {
@@ -261,6 +290,7 @@ describe('buildFromJson()', () => {
 			}
 		).tools.find(({ name }) => name === 'my_search');
 		if (!tool?.handler || !tool.toMessage) throw new Error('Expected custom tool transforms');
+		expect(tool.outputTrust).toBe('untrusted');
 
 		const output = await tool.handler({ query: 'n8n' }, {} as never);
 
@@ -296,13 +326,17 @@ describe('buildFromJson()', () => {
 		const instructions = agent.snapshot.instructions ?? '';
 		expect(instructions).toBe('You are a test agent.');
 		expect(instructions).not.toContain('Extract decisions and action items.');
-		expect(agent.snapshot.tools.some((tool) => tool.name === 'list_skills')).toBe(false);
+		expect(agent.snapshot.tools.some((tool) => tool.name === 'agent-context')).toBe(false);
 		expect(agent.snapshot.tools.some((tool) => tool.name === 'load_skill')).toBe(true);
 	});
 
 	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
 		const config = makeConfig({
-			skills: [{ type: 'skill', id: 'summarize_notes' }],
+			skills: [
+				{ type: 'skill', id: 'summarize_notes' },
+				{ type: 'skill', id: 'unused_skill', enabled: false },
+				{ type: 'skill', id: 'missing_skill', enabled: false },
+			],
 		});
 
 		const agent = await buildFromJson(
@@ -450,7 +484,17 @@ describe('buildFromJson()', () => {
 
 	it('resolves workflow tool via resolveTool callback', async () => {
 		const config = makeConfig({
-			tools: [{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' }],
+			tools: [
+				{ type: 'custom', id: 'missing_tool', enabled: false },
+				{ type: 'workflow', workflow: 'Missing Workflow', enabled: false },
+				{
+					type: 'node',
+					name: 'missing_node',
+					enabled: false,
+					node: { nodeType: 'missing.node', nodeTypeVersion: 1, nodeParameters: {} },
+				},
+				{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow' },
+			],
 		});
 
 		const resolvedTool = {
@@ -473,6 +517,7 @@ describe('buildFromJson()', () => {
 
 		expect(agent.snapshot.tools.some((t) => t.name === 'run_workflow')).toBe(true);
 		expect(resolveTool).toHaveBeenCalledTimes(1);
+		expect(resolveTool).toHaveBeenCalledWith(config.tools![3]);
 	});
 
 	it('wraps workflow tool with approval when requireApproval is true', async () => {
@@ -953,6 +998,126 @@ describe('buildFromJson()', () => {
 		).rejects.toThrow('Web search is enabled but no search credential is configured.');
 	});
 
+	it('adds fallback web search tool for the n8n Connect managed credential (brave)', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(getLocalToolNames(agent)).toContain('web_search');
+	});
+
+	it('routes managed brave web search through the AI gateway proxy', async () => {
+		const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+			json: async () => ({ web: { results: [] } }),
+		} as unknown as Response);
+
+		const credentialProvider = {
+			resolve: vi.fn().mockResolvedValue({ apiKey: 'model-key' }),
+			list: vi.fn().mockResolvedValue([]),
+			resolveAiGatewaySearchCredential: vi.fn().mockResolvedValue({
+				apiKey: 'jwt-123',
+				baseUrl: 'https://gw.example/v1/gateway/exec/agent/a%7Cp/brave-search/res/v1',
+			}),
+		};
+
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider,
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		expect(webSearchTool).toBeDefined();
+
+		await webSearchTool!.handler!({ query: 'hello' }, {} as never);
+
+		expect(credentialProvider.resolveAiGatewaySearchCredential).toHaveBeenCalledWith(
+			'braveSearchApi',
+		);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const [requestUrl, requestInit] = fetchSpy.mock.calls[0] as [string, RequestInit];
+		// The gateway base ends in `/res/v1`; braveSearch re-appends `/res/v1/web/search`,
+		// so the stripped base must join into a single `/res/v1/web/search`.
+		expect(requestUrl).toContain(
+			'https://gw.example/v1/gateway/exec/agent/a%7Cp/brave-search/res/v1/web/search',
+		);
+		expect(requestUrl).not.toContain('/res/v1/res/v1');
+		expect((requestInit.headers as Record<string, string>)['X-Subscription-Token']).toBe('jwt-123');
+	});
+
+	it('rejects the managed credential for a non-brave web search provider', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'searxng', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		await expect(webSearchTool!.handler!({ query: 'hello' }, {} as never)).rejects.toThrow(
+			'Gateway credits web search is only available for Brave Search.',
+		);
+	});
+
+	it('rejects the managed credential when the provider cannot mint a gateway credential', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'deepseek/deepseek-chat',
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		const webSearchTool = (agent as unknown as { tools?: BuiltTool[] }).tools?.find(
+			(tool) => tool.name === 'web_search',
+		);
+		await expect(webSearchTool!.handler!({ query: 'hello' }, {} as never)).rejects.toThrow(
+			'This credential provider cannot resolve Gateway credits web search credentials.',
+		);
+	});
+
 	it('sets toolCallConcurrency', async () => {
 		const config = makeConfig({ config: { toolCallConcurrency: 5 } });
 
@@ -1044,22 +1209,43 @@ describe('buildFromJson()', () => {
 		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
-	it('configures observational memory worker models with their own credentials', async () => {
+	it('configures agent and memory worker models with their own credentials and projects', async () => {
+		getCachedCatalog.mockResolvedValue({
+			'google-vertex': {
+				models: {
+					'gemini-3.1-pro-preview': { sdk: '@ai-sdk/google-vertex' },
+					'gemini-3-flash-preview': { sdk: '@ai-sdk/google-vertex' },
+				},
+			},
+		});
+		const modelSpy = vi.spyOn(AgentsRuntime.Agent.prototype, 'model');
 		const observeSpy = vi.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
+				email: `${credentialId}@example.iam.gserviceaccount.com`,
+				privateKey: `${credentialId}-private-key`,
+				region: 'europe-west4',
+				projectId: `${credentialId}-project`,
 			})),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([
+				{ id: 'main-key', name: 'Main', type: 'googleVertexAiApi' },
+				{ id: 'observer-key', name: 'Observer', type: 'googleVertexAiApi' },
+			]),
 		};
 		const config = makeConfig({
+			model: 'google-vertex/gemini-3.1-pro-preview',
+			credential: 'main-key',
 			memory: {
 				enabled: true,
 				storage: 'n8n',
 				observationalMemory: {
-					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
+					observerModel: {
+						model: 'google-vertex/gemini-3-flash-preview',
+						credential: 'observer-key',
+					},
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'reflector-key',
@@ -1078,10 +1264,21 @@ describe('buildFromJson()', () => {
 			},
 		);
 
+		expect(modelSpy).toHaveBeenCalledWith({
+			id: 'google-vertex/gemini-3.1-pro-preview',
+			sdk: '@ai-sdk/google-vertex',
+			project: 'main-key-project',
+			clientEmail: 'main-key@example.iam.gserviceaccount.com',
+			privateKey: 'main-key-private-key',
+			location: 'europe-west4',
+		});
 		expect(observeSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'observer-key-api-key',
-			baseURL: 'https://observer-key.example/v1',
+			id: 'google-vertex/gemini-3-flash-preview',
+			sdk: '@ai-sdk/google-vertex',
+			project: 'observer-key-project',
+			clientEmail: 'observer-key@example.iam.gserviceaccount.com',
+			privateKey: 'observer-key-private-key',
+			location: 'europe-west4',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
@@ -1152,7 +1349,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.extract).toBeUndefined();
 		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
 	});
 
@@ -1199,8 +1395,7 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
-		const extractSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
 		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
@@ -1216,7 +1411,6 @@ describe('buildFromJson()', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'embedding-key',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: 'extractor-key' },
 					reflectorModel: {
 						model: 'anthropic/claude-sonnet-4-5',
 						credential: 'episodic-reflector-key',
@@ -1235,11 +1429,6 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(extractSpy).toHaveBeenCalledWith({
-			id: 'openai/gpt-4o-mini',
-			apiKey: 'extractor-key-api-key',
-			baseURL: 'https://extractor-key.example/v1',
-		});
 		expect(reflectSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
@@ -1252,7 +1441,6 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('embedding-key');
-		expect(credentialProvider.resolve).toHaveBeenCalledWith('extractor-key');
 		expect(credentialProvider.resolve).toHaveBeenCalledWith('episodic-reflector-key');
 	});
 

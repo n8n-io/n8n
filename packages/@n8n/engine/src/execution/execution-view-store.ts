@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../graph';
+import type { StoredWorkflowGraph } from '../graph';
 import type {
 	ExecutionMode,
 	ExecutionStatus,
@@ -7,6 +7,37 @@ import type {
 	StepStatus,
 	WorkflowDocument,
 } from './execution.types';
+
+/**
+ * Timestamps come back however the store's driver reports them: the only
+ * consumer serializes them to JSON, where `Date` and an ISO string are the
+ * same value, so there is no point parsing or formatting them in between.
+ */
+export interface ExecutionListItemView {
+	id: string;
+	workflowId: string;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
+	createdAt: Date;
+	updatedAt: Date;
+	finishedAt: Date | null;
+}
+
+export interface ExecutionListQuery {
+	workflowIds: readonly string[] | 'all';
+	status?: ExecutionStatus[];
+	hostMode?: string;
+	createdAfter?: string;
+	createdBefore?: string;
+	before?: { createdAt: string; id: string };
+	/** Required at this layer; the API's default lives on the request schema. */
+	limit: number;
+	includeTotal?: boolean;
+	/** Same shape the control plane's `ExecutionSummaries.Query` uses. */
+	order?: { top?: ExecutionStatus; startedAt?: 'DESC' };
+}
 
 /**
  * Read view of an execution: what a caller is shown, which is not what running
@@ -18,8 +49,10 @@ export interface ExecutionView {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
-	graph: WorkflowGraph;
+	graph: StoredWorkflowGraph;
 	/** The workflow captured at start, alongside the graph and just as immutable. */
 	workflow: WorkflowDocument;
 	createdAt: Date;
@@ -66,6 +99,8 @@ export interface ExecutionWithStepsView extends ExecutionView {
  * columns in the query.
  */
 export interface ExecutionViewStore {
+	listExecutionViews(query: ExecutionListQuery): Promise<ExecutionListItemView[]>;
+	countExecutionViews(query: ExecutionListQuery): Promise<number>;
 	/** Read view of one execution. Throws `ExecutionNotFoundError` if absent. */
 	loadExecutionView(id: string): Promise<ExecutionView>;
 
