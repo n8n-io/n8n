@@ -138,13 +138,12 @@ export class AgentModelCatalogService {
 		return liveModels.map((live) => {
 			const id = normalizeProviderModelId(provider, live.value);
 			const catalogMatch = catalogModels[id] ?? catalogModels[stripSnapshotSuffix(id)];
+			// The gateway names the models it serves; a name that only repeats the id does not count.
+			const liveName = normalizeProviderModelId(provider, live.name);
+			const gatewayName = liveName && liveName !== id ? liveName : undefined;
 			return catalogMatch
-				? { ...catalogMatch, id }
-				: {
-						id,
-						name: normalizeProviderModelId(provider, live.name) || id,
-						toolCall: true,
-					};
+				? { ...catalogMatch, id, ...(gatewayName ? { name: gatewayName } : {}) }
+				: { id, name: gatewayName ?? id, toolCall: true };
 		});
 	}
 

@@ -40,24 +40,36 @@ export const listGoogleModels: ListModelsFn = async (options) => {
 		{ 'x-goog-api-key': options.apiKey },
 		options,
 		'google',
-	)) as { models?: Array<{ name?: unknown; supportedGenerationMethods?: unknown }> };
+	)) as {
+		models?: Array<{ name?: unknown; displayName?: unknown; supportedGenerationMethods?: unknown }>;
+	};
 
 	const models = (data.models ?? [])
 		.filter(
-			(model): model is { name: string; supportedGenerationMethods?: unknown } =>
+			(
+				model,
+			): model is { name: string; displayName?: unknown; supportedGenerationMethods?: unknown } =>
 				typeof model.name === 'string' &&
 				shouldIncludeGoogleModel({
 					name: model.name,
 					supportedGenerationMethods: model.supportedGenerationMethods,
 				}),
 		)
-		.map((model) => ({ id: model.name, name: getGoogleModelLabel(model.name) }))
+		.map((model) => ({ id: model.name, name: getGoogleModelLabel(model.name, model.displayName) }))
 		.sort(byName);
 	return pinGoogleModels(models, (model) => model.id);
 };
 
-/** Dropdown label of a Google model id: its product name when it has one, else the id. */
-export function getGoogleModelLabel(modelId: string): string {
+/**
+ * Dropdown label of a Google model: the API's `displayName`, else its product
+ * name from `MODEL_DISPLAY_NAMES`, else the id. A `displayName` that only
+ * repeats the id (as Gateway credits report unnamed models) does not count.
+ */
+export function getGoogleModelLabel(modelId: string, displayName?: unknown): string {
+	const apiName = typeof displayName === 'string' ? displayName.trim() : '';
+	if (apiName && apiName !== modelId && apiName !== modelId.replace(/^models\//, '')) {
+		return apiName;
+	}
 	return getModelDisplayName('google', modelId) ?? modelId;
 }
 

@@ -11,11 +11,9 @@ import {
 } from './listSearch';
 import * as transport from '../transport';
 
-// Stands in for the shared MODEL_DISPLAY_NAMES and FEATURED_MODELS maps.
+// Stands in for an entry in the shared FEATURED_MODELS list.
 vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
-	getGoogleModelLabel: (modelId: string) =>
-		modelId === 'models/gemini-named' ? 'Gemini Named' : modelId,
 	pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
 		...models.filter((model) => getModelId(model) === 'models/gemini-featured'),
 		...models.filter((model) => getModelId(model) !== 'models/gemini-featured'),
@@ -87,7 +85,7 @@ describe('GoogleGemini -> listSearch', () => {
 			expect(result).toEqual({
 				results: [
 					{
-						name: 'models/gemini-2.5-flash',
+						name: 'Gemini 2.5 Flash',
 						value: 'models/gemini-2.5-flash',
 					},
 					{
@@ -117,17 +115,20 @@ describe('GoogleGemini -> listSearch', () => {
 			apiRequestMock.mockResolvedValue({
 				models: [
 					{ name: 'models/gemini-zeta' },
-					{ name: 'models/gemini-featured' },
-					{ name: 'models/gemini-named' },
+					{ name: 'models/gemini-featured', displayName: 'gemini-featured' },
+					{ name: 'models/gemini-2.5-pro' },
+					{ name: 'models/gemini-api-named', displayName: 'Gemini Api Named' },
 				],
 			});
 
 			const result = await modelSearch.call(mockExecuteFunctions);
 
+			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id.
 			expect(result).toEqual({
 				results: [
 					{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
-					{ name: 'Gemini Named', value: 'models/gemini-named' },
+					{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+					{ name: 'Gemini Api Named', value: 'models/gemini-api-named' },
 					{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
 				],
 			});
@@ -135,13 +136,13 @@ describe('GoogleGemini -> listSearch', () => {
 
 		it('should match the filter against the product name and the id', async () => {
 			apiRequestMock.mockResolvedValue({
-				models: [{ name: 'models/gemini-zeta' }, { name: 'models/gemini-named' }],
+				models: [{ name: 'models/gemini-zeta' }, { name: 'models/gemini-2.5-pro' }],
 			});
 
-			const byName = await modelSearch.call(mockExecuteFunctions, 'Gemini N');
+			const byName = await modelSearch.call(mockExecuteFunctions, '2.5 Pro');
 			const byId = await modelSearch.call(mockExecuteFunctions, 'gemini-zeta');
 
-			expect(byName.results).toEqual([{ name: 'Gemini Named', value: 'models/gemini-named' }]);
+			expect(byName.results).toEqual([{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' }]);
 			expect(byId.results).toEqual([{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' }]);
 		});
 	});
@@ -155,7 +156,7 @@ describe('GoogleGemini -> listSearch', () => {
 			expect(result).toEqual({
 				results: [
 					{
-						name: 'models/gemini-2.5-flash',
+						name: 'Gemini 2.5 Flash',
 						value: 'models/gemini-2.5-flash',
 					},
 					{

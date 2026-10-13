@@ -27,7 +27,11 @@ const toBareModelId = (modelId: string) => modelId.replace(/^models\//, '');
 
 /** Product name of a model, or `undefined` when it has none. Accepts `models/`-prefixed ids. */
 export function getModelDisplayName(provider: string, modelId: string): string | undefined {
-	return MODEL_DISPLAY_NAMES[provider]?.[toBareModelId(modelId)];
+	const names = Object.hasOwn(MODEL_DISPLAY_NAMES, provider)
+		? MODEL_DISPLAY_NAMES[provider]
+		: undefined;
+	const bareModelId = toBareModelId(modelId);
+	return names && Object.hasOwn(names, bareModelId) ? names[bareModelId] : undefined;
 }
 
 /** Moves featured models to the front, keeping the order of the rest. */
@@ -36,7 +40,7 @@ export function pinFeaturedModels<T>(
 	models: T[],
 	getModelId: (model: T) => string,
 ): T[] {
-	const featured = FEATURED_MODELS[provider] ?? [];
+	const featured = Object.hasOwn(FEATURED_MODELS, provider) ? FEATURED_MODELS[provider] : [];
 	const isFeatured = (model: T) => featured.includes(toBareModelId(getModelId(model)));
 	return [...models.filter(isFeatured), ...models.filter((model) => !isFeatured(model))];
 }

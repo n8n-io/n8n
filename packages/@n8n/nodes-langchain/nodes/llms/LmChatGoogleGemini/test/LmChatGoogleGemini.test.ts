@@ -2,11 +2,9 @@ import type { IExecuteSingleFunctions, INodeExecutionData, PostReceiveAction } f
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
 
-// Stands in for the shared MODEL_DISPLAY_NAMES and FEATURED_MODELS maps.
+// Stands in for an entry in the shared FEATURED_MODELS list.
 vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/ai-utilities/model-discovery')>()),
-	getGoogleModelLabel: (modelId: string) =>
-		modelId === 'models/gemini-named' ? 'Gemini Named' : modelId,
 	pinGoogleModels: <T>(models: T[], getModelId: (model: T) => string) => [
 		...models.filter((model) => getModelId(model) === 'models/gemini-featured'),
 		...models.filter((model) => getModelId(model) !== 'models/gemini-featured'),
@@ -42,9 +40,22 @@ describe('LmChatGoogleGemini', () => {
 			(p) => p.name === 'modelName',
 		);
 		const options: INodeExecutionData[] = [
-			{ json: { name: 'models/gemini-zeta', value: 'models/gemini-zeta' } },
-			{ json: { name: 'models/gemini-featured', value: 'models/gemini-featured' } },
-			{ json: { name: 'models/gemini-named', value: 'models/gemini-named' } },
+			{ json: { name: 'models/gemini-zeta', value: 'models/gemini-zeta', displayName: '' } },
+			{
+				json: {
+					name: 'models/gemini-featured',
+					value: 'models/gemini-featured',
+					displayName: 'gemini-featured',
+				},
+			},
+			{ json: { name: 'models/gemini-2.5-pro', value: 'models/gemini-2.5-pro' } },
+			{
+				json: {
+					name: 'models/gemini-api-named',
+					value: 'models/gemini-api-named',
+					displayName: 'Gemini Api Named',
+				},
+			},
 		];
 
 		expect(modelProperties).toHaveLength(3);
@@ -56,9 +67,11 @@ describe('LmChatGoogleGemini', () => {
 
 			const result = await labelModels.call({} as IExecuteSingleFunctions, options, {} as never);
 
+			// The API's displayName wins, then MODEL_DISPLAY_NAMES, then the id.
 			expect(result.map((option) => option.json)).toEqual([
 				{ name: 'models/gemini-featured', value: 'models/gemini-featured' },
-				{ name: 'Gemini Named', value: 'models/gemini-named' },
+				{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+				{ name: 'Gemini Api Named', value: 'models/gemini-api-named' },
 				{ name: 'models/gemini-zeta', value: 'models/gemini-zeta' },
 			]);
 		}

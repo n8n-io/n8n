@@ -46,11 +46,17 @@ async function labelModels(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const labelled: INodeExecutionData[] = items.map((item) =>
-		typeof item.json.value === 'string'
-			? { ...item, json: { ...item.json, name: getGoogleModelLabel(item.json.value) } }
-			: item,
-	);
+	const labelled: INodeExecutionData[] = items.map((item) => {
+		// `displayName` only carries the API's name to here; options do not keep it.
+		const { displayName, ...option } = item.json;
+		return {
+			...item,
+			json:
+				typeof option.value === 'string'
+					? { ...option, name: getGoogleModelLabel(option.value, displayName) }
+					: option,
+		};
+	});
 	labelled.sort((a, b) => String(a.json.name).localeCompare(String(b.json.name)));
 	return pinGoogleModels(labelled, (item) => String(item.json.value));
 }
@@ -96,6 +102,7 @@ const modelRLC: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
 							},
 						},
 						labelModels,
@@ -146,6 +153,7 @@ const modelRLCV2: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
 							},
 						},
 						labelModels,

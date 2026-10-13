@@ -155,6 +155,30 @@ describe('model-discovery', () => {
 			]);
 		});
 
+		it("prefers the API's displayName over the product name map, unless it repeats the id", async () => {
+			const fetch = mockFetch({
+				models: [
+					{
+						name: 'models/gemini-2.5-pro',
+						displayName: 'Gemini 2.5 Pro (API)',
+						supportedGenerationMethods: ['generateContent'],
+					},
+					{
+						name: 'models/gemini-2.5-flash',
+						displayName: 'gemini-2.5-flash',
+						supportedGenerationMethods: ['generateContent'],
+					},
+				],
+			});
+
+			const models = await listModelsForProvider('google', { apiKey: 'g-key', fetch });
+
+			expect(models).toEqual([
+				{ id: 'models/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro (API)' },
+			]);
+		});
+
 		it('labels models with their product name and lists featured models first', async () => {
 			FEATURED_MODELS.google = ['gemini-featured'];
 			const fetch = mockFetch({

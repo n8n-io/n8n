@@ -320,6 +320,34 @@ describe('AgentModelCatalogService', () => {
 		]);
 	});
 
+	it('prefers the gateway name over the catalog name for a managed model', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: 'Gemini 2.5 Flash (Gateway)', value: 'models/gemini-2.5-flash' },
+				{ name: 'models/gemini-2.5-flash-lite', value: 'models/gemini-2.5-flash-lite' },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({
+				id: 'gemini-2.5-flash',
+				name: 'Gemini 2.5 Flash (Gateway)',
+				reasoning: true,
+			}),
+			expect.objectContaining({ id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' }),
+		]);
+	});
+
 	it('strips the "models/" prefix from google model ids before matching', async () => {
 		const { service, lookupService } = makeService();
 		lookupService.lookup.mockResolvedValue({

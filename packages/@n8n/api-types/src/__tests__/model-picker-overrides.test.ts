@@ -10,6 +10,11 @@ describe('getModelDisplayName', () => {
 		expect(getModelDisplayName('google', 'models/gemini-0-unknown')).toBeUndefined();
 		expect(getModelDisplayName('openai', 'gemini-2.5-pro')).toBeUndefined();
 	});
+
+	it('ignores inherited object properties', () => {
+		expect(getModelDisplayName('google', 'models/toString')).toBeUndefined();
+		expect(getModelDisplayName('constructor', 'gemini-2.5-pro')).toBeUndefined();
+	});
 });
 
 describe('pinFeaturedModels', () => {
@@ -29,6 +34,12 @@ describe('pinFeaturedModels', () => {
 			'models/gemini-2.5-flash',
 			'models/gemini-2.5-pro',
 		]);
+	});
+
+	it('ignores inherited object properties', () => {
+		const models = ['toString', 'gemini-2.5-pro'];
+
+		expect(pinFeaturedModels('constructor', models, (model) => model)).toEqual(models);
 	});
 
 	it('leaves lists without featured models unchanged', () => {

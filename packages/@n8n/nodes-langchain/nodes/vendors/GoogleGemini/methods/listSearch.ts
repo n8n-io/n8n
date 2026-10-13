@@ -18,12 +18,15 @@ async function baseModelSearch(
 			pageSize: 1000,
 		},
 	})) as {
-		models: Array<{ name: string }>;
+		models: Array<{ name: string; displayName?: string }>;
 	};
 
 	let results = response.models
 		.filter((model) => modelFilter(model.name))
-		.map((model) => ({ name: getGoogleModelLabel(model.name), value: model.name }));
+		.map((model) => ({
+			name: getGoogleModelLabel(model.name, model.displayName),
+			value: model.name,
+		}));
 	if (filter) {
 		const query = filter.toLowerCase();
 		results = results.filter(
