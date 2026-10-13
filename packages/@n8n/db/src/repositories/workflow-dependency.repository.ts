@@ -288,6 +288,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
+	async removePublishedDependenciesForWorkflow(workflowId: string, publishedVersionId: string) {
+		// Limit cleanup to this version so a late event cannot remove a newer publication.
+		await this.delete({ workflowId, publishedVersionId });
+	}
+
 	private async acquireLockAndCheckForExistingData(
 		workflowId: string,
 		publishedVersionId: string | null,

@@ -305,6 +305,18 @@ describe('WorkflowIndexService Integration', () => {
 					deactivatedVersionId: workflow.versionId,
 					publicApi: false,
 				});
+				await retryUntil(async () => {
+					const dependencies = await workflowDependencyRepository.findBy({
+						workflowId: workflow.id,
+						dependencyType: 'credentialId',
+					});
+					expect(dependencies).toEqual([
+						expect.objectContaining({
+							dependencyKey: oldCredentialId,
+							publishedVersionId: null,
+						}),
+					]);
+				});
 			}
 
 			await workflowRepository.update(workflow.id, { nodes: [credentialNode(newCredentialId)] });

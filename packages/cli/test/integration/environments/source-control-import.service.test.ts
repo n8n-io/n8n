@@ -44,6 +44,7 @@ import type { INodeType } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFile } from 'node:fs/promises';
 import type { Mock, Mocked } from 'vitest';
+import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -180,6 +181,7 @@ describe('SourceControlImportService', () => {
 				mock<NodesConfig>({ blockDeprecated: true }),
 				nodeTypes,
 			),
+			Container.get(WorkflowIndexService),
 		);
 	};
 
@@ -1898,6 +1900,7 @@ describe('SourceControlImportService', () => {
 				const oldCredentialId = nanoid();
 				const newCredentialId = nanoid();
 				const original = makeWorkflowImport({
+					versionId: uuid(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -1928,6 +1931,7 @@ describe('SourceControlImportService', () => {
 
 				const imported = makeWorkflowImport({
 					id: workflow.id,
+					versionId: uuid(),
 					nodes: workflow.nodes.map((node) => ({
 						...node,
 						credentials: {
