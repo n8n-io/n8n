@@ -3,7 +3,14 @@ import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
 
-import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import {
+	credentialUpdateScope,
+	resolveCredentialConflictPolicy,
+} from '../entities/credential/credential-conflict-policy';
+import type {
+	CredentialBindingRequest,
+	CredentialUpdateScope,
+} from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
@@ -32,7 +39,11 @@ import {
 	assertTagWritesAllowed,
 } from './import-gates';
 import { toImportBlockedError } from './import-blocked.error';
-import { needsBundledVariableValues, placeByLayout } from './package-layout';
+import {
+	needsBundledCredentialFiles,
+	needsBundledVariableValues,
+	placeByLayout,
+} from './package-layout';
 import {
 	ImportOrchestrator,
 	type ImportContentResult,
@@ -52,6 +63,7 @@ import {
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedCredential } from '../spec/serialized/credential.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 @Service()
@@ -102,6 +114,18 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getVariables(reader)
 			: undefined;
+		// Read once for the whole import: every scope looks its credentials up by id.
+		const packageCredentials = needsBundledCredentialFiles(
+			request,
+			(manifest.requirements?.credentials?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getCredentials(reader)
+			: undefined;
+		// Projects match by id, so a package project id is also its destination project id.
+		const updateScope = credentialUpdateScope(
+			selectedProjects.map(({ id }) => id),
+			selection ? 'selection' : 'full',
+		);
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
 		// so publish is always allowed and the project need not exist while its contents are planned.
 		const pendingCreateIds = new Set(
@@ -120,7 +144,7 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
-				bundledVariables,
+				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
 				importSource,
 			);
 			const plan = await this.importOrchestrator.plan(input);
@@ -256,7 +280,12 @@ export class ProjectPackageImporter {
 		manifest: PackageManifest,
 		project: ManifestEntry,
 		projectPendingCreation: boolean,
-		bundledVariables: Map<string, SerializedVariable> | undefined,
+		/** Read or resolved once for every scope of the import. */
+		importWide: {
+			bundledVariables: Map<string, SerializedVariable> | undefined;
+			packageCredentials: Map<string, SerializedCredential> | undefined;
+			credentialUpdateScope: CredentialUpdateScope;
+		},
 		importSource: PackageImportSource,
 	): Promise<ImportOrchestrationInput> {
 		const basePrefix = `${project.target}/`;
@@ -281,6 +310,9 @@ export class ProjectPackageImporter {
 				request.bindings?.credentials,
 				requirements,
 			),
+			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			packageCredentials: importWide.packageCredentials,
+			updateScope: importWide.credentialUpdateScope,
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
@@ -296,7 +328,7 @@ export class ProjectPackageImporter {
 				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
 				manifestVariables: manifest.variables,
 				scopePrefix: basePrefix,
-				bundledVariables,
+				bundledVariables: importWide.bundledVariables,
 			}),
 			missingMode: request.variableMissingMode,
 			conflictPolicy: request.variableConflictPolicy,

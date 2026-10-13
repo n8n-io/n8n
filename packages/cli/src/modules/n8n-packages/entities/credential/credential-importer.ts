@@ -1,41 +1,104 @@
+import { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
+import { credentialDiffers, isUpdateCandidate } from './credential-conflict-policy';
 import { CredentialMatcherFactory } from './credential-matcher-factory';
 import { credentialBlockingFailures, credentialsToStub } from './credential-missing-mode';
 import type {
 	CredentialApplyResult,
 	CredentialBindingRequest,
+	CredentialImportPlan,
 	CredentialResolution,
 	CredentialResolutionFailure,
+	CredentialUpdateCandidate,
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
+import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
 
 @Service()
 export class CredentialImporter {
 	constructor(
 		private readonly credentialMatcherFactory: CredentialMatcherFactory,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinder: CredentialsFinderService,
 	) {}
 
 	/**
 	 * Resolves which target-project credentials the package's references map to.
 	 * Read-only: returns matched `successes` and unresolved `failures` without
-	 * acting on the failures. Mirrors the workflow side's `plan`.
+	 * acting on the failures. Mirrors the workflow side's `plan`. Unless the conflict
+	 * policy is `keep-existing`, also finds the matches the policy can update.
 	 */
 	async plan(
 		context: ImportContext,
 		request: CredentialBindingRequest,
-	): Promise<CredentialResolution> {
-		return await this.credentialMatcherFactory
+	): Promise<CredentialImportPlan> {
+		const resolution = await this.credentialMatcherFactory
 			.getMatcher(request.matchingMode)
 			.match(request.requirements, {
 				projectId: context.projectId,
 				user: context.user,
 				credentialBindings: request.credentialBindings,
 			});
+
+		if (request.conflictPolicy === 'keep-existing') {
+			return { ...resolution, candidates: [], updates: [] };
+		}
+
+		return { ...resolution, ...(await this.planUpdates(request, resolution)) };
+	}
+
+	/**
+	 * Compares each matched credential that has a package file with its stored state.
+	 * Decrypted values stay in this method: the plan keeps only ids and the package payload.
+	 */
+	private async planUpdates(
+		request: CredentialBindingRequest,
+		resolution: CredentialResolution,
+	): Promise<Pick<CredentialImportPlan, 'candidates' | 'updates'>> {
+		const requirementsById = new Map(
+			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
+		);
+		const destinations = new Map<string, CredentialsEntity | null>();
+		const candidates: CredentialUpdateCandidate[] = [];
+		const updates: CredentialUpdateCandidate[] = [];
+
+		for (const [sourceId, targetId] of resolution.successes) {
+			// No file means the exporting user could not read the credential: bind only.
+			const packageCredential = request.packageCredentials?.get(sourceId);
+			if (packageCredential === undefined) continue;
+
+			if (!destinations.has(targetId)) {
+				destinations.set(
+					targetId,
+					await this.credentialsFinder.findById(targetId, { includeSharedProject: true }),
+				);
+			}
+			const destination = destinations.get(targetId);
+			if (!destination || !isUpdateCandidate(destination, request.updateScope)) continue;
+
+			const candidate: CredentialUpdateCandidate = {
+				sourceId,
+				targetId,
+				targetName: destination.name,
+				name: packageCredential.name,
+				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
+				usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
+			};
+			candidates.push(candidate);
+
+			const differs = credentialDiffers(
+				{ name: destination.name, data: await this.credentialsService.decrypt(destination, true) },
+				packageCredential,
+			);
+			if (differs) updates.push(candidate);
+		}
+
+		return { candidates, updates };
 	}
 
 	/**

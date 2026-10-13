@@ -8,6 +8,10 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
+import {
+	credentialUpdateScope,
+	resolveCredentialConflictPolicy,
+} from '../entities/credential/credential-conflict-policy';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
@@ -32,7 +36,11 @@ import {
 } from './import-result';
 import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
-import { needsBundledVariableValues, placeByPolicy } from './package-layout';
+import {
+	needsBundledCredentialFiles,
+	needsBundledVariableValues,
+	placeByPolicy,
+} from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -69,11 +77,23 @@ export class WorkflowPackageImporter {
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
+		const credentialRequirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+		);
 		const credentialRequest: CredentialBindingRequest = {
-			requirements: identifyRequirements(manifest.requirements?.credentials, workflows),
+			requirements: credentialRequirements,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
+			conflictPolicy: resolveCredentialConflictPolicy(request.credentialConflictPolicy),
+			packageCredentials: needsBundledCredentialFiles(
+				request,
+				(credentialRequirements?.length ?? 0) > 0,
+			)
+				? await this.packageParser.getCredentials(reader)
+				: undefined,
+			updateScope: credentialUpdateScope([context.projectId], 'full'),
 		};
 
 		const dataTableRequirements = identifyRequirements(

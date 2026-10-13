@@ -260,6 +260,42 @@ describe('toPackagesError', () => {
 		expect(hint).toContain('w2');
 	});
 
+	it('lists credential-conflict issues for a 409, by kind', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'credential-conflict',
+						kind: 'differs',
+						targetId: 'c1',
+						sourceIds: ['s1'],
+						name: 'GitHub',
+						usedBy: [{ kind: 'workflow', id: 'w1' }],
+					},
+					{
+						type: 'credential-conflict',
+						kind: 'divergent',
+						targetId: 'c2',
+						sourceIds: ['s2', 's3'],
+						name: 'Slack',
+						usedBy: [
+							{ kind: 'workflow', id: 'w2' },
+							{ kind: 'agent', id: 'a1' },
+						],
+					},
+				],
+			}),
+		);
+
+		const hint = (result as ApiError).hint ?? '';
+		expect(hint).toContain(
+			'credential "GitHub" (c1) differs from package credential s1, used by workflow w1',
+		);
+		expect(hint).toContain(
+			'credential "Slack" (c2) receives different values from package credentials s2, s3, used by workflow w2, agent a1',
+		);
+	});
+
 	it('lists variable-limit-exceeded issues for a 422', () => {
 		const result = toPackagesError(
 			new ApiError(422, 'Import blocked', undefined, {

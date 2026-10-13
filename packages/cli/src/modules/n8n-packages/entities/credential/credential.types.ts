@@ -1,9 +1,17 @@
 import type {
 	ImportBindingMap,
+	CredentialConflictPolicy,
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '../../spec/requirements.schema';
+import type {
+	SerializedCredential,
+	SerializedCredentialData,
+} from '../../spec/serialized/credential.schema';
 import type { AgentRequirementSource } from '../requirement-source';
 
 export interface CredentialReference {
@@ -43,6 +51,51 @@ export interface CredentialResolution {
 	failures: CredentialResolutionFailure[];
 }
 
+/**
+ * A matched destination credential that the conflict policy can update, with the package
+ * payload for it. Holds no stored values: the write decrypts and merges again.
+ */
+export interface CredentialUpdateCandidate {
+	sourceId: string;
+	targetId: string;
+	/** Destination credential name, for reporting. */
+	targetName: string;
+	/** Package credential name. */
+	name: string;
+	/** Package expression values. Absent when the package was exported without values. */
+	data?: SerializedCredentialData;
+	usedBy: PackageRequirementConsumer[];
+}
+
+export interface CredentialImportPlan extends CredentialResolution {
+	/** Matched credentials the conflict policy can update. Empty under `keep-existing`. */
+	candidates: CredentialUpdateCandidate[];
+	/** The candidates that `overwrite` would change. */
+	updates: CredentialUpdateCandidate[];
+}
+
+/**
+ * - `differs`: under `fail`, the package would change the destination credential.
+ * - `divergent`: under `overwrite`, two or more package credentials with different
+ *   payloads resolve to one destination credential.
+ */
+export interface CredentialConflict {
+	kind: 'differs' | 'divergent';
+	targetId: string;
+	sourceIds: string[];
+	/** Destination credential name. */
+	name: string;
+	usedBy: PackageRequirementConsumer[];
+}
+
+/** Which matched destination credentials the conflict policy can update. */
+export interface CredentialUpdateScope {
+	/** Destination projects of the import. A credential owned by one of them is in scope. */
+	projectIds: ReadonlySet<string>;
+	/** A global credential is in scope whoever owns it. True for full imports only. */
+	includeGlobal: boolean;
+}
+
 export interface CredentialApplyResult {
 	bindings: ImportBindingMap;
 	matched: string[];
@@ -54,6 +107,10 @@ export interface CredentialBindingRequest {
 	matchingMode: CredentialMatchingMode;
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;
+	conflictPolicy: CredentialConflictPolicy;
+	/** Package credential files by credential id. Read only when the policy is not `keep-existing`. */
+	packageCredentials?: ReadonlyMap<string, SerializedCredential>;
+	updateScope: CredentialUpdateScope;
 }
 
 export function createFailure(

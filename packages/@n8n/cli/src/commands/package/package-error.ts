@@ -41,6 +41,14 @@ type BlockingIssue =
 			usedBy: RequirementConsumer[];
 			violations: Array<{ message: string }>;
 	  }
+	| {
+			type: 'credential-conflict';
+			kind: 'differs' | 'divergent';
+			targetId: string;
+			sourceIds: string[];
+			name: string;
+			usedBy: RequirementConsumer[];
+	  }
 	| { type: 'variable-unresolved'; name: string; usedBy: RequirementConsumer[] }
 	| { type: 'variable-conflict'; name: string; projectId?: string; usedBy: RequirementConsumer[] }
 	| {
@@ -153,6 +161,14 @@ function formatIssue(issue: unknown): string {
 			? it.violations.map(({ message }) => message).join('; ')
 			: '';
 		return `credential "${it.name ?? it.sourceId}" (${it.sourceId}, ${it.credentialType}) refused by policy: ${reasons}, used by ${usedBy}`;
+	}
+	if (it.type === 'credential-conflict') {
+		const usedBy = formatConsumers(it.usedBy);
+		const sources = Array.isArray(it.sourceIds) ? it.sourceIds.join(', ') : '';
+		if (it.kind === 'divergent') {
+			return `credential "${it.name}" (${it.targetId}) receives different values from package credentials ${sources}, used by ${usedBy}`;
+		}
+		return `credential "${it.name}" (${it.targetId}) differs from package credential ${sources}, used by ${usedBy}`;
 	}
 	if (it.type === 'variable-unresolved') {
 		const usedBy = formatConsumers(it.usedBy);

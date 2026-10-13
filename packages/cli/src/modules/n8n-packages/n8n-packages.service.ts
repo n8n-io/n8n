@@ -104,6 +104,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
+	credentialConflictPolicy: 'keep-existing',
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: 'create',
 	variableMissingMode: 'must-preexist',

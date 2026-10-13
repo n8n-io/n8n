@@ -1,9 +1,14 @@
 import { UserError } from 'n8n-workflow';
 
+import { resolveCredentialConflictPolicy } from '../entities/credential/credential-conflict-policy';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
-import { VariableConflictPolicy, VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportVariableProperties } from '../n8n-packages.types';
+import {
+	CredentialConflictPolicy,
+	VariableConflictPolicy,
+	VariableParentPolicy,
+} from '../n8n-packages.types';
+import type { ImportCredentialProperties, ImportVariableProperties } from '../n8n-packages.types';
 import type { ManifestEntry } from '../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../spec/requirements.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
@@ -34,6 +39,18 @@ export function needsBundledVariableValues(
 		hasRequirements &&
 		(variableMissingModeUsesPackageValue(request.variableMissingMode) ||
 			request.variableConflictPolicy !== VariableConflictPolicy.KeepExisting)
+	);
+}
+
+/** Only an update compares with the package credential files, so `keep-existing` never reads them. */
+export function needsBundledCredentialFiles(
+	request: Pick<ImportCredentialProperties, 'credentialConflictPolicy'>,
+	hasRequirements: boolean,
+): boolean {
+	return (
+		hasRequirements &&
+		resolveCredentialConflictPolicy(request.credentialConflictPolicy) !==
+			CredentialConflictPolicy.KeepExisting
 	);
 }
 

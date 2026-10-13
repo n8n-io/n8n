@@ -170,6 +170,42 @@ oneOf:
       type:
         type: string
         enum:
+          - credential-conflict
+      kind:
+        type: string
+        enum:
+          - differs
+          - divergent
+        description: '`differs`: under `credentialConflictPolicy=fail`, the package would change the name or values of the destination credential. `divergent`: under `overwrite`, two or more package credentials with different names or values resolve to one destination credential. The import does not select one of them.'
+      targetId:
+        type: string
+        description: Id of the destination credential.
+      sourceIds:
+        type: array
+        items:
+          type: string
+        description: Ids of the package credentials that resolve to the destination credential. For `differs`, the package credentials that would change it.
+      name:
+        type: string
+        description: Name of the destination credential.
+      usedBy:
+        type: array
+        items:
+          $ref: packageRequirementConsumer.generated.yml
+        description: Package consumers that use the listed package credentials.
+    required:
+      - type
+      - kind
+      - targetId
+      - sourceIds
+      - name
+      - usedBy
+    description: 'A matched credential that the credential conflict policy does not let the import change. Only a credential that the import can update is checked: a credential owned by a project of the import, or a global credential in a full import. Values are never reported.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - project-conflict
       kind:
         type: string

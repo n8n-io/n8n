@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
 import { containsExpression } from '@/utils';
 
@@ -95,7 +95,7 @@ export function mergeCredentialData({
 	arrays,
 }: {
 	existing: ICredentialDataDecryptedObject;
-	incoming: ICredentialDataDecryptedObject;
+	incoming: IDataObject;
 	arrays: CredentialArrayMergeMode;
 }): ICredentialDataDecryptedObject {
 	// Every leaf comes from `existing`, `incoming` or is `''`, so the shape stays credential data.
