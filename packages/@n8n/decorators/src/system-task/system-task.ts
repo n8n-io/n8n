@@ -76,8 +76,9 @@ export interface SystemTask {
 
 	/**
 	 * Overrides how long, in seconds, one durable run may take before the
-	 * scheduler aborts its signal and gives the occurrence back. An integer from 1
-	 * to {@link MAX_TIMER_DELAY_SECONDS}. Defaults to N8N_SCHEDULER_TASK_TIMEOUT_SECONDS.
+	 * scheduler aborts its signal and gives the occurrence back. Rounded to the
+	 * whole second, never below one, at most {@link MAX_TIMER_DELAY_SECONDS}.
+	 * Defaults to N8N_SCHEDULER_TASK_TIMEOUT_SECONDS.
 	 */
 	readonly timeoutSeconds?: number;
 
@@ -147,7 +148,7 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 			task.concurrencyLimit === undefined
 				? DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT
 				: task.concurrencyLimit,
-		timeoutSeconds: task.timeoutSeconds,
+		timeoutSeconds: roundedTimeoutSeconds(task.timeoutSeconds),
 	};
 
 	// These end up in `int` columns, where a fractional value is rounded and anything
@@ -262,6 +263,11 @@ export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule 
 /** Rounds to the whole second the scheduler requires, never below one. */
 function wholeSeconds(seconds: number): number {
 	return Math.max(1, Math.round(seconds));
+}
+
+/** A negative value stays as is, so the range check rejects it. */
+function roundedTimeoutSeconds(seconds: number | undefined): number | undefined {
+	return seconds === undefined || seconds < 0 ? seconds : wholeSeconds(seconds);
 }
 
 /** Rounds to the whole millisecond a timer honors, never below one. */
