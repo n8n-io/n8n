@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
@@ -135,10 +136,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const rbacStore = useRBACStore();
+	const settingsStore = useSettingsStore();
 	const { showError, showMessage } = useToast();
 	const { projectName } = useAgentProjectBreadcrumb(computed(() => projectId.value));
 
-	const hubSkillsEnabled = !localSkills;
+	const hubSkillsEnabled = computed(
+		() => !localSkills && settingsStore.moduleSettings.agents?.skillsHubEnabled === true,
+	);
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -338,8 +342,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				skill,
 				skillId: id,
 				existingSkillNames: appliedSkillNames(id),
-				hubSkillsEnabled,
-				outdated: !localSkills && (agent.value?.outdatedSkillIds ?? []).includes(id),
+				hubSkillsEnabled: hubSkillsEnabled.value,
+				outdated: hubSkillsEnabled.value && (agent.value?.outdatedSkillIds ?? []).includes(id),
 				onUseLatestVersion: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
 					void useLatestSkillVersion(skillId);
@@ -444,7 +448,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
-				hubSkillsEnabled,
+				hubSkillsEnabled: hubSkillsEnabled.value,
 				getAttachedSkills: () =>
 					appliedSkills.value.map(({ id, skill }) => ({ id, name: skill.name })),
 				projectLabel: projectName.value ?? undefined,

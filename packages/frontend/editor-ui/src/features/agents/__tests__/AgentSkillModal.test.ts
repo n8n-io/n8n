@@ -428,6 +428,31 @@ describe('AgentSkillModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
+	it('creates a skill on the agent without the picker or the skills API when the skills hub is off', async () => {
+		const onConfirm = vi.fn();
+		const { container, getByTestId, queryByTestId } = renderModal({
+			hubSkillsEnabled: false,
+			onAttach: vi.fn(),
+			onConfirm,
+		});
+
+		expect(queryByTestId('agent-skill-picker')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-upload')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		expect(queryByTestId('agent-skill-scope-select')).not.toBeInTheDocument();
+		await fireEvent.update(getTitleInput(container), 'Research');
+		await fireEvent.update(
+			getByTestId('agent-skill-description-input').querySelector('input')!,
+			'Use for research',
+		);
+		await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ scope: 'project' }));
+		expect(listAttachableSkills).not.toHaveBeenCalled();
+		expect(getHubSkill).not.toHaveBeenCalled();
+	});
+
 	describe('with the skills hub', () => {
 		const projectSkill = makeListItem({ id: 'tone', name: 'Support tone', scope: 'project' });
 		const instanceSkill = makeListItem({ id: 'sql', name: 'SQL helper', scope: 'instance' });

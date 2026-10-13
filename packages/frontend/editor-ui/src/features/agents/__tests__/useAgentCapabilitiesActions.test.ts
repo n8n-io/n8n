@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { createAgentSkill, createHubSkill, getHubSkill } from '../composables/useAgentApi';
@@ -636,13 +637,20 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		};
 	}
 
-	function setupHub() {
+	function setupHub({ skillsHubEnabled = true } = {}) {
 		const agent = ref<AgentResource | null>({
 			id: 'agent-1',
 			skills: { tone: supportTone },
 			skillHashes: { tone: 'hash-tone' },
 		} as unknown as AgentResource);
 		const result = setup({ agent, agentId: ref('agent-1') });
+		useSettingsStore().moduleSettings.agents = {
+			enabled: true,
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled: false,
+			skillsHubEnabled,
+		};
 		result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
 		result.actions.onOpenAddSkillModal();
 		const modalData = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
@@ -663,6 +671,33 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(modalData.getAttachedSkills?.()).toEqual([{ id: 'tone', name: supportTone.name }]);
 		expect(modalData.canCreateInstanceSkills).toBe(true);
 		expect(hasScopeSpy).toHaveBeenCalledWith('skill:create');
+	});
+
+	it('keeps the picker off and creates the skill on the agent when the skills hub is off', async () => {
+		vi.mocked(createAgentSkill).mockResolvedValue({
+			id: 'sql',
+			skill: sqlHelper,
+			skillHash: 'hash-sql',
+			versionId: 'v2',
+		} as Awaited<ReturnType<typeof createAgentSkill>>);
+		const { modalData, actions, uiStore } = setupHub({ skillsHubEnabled: false });
+
+		expect(modalData.hubSkillsEnabled).toBe(false);
+		modalData.onConfirm({ skill: sqlHelper, scope: 'project' });
+		await flushPromises();
+		expect(createAgentSkill).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			sqlHelper,
+		);
+		expect(createHubSkill).not.toHaveBeenCalled();
+		expect(getHubSkill).not.toHaveBeenCalled();
+
+		actions.onOpenSkillFromList('tone');
+		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(editData.hubSkillsEnabled).toBe(false);
+		expect(editData.outdated).toBe(false);
 	});
 
 	it('attaches a hub skill as a ref through the config save, without a copy', async () => {
