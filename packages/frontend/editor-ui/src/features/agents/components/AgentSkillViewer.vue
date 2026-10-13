@@ -507,7 +507,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <style lang="scss" module>
 .panel {
-	padding: var(--spacing--xl);
+	padding: var(--spacing--md) var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
