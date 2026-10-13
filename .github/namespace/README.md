@@ -13,6 +13,14 @@ Use a Namespace workspace connected to this repository. Run these commands from 
    done
    ```
 
+   To change a profile later, pass its ID and current version from `nsc github profile list -o json`:
+
+   ```bash
+   nsc github profile update --profile_id "$PROFILE_ID" --version "$VERSION" --spec_file .github/namespace/ci-e2e.json
+   ```
+
+   A spec file replaces the whole profile. Settings made only in the web UI, such as protected branches, may be lost.
+
 3. Push the trial branch.
 4. Run the CI workflow:
 
@@ -24,6 +32,7 @@ Manual trials run the full build, unit tests, lint, typecheck, packaging checks,
 They do not apply PR change scoping. Compare job timings with that difference in mind.
 Use `runner_provider=blacksmith` for a matched full-suite control run.
 The Namespace E2E profile uses 4 vCPU and 8 GB RAM. It costs the same as 2 vCPU and 8 GB (4 units per minute).
+It also has 4 GB of swap, so short memory spikes slow the shard instead of ending it.
 Namespace bills `max(vCPU, GB of RAM / 2)` units, so every profile uses the most vCPU its memory pays for: build 16x32, tests 8x16, tools 4x8.
 It needs the MockServer wait fix (DEVP-1269). Without it, the worker keeps all MockServer logs in memory.
 Record the CPU difference when comparing with Blacksmith's 2-vCPU runners.

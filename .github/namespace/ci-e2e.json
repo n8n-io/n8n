@@ -9,6 +9,7 @@
 		"os": "linux"
 	},
 	"builder_mode": "USE_REMOTE_BUILDER",
+	"swap_size_mb": 4096,
 	"cache_volume_settings": [
 		{
 			"volume_tag": "n8n-ci-e2e",
