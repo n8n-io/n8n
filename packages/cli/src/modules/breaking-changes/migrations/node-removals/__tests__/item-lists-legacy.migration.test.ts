@@ -28,6 +28,59 @@ describe('Item Lists 1 and 2', () => {
 		});
 	});
 
+	// The old nodes stop with an error where the new nodes continue. A note tells the user to
+	// check the workflow, and it turns off the one-click republish.
+	describe('note about a failure that becomes a success', () => {
+		const individual = { operation: 'aggregateItems', aggregate: 'aggregateIndividualFields' };
+
+		it.each(LEGACY_VERSIONS)('reports a note for Aggregate with individual fields in %s', (v) => {
+			expect(migrate(v, individual).notes).toEqual([
+				expect.stringContaining('missing in all items'),
+			]);
+		});
+
+		it('reports a note for Aggregate when the saved node omits the default mode', () => {
+			expect(migrate(2.2, { operation: 'aggregateItems' }).notes).toHaveLength(1);
+		});
+
+		it.each(LEGACY_VERSIONS)('reports a note for Split Out in %s', (version) => {
+			const result = migrate(version, { operation: 'splitOutItems', fieldToSplitOut: 'tags' });
+
+			expect(result.notes).toEqual([expect.stringContaining('not a list or an object')]);
+		});
+
+		it.each(LEGACY_VERSIONS)(
+			'reports no note for Aggregate with all item data in %s',
+			(version) => {
+				const result = migrate(version, {
+					operation: 'aggregateItems',
+					aggregate: 'aggregateAllItemData',
+				});
+
+				expect(result.notes).toBeUndefined();
+			},
+		);
+
+		it.each([
+			['limit', { operation: 'limit', maxItems: 2 }],
+			['sort', { operation: 'sort', type: 'simple' }],
+			['removeDuplicates', { operation: 'removeDuplicates' }],
+			['summarize', { operation: 'summarize' }],
+		])('reports no note for %s', (_name, parameters) => {
+			expect(migrate(2.2, parameters).notes).toBeUndefined();
+		});
+
+		it.each([
+			['concatenateItems', { operation: 'concatenateItems' }],
+			['splitOutItems', { operation: 'splitOutItems', fieldToSplitOut: 'tags' }],
+		])(
+			'reports no note for %s in Item Lists 3, because it is the template',
+			(_name, parameters) => {
+				expect(migrate(3, parameters).notes).toBeUndefined();
+			},
+		);
+	});
+
 	describe('Concatenate Items (aggregateItems) to Aggregate', () => {
 		it.each(LEGACY_VERSIONS)('migrates a sparse node in Item Lists %s', (version) => {
 			const { node } = migrate(version, { operation: 'aggregateItems' });

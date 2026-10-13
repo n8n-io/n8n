@@ -20,7 +20,16 @@ export interface LegacyResult {
 	/** The version of the new node. The default is the version of the target. */
 	typeVersion?: number;
 	parameters: INodeParameters;
+	/** Behavior changes that the user should check. A note turns off the one-click republish. */
+	notes?: string[];
 }
+
+// Item Lists 1 and 2 stop with an error where the new nodes continue. A workflow can rely on
+// that error, for example with an error output or an error workflow.
+const MISSING_FIELD_NOTE =
+	'This node used to stop with an error when a field was missing in all items. The new node continues. Check the workflow if it relies on that error.';
+const SPLIT_OUT_NOTE =
+	'This node used to stop with an error when the field was missing, or when its value was not a list or an object. The new node continues. Check the workflow if it relies on that error.';
 
 const unreadable = (label: string) =>
 	new Error(`"${label}" could not be read. Open the node, check this field and migrate again.`);
@@ -123,6 +132,8 @@ function assertPlainName(value: string, label: string, { allowEmpty = false } = 
  * Concatenate Items (`aggregateItems`) to Aggregate.
  * Individual fields copy as they are. The all-data mode needs the field lists as strings.
  * Versions 1 and 2 throw for a missing field and the new node adds a hint, which is accepted.
+ * That change is reported as a note, but only for individual fields. The all-data mode reads
+ * no field.
  */
 export function legacyAggregate(node: INode): LegacyResult {
 	const { parameters } = node;
@@ -137,6 +148,7 @@ export function legacyAggregate(node: INode): LegacyResult {
 				...pickDefined(parameters, ['aggregate', 'fieldsToAggregate']),
 				...withOptions(readOptions(node, ['disableDotNotation', 'mergeLists', 'keepMissing'])),
 			},
+			notes: [MISSING_FIELD_NOTE],
 		};
 	}
 
@@ -268,7 +280,7 @@ export function legacySplitOut(node: INode): LegacyResult {
 		);
 	}
 
-	return { parameters: { ...result, ...withOptions(options) } };
+	return { parameters: { ...result, ...withOptions(options) }, notes: [SPLIT_OUT_NOTE] };
 }
 
 const SUMMARIZE_KEY_PREFIXES: Record<string, string> = {

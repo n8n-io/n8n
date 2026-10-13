@@ -1,6 +1,21 @@
 import type { NodeMigration } from '../node-migration';
 import { asParameters, isExpression, pickDefined } from '../parameter-readers';
 
+const EMPTY_TEXT_NOTE =
+	'A value that returns "Text" now has no value, not an empty text, when its selector finds nothing or the element has no text. Check the nodes that read these values.';
+
+// The default return value is `text`, and saved workflows omit defaults. An expression
+// can also give `text`.
+function mayReturnText(extractionValues: unknown): boolean {
+	const values = asParameters(extractionValues)?.values;
+	if (!Array.isArray(values)) return false;
+
+	return values.some((value) => {
+		const { returnValue = 'text' } = asParameters(value) ?? {};
+		return returnValue === 'text' || isExpression(returnValue);
+	});
+}
+
 /**
  * HTML Extract to HTML (Extract HTML Content).
  *
@@ -20,8 +35,10 @@ import { asParameters, isExpression, pickDefined } from '../parameter-readers';
  *   `undefined` or `0`) trims in the old node and does not trim in the new node.
  *
  * Accepted changes:
- * - With the text return value, a selector that matches nothing gives a missing key
- *   instead of an empty string. The ticket accepts this.
+ * - With the text return value, a selector that matches nothing, or an element with no
+ *   text, gives no value instead of an empty string. The ticket accepts this. The
+ *   migration reports a note when a value can use the text return value. The note also
+ *   turns off the one-click republish.
  */
 export const htmlExtractToHtml: NodeMigration = {
 	ruleId: 'html-extract-removed-v3',
@@ -49,6 +66,7 @@ export const htmlExtractToHtml: NodeMigration = {
 					options: { trimValues: options.trimValues ?? true, cleanUpText: false },
 				},
 			},
+			notes: mayReturnText(node.parameters.extractionValues) ? [EMPTY_TEXT_NOTE] : undefined,
 		};
 	},
 };

@@ -33,7 +33,56 @@ describe('htmlExtractToHtml migration', () => {
 				options: { trimValues: false, cleanUpText: false },
 			},
 		});
-		expect(result.notes).toBeUndefined();
+	});
+
+	describe('note about the empty text', () => {
+		const migrateWith = (values: unknown[]) =>
+			htmlExtractToHtml.migrate(
+				createNode('Extract', 'n8n-nodes-base.htmlExtract', { extractionValues: { values } }),
+			);
+
+		it.each([
+			['the text return value', [{ key: 'a', cssSelector: 'h1', returnValue: 'text' }]],
+			['no return value, because the default is text', [{ key: 'a', cssSelector: 'h1' }]],
+			[
+				'an expression for the return value',
+				[{ key: 'a', cssSelector: 'h1', returnValue: '={{ $json.kind }}' }],
+			],
+			[
+				'text next to other return values',
+				[
+					{ key: 'a', cssSelector: 'a', returnValue: 'attribute', attribute: 'href' },
+					{ key: 'b', cssSelector: 'h1', returnValue: 'text', returnArray: true },
+				],
+			],
+		])('reports one note for %s', (_name, values) => {
+			expect(migrateWith(values).notes).toEqual([expect.stringContaining('no value')]);
+		});
+
+		it('reports one note for several text values', () => {
+			const { notes } = migrateWith([
+				{ key: 'a', cssSelector: 'h1', returnValue: 'text' },
+				{ key: 'b', cssSelector: 'h2', returnValue: 'text' },
+			]);
+
+			expect(notes).toHaveLength(1);
+		});
+
+		it.each([
+			['html', { key: 'a', cssSelector: 'h1', returnValue: 'html' }],
+			['attribute', { key: 'a', cssSelector: 'a', returnValue: 'attribute', attribute: 'href' }],
+			['value', { key: 'a', cssSelector: 'input', returnValue: 'value' }],
+		])('reports no note when every value returns %s', (_name, value) => {
+			expect(migrateWith([value]).notes).toBeUndefined();
+		});
+
+		it('reports no note for a node with no extraction values', () => {
+			const { notes } = htmlExtractToHtml.migrate(
+				createNode('Extract', 'n8n-nodes-base.htmlExtract', {}),
+			);
+
+			expect(notes).toBeUndefined();
+		});
 	});
 
 	it('writes trimValues explicitly, because the old node trims when it is missing', () => {

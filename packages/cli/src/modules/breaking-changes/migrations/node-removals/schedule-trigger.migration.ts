@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { INodeParameters } from 'n8n-workflow';
 
 import type { NodeMigration } from '../node-migration';
@@ -13,7 +14,12 @@ const scheduleTrigger = (...intervals: INodeParameters[]) => ({
 	parameters: { rule: { interval: intervals } },
 });
 
-function cronItemToRule(item: INodeParameters): INodeParameters {
+// Cron picked a random minute for "every X hours". A fixed minute 0 would start all migrated
+// workflows together. The hash gives each rule its own minute, and the same one on every run.
+const spreadMinute = (seed: string) =>
+	createHash('sha256').update(seed).digest().readUInt32BE(0) % 60;
+
+function cronItemToRule(item: INodeParameters, seed: string): INodeParameters {
 	// Defaults come from `NodeHelpers.cronNodeOptions`. Saved workflows omit them.
 	const mode = readString(item, 'mode', 'everyDay', 'Mode');
 	const time = () => ({
@@ -60,7 +66,7 @@ function cronItemToRule(item: INodeParameters): INodeParameters {
 			}
 			if (unit === 'hours') {
 				const value = readInteger(item, 'value', 2, 'Value', { min: 1, max: 23 });
-				return { field: 'hours', hoursInterval: value };
+				return { field: 'hours', hoursInterval: value, triggerAtMinute: spreadMinute(seed) };
 			}
 			throw new Error(`Cron unit "${unit}" is not supported, so the node cannot be migrated.`);
 		}
@@ -96,11 +102,12 @@ const UNEVEN_STEP_NOTE =
  *   times.
  * - Writes: every value explicitly, because the Cron defaults (for example hour 14)
  *   differ from the Schedule Trigger defaults.
+ * - Picks: a minute for `everyX` hours, from a hash of the node id and the rule position.
+ *   Cron picked a random minute, and the default minute 0 would start all migrated
+ *   workflows together.
  *
  * Refuses when:
  * - There are no trigger times: Cron never fires, but Schedule Trigger fires every day.
- * - Two trigger times become the same rule: Cron fires each at its own random second, but
- *   Schedule Trigger registers equal rules once.
  * - A value is an expression or is out of range.
  * - `everyX` is outside 1-59 for minutes or 1-23 for hours, or has an unknown unit.
  * - The mode is unknown.
@@ -111,6 +118,13 @@ const UNEVEN_STEP_NOTE =
  *   migration reports a note. The note also turns off the one-click republish.
  * - Cron picks a random second at each activation and Schedule Trigger picks a stable
  *   one. The second is not a setting.
+ * - The minute of `everyX` hours is fixed at migration. Cron picked a new minute at each
+ *   activation.
+ * - Trigger times that fire at the same moment give one execution. Cron fired each at its
+ *   own random second and ran twice. Schedule Trigger uses one stable second for the node
+ *   and drops the second run. The two runs got the same input, because Cron has no
+ *   output that names the trigger time. This applies to equal rules and to overlapping
+ *   rules, such as "every 5 minutes" and "every hour at minute 0".
  * - The output has extra date fields.
  */
 export const cronToScheduleTrigger: NodeMigration = {
@@ -125,17 +139,9 @@ export const cronToScheduleTrigger: NodeMigration = {
 			);
 		}
 
-		const migratedRules = rules.map((rule) => cronItemToRule(rule ?? {}));
-
-		// Schedule Trigger derives one stable second for each node. Two equal rules then
-		// produce the same cron expression, and the scheduler registers it only once.
-		// Cron fired twice, at two random seconds.
-		const serialized = migratedRules.map((rule) => JSON.stringify(rule));
-		if (new Set(serialized).size !== serialized.length) {
-			throw new Error(
-				'This Cron node has two identical trigger times. Schedule Trigger would run them once, so the node cannot be migrated automatically.',
-			);
-		}
+		const migratedRules = rules.map((rule, index) =>
+			cronItemToRule(rule ?? {}, `${node.id}:${index}`),
+		);
 
 		return {
 			node: scheduleTrigger(...migratedRules),
