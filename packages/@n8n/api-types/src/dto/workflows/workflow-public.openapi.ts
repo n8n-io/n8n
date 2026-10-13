@@ -299,6 +299,10 @@ export const metaOpenApi: ZodOpenAPIMetadata = alsoNullable({
 	},
 });
 
+export const parentFolderOpenApi: ZodOpenAPIMetadata = {
+	description: 'Folder that contains the workflow, or null at the project root',
+};
+
 /** `ZodOpenAPIMetadata` is a union, which will not assign into a nested `properties` slot. */
 function nestingDescriptor(schema: Record<string, unknown>): ZodOpenAPIMetadata {
 	return schema;

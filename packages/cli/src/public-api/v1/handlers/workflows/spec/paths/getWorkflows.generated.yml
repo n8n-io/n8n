@@ -540,6 +540,15 @@ responses:
                       - autosaved
                       - createdAt
                       - updatedAt
+                  parentFolder:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: string
+                    required:
+                      - id
+                    description: Folder that contains the workflow, or null at the project root
                 required:
                   - id
                   - name
@@ -558,6 +567,7 @@ responses:
                   - meta
                   - shared
                   - activeVersion
+                  - parentFolder
             nextCursor:
               type: string
               nullable: true

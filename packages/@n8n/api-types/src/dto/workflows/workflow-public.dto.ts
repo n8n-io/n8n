@@ -9,6 +9,7 @@ import {
 	metaOpenApi,
 	nodeGroupsOpenApi,
 	nodesOpenApi,
+	parentFolderOpenApi,
 	pinDataOpenApi,
 	settingsOpenApi,
 	staticDataOpenApi,
@@ -118,6 +119,10 @@ export const workflowParentFolderPublicSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 
+export const workflowParentFolderRefPublicSchema = workflowParentFolderPublicSchema.pick({
+	id: true,
+});
+
 export const createdWorkflowPublicSchema = workflowPublicSchema.extend({
 	parentFolder: workflowParentFolderPublicSchema
 		.nullable()
@@ -125,6 +130,12 @@ export const createdWorkflowPublicSchema = workflowPublicSchema.extend({
 });
 
 export class CreatedWorkflowPublicDto extends Z.class(createdWorkflowPublicSchema.shape) {}
+
+export const retrievedWorkflowPublicSchema = workflowPublicSchema.extend({
+	parentFolder: workflowParentFolderRefPublicSchema.nullable().openapi(parentFolderOpenApi),
+});
+
+export class RetrievedWorkflowPublicDto extends Z.class(retrievedWorkflowPublicSchema.shape) {}
 
 export const workflowPublishPublicSchema = workflowPublicSchema.omit({ shared: true });
 
@@ -168,6 +179,7 @@ export const workflowListItemPublicSchema = workflowPublicSchema
 	.extend({
 		shared: z.array(workflowListItemSharedPublicSchema),
 		activeVersion: workflowListItemActiveVersionPublicSchema.nullable(),
+		parentFolder: workflowParentFolderRefPublicSchema.nullable().openapi(parentFolderOpenApi),
 	});
 
 export class WorkflowListPublicDto extends Z.class({
