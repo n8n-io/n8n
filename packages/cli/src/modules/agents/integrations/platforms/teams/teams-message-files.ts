@@ -36,11 +36,13 @@ function toBuffer(data: unknown): Buffer {
 	throw new Error('Microsoft Graph returned no file content');
 }
 
-/** The Graph token goes only to Graph, and only for content hosted on a message. */
-function isHostedContentUrl(src: string): boolean {
+/** The Graph token goes only to Graph, and only for content hosted on this message. */
+function isHostedOn(messagePath: string, src: string): boolean {
 	try {
 		const url = new URL(src);
-		return url.origin === GRAPH_ORIGIN && url.pathname.includes('/hostedContents/');
+		const path = decodeURIComponent(url.pathname);
+		const hosted = decodeURIComponent(`/v1.0${messagePath}/hostedContents/`);
+		return url.origin === GRAPH_ORIGIN && path.startsWith(hosted) && !path.includes('/..');
 	} catch {
 		return false;
 	}
@@ -178,7 +180,6 @@ export async function fetchTeamsMessageFiles(
 	const message = await getOrExplain(http, `${GRAPH_V1}${paths.message}`, MESSAGE_ACCESS_DENIED);
 	if (!isRecord(message)) return [];
 	const senderId = isRecord(message.from) ? stringProperty(message.from.user, 'id') : undefined;
-	// The same folder for every file on the message, so it is read once.
 	let channelDrive: Promise<string | undefined> | undefined;
 	const channelDriveId = async () =>
 		await (channelDrive ??= paths.filesFolder
@@ -206,7 +207,7 @@ export async function fetchTeamsMessageFiles(
 	// Hosted content needs only the message read permission, not Files.Read.All.
 	const body = stringProperty(message.body, 'content') ?? '';
 	for (const [, src] of body.matchAll(/<img[^>]+src="([^"]+)"/g)) {
-		if (!isHostedContentUrl(src)) continue;
+		if (!isHostedOn(paths.message, src)) continue;
 		files.push({
 			type: 'image',
 			name: 'image',

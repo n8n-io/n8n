@@ -181,6 +181,27 @@ describe('fetchTeamsMessageFiles', () => {
 		expect(await fetchTeamsMessageFiles(http, channelActivity('100', '100'))).toEqual([]);
 	});
 
+	it('reads an image whose address spells the channel id out, as Teams writes it', async () => {
+		const src = `${GRAPH}/teams/${TEAM}/channels/${CHANNEL}/messages/100/hostedContents/abc/$value`;
+		const { http } = graphRouting({ [ROOT_PATH]: { body: { content: `<img src="${src}">` } } });
+
+		expect(await fetchTeamsMessageFiles(http, channelActivity('100', '100'))).toHaveLength(1);
+	});
+
+	it('ignores Graph content that is not hosted on this message', async () => {
+		const elsewhere = [
+			`${GRAPH}${CHANNEL_PATH}/messages/200/hostedContents/abc/$value`,
+			`${GRAPH}/drives/d1/root:/hostedContents/plan.pdf:/content`,
+		];
+		const { http } = graphRouting({
+			[ROOT_PATH]: {
+				body: { content: elsewhere.map((src) => `<img src="${src}">`).join('') },
+			},
+		});
+
+		expect(await fetchTeamsMessageFiles(http, channelActivity('100', '100'))).toEqual([]);
+	});
+
 	it('ignores attachments that are not files, such as cards', async () => {
 		const { http } = graphRouting({
 			[ROOT_PATH]: {

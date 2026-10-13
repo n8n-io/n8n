@@ -428,11 +428,11 @@ onBeforeUnmount(() => clearTimeout(fileAccessRecheck));
 async function loadFileAccess() {
 	clearTimeout(fileAccessRecheck);
 	fileAccessStatus.value = null;
+	const justApproved = fileAccessJustApproved.value;
+	fileAccessJustApproved.value = false;
 	const id = credentialId.value;
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
 	fileAccessStatus.value = 'checking';
-	const justApproved = fileAccessJustApproved.value;
-	fileAccessJustApproved.value = false;
 	if (justApproved) {
 		fileAccessRecheck = setTimeout(
 			() => void checkFileAccess(id, FILE_ACCESS_RECHECKS),

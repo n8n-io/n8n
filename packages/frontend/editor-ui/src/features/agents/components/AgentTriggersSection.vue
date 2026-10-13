@@ -8,6 +8,7 @@ import type {
 } from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -266,6 +267,7 @@ function handleChannelConnected(channelType: string) {
 const FILE_ACCESS_CONSENT_STATE: TeamsFileAccessConsentState = 'teams-file-access';
 const route = useRoute();
 const router = useRouter();
+const toast = useToast();
 
 /**
  * Microsoft returns an administrator here after the Teams file access consent,
@@ -282,6 +284,13 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 		route.query;
 	void router.replace({ query });
 	fileAccessJustApproved.value = admin_consent === 'True';
+	// Microsoft's own error text arrives in the address, so only fixed text is shown.
+	if (error) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.channels.teams.fileAccessConsentFailed'),
+		});
+	}
 	openChannelEdit(
 		'teams',
 		props.connectedTriggers.includes('teams') || integrationStatus.isConfigured('teams'),

@@ -209,6 +209,21 @@ describe('TeamsEntraProvisioningService', () => {
 		expect(result.fileAccessConsentUrl).toBeNull();
 	});
 
+	it('still finishes the setup when Microsoft cannot be reached for the declaration', async () => {
+		const routes = routeGraph();
+		graph.request.mockImplementation(async (_token: string, method: string, path: string) => {
+			if (method === 'PATCH' && path === `/applications/${OBJECT_ID}`) {
+				throw new Error('socket hang up');
+			}
+			return routes[`${method} ${path}`] ?? failed(404);
+		});
+
+		const result = await service.provision(options);
+
+		expect(result.credentialId).toBe('bot-cred-1');
+		expect(result.fileAccessConsentUrl).toBeNull();
+	});
+
 	it('writes the channel credential itself, so the user never handles a secret', async () => {
 		const result = await service.provision(options);
 

@@ -104,12 +104,13 @@ const TENANT_ID_DOMAIN =
  * In a channel that subscription covers the one thread, because the thread id
  * carries the root message id. In a group chat it covers the whole chat.
  *
- * Reading messages without a mention is a setup choice for each surface. The
- * manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only
- * when `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants
+ * The manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat`
+ * for each surface that is on, so files can be read through Graph. Teams grants
  * them when the app is added to a team or a chat, and they make Teams deliver
- * every message instead of mentions alone. Each such message runs the agent
- * with an optional reply, so the agent decides whether to speak.
+ * every message instead of mentions alone. Acting on a message without a
+ * mention is a setup choice for each surface: `readAllChannelMessages` and
+ * `readAllGroupMessages`. Each such message runs the agent with an optional
+ * reply, so the agent decides whether to speak.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {

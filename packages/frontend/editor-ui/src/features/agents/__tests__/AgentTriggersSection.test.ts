@@ -64,13 +64,14 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ replace: routerReplace }),
 }));
 
-const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy } = vi.hoisted(
+const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessageSpy } = vi.hoisted(
 	function createStatusSpy() {
 		return {
 			fetchStatusSpy: vi.fn().mockResolvedValue(undefined),
 			disconnectSpy: vi.fn(),
 			loadRuntimeSpy: vi.fn(),
 			showErrorSpy: vi.fn(),
+			showMessageSpy: vi.fn(),
 		};
 	},
 );
@@ -80,7 +81,7 @@ const configured = ref<Record<string, boolean>>({});
 const managedCredential = ref(false);
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorSpy }),
+	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
 }));
 
 vi.mock('../channels/slack/useSlackChannelRuntime', async (importOriginal) => ({
@@ -199,6 +200,27 @@ describe('AgentTriggersSection', () => {
 
 		const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
 		expect(modal.attributes('data-view')).toBe('teams_edit');
+	});
+
+	it('says so when the file access consent was not given', async () => {
+		catalogItems.value = [{ type: 'teams', label: 'Microsoft Teams', icon: 'teams' }];
+		routeQuery.value = {
+			state: 'teams-file-access',
+			error: 'access_denied',
+			error_description: 'AADSTS65004: User declined to consent',
+		};
+
+		const wrapper = mountSection(undefined, true, { connectedTriggers: ['teams'] });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
+			'teams_edit',
+		);
+		expect(fileAccessJustApproved.value).toBe(false);
+		expect(showMessageSpy).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'agents.channels.teams.fileAccessConsentFailed',
+		});
 	});
 
 	it('opens nothing on an ordinary visit', async () => {

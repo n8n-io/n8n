@@ -4,7 +4,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import jwt from 'jsonwebtoken';
+import { jsonParse } from 'n8n-workflow';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
@@ -158,7 +158,10 @@ function clientSecretOf(data: unknown): ClientSecret | undefined {
  * without verifying the signature.
  */
 function rolesOf(token: string): string[] {
-	const payload = jwt.decode(token);
+	const payload: unknown = jsonParse(
+		Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
+		{ fallbackValue: {} },
+	);
 	const roles = isRecord(payload) ? payload.roles : undefined;
 	return Array.isArray(roles)
 		? roles.filter((role): role is string => typeof role === 'string')

@@ -1255,7 +1255,6 @@ describe('AgentChannelTeamsManagedSetup', () => {
 					Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
 			await waitFor(() => expect(getByTestId('teams-file-access-menu')).toBeVisible());
-			// Not repeated as a callout on the availability step.
 			expect(queryByTestId('teams-file-access')).not.toBeInTheDocument();
 		});
 

@@ -316,6 +316,18 @@ export class TeamsEntraProvisioningService {
 		objectId: string,
 		redirectUri: string | undefined,
 	): Promise<boolean> {
+		try {
+			return await this.mergeFileAccess(token, objectId, redirectUri);
+		} catch {
+			return false;
+		}
+	}
+
+	private async mergeFileAccess(
+		token: string,
+		objectId: string,
+		redirectUri: string | undefined,
+	): Promise<boolean> {
 		const current = await this.graph.request(
 			token,
 			'GET',
