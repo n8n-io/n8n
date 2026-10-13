@@ -11,8 +11,8 @@ import type { WorkflowPreviewExample as WorkflowPreviewExampleData } from '../ty
 import WorkflowPreviewExample from './WorkflowPreviewExample.vue';
 
 const emit = defineEmits<{
-	'preview-prompt': [promptKey: string | null];
-	'use-example': [example: WorkflowPreviewExampleData];
+	'preview-prompt': [promptKey: BaseTextKey | null];
+	'use-example': [example: WorkflowPreviewExampleData, position: number];
 }>();
 
 const i18n = useI18n();
@@ -33,13 +33,26 @@ const activeExample = computed(
 );
 const canNavigate = WORKFLOW_PREVIEW_EXAMPLES.length > 1;
 
-function translate(key: string) {
-	return i18n.baseText(key as BaseTextKey);
-}
-
 function showExampleAtOffset(offset: number) {
 	const total = WORKFLOW_PREVIEW_EXAMPLES.length;
 	activeExampleIndex.value = (activeExampleIndex.value + offset + total) % total;
+}
+
+// Some browsers also focus a button on mouse click. Only keyboard focus keeps
+// the unit active after the pointer leaves.
+let isPointerPressed = false;
+
+function handleUnitPointerDown() {
+	isPointerPressed = true;
+}
+
+function handleUnitPointerUp() {
+	isPointerPressed = false;
+}
+
+function handleUnitFocusIn() {
+	hasFocusWithin.value = !isPointerPressed;
+	isPointerPressed = false;
 }
 
 function handleUnitLeave() {
@@ -63,7 +76,9 @@ function handleUnitFocusOut(event: FocusEvent) {
 			data-test-id="workflow-preview-unit"
 			@mouseenter="isPointerInside = true"
 			@mouseleave="handleUnitLeave"
-			@focusin="hasFocusWithin = true"
+			@pointerdown="handleUnitPointerDown"
+			@pointerup="handleUnitPointerUp"
+			@focusin="handleUnitFocusIn"
 			@focusout="handleUnitFocusOut"
 		>
 			<div
@@ -104,7 +119,7 @@ function handleUnitFocusOut(event: FocusEvent) {
 					</N8nButton>
 
 					<h3 :class="$style.title" data-test-id="workflow-preview-title">
-						{{ translate(activeExample.titleKey) }}
+						{{ i18n.baseText(activeExample.titleKey) }}
 					</h3>
 
 					<N8nButton
@@ -129,7 +144,7 @@ function handleUnitFocusOut(event: FocusEvent) {
 					@mouseleave="emit('preview-prompt', null)"
 					@focus="emit('preview-prompt', activeExample.promptKey)"
 					@blur="emit('preview-prompt', null)"
-					@click="emit('use-example', activeExample)"
+					@click="emit('use-example', activeExample, activeExampleIndex + 1)"
 				>
 					{{ i18n.baseText('experiments.workflowPreviewsAboveAssistant.tryExample') }}
 				</N8nButton>

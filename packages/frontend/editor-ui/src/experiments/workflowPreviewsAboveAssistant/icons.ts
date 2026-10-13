@@ -30,8 +30,6 @@ function fileIcon(src: string, lightInvert = false): PreviewIcon {
 	return { icon: { type: 'file', src, lightInvert } };
 }
 
-// Icons referenced by key from `examples.json`, so the JSON stays free of
-// inline SVG data and every icon is either a known brand asset or a Lucide name.
 export const PREVIEW_ICONS: Record<string, PreviewIcon> = {
 	anthropic: fileIcon(ANTHROPIC_ICON_SVG),
 	firecrawl: fileIcon(FIRECRAWL_ICON_PNG),

@@ -1,4 +1,6 @@
 // Experiment cleanup (124_workflow_previews_above_assistant)
+import type { BaseTextKey } from '@n8n/i18n';
+
 export interface WorkflowPreviewPosition {
 	x: number;
 	y: number;
@@ -6,7 +8,7 @@ export interface WorkflowPreviewPosition {
 
 export interface WorkflowPreviewNode {
 	id: string;
-	labelKey: string;
+	labelKey: BaseTextKey;
 	icon: string;
 	position: WorkflowPreviewPosition;
 }
@@ -19,8 +21,8 @@ export interface WorkflowPreviewConnection {
 export interface WorkflowPreviewCardVisualization {
 	type: 'salesforce-card';
 	icon: string;
-	titleKey: string;
-	subtitleKey: string;
+	titleKey: BaseTextKey;
+	subtitleKey: BaseTextKey;
 }
 
 export interface WorkflowPreviewSpreadsheetVisualization {
@@ -29,8 +31,8 @@ export interface WorkflowPreviewSpreadsheetVisualization {
 
 export interface WorkflowPreviewSlackMessageVisualization {
 	type: 'slack-message';
-	senderKey: string;
-	messageKey: string;
+	senderKey: BaseTextKey;
+	messageKey: BaseTextKey;
 }
 
 export type WorkflowPreviewVisualization =
@@ -49,8 +51,8 @@ export interface WorkflowPreviewIconCycle {
 
 export interface WorkflowPreviewExample {
 	id: string;
-	titleKey: string;
-	promptKey: string;
+	titleKey: BaseTextKey;
+	promptKey: BaseTextKey;
 	nodes: WorkflowPreviewNode[];
 	connections: WorkflowPreviewConnection[];
 	inputVisualization?: WorkflowPreviewCardVisualization;

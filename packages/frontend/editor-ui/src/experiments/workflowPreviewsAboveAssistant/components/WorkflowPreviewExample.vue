@@ -2,7 +2,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useElementSize, usePreferredReducedMotion } from '@vueuse/core';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 
 import { NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
 import type { NodeAnimationState } from '@/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewCanvas.vue';
@@ -68,10 +68,6 @@ const runId = ref(0);
 const nodeStates = reactive<Record<string, NodeAnimationState>>({});
 const executing = computed(() => phase.value !== 'building' && phase.value !== 'idle');
 const outputsActive = computed(() => phase.value === 'output' || phase.value === 'done');
-
-function translate(key: string) {
-	return i18n.baseText(key as BaseTextKey);
-}
 
 const executionSteps = computed(() => {
 	const incomingNodes = new Map<string, Set<string>>();
@@ -146,7 +142,7 @@ const stageBounds = computed(() => layout.value.stageBounds);
 const previewNodes = computed((): PreviewWorkflowNode[] =>
 	props.example.nodes.map((node) => ({
 		id: node.id,
-		label: translate(node.labelKey),
+		label: i18n.baseText(node.labelKey),
 		...getPreviewIcon(node.icon),
 		position: { x: node.position.x, y: node.position.y + NODE_LABEL_OFFSET },
 	})),
@@ -488,8 +484,8 @@ onUnmounted(() => {
 						:icon="getCardIcon(inputVisualization.icon).src"
 						:icon-override="getCardIconOverride(inputVisualization.icon)"
 						:light-invert="getCardIcon(inputVisualization.icon).lightInvert"
-						:title="translate(inputVisualization.titleKey)"
-						:subtitle="translate(inputVisualization.subtitleKey)"
+						:title="i18n.baseText(inputVisualization.titleKey)"
+						:subtitle="i18n.baseText(inputVisualization.subtitleKey)"
 						@complete="handleInputComplete"
 					/>
 				</div>
@@ -511,8 +507,8 @@ onUnmounted(() => {
 						v-else-if="output.type === 'slack-message'"
 						:key="runId"
 						:active="outputsActive"
-						:sender="translate(output.senderKey)"
-						:message="translate(output.messageKey)"
+						:sender="i18n.baseText(output.senderKey)"
+						:message="i18n.baseText(output.messageKey)"
 						@complete="handleOutputComplete"
 					/>
 					<SalesforceCardVisualization
@@ -522,8 +518,8 @@ onUnmounted(() => {
 						:icon="getCardIcon(output.icon).src"
 						:icon-override="getCardIconOverride(output.icon)"
 						:light-invert="getCardIcon(output.icon).lightInvert"
-						:title="translate(output.titleKey)"
-						:subtitle="translate(output.subtitleKey)"
+						:title="i18n.baseText(output.titleKey)"
+						:subtitle="i18n.baseText(output.subtitleKey)"
 						@complete="handleOutputComplete"
 					/>
 				</div>

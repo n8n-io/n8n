@@ -1,5 +1,6 @@
 // Experiment cleanup (124_workflow_previews_above_assistant)
 import { describe, expect, it } from 'vitest';
+import type { BaseTextKey } from '@n8n/i18n';
 
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
@@ -18,15 +19,17 @@ import type { WorkflowPreviewExample } from './types';
 
 const CARD_WIDTH = CARD_NATIVE_WIDTH * CARD_SCALE;
 const CARD_GAP = GRID_SIZE * 2;
+const TEXT_KEY: BaseTextKey =
+	'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.title';
 
 function createExample(overrides: Partial<WorkflowPreviewExample> = {}): WorkflowPreviewExample {
 	return {
 		id: 'example',
-		titleKey: 'title',
-		promptKey: 'prompt',
+		titleKey: TEXT_KEY,
+		promptKey: TEXT_KEY,
 		nodes: [
-			{ id: 'trigger', labelKey: 'trigger', icon: 'bolt', position: { x: 0, y: 0 } },
-			{ id: 'action', labelKey: 'action', icon: 'bolt', position: { x: 200, y: 0 } },
+			{ id: 'trigger', labelKey: TEXT_KEY, icon: 'bolt', position: { x: 0, y: 0 } },
+			{ id: 'action', labelKey: TEXT_KEY, icon: 'bolt', position: { x: 200, y: 0 } },
 		],
 		connections: [{ source: 'trigger', target: 'action' }],
 		...overrides,
@@ -36,8 +39,8 @@ function createExample(overrides: Partial<WorkflowPreviewExample> = {}): Workflo
 const salesforceCard = {
 	type: 'salesforce-card',
 	icon: 'salesforce',
-	titleKey: 'title',
-	subtitleKey: 'subtitle',
+	titleKey: TEXT_KEY,
+	subtitleKey: TEXT_KEY,
 } as const;
 
 describe('computePreviewLayout', () => {
@@ -100,8 +103,8 @@ describe('computePreviewLayout', () => {
 					{ ...salesforceCard, targetNodeId: 'action' },
 					{
 						type: 'slack-message',
-						senderKey: 'sender',
-						messageKey: 'message',
+						senderKey: TEXT_KEY,
+						messageKey: TEXT_KEY,
 						targetNodeId: 'action',
 					},
 				],
@@ -136,8 +139,8 @@ describe('getReservedPreviewHeight', () => {
 		const short = createExample();
 		const tall = createExample({
 			nodes: [
-				{ id: 'trigger', labelKey: 'trigger', icon: 'bolt', position: { x: 0, y: 0 } },
-				{ id: 'action', labelKey: 'action', icon: 'bolt', position: { x: 200, y: 300 } },
+				{ id: 'trigger', labelKey: TEXT_KEY, icon: 'bolt', position: { x: 0, y: 0 } },
+				{ id: 'action', labelKey: TEXT_KEY, icon: 'bolt', position: { x: 200, y: 300 } },
 			],
 		});
 		const tallHeight = computePreviewLayout(tall).stageBounds.height;

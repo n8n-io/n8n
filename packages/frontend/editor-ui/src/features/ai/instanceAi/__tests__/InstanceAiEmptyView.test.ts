@@ -142,6 +142,7 @@ vi.mock('@/experiments/workflowPreviewsAboveAssistant', async () => {
 			isFeatureEnabled: computed(() => experimentMocks.workflowPreviewsAboveAssistantEnabled.value),
 			variant: computed(() => experimentMocks.workflowPreviewsAboveAssistantVariant.value),
 		}),
+		WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION: 'v5-workflow-previews-above-assistant',
 		WorkflowPreviewsAboveAssistant: {
 			name: 'WorkflowPreviewsAboveAssistantStub',
 			emits: ['preview-prompt', 'use-example'],
@@ -153,7 +154,7 @@ vi.mock('@/experiments/workflowPreviewsAboveAssistant', async () => {
 					@click="$emit('use-example', {
 						id: 'score-my-leads',
 						promptKey: 'experiments.workflowPreviewsAboveAssistant.examples.scoreMyLeads.prompt',
-					})"
+					}, 1)"
 				/>
 			</div>`,
 		},
@@ -466,6 +467,19 @@ const InstanceAiInputStub = defineComponent({
 				};
 				submit(prompt);
 			},
+			insertSuggestion: async (payload: {
+				promptKey: BaseTextKey;
+				suggestionId: string;
+				prefillType: InstanceAiPrefillType;
+			}) => {
+				const prompt = i18n.baseText(payload.promptKey);
+				currentText.value = prompt;
+				activePrefill.value = {
+					text: prompt,
+					prefillType: payload.prefillType,
+					prefillId: payload.suggestionId,
+				};
+			},
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
@@ -712,7 +726,9 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-empty-layout').className).toContain('workflowPreviewsLayout');
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v5-workflow-previews-above-assistant',
+		);
 	});
 
 	it.each(['control', 'variant'] as const)(
@@ -813,6 +829,32 @@ describe('InstanceAiEmptyView', () => {
 
 		await fireEvent.animationEnd(getByTestId('instance-ai-centered-input'));
 		expect(getByTestId('instance-ai-centered-input').className).not.toContain('promptInjected');
+	});
+
+	it('attributes a submitted example to its suggestion entry', async () => {
+		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('workflow-preview-try-example'));
+		await nextTick();
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'Build a workflow that triggers when a new lead is created in my CRM.',
+			),
+			expect.objectContaining({
+				authorship: {
+					kind: 'prefill',
+					prefillType: 'suggestion_catalog',
+					prefillId: 'score-my-leads',
+					promptModified: false,
+				},
+			}),
+		);
 	});
 	// EOF Experiment cleanup
 
@@ -1308,6 +1350,20 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	it('does not track personalized prompt suggestions exposure when the workflow previews replace the suggestions', () => {
+		experimentMocks.personalizedPromptVariant.value = 'control';
+		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
+
+		renderView();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			'Instance AI personalized prompt suggestions exposed',
+			expect.anything(),
+		);
+	});
+	// EOF Experiment cleanup
+
 	it('tracks inspiration from taxonomy exposure for a control user with a mapped role', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
 		appSettingsStoreMock.isCloudDeployment = true;
@@ -1353,6 +1409,14 @@ describe('InstanceAiEmptyView', () => {
 				experimentMocks.proactiveAgentEnabled.value = true;
 			},
 		},
+		// Experiment cleanup (124_workflow_previews_above_assistant)
+		{
+			name: 'the workflow previews layout',
+			setup: () => {
+				experimentMocks.workflowPreviewsAboveAssistantEnabled.value = true;
+			},
+		},
+		// EOF Experiment cleanup
 	])('does not track inspiration from taxonomy exposure when $name is active', ({ setup }) => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
 		appSettingsStoreMock.isCloudDeployment = true;

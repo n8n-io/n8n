@@ -50,6 +50,7 @@ import {
 } from '@/experiments/instanceAiPromptSuggestionsV2';
 // Experiment cleanup (124_workflow_previews_above_assistant)
 import {
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
 	WorkflowPreviewsAboveAssistant,
 	useWorkflowPreviewsAboveAssistantExperiment,
 	type WorkflowPreviewExampleData,
@@ -214,6 +215,7 @@ const workflowPreviewPromptKey = ref<BaseTextKey | null>(null);
 const workflowPreviewInjectPulse = ref(false);
 const workflowPreviewInputProps = computed(() => ({
 	previewPromptKey: composerHasContent.value ? null : workflowPreviewPromptKey.value,
+	suggestionCatalogVersion: WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_SUGGESTIONS_VERSION,
 }));
 // EOF Experiment cleanup
 const {
@@ -241,6 +243,7 @@ const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 		!showProactiveStarter.value &&
 		!isSplitLayoutActive.value &&
 		!forcesDefaultEmptyLayout.value &&
+		!showWorkflowPreviewsAboveAssistant.value && // Experiment cleanup (124_workflow_previews_above_assistant)
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
@@ -260,6 +263,12 @@ const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
 	if (showProactiveStarter.value || isSplitLayoutActive.value || forcesDefaultEmptyLayout.value) {
 		return false;
 	}
+
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	if (showWorkflowPreviewsAboveAssistant.value) {
+		return false;
+	}
+	// EOF Experiment cleanup
 
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return false;
@@ -832,18 +841,22 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 }
 
 // Experiment cleanup (124_workflow_previews_above_assistant)
-function handleWorkflowPreviewPrompt(promptKey: string | null) {
-	workflowPreviewPromptKey.value = promptKey as BaseTextKey | null;
+function handleWorkflowPreviewPrompt(promptKey: BaseTextKey | null) {
+	workflowPreviewPromptKey.value = promptKey;
 }
 
-async function handleWorkflowPreviewExampleUse(example: WorkflowPreviewExampleData) {
+async function handleWorkflowPreviewExampleUse(
+	example: WorkflowPreviewExampleData,
+	position: number,
+) {
 	workflowPreviewPromptKey.value = null;
-	chatInputRef.value?.setPrefill({
-		text: i18n.baseText(example.promptKey as BaseTextKey),
+	await chatInputRef.value?.insertSuggestion({
+		promptKey: example.promptKey,
+		suggestionId: example.id,
+		suggestionKind: 'prompt',
+		position,
 		prefillType: 'suggestion_catalog',
-		prefillId: example.id,
 	});
-	chatInputRef.value?.focus();
 
 	workflowPreviewInjectPulse.value = false;
 	await nextTick();

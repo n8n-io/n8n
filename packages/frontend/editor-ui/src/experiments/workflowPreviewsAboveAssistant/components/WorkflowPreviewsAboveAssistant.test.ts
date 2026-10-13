@@ -164,7 +164,7 @@ describe('WorkflowPreviewsAboveAssistant', () => {
 
 		await fireEvent.click(button);
 		expect(emitted()['use-example']).toEqual([
-			[expect.objectContaining({ id: 'score-my-leads', promptKey: scoreMyLeadsPromptKey })],
+			[expect.objectContaining({ id: 'score-my-leads', promptKey: scoreMyLeadsPromptKey }), 1],
 		]);
 
 		await fireEvent.mouseLeave(button);
@@ -212,6 +212,37 @@ describe('WorkflowPreviewsAboveAssistant', () => {
 
 		expect(button.className).toContain('tryExampleVisible');
 		expect(emitted()['preview-prompt']?.at(-1)).not.toEqual([null]);
+	});
+
+	it('reports the position of the example the user tries', async () => {
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const { getByTestId, emitted } = renderComponent();
+
+		await user.click(getByTestId('workflow-preview-next'));
+		await user.click(getByTestId('workflow-preview-next'));
+		await fireEvent.click(getByTestId('workflow-preview-try-example'));
+
+		expect(emitted()['use-example']).toEqual([
+			[expect.objectContaining({ id: 'process-invoices' }), 3],
+		]);
+	});
+
+	it('lets the unit rest when the pointer leaves after a mouse click on an arrow', async () => {
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const { getByTestId } = renderComponent();
+		const unit = getByTestId('workflow-preview-unit');
+		const next = getByTestId('workflow-preview-next');
+
+		await fireEvent.mouseEnter(unit);
+		await user.click(next);
+		expect(next).toHaveFocus();
+
+		await fireEvent.mouseLeave(unit);
+
+		expect(unit.className).toContain('unitDimmed');
+		expect(getByTestId('workflow-preview-try-example').className).not.toContain(
+			'tryExampleVisible',
+		);
 	});
 
 	it('labels the arrows for assistive technology', () => {
