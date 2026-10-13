@@ -8821,6 +8821,7 @@
 	"agents.builder.tools.type.custom": "Custom tool",
 	"agents.builder.tools.remove": "Remove",
 	"agents.builder.tools.back": "Back to tools",
+	"agents.builder.skills.outdated.title": "This agent uses an older version",
 	"agents.builder.skills.outdated.warning": "This agent uses an older version of this skill. To get the latest version, remove the skill and add it again.",
 	"agents.builder.skills.title": "Skills",
 	"agents.builder.skills.description": "How this agent handles specific tasks",
