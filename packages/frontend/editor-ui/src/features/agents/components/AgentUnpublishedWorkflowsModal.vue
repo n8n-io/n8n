@@ -22,13 +22,12 @@ const uiStore = useUIStore();
 const router = useRouter();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
-function openWorkflow(workflow: UnpublishedWorkflowTool) {
-	if (!workflow.workflowId) return;
+function workflowHref(workflow: UnpublishedWorkflowTool): string {
 	const { href } = router.resolve({
 		name: VIEWS.WORKFLOW,
-		params: { workflowId: workflow.workflowId },
+		params: { workflowId: workflow.workflowId ?? '' },
 	});
-	window.open(href, '_blank', 'noopener');
+	return href;
 }
 
 function closeModal() {
@@ -57,8 +56,10 @@ function closeModal() {
 					<a
 						v-if="workflow.workflowId"
 						:class="$style.link"
+						:href="workflowHref(workflow)"
+						target="_blank"
+						rel="noopener"
 						data-testid="agent-unpublished-workflow-link"
-						@click="openWorkflow(workflow)"
 					>
 						{{ workflow.name }}
 					</a>

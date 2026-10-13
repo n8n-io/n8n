@@ -24,8 +24,6 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: routerResolve }),
 }));
 
-const windowOpen = vi.fn();
-
 const stubs = {
 	AgentModal: AgentModalTestStub,
 	N8nText: { template: '<span><slot /></span>' },
@@ -41,14 +39,12 @@ describe('AgentUnpublishedWorkflowsModal', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
 		routerResolve.mockClear();
-		windowOpen.mockClear();
-		vi.spyOn(window, 'open').mockImplementation(windowOpen);
 		const uiStore = mockedStore(useUIStore);
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
 	});
 
-	it('lists unpublished workflows and opens the editor from a linked row', async () => {
+	it('lists unpublished workflows with real links to the editor', async () => {
 		const { getAllByTestId, getByTestId } = createComponentRenderer(
 			AgentUnpublishedWorkflowsModal,
 			{
@@ -69,18 +65,18 @@ describe('AgentUnpublishedWorkflowsModal', () => {
 		const links = getAllByTestId('agent-unpublished-workflow-link');
 		expect(links).toHaveLength(1);
 		expect(links[0]).toHaveTextContent('Daily lookup');
-		// A by-name reference has no stable id, so it renders as plain text.
-		expect(getByTestId('agent-unpublished-workflows-list')).toHaveTextContent(
-			'Legacy by-name reference',
-		);
-
-		await fireEvent.click(links[0]);
-
+		// Real anchors: focusable, exposed as links, opened in a new tab.
+		expect(links[0]).toHaveAttribute('href', '/workflow/wf_1');
+		expect(links[0]).toHaveAttribute('target', '_blank');
+		expect(links[0]).toHaveAttribute('rel', 'noopener');
 		expect(routerResolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
 			params: { workflowId: 'wf_1' },
 		});
-		expect(windowOpen).toHaveBeenCalledWith('/workflow/wf_1', '_blank', 'noopener');
+		// A by-name reference has no stable id, so it renders as plain text.
+		expect(getByTestId('agent-unpublished-workflows-list')).toHaveTextContent(
+			'Legacy by-name reference',
+		);
 	});
 
 	it('closes on "Got it"', async () => {
