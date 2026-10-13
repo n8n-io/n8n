@@ -294,6 +294,22 @@ describe('AgentSkillsService', () => {
 		});
 	});
 
+	it('lists and updates every body on the agent row while the skills hub is off', async () => {
+		Object.assign(skillRefs, { usesSkillsHub: false });
+		// `old` has no ref, as after a ref was switched off or removed on master.
+		const agent = givenAgent({
+			schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+			skills: { skill_a: skill, old: { ...skill, name: 'Old' } },
+		});
+
+		await expect(service.listSkills(agentId, projectId)).resolves.toEqual(agent.skills);
+		await expect(service.getSkill(agentId, projectId, 'old')).resolves.toMatchObject({
+			name: 'Old',
+		});
+		await service.updateSkill(agentId, projectId, 'old', { instructions: 'Updated.' }, context);
+		expect(agent.skills.old).toMatchObject({ name: 'Old', instructions: 'Updated.' });
+	});
+
 	it('lists the skills the draft runs', async () => {
 		skillRefs.bodies.skill_a = skill;
 		givenAgent({ schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] } });
@@ -312,6 +328,7 @@ describe('AgentSkillsService', () => {
 		it('changes where the skill can be added without saving a new version', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
 			});
 			skillRefs.availabilityOf.mockResolvedValue('project');
 
@@ -354,6 +371,7 @@ describe('AgentSkillsService', () => {
 			Object.assign(skillRefs, { usesSkillsHub: false });
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
 			});
 
 			await service.updateSkill(
@@ -366,7 +384,6 @@ describe('AgentSkillsService', () => {
 			);
 			expect(agent.skills.skill_a).toEqual({ ...skill, allowedTools: ['search'] });
 
-			skillRefs.bodies.skill_a = { ...skill, allowedTools: ['search'] };
 			await service.updateSkill(agentId, projectId, 'skill_a', { allowedTools: [] }, context);
 			expect(agent.skills.skill_a).toEqual(skill);
 		});
@@ -375,6 +392,7 @@ describe('AgentSkillsService', () => {
 			Object.assign(skillRefs, { usesSkillsHub: false });
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
 			});
 
 			const result = await service.updateSkill(
@@ -396,6 +414,7 @@ describe('AgentSkillsService', () => {
 		it('saves the next version with the skill edit permission, then refreshes the agents that follow it', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+				skills: { skill_a: skill },
 			});
 			const fresh = { ...agent, versionId: 'v2' } as Agent;
 			agentRepository.findByIdAndProjectId

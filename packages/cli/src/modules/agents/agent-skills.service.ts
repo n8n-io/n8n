@@ -61,6 +61,8 @@ export class AgentSkillsService {
 			projectId,
 			'Agent not found',
 		);
+		// With the hub off, list every body on the agent row, as on master.
+		if (!this.agentSkillRefs.usesSkillsHub) return entity.skills ?? {};
 		return (await this.agentSkillRefs.readDraft(entity, {})).skills;
 	}
 
@@ -211,8 +213,10 @@ export class AgentSkillsService {
 
 		const skillRefs = (await this.agentSkillRefs.refsForDraft(entity, {})) ?? [];
 		const ref = skillRefs.find((candidate) => candidate.id === skillId);
-		if (!ref) throw new NotFoundError('Skill not found');
-		const existing = (await this.agentSkillRefs.skillsForRefs(entity, [ref], {}))[skillId];
+		const existing = !this.agentSkillRefs.usesSkillsHub
+			? // With the hub off, any body on the agent row counts, with or without a ref, as on master.
+				legacyBody(entity, skillId)
+			: ref && (await this.agentSkillRefs.skillsForRefs(entity, [ref], {}))[skillId];
 		if (!existing) throw new NotFoundError('Skill not found');
 		if (baseSkillHash !== undefined && baseSkillHash !== getAgentSkillHash(existing)) {
 			throw new ConflictError('Skill was changed elsewhere; reload to get the latest version');
@@ -256,7 +260,7 @@ export class AgentSkillsService {
 			return await this.updateLegacySkill(entity, skillRefs, skillId, updated, projectId, context);
 		}
 
-		const pinned = ref.versionId !== undefined;
+		const pinned = ref?.versionId !== undefined;
 		if (pinned) {
 			const latest = (
 				await this.agentSkillRefs.skillsForRefs(entity, [{ type: 'skill', id: skillId }], {})
@@ -448,6 +452,11 @@ export class AgentSkillsService {
 			throw new UserError(`The new skills "${quote(inBatch[0])}" are hard to tell apart.`);
 		}
 	}
+}
+
+function legacyBody(agent: Pick<Agent, 'skills'>, skillId: string): AgentSkill | undefined {
+	const skills = agent.skills ?? {};
+	return Object.hasOwn(skills, skillId) ? skills[skillId] : undefined;
 }
 
 /** The fields a skill version stores. Skills ignore `allowedTools`. */
