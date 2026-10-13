@@ -19,7 +19,8 @@ import { jsonValueSchema } from '../schemas/json-value.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
-export const AGENT_CARD_PRESETS_MAX = 6;
+/** One preset per archetype, with a spare — a showcase agent names all eleven. */
+export const AGENT_CARD_PRESETS_MAX = 12;
 export const AGENT_CARD_PRESET_FIELDS_MAX = 600;
 
 /**

@@ -99,6 +99,25 @@ Flight TA 482, Wed Jun 12: SFO (San Francisco) → JFK (New York), 5h 20m. Sched
 Meeting after landing: "Launch review", Thu Jun 13, 2:00–3:00 PM Eastern (2026-06-13T14:00:00-04:00 to 2026-06-13T15:00:00-04:00), Google Meet https://meet.google.com/abc-defg-hij, in person at Studio 4, 210 Market St, New York (directions https://maps.google.com/?q=210+Market+St+New+York). Attendees: Maya Chen (going), Leo Park (going), Ava Ruiz (going), Noah Kim (maybe), Iris Hale (going).
 New York forecast (°C): Mon sunny 24 (H 26 / L 17) · Tue cloudy 19 (H 21 / L 14) · Wed light rain 16 (H 18 / L 12) · Thu thunderstorms 15 (H 17 / L 11) · Fri sunny 22 (H 25 / L 15). Source: Open-Meteo.`;
 
+/**
+ * One scenario that reaches every archetype: the team offsite in Lisbon,
+ * Mon 20 – Thu 23 Oct 2026. The same data drives `demo/workflows/offsite-desk.json`,
+ * so the workflow (no credentials) and this agent (a model credential) are one
+ * experience: ask the same eleven questions, see the same eleven cards.
+ */
+const OFFSITE_DESK_DEMO_DATA = `Offsite: "Lisbon offsite", Mon 20 – Thu 23 Oct 2026. Organiser and traveller: Ola Nowak (initials ON), Economy. 30 people invited.
+Weather, Lisbon (°C, Open-Meteo): Mon sunny 24 (H 26 / L 17) · Tue partly cloudy 22 (H 24 / L 16) · Wed light rain 19 (H 21 / L 15) · Thu cloudy 20 (H 22 / L 14) · Fri sunny 23 (H 25 / L 15).
+Flight TP 1251, Mon Oct 20: WAW (Warsaw) → LIS (Lisbon), 4h 00m. Scheduled: departs 06:35, arrives 09:35, boards 05:55. Latest from the airline: delayed — departs 07:15, arrives 10:15, boards 06:35. Gate 23, seat 12C, zone 2. Check-in opens 24h before departure.
+Kickoff dinner: Mon Oct 20, 19:30–22:00 Lisbon time (2026-10-20T19:30:00+01:00 to 2026-10-20T22:00:00+01:00) at Cervejaria Ramiro, Av. Almirante Reis 1H, Lisbon (directions https://maps.google.com/?q=Cervejaria+Ramiro+Lisbon; calendar https://calendar.google.com/). 24 going. Attendees to show: Ola Nowak (going), Marta Kowalska (going), Jonas Weber (going), Priya Raman (maybe), Luca Bianchi (going), Ana Costa (invited).
+Budget (EUR), planned per day as Flights / Hotel / Food / Activities: Mon 6200 / 1900 / 1100 / 400 · Tue 0 / 1900 / 1400 / 900 · Wed 0 / 1900 / 1300 / 1600 · Thu 5900 / 0 / 600 / 0. Planned total 25,100 (€25.1k); budget 26,000; per person €837. Paid so far: flights and hotel only (Mon 6200 / 1900 · Tue 1900 · Wed 1900 · Thu 5900) = 17,800 (€17.8k); remaining to pay €7.3k.
+Headcount: 24 of 30 confirmed (+6 since last week): Engineering 11, Product 7, Design 4, Ops 2. Flights booked: 19 (+9 since last week): from Warsaw 9, Berlin 6, London 4.
+Ola's morning run today: avg heart rate 148 bpm, max 171 bpm, 5.2 km, pace 5:41 /km. Resting: 58 bpm, HRV 62 ms, sleep 7h 20m, recovery 84%.
+Agenda email: sent to offsite-lisbon@n8n.io, subject "Lisbon offsite — agenda & logistics", body "Hi all, here's the final agenda for Oct 20–23. Flights, the hotel and Monday's dinner are in the attached PDF.", attachment lisbon-agenda.pdf, Gmail link https://mail.google.com/.
+Slack: channel #offsite-lisbon, post "Kickoff dinner tonight 19:30 at Cervejaria Ramiro (Av. Almirante Reis 1H). Metro: Intendente. See you there 🦐", thread https://slack.com/.
+Attendee sheet "Offsite 2026 · Attendees" (Google Sheets, https://docs.google.com/spreadsheets/), columns Name, Team, From, Hotel; latest row added: Marta Kowalska, Product, Warsaw, Memmo Alfama; 25 rows now.
+Checklist (Notion, https://www.notion.so/), still open: Book the Tuesday workshop room (Venue · due Wed, Ola) · Collect dietary needs (Form · 6 missing, Marta) · Print name badges (Print · due Fri, Jonas) · Confirm the airport shuttle (Transport · due Thu, Priya). 4 open, 11 done.
+Hotel: Memmo Alfama, Tv. Merceeiras 27, Lisbon. Check-in Mon Oct 20 15:00, check-out Thu Oct 23 11:00, 14 doubles + 2 twins, booking ref MA-48213, breakfast 07:30–10:30. Cover photo: https://images.unsplash.com/photo-1585208798174-6cedd86e019a?auto=format&fit=crop&w=800&q=70 (Lisbon tram).`;
+
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	{
 		id: 'pipeline-pulse',
@@ -261,6 +280,107 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 						useWhen: 'the user asks about the weather, what to pack, or a specific day',
 						fields:
 							'location "New York"; the asked (or first) day as the base: eyebrow weekday, temperature, condition, icon (sun / cloud / rain / thunder), high, low; sources: Open-Meteo; switcher: bottom tabs, one option per day (key mon…fri, label Mon…Fri, icon = that day\'s icon), variants: one per day with eyebrow, temperature, condition, icon, high, low',
+					},
+				],
+			},
+		},
+	},
+	{
+		id: 'offsite-desk',
+		labelKey: 'agents.builder.templates.offsiteDesk.label',
+		descriptionKey: 'agents.builder.templates.offsiteDesk.description',
+		icon: 'map-pin',
+		gradient: { from: '#0F766E', to: '#F59E0B', angle: 160, fromStop: 8, toStop: 92 },
+		config: {
+			name: 'Offsite Desk',
+			instructions: `You are the desk for one team offsite in Lisbon. People ask about the weather, the flight, the kickoff dinner, the budget, who has confirmed, the morning run, the agenda email, the Slack post, the attendee sheet, the checklist and the hotel. Answer in one or two plain sentences and show the data as a card — always exactly one card per answer, chosen from the presets. When someone asks what you can do, or says "tour", list the eleven questions above in one short message without a card. Never invent bookings, times, amounts or temperatures; the data below is the only source of truth.\n\n${OFFSITE_DESK_DEMO_DATA}`,
+			cards: {
+				tone: 'sky',
+				presets: [
+					{
+						name: 'Forecast',
+						type: 'weather',
+						useWhen: 'the user asks about the weather in Lisbon, what to pack, or a specific day',
+						fields:
+							'location "Lisbon, Portugal"; the asked (or first) day as the base: eyebrow weekday, temperature, condition, icon (sun / partly-cloudy / rain / cloud), high, low; sources: Open-Meteo; switcher: bottom tabs, one option per day (key mon…fri, label Mon…Fri, icon = that day\'s icon), variants: one per day with eyebrow, temperature, condition, icon, high, low',
+					},
+					{
+						name: 'Boarding pass',
+						type: 'ticket',
+						tone: 'paper',
+						useWhen: 'the user asks about the flight, the gate, the seat, boarding or whether it is on time',
+						fields:
+							'reference "TP 1251 · Mon, Oct 20"; mode flight; from WAW Warsaw / to LIS Lisbon with times; duration; badge "On time" (ok) or "Delayed" (warn); facts Gate, Seat, Boards, Zone; holder name, "Economy", initials ON; switcher control "switch", label "Latest", options "scheduled" / "latest", the latest variant carrying the delayed badge and times; actions: one event "Check in" with pendingLabel "Checking in", doneLabel "Checked in", name "check-in"',
+					},
+					{
+						name: 'Kickoff dinner',
+						type: 'event',
+						tone: 'terracotta',
+						useWhen: 'the user asks about the dinner, where to go on Monday evening, who is coming',
+						fields:
+							'title "Kickoff dinner"; startsAt / endsAt as ISO with the +01:00 offset; location; locationHref (Directions); attendees with status; attendeeCount 24; actions: [{ label "Add to calendar", href calendar link, icon "calendar" }, { label "Decline", kind "toggle", doneLabel "Declined", destructive true, name "decline" }]',
+					},
+					{
+						name: 'Budget',
+						type: 'chart',
+						tone: 'forest',
+						useWhen: 'the user asks about the budget, the cost, what has been paid',
+						fields:
+							'kind stacked; series Flights, Hotel, Food, Activities; columns Mon…Thu with one value per series; total "€25.1k", totalLabel "Planned", range "Oct 20 – 23"; facts: Budget €26k, Per person €837, Remaining €7.3k; switcher: segmented, placement top, options "planned" (label "Planned") / "paid" (label "Paid"); the paid variant: columns with only flights and hotel, total "€17.8k", totalLabel "Paid so far"',
+					},
+					{
+						name: 'Headcount',
+						type: 'metric',
+						tone: 'aubergine',
+						useWhen: 'the user asks how many people confirmed, who is coming, or how many flights are booked',
+						fields:
+							'value "24", label "of 30 confirmed", delta +6 up "since last week", breakdown per team; switcher: segmented, placement top, options "people" (label "People") / "flights" (label "Flights"); the flights variant: value "19", label "flights booked", delta +9 up, breakdown per origin city',
+					},
+					{
+						name: 'Morning run',
+						type: 'pulse',
+						tone: 'terracotta',
+						useWhen: 'the user asks about the run, the heart rate or how Ola is doing today',
+						fields:
+							'value 148, unit "bpm", label "Avg heart rate", section "Run", stats: Distance 5.2 km, Pace 5:41 /km, Max 171 bpm; switcher: menu, label "Range", options "run" (label "Run") / "resting" (label "Resting"); the resting variant: value 58, label "Resting heart rate", stats HRV 62 ms, Sleep 7h 20m, Recovery 84 %',
+					},
+					{
+						name: 'Agenda email',
+						type: 'email',
+						useWhen: 'the user asks to send the agenda or whether it went out',
+						fields:
+							'direction sent; to the offsite list; subject; preview from the body; attachments; status success, statusLabel "Sent"; nodeType n8n-nodes-base.gmail; actions: one link "Open in Gmail" with icon "external-link"',
+					},
+					{
+						name: 'Slack post',
+						type: 'message',
+						useWhen: 'the user asks to post the dinner details or tell the channel something',
+						fields:
+							'channel slack; to "#offsite-lisbon"; text; author "Offsite desk"; status success, statusLabel "Posted"; nodeType n8n-nodes-base.slack; actions: [{ label "Open thread", href, icon "message" }, { label "Pin", kind "toggle", name "pin", doneLabel "Pinned", icon "star" }]',
+					},
+					{
+						name: 'Attendee sheet',
+						type: 'records',
+						tone: 'forest',
+						useWhen: 'the user asks to add someone to the attendee list or sheet',
+						fields:
+							'target "Offsite 2026 · Attendees"; operation append; columns Name, Team, From, Hotel; rows: the row added; total 25; status success, statusLabel "Added"; nodeType n8n-nodes-base.googleSheets; actions: one link "Open sheet" with icon "external-link"',
+					},
+					{
+						name: 'Checklist',
+						type: 'list',
+						tone: 'lavender',
+						useWhen: 'the user asks what is still open, what is left to do, or for the checklist',
+						fields:
+							'items: title, subtitle (area · due), meta (owner); total 4; actions: one link "Open checklist" with icon "external-link"',
+					},
+					{
+						name: 'Hotel',
+						type: 'keyValue',
+						tone: 'paper',
+						useWhen: 'the user asks about the hotel, check-in, the rooms or the booking',
+						fields:
+							'title "Hotel · Memmo Alfama"; pairs: Check-in, Check-out, Rooms, Booking ref, Address, Breakfast; cover: the Lisbon tram photo with alt "Lisbon"',
 					},
 				],
 			},

@@ -8483,6 +8483,8 @@
 	"agents.builder.templates.workflowHealthReporter.description": "Reports yesterday's runs, failures and causes as cards.",
 	"agents.builder.templates.tripDesk.label": "Trip desk",
 	"agents.builder.templates.tripDesk.description": "Shows a boarding pass, the meeting and the forecast as interactive cards.",
+	"agents.builder.templates.offsiteDesk.label": "Offsite desk",
+	"agents.builder.templates.offsiteDesk.description": "One team offsite, every card: forecast, flight, dinner, budget, headcount, run, email, Slack, sheet, checklist, hotel.",
 	"agents.builder.templates.morningNewsBrief.label": "Morning news brief",
 	"agents.builder.templates.morningNewsBrief.description": "Sends a daily summary of today's top headlines.",
 	"agents.builder.templates.processIncomingEmails.label": "Process incoming emails",

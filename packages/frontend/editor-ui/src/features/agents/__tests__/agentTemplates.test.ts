@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AgentCardsConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
+import { AgentCardsConfigSchema, resultCardArchetypes, type AgentJsonConfig } from '@n8n/api-types';
 import { AGENT_TEMPLATES, applyAgentTemplate, isAgentConfigBlank } from '../agentTemplates';
 
 function blankConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -199,12 +199,13 @@ describe('applyAgentTemplate', () => {
 });
 
 describe('AGENT_TEMPLATES', () => {
-	it('has the eight expected ids in order', () => {
+	it('has the nine expected ids in order', () => {
 		expect(AGENT_TEMPLATES.map((t) => t.id)).toEqual([
 			'pipeline-pulse',
 			'support-inbox-triage',
 			'workflow-health-reporter',
 			'trip-desk',
+			'offsite-desk',
 			'morning-news-brief',
 			'process-incoming-emails',
 			'qualify-new-leads',
@@ -219,6 +220,7 @@ describe('AGENT_TEMPLATES', () => {
 			'support-inbox-triage': /\| --- \|/,
 			'workflow-health-reporter': /\| --- \|/,
 			'trip-desk': /TA 482/,
+			'offsite-desk': /Memmo Alfama/,
 		};
 		const cardTemplates = AGENT_TEMPLATES.filter((t) => t.config.cards);
 		expect(cardTemplates.map((t) => t.id)).toEqual(Object.keys(demoDataMarker));
@@ -239,6 +241,14 @@ describe('AGENT_TEMPLATES', () => {
 		const tripDesk = AGENT_TEMPLATES.find((t) => t.id === 'trip-desk')!;
 		for (const preset of tripDesk.config.cards?.presets ?? []) {
 			expect(preset.fields).toMatch(/switcher|actions/);
+		}
+	});
+
+	it('the offsite desk is the showcase: one preset per archetype, every one interactive', () => {
+		const presets = AGENT_TEMPLATES.find((t) => t.id === 'offsite-desk')!.config.cards?.presets ?? [];
+		expect([...presets.map((p) => p.type)].sort()).toEqual([...resultCardArchetypes].sort());
+		for (const preset of presets) {
+			expect(preset.fields).toMatch(/switcher|actions|cover/);
 		}
 	});
 
