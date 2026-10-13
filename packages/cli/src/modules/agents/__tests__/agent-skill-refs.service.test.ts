@@ -137,6 +137,24 @@ describe('AgentSkillRefsService', () => {
 		});
 	});
 
+	describe('effectiveDraftRefs', () => {
+		it('returns the refs the attach check keeps and writes nothing', async () => {
+			skillService.checkRefs.mockResolvedValue([{ id: 'zeta' }]);
+
+			const refs = await service.effectiveDraftRefs(
+				agent,
+				[
+					{ type: 'skill', id: 'zeta' },
+					{ type: 'skill', id: 'stale' },
+				],
+				ctx,
+			);
+
+			expect(refs).toEqual([{ type: 'skill', id: 'zeta' }]);
+			expect(skillRepository.replaceDependencies).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('replaceDraftRefs', () => {
 		it('checks the refs and writes the dependency rows', async () => {
 			skillService.checkRefs.mockResolvedValue([{ id: 'zeta' }, { id: 'alpha', versionId: pinId }]);

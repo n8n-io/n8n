@@ -142,6 +142,30 @@ export class AgentSkillRefsService {
 	}
 
 	/**
+	 * The refs that `replaceDraftRefs` would keep, without writing them: unknown ids
+	 * are dropped, and a new ref that the agent may not attach throws. Callers use it
+	 * to validate and report the refs that are saved, not the submitted ones.
+	 */
+	async effectiveDraftRefs(
+		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
+		refs: AgentJsonSkillConfig[],
+		ctx: OperationContext,
+	): Promise<AgentJsonSkillConfig[]> {
+		if (!this.usesSkillsHub) {
+			const existingIds = new Set(readLegacyRefs(agent.schema).map((ref) => ref.id));
+			return refs.filter(
+				(ref) => existingIds.has(ref.id) || Object.hasOwn(agent.skills ?? {}, ref.id),
+			);
+		}
+		const checked = await this.skillService.checkRefs(
+			{ id: agent.id, projectId: agent.projectId },
+			toServiceRefs(refs),
+			ctx,
+		);
+		return toSkillRefs(checked);
+	}
+
+	/**
 	 * Replace the skill refs of the agent draft. Call it in the same transaction
 	 * as `saveAgentDraftFenced`, with the same `ctx`, after the fenced save.
 	 * A new ref must be attachable to the agent and must not clash by name. A ref

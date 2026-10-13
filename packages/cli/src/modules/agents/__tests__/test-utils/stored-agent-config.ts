@@ -28,6 +28,11 @@ export type FakeAgentSkillRefsService = ReturnType<typeof mock<AgentSkillRefsSer
 	bodies: Record<string, AgentSkill>;
 	/** Draft refs written through the fake seam, keyed by agent id. */
 	draftRefs: Map<string, AgentJsonSkillConfig[]>;
+	/**
+	 * The skill version each published agent version pins, keyed by agent version id and
+	 * then skill id. A revert pins the restored refs to these versions, as the real seam does.
+	 */
+	versionPins: Map<string, Record<string, string>>;
 };
 
 /**
@@ -39,9 +44,11 @@ export function createAgentSkillRefsService(
 	bodies: Record<string, AgentSkill> = {},
 ): FakeAgentSkillRefsService {
 	const draftRefs = new Map<string, AgentJsonSkillConfig[]>();
+	const versionPins = new Map<string, Record<string, string>>();
 	const service = Object.assign(mock<AgentSkillRefsService>(), {
 		bodies,
 		draftRefs,
+		versionPins,
 		usesSkillsHub: true,
 	});
 	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
@@ -57,22 +64,37 @@ export function createAgentSkillRefsService(
 	};
 
 	service.refsForDraft.mockImplementation(async (agent) => readDraftRefs(agent));
-	service.refsForVersion.mockImplementation(async (version) => storedSkillRefs(version));
+	const pinnedRefs = (versionId: string, refs: AgentJsonSkillConfig[]) => {
+		const pins = versionPins.get(versionId) ?? {};
+		return refs.map(({ versionId: _dropped, ...ref }) =>
+			Object.hasOwn(pins, ref.id) ? { ...ref, versionId: pins[ref.id] } : ref,
+		);
+	};
+
+	service.refsForVersion.mockImplementation(async (version) =>
+		pinnedRefs(version.versionId, storedSkillRefs(version)),
+	);
 	service.readDraft.mockImplementation(async (agent) => {
 		const skillRefs = readDraftRefs(agent);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.readVersion.mockImplementation(async (version) => {
-		const skillRefs = storedSkillRefs(version);
+		const skillRefs = pinnedRefs(version.versionId, storedSkillRefs(version));
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));
+	service.effectiveDraftRefs.mockImplementation(async (_agent, refs) => refs);
 	service.replaceDraftRefs.mockImplementation(async (agent, refs) => writeRefs(agent, refs));
-	service.restoreDraftRefs.mockImplementation(async (agent, _version, refs) =>
-		writeRefs(agent, refs),
+	service.restoreDraftRefs.mockImplementation(async (agent, version, refs) =>
+		writeRefs(agent, pinnedRefs(version.versionId, refs ?? [])),
 	);
-	service.createDraftRefs.mockImplementation(async (agent, refs) => {
-		writeRefs(agent, refs);
+	// A ref to a skill of the fake hub stays. A ref with only a body needs a creator, as
+	// in the real seam; the fake keeps its id instead of minting a new one.
+	service.createDraftRefs.mockImplementation(async (agent, refs, _bodies, creator) => {
+		writeRefs(
+			agent,
+			(refs ?? []).filter((ref) => Object.hasOwn(service.bodies, ref.id) || creator !== null),
+		);
 		return readDraftRefs(agent);
 	});
 	service.unpinDraftRef.mockImplementation(async (agent, skillId) =>

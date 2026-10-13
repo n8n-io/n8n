@@ -1110,16 +1110,23 @@ describe('AgentPublishService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			taskSnapshotRepository.findByVersionId.mockResolvedValue([]);
 			agentTaskRepository.replaceForAgent.mockResolvedValue(false);
+			// The published version ran these skill versions.
+			refsService.versionPins.set('published-v1', { zeta: 'zeta-v1', mid: 'mid-v3' });
 
 			await service.revertToPublishedAgent(agentId, projectId, user, 'user');
 
-			await expect(refsService.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
+			// The draft gets the refs back, each pinned to the version that was published.
+			const pinned = [
+				{ type: 'skill', id: 'zeta', versionId: 'zeta-v1' },
+				{ type: 'skill', id: 'mid', versionId: 'mid-v3' },
+			];
+			await expect(refsService.refsForDraft(agent, {})).resolves.toEqual(pinned);
 			const [[, saveCtx]] = agentRepository.saveDraftFenced.mock.calls;
 			const [[written, version, refs, refsCtx]] = refsService.restoreDraftRefs.mock.calls;
 			expect(refsCtx).toBe(saveCtx);
 			expect(written).toBe(agent);
 			expect(version).toBe(activeVersion);
-			expect(refs).toEqual(skillRefs);
+			expect(refs).toEqual(pinned);
 		});
 
 		it('shows the skill refs of a version in its document', async () => {
