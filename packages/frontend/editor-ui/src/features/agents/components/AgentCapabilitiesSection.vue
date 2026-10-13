@@ -40,9 +40,9 @@ import type {
 } from './AgentCapabilitiesSection.types';
 import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import {
+	describeAgentToolRestriction,
 	getNodeTypeRestriction,
 	isNodeTypeRestricted,
-	SCOPE_LABEL_KEY,
 } from '@n8n/frontend-module-type-availability-policies';
 
 import AgentChipButton from './AgentChipButton.vue';
@@ -489,10 +489,7 @@ function fromTargetKey(key: string): ToolOpenTarget | null {
 function menuRestrictionText(data: ToolMenuItem['data']): string {
 	if (!data) return '';
 	if (data.restrictedMessage) return data.restrictedMessage;
-	const scopeKey = data.restrictedScope && SCOPE_LABEL_KEY[data.restrictedScope];
-	return [data.restrictedTypeLabel, scopeKey ? i18n.baseText(scopeKey) : '']
-		.filter(Boolean)
-		.join(' — ');
+	return describeAgentToolRestriction(data.restrictedTypeLabel, data.restrictedScope);
 }
 
 function toolMenuItems(tool: ToolRow): ToolMenuItem[] {

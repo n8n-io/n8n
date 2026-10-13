@@ -37,10 +37,8 @@ const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
 vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
 	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
 	isNodeTypeRestricted: (name: string) => storeRestrictions.has(name),
-	SCOPE_LABEL_KEY: {
-		instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
-		project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
-	},
+	describeAgentToolRestriction: (nodeType: string, scope?: string) =>
+		`typeAvailabilityPolicies.restrictedNode.agentTool.${scope ?? 'generic'}:${nodeType}`,
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -1554,7 +1552,9 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
-		expect(lockText(wrapper)).toContain(`typeAvailabilityPolicies.restrictedNode.scope.${scope}`);
+		expect(lockText(wrapper)).toContain(
+			`typeAvailabilityPolicies.restrictedNode.agentTool.${scope}`,
+		);
 		expect(lockText(wrapper)).toContain('Slack');
 	});
 
@@ -1662,7 +1662,9 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
-		expect(lockText(wrapper)).toContain('typeAvailabilityPolicies.restrictedNode.scope.project');
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+		);
 	});
 
 	it('prefers the scope the publish gate reported over the store verdict', async () => {
@@ -1673,7 +1675,9 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		});
 		await flushPromises();
 
-		expect(lockText(wrapper)).toContain('typeAvailabilityPolicies.restrictedNode.scope.instance');
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+		);
 	});
 
 	it('labels an inline restriction with plain text, not the node popover', async () => {
@@ -1686,7 +1690,7 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		// The embedded reason, not a scope line that would claim this tool's own type is denied.
 		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
 		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
-		expect(lockText(wrapper)).not.toContain('typeAvailabilityPolicies.restrictedNode.scope');
+		expect(lockText(wrapper)).not.toContain('typeAvailabilityPolicies.restrictedNode.agentTool');
 	});
 
 	it('keeps a restricted tool out of the group of its allowed same-type siblings', async () => {
@@ -1801,6 +1805,8 @@ describe('AgentCapabilitiesSection — restricted node types', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
-		expect(lockText(wrapper)).toContain('typeAvailabilityPolicies.restrictedNode.scope.project');
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+		);
 	});
 });
