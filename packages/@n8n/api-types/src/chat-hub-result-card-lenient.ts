@@ -1,8 +1,12 @@
 import { z } from 'zod';
 
 import {
+	eventAttendeeStatuses,
+	resultCardActionIcons,
 	resultCardSchema,
 	resultCardTones,
+	ticketBadgeTones,
+	ticketModes,
 	weatherConditionIcons,
 	type ResultCard,
 	type ResultCardArchetype,
@@ -57,6 +61,38 @@ const ARCHETYPE_ALIASES: Record<string, ResultCardArchetype> = {
 	weather: 'weather',
 	forecast: 'weather',
 	climate: 'weather',
+	event: 'event',
+	calendar: 'event',
+	meeting: 'event',
+	appointment: 'event',
+	invite: 'event',
+	ticket: 'ticket',
+	pass: 'ticket',
+	boarding: 'ticket',
+	boardingpass: 'ticket',
+	booking: 'ticket',
+	reservation: 'ticket',
+	trip: 'ticket',
+	flight: 'ticket',
+	train: 'ticket',
+	journey: 'ticket',
+	chart: 'chart',
+	graph: 'chart',
+	barchart: 'chart',
+	bar_chart: 'chart',
+	'bar-chart': 'chart',
+	stacked: 'chart',
+	series: 'chart',
+	usage: 'chart',
+	spend: 'chart',
+	pulse: 'pulse',
+	live: 'pulse',
+	gauge: 'pulse',
+	vitals: 'pulse',
+	reading: 'pulse',
+	monitor: 'pulse',
+	heartrate: 'pulse',
+	'heart-rate': 'pulse',
 };
 
 const TONE_ALIASES: Record<string, ResultCardTone> = {
@@ -125,30 +161,31 @@ const STATUS_ALIASES: Record<string, ResultCardStatus> = {
 	warn: 'info',
 };
 
-const RECORD_OPERATION_ALIASES: Record<string, 'append' | 'update' | 'upsert' | 'read' | 'delete'> = {
-	append: 'append',
-	insert: 'append',
-	create: 'append',
-	created: 'append',
-	add: 'append',
-	added: 'append',
-	update: 'update',
-	updated: 'update',
-	edit: 'update',
-	modify: 'update',
-	upsert: 'upsert',
-	read: 'read',
-	list: 'read',
-	get: 'read',
-	fetch: 'read',
-	query: 'read',
-	search: 'read',
-	found: 'read',
-	delete: 'delete',
-	deleted: 'delete',
-	remove: 'delete',
-	removed: 'delete',
-};
+const RECORD_OPERATION_ALIASES: Record<string, 'append' | 'update' | 'upsert' | 'read' | 'delete'> =
+	{
+		append: 'append',
+		insert: 'append',
+		create: 'append',
+		created: 'append',
+		add: 'append',
+		added: 'append',
+		update: 'update',
+		updated: 'update',
+		edit: 'update',
+		modify: 'update',
+		upsert: 'upsert',
+		read: 'read',
+		list: 'read',
+		get: 'read',
+		fetch: 'read',
+		query: 'read',
+		search: 'read',
+		found: 'read',
+		delete: 'delete',
+		deleted: 'delete',
+		remove: 'delete',
+		removed: 'delete',
+	};
 
 const MESSAGE_CHANNELS = [
 	'slack',
@@ -322,7 +359,11 @@ function labelledEntries(raw: unknown, labelKeys: string[], valueKeys: string[])
 }
 
 function normalizeBreakdown(raw: unknown): Dict[] | undefined {
-	const rows = labelledEntries(raw, ['label', 'name', 'key', 'title'], ['value', 'count', 'amount', 'total'])
+	const rows = labelledEntries(
+		raw,
+		['label', 'name', 'key', 'title'],
+		['value', 'count', 'amount', 'total'],
+	)
 		.map((entry) => {
 			const label = nonEmptyText(entry.label, 60);
 			const value = num(entry.value);
@@ -364,14 +405,9 @@ function normalizeEnvelope(card: Dict, target: Dict): void {
 			: TONE_ALIASES[toneKey];
 		set(target, 'tone', tone);
 	}
-	const actions = (list(pick(card, 'actions', 'links', 'buttons')) ?? [])
-		.map((action) => {
-			if (!isDict(action)) return undefined;
-			const label = nonEmptyText(pick(action, 'label', 'text', 'title'), 40);
-			const href = httpsHref(pick(action, 'href', 'url', 'link'));
-			return label && href ? { label, href } : undefined;
-		})
-		.filter((action): action is { label: string; href: string } => action !== undefined)
+	const actions = (list(pick(card, 'actions', 'links', 'buttons', 'cta')) ?? [])
+		.map(normalizeAction)
+		.filter((action): action is Dict => action !== undefined)
 		.slice(0, 2);
 	if (actions.length) target.actions = actions;
 	if (isDict(card.cover)) {
@@ -383,6 +419,156 @@ function normalizeEnvelope(card: Dict, target: Dict): void {
 		}
 	}
 	set(target, 'nodeTypes', textList(card.nodeTypes, 4, 120));
+}
+
+const ACTION_KINDS = ['link', 'toggle', 'event'] as const;
+const ACTION_KIND_ALIASES: Record<string, (typeof ACTION_KINDS)[number]> = {
+	url: 'link',
+	open: 'link',
+	href: 'link',
+	button: 'event',
+	action: 'event',
+	// eslint-disable-next-line id-denylist -- a word models write, not an identifier
+	callback: 'event',
+	switch: 'toggle',
+	checkbox: 'toggle',
+};
+
+/** One bottom-bar pill: a link needs an https href; anything else is a toggle or an event. */
+function normalizeAction(raw: unknown): Dict | undefined {
+	if (typeof raw === 'string') {
+		const label = nonEmptyText(raw, 40);
+		return label ? { label, kind: 'event' } : undefined;
+	}
+	if (!isDict(raw)) return undefined;
+	const label = nonEmptyText(pick(raw, 'label', 'text', 'title', 'name'), 40);
+	if (!label) return undefined;
+	const action: Dict = { label };
+	const href = httpsHref(pick(raw, 'href', 'url', 'link'));
+	set(action, 'href', href);
+	const kindKey = lower(pick(raw, 'kind', 'type'));
+	let kind = kindKey
+		? (ACTION_KINDS as readonly string[]).includes(kindKey)
+			? (kindKey as (typeof ACTION_KINDS)[number])
+			: ACTION_KIND_ALIASES[kindKey]
+		: undefined;
+	if (kind === 'link' && !href) kind = 'event';
+	if (!kind && !href && (raw.doneLabel !== undefined || raw.activeLabel !== undefined)) {
+		kind = raw.pendingLabel !== undefined ? 'event' : 'toggle';
+	}
+	set(action, 'kind', kind);
+	set(action, 'name', nonEmptyText(pick(raw, 'name', 'id', 'action'), 40));
+	const icon = lower(raw.icon);
+	if (icon && (resultCardActionIcons as readonly string[]).includes(icon)) action.icon = icon;
+	set(
+		action,
+		'pendingLabel',
+		nonEmptyText(pick(raw, 'pendingLabel', 'pending_label', 'busyLabel'), 40),
+	);
+	set(
+		action,
+		'doneLabel',
+		nonEmptyText(pick(raw, 'doneLabel', 'done_label', 'activeLabel', 'active_label'), 40),
+	);
+	if (raw.destructive === true || raw.danger === true) action.destructive = true;
+	return action;
+}
+
+const SWITCHER_CONTROLS = ['tabs', 'segmented', 'menu', 'switch'] as const;
+const SWITCHER_CONTROL_ALIASES: Record<string, (typeof SWITCHER_CONTROLS)[number]> = {
+	tab: 'tabs',
+	pills: 'segmented',
+	segment: 'segmented',
+	segmentedcontrol: 'segmented',
+	'segmented-control': 'segmented',
+	dropdown: 'menu',
+	select: 'menu',
+	toggle: 'switch',
+	// eslint-disable-next-line id-denylist -- a word models write, not an identifier
+	boolean: 'switch',
+};
+
+function normalizeSwitcherOption(raw: unknown): Dict | undefined {
+	if (typeof raw === 'string' || typeof raw === 'number') {
+		const label = nonEmptyText(raw, 16);
+		return label ? { key: label, label } : undefined;
+	}
+	if (!isDict(raw)) return undefined;
+	const label = nonEmptyText(pick(raw, 'label', 'title', 'name', 'text', 'key'), 16);
+	const key = nonEmptyText(pick(raw, 'key', 'id', 'value', 'label', 'name'), 24);
+	if (!label || !key) return undefined;
+	const option: Dict = { key, label };
+	set(option, 'icon', nonEmptyText(raw.icon, 24));
+	return option;
+}
+
+/**
+ * The variant control. Accepts the strict object, a bare array of options
+ * (`switcher: ['Week', 'Month']`) or a control word plus `options`.
+ */
+function normalizeSwitcher(raw: unknown, variantKeys: string[]): Dict | undefined {
+	const source: Dict = isDict(raw) ? raw : Array.isArray(raw) ? { options: raw } : {};
+	const controlKey = lower(pick(source, 'control', 'kind', 'type', 'style'));
+	const control = controlKey
+		? (SWITCHER_CONTROLS as readonly string[]).includes(controlKey)
+			? controlKey
+			: SWITCHER_CONTROL_ALIASES[controlKey]
+		: undefined;
+	let options = (list(pick(source, 'options', 'items', 'tabs', 'choices')) ?? [])
+		.map(normalizeSwitcherOption)
+		.filter((option): option is Dict => option !== undefined)
+		.slice(0, 7);
+	if (options.length < 2 && variantKeys.length >= 2) {
+		options = variantKeys.slice(0, 7).map((key) => ({ key, label: key.slice(0, 16) }));
+	}
+	if (options.length < 2) return undefined;
+	const switcher: Dict = { options };
+	set(switcher, 'control', control);
+	const placement = lower(source.placement);
+	if (placement === 'top' || placement === 'bottom') switcher.placement = placement;
+	set(switcher, 'label', nonEmptyText(pick(source, 'label', 'title'), 40));
+	set(switcher, 'default', nonEmptyText(pick(source, 'default', 'selected', 'active'), 24));
+	return switcher;
+}
+
+/**
+ * Variants: `{ key: partialBody }` on the wire, but models also write an array
+ * of `{ key, label, …fields }`. Each value goes through the archetype's body
+ * normaliser in partial mode so defaults never leak into an override.
+ */
+function normalizeVariants(
+	raw: unknown,
+	normalizeBody: (card: Dict, target: Dict, partial: boolean) => void,
+): { variants: Dict; keys: string[]; options: Dict[] } | undefined {
+	const entries: Array<[string, Dict, Dict | undefined]> = [];
+	if (Array.isArray(raw)) {
+		for (const item of raw) {
+			if (!isDict(item)) continue;
+			const key = nonEmptyText(pick(item, 'key', 'id', 'label', 'name'), 24);
+			if (!key) continue;
+			const option = normalizeSwitcherOption({ ...item, key });
+			entries.push([key, item, option]);
+		}
+	} else if (isDict(raw)) {
+		for (const [key, value] of Object.entries(raw)) {
+			if (isDict(value) && key.length > 0) entries.push([key.slice(0, 24), value, undefined]);
+		}
+	}
+	if (!entries.length) return undefined;
+	const variants: Dict = {};
+	const options: Dict[] = [];
+	for (const [key, value, option] of entries.slice(0, 7)) {
+		const target: Dict = {};
+		const source = isDict(value.data) ? { ...value, ...value.data } : value;
+		set(target, 'eyebrow', nonEmptyText(pick(source, 'eyebrow', 'kicker'), 40));
+		const status = lower(source.status);
+		set(target, 'status', status ? STATUS_ALIASES[status] : undefined);
+		set(target, 'statusLabel', nonEmptyText(pick(source, 'statusLabel', 'status_label'), 16));
+		normalizeBody(source, target, true);
+		variants[key] = target;
+		if (option) options.push(option);
+	}
+	return { variants, keys: Object.keys(variants), options };
 }
 
 function normalizeMetric(card: Dict, target: Dict): void {
@@ -405,22 +591,29 @@ function rowCells(row: unknown, columns: string[] | undefined): unknown[] | unde
 	});
 }
 
-function normalizeRecords(card: Dict, target: Dict): void {
+function normalizeRecords(card: Dict, target: Dict, partial = false): void {
 	set(target, 'target', nonEmptyText(pick(card, 'target', 'table', 'sheet', 'destination'), 120));
 	const operation = lower(card.operation ?? card.action);
-	target.operation = (operation && RECORD_OPERATION_ALIASES[operation]) || 'read';
-	const rawRows = list(pick(card, 'rows', 'records', 'items')) ?? [];
+	const mapped = operation ? RECORD_OPERATION_ALIASES[operation] : undefined;
+	if (mapped || !partial) target.operation = mapped ?? 'read';
+	const rawRowsInput = pick(card, 'rows', 'records', 'items');
+	const rawRows = list(rawRowsInput) ?? [];
 	const firstObjectRow = rawRows.find(isDict);
 	const columns =
 		textList(pick(card, 'columns', 'headers', 'fields'), 4, 60) ??
 		(firstObjectRow ? textList(Object.keys(firstObjectRow), 4, 60) : undefined);
 	set(target, 'columns', columns);
 	const rows = rawRows
-		.map((row) => rowCells(row, columns)?.slice(0, 4).map((cell) => text(cell ?? '', 120) ?? ''))
+		.map((row) =>
+			rowCells(row, columns)
+				?.slice(0, 4)
+				.map((cell) => text(cell ?? '', 120) ?? ''),
+		)
 		.filter((row): row is string[] => row !== undefined)
 		.slice(0, 5);
-	target.rows = rows;
-	target.total = count(pick(card, 'total', 'count', 'itemCount')) ?? rows.length;
+	if (!partial || rawRowsInput !== undefined) target.rows = rows;
+	const total = count(pick(card, 'total', 'count', 'itemCount'));
+	if (!partial || total !== undefined) target.total = total ?? rows.length;
 }
 
 function normalizeList(card: Dict, target: Dict): void {
@@ -461,13 +654,16 @@ function normalizeKeyValue(card: Dict, target: Dict): void {
 	target.pairs = pairs;
 }
 
-function normalizeEmail(card: Dict, target: Dict): void {
+function normalizeEmail(card: Dict, target: Dict, partial = false): void {
 	const dir = lower(card.direction);
-	target.direction =
-		dir === 'received' || dir === 'inbound' || dir === 'incoming' || dir === 'in'
-			? 'received'
-			: 'sent';
-	set(target, 'to', textList(pick(card, 'to', 'recipients', 'recipient'), 5, 120) ?? []);
+	if (dir || !partial) {
+		target.direction =
+			dir === 'received' || dir === 'inbound' || dir === 'incoming' || dir === 'in'
+				? 'received'
+				: 'sent';
+	}
+	const to = textList(pick(card, 'to', 'recipients', 'recipient'), 5, 120);
+	if (to || !partial) set(target, 'to', to ?? []);
 	set(target, 'cc', textList(card.cc, 5, 120));
 	set(target, 'from', nonEmptyText(pick(card, 'from', 'sender'), 120));
 	set(target, 'subject', nonEmptyText(pick(card, 'subject', 'title'), 200));
@@ -485,11 +681,11 @@ const MESSAGE_CHANNEL_ALIASES: Record<string, (typeof MESSAGE_CHANNELS)[number]>
 	'n8n-chat': 'chat',
 };
 
-function normalizeMessage(card: Dict, target: Dict): void {
+function normalizeMessage(card: Dict, target: Dict, partial = false): void {
 	const channel = lower(pick(card, 'channel', 'platform', 'service'));
 	if (channel && (MESSAGE_CHANNELS as readonly string[]).includes(channel)) {
 		target.channel = channel;
-	} else {
+	} else if (channel || !partial) {
 		target.channel = (channel && MESSAGE_CHANNEL_ALIASES[channel]) || 'other';
 	}
 	set(target, 'to', nonEmptyText(pick(card, 'to', 'recipient', 'channelName', 'destination'), 120));
@@ -511,7 +707,10 @@ const CONDITION_ICON_RULES: Array<[RegExp, WeatherConditionIcon]> = [
 ];
 
 /** A glyph from the icon enum, an alias, or the words of a condition ("Light rain" → rain). */
-function weatherIcon(value: unknown, condition: string | undefined): WeatherConditionIcon | undefined {
+function weatherIcon(
+	value: unknown,
+	condition: string | undefined,
+): WeatherConditionIcon | undefined {
 	const key = lower(value);
 	if (key && (weatherConditionIcons as readonly string[]).includes(key)) {
 		return key as WeatherConditionIcon;
@@ -529,10 +728,10 @@ function temperatureUnit(value: unknown): 'C' | 'F' | undefined {
 	return undefined;
 }
 
-function normalizeWeather(card: Dict, target: Dict): void {
+function normalizeWeather(card: Dict, target: Dict, partial = false): void {
 	const location = nonEmptyText(pick(card, 'location', 'place', 'city'), 80);
 	set(target, 'location', location);
-	if (target.title === undefined) set(target, 'title', location);
+	if (!partial && target.title === undefined) set(target, 'title', location);
 	set(target, 'temperature', num(pick(card, 'temperature', 'temp', 'value')));
 	set(target, 'unit', temperatureUnit(pick(card, 'unit', 'units', 'temperatureUnit')));
 	const condition = nonEmptyText(pick(card, 'condition', 'summary', 'description', 'weather'), 40);
@@ -576,7 +775,7 @@ function normalizeWeather(card: Dict, target: Dict): void {
 		.filter((source): source is Dict => source !== undefined)
 		.slice(0, 5);
 	if (sources.length) target.sources = sources;
-	else if (target.temperature !== undefined) {
+	else if (!partial && target.temperature !== undefined) {
 		// A card without a comparison still has one source: whoever composed it.
 		target.sources = [{ name: location ?? 'Forecast', temperature: target.temperature }];
 	}
@@ -597,6 +796,283 @@ function normalizeWeather(card: Dict, target: Dict): void {
 	if (forecast.length) target.forecast = forecast;
 }
 
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** An ISO timestamp with an offset, as the strict schema wants; a date-only or offset-less value is completed. */
+function isoDateTime(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	if (ISO_DATETIME.test(trimmed)) return trimmed;
+	if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(trimmed)) return `${trimmed}Z`;
+	if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return `${trimmed}T00:00:00Z`;
+	const parsed = Date.parse(trimmed);
+	return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
+}
+
+const ATTENDEE_STATUS_ALIASES: Record<string, (typeof eventAttendeeStatuses)[number]> = {
+	accepted: 'going',
+	yes: 'going',
+	attending: 'going',
+	confirmed: 'going',
+	tentative: 'maybe',
+	needsaction: 'invited',
+	'needs-action': 'invited',
+	pending: 'invited',
+	no: 'declined',
+	rejected: 'declined',
+};
+
+function normalizeEvent(card: Dict, target: Dict, _partial = false): void {
+	set(target, 'startsAt', isoDateTime(pick(card, 'startsAt', 'start', 'starts_at', 'startTime')));
+	set(target, 'endsAt', isoDateTime(pick(card, 'endsAt', 'end', 'ends_at', 'endTime')));
+	set(target, 'when', nonEmptyText(pick(card, 'when', 'time', 'date'), 60));
+	set(target, 'platform', nonEmptyText(pick(card, 'platform', 'conferencing', 'via'), 40));
+	set(target, 'location', nonEmptyText(pick(card, 'location', 'where', 'venue', 'address'), 120));
+	set(target, 'locationHref', httpsHref(pick(card, 'locationHref', 'directions', 'mapUrl')));
+	set(target, 'joinHref', httpsHref(pick(card, 'joinHref', 'join', 'meetingUrl', 'url', 'link')));
+	set(target, 'description', nonEmptyText(pick(card, 'description', 'notes'), 240));
+	const attendees = (list(pick(card, 'attendees', 'guests', 'people', 'participants')) ?? [])
+		.map((person) => {
+			if (typeof person === 'string') {
+				const name = nonEmptyText(person, 60);
+				return name ? { name } : undefined;
+			}
+			if (!isDict(person)) return undefined;
+			const name = nonEmptyText(pick(person, 'name', 'displayName', 'email'), 60);
+			if (!name) return undefined;
+			const attendee: Dict = { name };
+			set(attendee, 'email', nonEmptyText(person.email, 120));
+			const statusKey = lower(pick(person, 'status', 'responseStatus', 'rsvp'));
+			const status = statusKey
+				? (eventAttendeeStatuses as readonly string[]).includes(statusKey)
+					? statusKey
+					: ATTENDEE_STATUS_ALIASES[statusKey]
+				: undefined;
+			set(attendee, 'status', status);
+			return attendee;
+		})
+		.filter((person): person is Dict => person !== undefined)
+		.slice(0, 8);
+	if (attendees.length) target.attendees = attendees;
+	set(target, 'attendeeCount', count(pick(card, 'attendeeCount', 'attendee_count', 'going')));
+	if (typeof card.map === 'boolean') target.map = card.map;
+}
+
+const TICKET_MODE_ALIASES: Record<string, (typeof ticketModes)[number]> = {
+	plane: 'flight',
+	air: 'flight',
+	airline: 'flight',
+	rail: 'train',
+	coach: 'bus',
+	boat: 'ferry',
+	ship: 'ferry',
+	taxi: 'ride',
+	car: 'ride',
+};
+
+const BADGE_TONE_ALIASES: Record<string, (typeof ticketBadgeTones)[number]> = {
+	success: 'ok',
+	green: 'ok',
+	good: 'ok',
+	ontime: 'ok',
+	'on-time': 'ok',
+	warning: 'warn',
+	orange: 'warn',
+	amber: 'warn',
+	delayed: 'warn',
+	late: 'warn',
+	danger: 'error',
+	red: 'error',
+	cancelled: 'error',
+	canceled: 'error',
+	neutral: 'info',
+	blue: 'info',
+	grey: 'info',
+	gray: 'info',
+};
+
+function ticketEnd(raw: unknown): Dict | undefined {
+	if (typeof raw === 'string') {
+		const code = nonEmptyText(raw, 6);
+		return code ? { code, name: code } : undefined;
+	}
+	if (!isDict(raw)) return undefined;
+	const code = nonEmptyText(pick(raw, 'code', 'iata', 'abbr', 'short'), 6);
+	const name = nonEmptyText(pick(raw, 'name', 'city', 'label', 'station'), 60);
+	if (!code && !name) return undefined;
+	const end: Dict = { code: code ?? name!.slice(0, 6).toUpperCase(), name: name ?? code };
+	set(end, 'time', nonEmptyText(pick(raw, 'time', 'at', 'departs', 'arrives'), 12));
+	return end;
+}
+
+function normalizeTicket(card: Dict, target: Dict, partial = false): void {
+	set(
+		target,
+		'reference',
+		nonEmptyText(pick(card, 'reference', 'ref', 'number', 'code', 'subtitle'), 40),
+	);
+	const modeKey = lower(pick(card, 'mode', 'kind', 'transport'));
+	const mode = modeKey
+		? (ticketModes as readonly string[]).includes(modeKey)
+			? modeKey
+			: TICKET_MODE_ALIASES[modeKey]
+		: undefined;
+	if (mode || !partial) set(target, 'mode', mode ?? 'flight');
+	set(target, 'from', ticketEnd(pick(card, 'from', 'origin', 'departure')));
+	set(target, 'to', ticketEnd(pick(card, 'to', 'destination', 'arrival')));
+	set(target, 'duration', nonEmptyText(card.duration, 16));
+	const badgeRaw = pick(card, 'badge', 'status_badge', 'state');
+	if (typeof badgeRaw === 'string') {
+		const label = nonEmptyText(badgeRaw, 16);
+		if (label) target.badge = { label, tone: BADGE_TONE_ALIASES[lower(badgeRaw)!] ?? 'ok' };
+	} else if (isDict(badgeRaw)) {
+		const label = nonEmptyText(pick(badgeRaw, 'label', 'text'), 16);
+		if (label) {
+			const toneKey = lower(pick(badgeRaw, 'tone', 'color', 'kind'));
+			const tone = toneKey
+				? (ticketBadgeTones as readonly string[]).includes(toneKey)
+					? toneKey
+					: BADGE_TONE_ALIASES[toneKey]
+				: undefined;
+			target.badge = { label, tone: tone ?? BADGE_TONE_ALIASES[lower(label)!] ?? 'ok' };
+		}
+	}
+	const facts = labelledEntries(
+		pick(card, 'facts', 'details', 'fields', 'info'),
+		['label', 'key', 'name'],
+		['value', 'text'],
+	)
+		.map((entry) => {
+			const label = nonEmptyText(entry.label, 16);
+			const value = nonEmptyText(entry.value, 24);
+			return label && value ? { label, value } : undefined;
+		})
+		.filter((fact): fact is { label: string; value: string } => fact !== undefined)
+		.slice(0, 4);
+	if (facts.length) target.facts = facts;
+	const holderRaw = pick(card, 'holder', 'passenger', 'traveller', 'traveler', 'guest');
+	if (typeof holderRaw === 'string') {
+		const name = nonEmptyText(holderRaw, 60);
+		if (name) target.holder = { name };
+	} else if (isDict(holderRaw)) {
+		const name = nonEmptyText(pick(holderRaw, 'name', 'fullName'), 60);
+		if (name) {
+			const holder: Dict = { name };
+			set(holder, 'detail', nonEmptyText(pick(holderRaw, 'detail', 'class', 'cabin', 'note'), 40));
+			set(holder, 'initials', nonEmptyText(holderRaw.initials, 3));
+			target.holder = holder;
+		}
+	}
+}
+
+function normalizeChart(card: Dict, target: Dict, partial = false): void {
+	const kindKey = lower(pick(card, 'kind', 'chartType', 'style'));
+	const kind =
+		kindKey === 'bars' || kindKey === 'grouped' ? 'bars' : kindKey ? 'stacked' : undefined;
+	if (kind || !partial) set(target, 'kind', kind ?? 'stacked');
+	set(target, 'total', nonEmptyText(pick(card, 'total', 'sum', 'value'), 24));
+	set(target, 'totalLabel', nonEmptyText(pick(card, 'totalLabel', 'total_label', 'unit'), 24));
+	set(target, 'range', nonEmptyText(pick(card, 'range', 'period', 'subtitle'), 40));
+	const seriesRaw = list(pick(card, 'series', 'legend', 'groups', 'categories'));
+	const series = (seriesRaw ?? [])
+		.map((item) => {
+			if (typeof item === 'string') {
+				const name = nonEmptyText(item, 40);
+				return name ? { name } : undefined;
+			}
+			if (!isDict(item)) return undefined;
+			const name = nonEmptyText(pick(item, 'name', 'label', 'key'), 40);
+			if (!name) return undefined;
+			const entry: Dict = { name };
+			const color = typeof item.color === 'string' ? item.color.trim() : undefined;
+			if (color && /^#[0-9a-fA-F]{6}$/.test(color)) entry.color = color;
+			return entry;
+		})
+		.filter((item): item is Dict => item !== undefined)
+		.slice(0, 6);
+	const columnsRaw = list(pick(card, 'columns', 'bars', 'slices', 'data', 'points'));
+	const columns = (columnsRaw ?? [])
+		.map((column) => {
+			if (!isDict(column)) return undefined;
+			const label = nonEmptyText(pick(column, 'label', 'name', 'key', 'x'), 12);
+			const valuesRaw = pick(column, 'values', 'value', 'y', 'data');
+			const values = (
+				Array.isArray(valuesRaw)
+					? valuesRaw.map(num)
+					: isDict(valuesRaw)
+						? series.map((entry) => num(valuesRaw[entry.name as string]))
+						: [num(valuesRaw)]
+			)
+				.map((value) => (value === undefined || value < 0 ? 0 : value))
+				.slice(0, 6);
+			return label && values.length ? { label, values } : undefined;
+		})
+		.filter((column): column is { label: string; values: number[] } => column !== undefined)
+		.slice(0, 12);
+	if (series.length) target.series = series;
+	else if (columns.length && !partial) {
+		const width = Math.max(...columns.map((column) => column.values.length));
+		target.series = Array.from({ length: width }, (_, index) => ({ name: `Series ${index + 1}` }));
+	}
+	if (columns.length) target.columns = columns;
+	const facts = labelledEntries(pick(card, 'facts', 'details'), ['label', 'key', 'name'], ['value'])
+		.map((entry) => {
+			const label = nonEmptyText(entry.label, 40);
+			const value = nonEmptyText(entry.value, 40);
+			return label && value ? { label, value } : undefined;
+		})
+		.filter((fact): fact is { label: string; value: string } => fact !== undefined)
+		.slice(0, 4);
+	if (facts.length) target.facts = facts;
+}
+
+function normalizePulse(card: Dict, target: Dict, _partial = false): void {
+	set(target, 'value', num(pick(card, 'value', 'reading', 'bpm', 'current')));
+	set(target, 'unit', nonEmptyText(pick(card, 'unit', 'units'), 12));
+	set(target, 'label', nonEmptyText(pick(card, 'label', 'caption'), 40));
+	set(
+		target,
+		'trace',
+		normalizeTrend(pick(card, 'trace', 'samples', 'series', 'history'))?.slice(0, 120),
+	);
+	if (typeof card.live === 'boolean') target.live = card.live;
+	set(target, 'period', num(pick(card, 'period', 'sweep', 'interval')));
+	set(target, 'section', nonEmptyText(pick(card, 'section', 'heading'), 40));
+	const stats = labelledEntries(
+		pick(card, 'stats', 'facts', 'details'),
+		['label', 'key', 'name'],
+		['value', 'text'],
+	)
+		.map((entry) => {
+			const label = nonEmptyText(entry.label, 16);
+			const value = nonEmptyText(entry.value, 16);
+			if (!label || !value) return undefined;
+			const stat: Dict = { label, value };
+			if (isDict(entry.extra)) set(stat, 'unit', nonEmptyText(entry.extra.unit, 12));
+			return stat;
+		})
+		.filter((stat): stat is Dict => stat !== undefined)
+		.slice(0, 3);
+	if (stats.length) target.stats = stats;
+}
+
+const BODY_NORMALIZERS: Record<
+	ResultCardArchetype,
+	(card: Dict, target: Dict, partial: boolean) => void
+> = {
+	metric: normalizeMetric,
+	records: normalizeRecords,
+	list: normalizeList,
+	keyValue: normalizeKeyValue,
+	email: normalizeEmail,
+	message: normalizeMessage,
+	weather: normalizeWeather,
+	event: normalizeEvent,
+	ticket: normalizeTicket,
+	chart: normalizeChart,
+	pulse: normalizePulse,
+};
+
 /**
  * Coerce an LLM-authored card into the strict wire shape where that is
  * unambiguous; return the input untouched when it isn't even an object so the
@@ -611,28 +1087,26 @@ export function normalizeResultCardInput(raw: unknown): unknown {
 
 	const target: Dict = { type };
 	normalizeEnvelope(card, target);
-	switch (type) {
-		case 'metric':
-			normalizeMetric(card, target);
-			break;
-		case 'records':
-			normalizeRecords(card, target);
-			break;
-		case 'list':
-			normalizeList(card, target);
-			break;
-		case 'keyValue':
-			normalizeKeyValue(card, target);
-			break;
-		case 'email':
-			normalizeEmail(card, target);
-			break;
-		case 'message':
-			normalizeMessage(card, target);
-			break;
-		case 'weather':
-			normalizeWeather(card, target);
-			break;
+	const normalizeBody = BODY_NORMALIZERS[type];
+	normalizeBody(card, target, false);
+
+	const variants = normalizeVariants(pick(card, 'variants', 'states', 'periods'), normalizeBody);
+	if (variants && Object.keys(variants.variants).length >= 2) {
+		target.variants = variants.variants;
+		const switcher = normalizeSwitcher(
+			pick(card, 'switcher', 'tabs', 'control', 'selector'),
+			variants.keys,
+		);
+		if (switcher) {
+			// options the variants array carried win over keys-as-labels
+			if (
+				variants.options.length === variants.keys.length &&
+				(!isDict(card.switcher) || !Array.isArray(card.switcher.options))
+			) {
+				switcher.options = variants.options;
+			}
+			target.switcher = switcher;
+		}
 	}
 	return target;
 }

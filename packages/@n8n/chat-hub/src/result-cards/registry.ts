@@ -1,4 +1,4 @@
-import type { ResultCard } from '@n8n/api-types';
+import type { EmailCard, ResultCard } from '@n8n/api-types';
 
 import {
 	asRecord,
@@ -56,7 +56,7 @@ function emailCard(
 	subject: string,
 	body: string,
 	cc: string[],
-): ResultCard {
+): EmailCard {
 	const preview = truncate(stripHtml(body), 240);
 	const recipients = nameList(to);
 	return {

@@ -1,10 +1,16 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 
+import RcDigits from '../motion/RcDigits.vue';
+import RcTextSoft from '../motion/RcTextSoft.vue';
 import type { KeyValueCardData } from '../ResultCard.types';
 import { stagger } from '../utils';
 
-const props = defineProps<{ card: KeyValueCardData; light: boolean; animated: boolean }>();
+/**
+ * Key / value: the first short value becomes the big stat, the rest sit in a
+ * hairlined two-column grid. Values soft-swap when a variant changes them.
+ */
+const props = defineProps<{ card: KeyValueCardData; animated: boolean }>();
 
 const MAX_PAIRS = 6;
 const shown = computed(() => props.card.pairs.slice(0, MAX_PAIRS));
@@ -12,28 +18,32 @@ const shown = computed(() => props.card.pairs.slice(0, MAX_PAIRS));
 const lead = computed(() =>
 	shown.value[0] && shown.value[0].value.length <= 14 ? shown.value[0] : null,
 );
+const leadIsNumeric = computed(() => !!lead.value && /^[\d.,%+\-\s]+$/.test(lead.value.value));
 const rest = computed(() => (lead.value ? shown.value.slice(1) : shown.value));
 </script>
 
 <template>
-	<div :class="$style.kv">
-		<div v-if="lead" :class="[$style.lead, $style.reveal]" style="--rc-delay: 0.15s">
-			<span :class="$style.leadValue">{{ lead.value }}</span>
+	<div :class="$style.kv" data-test-id="result-card-key-value">
+		<div v-if="lead" :class="[$style.lead, $style.reveal]" style="--rc-delay: 0.05s">
+			<span :class="$style.leadValue">
+				<RcDigits v-if="leadIsNumeric" :value="lead.value" :animated="animated" />
+				<RcTextSoft v-else :text="lead.value" />
+			</span>
 			<span :class="$style.leadKey">{{ lead.key }}</span>
 		</div>
 		<dl :class="$style.pairs">
-			<template v-for="(pair, index) in rest" :key="index">
+			<template v-for="(pair, index) in rest" :key="pair.key">
 				<dt
 					:class="[$style.key, $style.reveal]"
-					:style="{ '--rc-delay': stagger(index, 0.35, 0.08) }"
+					:style="{ '--rc-delay': stagger(index, 0.15, 0.06) }"
 				>
 					{{ pair.key }}
 				</dt>
 				<dd
 					:class="[$style.value, $style.reveal]"
-					:style="{ '--rc-delay': stagger(index, 0.35, 0.08) }"
+					:style="{ '--rc-delay': stagger(index, 0.15, 0.06) }"
 				>
-					{{ pair.value }}
+					<RcTextSoft :text="pair.value" align="end" />
 				</dd>
 			</template>
 		</dl>
@@ -41,6 +51,60 @@ const rest = computed(() => (lead.value ? shown.value.slice(1) : shown.value));
 </template>
 
 <style lang="scss" module>
+.kv {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 4px 24px 0;
+}
+.lead {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+.leadValue {
+	font-size: 34px;
+	line-height: 40px;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--rc-fg);
+}
+.leadKey {
+	font-size: 13px;
+	line-height: 20px;
+	color: var(--rc-muted);
+}
+.pairs {
+	display: grid;
+	grid-template-columns: minmax(0, 44%) 1fr;
+	column-gap: 0;
+	row-gap: 0;
+	margin: 0;
+}
+.key,
+.value {
+	margin: 0;
+	padding: 6px 0;
+	font-size: 13px;
+	line-height: 20px;
+	border-top: 1px solid var(--rc-divider);
+}
+.key {
+	padding-right: 12px;
+	color: var(--rc-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.value {
+	color: var(--rc-fg);
+	text-align: right;
+	overflow-wrap: anywhere;
+	font-variant-numeric: tabular-nums;
+}
+
+/* entrance */
 @keyframes rc-pop {
 	from {
 		opacity: 0;
@@ -61,61 +125,11 @@ const rest = computed(() => (lead.value ? shown.value.slice(1) : shown.value));
 		opacity: 1;
 	}
 }
-
-.kv {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-.lead {
-	display: flex;
-	align-items: baseline;
-	gap: var(--spacing--2xs);
-}
-.leadValue {
-	font-size: 34px;
-	font-weight: var(--font-weight--bold);
-	line-height: 1;
-	letter-spacing: -0.03em;
-	font-variant-numeric: tabular-nums;
-	color: var(--rc-ink);
-}
-.leadKey {
-	font-size: var(--font-size--sm);
-	color: var(--rc-ink-soft);
-}
-.pairs {
-	display: grid;
-	grid-template-columns: minmax(0, 42%) 1fr;
-	/* no column gap: the hairlines must read as one continuous rule per row */
-	column-gap: 0;
-	row-gap: 0;
-	margin: 0;
-}
-.key,
-.value {
-	margin: 0;
-	padding: 7px 0;
-	border-top: 1px solid var(--rc-hairline);
-}
-.key {
-	padding-right: var(--spacing--xs);
-	color: var(--rc-ink-muted);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.value {
-	color: var(--rc-ink);
-	font-weight: var(--font-weight--medium);
-	overflow-wrap: anywhere;
-}
-
 .reveal {
 	opacity: 1;
 }
 :global(.rc-animated) .reveal {
-	animation: rc-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation: rc-pop var(--rc-enter-dur, 500ms) var(--rc-ease-smooth-out) both;
 	animation-delay: var(--rc-delay, 0s);
 }
 @media (prefers-reduced-motion: reduce) {

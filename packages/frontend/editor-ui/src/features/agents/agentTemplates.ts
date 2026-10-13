@@ -68,7 +68,8 @@ const PIPELINE_DEMO_DATA = `Current pipeline (as of today; USD; stages: Qualifie
 | Agency bundle | Wide World Importers | Ola | Qualified | 14,400 | Dec 12 | 9 days ago |
 | Security add-on | Litware | Marta | Closed won | 12,000 | Oct 3 | — |
 | Onboarding package | Proseware | Jakub | Closed won | 7,500 | Oct 6 | — |
-Last week's open pipeline was 158,000; this week it is 161,900. Target for Q4 closed-won: 120,000 (19,500 closed so far).`;
+Last week's open pipeline was 158,000; this week it is 161,900. Target for Q4 closed-won: 120,000 (19,500 closed so far).
+Open pipeline by stage, this week vs last week (USD): Qualified 24,200 (last week 31,000) · Proposal 67,700 (last week 60,500) · Negotiation 70,000 (last week 66,500).`;
 
 const SUPPORT_DEMO_DATA = `Open tickets (SLA: first reply within 4h for urgent, 24h otherwise):
 | # | Subject | Requester | Priority | Age | Status | Last message |
@@ -93,6 +94,11 @@ const WORKFLOW_HEALTH_DEMO_DATA = `Workflow runs for yesterday (00:00–24:00 UT
 | Weekly report (Sheets) | 0 | 0 | 0 | — | not scheduled yesterday |
 Totals: 681 runs, 676 succeeded, 5 failed (99.3% success; day before: 99.7%). Hourly failures: 0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,3,0.`;
 
+const TRIP_DESK_DEMO_DATA = `Traveller: Maya Chen (initials MC), Economy.
+Flight TA 482, Wed Jun 12: SFO (San Francisco) → JFK (New York), 5h 20m. Scheduled: departs 08:45, arrives 17:05, boards 08:05. Latest from the airline: delayed — departs 09:25, arrives 17:45, boards 08:45. Gate B12, seat 14A, zone 2. Check-in opens 24h before departure.
+Meeting after landing: "Launch review", Thu Jun 13, 2:00–3:00 PM Eastern (2026-06-13T14:00:00-04:00 to 2026-06-13T15:00:00-04:00), Google Meet https://meet.google.com/abc-defg-hij, in person at Studio 4, 210 Market St, New York (directions https://maps.google.com/?q=210+Market+St+New+York). Attendees: Maya Chen (going), Leo Park (going), Ava Ruiz (going), Noah Kim (maybe), Iris Hale (going).
+New York forecast (°C): Mon sunny 24 (H 26 / L 17) · Tue cloudy 19 (H 21 / L 14) · Wed light rain 16 (H 18 / L 12) · Thu thunderstorms 15 (H 17 / L 11) · Fri sunny 22 (H 25 / L 15). Source: Open-Meteo.`;
+
 export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	{
 		id: 'pipeline-pulse',
@@ -112,7 +118,14 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 						useWhen:
 							'the user asks how the pipeline is doing, how much is open, or how this week compares',
 						fields:
-							'value: open pipeline total; delta: change vs last week; breakdown: value per stage; label: "open pipeline"',
+							'value: open pipeline total; delta: change vs last week; breakdown: value per stage; label: "open pipeline"; switcher: segmented at the top with options "This week" / "Last week" and a variant for last week carrying its value, delta and breakdown so the user can flip between them',
+					},
+					{
+						name: 'Pipeline by owner',
+						type: 'chart',
+						useWhen: 'the user asks who owns what, or how the pipeline splits by person or stage',
+						fields:
+							'kind: stacked; series: one per owner (Marta, Jakub, Ola); columns: one per open stage (Qualified, Proposal, Negotiation) with each owner\'s value; total: open pipeline; totalLabel: "USD"; facts: deals count, biggest deal, Q4 target progress',
 					},
 					{
 						name: 'Top deals',
@@ -164,7 +177,7 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 						type: 'metric',
 						useWhen: 'the user asks about SLA, response times, or how the week is going',
 						fields:
-							'value: % replied within SLA; delta: vs last week; breakdown: within SLA vs breached; label: "within SLA this week"',
+							'value: % replied within SLA; delta: vs last week; breakdown: within SLA vs breached; label: "within SLA this week"; switcher: segmented "This week" / "Last week" with a last-week variant (91%, no delta)',
 					},
 				],
 			},
@@ -190,6 +203,13 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 							'value: success rate or total runs; delta: vs the day before; breakdown: succeeded vs failed; trend: hourly failures; label: "runs yesterday"',
 					},
 					{
+						name: 'Runs by workflow',
+						type: 'chart',
+						useWhen: 'the user asks which workflows ran, how the load splits, or where the failures sit',
+						fields:
+							'kind: stacked; series: Succeeded (#1EBB26) and Failed (#EC4A4A); columns: one per workflow that ran (short label ≤12 chars) with [succeeded, failed]; total: total runs; totalLabel: "runs"; facts: success rate, failed count, slowest workflow',
+					},
+					{
 						name: 'Failed runs',
 						type: 'list',
 						tone: 'graphite',
@@ -202,6 +222,45 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 						type: 'keyValue',
 						useWhen: 'the user asks about one workflow',
 						fields: 'pairs: Runs, Succeeded, Failed, Avg duration, Last failure',
+					},
+				],
+			},
+		},
+	},
+	{
+		id: 'trip-desk',
+		labelKey: 'agents.builder.templates.tripDesk.label',
+		descriptionKey: 'agents.builder.templates.tripDesk.description',
+		icon: 'paper-plane',
+		gradient: { from: '#1D4ED8', to: '#60A5FA', angle: 155, fromStop: 4, toStop: 96 },
+		config: {
+			name: 'Trip Desk',
+			instructions: `You are a travel desk assistant for one traveller. People ask you about the flight, the meeting after landing and the weather at the destination. Answer in one or two plain sentences and show the data in a card: a boarding pass for the flight (with a switch between the scheduled and the latest times), an event card for the meeting (with Join call and Decline), a weather card with one tab per day for the forecast. Never invent bookings, times or temperatures; the data below is the only source of truth.\n\n${TRIP_DESK_DEMO_DATA}`,
+			cards: {
+				tone: 'sky',
+				presets: [
+					{
+						name: 'Boarding pass',
+						type: 'ticket',
+						tone: 'paper',
+						useWhen: 'the user asks about the flight, the gate, the seat, boarding or whether it is on time',
+						fields:
+							'reference: "TA 482 · Wed, Jun 12"; mode: flight; from / to: code, city, time; duration; badge: "On time" (ok) or "Delayed" (warn); facts: Gate, Seat, Boards, Zone; holder: name, "Economy", initials; switcher: control "switch", label "Latest", options "scheduled" / "latest" with the latest variant carrying the delayed badge and times; actions: one event "Check in" with pendingLabel "Checking in", doneLabel "Checked in", name "check-in"',
+					},
+					{
+						name: 'Meeting',
+						type: 'event',
+						tone: 'paper',
+						useWhen: 'the user asks about the meeting, where to go, who is coming or how to join',
+						fields:
+							'startsAt / endsAt as ISO with the Eastern offset; platform "Google Meet"; location; locationHref (Directions); joinHref; attendees with status; actions: [{ label "Join call", href joinHref, icon "video" }, { label "Decline", kind "toggle", doneLabel "Declined", destructive true, name "decline" }]',
+					},
+					{
+						name: 'Forecast',
+						type: 'weather',
+						useWhen: 'the user asks about the weather, what to pack, or a specific day',
+						fields:
+							'location "New York"; the asked (or first) day as the base: eyebrow weekday, temperature, condition, icon (sun / cloud / rain / thunder), high, low; sources: Open-Meteo; switcher: bottom tabs, one option per day (key mon…fri, label Mon…Fri, icon = that day\'s icon), variants: one per day with eyebrow, temperature, condition, icon, high, low',
 					},
 				],
 			},

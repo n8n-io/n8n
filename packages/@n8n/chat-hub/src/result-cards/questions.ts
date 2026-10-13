@@ -20,6 +20,10 @@ export const ARCHETYPE_DESCRIPTIONS: Record<ResultCardArchetype, string> = {
 	list: 'a short list of things, each with a title',
 	keyValue: 'a handful of labelled values about one thing',
 	weather: 'current weather for one place, with a temperature headline and forecast',
+	event: 'a calendar event — when, where, who, with join and decline',
+	ticket: 'a pass or booking from A to B with times, a status and the holder',
+	chart: 'a bar chart — one column per slice, one value per series',
+	pulse: 'a live reading — a big number with its unit and a moving trace',
 };
 
 export const MIN_ARCHETYPE_CONFIDENCE = 0.35;

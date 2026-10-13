@@ -199,11 +199,12 @@ describe('applyAgentTemplate', () => {
 });
 
 describe('AGENT_TEMPLATES', () => {
-	it('has the seven expected ids in order', () => {
+	it('has the eight expected ids in order', () => {
 		expect(AGENT_TEMPLATES.map((t) => t.id)).toEqual([
 			'pipeline-pulse',
 			'support-inbox-triage',
 			'workflow-health-reporter',
+			'trip-desk',
 			'morning-news-brief',
 			'process-incoming-emails',
 			'qualify-new-leads',
@@ -212,18 +213,32 @@ describe('AGENT_TEMPLATES', () => {
 	});
 
 	it('card-first templates declare a tone and presets that the config schema accepts', () => {
+		// The demo data the agent answers from ships inside the instructions.
+		const demoDataMarker: Record<string, RegExp> = {
+			'pipeline-pulse': /\| --- \|/,
+			'support-inbox-triage': /\| --- \|/,
+			'workflow-health-reporter': /\| --- \|/,
+			'trip-desk': /TA 482/,
+		};
 		const cardTemplates = AGENT_TEMPLATES.filter((t) => t.config.cards);
-		expect(cardTemplates.map((t) => t.id)).toEqual([
-			'pipeline-pulse',
-			'support-inbox-triage',
-			'workflow-health-reporter',
-		]);
+		expect(cardTemplates.map((t) => t.id)).toEqual(Object.keys(demoDataMarker));
 		for (const template of cardTemplates) {
 			expect(template.config.cards?.tone).toBeDefined();
 			expect(template.config.cards?.presets?.length).toBeGreaterThanOrEqual(3);
 			expect(AgentCardsConfigSchema.safeParse(template.config.cards).success).toBe(true);
-			// The demo data the agent answers from ships inside the instructions.
-			expect(template.config.instructions).toMatch(/\| --- \|/);
+			expect(template.config.instructions).toMatch(demoDataMarker[template.id]);
+		}
+	});
+
+	it('the interactive templates reach for the v3 archetypes and switchers', () => {
+		const presetTypes = (id: string) =>
+			AGENT_TEMPLATES.find((t) => t.id === id)!.config.cards?.presets?.map((p) => p.type) ?? [];
+		expect(presetTypes('pipeline-pulse')).toContain('chart');
+		expect(presetTypes('workflow-health-reporter')).toContain('chart');
+		expect(presetTypes('trip-desk')).toEqual(['ticket', 'event', 'weather']);
+		const tripDesk = AGENT_TEMPLATES.find((t) => t.id === 'trip-desk')!;
+		for (const preset of tripDesk.config.cards?.presets ?? []) {
+			expect(preset.fields).toMatch(/switcher|actions/);
 		}
 	});
 

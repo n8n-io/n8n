@@ -14,14 +14,17 @@ export default {
 		docs: {
 			description: {
 				component:
-					'A glanceable card showing what a workflow run produced. One tinted surface per card (a finite tone palette resolved from the service or the archetype), a hero sentence, a body that resembles the service, node icons as provenance, and an entrance choreography.',
+					'A glanceable, interactive card showing what a workflow run produced. One clean surface, a body per archetype (weather, event, ticket, chart, pulse, metric, email, message, records, list, key/value), an optional switcher whose variants morph the body in place, and actions standardised at the bottom. Output data lives behind Details in a dialog. Motion follows transitions.dev: durations, easings and reduced-motion fallbacks are shared tokens.',
 			},
 		},
 	},
 };
 
 const column = (inner: string) =>
-	`<div style="width: 400px; max-width: 100%; display: flex; flex-direction: column; gap: 16px;">${inner}</div>`;
+	`<div style="width: 320px; max-width: 100%; display: flex; flex-direction: column; gap: 16px;">${inner}</div>`;
+
+const grid = (inner: string) =>
+	`<div style="display: grid; grid-template-columns: repeat(auto-fill, 320px); gap: 24px; align-items: start;">${inner}</div>`;
 
 const Template: StoryFn = (args) => ({
 	components: { N8nResultCard },
@@ -32,6 +35,11 @@ const Template: StoryFn = (args) => ({
 const BOT: ResultCardIcon = { type: 'icon', name: 'bot' };
 const MAIL: ResultCardIcon = { type: 'icon', name: 'mail' };
 const TABLE: ResultCardIcon = { type: 'icon', name: 'table' };
+const CLOUD: ResultCardIcon = { type: 'icon', name: 'cloud' };
+const CALENDAR: ResultCardIcon = { type: 'icon', name: 'calendar' };
+const PLANE: ResultCardIcon = { type: 'icon', name: 'plane' };
+const CHART: ResultCardIcon = { type: 'icon', name: 'chart-column' };
+const HEART: ResultCardIcon = { type: 'icon', name: 'heart' };
 
 interface GalleryEntry {
 	card: ResultCardData;
@@ -39,13 +47,31 @@ interface GalleryEntry {
 	icons: ResultCardIcon[];
 }
 
-const CLOUD: ResultCardIcon = { type: 'icon', name: 'cloud' };
-
 const GALLERY: GalleryEntry[] = [
 	{
 		card: DEMO_CARDS.weather,
 		footer: { workflowName: 'Weather check', time: '12:40' },
 		icons: [CLOUD, BOT],
+	},
+	{
+		card: DEMO_CARDS.event,
+		footer: { workflowName: 'Calendar assistant', time: '13:20' },
+		icons: [CALENDAR, BOT],
+	},
+	{
+		card: DEMO_CARDS.ticket,
+		footer: { workflowName: 'Trip tracker', time: '06:10' },
+		icons: [PLANE, BOT],
+	},
+	{
+		card: DEMO_CARDS.chart,
+		footer: { workflowName: 'Usage report', time: '08:00' },
+		icons: [CHART, BOT],
+	},
+	{
+		card: DEMO_CARDS.pulse,
+		footer: { workflowName: 'Health monitor', time: '07:45' },
+		icons: [HEART, BOT],
 	},
 	{
 		card: DEMO_CARDS.metric,
@@ -92,12 +118,19 @@ const GALLERY: GalleryEntry[] = [
 		footer: { workflowName: 'Match tracker', time: '13:05' },
 		icons: [BOT, TABLE, MAIL],
 	},
+	{
+		card: DEMO_CARDS.weatherSources,
+		footer: { workflowName: 'Weather check', time: '12:40' },
+		icons: [CLOUD, BOT],
+	},
 ];
 
 const galleryTemplate = (extra = '') =>
-	column(
+	grid(
 		`<N8nResultCard v-for="(entry, index) in entries" :key="index" :card="entry.card" :footer="entry.footer" :icons="entry.icons" ${extra} />`,
 	);
+
+/* ---- transitions.dev references ---- */
 
 export const Weather = Template.bind({});
 Weather.args = {
@@ -105,6 +138,36 @@ Weather.args = {
 	footer: { workflowName: 'Weather check', time: '12:40' },
 	icons: [CLOUD, BOT],
 };
+
+export const Event = Template.bind({});
+Event.args = {
+	card: DEMO_CARDS.event,
+	footer: { workflowName: 'Calendar assistant', time: '13:20' },
+	icons: [CALENDAR, BOT],
+};
+
+export const Ticket = Template.bind({});
+Ticket.args = {
+	card: DEMO_CARDS.ticket,
+	footer: { workflowName: 'Trip tracker', time: '06:10' },
+	icons: [PLANE, BOT],
+};
+
+export const Chart = Template.bind({});
+Chart.args = {
+	card: DEMO_CARDS.chart,
+	footer: { workflowName: 'Usage report', time: '08:00' },
+	icons: [CHART, BOT],
+};
+
+export const Pulse = Template.bind({});
+Pulse.args = {
+	card: DEMO_CARDS.pulse,
+	footer: { workflowName: 'Health monitor', time: '07:45' },
+	icons: [HEART, BOT],
+};
+
+/* ---- workflow archetypes ---- */
 
 export const Metric = Template.bind({});
 Metric.args = {
@@ -170,6 +233,8 @@ KeyValuePaper.args = {
 	icons: [BOT, TABLE],
 };
 
+/* ---- galleries ---- */
+
 export const AllCards: StoryFn = () => ({
 	components: { N8nResultCard },
 	setup: () => ({ entries: GALLERY }),
@@ -179,7 +244,7 @@ export const AllCards: StoryFn = () => ({
 export const AllCardsDark: StoryFn = () => ({
 	components: { N8nResultCard },
 	setup: () => ({ entries: GALLERY }),
-	template: `<div data-theme="dark" style="background: var(--background--subtle); padding: 16px;">${galleryTemplate()}</div>`,
+	template: `<div data-theme="dark" style="background: var(--color--background); padding: 16px;">${galleryTemplate()}</div>`,
 });
 
 /** Every card in its final state — no entrance motion (what tests and visual snapshots see). */
@@ -203,7 +268,7 @@ export const Replay: StoryFn = () => ({
 		<button type="button" style="padding: 8px 16px; border: 0; border-radius: 9999px; background: var(--color--primary); color: #fff; font: inherit; cursor: pointer;" @click="replay">
 			Replay entrance
 		</button>
-		${column(
+		${grid(
 			'<N8nResultCard v-for="(entry, index) in entries" :key="generation + \'-\' + index" :card="entry.card" :footer="entry.footer" :icons="entry.icons" />',
 		)}
 	</div>`,

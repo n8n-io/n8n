@@ -1,0 +1,194 @@
+/*
+	Motion and colour tokens for the result card, ported from transitions.dev.
+
+	Every duration, easing and distance below is the reference value; the Vue
+	primitives read the same custom properties at runtime (see motionTokens.ts)
+	so JS timers and CSS transitions never drift apart. The `--stage-*` theme
+	variables of the reference map onto design-system tokens here, once.
+*/
+
+@mixin rc-tokens {
+	/* ---- stage → design system ---- */
+	--rc-surface: var(--color--background--light-3);
+	--rc-bg: var(--color--background);
+	--rc-fg: var(--color--text--shade-1, var(--color--text));
+	--rc-muted: var(--color--text--tint-1);
+	--rc-border: var(--color--foreground);
+	--rc-accent: var(--color--text--shade-1, var(--color--text));
+	--rc-on-accent: var(--color--background--light-3);
+	--rc-link: light-dark(rgba(0, 83, 227, 0.8), rgba(122, 168, 255, 0.95));
+	--rc-chip: light-dark(rgba(0, 0, 0, 0.04), rgba(255, 255, 255, 0.07));
+	--rc-chip-hover: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.1));
+	--rc-gray-hover: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.03));
+	--rc-divider: color-mix(in srgb, var(--rc-border) 70%, transparent);
+	--rc-red: light-dark(#ec4a4a, #ff6b6b);
+	--rc-red-ink: light-dark(#bd0f2c, #ff9090);
+	--rc-red-bg: light-dark(rgba(236, 74, 74, 0.1), rgba(236, 74, 74, 0.16));
+	--rc-red-bg-hover: light-dark(rgba(236, 74, 74, 0.14), rgba(236, 74, 74, 0.22));
+	--rc-ok-fill: light-dark(#e7f9f3, #12271f);
+	--rc-ok-ink: light-dark(#216e55, #72d6b0);
+	--rc-warn-fill: light-dark(#fdefe2, #2c1e10);
+	--rc-warn-ink: light-dark(#c56511, #f2a764);
+	--rc-error-fill: light-dark(#fdeaea, #2e1416);
+	--rc-error-ink: light-dark(#bd0f2c, #ff9090);
+	--rc-info-fill: light-dark(#e8effc, #141d2e);
+	--rc-info-ink: light-dark(#1d4fb0, #8fb4ff);
+	/* shadows are lists, not colours, so they cannot go through light-dark(); see rc-tokens-dark */
+	--rc-card-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.04), 0 8px 32px -4px rgba(0, 0, 0, 0.06),
+		0 1px 3px 0 rgba(0, 0, 0, 0.04);
+	--rc-material-shadow:
+		0 4px 42px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.06);
+	--rc-cta-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+	--rc-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+	--rc-btn-shadow:
+		0 1px 3px 0 rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+		inset 0 -1px 0 0 rgba(0, 0, 0, 0.08);
+	--rc-noise-opacity: 0.05;
+	--rc-radius: 24px;
+
+	/* ---- shared scale ---- */
+	--rc-ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--rc-ease-linear: linear;
+	--rc-duration-fast: 250ms;
+	--rc-press-scale: 0.99;
+	--rc-press-dur: 150ms;
+
+	/* [Tabs sliding] */
+	--rc-tabs-dur: 250ms;
+	--rc-tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Icon swap] */
+	--rc-icon-swap-dur: 250ms;
+	--rc-icon-swap-blur: 2px;
+	--rc-icon-swap-start-scale: 0.25;
+	--rc-icon-swap-ease: ease-in-out;
+	--rc-resize-dur: 300ms;
+	--rc-resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--rc-spinner-dur: 800ms;
+
+	/* [Number pop-in] */
+	--rc-digit-dur: 500ms;
+	--rc-digit-distance: 8px;
+	--rc-digit-stagger: 70ms;
+	--rc-digit-blur: 2px;
+	--rc-digit-ease: cubic-bezier(0.34, 1.45, 0.64, 1);
+	--rc-digit-dir-x: 0;
+	--rc-digit-dir-y: 1;
+
+	/* [Text states swap] */
+	--rc-text-swap-dur: 150ms;
+	--rc-text-swap-translate-y: 4px;
+	--rc-text-swap-blur: 2px;
+	--rc-text-swap-ease: ease-in-out;
+
+	/* [Text morph] */
+	--rc-text-morph-dur: 180ms;
+	--rc-text-morph-resize-dur: 240ms;
+	--rc-text-morph-blur: 2px;
+	--rc-text-morph-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Text swap soft] */
+	--rc-text-soft-dur: 200ms;
+	--rc-text-soft-blur: 2px;
+	--rc-text-soft-ease: ease-in-out;
+	--rc-text-soft-resize-dur: 240ms;
+	--rc-text-soft-resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Accordion] */
+	--rc-acc-expand: 250ms;
+	--rc-acc-collapse: 250ms;
+	--rc-acc-chevron: 250ms;
+	--rc-acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Avatar hover] */
+	--rc-avatar-lift: -4px;
+	--rc-avatar-dur: 320ms;
+	--rc-avatar-scale: 1.05;
+	--rc-avatar-falloff: 0.45;
+	--rc-avatar-ease-in: cubic-bezier(0.22, 1, 0.36, 1);
+	--rc-avatar-ease-out: cubic-bezier(0.34, 3.85, 0.64, 1);
+
+	/* [Learn more hover] */
+	--rc-learn-shift: 2px;
+	--rc-learn-spread: 8deg;
+	--rc-learn-in: 350ms;
+	--rc-learn-out: 350ms;
+	--rc-learn-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Dropdown] */
+	--rc-dropdown-open-dur: 250ms;
+	--rc-dropdown-close-dur: 150ms;
+	--rc-dropdown-pre-scale: 0.97;
+	--rc-dropdown-closing-scale: 0.99;
+	--rc-dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Chart] */
+	--rc-chart-morph-dur: 400ms;
+	--rc-chart-morph-ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--rc-chart-gap: 3px;
+	--rc-chart-corner: 2px;
+	--rc-tip-dur: 150ms;
+	--rc-tip-scale: 0.97;
+	--rc-tip-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	/* [Sky backdrop] */
+	--rc-wx-sky-fade: 700ms;
+	--rc-wx-sky-ease: ease-in-out;
+	--rc-wx-drift-dur: 16s;
+	--rc-wx-drift-distance: 18px;
+	--rc-wx-rain-dur: 800ms;
+	--rc-wx-flash-dur: 7s;
+	--rc-wx-spin-dur: 30s;
+	--rc-wx-float-dur: 4s;
+	--rc-wx-float-distance: 3px;
+	--rc-wx-drop-dur: 1100ms;
+
+	/* [ECG sweep] */
+	--rc-ecg-dur: 2.4s;
+
+	/* [Entrance] — the card itself arriving */
+	--rc-enter-dur: 500ms;
+}
+
+@mixin rc-tokens-dark {
+	--rc-card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 32px -4px rgba(0, 0, 0, 0.4);
+	--rc-material-shadow:
+		0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.04),
+		inset 0 0 0 1px rgba(196, 196, 196, 0.08);
+	--rc-cta-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+	--rc-pill-shadow: none;
+	--rc-btn-shadow:
+		0 1px 3px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+		inset 0 -1px 0 0 rgba(255, 255, 255, 0.06);
+	--rc-noise-opacity: 0.07;
+}
+
+/*
+	Touch: controls press in full on a tap, never select their label, and hover
+	only applies with a mouse.
+*/
+@mixin rc-pressable {
+	-webkit-tap-highlight-color: transparent;
+	touch-action: manipulation;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-touch-callout: none;
+}
+
+@mixin rc-button-reset {
+	font: inherit;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	cursor: pointer;
+	@include rc-pressable;
+}
+
+@mixin rc-focus-ring {
+	outline: none;
+	box-shadow:
+		0 0 0 2px var(--rc-surface),
+		0 0 0 4px var(--color--primary);
+}

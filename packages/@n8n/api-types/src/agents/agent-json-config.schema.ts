@@ -20,6 +20,7 @@ import { jsonValueSchema } from '../schemas/json-value.schema';
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
 export const AGENT_CARD_PRESETS_MAX = 6;
+export const AGENT_CARD_PRESET_FIELDS_MAX = 600;
 
 /**
  * A named card the agent reaches for in a known situation ("Pipeline total"
@@ -32,8 +33,12 @@ export const AgentCardPresetSchema = z.object({
 	tone: z.enum(resultCardTones).optional(),
 	/** When to show this card, in plain words ("the user asks how the pipeline is doing"). */
 	useWhen: z.string().trim().min(1).max(240),
-	/** What the slots should carry ("value: open pipeline total in USD; breakdown: per stage"). */
-	fields: z.string().trim().max(400).optional(),
+	/**
+	 * What the slots should carry ("value: open pipeline total in USD; breakdown:
+	 * per stage"). Interactive presets also describe the switcher, its variants
+	 * and the action pills, so they run longer than a plain body description.
+	 */
+	fields: z.string().trim().max(AGENT_CARD_PRESET_FIELDS_MAX).optional(),
 });
 
 /**

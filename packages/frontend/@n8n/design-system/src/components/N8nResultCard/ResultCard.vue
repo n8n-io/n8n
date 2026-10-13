@@ -1,19 +1,36 @@
 <script lang="ts" setup>
-import { computed, ref, useId } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nDialog from '../N8nDialog/Dialog.vue';
 import N8nIcon from '../N8nIcon';
 import N8nNodeIcon from '../N8nNodeIcon';
+import ResultCardChart from './bodies/ResultCardChart.vue';
 import ResultCardEmail from './bodies/ResultCardEmail.vue';
+import ResultCardEvent from './bodies/ResultCardEvent.vue';
 import ResultCardKeyValue from './bodies/ResultCardKeyValue.vue';
 import ResultCardList from './bodies/ResultCardList.vue';
 import ResultCardMessage from './bodies/ResultCardMessage.vue';
 import ResultCardMetric from './bodies/ResultCardMetric.vue';
+import ResultCardPulse from './bodies/ResultCardPulse.vue';
 import ResultCardRecords from './bodies/ResultCardRecords.vue';
+import ResultCardTicket from './bodies/ResultCardTicket.vue';
 import ResultCardWeather from './bodies/ResultCardWeather.vue';
-import type { ResultCardIcon, ResultCardProps } from './ResultCard.types';
+import RcMenu from './motion/RcMenu.vue';
+import RcPill from './motion/RcPill.vue';
+import RcSwitch from './motion/RcSwitch.vue';
+import RcTabs from './motion/RcTabs.vue';
+import RcTextSoft from './motion/RcTextSoft.vue';
+import type {
+	ResultCardActionEvent,
+	ResultCardActionState,
+	ResultCardIcon,
+	ResultCardProps,
+	ResultCardStatus,
+} from './ResultCard.types';
 import { resolveResultCardService, resolveResultCardTone } from './tones';
-import { isSafeCoverSrc, isSafeHref } from './utils';
+import { useResultCardVariants } from './useResultCardVariants';
+import { isSafeCoverSrc } from './utils';
 
 defineOptions({ name: 'N8nResultCard' });
 
@@ -26,17 +43,21 @@ const props = withDefaults(defineProps<ResultCardProps>(), {
 	animated: true,
 });
 
-const emit = defineEmits<{ openExecution: [] }>();
+const emit = defineEmits<{
+	openExecution: [];
+	action: [event: ResultCardActionEvent];
+	variantChange: [key: string];
+}>();
 
 const { t } = useI18n();
 
 const tone = computed(() => resolveResultCardTone(props.card));
 const service = computed(() => resolveResultCardService(props.card.nodeType));
-const cover = computed(() =>
-	props.card.cover && isSafeCoverSrc(props.card.cover.src) ? props.card.cover : undefined,
-);
-/** Cover photos force the dark treatment so white ink stays readable over the shade */
-const isLight = computed(() => tone.value.kind === 'light' && !cover.value);
+
+const { options, control, placement, hasSwitcher, activeKey, merged, select } =
+	useResultCardVariants(() => props.card);
+
+watch(activeKey, (key) => emit('variantChange', key));
 
 const iconList = computed<ResultCardIcon[]>(() =>
 	(props.icons ?? (props.icon ? [props.icon] : []))
@@ -44,116 +65,176 @@ const iconList = computed<ResultCardIcon[]>(() =>
 		.slice(0, 4),
 );
 
-const expanded = ref(false);
-const detailsId = `result-card-details-${useId()}`;
-
-const topLine = computed(() => props.footer?.workflowName ?? props.card.eyebrow ?? '');
-
-const safeActions = computed(() =>
-	(props.card.actions ?? []).filter((action) => isSafeHref(action.href)),
+const cover = computed(() =>
+	props.card.cover && isSafeCoverSrc(props.card.cover.src) ? props.card.cover : undefined,
 );
 
-/** The shell owns the hero sentence for every archetype except metric (number + label) and email (the letter). */
-const shellHero = computed(() => props.card.type !== 'metric' && props.card.type !== 'email');
+const topLine = computed(() => props.footer?.workflowName ?? merged.value.eyebrow ?? '');
+const statusLabel = computed(() => merged.value.statusLabel ?? '');
+const STATUS_TONE: Record<ResultCardStatus, string> = {
+	success: 'ok',
+	error: 'error',
+	pending: 'warn',
+	info: 'info',
+};
+const statusTone = computed(() => STATUS_TONE[merged.value.status ?? 'info']);
 
-const surfaceStyle = computed(() => ({
-	'--rc-surface': tone.value.surface,
-	'--rc-surface-dark': tone.value.surfaceDark ?? tone.value.surface,
-	'--rc-accent': tone.value.accent ?? 'oklch(100% 0 0)',
-	...(cover.value ? { '--rc-cover': `url("${cover.value.src}")` } : {}),
-}));
+/** Bodies that carry their own hero (a number, a place, a date tile) leave the shell title out. */
+const SHELL_HERO = new Set(['message', 'records', 'list', 'keyValue']);
+const shellHero = computed(() => SHELL_HERO.has(props.card.type));
 
+/** The weather sky spans the whole card; its chrome reads in white. */
+const onSky = computed(() => props.card.type === 'weather');
+
+/** A top segmented switcher sits above the body, except for bodies that slot it under their own title. */
+const topSegmented = computed(
+	() => hasSwitcher.value && control.value === 'segmented' && placement.value === 'top',
+);
+const INLINE_SWITCHER = new Set(['chart']);
+const inlineSwitcher = computed(() => topSegmented.value && INLINE_SWITCHER.has(props.card.type));
+
+const actions = computed(() => (merged.value.actions ?? []).slice(0, 2));
+
+function onActionChange(index: number, state: ResultCardActionState) {
+	const action = actions.value[index];
+	if (action) emit('action', { action, index, state });
+}
+
+const detailsOpen = ref(false);
 const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
+
+const switcherLabel = computed(() => props.card.switcher?.label ?? t('resultCard.switcher'));
+
+const accentStyle = computed(() => ({
+	'--rc-tone': tone.value.accent,
+	'--rc-tone-soft': tone.value.soft,
+	'--rc-tone-ink': tone.value.ink,
+}));
 </script>
 
 <template>
 	<article
 		:class="[
 			$style.card,
-			isLight ? $style.light : $style.dark,
-			{ [$style.animated]: animated, 'rc-animated': animated, [$style.covered]: !!cover },
+			{ [$style.animated]: animated, 'rc-animated': animated, [$style.onSky]: onSky },
 		]"
-		:style="surfaceStyle"
+		:style="accentStyle"
 		:data-tone="tone.id"
 		:data-service="service"
 		:data-archetype="card.type"
+		:data-variant="hasSwitcher ? activeKey : undefined"
 		:aria-label="card.title"
 		data-test-id="result-card"
 	>
-		<div v-if="cover" :class="$style.cover" role="img" :aria-label="cover.alt ?? ''" />
+		<div v-if="cover && !onSky" :class="$style.cover" role="img" :aria-label="cover.alt ?? ''">
+			<img :src="cover.src" :alt="cover.alt ?? ''" />
+		</div>
 
-		<header :class="[$style.top, $style.chrome]" style="--rc-delay: 0.85s">
+		<header :class="$style.top">
 			<span
 				:class="[$style.dot, card.status ? $style[`dot-${card.status}`] : '']"
 				aria-hidden="true"
 			/>
 			<span :class="$style.topLine" data-test-id="result-card-top">{{ topLine }}</span>
+			<span
+				v-if="statusLabel"
+				:class="[$style.badge, $style[`badge-${statusTone}`]]"
+				data-test-id="result-card-status"
+			>
+				<RcTextSoft :text="statusLabel" />
+			</span>
 			<span v-if="footer?.time" :class="$style.time">{{ footer.time }}</span>
+			<RcMenu
+				v-if="hasSwitcher && control === 'menu'"
+				:options="options"
+				:model-value="activeKey"
+				:label="switcherLabel"
+				:class="$style.menu"
+				@update:model-value="select"
+			/>
 		</header>
 
-		<h3 v-if="shellHero" :class="[$style.hero, $style.reveal]" style="--rc-delay: 0.1s">
-			{{ card.title }}
-		</h3>
-
-		<div :class="$style.body">
-			<ResultCardEmail
-				v-if="card.type === 'email'"
-				:card="card"
-				:light="isLight"
-				:animated="animated"
+		<div v-if="topSegmented && !inlineSwitcher" :class="$style.topSwitcher">
+			<RcTabs
+				variant="segmented"
+				:options="options"
+				:model-value="activeKey"
+				:label="switcherLabel"
+				@update:model-value="select"
 			/>
+		</div>
+
+		<h3 v-if="shellHero" :class="$style.hero">{{ merged.title }}</h3>
+
+		<div :class="$style.body" :data-variant="hasSwitcher ? activeKey : undefined">
+			<ResultCardEmail v-if="merged.type === 'email'" :card="merged" :animated="animated" />
 			<ResultCardMessage
-				v-else-if="card.type === 'message'"
-				:card="card"
+				v-else-if="merged.type === 'message'"
+				:card="merged"
 				:service="service"
-				:light="isLight"
 				:animated="animated"
 			/>
 			<ResultCardRecords
-				v-else-if="card.type === 'records'"
-				:card="card"
-				:light="isLight"
+				v-else-if="merged.type === 'records'"
+				:card="merged"
 				:animated="animated"
 			/>
-			<ResultCardMetric
-				v-else-if="card.type === 'metric'"
-				:card="card"
-				:light="isLight"
-				:animated="animated"
-			/>
-			<ResultCardList
-				v-else-if="card.type === 'list'"
-				:card="card"
-				:light="isLight"
-				:animated="animated"
-			/>
+			<ResultCardMetric v-else-if="merged.type === 'metric'" :card="merged" :animated="animated" />
+			<ResultCardList v-else-if="merged.type === 'list'" :card="merged" :animated="animated" />
 			<ResultCardWeather
-				v-else-if="card.type === 'weather'"
-				:card="card"
-				:light="isLight"
+				v-else-if="merged.type === 'weather'"
+				:card="merged"
 				:animated="animated"
 			/>
-			<ResultCardKeyValue v-else :card="card" :light="isLight" :animated="animated" />
+			<ResultCardEvent v-else-if="merged.type === 'event'" :card="merged" :animated="animated" />
+			<ResultCardTicket v-else-if="merged.type === 'ticket'" :card="merged" :animated="animated" />
+			<ResultCardChart v-else-if="merged.type === 'chart'" :card="merged" :animated="animated">
+				<template v-if="inlineSwitcher" #switcher>
+					<RcTabs
+						variant="segmented"
+						:options="options"
+						:model-value="activeKey"
+						:label="switcherLabel"
+						@update:model-value="select"
+					/>
+				</template>
+			</ResultCardChart>
+			<ResultCardPulse v-else-if="merged.type === 'pulse'" :card="merged" :animated="animated" />
+			<ResultCardKeyValue v-else :card="merged" :animated="animated" />
 		</div>
 
 		<div
-			v-if="safeActions.length"
-			:class="[$style.actions, $style.reveal]"
-			style="--rc-delay: 0.7s"
+			v-if="hasSwitcher && control !== 'menu' && !(control === 'segmented' && placement === 'top')"
+			:class="[$style.bottomSwitcher, { [$style.strip]: control === 'tabs' }]"
 		>
-			<a
-				v-for="(action, index) in safeActions"
-				:key="index"
-				:href="action.href"
-				target="_blank"
-				rel="noopener noreferrer"
-				:class="[$style.pill, index === 0 ? $style.pillPrimary : $style.pillSecondary]"
-			>
-				{{ action.label }}
-			</a>
+			<RcSwitch
+				v-if="control === 'switch'"
+				:options="options"
+				:model-value="activeKey"
+				:label="card.switcher?.label"
+				@update:model-value="select"
+			/>
+			<RcTabs
+				v-else
+				:variant="control === 'segmented' ? 'segmented' : 'strip'"
+				:options="options"
+				:model-value="activeKey"
+				:label="switcherLabel"
+				@update:model-value="select"
+			/>
 		</div>
 
-		<footer :class="[$style.bottom, $style.chrome]" style="--rc-delay: 1s">
+		<div v-if="actions.length" :class="$style.actions" data-test-id="result-card-actions">
+			<RcPill
+				v-for="(action, index) in actions"
+				:key="`${index}-${action.label}`"
+				:action="action"
+				:primary="index === 0"
+				@change="(state) => onActionChange(index, state)"
+			/>
+		</div>
+
+		<footer v-if="iconList.length || expandable" :class="$style.bottom">
 			<span v-if="iconList.length" :class="$style.cluster" aria-hidden="true">
 				<span v-for="(nodeIcon, index) in iconList" :key="index" :class="$style.clusterItem">
 					<N8nNodeIcon
@@ -169,311 +250,263 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 			<button
 				v-if="expandable"
 				type="button"
-				:class="$style.toggle"
-				:aria-expanded="expanded"
-				:aria-controls="detailsId"
+				:class="$style.details"
+				:aria-expanded="detailsOpen"
+				aria-haspopup="dialog"
 				data-test-id="result-card-toggle"
-				@click="expanded = !expanded"
+				@click="detailsOpen = true"
 			>
-				{{ expanded ? t('resultCard.hideDetails') : t('resultCard.details') }}
-				<!-- one glyph, rotated by state: swapping icons and rotating would cancel out -->
-				<N8nIcon icon="chevron-down" size="xsmall" :class="$style.chevron" />
+				{{ t('resultCard.details') }}
+				<N8nIcon icon="chevron-right" size="xsmall" />
 			</button>
 		</footer>
 
-		<!--
-			Details open along a grid-row track (0fr → 1fr) so the card grows instead of jumping;
-			the same path runs in reverse on close, faster. Transitions, not keyframes: a quick
-			re-toggle retargets mid-motion instead of restarting.
-		-->
-		<Transition
-			:enter-from-class="$style.detailsHidden"
-			:enter-active-class="$style.detailsEntering"
-			:leave-active-class="$style.detailsLeaving"
-			:leave-to-class="$style.detailsHidden"
+		<N8nDialog
+			v-if="expandable"
+			v-model:open="detailsOpen"
+			:header="card.title"
+			:description="topLine || undefined"
+			size="medium"
 		>
-			<div
-				v-if="expandable && expanded"
-				:id="detailsId"
-				:class="$style.details"
-				data-test-id="result-card-details"
-			>
-				<div :class="$style.detailsClip">
-					<div :class="$style.detailsPanel">
-						<pre :class="$style.json">{{ detailsJson }}</pre>
-						<button
-							v-if="executionLink"
-							type="button"
-							:class="$style.executionLink"
-							@click="emit('openExecution')"
-						>
-							{{ t('resultCard.openExecution') }} <N8nIcon icon="external-link" size="xsmall" />
-						</button>
-					</div>
-				</div>
+			<div :class="$style.dialogBody" data-test-id="result-card-details">
+				<pre :class="$style.json">{{ detailsJson }}</pre>
+				<button
+					v-if="executionLink"
+					type="button"
+					:class="$style.executionLink"
+					@click="emit('openExecution')"
+				>
+					{{ t('resultCard.openExecution') }} <N8nIcon icon="external-link" size="xsmall" />
+				</button>
 			</div>
-		</Transition>
+		</N8nDialog>
 	</article>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/motion';
+@use './motion/tokens';
 
-/* ---- motion primitives (shared by the bodies through :global class names) ---- */
-@keyframes rc-pop {
+@keyframes rc-card-in {
 	from {
 		opacity: 0;
-		transform: translateY(8px);
+		transform: translateY(8px) scale(0.985);
 		filter: blur(4px);
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0);
+		transform: translateY(0) scale(1);
 		filter: blur(0);
-	}
-}
-@keyframes rc-fade {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
 	}
 }
 
 .card {
-	/* ink scale — dark tones: white; light tones: warm ink (Daily Brief --ink / --ink-soft / --muted) */
-	--rc-ink: oklch(100% 0 0);
-	--rc-ink-soft: oklch(100% 0 0 / 0.78);
-	--rc-ink-muted: oklch(100% 0 0 / 0.58);
-	--rc-ink-faint: oklch(100% 0 0 / 0.3);
-	--rc-panel: oklch(100% 0 0 / 0.12);
-	--rc-panel-strong: oklch(100% 0 0 / 0.18);
-	--rc-hairline: oklch(100% 0 0 / 0.22);
-	--rc-bar: oklch(100% 0 0 / 0.9);
-	--rc-bar-empty: oklch(100% 0 0 / 0.2);
-	--rc-sheet: oklch(100% 0 0);
-	/* text cut out of an ink-filled mark (message avatar): a solid stand-in for the gradient surface */
-	--rc-surface-fallback: oklch(27% 0.018 45);
-	--rc-ease: cubic-bezier(0.22, 1, 0.36, 1);
-	--rc-radius: 24px;
-	--rc-radius-inner: 16px;
+	@include tokens.rc-tokens;
+	@include tokens.rc-pressable;
 
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	max-width: 400px;
-	padding: var(--spacing--sm) var(--spacing--md) var(--spacing--sm);
+	max-width: 320px;
 	border-radius: var(--rc-radius);
 	background: var(--rc-surface);
-	color: var(--rc-ink);
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--lg);
+	color: var(--rc-fg);
+	box-shadow: var(--rc-card-shadow);
+	font-size: 13px;
+	line-height: 20px;
+	-webkit-font-smoothing: antialiased;
 	overflow: hidden;
 	isolation: isolate;
+	user-select: text;
+	-webkit-user-select: text;
 }
-
-.light {
-	--rc-ink: oklch(27% 0.018 45);
-	--rc-ink-soft: oklch(42% 0.02 45);
-	--rc-ink-muted: oklch(57% 0.02 55);
-	--rc-ink-faint: oklch(27% 0.018 45 / 0.16);
-	--rc-panel: oklch(27% 0.018 45 / 0.05);
-	--rc-panel-strong: oklch(27% 0.018 45 / 0.09);
-	--rc-hairline: oklch(27% 0.018 45 / 0.1);
-	--rc-bar: var(--rc-accent);
-	--rc-bar-empty: oklch(27% 0.018 45 / 0.12);
-	--rc-sheet: oklch(99.4% 0.004 84);
-	--rc-surface-fallback: var(--rc-surface);
-
-	box-shadow: 0 14px 30px -18px oklch(27% 0.05 45 / 0.35);
-}
-
-/* light tones switch to their deep variant in dark mode (explicit theme or OS preference) */
-@mixin light-on-dark {
-	--rc-ink: oklch(100% 0 0);
-	--rc-ink-soft: oklch(100% 0 0 / 0.78);
-	--rc-ink-muted: oklch(100% 0 0 / 0.58);
-	--rc-ink-faint: oklch(100% 0 0 / 0.3);
-	--rc-panel: oklch(100% 0 0 / 0.1);
-	--rc-panel-strong: oklch(100% 0 0 / 0.16);
-	--rc-hairline: oklch(100% 0 0 / 0.2);
-	--rc-bar: oklch(100% 0 0 / 0.9);
-	--rc-bar-empty: oklch(100% 0 0 / 0.2);
-	--rc-sheet: oklch(100% 0 0 / 0.1);
-	--rc-surface-fallback: var(--rc-surface-dark);
-	background: var(--rc-surface-dark);
-	box-shadow: none;
-}
-:global([data-theme='dark']) .light {
-	@include light-on-dark;
+:global([data-theme='dark']) .card {
+	@include tokens.rc-tokens-dark;
 }
 @media (prefers-color-scheme: dark) {
-	:global(body:not([data-theme])) .light {
-		@include light-on-dark;
+	:global(body:not([data-theme])) .card {
+		@include tokens.rc-tokens-dark;
 	}
 }
-
-.covered {
-	background: var(--rc-surface);
-}
-
-.cover {
-	position: absolute;
-	inset: 0;
-	z-index: -1;
-	background-image:
-		linear-gradient(
-			180deg,
-			oklch(18% 0.02 260 / 0.3) 0%,
-			oklch(18% 0.02 260 / 0.45) 40%,
-			oklch(16% 0.02 260 / 0.9) 100%
-		),
-		var(--rc-cover);
-	background-size: cover;
-	background-position: center;
-}
-
-/* over a photo the data sits on a glass panel so hairlines and small text stay legible */
-.covered .body {
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-radius: var(--rc-radius-inner);
-	background: oklch(15% 0.02 260 / 0.38);
-	backdrop-filter: blur(14px);
-	-webkit-backdrop-filter: blur(14px);
+.card :where(button) {
+	@include tokens.rc-pressable;
 }
 
 .animated {
-	animation: rc-pop 0.5s var(--rc-ease) both;
+	animation: rc-card-in var(--rc-enter-dur, 500ms) var(--rc-ease-smooth-out) both;
 }
-
-.reveal,
-.chrome {
-	opacity: 1;
-}
-.animated .reveal {
-	animation: rc-pop 0.5s var(--rc-ease) both;
-	animation-delay: var(--rc-delay, 0s);
-}
-.animated .chrome {
-	animation: rc-fade 0.55s var(--rc-ease) both;
-	animation-delay: var(--rc-delay, 0s);
-}
-
 @media (prefers-reduced-motion: reduce) {
-	.animated,
-	.animated .reveal,
-	.animated .chrome {
-		animation: rc-fade 0.2s ease both;
-		animation-delay: 0s;
+	.animated {
+		animation: none;
 	}
 }
 
-/* ---- chrome ---- */
+/* the weather sky fills the card; every piece of chrome over it reads in white */
+.onSky {
+	--rc-fg: #fff;
+	--rc-muted: rgba(255, 255, 255, 0.8);
+	--rc-border: rgba(255, 255, 255, 0.28);
+	--rc-chip: rgba(255, 255, 255, 0.16);
+	--rc-chip-hover: rgba(255, 255, 255, 0.24);
+	--rc-gray-hover: rgba(255, 255, 255, 0.08);
+	--rc-accent: #fff;
+	--rc-on-accent: #1f3f6e;
+	--rc-link: #fff;
+	--rc-tone: #fff;
+	color: #fff;
+}
+
+/* ---- cover (optional photo header, faded like the event map) ---- */
+.cover {
+	height: 104px;
+	overflow: hidden;
+	img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		opacity: 0.75;
+	}
+}
+
+/* ---- header ---- */
 .top {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	min-height: 18px;
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--rc-ink-muted);
+	gap: 6px;
+	min-height: 20px;
+	padding: 16px 24px 0;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--rc-muted);
 }
 .dot {
 	flex: none;
-	width: 5px;
-	height: 5px;
-	border-radius: var(--radius--full);
-	background: var(--rc-ink-faint);
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--rc-border);
 }
 .dot-success {
-	background: oklch(72% 0.14 152);
+	background: var(--rc-ok-ink);
 }
 .dot-error {
-	background: oklch(66% 0.2 25);
+	background: var(--rc-red);
 }
 .dot-pending {
-	background: oklch(78% 0.14 80);
+	background: var(--rc-warn-ink);
 }
 .dot-info {
-	background: var(--rc-ink-muted);
+	background: var(--rc-tone);
 }
-.light .dot-success {
-	background: oklch(56% 0.125 152);
+.onSky .dot {
+	background: rgba(255, 255, 255, 0.85);
 }
-.light .dot-error {
-	background: oklch(54% 0.185 25);
-}
-.light .dot-pending {
-	background: oklch(72% 0.14 75);
-}
-
 .topLine {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+.badge {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	height: 18px;
+	padding: 0 6px;
+	border-radius: 50px;
+	font-size: 11px;
+	line-height: 16px;
+	font-weight: 500;
+	--fill: var(--rc-chip);
+	--ink: var(--rc-fg);
+	background: var(--fill);
+	color: var(--ink);
+	box-shadow:
+		0 1px 3px rgba(0, 0, 0, 0.04),
+		inset 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
+		inset 0 -1px 0 0 color-mix(in srgb, var(--ink) 10%, transparent);
+	transition:
+		background-color var(--rc-duration-fast) var(--rc-ease-smooth-out),
+		color var(--rc-duration-fast) var(--rc-ease-smooth-out);
+}
+.badge-ok {
+	--fill: var(--rc-ok-fill);
+	--ink: var(--rc-ok-ink);
+}
+.badge-warn {
+	--fill: var(--rc-warn-fill);
+	--ink: var(--rc-warn-ink);
+}
+.badge-error {
+	--fill: var(--rc-error-fill);
+	--ink: var(--rc-error-ink);
+}
+.badge-info {
+	--fill: var(--rc-info-fill);
+	--ink: var(--rc-info-ink);
+}
+.onSky .badge {
+	--fill: rgba(255, 255, 255, 0.18);
+	--ink: #fff;
+	box-shadow: none;
+}
 .time {
 	margin-left: auto;
 	font-variant-numeric: tabular-nums;
-	color: var(--rc-ink-faint);
+	color: var(--rc-muted);
+	opacity: 0.8;
+}
+.menu {
+	margin-left: auto;
+	margin-top: -6px;
+	margin-bottom: -6px;
+}
+.time + .menu {
+	margin-left: 8px;
+}
+
+.topSwitcher {
+	padding: 12px 24px 0;
 }
 
 .hero {
-	margin: var(--spacing--2xs) 0 0;
-	font-size: 17px;
-	font-weight: var(--font-weight--bold);
-	line-height: 1.3;
-	letter-spacing: -0.01em;
-	color: var(--rc-ink);
+	margin: 8px 24px 0;
+	font-size: 16px;
+	line-height: 22px;
+	font-weight: 500;
+	color: var(--rc-fg);
 	overflow-wrap: anywhere;
+	text-wrap: balance;
 }
 
 .body {
-	margin-top: var(--spacing--xs);
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+/* ---- switcher at the bottom ---- */
+.bottomSwitcher {
+	padding: 12px 24px 0;
+}
+.strip {
+	padding: 16px 12px 0;
+}
+.onSky .strip,
+.onSky .topSwitcher {
+	--rc-tabs-bar-bg: rgba(0, 0, 0, 0.16);
+	--rc-tabs-pill-bg: rgba(255, 255, 255, 0.2);
+	--rc-tabs-text-muted: rgba(255, 255, 255, 0.78);
+	--rc-tabs-text-active: #fff;
+	--rc-tabs-pill-shadow: none;
 }
 
 /* ---- actions ---- */
 .actions {
 	display: flex;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
-}
-.pill {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	flex: 1;
-	min-height: 40px;
-	padding: 0 var(--spacing--sm);
-	border-radius: var(--radius--full);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	text-decoration: none;
-	transition:
-		transform 160ms var(--rc-ease),
-		opacity 160ms var(--rc-ease);
-	&:active {
-		transform: scale(0.97);
-	}
-}
-.dark .pillPrimary {
-	background: oklch(100% 0 0);
-	color: oklch(27% 0.018 45);
-}
-.dark .pillSecondary {
-	background: var(--rc-panel-strong);
-	color: var(--rc-ink);
-}
-.light .pillPrimary {
-	background: oklch(27% 0.018 45);
-	color: oklch(99.4% 0.004 84);
-}
-.light .pillSecondary {
-	background: var(--rc-panel-strong);
-	color: var(--rc-ink);
+	gap: 8px;
+	padding: 12px 24px 0;
 }
 
 /* ---- footer ---- */
@@ -481,9 +514,12 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--sm);
+	gap: 8px;
 	min-height: 22px;
+	padding: 12px 24px 16px;
+}
+.bottom:first-child {
+	padding-top: 16px;
 }
 .cluster {
 	display: inline-flex;
@@ -495,161 +531,67 @@ const detailsJson = computed(() => JSON.stringify(props.card, null, 2));
 	justify-content: center;
 	width: 22px;
 	height: 22px;
-	border-radius: var(--radius--full);
-	background: oklch(100% 0 0);
+	border-radius: 50%;
+	background: var(--rc-surface);
 	box-shadow:
-		0 0 0 1.5px var(--rc-surface-edge, transparent),
-		0 1px 2px oklch(0% 0 0 / 0.12);
+		0 0 0 1.5px var(--rc-surface),
+		0 1px 2px rgba(0, 0, 0, 0.12),
+		inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 	& + & {
 		margin-left: -6px;
 	}
 }
-.dark .clusterItem {
-	--rc-surface-edge: oklch(0% 0 0 / 0.25);
+.onSky .clusterItem {
+	background: #fff;
 }
-.light .clusterItem {
-	--rc-surface-edge: oklch(27% 0.018 45 / 0.1);
-}
-
-.toggle {
+.details {
+	@include tokens.rc-button-reset;
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
-	padding: 0;
-	border: 0;
-	background: none;
-	font: inherit;
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--rc-ink-muted);
-	cursor: pointer;
-	transition: color 150ms var(--rc-ease);
+	gap: 2px;
+	font-size: 12px;
+	line-height: 16px;
+	font-weight: 500;
+	color: var(--rc-muted);
+	transition: color var(--rc-press-dur) var(--rc-ease-smooth-out);
 	&:hover {
-		color: var(--rc-ink);
+		color: var(--rc-fg);
 	}
 	&:focus-visible {
-		outline: 2px solid var(--rc-ink-soft);
+		outline: 2px solid var(--color--primary);
 		outline-offset: 2px;
 		border-radius: 4px;
 	}
 }
-/* the chevron turns on the same clock as the panel it points at */
-.chevron {
-	transition: transform motion.$blur-motion-duration motion.$blur-motion-easing;
-}
-.toggle[aria-expanded='true'] .chevron {
-	transform: rotate(180deg);
-}
 
-/* ---- details ---- */
-.details {
-	display: grid;
-	grid-template-rows: 1fr;
-	margin: var(--spacing--xs) calc(-1 * var(--spacing--2xs)) 0;
-	opacity: 1;
-}
-/* the clip carries no padding, so a 0fr track really is zero pixels tall */
-.detailsClip {
-	min-height: 0;
-	overflow: hidden;
-}
-/*
-	The design system's blur motion (N8nSettingsRow, N8nAnimatedCollapsibleContent): a height
-	change paired with an opacity fade and a 4px blur that reads as motion blur, 350ms on the
-	drawer curve. The DS ships it as keyframes; here it is a transition so a quick re-toggle
-	retargets mid-motion instead of restarting. `filter: none` when settled: a resting blur(0)
-	would keep a compositing surface alive under the JSON.
-*/
-$details-enter: motion.$blur-motion-duration;
-$details-leave: 250ms;
-$details-ease: motion.$blur-motion-easing;
-$details-blur: var(--animation--collapsible-slide-blurred--blur, 4px);
-
-.detailsPanel {
+/* ---- details dialog ---- */
+.dialogBody {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs);
-	border-radius: var(--rc-radius-inner);
-	background: var(--rc-panel);
-	transform: translateY(0);
-	filter: none;
-}
-.detailsHidden {
-	grid-template-rows: 0fr;
-	margin-top: 0;
-	opacity: 0;
-	.detailsPanel {
-		transform: translateY(-6px);
-		filter: blur($details-blur);
-	}
-}
-.detailsEntering {
-	transition:
-		grid-template-rows $details-enter $details-ease,
-		margin-top $details-enter $details-ease,
-		opacity $details-enter $details-ease;
-	.detailsPanel {
-		transition:
-			transform $details-enter $details-ease,
-			filter $details-enter $details-ease;
-	}
-}
-/* exits are softer and quicker than enters, along the same path */
-.detailsLeaving {
-	transition:
-		grid-template-rows $details-leave $details-ease,
-		margin-top $details-leave $details-ease,
-		opacity $details-leave $details-ease;
-	.detailsPanel {
-		transition:
-			transform $details-leave $details-ease,
-			filter $details-leave $details-ease;
-	}
-}
-@media (prefers-reduced-motion: reduce) {
-	/* no height travel, no blur: a short cross-fade keeps the state change legible */
-	.detailsHidden {
-		grid-template-rows: 1fr;
-		margin-top: var(--spacing--xs);
-		.detailsPanel {
-			transform: none;
-			filter: none;
-		}
-	}
-	.detailsEntering,
-	.detailsLeaving {
-		transition: opacity 150ms ease;
-		.detailsPanel {
-			transition: none;
-		}
-	}
-	.chevron {
-		transition: none;
-	}
+	gap: var(--spacing--xs);
 }
 .json {
 	margin: 0;
-	max-height: 220px;
+	max-height: 60vh;
 	overflow: auto;
+	padding: var(--spacing--xs);
+	border-radius: 12px;
+	background: var(--color--background--light-2);
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--3xs);
 	line-height: var(--line-height--lg);
-	color: var(--rc-ink-soft);
+	color: var(--color--text);
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 }
 .executionLink {
+	@include tokens.rc-button-reset;
+	align-self: flex-start;
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
-	padding: 0;
-	border: 0;
-	background: none;
-	font: inherit;
+	gap: 4px;
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--rc-ink);
-	cursor: pointer;
+	color: var(--color--text--shade-1, var(--color--text));
 }
 </style>

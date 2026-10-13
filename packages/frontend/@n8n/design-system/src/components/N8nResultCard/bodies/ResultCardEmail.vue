@@ -2,40 +2,63 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../../composables/useI18n';
+import RcAvatar from '../motion/RcAvatar.vue';
+import RcGlyph from '../motion/RcGlyph.vue';
 import type { EmailCardData } from '../ResultCard.types';
 
-const props = defineProps<{ card: EmailCardData; light: boolean; animated: boolean }>();
+/**
+ * Email: the counterpart as an avatar row, the subject as the hero line, a
+ * two-line preview on a quiet sheet, and attachments / labels as soft chips.
+ */
+const props = defineProps<{ card: EmailCardData; animated: boolean }>();
 const { t } = useI18n();
 
 const counterpart = computed(() =>
 	props.card.direction === 'sent' ? props.card.to.join(', ') : (props.card.from ?? ''),
 );
-const MAX_CHIPS = 2;
-const chips = computed(() => [...(props.card.attachments ?? []), ...(props.card.labels ?? [])]);
+const counterpartName = computed(() => {
+	const first = props.card.direction === 'sent' ? props.card.to[0] : props.card.from;
+	return (first ?? '').replace(/<.*>/, '').trim() || counterpart.value;
+});
+const MAX_CHIPS = 3;
+const chips = computed(() => [
+	...(props.card.attachments ?? []).map((name) => ({ name, kind: 'file' as const })),
+	...(props.card.labels ?? []).map((name) => ({ name, kind: 'label' as const })),
+]);
 const shownChips = computed(() => chips.value.slice(0, MAX_CHIPS));
 const moreChips = computed(() => Math.max(0, chips.value.length - shownChips.value.length));
 </script>
 
 <template>
-	<div :class="$style.email">
-		<h3 :class="[$style.hero, $style.reveal]" style="--rc-delay: 0.1s">{{ card.title }}</h3>
-		<div :class="[$style.sheet, $style.reveal]" style="--rc-delay: 0.3s">
-			<p :class="$style.line">
-				<span :class="$style.label">{{
-					card.direction === 'sent' ? t('resultCard.email.to') : t('resultCard.email.from')
-				}}</span>
-				<span :class="$style.value">{{ counterpart }}</span>
-			</p>
-			<p v-if="card.cc?.length" :class="$style.line">
-				<span :class="$style.label">{{ t('resultCard.email.cc') }}</span>
-				<span :class="$style.value">{{ card.cc.join(', ') }}</span>
-			</p>
-			<p :class="$style.subject">{{ card.subject }}</p>
-			<p v-if="card.preview" :class="$style.preview">{{ card.preview }}</p>
-			<span :class="$style.fade" aria-hidden="true" />
+	<div :class="$style.email" data-test-id="result-card-email">
+		<div :class="[$style.who, $style.reveal]" style="--rc-delay: 0.05s">
+			<RcAvatar :name="counterpartName" :size="32" />
+			<div :class="$style.whoText">
+				<span :class="$style.whoLine">
+					<span :class="$style.whoLabel">{{
+						card.direction === 'sent' ? t('resultCard.email.to') : t('resultCard.email.from')
+					}}</span>
+					<span :class="$style.whoValue">{{ counterpart }}</span>
+				</span>
+				<span v-if="card.cc?.length" :class="$style.whoLine">
+					<span :class="$style.whoLabel">{{ t('resultCard.email.cc') }}</span>
+					<span :class="$style.whoValue">{{ card.cc.join(', ') }}</span>
+				</span>
+			</div>
+			<RcGlyph :name="card.direction === 'sent' ? 'send' : 'mail'" :size="16" :class="$style.dir" />
 		</div>
-		<ul v-if="shownChips.length" :class="[$style.chips, $style.reveal]" style="--rc-delay: 0.6s">
-			<li v-for="(chip, index) in shownChips" :key="index" :class="$style.chip">{{ chip }}</li>
+
+		<h3 :class="[$style.subject, $style.reveal]" style="--rc-delay: 0.15s">{{ card.subject }}</h3>
+
+		<div v-if="card.preview" :class="[$style.sheet, $style.reveal]" style="--rc-delay: 0.25s">
+			<p :class="$style.preview">{{ card.preview }}</p>
+		</div>
+
+		<ul v-if="shownChips.length" :class="[$style.chips, $style.reveal]" style="--rc-delay: 0.35s">
+			<li v-for="(chip, index) in shownChips" :key="index" :class="$style.chip">
+				<RcGlyph v-if="chip.kind === 'file'" name="download" :size="12" />
+				{{ chip.name }}
+			</li>
 			<li v-if="moreChips" :class="[$style.chip, $style.chipMore]">
 				{{ t('resultCard.more', { count: String(moreChips) }) }}
 			</li>
@@ -44,6 +67,106 @@ const moreChips = computed(() => Math.max(0, chips.value.length - shownChips.val
 </template>
 
 <style lang="scss" module>
+.email {
+	display: flex;
+	flex-direction: column;
+	padding: 8px 24px 0;
+}
+
+.who {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.whoText {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+.whoLine {
+	display: flex;
+	gap: 6px;
+	font-size: 12px;
+	line-height: 16px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.whoLabel {
+	flex: none;
+	color: var(--rc-muted);
+}
+.whoValue {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--rc-fg);
+}
+.dir {
+	flex: none;
+	color: var(--rc-muted);
+}
+
+.subject {
+	margin: 12px 0 0;
+	font-size: 20px;
+	line-height: 26px;
+	font-weight: 500;
+	color: var(--rc-fg);
+	overflow-wrap: anywhere;
+	text-wrap: balance;
+}
+
+.sheet {
+	position: relative;
+	margin-top: 8px;
+	padding: 10px 12px;
+	border-radius: 12px;
+	background: var(--rc-chip);
+}
+.preview {
+	margin: 0;
+	font-size: 13px;
+	line-height: 20px;
+	color: var(--rc-muted);
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 12px 0 0;
+	padding: 0;
+	list-style: none;
+}
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 22px;
+	padding: 0 8px;
+	border-radius: 50px;
+	background: var(--rc-chip);
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--rc-fg);
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.chipMore {
+	background: transparent;
+	color: var(--rc-muted);
+}
+
+/* entrance */
 @keyframes rc-pop {
 	from {
 		opacity: 0;
@@ -56,16 +179,6 @@ const moreChips = computed(() => Math.max(0, chips.value.length - shownChips.val
 		filter: blur(0);
 	}
 }
-@keyframes rc-slide {
-	from {
-		opacity: 0;
-		transform: translateY(14px) rotate(0deg);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) rotate(-1deg);
-	}
-}
 @keyframes rc-fade {
 	from {
 		opacity: 0;
@@ -74,111 +187,17 @@ const moreChips = computed(() => Math.max(0, chips.value.length - shownChips.val
 		opacity: 1;
 	}
 }
-
-.email {
-	display: flex;
-	flex-direction: column;
-}
-.hero {
-	margin: var(--spacing--2xs) 0 var(--spacing--xs);
-	font-size: 17px;
-	font-weight: var(--font-weight--bold);
-	line-height: 1.3;
-	letter-spacing: -0.01em;
-	color: var(--rc-ink);
-	overflow-wrap: anywhere;
-}
-/* the letter: a white sheet, slightly rotated, sliding out of the paper card */
-.sheet {
-	position: relative;
-	margin: 0 var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
-	border-radius: 12px;
-	background: var(--rc-sheet);
-	box-shadow:
-		0 10px 24px -14px oklch(27% 0.03 45 / 0.45),
-		0 0 0 1px oklch(27% 0.018 45 / 0.06);
-	transform: rotate(-1deg);
-	overflow: hidden;
-}
-.line {
-	margin: 0;
-	font-size: var(--font-size--3xs);
-	color: var(--rc-ink-muted);
-	overflow-wrap: anywhere;
-}
-.label {
-	display: inline-block;
-	min-width: 2.4em;
-}
-.value {
-	color: var(--rc-ink-soft);
-}
-.subject {
-	margin: var(--spacing--3xs) 0 0;
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--rc-ink);
-	overflow-wrap: anywhere;
-}
-.preview {
-	margin: var(--spacing--4xs) 0 0;
-	color: var(--rc-ink-soft);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-.fade {
-	position: absolute;
-	inset: auto 0 0;
-	height: 18px;
-	background: linear-gradient(to bottom, transparent, var(--rc-sheet));
-	pointer-events: none;
-}
-.chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--4xs);
-	margin: var(--spacing--xs) 0 0;
-	padding: 0;
-	list-style: none;
-}
-.chip {
-	padding: 2px var(--spacing--2xs);
-	border-radius: var(--radius--full);
-	background: var(--rc-panel-strong);
-	font-size: var(--font-size--3xs);
-	color: var(--rc-ink-soft);
-	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.chipMore {
-	background: transparent;
-	color: var(--rc-ink-muted);
-}
-
 .reveal {
 	opacity: 1;
 }
 :global(.rc-animated) .reveal {
-	animation: rc-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation: rc-pop var(--rc-enter-dur, 500ms) var(--rc-ease-smooth-out) both;
 	animation-delay: var(--rc-delay, 0s);
-}
-:global(.rc-animated) .sheet.reveal {
-	animation-name: rc-slide;
-	animation-duration: 0.6s;
 }
 @media (prefers-reduced-motion: reduce) {
 	:global(.rc-animated) .reveal {
 		animation: rc-fade 0.2s ease both;
 		animation-delay: 0s;
-	}
-	:global(.rc-animated) .sheet.reveal {
-		animation: rc-fade 0.2s ease both;
-		transform: rotate(-1deg);
 	}
 }
 </style>

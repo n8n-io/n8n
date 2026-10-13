@@ -289,4 +289,13 @@ export default {
 	'resultCard.weather.feelsLike': 'Feels {temperature}',
 	'resultCard.weather.range': 'H {high} L {low}',
 	'resultCard.weather.agreement': '{count} sources within {spread}',
+	'resultCard.switcher': 'View',
+	'resultCard.event.directions': 'Directions',
+	'resultCard.event.attendees': 'Attendees',
+	'resultCard.event.going': '{count} going',
+	'resultCard.event.others': '{names} and {count} others',
+	'resultCard.chart.tooltip': '{value} · {percent}%',
+	'resultCard.chart.details': 'Details',
+	'resultCard.pulse.live': 'Live',
+	'resultCard.list.open': 'Open',
 } as N8nLocale;

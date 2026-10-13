@@ -165,7 +165,11 @@ describe('lenientResultCardSchema', () => {
 			expect(result.data.title).toHaveLength(80);
 			expect(result.data.title.endsWith('…')).toBe(true);
 			expect(result.data.statusLabel).toBe('Needs attention…');
-			expect(result.data.actions?.map((action) => action.label)).toEqual(['One', 'Three']);
+			// an insecure href is dropped but the pill survives as an event; the list is cut at 2
+			expect(result.data.actions).toEqual([
+				{ label: 'One', href: 'https://a.example' },
+				{ label: 'Two' },
+			]);
 			expect(result.data.pairs).toHaveLength(6);
 			expect(result.data.pairs[0]).toEqual({ key: 'k0', value: '0' });
 		});
@@ -278,7 +282,7 @@ describe('lenientResultCardSchema', () => {
 		it('leaves non-objects and unknown types alone for the strict schema to report', () => {
 			expect(normalizeResultCardInput('nope')).toBe('nope');
 			expect(normalizeResultCardInput(null)).toBeNull();
-			const unknown = { type: 'gauge', title: 'x' };
+			const unknown = { type: 'hologram', title: 'x' };
 			expect(normalizeResultCardInput(unknown)).toBe(unknown);
 			expect(lenientResultCardSchema.safeParse(unknown).success).toBe(false);
 		});
