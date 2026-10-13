@@ -4,19 +4,11 @@ import type {
 	PromotionBindingProject,
 	PromotionVariableScope,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
-import {
-	CredentialsRepository,
-	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	VariablesRepository,
-} from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
-import { DataTableService } from '@/modules/data-table/data-table.service';
 import { visitWorkflowCredentials } from '@/modules/n8n-packages/entities/credential/workflow-credential-references';
 import { DataTableImporter } from '@/modules/n8n-packages/entities/data-table/data-table-importer';
 import { DataTableRequirementsExtractor } from '@/modules/n8n-packages/entities/data-table/data-table-requirements.extractor';
@@ -68,10 +60,6 @@ export class PromotionBindingPreflightService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly projectRepository: ProjectRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly dataTableService: DataTableService,
-		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	/** The caller must enforce inspection permissions. Project access does not depend on user visibility. */
@@ -178,27 +166,11 @@ export class PromotionBindingPreflightService {
 		);
 		if (deletedIds.length === 0) return;
 
-		const [projects, workflows, credentials, dataTables] = await Promise.all([
-			this.projectRepository.findTeamProjectInfoByIds(deletedIds),
-			this.sharedWorkflowRepository.countOwnedByProjectIds(deletedIds),
-			this.sharedCredentialsRepository.countOwnedByProjectIds(deletedIds),
-			this.moduleRegistry.isActive('data-table')
-				? this.dataTableService.countDataTablesByProjectIds(deletedIds)
-				: new Map<string, number>(),
-		]);
+		const projects = await this.projectRepository.findTeamProjectInfoByIds(deletedIds);
 		for (const { id, name } of projects.sort(
 			(a, b) => compare(a.name, b.name) || compare(a.id, b.id),
 		)) {
-			result.conflicts.push({
-				kind: 'project',
-				code: 'project-deletion',
-				project: { id, name },
-				contents: {
-					workflows: workflows.get(id) ?? 0,
-					credentials: credentials.get(id) ?? 0,
-					dataTables: dataTables.get(id) ?? 0,
-				},
-			});
+			result.conflicts.push({ kind: 'project', code: 'project-deletion', project: { id, name } });
 		}
 	}
 

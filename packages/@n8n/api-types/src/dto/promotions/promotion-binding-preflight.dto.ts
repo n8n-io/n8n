@@ -170,12 +170,6 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		kind: z.literal('project'),
 		code: z.literal('project-deletion'),
 		project: promotionBindingProjectSchema,
-		/** What the deletion removes with the project. */
-		contents: z.object({
-			workflows: z.number().int().nonnegative(),
-			credentials: z.number().int().nonnegative(),
-			dataTables: z.number().int().nonnegative(),
-		}),
 	}),
 	z.object({
 		kind: z.literal('data-table'),

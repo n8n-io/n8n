@@ -847,25 +847,6 @@ describe('Promote and Apply', () => {
 			targetProject,
 		);
 		const removedProject = await createTeamProject('Removed from Git', owner);
-		await createWorkflow({ name: 'Removed workflow', nodes: [], connections: {} }, removedProject);
-		await createWorkflow(
-			{ name: 'Removed archived workflow', nodes: [], connections: {}, isArchived: true },
-			removedProject,
-		);
-		await saveCredential(
-			{ name: 'Removed credential', type: 'httpHeaderAuth', data: {} },
-			{ project: removedProject, role: 'credential:owner' },
-		);
-		await Container.get(DataTableService).createDataTable(removedProject.id, {
-			name: 'Removed table',
-			columns: [],
-		});
-		// A shared workflow stays when the project is deleted, so it isn't counted.
-		await Container.get(SharedWorkflowRepository).save({
-			workflowId: targetOnlyWorkflow.id,
-			projectId: removedProject.id,
-			role: 'workflow:editor',
-		});
 
 		const blocked = await service.apply(connection.id, owner);
 		assert(blocked.status === 'blocked');
@@ -874,7 +855,6 @@ describe('Promote and Apply', () => {
 				kind: 'project',
 				code: 'project-deletion',
 				project: { id: removedProject.id, name: 'Removed from Git' },
-				contents: { workflows: 2, credentials: 1, dataTables: 1 },
 			},
 		]);
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();

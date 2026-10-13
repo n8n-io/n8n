@@ -141,7 +141,6 @@ export type PromotionProjectDeletion = {
 	kind: 'project';
 	code: 'project-deletion';
 	project: { id: string; name: string };
-	contents: { workflows: number; credentials: number; dataTables: number };
 };
 
 type ApplyPackageIdentity = {

@@ -81,11 +81,7 @@ function blockedMessage(
 		...(projectDeletions.length > 0
 			? [
 					'Apply deletes these projects with everything in them:',
-					...projectDeletions.map(
-						({ project, contents }) =>
-							`  ${project.name}: ${plural(contents.workflows, 'workflow')}, ` +
-							`${plural(contents.credentials, 'credential')}, ${plural(contents.dataTables, 'data table')}`,
-					),
+					...projectDeletions.map(({ project }) => `  ${project.name}`),
 				]
 			: []),
 		'Run with --json for the details. After you resolve them, run:',
@@ -107,10 +103,6 @@ function isProjectDeletion(
 	conflict: Record<string, unknown>,
 ): conflict is PromotionProjectDeletion {
 	return conflict.code === 'project-deletion';
-}
-
-function plural(count: number, noun: string): string {
-	return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 /** The `--expected-*` flags that pin a Continue run to the source a blocked Apply reported. */

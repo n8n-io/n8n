@@ -166,22 +166,6 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return rows.map(({ workflowId }) => workflowId);
 	}
 
-	/** Number of workflows, archived ones included, that each project owns. Keyed by project id. */
-	async countOwnedByProjectIds(projectIds: string[]): Promise<Map<string, number>> {
-		const counts = new Map<string, number>();
-		for (const batch of chunkIds(projectIds)) {
-			const rows = await this.createQueryBuilder('sw')
-				.select('sw.projectId', 'projectId')
-				.addSelect('COUNT(*)', 'count')
-				.where('sw.projectId IN (:...batch)', { batch })
-				.andWhere('sw.role = :role', { role: 'workflow:owner' })
-				.groupBy('sw.projectId')
-				.getRawMany<{ projectId: string; count: string | number }>();
-			for (const { projectId, count } of rows) counts.set(projectId, Number(count));
-		}
-		return counts;
-	}
-
 	/** Owner project of each workflow, keyed by workflow id. */
 	async findOwnerProjectsByWorkflowIds(workflowIds: string[]): Promise<Map<string, Project>> {
 		const ownerRows: SharedWorkflow[] = [];

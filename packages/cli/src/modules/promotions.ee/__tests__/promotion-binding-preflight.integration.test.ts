@@ -359,7 +359,6 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 				kind: 'project',
 				code: 'project-deletion',
 				project: { id: projectB.id, name: 'Beta' },
-				contents: { workflows: 0, credentials: 1, dataTables: 0 },
 			},
 		]);
 		expect(
@@ -462,7 +461,6 @@ describe('PromotionBindingPreflightService (directory + database)', () => {
 					kind: 'project',
 					code: 'project-deletion',
 					project: { id: unrelated.id, name: 'Unrelated' },
-					contents: { workflows: 0, credentials: 1, dataTables: 0 },
 				},
 			],
 			warnings: [],

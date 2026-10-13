@@ -230,7 +230,6 @@ describe('promotion-connection apply command', () => {
 						kind: 'project',
 						code: 'project-deletion',
 						project: { id: 'proj-2', name: 'Sales' },
-						contents: { workflows: 3, credentials: 1, dataTables: 0 },
 					},
 				],
 			},
@@ -240,8 +239,7 @@ describe('promotion-connection apply command', () => {
 
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
-			'Apply deletes these projects with everything in them:\n' +
-				'  Sales: 3 workflows, 1 credential, 0 data tables',
+			'Apply deletes these projects with everything in them:\n' + '  Sales',
 		);
 		expect(message).toContain(
 			"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",

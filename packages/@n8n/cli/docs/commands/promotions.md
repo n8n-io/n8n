@@ -303,8 +303,7 @@ requirement, and conflict. Existing variable values on this instance are kept.
 Apply makes the team projects on this instance match the package. It deletes
 each team project that the package does not hold, with all its workflows,
 credentials, and data tables. Preflight reports each such project as a
-`project-deletion` conflict, with the number of workflows, credentials, and data
-tables in it.
+`project-deletion` conflict.
 
 Clone the `apply` direction first. This command works on the `instance`
 connection only. The API key needs `gitConnection:pull`.

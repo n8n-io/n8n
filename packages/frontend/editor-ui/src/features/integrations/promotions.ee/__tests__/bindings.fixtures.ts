@@ -52,7 +52,6 @@ export const projectDeletion: Extract<PromotionBindingConflict, { code: 'project
 	kind: 'project',
 	code: 'project-deletion',
 	project: { id: 'team-b', name: 'Sales' },
-	contents: { workflows: 3, credentials: 1, dataTables: 0 },
 };
 
 export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credential' }> = {

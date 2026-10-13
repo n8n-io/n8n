@@ -183,11 +183,6 @@ export class DataTableService {
 		});
 	}
 
-	/** Number of data tables in each project. Keyed by project id. */
-	async countDataTablesByProjectIds(projectIds: string[]): Promise<Map<string, number>> {
-		return await this.dataTableRepository.countByProjectIds(projectIds);
-	}
-
 	/** Instance-wide column id lookup used by package import to detect column ids that another table uses. */
 	async findTableIdsByColumnIds(
 		columnIds: string[],

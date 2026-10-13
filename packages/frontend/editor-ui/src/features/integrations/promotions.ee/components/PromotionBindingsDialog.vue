@@ -118,25 +118,6 @@ function destructiveColumns(
 		: i18n.baseText('promotions.bindings.destructive.columns', { interpolate: { list } });
 }
 
-function projectContents({
-	workflows,
-	credentials,
-	dataTables,
-}: Extract<PromotionBindingConflict, { code: 'project-deletion' }>['contents']) {
-	const count = (key: 'workflows' | 'credentials' | 'dataTables', value: number) =>
-		i18n.baseText(`promotions.bindings.projectDeletion.${key}`, {
-			adjustToNumber: value,
-			interpolate: { count: String(value) },
-		});
-	return i18n.baseText('promotions.bindings.projectDeletion.contents', {
-		interpolate: {
-			workflows: count('workflows', workflows),
-			credentials: count('credentials', credentials),
-			dataTables: count('dataTables', dataTables),
-		},
-	});
-}
-
 const submitLabel = computed(() => {
 	if (projectDeletions.value.length) {
 		return i18n.baseText('promotions.bindings.deleteProjectsAndApply', {
@@ -315,7 +296,6 @@ async function continueApply() {
 						iconless
 					>
 						<strong>{{ item.project.name }}</strong>
-						<p>{{ projectContents(item.contents) }}</p>
 					</N8nCallout>
 				</section>
 				<section v-if="destructiveChanges.length" :class="$style.notices">

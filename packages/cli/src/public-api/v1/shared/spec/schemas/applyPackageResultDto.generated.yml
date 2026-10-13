@@ -1111,27 +1111,10 @@ oneOf:
                       required:
                         - id
                         - name
-                    contents:
-                      type: object
-                      properties:
-                        workflows:
-                          type: integer
-                          minimum: 0
-                        credentials:
-                          type: integer
-                          minimum: 0
-                        dataTables:
-                          type: integer
-                          minimum: 0
-                      required:
-                        - workflows
-                        - credentials
-                        - dataTables
                   required:
                     - kind
                     - code
                     - project
-                    - contents
                 - type: object
                   properties:
                     kind:
