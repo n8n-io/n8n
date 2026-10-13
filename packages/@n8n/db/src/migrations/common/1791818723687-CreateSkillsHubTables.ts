@@ -9,8 +9,8 @@ const AGENT_VERSION_SKILL_DEPENDENCY_TABLE = 'agent_version_skill_dependency';
 /**
  * The skills hub: skills live outside the agent row, so many agents can use one skill.
  * A skill belongs to one target: a user ("Just you", for the assistant only), a project
- * (team or personal, for its agents and its assistant sessions), or the instance (neither
- * set). Its name and content live in numbered, immutable versions: a Save that changes
+ * (team or personal, for its agents and its assistant sessions), one agent in a project
+ * (only that agent can use it), or the instance (neither set). Its name and content live in numbered, immutable versions: a Save that changes
  * the content creates the next one, agents read the latest, and agent publishes pin the
  * one they ran.
  */
@@ -46,6 +46,11 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 				column('projectId')
 					.varchar(36)
 					.comment('Set for a project skill, team or personal. NULL otherwise'),
+				column('agentId')
+					.varchar(36)
+					.comment(
+						'Set when only this agent can use the skill. projectId is then the agent project',
+					),
 				column('source')
 					.varchar(16)
 					.notNull.withEnumCheck(['ui', 'agent'])
@@ -56,6 +61,7 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 			)
 			.withTimestamps.withIndexOn(['userId'])
 			.withIndexOn(['projectId'])
+			.withIndexOn(['agentId'])
 			.withForeignKey('userId', {
 				tableName: 'user',
 				columnName: 'id',
@@ -63,6 +69,12 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 			})
 			.withForeignKey('projectId', {
 				tableName: 'project',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			// An agent skill goes with its agent, as agent skills do today.
+			.withForeignKey('agentId', {
+				tableName: 'agents',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -74,6 +86,10 @@ export class CreateSkillsHubTables1791818723687 implements ReversibleMigration {
 			.withCheck(
 				`CHK_${tablePrefix}skill_single_target`,
 				`${escape.columnName('userId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
+			)
+			.withCheck(
+				`CHK_${tablePrefix}skill_agent_in_project`,
+				`${escape.columnName('agentId')} IS NULL OR ${escape.columnName('projectId')} IS NOT NULL`,
 			);
 	}
 

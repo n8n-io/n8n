@@ -85,7 +85,7 @@ describe('CreateSkillsHubTables migration', () => {
 
 	/** A skill with one version and one file. */
 	const insertSkill = async (
-		target: { userId?: string; projectId?: string },
+		target: { userId?: string; projectId?: string; agentId?: string },
 		createdById?: string,
 	) => {
 		const skillId = `skill_${randomUUID().slice(0, 16)}`;
@@ -93,6 +93,7 @@ describe('CreateSkillsHubTables migration', () => {
 			id: skillId,
 			userId: target.userId ?? null,
 			projectId: target.projectId ?? null,
+			agentId: target.agentId ?? null,
 			source: 'ui',
 			createdById: createdById ?? null,
 		});
@@ -222,6 +223,53 @@ describe('CreateSkillsHubTables migration', () => {
 		expect(await countRows('agents', 'id', agentId)).toBe(1);
 		expect(await countRows('agent_history', 'versionId', agentVersionId)).toBe(1);
 
+		await deleteRow('project', 'id', projectId);
+	});
+
+	it('deletes an agent together with its own skills, and keeps project skills', async () => {
+		const projectId = await insertProject();
+		const agentId = await insertAgent(projectId);
+		const agentVersionId = await insertAgentVersion(agentId);
+		const own = await insertSkill({ projectId, agentId });
+		const shared = await insertSkill({ projectId });
+		for (const { skillId, versionId } of [own, shared]) {
+			await insertRow('agent_skill_dependency', { agentId, skillId, skillVersionId: null });
+			await insertRow('agent_version_skill_dependency', {
+				agentVersionId,
+				skillId,
+				skillVersionId: versionId,
+			});
+		}
+
+		await deleteRow('agents', 'id', agentId);
+
+		expect(await countRows('skill', 'id', own.skillId)).toBe(0);
+		expect(await countRows('skill_version', 'skillId', own.skillId)).toBe(0);
+		expect(await countRows('skill_file', 'skillVersionId', own.versionId)).toBe(0);
+		expect(await countRows('skill', 'id', shared.skillId)).toBe(1);
+		expect(await countRows('agent_skill_dependency', 'skillId', shared.skillId)).toBe(0);
+		expect(await countRows('agent_version_skill_dependency', 'skillId', shared.skillId)).toBe(0);
+
+		await deleteRow('project', 'id', projectId);
+	});
+
+	it('rejects an agent skill without a project', async () => {
+		const projectId = await insertProject();
+		const agentId = await insertAgent(projectId);
+
+		await expect(insertSkill({ agentId })).rejects.toThrow();
+
+		await deleteRow('project', 'id', projectId);
+	});
+
+	it('rejects an agent skill that is also a Just you skill', async () => {
+		const userId = await insertUser();
+		const projectId = await insertProject();
+		const agentId = await insertAgent(projectId);
+
+		await expect(insertSkill({ userId, agentId })).rejects.toThrow();
+
+		await deleteRow('user', 'id', userId);
 		await deleteRow('project', 'id', projectId);
 	});
 

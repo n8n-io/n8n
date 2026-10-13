@@ -70,6 +70,7 @@ erDiagram
   varchar_36_ versionId
 }
 "skill" {
+  varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK
