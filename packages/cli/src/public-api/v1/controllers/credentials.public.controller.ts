@@ -332,7 +332,20 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		return toCredentialPublicDto(updatedCredential, await this.credentialDescriptions.isEnabled());
+		const includeDescription = await this.credentialDescriptions.isEnabled();
+
+		this.eventService.emit('credentials-updated', {
+			user: req.user,
+			credentialType: updatedCredential.type,
+			credentialId: updatedCredential.id,
+			credentialName: updatedCredential.name,
+			...(includeDescription && {
+				credentialDescriptionLength: updatedCredential.description?.length ?? 0,
+			}),
+			isDynamic: updatedCredential.isResolvable ?? false,
+		});
+
+		return toCredentialPublicDto(updatedCredential, includeDescription);
 	}
 
 	private assertKnownCredentialType(type: string): void {
