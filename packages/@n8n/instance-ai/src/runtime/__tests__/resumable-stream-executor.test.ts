@@ -127,7 +127,7 @@ describe('normalizeStreamSource', () => {
 
 		expect(result.status).toBe('errored');
 		expect(result.error).toBe(error);
-		expect(result.measuredUsage).toBeUndefined();
+		expect(result.usage).toBeUndefined();
 	});
 });
 
@@ -149,7 +149,6 @@ describe('executeResumableStream', () => {
 						type: 'finish',
 						finishReason,
 						structuredOutput,
-						usage: { promptTokens: 10, totalTokens: 15 },
 					},
 				]),
 			}),
@@ -167,12 +166,6 @@ describe('executeResumableStream', () => {
 		expect(result.status).toBe(status);
 		expect(result.finishReason).toBe(finishReason);
 		expect(result.structuredOutput).toEqual(structuredOutput);
-		expect(result.measuredUsage).toEqual({
-			promptTokens: 10,
-			completionTokens: undefined,
-			totalTokens: 15,
-			costUsd: undefined,
-		});
 		await expect(result.text).resolves.toBe('Working...');
 	});
 
@@ -187,6 +180,7 @@ describe('executeResumableStream', () => {
 				yield {
 					type: 'finish',
 					finishReason: 'error',
+					model: 'test-model',
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				};
 				if (aborted) controller.abort();
@@ -210,7 +204,16 @@ describe('executeResumableStream', () => {
 			expect(result.status).toBe(aborted ? 'cancelled' : 'errored');
 			expect(result.finishReason).toBe('error');
 			expect(result.usage?.totalTokens).toBe(15);
-			expect(result.measuredUsage?.totalTokens).toBe(15);
+			expect(result.usage?.usage).toEqual([
+				{
+					type: 'llmTokens',
+					model: 'test-model',
+					uncachedInput: 10,
+					cacheRead: 0,
+					cacheWrite: 0,
+					output: 5,
+				},
+			]);
 			if (!aborted) {
 				expect(result.error).toBe(streamError);
 				expect(eventBus.publish).toHaveBeenCalledWith(
@@ -298,7 +301,6 @@ describe('executeResumableStream', () => {
 		expect(result.agentRunId).toBe('agent-run-1');
 		expect(result.error).toBe(error);
 		expect(result.usage).toBeUndefined();
-		expect(result.measuredUsage).toBeUndefined();
 	});
 
 	it('reports the terminal finish reason of a completed run', async () => {
@@ -415,6 +417,7 @@ describe('executeResumableStream', () => {
 				type: 'finish',
 				finishReason: 'error',
 				structuredOutput,
+				model: 'test-model',
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 			};
 		}
@@ -441,12 +444,16 @@ describe('executeResumableStream', () => {
 			completionTokens: 5,
 			totalTokens: 15,
 		});
-		expect(result.measuredUsage).toEqual({
-			promptTokens: 10,
-			completionTokens: 5,
-			totalTokens: 15,
-			costUsd: undefined,
-		});
+		expect(result.usage?.usage).toEqual([
+			{
+				type: 'llmTokens',
+				model: 'test-model',
+				uncachedInput: 10,
+				cacheRead: 0,
+				cacheWrite: 0,
+				output: 5,
+			},
+		]);
 		expect(eventBus.publish).toHaveBeenCalledTimes(1);
 	});
 

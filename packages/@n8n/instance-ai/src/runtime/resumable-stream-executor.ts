@@ -11,11 +11,7 @@ import type {
 	OrchestratorRunStopSignal,
 } from './orchestrator-run-control';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
-import {
-	UsageAccumulator,
-	type MeasuredTokenUsage,
-	type RunTokenUsage,
-} from '../stream/usage-accumulator';
+import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
@@ -87,8 +83,6 @@ export interface ExecuteResumableStreamResult {
 	workSummary: WorkSummary;
 	/** Accumulated token usage and cost, when the stream emitted usage. */
 	usage?: RunTokenUsage;
-	/** Usage without defaults for measurements the stream did not provide. */
-	measuredUsage?: MeasuredTokenUsage;
 	/** Reason this stream stopped early after publishing the current chunk. */
 	stopReason?: OrchestratorRunHandoffReason;
 	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
@@ -514,7 +508,6 @@ export async function executeResumableStream(
 			structuredOutput: pass.structuredOutput,
 			workSummary: workSummaryAccumulator.toSummary(),
 			usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
-			measuredUsage: usageAccumulator.toMeasuredUsage(),
 		};
 
 		const { suspension, hasError, pendingConfirmation, confirmationEvent } = pass;

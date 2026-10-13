@@ -57,7 +57,7 @@ async function collectAsyncIterable(stream: AsyncIterable<unknown>) {
 
 describe('streamAgentRun', () => {
 	it.each(['completed', 'cancelled', 'errored', 'suspended'] as const)(
-		'preserves terminal output, reason, and measurements for %s runs',
+		'preserves terminal output, reason, and usage for %s runs',
 		async (status) => {
 			const terminalResult = {
 				status,
@@ -66,7 +66,6 @@ describe('streamAgentRun', () => {
 				structuredOutput: { summary: 'Checked the candidate.' },
 				finishReason: 'max-iterations' as const,
 				usage: { promptTokens: 10, completionTokens: 0, totalTokens: 10, costUsd: 0 },
-				measuredUsage: { promptTokens: 10, totalTokens: 10 },
 			};
 			vi.mocked(executeResumableStream).mockResolvedValue(terminalResult);
 			const agent = {

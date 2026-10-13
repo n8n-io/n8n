@@ -167,7 +167,11 @@ export class SelfHealingResultService {
 			outcome: result.outcome,
 			summary: result.summary,
 			report: result.report,
-			usage: result.usage,
+			usage: {
+				credits: result.usage.credits,
+				turns: result.usage.turns,
+				durationSeconds: result.usage.durationSeconds,
+			},
 			createdAt: result.createdAt.toISOString(),
 			updatedAt: result.updatedAt.toISOString(),
 			completedAt: result.completedAt.toISOString(),

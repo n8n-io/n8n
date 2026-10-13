@@ -156,7 +156,6 @@ describe('createSelfHealingAgent', () => {
 		expect(result.status).toBe('completed');
 		expect(result.structuredOutput).toEqual(output);
 		expect(result.finishReason).toBe('stop');
-		expect(result.measuredUsage).toMatchObject({ promptTokens: 30, completionTokens: 15 });
 		expect(context.executionService.getStatus).toHaveBeenCalledWith('execution');
 		expect(verifyCandidate).toHaveBeenCalledTimes(1);
 		expect(turns).toHaveLength(0);

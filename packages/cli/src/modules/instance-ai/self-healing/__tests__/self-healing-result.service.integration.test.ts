@@ -129,9 +129,6 @@ async function prepareFixture(outcome: Outcome = 'needs_you', withSuggestion = f
 			credits: 1,
 			turns: 2,
 			durationSeconds: 30,
-			promptTokens: 1000,
-			completionTokens: 200,
-			totalTokens: 1200,
 		},
 		outcome,
 		summary: 'Review the execution result.',
@@ -229,9 +226,6 @@ it('does not require a published workflow for an informational result', async ()
 			credits: 1,
 			turns: 2,
 			durationSeconds: 30,
-			promptTokens: 1000,
-			completionTokens: 200,
-			totalTokens: 1200,
 		},
 		outcome: 'could_not_fix',
 		summary: 'The investigation could not produce a fix.',
@@ -264,9 +258,6 @@ it.each([0, null])('preserves report text and measured usage with credits=%s', a
 		credits,
 		turns: 1,
 		durationSeconds: null,
-		promptTokens: 1200,
-		completionTokens: 0,
-		totalTokens: 1200,
 	};
 	const result = await service.complete({
 		...input,
@@ -276,6 +267,21 @@ it.each([0, null])('preserves report text and measured usage with credits=%s', a
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail.report).toBe(report);
 	expect(detail.usage).toEqual(usage);
+});
+
+it('omits token counts from previously stored usage', async () => {
+	const { input, user, project, original } = await prepareFixture();
+	const result = await service.complete(input);
+	const storedUsage = {
+		...input.usage,
+		promptTokens: 1000,
+		completionTokens: 200,
+		totalTokens: 1200,
+	};
+	await results.update(result.id, { usage: storedUsage });
+
+	const detail = await service.getDetail(user, project.id, original.id, result.id);
+	expect(detail.usage).toEqual(input.usage);
 });
 
 it.each(['before', 'after'] as const)(
@@ -303,9 +309,6 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 		credits: null,
 		turns: 2,
 		durationSeconds: null,
-		promptTokens: null,
-		completionTokens: null,
-		totalTokens: null,
 	};
 	const result = await service.complete({
 		...input,

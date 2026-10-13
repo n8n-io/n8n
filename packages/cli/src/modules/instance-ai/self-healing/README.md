@@ -26,7 +26,7 @@ Research remains subject to the existing policy. A request that needs approval i
 The agent has no shell, save, publish, credential setup, MCP, browser, or delegation tools.
 It does not request user confirmation or start follow-up runs.
 
-The call returns technical `status`, finish information, measured `usage`, and validated `output`
+The call returns technical `status`, finish information, credit and timing `usage`, and validated `output`
 when available. Output has `outcome`, `summary`, `report`, and an optional `candidateFilePath`.
 `fix_ready` requires a candidate path. `could_not_fix` excludes one.
 The result can include a candidate reader for backend use.
@@ -54,7 +54,7 @@ There is no automatic trigger or public launch endpoint.
 
 Prepare optional workflow changes with `WorkflowSuggestionService.prepareSuggestion()`.
 Pass them to `SelfHealingResultService.complete()` with the outcome, report, original execution ID,
-and usage object. Supply measured usage from the existing runtime and accounting services.
+and usage object. Supply credits and timing from the investigation.
 The method validates references and report content before opening its transaction.
 It then checks current editor access and ownership again and saves the result, suggestion,
 and submission activity together. Callers do not prepare results or supply a transaction.
@@ -71,12 +71,11 @@ suggestion explanations and error context. Persistence does not scrub these fiel
 | `needs_you`     | Optional   | Continue in chat, Dismiss                    |
 | `could_not_fix` | None       | Continue in chat, Dismiss                    |
 
-The report is one string. Usage contains `credits`, `turns`, `durationSeconds`, `promptTokens`,
-`completionTokens`, and `totalTokens`. The usage object and all measurement fields are required;
-individual measurements can be null when unknown. Token counts use the existing runtime usage
-summaries, including when credit usage is unavailable. If an investigation spans multiple runtime
-invocations, the producer combines their summaries once before saving the result. Persistence
-stores this snapshot without calculating tokens or charging usage.
+The report is one string. Usage contains `credits`, `turns`, and `durationSeconds`.
+The usage object and all three fields are required. Individual measurements can be null when unknown.
+If an investigation spans multiple runtime invocations, the producer combines their usage once
+before saving the result. Persistence stores this snapshot without charging usage.
+Token counts stay in the existing runtime billing path.
 
 Workflow, original-project, background-user, and suggestion deletion cascade to the result.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.

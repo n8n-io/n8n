@@ -191,9 +191,6 @@ export class SelfHealingAgentService {
 				credits: null,
 				turns: null,
 				durationSeconds: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
 			},
 		};
 		try {
@@ -250,9 +247,6 @@ export class SelfHealingAgentService {
 		} finally {
 			if (result.status === 'cancelled') result.reason = options.getAbortReason();
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
-			result.usage.promptTokens = stream?.measuredUsage?.promptTokens ?? null;
-			result.usage.completionTokens = stream?.measuredUsage?.completionTokens ?? null;
-			result.usage.totalTokens = stream?.measuredUsage?.totalTokens ?? null;
 			try {
 				result.usage.credits =
 					(await this.credits.claimRunUsage(

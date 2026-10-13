@@ -1595,9 +1595,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 				credits: null,
 				turns: null,
 				durationSeconds: null,
-				promptTokens: null,
-				completionTokens: null,
-				totalTokens: null,
 			},
 		};
 	}

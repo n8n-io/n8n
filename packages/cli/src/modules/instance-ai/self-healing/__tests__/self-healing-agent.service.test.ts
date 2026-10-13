@@ -192,7 +192,6 @@ describe('SelfHealingAgentService', () => {
 					},
 				],
 			},
-			measuredUsage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 		};
 		vi.mocked(streamAgentRun).mockImplementation(async () => stream);
 	});
@@ -208,7 +207,11 @@ describe('SelfHealingAgentService', () => {
 			status: 'completed',
 			finishReason: 'stop',
 			output: validOutput,
-			usage: { credits: 0.25, promptTokens: 10, completionTokens: 5, totalTokens: 15, turns: null },
+		});
+		expect(result.usage).toEqual({
+			credits: 0.25,
+			turns: null,
+			durationSeconds: expect.any(Number),
 		});
 		expect(await result.candidate?.read()).toContain('node-id');
 		expect(await result.candidate?.read()).toContain('original value');
@@ -291,17 +294,13 @@ describe('SelfHealingAgentService', () => {
 		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 
-	it('keeps absent measurements unknown', async () => {
+	it('keeps credit usage unknown when the claim returns no delta', async () => {
 		stream.usage = undefined;
-		stream.measuredUsage = undefined;
 		credits.claimRunUsage.mockResolvedValueOnce(undefined);
 		const result = await service.execute(input, verifier, options);
 		expect(result.usage).toMatchObject({
 			credits: null,
 			turns: null,
-			promptTokens: null,
-			completionTokens: null,
-			totalTokens: null,
 		});
 	});
 
@@ -322,14 +321,14 @@ describe('SelfHealingAgentService', () => {
 		expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 
-	it('retains measured usage after cancellation', async () => {
+	it('claims usage after cancellation', async () => {
 		stream.status = 'cancelled';
 		stream.finishReason = 'other';
 		const result = await service.execute(input, verifier, options);
 		expect(result).toMatchObject({
 			status: 'cancelled',
 			reason: 'shutdown',
-			usage: { totalTokens: 15 },
+			usage: { credits: 0.25 },
 		});
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
@@ -340,12 +339,12 @@ describe('SelfHealingAgentService', () => {
 		);
 	});
 
-	it('retains output and usage when the iteration cap is reached', async () => {
+	it('retains output and credits when the iteration cap is reached', async () => {
 		stream.finishReason = 'max-iterations';
 		const result = await service.execute(input, verifier, options);
 		expect(result.finishReason).toBe('max-iterations');
 		expect(result.output).toEqual(validOutput);
-		expect(result.usage.totalTokens).toBe(15);
+		expect(result.usage.credits).toBe(0.25);
 	});
 
 	it('retires unexpected suspension without creating a confirmation', async () => {
