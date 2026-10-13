@@ -1,11 +1,12 @@
 packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
   s_fb30b1b6ca962d::t_4a63a83b3eb403 350-359
 packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionRedaction.test.ts
-  s_83b2ba056c51c0::t_c9a08e09cca87e 12-15,19-23,168-232
+  s_83b2ba056c51c0::t_c9a08e09cca87e 12-15,19-23,168-232,168-209,210-213,215,218-232
   s_fb30b1b6ca962d::t_98d1f893744383 235-236
-  s_fb30b1b6ca962d::t_4a63a83b3eb403 10-11,103-167,233-234
+  s_fb30b1b6ca962d::t_4a63a83b3eb403 10-11,103-167,103-116,118-167,216,233-234
+  s_fb30b1b6ca962d::t_90c5143954a84e 214,217
 packages/@n8n/telemetry/src/events/credentials.ts
-  s_83b2ba056c51c0::t_d147e1c4fce64a 114-123
+  s_83b2ba056c51c0::t_d147e1c4fce64a 114-123,114-116,118-123
 packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
   s_fb30b1b6ca962d::t_70987472cc7770 15
   s_fb30b1b6ca962d::t_6b6f7e1ef06f77 239-245,250-251
@@ -13,7 +14,7 @@ packages/frontend/editor-ui/src/features/ndv/panel/components/RedactedDataState.
   s_83b2ba056c51c0::t_ade36d80a7142c 43-58
   s_83b2ba056c51c0::t_1574258adcb28e 12-13,19
 packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionRedaction.ts
-  s_83b2ba056c51c0::t_4283442f95f388 1,13,16-17,74-107,110-120,152-154
+  s_83b2ba056c51c0::t_4283442f95f388 1,13,16-17,74-107,74-81,82-86,87-93,94,96-97,100-101,102-105,106-107,110-120,152-154
   s_fb30b1b6ca962d::t_4d282121e86229 11-12,14-15,28-30,44-73,108-109,121-122,160-167
 packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
   s_fb30b1b6ca962d::t_f303d9f55b3863 79-81
