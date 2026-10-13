@@ -126,7 +126,7 @@ function onCancel() {
 			<div :class="$style.spacer" />
 
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="small"
 				type="button"
 				:disabled="busy"

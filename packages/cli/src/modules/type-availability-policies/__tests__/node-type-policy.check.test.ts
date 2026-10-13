@@ -228,6 +228,8 @@ describe('NodeTypePolicyCheck', () => {
 				subjectType: 'nodeType',
 				scope: 'instance',
 				matchedRuleId: 'rule-7',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
 			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith('node-types', 'project-1', [
 				SLACK,
@@ -297,11 +299,13 @@ describe('NodeTypePolicyCheck', () => {
 			expect(result.violations[0]).toStrictEqual({
 				kind: 'node-type-unavailable',
 				checkId: 'node-type-availability',
-				message: `Node type "${SLACK}" is blocked by this project's policy`,
+				message: `Node type "${SLACK}" is blocked by a project policy`,
 				subject: SLACK,
 				subjectType: 'nodeType',
 				scope: 'project',
 				matchedRuleId: 'rule-3',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
 		});
 
@@ -320,7 +324,63 @@ describe('NodeTypePolicyCheck', () => {
 				subject: SLACK,
 				subjectType: 'nodeType',
 				scope: 'instance',
+				projectId: 'project-1',
+				optInAvailable: false,
 			});
+		});
+
+		it('carries the projectId from the context on a project-scope denial', async () => {
+			denying([SLACK], { scope: 'project' });
+
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK)]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].projectId).toBe('project-1');
+		});
+
+		it('also carries the projectId on an instance-scope denial', async () => {
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK)]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].scope).toBe('instance');
+			expect(result.violations[0].projectId).toBe('project-1');
+		});
+
+		it('reports optInAvailable true when the verdict allows it and a project applies', async () => {
+			denying([SLACK], { optInAvailable: true });
+
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK)]),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations[0].optInAvailable).toBe(true);
+		});
+
+		it('drops projectId and forces optInAvailable false with no project, even when the verdict allows opt-in', async () => {
+			denying([SLACK], { optInAvailable: true });
+
+			const result = await check.onContentImport({
+				workflow: workflow([node(SLACK)]),
+				projectId: null,
+				transport: 'cli',
+			});
+
+			expect(Object.keys(result.violations[0])).not.toContain('projectId');
+			expect(result.violations[0].optInAvailable).toBe(false);
+		});
+
+		it('names the projectId of the workflow-start context, as when a sub-workflow is checked against its own project', async () => {
+			const result = await check.onWorkflowStart({
+				workflow: workflow([node(SLACK)]),
+				projectId: 'sub-workflow-project',
+			});
+
+			expect(result.violations[0].projectId).toBe('sub-workflow-project');
 		});
 	});
 
