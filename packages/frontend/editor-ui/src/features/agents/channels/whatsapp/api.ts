@@ -3,7 +3,7 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 const integrationPath = (projectId: string, agentId: string) =>
-	`/projects/${projectId}/agents/v2/${agentId}/integrations/whatsapp`;
+	`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/integrations/whatsapp`;
 
 export const checkWhatsAppCredential = async (
 	context: IRestApiContext,
@@ -14,7 +14,7 @@ export const checkWhatsAppCredential = async (
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`${integrationPath(projectId, agentId)}/check/${credentialId}`,
+		`${integrationPath(projectId, agentId)}/check/${encodeURIComponent(credentialId)}`,
 	);
 
 export const getWhatsAppWebhookStatus = async (

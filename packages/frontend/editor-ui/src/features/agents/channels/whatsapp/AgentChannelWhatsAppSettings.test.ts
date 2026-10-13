@@ -87,7 +87,6 @@ describe('AgentChannelWhatsAppSettings', () => {
 		await userEvent.clear(retentionInput(getByTestId));
 		await fireEvent.blur(retentionInput(getByTestId));
 
-		const values = (emitted()['update:modelValue'] ?? []).map(([value]) => value);
-		expect(values.every((value) => Number.isInteger(value.mediaRetentionDays))).toBe(true);
+		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 });
