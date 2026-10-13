@@ -156,6 +156,7 @@ export type ToolCategoryKey =
 	| 'workflows'
 	| 'agents'
 	| 'project'
+	| 'this-agent'
 	| 'global'
 	| 'data';
 

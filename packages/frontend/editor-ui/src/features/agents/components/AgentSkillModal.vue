@@ -4,6 +4,7 @@ import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	skillNameKey,
+	type AgentSkillAvailability,
 	type SkillDetail,
 	type SkillListItem,
 } from '@n8n/api-types';
@@ -29,8 +30,6 @@ import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
-export type AgentSkillCreateScope = 'project' | 'instance';
-
 export type AgentSkillModalData = {
 	projectId: string;
 	agentId: string;
@@ -45,7 +44,11 @@ export type AgentSkillModalData = {
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	projectLabel?: string;
 	canCreateInstanceSkills?: boolean;
-	onConfirm: (payload: { id?: string; skill: AgentSkill; scope: AgentSkillCreateScope }) => void;
+	onConfirm: (payload: {
+		id?: string;
+		skill: AgentSkill;
+		availableTo: AgentSkillAvailability;
+	}) => void;
 	outdated?: boolean;
 	onUseLatestVersion?: (id: string) => void;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
@@ -94,10 +97,8 @@ const step = ref<'select' | 'preview' | 'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : hasPicker ? 'select' : 'upload',
 );
 const isImporting = ref(false);
-const createScope = ref<AgentSkillCreateScope>('project');
-const showScopeSelect = computed(
-	() => !isEditing.value && !!props.data.hubSkillsEnabled && !!props.data.canCreateInstanceSkills,
-);
+const availableTo = ref<AgentSkillAvailability>('project');
+const showAvailabilitySelect = computed(() => !isEditing.value && !!props.data.hubSkillsEnabled);
 
 const librarySkills = ref<SkillListItem[]>([]);
 const libraryLoading = ref(false);
@@ -116,7 +117,7 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 			skillId: librarySkill.id,
 			title: librarySkill.name,
 			description: librarySkill.description,
-			category: librarySkill.scope === 'instance' ? 'global' : 'project',
+			category: getPickerCategory(librarySkill),
 			status: 'none',
 			attached: attached || attaching,
 			attaching,
@@ -132,12 +133,12 @@ const previewLoading = ref(false);
 const previewIsAdded = computed(
 	() => !!previewSkill.value && attachedSkillIds.value.has(previewSkill.value.id),
 );
-const footerLeftContent = computed<'remove' | 'scope' | undefined>(() => {
+const footerLeftContent = computed<'remove' | 'availability' | undefined>(() => {
 	if (step.value === 'preview') {
 		return previewIsAdded.value && props.data.onRemove ? 'remove' : undefined;
 	}
 	if (isEditing.value && props.data.onRemove) return 'remove';
-	return showScopeSelect.value ? 'scope' : undefined;
+	return showAvailabilitySelect.value ? 'availability' : undefined;
 });
 const footerPrimaryAction = computed<'add' | 'save' | 'useLatest' | undefined>(() => {
 	if (step.value === 'preview') return previewIsAdded.value ? undefined : 'add';
@@ -240,12 +241,18 @@ function getSimilarNameReason(name: string): string | undefined {
 	});
 }
 
+function getPickerCategory(librarySkill: SkillListItem): 'project' | 'this-agent' | 'global' {
+	if (librarySkill.scope === 'instance') return 'global';
+	return librarySkill.agentId ? 'this-agent' : 'project';
+}
+
 async function loadLibrarySkills() {
 	libraryLoading.value = true;
 	try {
 		librarySkills.value = await listAttachableSkills(
 			rootStore.restApiContext,
 			props.data.projectId,
+			props.data.agentId,
 		);
 	} catch (error) {
 		showError(error, i18n.baseText('agents.builder.skills.picker.loadError'));
@@ -410,7 +417,11 @@ function onSave() {
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
-	props.data.onConfirm({ id: props.data.skillId, skill: payload, scope: createScope.value });
+	props.data.onConfirm({
+		id: props.data.skillId,
+		skill: payload,
+		availableTo: availableTo.value,
+	});
 	closeModal();
 }
 
@@ -456,7 +467,7 @@ function onRemove() {
 			<ToolsConnectionModal
 				:open="modalOpen && step === 'select'"
 				:items="pickerItems"
-				:categories="['all', 'project', 'global']"
+				:categories="['all', 'project', 'this-agent', 'global']"
 				:category-labels="data.projectLabel ? { project: data.projectLabel } : undefined"
 				:detail-item="null"
 				:search-placeholder="i18n.baseText('agents.builder.skills.picker.search.placeholder')"
@@ -552,21 +563,29 @@ function onRemove() {
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.skills.remove') }}
 			</N8nButton>
-			<label v-else :class="$style.scopeField">
-				<span :class="$style.scopeLabel">{{
-					i18n.baseText('agents.builder.skills.scope.label')
+			<label v-else :class="$style.availabilityField">
+				<span :class="$style.availabilityLabel">{{
+					i18n.baseText('agents.builder.skills.availableTo.label')
 				}}</span>
 				<N8nSelect
-					v-model="createScope"
+					v-model="availableTo"
 					size="small"
 					:teleported="false"
-					:class="$style.scopeSelect"
-					data-testid="agent-skill-scope-select"
+					:class="$style.availabilitySelect"
+					data-testid="agent-skill-availability-select"
 				>
-					<N8nOption value="project" :label="data.projectLabel ?? ''" />
 					<N8nOption
+						value="project"
+						:label="i18n.baseText('agents.builder.skills.availableTo.project')"
+					/>
+					<N8nOption
+						value="agent"
+						:label="i18n.baseText('agents.builder.skills.availableTo.agent')"
+					/>
+					<N8nOption
+						v-if="data.canCreateInstanceSkills"
 						value="instance"
-						:label="i18n.baseText('agents.builder.skills.scope.instance')"
+						:label="i18n.baseText('agents.builder.skills.availableTo.instance')"
 					/>
 				</N8nSelect>
 			</label>
@@ -629,19 +648,19 @@ function onRemove() {
 	text-align: right;
 }
 
-.scopeField {
+.availabilityField {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.scopeLabel {
+.availabilityLabel {
 	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-1);
 	white-space: nowrap;
 }
 
-.scopeSelect {
+.availabilitySelect {
 	width: calc(var(--spacing--4xl) + var(--spacing--3xl));
 }
 

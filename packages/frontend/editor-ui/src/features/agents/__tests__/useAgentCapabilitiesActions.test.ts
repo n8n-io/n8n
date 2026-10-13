@@ -8,7 +8,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
-import { createAgentSkill, createHubSkill, getHubSkill } from '../composables/useAgentApi';
+import { createAgentSkill, getHubSkill } from '../composables/useAgentApi';
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
 import type {
 	AgentJsonConfig,
@@ -36,7 +36,6 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	createAgentSkill: vi.fn(),
-	createHubSkill: vi.fn(),
 	getHubSkill: vi.fn(),
 }));
 
@@ -171,7 +170,7 @@ type SkillModalData = {
 	onConfirm: (payload: {
 		id?: string;
 		skill: AgentSkill;
-		scope?: 'project' | 'instance';
+		availableTo?: 'project' | 'agent' | 'instance';
 	}) => void;
 	onAttach?: (skill: SkillListItem) => Promise<void>;
 	onRemove?: (skillId: string) => void;
@@ -624,6 +623,7 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 			projectId: null,
 			projectName: null,
 			userId: null,
+			agentId: null,
 			source: 'ui',
 			latestVersion: 1,
 			usedByAgents: 0,
@@ -683,15 +683,15 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		const { modalData, actions, uiStore } = setupHub({ skillsHubEnabled: false });
 
 		expect(modalData.hubSkillsEnabled).toBe(false);
-		modalData.onConfirm({ skill: sqlHelper, scope: 'project' });
+		modalData.onConfirm({ skill: sqlHelper, availableTo: 'project' });
 		await flushPromises();
 		expect(createAgentSkill).toHaveBeenCalledWith(
 			expect.anything(),
 			'project-1',
 			'agent-1',
 			sqlHelper,
+			undefined,
 		);
-		expect(createHubSkill).not.toHaveBeenCalled();
 		expect(getHubSkill).not.toHaveBeenCalled();
 
 		actions.onOpenSkillFromList('tone');
@@ -717,7 +717,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(agent.value?.skills.sql).toEqual(sqlHelper);
 		expect(agent.value?.skillHashes?.sql).toBe('hash-sql');
 		expect(createAgentSkill).not.toHaveBeenCalled();
-		expect(createHubSkill).not.toHaveBeenCalled();
 	});
 
 	it('refuses to attach a skill whose name is hard to tell apart from an attached one', async () => {
@@ -749,41 +748,29 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
 	});
 
-	it('creates an instance skill in the hub and attaches it', async () => {
-		vi.mocked(createHubSkill).mockResolvedValue(makeDetail('sql', sqlHelper));
-		const { modalData, scheduleConfigUpdate } = setupHub();
+	it.each(['project', 'agent', 'instance'] as const)(
+		'creates a skill for the %s through the agent endpoint',
+		async (availableTo) => {
+			vi.mocked(createAgentSkill).mockResolvedValue({
+				id: 'sql',
+				skill: sqlHelper,
+				skillHash: 'hash-sql',
+				versionId: 'v2',
+			});
+			const { modalData } = setupHub();
 
-		modalData.onConfirm({ skill: sqlHelper, scope: 'instance' });
-		await flushPromises();
+			modalData.onConfirm({ skill: sqlHelper, availableTo });
+			await flushPromises();
 
-		expect(createHubSkill).toHaveBeenCalledWith(expect.anything(), {
-			scope: 'instance',
-			skill: sqlHelper,
-		});
-		expect(createAgentSkill).not.toHaveBeenCalled();
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
-			skills: [
-				{ type: 'skill', id: 'tone' },
-				{ type: 'skill', id: 'sql' },
-			],
-		});
-	});
-
-	it('creates a project skill through the agent endpoint', async () => {
-		vi.mocked(createAgentSkill).mockResolvedValue({
-			id: 'sql',
-			skill: sqlHelper,
-			skillHash: 'hash-sql',
-			versionId: 'v2',
-		});
-		const { modalData } = setupHub();
-
-		modalData.onConfirm({ skill: sqlHelper, scope: 'project' });
-		await flushPromises();
-
-		expect(createAgentSkill).toHaveBeenCalled();
-		expect(createHubSkill).not.toHaveBeenCalled();
-	});
+			expect(createAgentSkill).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				sqlHelper,
+				availableTo,
+			);
+		},
+	);
 
 	it('detaches a skill by dropping its ref only', () => {
 		const { actions, scheduleConfigUpdate } = setupHub();
@@ -791,7 +778,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		actions.onRemoveSkill('tone');
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
-		expect(createHubSkill).not.toHaveBeenCalled();
 	});
 
 	it('detaches a skill from the picker preview by dropping its ref only', () => {
@@ -800,7 +786,6 @@ describe('useAgentCapabilitiesActions — skills hub', () => {
 		modalData.onRemove?.('tone');
 
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ skills: [] });
-		expect(createHubSkill).not.toHaveBeenCalled();
 	});
 
 	it('marks a skill on an older version when the edit modal opens', () => {

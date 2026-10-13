@@ -7,13 +7,14 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
+	type AgentSkillAvailability,
 	type SkillDetail,
 	type SkillListItem,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { createAgentSkill, createHubSkill, getHubSkill } from './useAgentApi';
+import { createAgentSkill, getHubSkill } from './useAgentApi';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -464,11 +465,11 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					),
 				onConfirm: ({
 					skill,
-					scope,
+					availableTo,
 				}: {
 					id?: string;
 					skill: AgentSkill;
-					scope: 'project' | 'instance';
+					availableTo: AgentSkillAvailability;
 				}) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
@@ -480,18 +481,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 						// The host mints the skill id and writes body + ref together.
 						localSkills.createSkill(sanitizedSkill);
-						return;
-					}
-
-					if (scope === 'instance') {
-						void attachHubSkill(
-							isCurrentTarget,
-							async () =>
-								await createHubSkill(rootStore.restApiContext, {
-									scope: 'instance',
-									skill: normalizeAgentSkillForSave(skill),
-								}),
-						);
 						return;
 					}
 
@@ -517,6 +506,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								targetProjectId,
 								targetAgentId,
 								sanitizedSkill,
+								hubSkillsEnabled.value ? availableTo : undefined,
 							);
 							skillId = result.id;
 							created = result.skill;

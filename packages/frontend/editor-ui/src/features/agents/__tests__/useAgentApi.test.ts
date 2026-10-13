@@ -42,25 +42,27 @@ describe('useAgentApi', () => {
 	});
 
 	describe('listAttachableSkills', () => {
-		it('lists the attachable skills in one call, project skills first, each by name', async () => {
-			const skill = (name: string, scope: SkillListItem['scope']) =>
-				({ id: name, name, scope }) as SkillListItem;
+		it('lists the attachable skills of the agent in one call, by target and then by name', async () => {
+			const skill = (name: string, scope: SkillListItem['scope'], agentId: string | null = null) =>
+				({ id: name, name, scope, agentId }) as SkillListItem;
 			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({
-				count: 4,
+				count: 5,
 				data: [
 					skill('Tone', 'instance'),
+					skill('Notes', 'project', 'agent-1'),
 					skill('SQL', 'project'),
 					skill('Brand', 'instance'),
 					skill('Billing', 'project'),
 				],
 			});
 
-			const result = await listAttachableSkills(restApiContext, 'project-1');
+			const result = await listAttachableSkills(restApiContext, 'project-1', 'agent-1');
 
 			expect(makeRestApiRequest).toHaveBeenCalledWith(restApiContext, 'GET', '/skills', {
 				attachableTo: 'project-1',
+				attachableAgentId: 'agent-1',
 			});
-			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Brand', 'Tone']);
+			expect(result.map(({ name }) => name)).toEqual(['Billing', 'SQL', 'Notes', 'Brand', 'Tone']);
 		});
 	});
 
