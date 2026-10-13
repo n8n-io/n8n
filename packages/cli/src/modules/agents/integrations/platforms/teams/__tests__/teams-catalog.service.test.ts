@@ -351,6 +351,32 @@ describe('TeamsCatalogService', () => {
 		});
 
 		/**
+		 * Publishing puts an app in front of everyone in the organisation, as the
+		 * account that signed in. Being allowed to see that sign-in is the lower
+		 * rung, and does not carry standing to act with it.
+		 */
+		it('refuses a sign-in the user may see but not act with', async () => {
+			// Answers for reading the credential, refuses for acting with it.
+			credentialsFinderService.findCredentialForUser.mockImplementation((async (
+				id: string,
+				_user: unknown,
+				scopes: string[],
+			) =>
+				scopes.includes('credential:use')
+					? null
+					: mock<CredentialsEntity>({
+							id,
+							type:
+								id === 'bot-cred-1'
+									? 'microsoftEntraServicePrincipalApi'
+									: 'microsoftTeamsManagerOAuth2Api',
+						})) as never);
+
+			await expect(service.publish(publishOptions)).rejects.toThrow(BadRequestError);
+			expect(graph.postZip).not.toHaveBeenCalled();
+		});
+
+		/**
 		 * The listing still shows the definition that was approved before, so
 		 * asking it would report the change as live while it waits for somebody
 		 * to approve it.

@@ -440,11 +440,16 @@ export class TeamsCatalogService {
 		return await this.tokens.acquire(credential, GRAPH_RESOURCE);
 	}
 
+	/**
+	 * `credential:use`, not `credential:read`: the token taken here puts an app
+	 * in the organisation's catalogue, as this sign-in. Seeing a sign-in is not
+	 * standing to act with it.
+	 */
 	private async managerCredential(options: TeamsCatalogScope): Promise<CredentialsEntity> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			options.managerCredentialId,
 			options.user,
-			['credential:read'],
+			['credential:use'],
 		);
 		if (!credential || credential.type !== TEAMS_MANAGER_CREDENTIAL_TYPE) {
 			throw new BadRequestError('Sign in with Microsoft before publishing the Teams app.');
