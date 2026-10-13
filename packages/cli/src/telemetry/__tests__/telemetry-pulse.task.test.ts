@@ -18,7 +18,10 @@ describe('TelemetryPulseTask', () => {
 	it('should send one packet for the whole cluster every 6 hours', () => {
 		expect(task.name).toBe('telemetry-pulse');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 21600 });
-		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 1 } });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 1, missedAfterSeconds: 3600, catchUp: true },
+		});
 	});
 
 	it('should keep a missed occurrence for an hour, coalesce a longer backlog and never retry a failed one', () => {

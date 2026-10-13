@@ -18,12 +18,11 @@ describe('AgentCheckpointPruningTask', () => {
 	it('should declare an hourly prune cadence', () => {
 		expect(task.name).toBe('agent-checkpoint-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
-			leaderTimer: { runOnTakeover: true },
+			scheduler: { maxAttempts: 3, timeoutSeconds: 600 },
+			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 		});
-		expect(task.target.leaderTimer?.retryDelaySeconds).toBe(30);
 	});
 
 	it.each([

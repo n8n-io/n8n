@@ -16,8 +16,7 @@ describe('InstanceRegistryReconciliationTask', () => {
 	it('should declare the reconciliation cadence', () => {
 		expect(task.name).toBe('instance-registry-reconciliation');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 180 });
-		expect(task.target.scheduler?.maxAttempts).toBe(1);
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
 			scheduler: { maxAttempts: 1 },
 			leaderTimer: { runOnTakeover: true },

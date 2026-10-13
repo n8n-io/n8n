@@ -21,7 +21,7 @@ describe('WorkflowStatisticsRollupTask', () => {
 
 		expect(task.name).toBe('workflow-statistics-rollup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 5 });
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
 			scheduler: { maxAttempts: 3 },
 			leaderTimer: { runOnTakeover: true },

@@ -12,12 +12,11 @@ describe('WorkflowPublicationOutboxCleanupTask', () => {
 	it('should declare the configured cleanup cadence, a durable run and a run on takeover', () => {
 		expect(task.name).toBe('publication-outbox-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
 			scheduler: { maxAttempts: 3 },
-			leaderTimer: { runOnTakeover: true },
+			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 		});
-		expect(task.target.leaderTimer?.retryDelaySeconds).toBe(30);
 	});
 
 	it('should clean up the outbox on run, handing the pass its abort signal', async () => {

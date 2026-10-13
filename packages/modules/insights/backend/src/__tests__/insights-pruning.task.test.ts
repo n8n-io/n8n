@@ -22,8 +22,11 @@ describe('InsightsPruningTask', () => {
 			kind: 'interval',
 			intervalSeconds: insightsConfig.pruneCheckIntervalHours * 3600,
 		});
-		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
-		expect(task.target.leaderTimer?.retryDelaySeconds).toBe(1);
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 3, timeoutSeconds: 600 },
+			leaderTimer: { retryDelaySeconds: 1 },
+		});
 	});
 
 	it('should keep the whole-second rounding of a half-second prune-check cadence', () => {

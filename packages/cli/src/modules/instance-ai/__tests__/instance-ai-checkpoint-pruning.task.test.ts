@@ -17,12 +17,11 @@ describe('InstanceAiCheckpointPruningTask', () => {
 	it('should declare the configured prune cadence', () => {
 		expect(task.name).toBe('instance-ai-checkpoint-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
-			leaderTimer: { runOnTakeover: true },
+			scheduler: { maxAttempts: 3, timeoutSeconds: 1200 },
+			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 		});
-		expect(task.target.leaderTimer?.retryDelaySeconds).toBe(30);
 	});
 
 	it('should declare a fractional prune interval as is', () => {

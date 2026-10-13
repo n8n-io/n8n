@@ -17,7 +17,10 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 	it('should declare a cadence of half the optimizing window', () => {
 		expect(task.name).toBe('workflow-history-compaction-optimize');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 3, timeoutSeconds: 1800 },
+		});
 	});
 
 	it('should outlast the default task timeout', () => {

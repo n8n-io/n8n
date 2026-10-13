@@ -22,7 +22,10 @@ describe('ExecutionPruningSoftDeleteTask', () => {
 	it('should declare the configured soft-delete cadence', () => {
 		expect(task.name).toBe('execution-pruning-soft-delete');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.target).toMatchObject({ scope: 'cluster', scheduler: { maxAttempts: 3 } });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { maxAttempts: 3, timeoutSeconds: 600 },
+		});
 	});
 
 	it.each([

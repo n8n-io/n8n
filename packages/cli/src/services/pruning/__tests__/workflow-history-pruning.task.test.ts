@@ -17,9 +17,9 @@ describe('WorkflowHistoryPruningTask', () => {
 	it('should declare an hourly idempotent durable cluster task that runs on takeover', () => {
 		expect(task.name).toBe('workflow-history-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
-			scheduler: { maxAttempts: 3 },
+			scheduler: { maxAttempts: 3, timeoutSeconds: 600 },
 			leaderTimer: { runOnTakeover: true },
 		});
 	});

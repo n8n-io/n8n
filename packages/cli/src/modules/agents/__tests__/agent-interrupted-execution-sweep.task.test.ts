@@ -11,12 +11,11 @@ describe('AgentInterruptedExecutionSweepTask', () => {
 	it('declares the liveness grace as a durable cluster cadence', () => {
 		expect(task.name).toBe('agent-interrupted-execution-sweep');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 120 });
-		expect(task.target).toMatchObject({
+		expect(task.target).toEqual({
 			scope: 'cluster',
 			scheduler: { maxAttempts: 3 },
 			leaderTimer: { runOnTakeover: true },
 		});
-		expect(task.target.leaderTimer?.retryDelaySeconds).toBeUndefined();
 	});
 
 	it('hands the signal to the sweeper', async () => {
