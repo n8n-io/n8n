@@ -63,5 +63,4 @@ export { default as N8nMarkdownEditor } from './components/N8nMarkdownEditor/Mar
 export type * from './components/N8nMarkdownEditor/MarkdownEditor.types';
 export { default as N8nCodeBlock } from './components/N8nCodeBlock';
 export type * from './components/N8nCodeBlock';
-export { default as N8nMarkdown } from './components/N8nMarkdown';
 export { locale };
