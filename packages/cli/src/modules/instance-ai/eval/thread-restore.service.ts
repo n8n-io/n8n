@@ -316,7 +316,7 @@ export class EvalThreadRestoreService {
 					actor: { kind: 'user', user },
 					id: agent.id,
 					schema,
-					...(agent.skills ? { skills: agent.skills } : {}),
+					...(agent.skills ? { skills: agent.skills, skillCreator: user } : {}),
 				});
 				created.push(agent.id);
 			}

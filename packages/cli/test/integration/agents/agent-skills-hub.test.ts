@@ -304,6 +304,7 @@ describe('Agent skills in the skills hub', () => {
 			actor: actor(),
 			schema: { ...config, skills: [{ type: 'skill', id: 'seed_skill' }] },
 			skills: { seed_skill: body('Seeded skill') },
+			skillCreator: owner,
 		});
 
 		const { skillRefs: refs, skills } = await skillRefs.readDraft(agent, {});

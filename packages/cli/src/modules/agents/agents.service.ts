@@ -76,6 +76,9 @@ type CreateAgentOptions = {
 	/** Skill bodies keyed by the ref ids of `schema`. A ref to a skills hub skill
 	 *  stays a ref; a ref with only a body gets a new hub skill in this project. */
 	skills?: Record<string, AgentSkill>;
+	/** Creates the hub skills of refs with only a body when `user` is not set.
+	 *  Without either, those refs are dropped. */
+	skillCreator?: User;
 	/** Opaque custom tool bodies keyed by id (passthrough from the duplicate path;
 	 *  validated when the source agent was authored). */
 	tools?: Record<string, unknown>;
@@ -150,6 +153,7 @@ export class AgentsService {
 			defaultModel,
 			schema,
 			skills,
+			skillCreator,
 			tools,
 			user,
 		}: CreateAgentOptions,
@@ -184,7 +188,7 @@ export class AgentsService {
 					agent,
 					skillRefs,
 					skills ?? {},
-					user?.id ?? (actor.kind === 'user' ? actor.user.id : null),
+					user ?? skillCreator ?? null,
 					ctx,
 				);
 			});

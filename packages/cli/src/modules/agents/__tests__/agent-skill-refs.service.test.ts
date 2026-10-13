@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { AgentJsonSkillConfig } from '@n8n/api-types';
-import type { OperationContext } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { Agent } from '../entities/agent.entity';
@@ -11,6 +14,8 @@ import type { SkillVersion } from '../entities/skill-version.entity';
 import type { Skill } from '../entities/skill.entity';
 import type { ResolvedSkillRow, SkillRepository } from '../repositories/skill.repository';
 import type { SkillService } from '../skills/skill.service';
+
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const ctx: OperationContext = {};
 const pinId = '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f';
@@ -257,10 +262,12 @@ describe('AgentSkillRefsService', () => {
 
 	describe('createDraftRefs', () => {
 		const body = { name: 'New', description: 'New description', instructions: 'Do it.' };
+		const user = mock<User>({ id: 'user-1' });
 
 		beforeEach(() => {
 			skillService.checkRefs.mockImplementation(async (_agent, refs) => refs);
 			skillService.create.mockResolvedValue('skill_created');
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
 		it('keeps refs to hub skills and creates hub skills for refs with only a body', async () => {
@@ -274,7 +281,7 @@ describe('AgentSkillRefsService', () => {
 					{ type: 'skill', id: 'unknown' },
 				],
 				{ shared: body, seed_skill: body },
-				'user-1',
+				user,
 				ctx,
 			);
 
@@ -298,6 +305,35 @@ describe('AgentSkillRefsService', () => {
 				[{ id: 'shared' }, { id: 'skill_created' }],
 				ctx,
 			);
+		});
+
+		it('refuses to create a skill when the user may not create project skills', async () => {
+			skillRepository.findByIds.mockResolvedValue([]);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.createDraftRefs(
+					agent,
+					[{ type: 'skill', id: 'seed_skill' }],
+					{ seed_skill: body },
+					user,
+					ctx,
+				),
+			).rejects.toThrow(ForbiddenError);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:create'], false, {
+				projectId: 'project-1',
+			});
+			expect(skillService.create).not.toHaveBeenCalled();
+		});
+
+		it('needs no skill permission for refs to hub skills', async () => {
+			skillRepository.findByIds.mockResolvedValue([mock<Skill>({ id: 'shared' })]);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.createDraftRefs(agent, [{ type: 'skill', id: 'shared' }], {}, user, ctx),
+			).resolves.toEqual([{ type: 'skill', id: 'shared' }]);
+			expect(userHasScopes).not.toHaveBeenCalled();
 		});
 
 		it('creates no skill without a user', async () => {

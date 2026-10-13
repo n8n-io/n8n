@@ -166,13 +166,7 @@ describe('AgentsService', () => {
 			availableInMCP: false,
 		});
 		// The skill refs of the new draft go through the skill refs seam.
-		expect(skillRefs.createDraftRefs).toHaveBeenCalledWith(
-			saved,
-			[],
-			{},
-			'user-1',
-			expect.anything(),
-		);
+		expect(skillRefs.createDraftRefs).toHaveBeenCalledWith(saved, [], {}, null, expect.anything());
 	});
 
 	it('creates an agent with a resolved default model and credential', async () => {
@@ -272,8 +266,11 @@ describe('AgentsService', () => {
 			skill_abc: { name: 'Triage', description: '', instructions: 'Sort tickets.' },
 		};
 
+		const skillCreator = mock<User>({ id: 'user-1' });
+
 		await service.create(projectId, 'Support Agent', {
 			actor,
+			skillCreator,
 			schema: {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -289,7 +286,7 @@ describe('AgentsService', () => {
 			saved,
 			[{ type: 'skill', id: 'skill_abc' }],
 			skills,
-			'user-1',
+			skillCreator,
 			expect.anything(),
 		);
 	});

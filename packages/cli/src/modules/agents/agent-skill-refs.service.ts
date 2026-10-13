@@ -1,7 +1,10 @@
 import type { AgentJsonSkillConfig, AgentSkill } from '@n8n/api-types';
-import type { OperationContext } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
@@ -170,13 +173,14 @@ export class AgentSkillRefsService {
 	 * skill stays a ref. A ref with a body but no hub skill gets a new hub skill
 	 * in the agent's project, and the ref then points to the new id. A ref with
 	 * neither is dropped, and so is a ref with only a body when no user creates
-	 * the skill. Returns the refs that the draft now has.
+	 * the skill. The creator needs `projectSkill:create` on the agent's project to
+	 * create a skill. Returns the refs that the draft now has.
 	 */
 	async createDraftRefs(
 		agent: Pick<Agent, 'id' | 'projectId' | 'schema'>,
 		refs: AgentSkillRefs,
 		bodies: Record<string, AgentSkill>,
-		createdById: string | null,
+		creator: User | null,
 		ctx: OperationContext,
 	): Promise<AgentJsonSkillConfig[]> {
 		if (!refs?.length) return [];
@@ -195,13 +199,20 @@ export class AgentSkillRefsService {
 				continue;
 			}
 			const body = Object.hasOwn(bodies, ref.id) ? bodies[ref.id] : undefined;
-			if (!body || createdById === null) continue;
+			if (!body || creator === null) continue;
+			if (
+				!(await userHasScopes(creator, ['projectSkill:create'], false, {
+					projectId: agent.projectId,
+				}))
+			) {
+				throw new ForbiddenError('You are not allowed to create skills for this project.');
+			}
 			const id = await this.skillService.create(
 				{
 					target: { userId: null, projectId: agent.projectId },
 					skill: body,
 					source: 'agent',
-					createdById,
+					createdById: creator.id,
 				},
 				ctx,
 			);
