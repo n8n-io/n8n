@@ -240,6 +240,20 @@ function parseCallback(
 	return parse(fn.body, name);
 }
 
+// `$now.toMillis()` and friends: Luxon's own primitive-returning methods, no
+// arguments. Null when the receiver is not a time root or the call declines.
+function parseTimeCall(
+	node: namedTypes.CallExpression,
+	callee: namedTypes.MemberExpression,
+	method: string,
+): SimpleNode | null {
+	const time = parseTimeRoot(callee.object);
+	if (time === null || !TIME_METHODS.has(method) || node.arguments.length > 0) return null;
+
+	const optional = node.optional === true || callee.optional === true;
+	return { kind: 'call', receiver: time, method, args: [], optional };
+}
+
 function parseCall(
 	node: namedTypes.CallExpression,
 	parse: ParseChild,
@@ -265,15 +279,8 @@ function parseCall(
 		return { kind: 'call', receiver: ref, method: property.name, args: [], optional };
 	}
 
-	// `$now.toMillis()` and friends: Luxon's own primitive-returning methods,
-	// no arguments.
-	const time = parseTimeRoot(callee.object);
-	if (time !== null) {
-		if (!TIME_METHODS.has(property.name) || node.arguments.length > 0) return null;
-
-		const optional = node.optional === true || callee.optional === true;
-		return { kind: 'call', receiver: time, method: property.name, args: [], optional };
-	}
+	const time = parseTimeCall(node, callee, property.name);
+	if (time !== null) return time;
 
 	const method = property.name;
 	const isIterator = isOneOf(ITERATOR_METHODS, method);
