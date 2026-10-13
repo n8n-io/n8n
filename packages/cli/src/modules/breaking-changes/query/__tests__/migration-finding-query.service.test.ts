@@ -106,8 +106,9 @@ function triageableFinding(
 	ruleId: string,
 	workflow: TriageableMigrationFinding['workflow'],
 	status: MigrationFindingListedStatus = 'open',
+	notifiedAt: Date | null = null,
 ): TriageableMigrationFinding {
-	return { id, ruleId, workflowId: workflow.id, status, notifiedAt: null, workflow };
+	return { id, ruleId, workflowId: workflow.id, status, notifiedAt, workflow };
 }
 
 function workflowWithNodes(id: string, nodeTypes: string[]): WorkflowEntity {
@@ -333,6 +334,37 @@ describe('MigrationFindingQueryService', () => {
 	});
 
 	describe('getRuleFindings', () => {
+		it('carries the status and the notified date of a notified finding', async () => {
+			const notifiedAt = new Date('2026-05-01T00:00:00.000Z');
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(
+					1,
+					'rule-a',
+					{ id: 'wf-1', name: 'First', activeVersionId: null, updatedAt: UPDATED_AT },
+					'notified',
+					notifiedAt,
+				),
+				triageableFinding(2, 'rule-a', {
+					id: 'wf-2',
+					name: 'Second',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			workflowRepository.findByIds.mockResolvedValue([
+				workflowWithNodes('wf-1', ['n8n-nodes-base.a']),
+				workflowWithNodes('wf-2', ['n8n-nodes-base.a']),
+			]);
+			workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+
+			expect(result.affectedWorkflows.map((w) => [w.id, w.status, w.notifiedAt])).toEqual([
+				['wf-1', 'notified', notifiedAt],
+				['wf-2', 'open', undefined],
+			]);
+		});
+
 		it('returns one workflow per open or wont_fix finding with its status, statistics and the issues of that rule', async () => {
 			findingRepository.listTriageableForRule.mockResolvedValue([
 				triageableFinding(1, 'rule-a', {
