@@ -38,6 +38,8 @@ import type { NextFunction, Request, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -129,6 +131,7 @@ export class CredentialsPublicController {
 		private readonly eventService: EventService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	@Middleware()
@@ -333,6 +336,9 @@ export class CredentialsPublicController {
 		}
 
 		const includeDescription = await this.credentialDescriptions.isEnabled();
+		// Without `data` in the body the stored data is unchanged, so its flags still apply.
+		const credentialData =
+			decryptedDataForDeps ?? (await this.credentialsService.decrypt(existingCredential, true));
 
 		this.eventService.emit('credentials-updated', {
 			user: req.user,
@@ -343,6 +349,13 @@ export class CredentialsPublicController {
 				credentialDescriptionLength: updatedCredential.description?.length ?? 0,
 			}),
 			isDynamic: updatedCredential.isResolvable ?? false,
+			usesExternalSecrets: getExternalSecretExpressionPaths(credentialData).length > 0,
+			jweEnabled: credentialData.jweEnabled === true,
+			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(updatedCredential.type),
+			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+				updatedCredential.type,
+				credentialData,
+			),
 		});
 
 		return toCredentialPublicDto(updatedCredential, includeDescription);

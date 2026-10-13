@@ -1151,6 +1151,37 @@ describe('PATCH /credentials/:id', () => {
 				credentialId: savedCredential.id,
 				credentialType: savedCredential.type,
 				credentialName: 'Renamed Credential',
+				usesExternalSecrets: false,
+				jweEnabled: false,
+				supportsManagedAuth: false,
+			}),
+		);
+
+		emitSpy.mockRestore();
+	});
+
+	test('should report stored credential data flags on a name-only update', async () => {
+		const credential = dbCredential();
+		const savedCredential = await saveCredential(
+			{
+				...credential,
+				data: { ...credential.data, accessToken: '={{ $secrets.vault.token }}', jweEnabled: true },
+			},
+			{ user: owner },
+		);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ name: 'Renamed Credential' });
+
+		expect(response.statusCode).toBe(200);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'credentials-updated',
+			expect.objectContaining({
+				credentialId: savedCredential.id,
+				usesExternalSecrets: true,
+				jweEnabled: true,
 			}),
 		);
 
