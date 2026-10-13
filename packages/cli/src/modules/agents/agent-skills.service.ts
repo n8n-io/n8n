@@ -242,8 +242,12 @@ export class AgentSkillsService {
 		await this.skillService.assertCanEdit(context.user, [skillId]);
 		const snapshot = captureAgentMutation(entity, skillRefs);
 
+		if (pinned) markAgentDraftDirty(entity);
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
-			if (pinned) await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
+			if (pinned) {
+				await saveAgentDraftFenced(this.agentRepository, entity, ctx);
+				await this.agentSkillRefs.unpinDraftRef(entity, skillId, ctx);
+			}
 			return await this.skillService.save(
 				skillId,
 				{

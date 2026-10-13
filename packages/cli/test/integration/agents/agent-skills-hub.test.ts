@@ -139,7 +139,7 @@ describe('Agent skills in the skills hub', () => {
 		expect(Object.keys(skills)).toEqual([zeta, alpha, mid]);
 	});
 
-	it('keeps the attach order when a config save reorders the refs', async () => {
+	it('keeps the attach order when the refs are written in another order', async () => {
 		const first = await createSkill(body('First'));
 		const second = await createSkill(body('Second'));
 		const agent = await createAgent([first, second]);

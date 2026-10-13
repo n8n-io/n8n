@@ -326,6 +326,7 @@ describe('AgentSkillsService', () => {
 				getAgentSkillHash(skill),
 			);
 
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
 			expect(skillRefs.unpinDraftRef).toHaveBeenCalledWith(agent, 'skill_a', {});
 			await expect(skillRefs.refsForDraft(agent, {})).resolves.toEqual([
 				{ type: 'skill', id: 'skill_a' },

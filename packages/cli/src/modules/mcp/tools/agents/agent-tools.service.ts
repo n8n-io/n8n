@@ -1651,7 +1651,7 @@ export class McpAgentToolsService {
 			),
 		];
 		const warnings = (configuration.warnings ?? []).flatMap((warning) =>
-			warning.code === 'similar_skill_names' && warning.names
+			warning.code === 'similar_skill_names'
 				? [
 						`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
 					]

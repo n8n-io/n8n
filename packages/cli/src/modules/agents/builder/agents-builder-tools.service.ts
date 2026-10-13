@@ -1144,7 +1144,8 @@ export class AgentsBuilderToolsService {
 					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
 					'instead of rewriting instructions. Pass null for references to remove all references; an ' +
 					'empty array is invalid. The skill is shared: the update saves its next version, and every ' +
-					'agent that uses the skill runs that version. Returns ' +
+					'agent draft that follows the latest version runs that version. Published versions keep ' +
+					'the version they pinned. Returns ' +
 					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
 					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
 					'baseSkillHash. On a stale skill error, ' +
