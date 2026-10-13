@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_7877d87d6dafeb::t_cf1fb151316e4c 1794,1814,1839
+  s_7877d87d6dafeb::t_a74c4342e28f8f 1795
+packages/frontend/editor-ui/src/features/agents/utils/agent-plan.ts
+  s_7877d87d6dafeb::t_86647da6a391e3 95,174
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_7877d87d6dafeb::t_83fa69395d1040 3,207-211,214-221
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_7877d87d6dafeb::t_ae7015f58fa9db 3,81-82,84,95,98,101,154-155,160-166,182-183,188
+  s_7877d87d6dafeb::t_57abadf7e7c335 70,190-194,197
+  s_7877d87d6dafeb::t_a74c4342e28f8f 199-202
+packages/frontend/editor-ui/src/features/agents/components/AgentChatHostEvents.vue
+  s_7877d87d6dafeb::t_5030ca82bbd642 11-20,25-29
+  s_7877d87d6dafeb::t_030a0bf4e6b11b 1-10,21-24,30-34
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_7877d87d6dafeb::t_d33456be5d1b83 17,36,178-192,194-197,203-220,224,270,272,277-280,282-284,619,687,745,837
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-plan.test.ts
+  s_7877d87d6dafeb::t_cf1fb151316e4c 55,57-58,60,62,64-69
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/hostEventRenderers.test.ts
+  s_7877d87d6dafeb::t_f86acef4dc24e1 35,45,48,64,75-76,89,97,103-104,107-108,112,115,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "af34fd703fc3e68bf1ea8967e860dfa337ddf57d",
+  "prompts": {},
+  "sessions": {
+    "s_7877d87d6dafeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c9bcb6d-c45f-42b8-8a72-0ce505dfcfab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
