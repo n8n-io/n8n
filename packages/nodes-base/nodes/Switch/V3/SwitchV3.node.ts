@@ -52,7 +52,7 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1, 3.2, 3.3, 3.4],
+			version: [3, 3.1, 3.2, 3.3, 3.4, 3.5],
 			iconColor: 'green',
 			defaults: {
 				name: 'Switch',
