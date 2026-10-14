@@ -64,10 +64,11 @@ erDiagram
 }
 "public.app_version" {
   uuid appId FK
+  timestamp_3__with_time_zone artifactPrunedAt
   integer artifactSizeBytes
   text artifactStorageRef
-  text buildDiagnostics
   varchar_32_ buildStatus
+  bigint buildTaskId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   varchar_255_ label

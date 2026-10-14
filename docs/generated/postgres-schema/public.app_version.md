@@ -5,10 +5,11 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | appId | uuid |  | false |  | [public.app](public.app.md) |  |
+| artifactPrunedAt | timestamp(3) with time zone |  | true |  |  | Time when retention deleted the build artifact; null if not pruned |
 | artifactSizeBytes | integer |  | true |  |  |  |
 | artifactStorageRef | text |  | true |  |  | Opaque reference to the built static output |
-| buildDiagnostics | text |  | true |  |  | Build diagnostics, limited to 4096 characters |
 | buildStatus | varchar(32) | 'queued'::character varying | false |  |  | Build state: queued, running, succeeded, or failed |
+| buildTaskId | bigint |  | true |  | [public.scheduled_task](public.scheduled_task.md) | Current build task; null before dispatch or after task cleanup |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | id | uuid |  | false | [public.app](public.app.md) |  |  |
 | label | varchar(255) |  | true |  |  |  |
@@ -25,6 +26,7 @@
 | PK_f2573b981a7eac664875e7483ac | PRIMARY KEY | PRIMARY KEY (id) |
 | app_version_appId_not_null | n | NOT NULL "appId" |
 | app_version_buildStatus_not_null | n | NOT NULL "buildStatus" |
+| app_version_buildTaskId_foreign | FOREIGN KEY | FOREIGN KEY ("buildTaskId") REFERENCES scheduled_task(id) ON DELETE SET NULL |
 | app_version_createdAt_not_null | n | NOT NULL "createdAt" |
 | app_version_id_not_null | n | NOT NULL id |
 | app_version_sourceSizeBytes_not_null | n | NOT NULL "sourceSizeBytes" |
@@ -35,6 +37,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_93f7f9719991a7e6c3ebd93145 | CREATE INDEX "IDX_93f7f9719991a7e6c3ebd93145" ON public.app_version USING btree ("buildTaskId") |
 | IDX_e9aeab5b1db8dc77708231ae44 | CREATE INDEX "IDX_e9aeab5b1db8dc77708231ae44" ON public.app_version USING btree ("appId") |
 | PK_f2573b981a7eac664875e7483ac | CREATE UNIQUE INDEX "PK_f2573b981a7eac664875e7483ac" ON public.app_version USING btree (id) |
 
@@ -44,15 +47,17 @@
 erDiagram
 
 "public.app_version" }o--|| "public.app" : "FOREIGN KEY (#quot;appId#quot;) REFERENCES app(id) ON DELETE CASCADE"
+"public.app_version" }o--o| "public.scheduled_task" : "FOREIGN KEY (#quot;buildTaskId#quot;) REFERENCES scheduled_task(id) ON DELETE SET NULL"
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;draftVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 "public.app" }o--o| "public.app_version" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES app_version(id) ON DELETE SET NULL"
 
 "public.app_version" {
   uuid appId FK
+  timestamp_3__with_time_zone artifactPrunedAt
   integer artifactSizeBytes
   text artifactStorageRef
-  text buildDiagnostics
   varchar_32_ buildStatus
+  bigint buildTaskId FK
   timestamp_3__with_time_zone createdAt
   uuid id
   varchar_255_ label
@@ -70,6 +75,27 @@ erDiagram
   varchar_36_ projectId FK
   uuid publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
+}
+"public.scheduled_task" {
+  integer attempts
+  varchar_255_ claimedBy
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
+  text errorMessage
+  timestamp_3__with_time_zone finishedAt
+  bigint id
+  integer jobId FK
+  integer leaseEpoch
+  timestamp_3__with_time_zone leaseExpiresAt
+  integer maxAttempts
+  timestamp_3__with_time_zone missedAfter
+  json payload
+  timestamp_3__with_time_zone runAt
+  timestamp_3__with_time_zone scheduledFor
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
+  varchar_128_ taskType
+  integer timeoutSeconds
 }
 ```
 

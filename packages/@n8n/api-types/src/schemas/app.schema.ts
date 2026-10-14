@@ -37,8 +37,8 @@ export const appVersionSchema = z.object({
 	label: z.string().max(255).nullable(),
 	sourceSizeBytes: z.number().int().nonnegative(),
 	artifactSizeBytes: z.number().int().nonnegative().nullable(),
+	artifactPrunedAt: z.string().datetime().nullable(),
 	buildStatus: appBuildStatusSchema,
-	buildDiagnostics: z.string().max(4096).nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
 });
