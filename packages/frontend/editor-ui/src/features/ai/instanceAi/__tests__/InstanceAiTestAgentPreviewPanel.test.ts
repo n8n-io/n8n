@@ -182,15 +182,17 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			response: 'Ticket #48219 is a P1 SSO outage.',
 		};
 
-		it('is shown directly, without a preview run, when it has both a rule and a verdict', async () => {
+		it('runs a new mocked check when a builder result includes a rule and verdict', async () => {
 			const store = useAgentEvalsStore();
-			const previewRun = vi.spyOn(store, 'previewRun');
+			const previewRun = mockPreviewRun(store);
 
 			const { getByTestId, findByTestId } = createComponentRenderer(
 				InstanceAiTestAgentPreviewPanel,
 				{
 					props: {
 						target,
+					},
+					attrs: {
 						initialCase: {
 							...builderCase,
 							whatToCheck: 'names the ticket',
@@ -201,13 +203,13 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			)();
 
 			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
-				'“Summarize the thread about the outage”',
+				'“Summarize the thread”',
 			);
 			expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
 				'First check passed',
 			);
 			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled();
-			expect(previewRun).not.toHaveBeenCalled();
+			expect(previewRun).toHaveBeenCalledTimes(1);
 		});
 
 		it.each([
@@ -222,7 +224,8 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				const previewRun = mockPreviewRun(store);
 
 				const { findByTestId } = createComponentRenderer(InstanceAiTestAgentPreviewPanel, {
-					props: { target, initialCase: { ...builderCase, ...extra } },
+					props: { target },
+					attrs: { initialCase: { ...builderCase, ...extra } },
 				})();
 
 				expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
@@ -1433,42 +1436,6 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			await user.click(getByTestId(CHECK_HARDER));
 
 			expect(await findByTestId('instance-ai-test-agent-examples-try')).toHaveTextContent('Upset');
-		});
-
-		it('shows the new answer for a reused builder test too', async () => {
-			const store = useAgentEvalsStore();
-			vi.spyOn(store, 'applyPreviewSuggestion').mockResolvedValue({
-				configHash: 'hash-2',
-				preview: { status: 'completed', ...REWRITTEN, verdict: PASS_VERDICT },
-			});
-			const user = userEvent.setup();
-			const { findByTestId, getByTestId } = renderComponent({
-				props: {
-					target,
-					initialCase: {
-						message: 'Old message',
-						response: 'Old answer',
-						whatToCheck: 'mentions the outage',
-						verdict: FAIL_WITH_SUGGESTION,
-					},
-				},
-			});
-			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
-				'“Old message”',
-			);
-
-			await user.click(getByTestId(`${CARD}-apply`));
-
-			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
-					'“Summarize the thread”',
-				),
-			);
-			expect(store.applyPreviewSuggestion).toHaveBeenCalledWith('project-1', 'agent-1', {
-				input: 'Old message',
-				whatToCheck: 'mentions the outage',
-				suggestion: SUGGESTION,
-			});
 		});
 
 		it('says the suggestion was applied and hides the card when the rerun of the case does not complete', async () => {

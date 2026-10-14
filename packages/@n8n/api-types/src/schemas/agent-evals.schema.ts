@@ -338,8 +338,8 @@ export type CreateDraftDatasetResult = {
 
 // Request body for the preview-run endpoint: drafts exactly one case (the
 // same way `generateDraftCases` would with `count: 1, save: false`) and
-// immediately executes it against the agent through the same path Preview
-// Chat uses — no Data Table, no dataset, no eval-run row. Lets "try it once"
+// immediately executes it with the same mocked tools as saved checks — no
+// Data Table, dataset, or eval-run row. Lets "try it once"
 // (and its "needs work" retries) run freely without leaving anything behind.
 const previewRunOptionsShape = {
 	suggestion: z.string().min(1).optional(),
