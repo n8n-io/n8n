@@ -1490,9 +1490,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				// new node alone keeps its pending setup. Undefined = unscoped (workflow
 				// created by this work item, or prior state unreadable).
 				const runId = buildContext?.runId ?? context.runId;
+				// The file path is the fallback work item id. It stays the same across
+				// work items, so only the run can match then.
+				const scopeWorkItemId = resolvedWorkItemId === filePath ? undefined : resolvedWorkItemId;
 				const priorScope = binding.setupScope;
 				const sameWork =
-					priorScope?.workItemId === resolvedWorkItemId ||
+					(scopeWorkItemId !== undefined && priorScope?.workItemId === scopeWorkItemId) ||
 					(runId !== undefined && priorScope?.runId === runId);
 				const buildChanges = savedWorkflowSnapshot
 					? computeChangedNodeNames(json, savedWorkflowSnapshot)
@@ -1576,7 +1579,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
 						setupPending: undefined,
-						setupScope: { workItemId: resolvedWorkItemId, runId, nodeNames: changedNodeNames },
+						setupScope: { workItemId: scopeWorkItemId, runId, nodeNames: changedNodeNames },
 						...(setupPreferences
 							? {
 									setupPreferences: {
