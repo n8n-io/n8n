@@ -24,6 +24,7 @@ import { saveAs } from 'file-saver';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import AgentChannelTeamsMenuItem from './AgentChannelTeamsMenuItem.vue';
 import { fetchTeamsAppPackage } from './api';
 import { AZURE_BOTS_URL, TEAMS_PACKAGE_FILENAME } from './constants';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
@@ -211,6 +212,9 @@ watch(
 					:teleported="false"
 					@select="onInstallMenu"
 				>
+					<template #menuItem="item">
+						<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
+					</template>
 					<template #activator>
 						<N8nButton variant="outline" size="medium" data-testid="teams-settings-install-menu">
 							{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}

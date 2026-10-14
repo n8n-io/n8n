@@ -37,6 +37,7 @@ import {
 	type TeamsAvailability,
 } from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import AgentChannelTeamsMenuItem from './AgentChannelTeamsMenuItem.vue';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
 
@@ -909,6 +910,9 @@ const downloadPackage = async () =>
 						:teleported="false"
 						@select="onFileAccessMenu"
 					>
+						<template #menuItem="item">
+							<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
+						</template>
 						<template #activator>
 							<N8nButton variant="outline" size="medium" data-testid="teams-file-access-menu">
 								{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
@@ -950,6 +954,9 @@ const downloadPackage = async () =>
 								:teleported="false"
 								@select="onInstallMenu"
 							>
+								<template #menuItem="item">
+									<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
+								</template>
 								<template #activator>
 									<N8nButton
 										variant="solid"

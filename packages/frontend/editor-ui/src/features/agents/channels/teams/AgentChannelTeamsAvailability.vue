@@ -24,6 +24,7 @@ import {
 	readsSharedConversations as readsShared,
 	type TeamsAvailability,
 } from './constants';
+import AgentChannelTeamsMenuItem from './AgentChannelTeamsMenuItem.vue';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
 
 export type { TeamsAvailability } from './constants';
@@ -219,6 +220,9 @@ const summary = computed(() => {
 							:teleported="false"
 							@select="onFileAccessMenu"
 						>
+							<template #menuItem="item">
+								<AgentChannelTeamsMenuItem :label="item.label" :description="item.description" />
+							</template>
 							<template #activator>
 								<N8nButton variant="outline" size="small" data-testid="teams-file-access-menu">
 									{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
