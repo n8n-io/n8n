@@ -11,10 +11,38 @@ import {
 } from '@n8n/permissions';
 import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 import { getTooltip } from '@/__tests__/utils';
+import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
 describe('ScopeGroupSelector', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+		useSettingsStore().settings.activeModules = ['apps'];
+	});
+
+	it('hides App options when the module is inactive', () => {
+		useSettingsStore().settings.activeModules = [];
+		const { queryByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+
+		expect(queryByTestId('scope-option-app-view')).not.toBeInTheDocument();
+		expect(queryByTestId('scope-option-app-manage')).not.toBeInTheDocument();
+	});
+
+	it('updates App visibility when the active modules change', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(ScopeGroupSelector, {
+			props: { modelValue: [] },
+		});
+
+		expect(getByTestId('scope-option-app-view')).toBeInTheDocument();
+		expect(getByTestId('scope-option-app-manage')).toBeInTheDocument();
+		useSettingsStore().settings.activeModules = [];
+
+		await waitFor(() => expect(queryByTestId('scope-option-app-view')).not.toBeInTheDocument());
+		expect(queryByTestId('scope-option-app-manage')).not.toBeInTheDocument();
+	});
+
 	it('renders one checkbox per option and no leaf scopes', () => {
 		const { container } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 		const checkboxes = container.querySelectorAll('[data-test-id^="scope-option-"]');
