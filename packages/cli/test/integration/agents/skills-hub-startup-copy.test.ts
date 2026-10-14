@@ -350,6 +350,44 @@ describe('SkillsHubStartupCopy', () => {
 			]);
 		});
 
+		it('keeps two refs with the same body as two skills', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'first' },
+					{ type: 'skill', id: 'second' },
+				],
+				{ first: body('Greet', 'Same.'), second: body('Greet', 'Same.') },
+			);
+
+			await copy.copyAll();
+
+			expect((await skillRefs.refsForDraft(agent, {})).map((ref) => ref.id)).toEqual([
+				'first',
+				'second',
+			]);
+		});
+
+		it('does not move a ref onto the skill of another ref that once had its body', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'a' },
+					{ type: 'skill', id: 'b' },
+				],
+				{ a: body('Greet', 'Y'), b: body('Greet', 'X') },
+			);
+			const versionId = await legacyVersion(agent, [{ type: 'skill', id: 'a' }], {
+				a: body('Greet', 'X'),
+			});
+
+			await copy.copyAll();
+
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				a: 'Y',
+				b: 'X',
+			});
+			expect(await pinnedTexts(versionId)).toEqual({ a: 'X' });
+		});
+
 		it('copies name, description, instructions and reference files exactly', async () => {
 			const tone: AgentSkill = {
 				name: '  Tone of Voice  ',
