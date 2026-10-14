@@ -61,6 +61,44 @@ reference:
 - **Tool-heavy runs**: if no `message`-type item exists, `output[0]` may be wrong
   or missing — inspect `$json.output` or disable simplify.
 
+## Image → Analyze — v2+ (`resource: image`, `operation: analyze`)
+
+With simplify enabled (default), the item **is** the Responses API `output`
+array. There is no `output` key, unlike Text → Response:
+
+```json
+[
+  {
+    "type": "message",
+    "role": "assistant",
+    "content": [{ "type": "output_text", "text": "..." }]
+  }
+]
+```
+
+Read the assistant text from the `message` item:
+**`$json.find(item => item.type === 'message').content[0].text`**. For a
+non-reasoning model the message is the only item, so `$json[0].content[0].text`
+also works. Do not use `$json.output[0]`, `$json.content`, or `$json.text` —
+none of these exist on this output.
+
+### Caveats (analyze)
+
+- **Not filtered to messages.** Simplify does not drop non-message items. A
+  reasoning model puts a `reasoning` item before the message, so `[0]` is not
+  the text.
+- **`text` is always a string.** This operation has no JSON output format. If
+  the prompt asks for JSON, the model can wrap it in a ```` ```json ```` code
+  fence. Strip the fence in a Code node before `JSON.parse`.
+- **Max Tokens** (`options.maxTokens`, default 300) includes reasoning tokens.
+  With the default, a reasoning model can use all of them on reasoning and
+  return no `message` item. Set Max Tokens higher (for example 2000) when you
+  use a reasoning model.
+- **`simplify: false`**: `$json` is the full Responses API payload. Read the
+  message from `$json.output`.
+- **v1.x**: this operation uses the Chat Completions API. With simplify, read the
+  text from **`$json.content`** (a string).
+
 ## Text → Message — v1.x only (`resource: text`, `operation: message`)
 
 With simplify enabled (default), each choice object is emitted at the root of

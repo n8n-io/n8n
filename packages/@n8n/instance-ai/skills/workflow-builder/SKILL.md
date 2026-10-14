@@ -183,7 +183,8 @@ When mapping downstream fields from an OpenAI node, read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
 (v2+ text/response uses `$json.output[0].content[0].text`; v1 text/message
 uses `$json.message.content` — not `$json.text`; `json_object`/`json_schema`
-output is already a parsed object, never `JSON.parse` it). When mapping fields
+output is already a parsed object, never `JSON.parse` it; v2+ image/analyze
+emits the `output` array itself as `$json`, so read the `type: 'message'` item). When mapping fields
 from an Anthropic node, read
 `${N8N_WORKSPACE_DIR}/knowledge-base/reference/anthropic-output-shape.md`
 (`$json.content` is an array of blocks — read text with
