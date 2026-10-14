@@ -25,7 +25,11 @@ import AgentChannelWhatsAppIdentityCard from './AgentChannelWhatsAppIdentityCard
 import AgentChannelWhatsAppSettings, {
 	type WhatsAppChannelSettings,
 } from './AgentChannelWhatsAppSettings.vue';
-import { checkWhatsAppCredential, getWhatsAppWebhookStatus } from './api';
+import {
+	checkWhatsAppCredential,
+	getWhatsAppWebhookStatus,
+	resetWhatsAppWebhookStatus,
+} from './api';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -111,7 +115,10 @@ async function loadVerifyToken() {
 // Credential check (step 2)
 // ---------------------------------------------------------------------------
 
-const credentialCheck = ref<WhatsAppCredentialCheck | null>(null);
+/** `notFound` comes from a 404: the caller cannot use the credential, or it was deleted. */
+type CredentialCheckResult = WhatsAppCredentialCheck | { status: 'failed'; reason: 'notFound' };
+
+const credentialCheck = ref<CredentialCheckResult | null>(null);
 const checking = ref(false);
 
 /**
@@ -153,7 +160,7 @@ async function runCredentialCheck() {
 		resumeWebhookPolling();
 	}
 
-	let result: WhatsAppCredentialCheck;
+	let result: CredentialCheckResult;
 	try {
 		result = await checkWhatsAppCredential(
 			rootStore.restApiContext,
@@ -161,8 +168,9 @@ async function runCredentialCheck() {
 			props.agentId,
 			id,
 		);
-	} catch {
-		result = { status: 'failed', reason: 'unreachable' };
+	} catch (error) {
+		const notFound = error instanceof ResponseError && error.httpStatusCode === 404;
+		result = { status: 'failed', reason: notFound ? 'notFound' : 'unreachable' };
 	}
 	if (request !== latestCheck) return;
 	credentialCheck.value = result;
@@ -206,6 +214,25 @@ async function pollWebhookStatus() {
 	}
 }
 
+/**
+ * Meta's handshake does not say which app sent it, so a record left by an
+ * earlier app would confirm step 4 at once. Clearing it first means only a
+ * handshake from now on counts.
+ */
+async function resetThenPollWebhookStatus() {
+	try {
+		await resetWhatsAppWebhookStatus(rootStore.restApiContext, props.projectId, props.agentId);
+	} catch (error) {
+		// A new agent has no row yet, so it has no record to clear either.
+		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+			waitingForAgent = true;
+			return;
+		}
+		toast.showError(error, i18n.baseText('agents.channels.whatsapp.setup.verify.resetError'));
+	}
+	if (!unmounted) await pollWebhookStatus();
+}
+
 function resumeWebhookPolling() {
 	if (!waitingForAgent || unmounted) return;
 	waitingForAgent = false;
@@ -215,7 +242,7 @@ function resumeWebhookPolling() {
 onMounted(() => {
 	void loadVerifyToken();
 	// Only the setup shows this step. A connected channel has its own adapter answer Meta.
-	if (props.mode === 'setup') void pollWebhookStatus();
+	if (props.mode === 'setup') void resetThenPollWebhookStatus();
 });
 
 onBeforeUnmount(() => {
