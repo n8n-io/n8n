@@ -32,6 +32,7 @@ import {
 	staticErrorWorkflowId,
 	type ErrorWorkflowValidationService,
 } from '@/workflows/error-workflow-validation.service';
+import { assertExecutionTimeoutWithinMax } from '@/workflows/execution-timeout-validation';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -456,28 +457,6 @@ function assertCallerPolicyConsistent(settings: IWorkflowSettings | undefined): 
 	if (callerIds.length === 0) {
 		throw new Error(
 			'callerPolicy "workflowsFromAList" requires callerIds — a comma-separated list of workflow IDs allowed to call this workflow. Without it, no workflow can call this one. Provide callerIds, or choose a different callerPolicy.',
-		);
-	}
-}
-
-/**
- * Reject an executionTimeout that exceeds the instance maximum. The schema
- * already enforces a positive integer; this adds the instance-specific upper
- * bound, which isn't knowable statically. A non-positive `maxTimeout` means the
- * instance sets no cap, so nothing is enforced.
- */
-function assertExecutionTimeoutWithinMax(
-	executionTimeout: number | undefined,
-	maxTimeout: number,
-): void {
-	// `executionTimeout <= 0` is the "unlimited" sentinel (-1) and is never capped.
-	if (executionTimeout === undefined || executionTimeout <= 0 || maxTimeout <= 0) {
-		return;
-	}
-
-	if (executionTimeout > maxTimeout) {
-		throw new Error(
-			`executionTimeout (${executionTimeout}s) exceeds this instance's maximum of ${maxTimeout}s. Set executionTimeout to ${maxTimeout} or less.`,
 		);
 	}
 }

@@ -509,6 +509,7 @@ describe('GlobalConfig', () => {
 			pollTimeoutSeconds: 45,
 			allowSkipDurableScheduler: false,
 			maxAttempts: 5,
+			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,

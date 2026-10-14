@@ -1,9 +1,12 @@
+import { Time } from '@n8n/constants';
 import { Column, Entity, Index, JoinColumn, ManyToOne, Relation } from '@n8n/typeorm';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { User } from './user';
 
 export const idempotencyKeyStatuses = ['processing', 'completed'] as const;
+
+export const IDEMPOTENCY_KEY_TTL_MS = 12 * Time.hours.toMilliseconds;
 
 export type IdempotencyKeyStatus = (typeof idempotencyKeyStatuses)[number];
 

@@ -491,10 +491,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(modalAttrs.searchPlaceholder ?? modalAttrs['search-placeholder']).toBe(
 			'Search workflows',
 		);
-		expect(modalAttrs.createAction ?? modalAttrs['create-action']).toMatchObject({
+		const createAction = modalAttrs.createAction ?? modalAttrs['create-action'];
+		expect(createAction).toMatchObject({
 			category: 'workflows',
 			label: 'Create workflow',
 		});
+		expect(createAction).not.toHaveProperty('description');
 	});
 
 	it('installs an uninstalled community tool before adding it, and adds the installed type', async () => {
