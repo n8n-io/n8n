@@ -82,6 +82,7 @@ describe('credential type policies public API authorization', () => {
 		['GET', '/credential-type-policies/policies/does-not-exist'],
 		['PUT', '/credential-type-policies/policies/does-not-exist'],
 		['DELETE', '/credential-type-policies/policies/does-not-exist'],
+		['GET', '/credential-type-policies/scopes/does-not-exist/attachments'],
 		['PUT', '/credential-type-policies/scopes/does-not-exist/attachments'],
 	])('%s %s rejects an owner key without the scope with 403', async (method, path) => {
 		const agent = testServer.publicApiAgentFor(unscopedOwner);
@@ -113,6 +114,7 @@ describe('credential type policies public API authorization', () => {
 		['GET', '/credential-type-policies/policies/does-not-exist'],
 		['PUT', '/credential-type-policies/policies/does-not-exist'],
 		['DELETE', '/credential-type-policies/policies/does-not-exist'],
+		['GET', '/credential-type-policies/scopes/does-not-exist/attachments'],
 		['PUT', '/credential-type-policies/scopes/does-not-exist/attachments'],
 	])(
 		'%s %s rejects a project admin with 403 (instance routes are global-only)',
@@ -168,12 +170,13 @@ describe('credential type policies public API license gating', () => {
 		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
-	test('rejects an owner with 403 when the license feature is disabled', async () => {
+	test.each([
+		'/credential-type-policies/instance',
+		'/credential-type-policies/scopes/does-not-exist/attachments',
+	])('GET %s rejects an owner with 403 when the license feature is disabled', async (path) => {
 		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
-		const instance = await testServer
-			.publicApiAgentFor(owner)
-			.get('/credential-type-policies/instance');
+		const instance = await testServer.publicApiAgentFor(owner).get(path);
 		expect(instance.statusCode).toBe(403);
 
 		const projectPolicy = await testServer
@@ -596,6 +599,69 @@ describe('credential type policies public API policy documents', () => {
 });
 
 describe('credential type policies public API attachments', () => {
+	test.each(['instance', 'project'])(
+		'GET returns every attachment in evaluation order for %s scope',
+		async (scope) => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const effectivePath =
+				scope === 'instance' ? '/credential-type-policies/instance' : projectRoute(project.id);
+			const configured = await agent.put(effectivePath).send(ALLOW_ALL);
+			expect(configured.statusCode).toBe(200);
+			const path = `/credential-type-policies/scopes/${configured.body.scopeId}/attachments`;
+			const slots = [
+				{ priority: 10, isFloor: false },
+				{ priority: 20, isFloor: true },
+				{ priority: -5, isFloor: false },
+				{ priority: 0, isFloor: true },
+			];
+			const attachments = [];
+			for (const [index, slot] of slots.entries()) {
+				const rules = [{ ...DENY_RULE, id: `r${index}` }];
+				const created = await agent.post('/credential-type-policies/policies').send({ rules });
+				expect(created.statusCode).toBe(201);
+				attachments.push({ policyId: created.body.policy.id as string, rules, ...slot });
+			}
+			const replaced = await agent.put(path).send({
+				attachments: attachments.map(({ rules: _rules, ...attachment }) => attachment),
+				version: configured.body.version,
+			});
+			expect(replaced.statusCode).toBe(200);
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			const read = await agent.get(path);
+
+			expect(read.statusCode).toBe(200);
+			expect(read.body).toEqual({
+				attachments: [attachments[3], attachments[1], attachments[2], attachments[0]],
+				version: replaced.body.version,
+			});
+			expect(emitSpy.mock.calls.filter(([event]) => event.startsWith('node-type-policy-'))).toEqual(
+				[],
+			);
+			const effective = await agent.get(effectivePath);
+			expect(Object.keys(effective.body).sort()).toEqual([...EFFECTIVE_KEYS].sort());
+			const updated = await agent.put(path).send({ attachments: [], version: read.body.version });
+			expect(updated.statusCode).toBe(200);
+			expect(updated.body).toEqual({ attachments: [], version: read.body.version + 1 });
+			const empty = await agent.get(path);
+			expect(empty.statusCode).toBe(200);
+			expect(empty.body).toEqual(updated.body);
+		},
+	);
+
+	test('GET returns 404 for an unknown scope and a node type scope', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		expect(
+			(await agent.get('/credential-type-policies/scopes/does-not-exist/attachments')).statusCode,
+		).toBe(404);
+		const other = await agent.put('/node-type-policies/instance').send(ALLOW_ALL);
+		expect(other.statusCode).toBe(200);
+		expect(
+			(await agent.get(`/credential-type-policies/scopes/${other.body.scopeId}/attachments`))
+				.statusCode,
+		).toBe(404);
+	});
+
 	test('PUT with a stale version returns 409 and preserves the attachments and version', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const instance = await agent.put('/credential-type-policies/instance').send({
@@ -767,5 +833,10 @@ describe('credential type policies public API extends rules', () => {
 		expect(attachments.body.attachments).toEqual([
 			{ policyId, rules: [EXTENDS_RULE], priority: 1, isFloor: false },
 		]);
+		const readAttachments = await agent.get(
+			`/credential-type-policies/scopes/${instancePut.body.scopeId}/attachments`,
+		);
+		expect(readAttachments.statusCode).toBe(200);
+		expect(readAttachments.body).toEqual(attachments.body);
 	});
 });

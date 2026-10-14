@@ -677,6 +677,21 @@ export class TypeAvailabilityPolicyService {
 		return await this.policyRepository.findPageByKind(kind, offset, limit, {});
 	}
 
+	async getAttachments(
+		kind: string,
+		scopeId: string,
+		ctx: OperationContext = {},
+	): Promise<{ attachments: readonly PolicyAttachment[]; version: number }> {
+		const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx);
+		if (!scope) {
+			throw new NotFoundError(`Policy scope not found: ${scopeId}`);
+		}
+
+		const attachments = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
+
+		return { attachments: orderedAttachments(attachments), version: scope.version };
+	}
+
 	/**
 	 * Replaces every attachment on one scope, keyed by `scopeId` rather than `(kind,
 	 * projectId)` — a caller replacing attachments already holds a scope id from a prior

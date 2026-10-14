@@ -43,6 +43,7 @@ describe('CredentialTypePoliciesPublicController route metadata', () => {
 				'createCredentialTypePolicyDocument',
 				'deleteCredentialTypePolicyDocument',
 				'getCredentialTypeInstancePolicy',
+				'getCredentialTypePolicyAttachments',
 				'getCredentialTypePolicyDocument',
 				'getCredentialTypeProjectPolicy',
 				'listCredentialTypePolicyDocuments',
@@ -120,6 +121,9 @@ describe('CredentialTypePoliciesPublicController with the module disabled', () =
 			ServiceUnavailableError,
 		);
 		await expect(
+			controller.getCredentialTypePolicyAttachments(req, res, 'scope-id'),
+		).rejects.toThrow(ServiceUnavailableError);
+		await expect(
 			controller.deleteCredentialTypePolicyDocument(req, res, 'policy-id'),
 		).rejects.toThrow(ServiceUnavailableError);
 
@@ -164,6 +168,32 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		rules,
 		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
+
+	it('getCredentialTypePolicyAttachments reads the credential type scope with extends rules', async () => {
+		const result = {
+			attachments: [
+				{
+					policyId: 'policy-id',
+					rules: [
+						{
+							id: 'r1',
+							action: 'deny' as const,
+							selector: { kind: 'extends' as const, value: 'oAuth2Api' },
+						},
+					],
+					priority: 5,
+					isFloor: true,
+				},
+			],
+			version: 3,
+		};
+		service.getAttachments.mockResolvedValue(result);
+
+		expect(await controller.getCredentialTypePolicyAttachments(req, res, 'scope-id')).toEqual(
+			result,
+		);
+		expect(service.getAttachments).toHaveBeenCalledWith(CREDENTIAL_TYPES_KIND, 'scope-id');
+	});
 
 	it('getCredentialTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);

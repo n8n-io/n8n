@@ -15,7 +15,7 @@ import type { TypeAvailabilityPolicyScopeRepository } from '../database/reposito
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
-import type { PolicyRule } from '../policy-rule.types';
+import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import {
 	LOCAL_READ_MAX_ENTRIES,
 	TypeAvailabilityPolicyService,
@@ -157,6 +157,98 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(result.defaultAction).toBe('deny');
 			expect(result.version).toBe(3);
 		});
+	});
+
+	describe('getAttachments', () => {
+		it.each([
+			[KIND, null],
+			[KIND, 'project-1'],
+			[CREDENTIAL_TYPES_KIND, null],
+			[CREDENTIAL_TYPES_KIND, 'project-1'],
+		])('reads %s attachments for project %s in evaluation order', async (kind, projectId) => {
+			const ctx: OperationContext = {};
+			const scope = makeScope({ kind, projectId, version: 7 });
+			const normalLate: PolicyAttachment = {
+				policyId: 'normal-late',
+				rules: [RULE],
+				priority: 10,
+				isFloor: false,
+			};
+			const floorLate: PolicyAttachment = {
+				policyId: 'floor-late',
+				rules: [],
+				priority: 20,
+				isFloor: true,
+			};
+			const normalEarly: PolicyAttachment = {
+				policyId: 'normal-early',
+				rules: [],
+				priority: -5,
+				isFloor: false,
+			};
+			const floorEarly: PolicyAttachment = {
+				policyId: 'floor-early',
+				rules: [RULE],
+				priority: 0,
+				isFloor: true,
+			};
+			const stored = [normalLate, floorLate, normalEarly, floorEarly];
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(scope);
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue(stored);
+
+			const result = await service.getAttachments(kind, scope.id, ctx);
+
+			expect(result).toEqual({
+				attachments: [floorEarly, floorLate, normalEarly, normalLate],
+				version: 7,
+			});
+			expect(stored).toEqual([normalLate, floorLate, normalEarly, floorEarly]);
+			expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, ctx);
+			expect(attachmentRepository.listAttachmentsForScope).toHaveBeenCalledWith(scope.id, ctx);
+			expect(transactionRunner.run).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(cacheService.get).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
+			expect(cacheService.deleteMany).not.toHaveBeenCalled();
+		});
+
+		it('returns an empty list and reads the current version on every call', async () => {
+			scopeRepository.findScopeByIdAndKind
+				.mockResolvedValueOnce(makeScope({ version: 2 }))
+				.mockResolvedValueOnce(makeScope({ version: 3 }));
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+
+			await expect(service.getAttachments(KIND, 'scope-1')).resolves.toEqual({
+				attachments: [],
+				version: 2,
+			});
+			await expect(service.getAttachments(KIND, 'scope-1')).resolves.toEqual({
+				attachments: [],
+				version: 3,
+			});
+		});
+
+		it.each([KIND, CREDENTIAL_TYPES_KIND])('rejects an unknown scope for %s', async (kind) => {
+			scopeRepository.findScopeByIdAndKind.mockResolvedValue(null);
+
+			await expect(service.getAttachments(kind, 'missing')).rejects.toThrow(NotFoundError);
+			expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
+		});
+
+		it.each([KIND, CREDENTIAL_TYPES_KIND])(
+			'rejects a scope of another kind for %s',
+			async (kind) => {
+				const otherKind = kind === KIND ? CREDENTIAL_TYPES_KIND : KIND;
+				const scope = makeScope({ kind: otherKind });
+				scopeRepository.findScopeByIdAndKind.mockImplementation(async (id, requestedKind) =>
+					id === scope.id && requestedKind === scope.kind ? scope : null,
+				);
+
+				await expect(service.getAttachments(kind, scope.id)).rejects.toThrow(NotFoundError);
+				expect(scopeRepository.findScopeByIdAndKind).toHaveBeenCalledWith(scope.id, kind, {});
+				expect(attachmentRepository.listAttachmentsForScope).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('setDefaultAction', () => {

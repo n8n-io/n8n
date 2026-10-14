@@ -340,6 +340,36 @@ export class NodeTypePoliciesPublicController {
 		await (await this.service()).deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
 	}
 
+	@Get('/scopes/:scopeId/attachments')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@ApiKeyScope('nodeTypePolicy:manage')
+	@GlobalScope('nodeTypePolicy:manage')
+	@ApiSummary("Beta: Retrieve a scope's attached policy documents")
+	@ApiDescription(
+		'**Beta** — breaking changes may still occur without major version bump.\n\nReturns every attached policy document and the scope version. Attachments use evaluation order: floor first, then priority ascending within each group. Use this version when replacing the attachments. `scopeId` comes from `GET /instance` or `GET /projects/{projectId}`. It is null until the scope is first written.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PolicyAttachmentsPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getNodeTypePolicyAttachments(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,
+	): Promise<PolicyAttachmentsPublicDto> {
+		const result = await (await this.service()).getAttachments(NODE_TYPES_KIND, scopeId);
+
+		return {
+			attachments: result.attachments.map((attachment) => ({
+				policyId: attachment.policyId,
+				rules: toNodeTypeRules(attachment.rules),
+				priority: attachment.priority,
+				isFloor: attachment.isFloor,
+			})),
+			version: result.version,
+		};
+	}
+
 	@Put('/scopes/:scopeId/attachments')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
