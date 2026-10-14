@@ -162,7 +162,11 @@ export interface AgentsChatMessage {
 	/** Epoch ms when this turn was sent. Drives the chat's timestamp dividers. */
 	createdAt?: number;
 	/** Live preview only. Budget stop or alert cards for this turn. */
-	budgetNotices?: Array<{ id: string; code: 'budget.monthly' | 'budget.session' | 'budget.alert' }>;
+	budgetNotices?: Array<{
+		id: string;
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert';
+		agentId?: string;
+	}>;
 }
 
 export type ChatMessage = AgentsChatMessage;

@@ -410,6 +410,7 @@ describe('SkillsApiService', () => {
 			version: 3,
 			created: true,
 			skill: { name: 'Brand voice', description: 'd', instructions: 'New.' },
+			followingAgentIds: ['agent-1'],
 		};
 
 		it('saves the update for a user who may edit the skill', async () => {
@@ -427,9 +428,10 @@ describe('SkillsApiService', () => {
 				user.id,
 			);
 			expect(skillService.canAccess).toHaveBeenCalledWith(user, visible[0], 'update');
+			const { followingAgentIds: _following, ...response } = saved;
 			expect(result).toEqual({
 				id: 'skill_a',
-				...saved,
+				...response,
 				skillHash: getAgentSkillHash(saved.skill),
 			});
 		});

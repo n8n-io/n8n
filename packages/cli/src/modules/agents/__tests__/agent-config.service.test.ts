@@ -21,7 +21,6 @@ import { AgentModificationTelemetryService } from '../agent-modification-telemet
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
-import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
@@ -34,7 +33,6 @@ import type { AgentPolicyService } from '../agent-policy.service';
 import {
 	composeStoredJsonConfig,
 	createAgentSkillRefsService,
-	storedSkillRefs,
 	type AgentFixtureOverrides,
 } from './test-utils/stored-agent-config';
 
@@ -63,7 +61,6 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		activeVersionId: null,
 		schema: baseConfig,
 		tools: {},
-		skills: {},
 		integrations: [],
 		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
@@ -83,7 +80,7 @@ const byUser = fencedOn(makeAgent());
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
-	const agentSkillsService = mock<AgentSkillsService>();
+	const skillRefs = createAgentSkillRefsService();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const credentialsService = mock<CredentialsService>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -105,12 +102,6 @@ function makeService() {
 	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
-	agentSkillsService.removeUnreferencedSkills.mockImplementation((agent, config) => {
-		const ids = new Set((config.skills ?? []).map((skill) => skill.id));
-		agent.skills = Object.fromEntries(
-			Object.entries(agent.skills ?? {}).filter(([id]) => ids.has(id)),
-		);
-	});
 
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
@@ -119,7 +110,6 @@ function makeService() {
 		mockLogger(),
 		agentRepository,
 		agentTaskRepository,
-		agentSkillsService,
 		new AgentConfigPreparationService(
 			credentialsService,
 			workflowRepository,
@@ -133,7 +123,7 @@ function makeService() {
 			new AgentModificationTelemetryService(telemetry),
 		),
 		agentPolicyService,
-		createAgentSkillRefsService(agentRepository),
+		skillRefs,
 	);
 
 	return {
@@ -141,7 +131,7 @@ function makeService() {
 		agentPolicyService,
 		agentRepository,
 		agentTaskRepository,
-		agentSkillsService,
+		skillRefs,
 		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
@@ -335,7 +325,7 @@ describe('AgentConfigService', () => {
 				projectId,
 				agentId,
 				expect.objectContaining({ tools: [expect.objectContaining(dateTimeTool)] }),
-				baseConfig,
+				{ ...baseConfig, skills: [] },
 				{ kind: 'user', user },
 			);
 		});
@@ -676,8 +666,8 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).toHaveProperty('description', '');
 		});
 
-		it('deletes the resources of omitted tools, skills, and tasks when clearOmittedOptionalFields is set', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+		it('deletes the resources of omitted tools and tasks and detaches omitted skills when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository, agentTaskRepository, skillRefs } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -686,7 +676,6 @@ describe('AgentConfigService', () => {
 					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 				} as unknown as AgentJsonConfig,
 				tools: storedCustomTool,
-				skills: { 'skill-1': { name: 'Skill' } } as unknown as Agent['skills'],
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentTaskRepository.findByAgentId.mockResolvedValue([{ id: 'task-1' }] as never);
@@ -698,12 +687,12 @@ describe('AgentConfigService', () => {
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual({});
-			expect(saved.skills).toEqual({});
+			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(saved, undefined, {});
 			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-1'], {});
 		});
 
 		it('keeps the resources of omitted tools, skills, and tasks by default', async () => {
-			const { service, agentRepository, agentTaskRepository } = makeService();
+			const { service, agentRepository, agentTaskRepository, skillRefs } = makeService();
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -711,7 +700,6 @@ describe('AgentConfigService', () => {
 					skills: [{ type: 'skill', id: 'skill-1' }],
 				} as unknown as AgentJsonConfig,
 				tools: storedCustomTool,
-				skills: { 'skill-1': { name: 'Skill' } } as unknown as Agent['skills'],
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
@@ -719,7 +707,11 @@ describe('AgentConfigService', () => {
 
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual(storedCustomTool);
-			expect(Object.keys(saved.skills ?? {})).toEqual(['skill-1']);
+			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
+				saved,
+				[{ type: 'skill', id: 'skill-1' }],
+				{},
+			);
 			expect(agentTaskRepository.deleteForAgent).not.toHaveBeenCalled();
 		});
 
@@ -820,14 +812,29 @@ describe('AgentConfigService', () => {
 			]);
 		});
 
+		it('drops the inline body of a removed skill ref while the skills hub is off', async () => {
+			const { service, agentRepository, skillRefs } = makeService();
+			Object.assign(skillRefs, { usesSkillsHub: false });
+			const kept = { name: 'Kept', description: 'Kept', instructions: 'Keep.' };
+			const agent = makeAgent({
+				skills: { kept, removed: { name: 'Removed', description: 'Removed', instructions: 'Go.' } },
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, skills: [{ type: 'skill', id: 'kept' }] },
+				user,
+				byUser,
+			);
+
+			expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({ kept });
+		});
+
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
-			const {
-				service,
-				agentRepository,
-				agentTaskRepository,
-				agentSkillsService,
-				runtimeCacheService,
-			} = makeService();
+			const { service, agentRepository, agentTaskRepository, skillRefs, runtimeCacheService } =
+				makeService();
 			const agent = makeAgent({
 				tools: {
 					tool_1: {
@@ -839,9 +846,6 @@ describe('AgentConfigService', () => {
 						descriptor: { name: 'tool_2', description: 'b', inputSchema: {} },
 					},
 				} as unknown as Agent['tools'],
-				skills: {
-					'skill-1': { name: 'Skill', description: 'desc', instructions: 'Use it' },
-				},
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentTaskRepository.findByAgentId.mockResolvedValue([
@@ -861,10 +865,9 @@ describe('AgentConfigService', () => {
 						{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 					],
 					skills: [
-						{ type: 'skill', id: 'skill-1', enabled: false },
+						{ type: 'skill', id: 'skill-1' },
 						{ type: 'skill', id: 'missing-skill' },
 						{ type: 'skill', id: 'toString' },
-						{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 					],
 					tasks: [
 						{ type: 'task', id: 'task-1', enabled: true },
@@ -880,14 +883,20 @@ describe('AgentConfigService', () => {
 				{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 				{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 			]);
-			expect(saved.schema?.skills).toEqual([
-				{ type: 'skill', id: 'skill-1', enabled: false },
-				{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
-			]);
+			// The skill refs seam checks skill refs against the skills hub.
+			expect(saved.schema).not.toHaveProperty('skills');
+			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
+				saved,
+				[
+					{ type: 'skill', id: 'skill-1' },
+					{ type: 'skill', id: 'missing-skill' },
+					{ type: 'skill', id: 'toString' },
+				],
+				{},
+			);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-2'], {});
-			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
@@ -896,7 +905,6 @@ describe('AgentConfigService', () => {
 			const config: AgentJsonConfig = {
 				...baseConfig,
 				tools: [{ type: 'custom', id: 'missing_tool', enabled: false, requireApproval: true }],
-				skills: [{ type: 'skill', id: 'missing_skill', enabled: false }],
 				subAgents: { agents: [{ agentId: 'missing-agent', enabled: false, useWhen: 'Review' }] },
 			};
 			const agent = makeAgent({ schema: config });
@@ -906,7 +914,6 @@ describe('AgentConfigService', () => {
 			const activated: AgentJsonConfig = {
 				...config,
 				tools: [{ type: 'custom', id: 'missing_tool', enabled: true, requireApproval: true }],
-				skills: [{ type: 'skill', id: 'missing_skill', enabled: true }],
 				subAgents: { agents: [{ agentId: 'missing-agent', enabled: true, useWhen: 'Review' }] },
 			};
 
@@ -1270,21 +1277,18 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('skill refs round trip', () => {
+		const pinId = '6f1c1c5e-1b7a-4d55-9d4e-3c2e8f6a9b10';
 		const skillRefs = [
 			{ type: 'skill' as const, id: 'zeta' },
-			{ type: 'skill' as const, id: 'alpha', enabled: false },
-			{ type: 'skill' as const, id: 'mid', enabled: true },
+			{ type: 'skill' as const, id: 'alpha', versionId: pinId },
+			{ type: 'skill' as const, id: 'mid' },
 		];
-		const skillBody = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 
 		function makeAgentWithSkillRefs() {
-			return makeAgent({
-				schema: { ...baseConfig, skills: skillRefs },
-				skills: { zeta: skillBody, mid: { ...skillBody, name: 'Mid' } },
-			});
+			return makeAgent({ schema: { ...baseConfig, skills: skillRefs } });
 		}
 
-		it('returns the stored skill refs from getConfig in order, with the enabled flags', async () => {
+		it('returns the skill refs of the draft from getConfig in order, with the pins', async () => {
 			const { service, agentRepository } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithSkillRefs());
 
@@ -1294,7 +1298,7 @@ describe('AgentConfigService', () => {
 		});
 
 		it('saves the refs of a config that getConfig returned without a change', async () => {
-			const { service, agentRepository } = makeService();
+			const { service, agentRepository, skillRefs: refsService } = makeService();
 			const agent = makeAgentWithSkillRefs();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			const config = await service.getConfig(agentId, projectId);
@@ -1310,27 +1314,45 @@ describe('AgentConfigService', () => {
 			expect(await service.getConfig(agentId, projectId)).toEqual(config);
 			// The fenced save and the skill refs write share one transaction.
 			const [[, saveCtx]] = agentRepository.saveDraftFenced.mock.calls;
-			const [[written, refsCtx]] = agentRepository.updateDraftSchema.mock.calls;
+			const [[written, refs, refsCtx]] = refsService.replaceDraftRefs.mock.calls;
 			expect(refsCtx).toBe(saveCtx);
-			expect(storedSkillRefs(written)).toEqual(skillRefs);
+			expect(written).toBe(agent);
+			expect(refs).toEqual(skillRefs);
+			// The stored config holds no skill refs.
+			expect(agent.schema).not.toHaveProperty('skills');
 		});
 
-		it('saves new refs in the order of the submitted config', async () => {
-			const { service, agentRepository } = makeService();
+		it('passes the submitted refs to the skill refs seam', async () => {
+			const { service, agentRepository, skillRefs: refsService } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithSkillRefs());
 			const config = await service.getConfig(agentId, projectId);
-			const reordered = [skillRefs[2], { ...skillRefs[0], enabled: false }, skillRefs[1]];
+			const next = [skillRefs[2], { type: 'skill' as const, id: 'new' }];
+
+			await service.updateConfig(agentId, projectId, { ...config, skills: next }, user, {
+				baseConfigHash: getAgentConfigHash(config),
+				modifiedBy: 'user',
+			});
+
+			expect(refsService.replaceDraftRefs).toHaveBeenCalledWith(expect.anything(), next, {});
+		});
+
+		it('validates, saves and reports the effective refs, without the stale ids', async () => {
+			const { service, agentRepository, skillRefs: refsService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithSkillRefs());
+			const config = await service.getConfig(agentId, projectId);
+			const kept = [skillRefs[2]];
+			refsService.effectiveDraftRefs.mockResolvedValue(kept);
 
 			const result = await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...config, skills: reordered },
+				{ ...config, skills: [skillRefs[2], { type: 'skill' as const, id: 'stale' }] },
 				user,
 				{ baseConfigHash: getAgentConfigHash(config), modifiedBy: 'user' },
 			);
 
-			expect(result.config.skills).toEqual(reordered);
-			expect((await service.getConfig(agentId, projectId)).skills).toEqual(reordered);
+			expect(refsService.replaceDraftRefs).toHaveBeenCalledWith(expect.anything(), kept, {});
+			expect(result.config.skills).toEqual(kept);
 		});
 	});
 
@@ -1368,7 +1390,6 @@ describe('AgentConfigService', () => {
 
 		it('counts the stored skill refs in the modification event', async () => {
 			const { service, agentRepository, telemetry } = makeService();
-			const skillBody = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 			const agent = makeAgent({
 				schema: {
 					...baseConfig,
@@ -1377,7 +1398,6 @@ describe('AgentConfigService', () => {
 						{ type: 'skill', id: 'billing' },
 					],
 				},
-				skills: { refunds: skillBody, billing: skillBody },
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			const config = composeStoredJsonConfig(agent);

@@ -35,6 +35,8 @@ export type SkillSaveResult = {
 	created: boolean;
 	/** The content of the latest version after the save. */
 	skill: AgentSkill;
+	/** Agents that follow the skill. A save in a caller's transaction does not refresh them. */
+	followingAgentIds: string[];
 };
 
 /**
@@ -134,6 +136,28 @@ export class SkillService {
 		return new Map([...rows].map(([id, row]) => [id, row.version.name]));
 	}
 
+	/**
+	 * The name each ref runs under: its pinned version's name, else the latest. Works per
+	 * ref, because one agent can pin a skill that another agent follows.
+	 */
+	private async runtimeNames(
+		refs: Array<{ id: string; versionId?: string | null }>,
+		ctx: OperationContext,
+	): Promise<(ref: { id: string; versionId?: string | null }) => string | undefined> {
+		const latest = await this.latestNames(
+			refs.map((ref) => ref.id),
+			ctx,
+		);
+		const pinned = await this.skillRepository.findVersionsByIds(
+			refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : [])),
+			ctx,
+		);
+		return (ref) => {
+			const pin = ref.versionId ? pinned.get(ref.versionId) : undefined;
+			return pin?.skill.id === ref.id ? pin.version.name : latest.get(ref.id);
+		};
+	}
+
 	// ---------------------------------------------------------------- writes
 
 	/** Creates a skill with its v1. Returns the new id. */
@@ -158,12 +182,16 @@ export class SkillService {
 	 * runs the new version, and each one that was in sync with its published version
 	 * shows unpublished changes. `baseSkillHash` is checked under the edit lock, so two
 	 * saves from the same base cannot both pass.
+	 *
+	 * When `ctx` has a transaction, the caller calls `refreshFollowingAgents` after its
+	 * commit. `pushRef` is the tab that saved: it gets no reload push.
 	 */
 	async save(
 		skillId: string,
 		update: SkillUpdate,
 		userId: string,
 		ctx: OperationContext = {},
+		pushRef?: string,
 	): Promise<SkillSaveResult> {
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -182,7 +210,8 @@ export class SkillService {
 			const content = toSkillContent(skill, latest.version.frontmatter);
 			if (skillContentHash(content) === latest.version.contentHash) {
 				const unchanged = { versionId: latest.version.id, version: latest.version.version };
-				return { saved: { ...unchanged, created: false, skill: current }, following: [] };
+				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
+				return { saved: result, following: [] };
 			}
 			if (skill.name !== latest.version.name) {
 				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
@@ -197,9 +226,10 @@ export class SkillService {
 			);
 			const followingIds = await this.skillRepository.findFollowingAgentIds([skillId], txCtx);
 			await this.agentRepository.markDraftChangedIfInSync(followingIds, txCtx);
-			return { saved: { versionId, version, created: true, skill }, following: followingIds };
+			const result = { versionId, version, created: true, skill, followingAgentIds: followingIds };
+			return { saved: result, following: followingIds };
 		});
-		if (following.length > 0) await this.refreshAgents(following);
+		if (!ctx.trx) await this.refreshFollowingAgents(following, pushRef);
 		this.logger.debug('Saved skill', {
 			skillId,
 			version: saved.version,
@@ -209,18 +239,21 @@ export class SkillService {
 		return saved;
 	}
 
-	/** After a save: following agents drop their cached runtime and their editors reload. */
-	private async refreshAgents(agentIds: string[]): Promise<void> {
+	/**
+	 * After a save commits: following agents drop their cached runtime and their editors
+	 * reload, except the tab of `excludePushRef`.
+	 */
+	async refreshFollowingAgents(agentIds: string[], excludePushRef?: string): Promise<void> {
+		if (agentIds.length === 0) return;
 		// Imported on use: the runtime cache depends on services that will depend on this one.
 		const { AgentRuntimeCacheService } = await import('../agent-runtime-cache.service.js');
 		const cache = Container.get(AgentRuntimeCacheService);
 		for (const agentId of agentIds) cache.clearRuntimes(agentId);
 		for (const agent of await this.agentRepository.findProjectIdsByIds(agentIds)) {
-			this.agentUpdateBroadcaster.notify({
-				projectId: agent.projectId,
-				agentId: agent.id,
-				source: 'user',
-			});
+			this.agentUpdateBroadcaster.notify(
+				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
+				excludePushRef,
+			);
 		}
 	}
 
@@ -235,12 +268,14 @@ export class SkillService {
 			agents.map((agent) => agent.id),
 			ctx,
 		);
-		const otherIds = (agent: (typeof agents)[number]) =>
-			(refs.get(agent.id) ?? []).map((ref) => ref.skillId).filter((id) => id !== skillId);
-		const names = await this.latestNames(agents.flatMap(otherIds), ctx);
+		const otherRefs = (agent: (typeof agents)[number]) =>
+			(refs.get(agent.id) ?? [])
+				.filter((ref) => ref.skillId !== skillId)
+				.map((ref) => ({ id: ref.skillId, versionId: ref.versionId }));
+		const nameOf = await this.runtimeNames(agents.flatMap(otherRefs), ctx);
 		const clashing = agents.filter((agent) =>
 			renameIntroducesClash(
-				otherIds(agent).flatMap((id) => names.get(id) ?? []),
+				otherRefs(agent).flatMap((ref) => nameOf(ref) ?? []),
 				oldName,
 				newName,
 			),
@@ -271,7 +306,10 @@ export class SkillService {
 		return { skills: toRecord(rows), versionByRef };
 	}
 
-	/** Publish, step 2: after the `agent_history` row exists. */
+	/**
+	 * Publish, step 2: after the `agent_history` row exists. The pins keep the order of
+	 * `versionByRef`, which is the order of the draft refs.
+	 */
 	async pinForPublish(
 		agentVersionId: string,
 		versionByRef: Map<string, string>,
@@ -349,22 +387,24 @@ export class SkillService {
 			(id) => !existingIds.has(id) && found.has(id),
 		);
 		if (newIds.length === 0) return kept;
+		// Shared lock until the attach commits, so `changeTarget` cannot narrow a skill in between.
+		if (ctx.trx) await this.skillRepository.lockForPublish(newIds, ctx);
 
-		const keptExistingIds = [...new Set(kept.map((ref) => ref.id))].filter((id) =>
-			existingIds.has(id),
-		);
-		const names = await this.latestNames([...keptExistingIds, ...newIds], ctx);
+		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
+		const newRefs = newIds.map((id) => ({ id }));
+		const nameOf = await this.runtimeNames([...keptExisting, ...newRefs], ctx);
 		for (const id of newIds) {
 			const skill = found.get(id);
 			if (skill && !this.isAttachable(skill, agent)) {
 				throw new UserError(
-					`Skill "${names.get(id) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
+					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project, its own skills and instance skills.`,
 				);
 			}
 		}
+		// A kept ref runs its pinned version, so compare the name of that version.
 		const clashes = findIntroducedNameClashes(
-			keptExistingIds.flatMap((id) => names.get(id) ?? []),
-			newIds.flatMap((id) => names.get(id) ?? []),
+			keptExisting.flatMap((ref) => nameOf(ref) ?? []),
+			newRefs.flatMap((ref) => nameOf(ref) ?? []),
 		);
 		if (clashes.length > 0) {
 			throw new UserError(
@@ -372,6 +412,31 @@ export class SkillService {
 			);
 		}
 		return kept;
+	}
+
+	/**
+	 * Moves a skill to a project, one agent or the instance. Refused while an agent other
+	 * than `keepAgentId` uses it. The edit lock makes a concurrent attach wait, so the check
+	 * and the move see the same agents.
+	 */
+	async changeTarget(
+		skillId: string,
+		target: SkillTarget,
+		keepAgentId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([skillId], txCtx);
+			const others = (await this.skillRepository.findUsingAgentIds(skillId, txCtx)).filter(
+				(id) => id !== keepAgentId,
+			);
+			if (others.length > 0) {
+				throw new ConflictError(
+					'Other agents use this skill. Detach it from those agents first, then change where it can be added.',
+				);
+			}
+			await this.skillRepository.updateTarget(skillId, target, txCtx);
+		});
 	}
 
 	// ---------------------------------------------------------------- permission

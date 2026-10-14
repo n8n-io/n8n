@@ -392,11 +392,45 @@ describe('SkillService', () => {
 
 			expect(clearRuntimes.mock.calls).toEqual([['agent-1'], ['agent-2']]);
 			expect(broadcaster.notify).toHaveBeenCalledTimes(2);
-			expect(broadcaster.notify).toHaveBeenCalledWith({
-				projectId: PROJECT,
-				agentId: 'agent-2',
-				source: 'user',
-			});
+			expect(broadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: PROJECT, agentId: 'agent-2', source: 'user' },
+				undefined,
+			);
+		});
+
+		it('sends no update push to the tab that saved', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+			skills.findFollowingAgentIds.mockResolvedValue(['agent-1']);
+			agents.findProjectIdsByIds.mockResolvedValue([{ id: 'agent-1', projectId: PROJECT }]);
+
+			await service.save(
+				'skill_a',
+				{ baseSkillHash, instructions: 'new' },
+				user.id,
+				{},
+				'push-ref-1',
+			);
+
+			expect(broadcaster.notify).toHaveBeenCalledWith(
+				{ projectId: PROJECT, agentId: 'agent-1', source: 'user' },
+				'push-ref-1',
+			);
+		});
+
+		it("leaves the refresh to the caller when it runs in the caller's transaction", async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+			skills.findFollowingAgentIds.mockResolvedValue(['agent-1']);
+
+			const result = await service.save(
+				'skill_a',
+				{ baseSkillHash, instructions: 'new' },
+				user.id,
+				TX_CTX,
+			);
+
+			expect(result.followingAgentIds).toEqual(['agent-1']);
+			expect(clearRuntimes).not.toHaveBeenCalled();
+			expect(broadcaster.notify).not.toHaveBeenCalled();
 		});
 
 		it('rejects a rename that clashes on a following agent', async () => {
@@ -449,6 +483,33 @@ describe('SkillService', () => {
 			await expect(
 				service.save('skill_gone', { name: 'x', baseSkillHash: 'any' }, user.id),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('changeTarget', () => {
+		it('moves a skill that only the given agent uses, under the edit lock', async () => {
+			skills.findUsingAgentIds.mockResolvedValue(['agent-1']);
+
+			await service.changeTarget('skill_a', { projectId: null, agentId: 'agent-1' }, 'agent-1');
+
+			expect(skills.lockForEdit).toHaveBeenCalledWith(['skill_a'], TX_CTX);
+			expect(skills.lockForEdit.mock.invocationCallOrder[0]).toBeLessThan(
+				skills.findUsingAgentIds.mock.invocationCallOrder[0],
+			);
+			expect(skills.updateTarget).toHaveBeenCalledWith(
+				'skill_a',
+				{ projectId: null, agentId: 'agent-1' },
+				TX_CTX,
+			);
+		});
+
+		it('refuses to move a skill that another agent uses', async () => {
+			skills.findUsingAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
+
+			await expect(
+				service.changeTarget('skill_a', { projectId: null, agentId: null }, 'agent-1'),
+			).rejects.toThrow('Other agents use this skill.');
+			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 	});
 
@@ -559,6 +620,37 @@ describe('SkillService', () => {
 			const refs = await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }]);
 
 			expect(refs).toEqual([{ id: 'skill_old' }, { id: 'skill_new' }]);
+		});
+
+		it('holds a shared lock on newly attached skills in the caller transaction', async () => {
+			givenSkills([
+				{ skill: skillRow('skill_old', { projectId: PROJECT }), name: 'Pricing' },
+				{ skill: skillRow('skill_new'), name: 'Tone' },
+			]);
+
+			await service.checkRefs(agent, [{ id: 'skill_old' }, { id: 'skill_new' }], TX_CTX);
+
+			expect(skills.lockForPublish).toHaveBeenCalledWith(['skill_new'], TX_CTX);
+		});
+
+		it('compares the name of the version a pinned ref runs, not the latest name', async () => {
+			const old = skillRow('skill_old', { projectId: PROJECT });
+			givenAgentRefs([{ skillId: 'skill_old', versionId: 'skill_old-v1' }]);
+			givenSkills([
+				{ skill: old, name: 'Tone' },
+				{ skill: skillRow('skill_new'), name: 'tone' },
+			]);
+			// The agent runs v1, which is still called "Pricing".
+			skills.findVersionsByIds.mockResolvedValue(
+				new Map([['skill_old-v1', versionRow(old, 1, { name: 'Pricing' })]]),
+			);
+
+			await expect(
+				service.checkRefs(agent, [
+					{ id: 'skill_old', versionId: 'skill_old-v1' },
+					{ id: 'skill_new' },
+				]),
+			).resolves.toEqual([{ id: 'skill_old', versionId: 'skill_old-v1' }, { id: 'skill_new' }]);
 		});
 
 		it('drops a new ref to a missing skill', async () => {

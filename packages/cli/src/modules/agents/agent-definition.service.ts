@@ -40,29 +40,34 @@ export class AgentDefinitionService {
 		const skillRefs = pending
 			? pending.skillRefs
 			: await this.agentSkillRefs.refsForDraft(agent, ctx);
+		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, ctx);
 		return {
-			...getAgentDefinitionContent(agent, skillRefs),
+			...getAgentDefinitionContent(agent, skillRefs, skills),
 			tasks: new Map(tasks.map((task) => [task.id, getAgentTaskBody(task)])),
 		};
 	}
 
 	async readVersion(version: AgentHistory, ctx: OperationContext = {}): Promise<AgentDefinition> {
 		const tasks = await this.taskSnapshotRepository.findByVersionId(version.versionId, ctx);
-		const skillRefs = await this.agentSkillRefs.refsForVersion(version, ctx);
+		const { skillRefs, skills } = await this.agentSkillRefs.readVersion(version, ctx);
 		return {
-			...getAgentDefinitionContent(version, skillRefs),
+			...getAgentDefinitionContent(version, skillRefs, skills),
 			tasks: new Map(tasks.map((task) => [task.taskId, getAgentTaskBody(task)])),
 		};
 	}
 
 	/**
 	 * Replace the draft atomically. Return whether task bodies changed.
-	 * The caller sets the version and integrations.
+	 * The caller sets the version and integrations. The skill bodies of the
+	 * definition are not written: skills live in the skills hub. With
+	 * `skillPinsFrom`, each skill ref is pinned to the version that this
+	 * published version ran (revert).
 	 */
 	async replaceDraft(
 		agent: Agent,
 		definition: AgentDefinition,
 		ctx: OperationContext = {},
+		skillPinsFrom?: Pick<AgentHistory, 'versionId' | 'skills'>,
 	): Promise<boolean> {
 		// Preserve workflow input names in the JSON configuration.
 		const document = structuredClone(definition.schema);
@@ -72,10 +77,13 @@ export class AgentDefinitionService {
 		return await this.transactionRunner.run(ctx, async (txCtx) => {
 			agent.schema = config;
 			agent.tools = deepCopy(definition.tools);
-			agent.skills = deepCopy(definition.skills);
 			if (agent.schema) agent.name = agent.schema.name;
 			await saveAgentDraftFenced(this.agentRepository, agent, txCtx);
-			await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, txCtx);
+			if (skillPinsFrom) {
+				await this.agentSkillRefs.restoreDraftRefs(agent, skillPinsFrom, skillRefs, txCtx);
+			} else {
+				await this.agentSkillRefs.replaceDraftRefs(agent, skillRefs, txCtx);
+			}
 			return await this.taskRepository.replaceForAgent(agent.id, definition.tasks, txCtx);
 		});
 	}

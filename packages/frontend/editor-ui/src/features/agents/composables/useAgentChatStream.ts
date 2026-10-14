@@ -649,14 +649,29 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return msg;
 	}
 
+	/** Owner-aware notice identity: same code and same budget owner. */
+	function sameBudgetNotice(
+		a: { code: string; agentId?: string },
+		b: { code: string; agentId?: string },
+	): boolean {
+		return a.code === b.code && a.agentId === b.agentId;
+	}
+
 	function attachBudgetNotice(
 		session: StreamSession,
 		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+		agentId?: string,
 	): void {
 		const msg = ensureCurrent(session);
 		const notices = msg.budgetNotices ?? [];
-		if (notices.some((notice) => notice.code === code)) return;
-		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
+		// Distinct budget owners keep separate cards for the same code.
+		const matchesNotice = (notice: { code: string; agentId?: string }) =>
+			sameBudgetNotice(notice, { code, agentId });
+		if (notices.some(matchesNotice)) return;
+		msg.budgetNotices = [
+			...notices,
+			{ id: crypto.randomUUID(), code, ...(agentId !== undefined ? { agentId } : {}) },
+		];
 		const key = session.executionId ?? msg.id;
 		let forTarget = pendingBudgetNotices.get(session.target);
 		if (!forTarget) {
@@ -664,8 +679,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			pendingBudgetNotices.set(session.target, forTarget);
 		}
 		const entry = forTarget.get(key) ?? { notices: [], source: msg };
-		if (!entry.notices.some((notice) => notice.code === code)) {
-			entry.notices.push({ id: crypto.randomUUID(), code });
+		if (!entry.notices.some(matchesNotice)) {
+			entry.notices.push({
+				id: crypto.randomUUID(),
+				code,
+				...(agentId !== undefined ? { agentId } : {}),
+			});
 		}
 		forTarget.set(key, entry);
 	}
@@ -688,7 +707,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		) => {
 			const merged = pending.get(key) ?? [];
 			for (const notice of notices) {
-				if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+				if (!merged.some((item) => sameBudgetNotice(item, notice))) merged.push(notice);
 			}
 			pending.set(key, merged);
 			if (!sources.has(key)) sources.set(key, source);
@@ -1211,7 +1230,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'budget-notice': {
-				if (params.budgetCards) attachBudgetNotice(session, event.code);
+				if (params.budgetCards) {
+					attachBudgetNotice(session, event.code, event.agentId);
+				}
 				break;
 			}
 			case 'warning': {

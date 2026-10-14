@@ -3,6 +3,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
@@ -43,6 +44,20 @@ describe('SkillsController', () => {
 		await linkUserToProject(viewerUser, project, 'project:viewer');
 	});
 
+	beforeEach(async () => {
+		await setSkillsHubFlag(true);
+	});
+
+	it('hides the skills API when the skills hub is off', async () => {
+		await setSkillsHubFlag(false);
+
+		await owner.get('/skills').expect(404);
+		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
+		// The flag is checked before the body, so a malformed request also answers 404.
+		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
+		await owner.get('/skills?take=-1').expect(404);
+	});
+
 	afterEach(async () => {
 		await Container.get(AgentRepository).delete({});
 		await Container.get(SkillRepository).delete({});
@@ -78,7 +93,6 @@ describe('SkillsController', () => {
 				projectId,
 				integrations: [],
 				tools: {},
-				skills: {},
 				versionId,
 			}),
 		);

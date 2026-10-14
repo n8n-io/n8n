@@ -1121,6 +1121,11 @@ export class McpAgentToolsService {
 			this.agentSkillsService.listSkills(agentId, projectId),
 			this.agentTaskService.list(agentId),
 		]);
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(
+			config.skills ?? [],
+			skills,
+			{},
+		);
 		const taskEnabled = new Map((config.tasks ?? []).map((task) => [task.id, task.enabled]));
 
 		// The hash covers the full persisted config (integrations included) so it
@@ -1148,6 +1153,7 @@ export class McpAgentToolsService {
 			skillHashes: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 			),
+			outdatedSkillIds,
 			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
 			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
 				id,
@@ -1644,10 +1650,18 @@ export class McpAgentToolsService {
 				),
 			),
 		];
+		const warnings = (configuration.warnings ?? []).flatMap((warning) =>
+			warning.code === 'similar_skill_names'
+				? [
+						`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
+					]
+				: [],
+		);
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
 			missing,
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 

@@ -676,11 +676,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 		ids: string[],
 		ctx: OperationContext = {},
 	): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
-		if (ids.length === 0) return [];
-		return await this.managerFor(ctx).find(Agent, {
-			where: { id: In(ids) },
-			select: ['id', 'projectId'],
-		});
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		// In batches: a skill can have more followers than SQLite allows bound parameters.
+		for (const chunk of chunkIds([...new Set(ids)])) {
+			agents.push(
+				...(await this.managerFor(ctx).find(Agent, {
+					where: { id: In(chunk) },
+					select: ['id', 'projectId'],
+				})),
+			);
+		}
+		return agents;
 	}
 
 	/**
@@ -689,6 +695,20 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * write does not check `revision`: call it only in the same transaction as a
 	 * won `saveDraftFenced`.
 	 */
+	async updateDraftSkills(
+		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
+		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.execute();
+	}
+
 	async updateDraftSchema(
 		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
 		ctx: OperationContext,
