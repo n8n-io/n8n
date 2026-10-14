@@ -197,8 +197,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId/repositories')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:discovery')
-	@GlobalScope('gitConnection:discovery')
+	@ApiKeyScope('gitConnection:discover')
+	@GlobalScope('gitConnection:discover')
 	@ApiSummary('List repositories of a promotion provider')
 	@ApiDescription(
 		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as a connection target. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
@@ -228,8 +228,8 @@ export class PromotionsPublicController {
 
 	@Get('/providers/:promotionProviderId/repositories/:repositoryId/branches')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
-	@ApiKeyScope('gitConnection:discovery')
-	@GlobalScope('gitConnection:discovery')
+	@ApiKeyScope('gitConnection:discover')
+	@GlobalScope('gitConnection:discover')
 	@ApiSummary('List branches of a promotion repository')
 	@ApiDescription(
 		'Lists branches of the selected GitLab repository and identifies its default branch. Pass the URL-encoded fullPath from repository discovery, or the repositoryPath of a saved GitLab connection, as repositoryId. GitLab project IDs are also accepted, but connections do not store them. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',

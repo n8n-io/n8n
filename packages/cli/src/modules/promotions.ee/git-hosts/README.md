@@ -25,7 +25,7 @@ change the editor UI.
 ## Discovery
 
 Discovery uses a saved provider, not a connection. A client can pick a repository
-before it creates a connection. Both routes require the `gitConnection:discovery`
+before it creates a connection. Both routes require the `gitConnection:discover`
 API-key grant and global user scope:
 
 - `GET /api/v1/promotions/providers/{promotionProviderId}/repositories`

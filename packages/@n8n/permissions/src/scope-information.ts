@@ -188,7 +188,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List Git Connections',
 		description: 'Allows listing Git connections.',
 	},
-	'gitConnection:discovery': {
+	'gitConnection:discover': {
 		displayName: 'Discover Git repositories',
 		description: 'Allows listing remote repositories and branches with saved provider credentials.',
 	},

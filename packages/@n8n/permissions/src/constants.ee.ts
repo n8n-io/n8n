@@ -47,7 +47,7 @@ export const RESOURCES = {
 	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
 	gitConnection: [
 		...DEFAULT_OPERATIONS,
-		'discovery',
+		'discover',
 		'clone',
 		'push',
 		'manageProjects',
@@ -130,7 +130,7 @@ export const API_KEY_RESOURCES = {
 	sourceControl: ['pull', 'push', 'read'] as const,
 	gitConnection: [
 		...DEFAULT_OPERATIONS,
-		'discovery',
+		'discover',
 		'clone',
 		'push',
 		'manageProjects',

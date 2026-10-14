@@ -88,14 +88,14 @@ describe('Discovery response documentation', () => {
 			.getControllerMetadata(PromotionsPublicController as never)
 			.routes.get(handler);
 		expect(route?.responseDto).toBe(responseDto);
-		expect(route?.accessScope).toEqual({ scope: 'gitConnection:discovery', globalOnly: true });
-		expect(route?.apiKeyScope).toBe('gitConnection:discovery');
+		expect(route?.accessScope).toEqual({ scope: 'gitConnection:discover', globalOnly: true });
+		expect(route?.apiKeyScope).toBe('gitConnection:discover');
 		expect(route?.licenseFeature).toBe('feat:gitConnections');
 		const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 		const operation = parse(
 			getGeneratedArtifacts().find((artifact) => artifact.outputPath === outputPath)!.content,
 		) as OpenAPIV3.OperationObject;
-		expect(operation).toHaveProperty('x-required-scope', 'gitConnection:discovery');
+		expect(operation).toHaveProperty('x-required-scope', 'gitConnection:discover');
 		expect(operation.parameters).toContainEqual({
 			$ref: '../../../../shared/spec/parameters/limit.yml',
 		});

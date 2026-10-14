@@ -1366,7 +1366,7 @@ describe('Promotions in Public API', () => {
 				const id = await savedProvider();
 				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:read'] });
 				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
-				const member = await createMemberWithApiKey({ scopes: ['gitConnection:discovery'] });
+				const member = await createMemberWithApiKey({ scopes: ['gitConnection:discover'] });
 				for (const user of [readOnlyOwner, listOnlyOwner, member]) {
 					const response = await testServer
 						.publicApiAgentFor(user)
@@ -1377,7 +1377,7 @@ describe('Promotions in Public API', () => {
 					(await testServer.publicApiAgentFor(readOnlyOwner).get(`/promotions/providers/${id}`))
 						.status,
 				).toBe(200);
-				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:discovery'] });
+				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:discover'] });
 				const admin = await createAdminWithApiKey();
 				for (const user of [discoveryOwner, admin]) {
 					const api = (
