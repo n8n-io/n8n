@@ -1,11 +1,12 @@
-import { PromotionRepositoryListPublicDto, type PromotionRepository } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
+import { PromotionConnectionRepository } from '../database/repositories/promotion-connection.repository';
 
 const fixturePath = process.env.GITLAB_TEST_CONFIG;
 const fixtureSchema = z.object({
@@ -28,7 +29,7 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		owner = await createOwnerWithApiKey();
 	});
 
-	it('discovers the fixture before creating a connection and saves its repository ID', async () => {
+	it('saves the fixture path and lists its branches with it', async () => {
 		const fixture = fixtureSchema.parse(JSON.parse(await readFile(fixturePath ?? '', 'utf8')));
 		const baseUrl = process.env.GITLAB_TEST_BASE_URL ?? fixture.baseUrl;
 		const agent = server.publicApiAgentFor(owner);
@@ -42,26 +43,9 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 		const root = `/promotions/providers/${created.body.provider.id}`;
 		let connectionId: string | undefined;
 		try {
-			let repository: PromotionRepository | undefined;
-			let cursor: string | undefined;
-			do {
-				const repositories = await agent
-					.get(`${root}/repositories`)
-					.query({ search: fixture.projectPath, ...(cursor && { cursor }) });
-				expect(repositories.status, JSON.stringify(repositories.body)).toBe(200);
-				expect(JSON.stringify(repositories.body)).not.toContain(fixture.accessToken);
-				const page = PromotionRepositoryListPublicDto.parse(repositories.body);
-				repository = page.data.find((item) => item.fullPath === fixture.projectPath);
-				cursor = page.nextCursor ?? undefined;
-			} while (!repository && cursor);
-			expect(repository, 'The fixture repository must appear in discovery.').toBeDefined();
-			if (!repository) throw new Error('Fixture repository not found.');
-			expect(repository.defaultBranch).toBeTruthy();
-			expect(repository.remoteUrl).toMatch(/^https?:\/\//);
 			const target = {
 				schemaVersion: 1,
-				remoteUrl: repository.remoteUrl,
-				repositoryId: repository.id,
+				remoteUrl: `${baseUrl.replace(/\/$/, '')}/${fixture.projectPath}.git`,
 			};
 			const connection = await agent.post('/promotions/connections').send({
 				name: 'GitLab repository identity verification',
@@ -70,20 +54,22 @@ describe.skipIf(!fixturePath)('GitLab discovery live compatibility', () => {
 				target,
 			});
 			expect(connection.status, JSON.stringify(connection.body)).toBe(201);
-			connectionId = connection.body.id;
-			expect(connection.body.target).toEqual(target);
+			connectionId = z.string().parse(connection.body.id);
+			const publicTarget = { ...target, repositoryPath: fixture.projectPath };
+			expect(connection.body.target).toEqual(publicTarget);
+			expect(
+				(await Container.get(PromotionConnectionRepository).findByIdWithProvider(connectionId))
+					?.target,
+			).toEqual({ schemaVersion: 1, repositoryPath: fixture.projectPath });
 			const saved = await agent.get(`/promotions/connections/${connectionId}`);
 			expect(saved.status).toBe(200);
-			expect(saved.body.target).toEqual(target);
+			expect(saved.body.target).toEqual(publicTarget);
 
-			const branches = await agent
-				.get(`${root}/repositories/${repository.id}/branches`)
-				.query({ search: repository.defaultBranch });
+			const branches = await agent.get(
+				`${root}/repositories/${encodeURIComponent(saved.body.target.repositoryPath)}/branches`,
+			);
 			expect(branches.status, JSON.stringify(branches.body)).toBe(200);
-			expect(branches.body.data).toContainEqual({
-				name: repository.defaultBranch,
-				isDefault: true,
-			});
+			expect(branches.body.data).toContainEqual(expect.objectContaining({ isDefault: true }));
 			expect(JSON.stringify(branches.body)).not.toContain(fixture.accessToken);
 		} finally {
 			if (connectionId) {

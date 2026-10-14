@@ -21,11 +21,9 @@ properties:
       remoteUrl:
         type: string
         minLength: 1
-      repositoryId:
+      repositoryPath:
         type: string
-        minLength: 1
-        maxLength: 256
-        description: The repository ID returned by discovery. The server checks that it matches remoteUrl. Omit it when replacing the target to clear the saved ID. Plain Git targets do not use repository IDs.
+        description: The stored repository path of a GitLab target. Use it as repositoryId to list branches. Requests do not accept it.
     required:
       - schemaVersion
       - remoteUrl

@@ -41,40 +41,13 @@ export class PromotionProviderRepository extends BaseRepository<PromotionProvide
 		id: string,
 		expected: Pick<PromotionProvider, 'config' | 'auth'>,
 		changes: Partial<Pick<PromotionProvider, 'name' | 'config' | 'auth'>>,
-		ctx: OperationContext = {},
-	): Promise<boolean> {
-		return await this.updateIfUnchanged(id, expected, changes, ctx);
-	}
-
-	/** Holds the provider snapshot until the connection target write commits. */
-	async lockForConnectionTarget(
-		id: string,
-		expected: Pick<PromotionProvider, 'config' | 'auth'>,
-		ctx: OperationContext,
-	): Promise<boolean> {
-		return await this.updateIfUnchanged(
-			id,
-			expected,
-			{ auth: expected.auth, updatedAt: () => '"updatedAt"' },
-			ctx,
-		);
-	}
-
-	private async updateIfUnchanged(
-		id: string,
-		expected: Pick<PromotionProvider, 'config' | 'auth'>,
-		changes: Partial<Pick<PromotionProvider, 'name' | 'config' | 'auth'>> & {
-			updatedAt?: () => string;
-		},
-		ctx: OperationContext,
 	): Promise<boolean> {
 		// PostgreSQL json needs jsonb equality. SQLite stores serialized JSON text.
 		const configUnchanged =
 			this.manager.connection.options.type === 'postgres'
 				? 'CAST("config" AS jsonb) = CAST(:expectedConfig AS jsonb)'
 				: '"config" = :expectedConfig';
-		const result = await this.managerFor(ctx)
-			.createQueryBuilder()
+		const result = await this.createQueryBuilder()
 			.update(PromotionProvider)
 			.set(changes)
 			.where('"id" = :id', { id })

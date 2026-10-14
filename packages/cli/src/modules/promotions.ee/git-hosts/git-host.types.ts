@@ -15,7 +15,6 @@ export type GitHostPage<T> = { data: T[]; hasNextPage: boolean };
 
 export interface GitHostClient {
 	validateAccess(access: GitHostAccess): Promise<void>;
-	getRepository(access: GitHostAccess, repositoryId: string): Promise<PromotionRepository>;
 	listRepositories(
 		access: GitHostAccess,
 		query: GitHostDiscoveryQuery,

@@ -18,6 +18,7 @@ import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
 import { GitHostClients } from '@/modules/promotions.ee/git-hosts/git-host-clients';
 import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.client';
+import { PromotionConfigResolver } from '@/modules/promotions.ee/promotion-config.resolver';
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
@@ -894,20 +895,8 @@ describe('Promotions in Public API', () => {
 				.query(query);
 		}
 
-		function repositoryApi(
-			id = project.id,
-			remoteUrl = project.http_url_to_repo,
-			baseUrl = payload.config.baseUrl,
-		) {
-			return nock(baseUrl)
-				.matchHeader('PRIVATE-TOKEN', payload.auth.password)
-				.get(`/api/v4/projects/${id}`)
-				.reply(200, { ...project, id, http_url_to_repo: remoteUrl });
-		}
-
 		async function selectedConnection(providerId: string) {
-			const api = repositoryApi();
-			const target = { schemaVersion: 1, remoteUrl: project.http_url_to_repo, repositoryId: '42' };
+			const target = { schemaVersion: 1, remoteUrl: project.http_url_to_repo };
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/promotions/connections')
@@ -928,14 +917,16 @@ describe('Promotions in Public API', () => {
 					},
 				});
 			expect(response.status, JSON.stringify(response.body)).toBe(201);
-			expect(response.body.target).toEqual(target);
-			api.done();
+			expect(response.body.target).toEqual({
+				...target,
+				repositoryPath: project.path_with_namespace,
+			});
 			return response.body.id as string;
 		}
 
 		afterEach(() => nock.cleanAll());
 
-		it('applies configured network rules to both discovery routes', async () => {
+		it('applies configured network rules to all discovery routes', async () => {
 			const id = await savedProvider();
 			const dnsResolver = mock<DnsResolver>();
 			dnsResolver.lookup.mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
@@ -1433,294 +1424,268 @@ describe('Promotions in Public API', () => {
 			expect(response.body.message).toContain('no Git host API');
 		});
 
-		it('keeps repository identity consistent throughout a connection lifecycle', async () => {
+		it('keeps URL-looking list searches on the text-search pathway', async () => {
 			const providerId = await savedProvider();
-			const provider = await Container.get(PromotionProviderRepository).findById(providerId);
-			const id = await selectedConnection(providerId);
-			const target = {
-				schemaVersion: 1,
-				remoteUrl: project.http_url_to_repo,
-				repositoryId: '42',
-			};
-			const agent = testServer.publicApiAgentFor(owner);
-			const read = await agent.get(`/promotions/connections/${id}`);
-			expect(read.status).toBe(200);
-			expect(read.body.target).toEqual(target);
-			const listed = await agent.get('/promotions/connections').query({ providerId });
-			expect(listed.status).toBe(200);
-			expect(listed.body.data).toContainEqual(expect.objectContaining({ id, target }));
-			const renamed = await agent.put(`/promotions/connections/${id}`).send({ name: 'Renamed' });
-			expect(renamed.status).toBe(200);
-			expect(renamed.body.target).toEqual(target);
-			const sameProvider = await agent.put(`/promotions/connections/${id}`).send({ providerId });
-			expect(sameProvider.status).toBe(200);
-			expect(sameProvider.body.target).toEqual(target);
-			expect(
-				(await Container.get(PromotionConnectionRepository).findByIdWithProvider(id))?.target,
-			).toEqual(target);
-			expect(await Container.get(PromotionProviderRepository).findById(providerId)).toEqual(
-				provider,
-			);
-			const root = `/promotions/connections/${id}`;
-			const original = await agent.get(root);
-			const remoteUrl = 'https://gitlab.example.com/platform/next.git';
-			const api = repositoryApi(43, remoteUrl);
-			const replacement = { schemaVersion: 1, remoteUrl, repositoryId: '43' };
-			const updated = await agent.put(root).send({ target: replacement });
-			expect(updated.status, JSON.stringify(updated.body)).toBe(200);
-			expect(updated.body.target).toEqual(replacement);
-			expect(updated.body.configs).toEqual(original.body.configs);
+			const api = discoveryApi('/api/v4/projects', {
+				...repositoryQuery,
+				order_by: 'similarity',
+				sort: 'desc',
+				search: project.http_url_to_repo,
+				search_namespaces: 'true',
+			}).reply(200, []);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/promotions/providers/${providerId}/repositories`)
+				.query({ search: project.http_url_to_repo });
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({ data: [], nextCursor: null });
 			api.done();
-			const invalid = await agent.put(root).send({ target: { ...replacement, remoteUrl: '' } });
-			expect(invalid.status).toBe(400);
-			expect((await agent.get(root)).body.target).toEqual(replacement);
-			const urlOnly = {
-				schemaVersion: 1,
-				remoteUrl: 'https://gitlab.example.com/platform/other.git',
-			};
-			const cleared = await agent.put(root).send({ target: urlOnly });
-			expect(cleared.status).toBe(200);
-			expect(cleared.body.target).toEqual(urlOnly);
-			expect(
-				(await Container.get(PromotionConnectionRepository).findByIdWithProvider(id))?.target,
-			).toEqual(urlOnly);
-			const legacyRead = await agent.get(root);
-			expect(legacyRead.status).toBe(200);
-			expect(legacyRead.body.target).toEqual(urlOnly);
 		});
 
-		it('rejects invalid IDs and mismatched targets on create and update without saving other fields', async () => {
-			const providerId = await savedProvider();
+		it.each([
+			{ installation: '', suffix: '.git' },
+			{ installation: '', suffix: '%2Egit' },
+			{ installation: '', suffix: '/' },
+			{ installation: '/gitlab', suffix: '' },
+		])(
+			'saves a repository path from a full URL: $installation $suffix',
+			async ({ installation, suffix }) => {
+				const baseUrl = `${payload.config.baseUrl}${installation}`;
+				const providerId = await savedProvider(baseUrl);
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post('/promotions/connections')
+					.send({
+						name: 'URL form',
+						scope: 'projects',
+						providerId,
+						target: {
+							schemaVersion: 1,
+							remoteUrl: ` ${baseUrl}/${project.path_with_namespace}${suffix} `,
+						},
+					});
+				expect(response.status, JSON.stringify(response.body)).toBe(201);
+				expect(response.body.target).toEqual({
+					schemaVersion: 1,
+					remoteUrl: `${baseUrl}/${project.path_with_namespace}.git`,
+					repositoryPath: project.path_with_namespace,
+				});
+			},
+		);
+
+		it('rejects repository URLs outside the provider or without a namespace', async () => {
+			const baseUrl = `${payload.config.baseUrl}/gitlab`;
+			const providerId = await savedProvider(baseUrl);
 			const agent = testServer.publicApiAgentFor(owner);
-			const invalidIds = ['', 42, null, 'x'.repeat(257)];
-			for (const repositoryId of invalidIds) {
+			for (const remoteUrl of [
+				'https://other.example.com/gitlab/platform/workflows.git',
+				`${payload.config.baseUrl}/gitlab-other/platform/workflows.git`,
+				`${baseUrl}/only-one-segment`,
+				`${baseUrl}/platform/workflows.git?token=not-public`,
+				`${baseUrl}/platform/workflows.git#branch`,
+				'https://user:secret@gitlab.example.com/gitlab/platform/workflows.git',
+				`${baseUrl}/platform/%ZZ.git`,
+				`${baseUrl}/platform/%00.git`,
+				`${baseUrl}/platform%2F..%2Fworkflows.git`,
+				`${payload.config.baseUrl}:8443/gitlab/platform/workflows.git`,
+				'ftp://gitlab.example.com/gitlab/platform/workflows.git',
+			]) {
 				const response = await agent.post('/promotions/connections').send({
-					name: 'Must not save',
+					name: 'Invalid URL',
 					scope: 'projects',
 					providerId,
-					target: { schemaVersion: 1, remoteUrl: project.http_url_to_repo, repositoryId },
+					target: { schemaVersion: 1, remoteUrl },
 				});
-				expect(response.status).toBe(400);
+				expect(response.status, remoteUrl).toBe(400);
 			}
-			expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
-			const target = {
-				schemaVersion: 1,
-				remoteUrl: 'https://gitlab.example.com/platform/other.git',
-				repositoryId: '42',
-			};
-			const createApi = repositoryApi();
-			const created = await agent.post('/promotions/connections').send({
-				name: 'Must not save',
-				scope: 'projects',
-				providerId,
-				target,
-			});
-			expect(created.status).toBe(400);
-			expect(created.body.message).toContain('does not match the remote URL');
-			expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
-			createApi.done();
-			const id = await selectedConnection(providerId);
-			const before = await agent.get(`/promotions/connections/${id}`);
-			for (const repositoryId of invalidIds) {
-				const response = await agent.put(`/promotions/connections/${id}`).send({
-					name: 'Must not save',
-					target: { schemaVersion: 1, remoteUrl: project.http_url_to_repo, repositoryId },
-				});
-				expect(response.status).toBe(400);
-				expect((await agent.get(`/promotions/connections/${id}`)).body).toEqual(before.body);
-			}
-			const updateApi = repositoryApi();
-			const updated = await agent
-				.put(`/promotions/connections/${id}`)
-				.send({ name: 'Must not save', target });
-			expect(updated.status).toBe(400);
-			expect((await agent.get(`/promotions/connections/${id}`)).body).toEqual(before.body);
-			updateApi.done();
 		});
 
-		it('clears repository IDs on reassignment and keeps plain Git targets URL-only', async () => {
+		it('stores only a path and resolves provider changes for reads and Git operations', async () => {
 			const providerId = await savedProvider();
 			const id = await selectedConnection(providerId);
 			const agent = testServer.publicApiAgentFor(owner);
-			const plainProviderId = await createProvider(agent);
-			const changed = await agent
-				.put(`/promotions/connections/${id}`)
-				.send({ providerId: plainProviderId });
-			expect(changed.status).toBe(200);
-			expect(changed.body.provider.id).toBe(plainProviderId);
-			expect(changed.body.target).toEqual({
+			const root = `/promotions/connections/${id}`;
+			const repository = Container.get(PromotionConnectionRepository);
+			const storedTarget = { schemaVersion: 1, repositoryPath: project.path_with_namespace };
+			const target = { ...storedTarget, remoteUrl: project.http_url_to_repo };
+			expect((await repository.findByIdWithProvider(id))?.target).toEqual(storedTarget);
+			const original = await agent.get(root);
+			expect(original.body.target).toEqual(target);
+			const listed = await agent.get('/promotions/connections').query({ providerId });
+			expect(listed.body.data).toContainEqual(expect.objectContaining({ id, target }));
+			expect((await agent.put(root).send({ name: 'Renamed', providerId })).body.target).toEqual(
+				target,
+			);
+			const team = await createTeamProject('Path deployment', owner);
+			expect((await agent.post(`${root}/projects/${team.id}`)).status).toBe(200);
+			const baseUrl = 'https://other-gitlab.example.com/installation';
+			const api = providerValidation(baseUrl);
+			const updated = await agent.put(`/promotions/providers/${providerId}`).send({
+				config: { schemaVersion: 1, baseUrl },
+				auth: payload.auth,
+			});
+			expect(updated.status).toBe(200);
+			api.done();
+			const expected = {
 				schemaVersion: 1,
-				remoteUrl: project.http_url_to_repo,
+				remoteUrl: `${baseUrl}/${project.path_with_namespace}.git`,
+			};
+			const after = await agent.get(root);
+			expect(after.body.target).toEqual({
+				...expected,
+				repositoryPath: project.path_with_namespace,
 			});
-			const rejected = await agent.put(`/promotions/connections/${id}`).send({
-				target: { schemaVersion: 1, remoteUrl: project.http_url_to_repo, repositoryId: '42' },
-			});
-			expect(rejected.status).toBe(400);
-			expect(rejected.body.message).toContain('Plain Git targets do not use repository IDs');
-			expect((await agent.get(`/promotions/connections/${id}`)).body).toEqual(changed.body);
+			expect(after.body.configs).toEqual(original.body.configs);
+			expect((await agent.get(`${root}/projects`)).body.projectIds).toEqual([team.id]);
+			expect((await repository.findByIdWithProvider(id))?.target).toEqual(storedTarget);
+			for (const direction of ['apply', 'promote'] as const) {
+				expect(
+					(await Container.get(PromotionConfigResolver).resolveForConnection(id, direction)).target,
+				).toEqual(expected);
+			}
 		});
 
-		it('validates a replacement target against the new provider instance', async () => {
+		it('replaces a repository path without calling GitLab and rejects invalid replacements', async () => {
+			const providerId = await savedProvider();
+			const id = await selectedConnection(providerId);
+			const agent = testServer.publicApiAgentFor(owner);
+			const root = `/promotions/connections/${id}`;
+			const target = { schemaVersion: 1, remoteUrl: `${payload.config.baseUrl}/platform/next.git` };
+			const updated = await agent.put(root).send({ target });
+			expect(updated.status).toBe(200);
+			expect(updated.body.target).toEqual({ ...target, repositoryPath: 'platform/next' });
+			expect(
+				(await Container.get(PromotionConnectionRepository).findByIdWithProvider(id))?.target,
+			).toEqual({ schemaVersion: 1, repositoryPath: 'platform/next' });
+			for (const remoteUrl of [
+				'',
+				'https://other.example.com/platform/next.git',
+				`${payload.config.baseUrl}/single`,
+			]) {
+				const rejected = await agent
+					.put(root)
+					.send({ name: 'Must not save', target: { schemaVersion: 1, remoteUrl } });
+				expect(rejected.status).toBe(400);
+				expect((await agent.get(root)).body).toEqual(updated.body);
+			}
+			const rejectedId = await agent.put(root).send({ target: { ...target, repositoryId: '42' } });
+			expect(rejectedId.status).toBe(400);
+		});
+
+		it('keeps paths across GitLab reassignment and restores a URL for plain Git', async () => {
 			const providerId = await savedProvider();
 			const id = await selectedConnection(providerId);
 			const baseUrl = 'https://other-gitlab.example.com';
 			const nextProviderId = await savedProvider(baseUrl);
-			const remoteUrl = `${baseUrl}/platform/workflows.git`;
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/connections/${id}`;
-			const before = await agent.get(root);
-			const mismatchApi = repositoryApi(42, remoteUrl, baseUrl);
-			const rejected = await agent.put(root).send({
-				providerId: nextProviderId,
-				target: before.body.target,
+			const moved = await agent.put(root).send({ providerId: nextProviderId });
+			expect(moved.status).toBe(200);
+			const target = {
+				schemaVersion: 1,
+				remoteUrl: `${baseUrl}/${project.path_with_namespace}.git`,
+			};
+			expect(moved.body.target).toEqual({
+				...target,
+				repositoryPath: project.path_with_namespace,
 			});
-			expect(rejected.status).toBe(400);
-			expect((await agent.get(root)).body).toEqual(before.body);
-			mismatchApi.done();
-			const api = repositoryApi(42, remoteUrl, baseUrl);
-			const target = { schemaVersion: 1, remoteUrl, repositoryId: '42' };
-			const updated = await agent.put(root).send({ providerId: nextProviderId, target });
-			expect(updated.status).toBe(200);
-			expect(updated.body.target).toEqual(target);
-			expect(updated.body.provider.id).toBe(nextProviderId);
-			api.done();
+			const plainProviderId = await createProvider(agent);
+			const plain = await agent.put(root).send({ providerId: plainProviderId });
+			expect(plain.status).toBe(200);
+			expect(plain.body.target).toEqual(target);
+			expect(
+				(await Container.get(PromotionConnectionRepository).findByIdWithProvider(id))?.target,
+			).toEqual(target);
 		});
 
-		it('clears connection IDs only when the provider API destination changes', async () => {
+		it('reads legacy URL targets and converts them to paths when the target is resaved', async () => {
 			const providerId = await savedProvider();
 			const id = await selectedConnection(providerId);
+			const repository = Container.get(PromotionConnectionRepository);
+			const target = { schemaVersion: 1 as const, remoteUrl: project.http_url_to_repo };
+			await repository.updateConnection(id, providerId, { target });
 			const agent = testServer.publicApiAgentFor(owner);
-			const root = `/promotions/providers/${providerId}`;
-			const connectionRoot = `/promotions/connections/${id}`;
-			const original = await agent.get(connectionRoot);
-			const equivalentApi = providerValidation();
+			const root = `/promotions/connections/${id}`;
+			expect((await agent.get(root)).body.target).toEqual(target);
 			expect(
-				(
-					await agent
-						.put(root)
-						.send({ config: { schemaVersion: 1, baseUrl: `${payload.config.baseUrl}/` } })
-				).status,
-			).toBe(200);
-			expect((await agent.get(connectionRoot)).body.target).toEqual(original.body.target);
-			equivalentApi.done();
-			const authApi = providerValidation();
-			expect((await agent.put(root).send({ auth: payload.auth })).status).toBe(200);
-			expect((await agent.get(connectionRoot)).body.target).toEqual(original.body.target);
-			authApi.done();
-			const baseUrl = 'https://other-gitlab.example.com';
-			const hostApi = providerValidation(baseUrl);
-			expect(
-				(await agent.put(root).send({ config: { schemaVersion: 1, baseUrl }, auth: payload.auth }))
-					.status,
-			).toBe(200);
-			const after = await agent.get(connectionRoot);
-			expect(after.body.target).toEqual({ schemaVersion: 1, remoteUrl: project.http_url_to_repo });
-			expect(after.body.configs).toEqual(original.body.configs);
-			hostApi.done();
+				(await Container.get(PromotionConfigResolver).resolveForConnection(id, 'apply')).target,
+			).toEqual(target);
+			expect((await agent.put(root).send({ name: 'Legacy rename' })).status).toBe(200);
+			expect((await repository.findByIdWithProvider(id))?.target).toEqual(target);
+			expect((await agent.put(root).send({ target })).status).toBe(200);
+			expect((await repository.findByIdWithProvider(id))?.target).toEqual({
+				schemaVersion: 1,
+				repositoryPath: project.path_with_namespace,
+			});
 		});
 
-		it.each(['create', 'update'] as const)(
-			'rejects a repository ID validated before a provider host change on %s',
-			async (operation) => {
-				const providerId = await savedProvider();
-				const id = operation === 'update' ? await selectedConnection(providerId) : undefined;
-				const agent = testServer.publicApiAgentFor(owner);
-				const api = repositoryApi();
-				const client = Container.get(GitLabHostClient);
-				const getRepository = client.getRepository.bind(client);
-				const validated = createDeferredPromise();
-				const resume = createDeferredPromise();
-				const lookup = vi.spyOn(client, 'getRepository').mockImplementationOnce(async (...args) => {
-					const repository = await getRepository(...args);
-					validated.resolve();
-					await resume.promise;
-					return repository;
-				});
-				const target = {
-					schemaVersion: 1,
-					remoteUrl: project.http_url_to_repo,
-					repositoryId: '42',
-				};
-				const pending = (
-					operation === 'create'
-						? agent
-								.post('/promotions/connections')
-								.send({ name: 'Pending', scope: 'projects', providerId, target })
-						: agent.put(`/promotions/connections/${id}`).send({ target })
-				).then((response) => response);
-				try {
-					await validated.promise;
-					const baseUrl = 'https://other-gitlab.example.com';
-					const hostApi = providerValidation(baseUrl);
-					const winner = await agent
-						.put(`/promotions/providers/${providerId}`)
-						.send({ config: { schemaVersion: 1, baseUrl }, auth: payload.auth });
-					expect(winner.status).toBe(200);
-					resume.resolve();
-					const stale = await pending;
-					expect(stale.status).toBe(409);
-					if (id) {
-						expect((await agent.get(`/promotions/connections/${id}`)).body.target).toEqual({
-							schemaVersion: 1,
-							remoteUrl: project.http_url_to_repo,
-						});
-					} else {
-						expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
-					}
-					api.done();
-					hostApi.done();
-				} finally {
-					resume.resolve();
-					await pending;
-					lookup.mockRestore();
-				}
-			},
-		);
-
-		it.each(['provider', 'target'] as const)(
-			'keeps a winning %s change during a repository target update',
+		it.each(['target', 'provider'] as const)(
+			'keeps a winning provider reassignment when a stale %s update resumes',
 			async (field) => {
 				const providerId = await savedProvider();
 				const id = await selectedConnection(providerId);
 				const agent = testServer.publicApiAgentFor(owner);
-				const winningChange =
-					field === 'provider'
-						? { providerId: await createProvider(agent) }
-						: {
+				const plainProviderId = await createProvider(agent);
+				const repository = Container.get(PromotionConnectionRepository);
+				const updateConnection = repository.updateConnection.bind(repository);
+				const paused = createDeferredPromise();
+				const resume = createDeferredPromise();
+				const write = vi
+					.spyOn(repository, 'updateConnection')
+					.mockImplementationOnce(async (...args) => {
+						paused.resolve();
+						await resume.promise;
+						return await updateConnection(...args);
+					});
+				const root = `/promotions/connections/${id}`;
+				const changes =
+					field === 'target'
+						? {
 								target: {
 									schemaVersion: 1,
-									remoteUrl: 'https://gitlab.example.com/platform/winner.git',
+									remoteUrl: `${payload.config.baseUrl}/platform/next.git`,
 								},
-							};
-				const client = Container.get(GitLabHostClient);
-				const getRepository = client.getRepository.bind(client);
-				const validated = createDeferredPromise();
-				const resume = createDeferredPromise();
-				const lookup = vi.spyOn(client, 'getRepository').mockImplementationOnce(async (...args) => {
-					const repository = await getRepository(...args);
-					validated.resolve();
-					await resume.promise;
-					return repository;
-				});
-				const remoteUrl = 'https://gitlab.example.com/platform/next.git';
-				const api = repositoryApi(43, remoteUrl);
-				const root = `/promotions/connections/${id}`;
+							}
+						: { providerId };
 				const pending = agent
 					.put(root)
-					.send({ target: { schemaVersion: 1, remoteUrl, repositoryId: '43' } })
+					.send({ name: 'Must not save', ...changes })
 					.then((response) => response);
 				try {
-					await validated.promise;
-					const winner = await agent.put(root).send(winningChange);
-					expect(winner.status).toBe(200);
+					await Promise.race([
+						paused.promise,
+						pending.then(({ status }) => {
+							throw new Error(`The pending update returned ${status} before its write was paused.`);
+						}),
+					]);
+					const winner = await agent
+						.put(root)
+						.send({ name: 'Winning settings', providerId: plainProviderId });
+					expect(winner.status, JSON.stringify(winner.body)).toBe(200);
+					const stored = await repository.findByIdWithProvider(id);
+					expect(stored?.target).toEqual(winner.body.target);
 					resume.resolve();
-					expect((await pending).status).toBe(409);
-					expect((await agent.get(root)).body).toEqual(winner.body);
-					api.done();
+					const stale = await pending;
+					expect(stale.status, JSON.stringify(stale.body)).toBe(409);
+					expect(stale.body.message).toContain('Reload');
+					expect(await repository.findByIdWithProvider(id)).toEqual(stored);
+					const read = await agent.get(root);
+					expect(read.status).toBe(200);
+					expect(read.body).toEqual(winner.body);
+					const listed = await agent.get('/promotions/connections');
+					expect(listed.status).toBe(200);
+					expect(listed.body.data).toContainEqual(
+						expect.objectContaining({ id, target: winner.body.target }),
+					);
+					for (const direction of ['apply', 'promote'] as const) {
+						expect(
+							await Container.get(PromotionConfigResolver).resolveForConnection(id, direction),
+						).toMatchObject({ providerId: plainProviderId, target: winner.body.target });
+					}
 				} finally {
 					resume.resolve();
 					await pending;
-					lookup.mockRestore();
+					write.mockRestore();
 				}
 			},
 		);

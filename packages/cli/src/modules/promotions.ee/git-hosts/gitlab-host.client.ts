@@ -26,6 +26,7 @@ import type {
 	GitHostDiscoveryQuery,
 	GitHostPage,
 } from './git-host.types';
+import { repositoryUrlFromPath } from './git-host-target';
 
 const requestTimeoutMs = 15_000;
 const retryDelayMs = 200;
@@ -88,13 +89,6 @@ export class GitLabHostClient implements GitHostClient {
 		if (!z.array(identitySchema).safeParse(projects.body).success) throw unexpectedResponse();
 	}
 
-	async getRepository(access: GitHostAccess, repositoryId: string): Promise<PromotionRepository> {
-		const response = await this.get(access, `projects/${encodeURIComponent(repositoryId)}`, {});
-		const project = projectSchema.safeParse(response.body);
-		if (!project.success) throw unexpectedResponse();
-		return toRepository(project.data);
-	}
-
 	async listRepositories(
 		access: GitHostAccess,
 		{ offset, limit, search }: GitHostDiscoveryQuery,
@@ -116,7 +110,7 @@ export class GitLabHostClient implements GitHostClient {
 		const projects = z.array(projectSchema).max(limit).safeParse(response.body);
 		if (!projects.success) throw unexpectedResponse();
 		return {
-			data: projects.data.map(toRepository),
+			data: projects.data.map((project) => toRepository(project, access.baseUrl)),
 			hasNextPage: hasNextPage(response, offset, limit, projects.data.length),
 		};
 	}
@@ -238,12 +232,15 @@ export class GitLabHostClient implements GitHostClient {
 	}
 }
 
-function toRepository(project: z.infer<typeof projectSchema>): PromotionRepository {
+function toRepository(
+	project: z.infer<typeof projectSchema>,
+	baseUrl: string,
+): PromotionRepository {
 	return {
 		id: String(project.id),
 		name: project.name,
 		fullPath: project.path_with_namespace,
-		remoteUrl: project.http_url_to_repo,
+		remoteUrl: repositoryUrlFromPath(baseUrl, project.path_with_namespace),
 		defaultBranch: project.default_branch,
 	};
 }

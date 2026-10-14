@@ -27,7 +27,12 @@ export const promotionRepositoryIdParamSchema = z
 	.min(1)
 	.max(256)
 	.refine((id) => id !== '.' && id !== '..', { message: 'Invalid repository ID' })
-	.openapi({ param: { description: 'The ID of the repository.' } });
+	.openapi({
+		param: {
+			description:
+				'The URL-encoded fullPath of the repository. A GitLab project ID is also accepted.',
+		},
+	});
 
 export const promotionRepositorySchema = z.object({
 	id: z.string(),

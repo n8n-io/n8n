@@ -14,7 +14,7 @@ import type {
 	PromotionPromoteConfigPublicDto,
 	UpdatePromotionConnectionDto,
 } from '@n8n/api-types';
-import { isPromotionGitHostType, promotionConnectionTargetSchema } from '@n8n/api-types';
+import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -25,7 +25,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { DIRECTION_LABELS } from './constants';
 import type { PromotionConfig } from './database/entities/promotion-config.entity';
 import type { PromotionConnection } from './database/entities/promotion-connection.entity';
-import type { PromotionProvider } from './database/entities/promotion-provider.entity';
 import { PromotionConfigRepository } from './database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from './database/repositories/promotion-connection-project.repository';
 import {
@@ -33,6 +32,11 @@ import {
 	type PromotionConnectionFilter,
 } from './database/repositories/promotion-connection.repository';
 import { resolveStoredConfig } from './promotion-config-settings';
+import {
+	promotionStoredConnectionTargetSchema,
+	resolvePromotionTarget,
+	storePromotionTarget,
+} from './git-hosts/git-host-target';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -86,7 +90,8 @@ export class PromotionConnectionsService {
 	 */
 	async create(input: CreatePromotionConnectionDto): Promise<PromotionConnectionPublicDto> {
 		const provider = await this.providersService.getEntity(input.providerId);
-		const target = await this.resolveTarget(provider, input.target);
+		this.gitService.validateRemoteUrl(input.target.remoteUrl, provider.authType);
+		const target = storePromotionTarget(provider, input.target);
 
 		const writes = requestedConfigWrites(input.configs);
 		// Branch validation runs Git, so it happens before the transaction opens.
@@ -97,9 +102,6 @@ export class PromotionConnectionsService {
 		const created = await mapPromotionConflicts(
 			async () =>
 				await this.txRunner.run({}, async (ctx) => {
-					if (target.repositoryId !== undefined) {
-						await this.providersService.assertUnchangedForConnectionTarget(provider, ctx);
-					}
 					const connection = await this.connectionRepository.insertConnection(
 						{
 							name: input.name,
@@ -162,63 +164,33 @@ export class PromotionConnectionsService {
 		const provider = input.providerId
 			? await this.providersService.getEntity(input.providerId)
 			: current.provider;
+		const requested: PromotionConnectionTarget =
+			input.target ?? resolvePromotionTarget(current.provider, current.target);
+		this.gitService.validateRemoteUrl(requested.remoteUrl, provider.authType);
 		const changesTarget = input.target !== undefined || provider.id !== current.providerId;
-		if (changesTarget) {
-			// A provider change must not carry an ID from another Git host instance.
-			const requested = input.target ?? {
-				schemaVersion: current.target.schemaVersion,
-				remoteUrl: current.target.remoteUrl,
-			};
-			const target = await this.resolveTarget(provider, requested);
-			await this.txRunner.run({}, async (ctx) => {
-				if (target.repositoryId !== undefined) {
-					await this.providersService.assertUnchangedForConnectionTarget(provider, ctx);
-				}
-				const updated = await this.connectionRepository.updateTargetIfUnchanged(
-					id,
-					{ providerId: current.providerId, target: current.target },
-					{
-						...(input.name !== undefined && { name: input.name }),
-						...(input.providerId !== undefined && { providerId: input.providerId }),
-						target,
-					},
-					ctx,
-				);
-				if (!updated) {
-					throw new ConflictError(
-						'The connection changed during the update. Reload it and try again.',
-					);
-				}
-			});
-		} else {
-			this.gitService.validateRemoteUrl(current.target.remoteUrl, provider.authType);
-			await this.connectionRepository.updateConnection(id, {
+		const target =
+			input.target === undefined &&
+			isPromotionGitHostType(provider.type) &&
+			'repositoryPath' in current.target
+				? current.target
+				: changesTarget
+					? storePromotionTarget(provider, requested)
+					: current.target;
+		if (input.target !== undefined || input.providerId !== undefined) {
+			const updated = await this.connectionRepository.updateConnection(id, current.providerId, {
 				...(input.name !== undefined && { name: input.name }),
+				...(changesTarget && { target }),
 				...(input.providerId !== undefined && { providerId: input.providerId }),
 			});
+			if (!updated) {
+				throw new ConflictError(
+					'The connection changed during the update. Reload it and try again.',
+				);
+			}
+		} else if (input.name !== undefined) {
+			await this.connectionRepository.renameConnection(id, input.name);
 		}
 		return await this.findOne(id);
-	}
-
-	private async resolveTarget(
-		provider: PromotionProvider,
-		target: PromotionConnectionTarget,
-	): Promise<PromotionConnectionTarget> {
-		this.gitService.validateRemoteUrl(target.remoteUrl, provider.authType);
-		const remoteTarget = { schemaVersion: target.schemaVersion, remoteUrl: target.remoteUrl };
-		if (target.repositoryId === undefined) return remoteTarget;
-		if (!isPromotionGitHostType(provider.type)) {
-			throw new BadRequestError(
-				'Plain Git targets do not use repository IDs. Remove repositoryId.',
-			);
-		}
-		const repository = await this.providersService.getRepository(provider, target.repositoryId);
-		if (new URL(target.remoteUrl).href !== new URL(repository.remoteUrl).href) {
-			throw new BadRequestError(
-				'The repository ID does not match the remote URL. Select the repository again.',
-			);
-		}
-		return { ...remoteTarget, repositoryId: repository.id };
 	}
 
 	/**
@@ -345,7 +317,12 @@ export class PromotionConnectionsService {
 			id: connection.id,
 			name: connection.name,
 			scope: connection.scope,
-			target: connection.target,
+			target: {
+				...resolvePromotionTarget(connection.provider, connection.target),
+				...('repositoryPath' in connection.target && {
+					repositoryPath: connection.target.repositoryPath,
+				}),
+			},
 			provider: this.providersService.toSummary(connection.provider),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
@@ -436,14 +413,14 @@ export class PromotionConnectionsService {
 
 		// Read the target the same way an operation does, so the reported state and the
 		// enforced state cannot drift. A target this version cannot read is not usable.
-		const target = promotionConnectionTargetSchema.safeParse(connection.target);
+		const target = promotionStoredConnectionTargetSchema.safeParse(connection.target);
 		if (!target.success) return { hasCheckout, matchesConfig: false };
 
 		const matchesConfig = await this.workingDirectory.matchesDescriptor(
 			buildCacheDescriptor({
 				connectionId: connection.id,
 				configId: config.id,
-				target: target.data,
+				target: resolvePromotionTarget(connection.provider, target.data),
 				config: resolved,
 			}),
 		);

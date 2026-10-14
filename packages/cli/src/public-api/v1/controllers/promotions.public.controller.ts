@@ -201,7 +201,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:discovery')
 	@ApiSummary('List repositories of a promotion provider')
 	@ApiDescription(
-		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination. Search results use similarity order. Other results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as a connection target. Search matches names and namespaces in similarity order. Unfiltered results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionRepositoryListPublicDto)
@@ -232,7 +232,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:discovery')
 	@ApiSummary('List branches of a promotion repository')
 	@ApiDescription(
-		'Lists branches of the selected GitLab repository and identifies its default branch. Use the repository ID from repository discovery. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
+		'Lists branches of the selected GitLab repository and identifies its default branch. Pass the URL-encoded fullPath from repository discovery, or the repositoryPath of a saved GitLab connection, as repositoryId. GitLab project IDs are also accepted, but connections do not store them. Supports branch search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials and inaccessible repositories return errors, not empty lists. If a response is too large, restart the list with a smaller limit and no cursor.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionBranchListPublicDto)
@@ -267,7 +267,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a promotion connection')
 	@ApiDescription(
-		'Creates a connection on an existing provider, with up to one initial configuration for each direction. A Git host target can include the repositoryId returned by discovery. The service checks that the ID matches remoteUrl before saving both. Plain Git targets do not use repository IDs. Only one instance connection can exist.',
+		'Creates a connection on an existing provider, with up to one initial configuration for each direction. A GitLab target URL must belong to the saved provider. The connection stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git connections keep the full remote URL. Only one instance connection can exist.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(201, PromotionConnectionPublicDto)
@@ -335,7 +335,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:update')
 	@ApiSummary('Update a promotion connection')
 	@ApiDescription(
-		'Updates the name, target, or provider. A target replaces the whole saved target. A Git host repositoryId must match remoteUrl. Omitting repositoryId from a replacement target clears the saved ID. Changing the provider without a replacement target also clears the ID. If the provider or connection target changes during repository validation, the update returns 409. Scope cannot change, and configurations have their own routes.',
+		'Updates the name, target, or provider. A target replaces the whole saved target. GitLab connections store a repository path and derive remoteUrl from the provider. Plain Git connections keep the full remote URL. If the provider changes during a target or provider update, the update returns 409. Reload the connection and try again. Scope cannot change, and configurations have their own routes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionConnectionPublicDto)

@@ -15,7 +15,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, TransactionRunner, User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
 	SharedCredentialsRepository,
@@ -188,7 +188,6 @@ beforeEach(async () => {
 			gitService,
 			cipher,
 			mock<GitHostClients>(),
-			mock<TransactionRunner>(),
 		),
 		workingDirectory,
 		new WorkingCopyUpdater(instanceSettings, logger),

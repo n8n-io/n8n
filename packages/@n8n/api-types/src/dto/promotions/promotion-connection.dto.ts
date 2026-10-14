@@ -27,21 +27,21 @@ export type PromotionConnectionScope = z.infer<typeof promotionConnectionScopeSc
  */
 const remoteUrlSchema = z.string().trim().min(1);
 
-/**
- * Git transport uses the remote URL. Git host providers can also save the
- * repository ID returned by discovery.
- */
+/** Git host targets store a path internally. The API exposes the resolved clone URL. */
 export const promotionConnectionTargetSchema = z
 	.object({
 		schemaVersion: z.literal(1),
 		remoteUrl: remoteUrlSchema,
-		repositoryId: z.string().min(1).max(256).optional().openapi({
-			description:
-				'The repository ID returned by discovery. The server checks that it matches remoteUrl. Omit it when replacing the target to clear the saved ID. Plain Git targets do not use repository IDs.',
-		}),
 	})
 	.strict();
 export type PromotionConnectionTarget = z.infer<typeof promotionConnectionTargetSchema>;
+
+const promotionConnectionTargetPublicSchema = promotionConnectionTargetSchema.extend({
+	repositoryPath: z.string().optional().openapi({
+		description:
+			'The stored repository path of a GitLab target. Use it as repositoryId to list branches. Requests do not accept it.',
+	}),
+});
 
 export class CreatePromotionConnectionDto extends Z.class(
 	{
@@ -133,7 +133,7 @@ export const promotionConnectionPublicSchema = z.object({
 	id: n8nIdSchema,
 	name: z.string(),
 	scope: promotionConnectionScopeSchema,
-	target: promotionConnectionTargetSchema,
+	target: promotionConnectionTargetPublicSchema,
 	provider: promotionProviderSummarySchema,
 	configs: promotionConnectionConfigsPublicSchema,
 	createdAt: z.string().datetime(),

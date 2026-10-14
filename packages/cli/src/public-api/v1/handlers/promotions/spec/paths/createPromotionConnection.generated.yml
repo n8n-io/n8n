@@ -2,7 +2,7 @@ operationId: createPromotionConnection
 tags:
   - Promotions
 summary: Create a promotion connection
-description: Creates a connection on an existing provider, with up to one initial configuration for each direction. A Git host target can include the repositoryId returned by discovery. The service checks that the ID matches remoteUrl before saving both. Plain Git targets do not use repository IDs. Only one instance connection can exist.
+description: Creates a connection on an existing provider, with up to one initial configuration for each direction. A GitLab target URL must belong to the saved provider. The connection stores only the repository path and derives remoteUrl from the current provider base URL. Plain Git connections keep the full remote URL. Only one instance connection can exist.
 x-required-scope: gitConnection:create
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -37,11 +37,6 @@ requestBody:
               remoteUrl:
                 type: string
                 minLength: 1
-              repositoryId:
-                type: string
-                minLength: 1
-                maxLength: 256
-                description: The repository ID returned by discovery. The server checks that it matches remoteUrl. Omit it when replacing the target to clear the saved ID. Plain Git targets do not use repository IDs.
             required:
               - schemaVersion
               - remoteUrl

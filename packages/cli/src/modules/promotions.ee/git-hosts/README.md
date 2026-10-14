@@ -40,8 +40,8 @@ not a fixed page length. GitLab requests contain at most 100 items. A continuati
 cursor advances by that effective page size. Follow it even when a page contains
 fewer items than the requested limit. Resend the search when you use a cursor.
 A cursor keeps its page size. It does not create a snapshot of GitLab data.
-Repository IDs and clone URLs come from GitLab. Branch names include the
-default-branch flag.
+Repository IDs, paths, and default-branch flags come from GitLab. Clone URLs use
+the saved provider host.
 
 GitLab repository discovery lists projects with Developer access or higher
 (`min_access_level=30`). Search matches repository names and namespace paths.
@@ -53,21 +53,14 @@ The client never follows a pagination URL. It computes each page on the saved
 host. If a proxy omits pagination headers, a full page gets a continuation cursor.
 That fallback can cause one extra request at the end of a list.
 
-## Saved repository identity
+## Connection targets
 
-A Git host connection target can save `repositoryId` beside `remoteUrl`.
-Create and target-update requests check the ID with one exact host API request.
-The returned clone URL must match the supplied URL. A mismatch saves nothing.
-Connection create, read, list, and update responses include the saved ID.
-
-A replacement target without `repositoryId` clears the old ID. Name-only edits
-keep it. A provider reassignment without a replacement target clears it. A change
-to the provider's API destination clears IDs on its connections without changing
-their remote URLs, branches, or project links. Equivalent host URLs do not clear
-IDs. Provider snapshot checks prevent an overlapping edit from saving an ID
-validated against an old host. Plain Git targets remain URL-only.
-Target snapshot checks also reject an overlapping provider reassignment or target
-replacement instead of overwriting the winning URL.
+The API accepts and returns `remoteUrl`. New GitLab targets store only a
+`repositoryPath`. Reads and Git operations derive the URL from the provider.
+Plain Git and existing URL-based targets stay compatible. Resave an existing
+GitLab target to convert it to a path. Older versions cannot read path targets.
+Connection responses also return the stored `repositoryPath`. Use it as the
+`repositoryId` to list branches of a saved connection.
 
 ## GitLab
 
