@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { ERROR_RESPONSES } from './constants';
 
@@ -28,6 +30,15 @@ export class AuthError extends Error {
 	}
 }
 
+const UNREADABLE_ERROR_MESSAGE = 'The OAuth2 server rejected the request';
+
+/** Some servers (e.g. Meta Graph API) send `error` as an object with its own `message`. */
+function toReadableMessage(value: unknown): string {
+	if (typeof value === 'string') return value;
+	if (isRecord(value) && typeof value.message === 'string' && value.message) return value.message;
+	return UNREADABLE_ERROR_MESSAGE;
+}
+
 /**
  * Pull an authentication error from the response data.
  */
@@ -35,11 +46,10 @@ export function getAuthError(body: {
 	error: string;
 	error_description?: string;
 }): Error | undefined {
-	const message: string | undefined =
-		ERROR_RESPONSES[body.error] ?? body.error_description ?? body.error;
+	const message: unknown = ERROR_RESPONSES[body.error] ?? body.error_description ?? body.error;
 
 	if (message) {
-		return new AuthError(message, body);
+		return new AuthError(toReadableMessage(message), body);
 	}
 
 	return undefined;
