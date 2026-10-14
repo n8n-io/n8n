@@ -75,6 +75,11 @@ on:
         required: false
         type: boolean
         default: false
+      namespace_single_job:
+        description: 'Prototype: build both platforms in one Namespace job and push to the Namespace registry only'
+        required: false
+        type: boolean
+        default: false
       push_enabled:
         description: 'Push image to registry'
         required: false
@@ -121,7 +126,7 @@ jobs:
           N8N_VERSION: ${{ inputs.n8n_version }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           PUSH_ENABLED: ${{ inputs.push_enabled }}
-          INCLUDE_ARM64: ${{ inputs.include_arm64 }}
+          INCLUDE_ARM64: ${{ inputs.include_arm64 || inputs.namespace_single_job }}
           GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
@@ -133,9 +138,106 @@ jobs:
             --push-enabled "$PUSH_ENABLED" \
             --include-arm64 "$INCLUDE_ARM64"
 
+  # Prototype of a single publish job on Namespace. The remote builders build
+  # amd64 and arm64 natively, so one bake call pushes the final multi-platform
+  # index. This replaces build-app, the per-platform matrix and the manifest
+  # merge. It pushes to the Namespace workspace registry only, never to GHCR or
+  # Docker Hub, so the attestation and scan jobs stay skipped.
+  build-and-push-single:
+    name: Build and Push Docker Images (single job)
+    needs: determine-build-context
+    if: inputs.namespace_single_job
+    runs-on: namespace-profile-n8n-docker-poc
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      n8n_digest: ${{ steps.digests.outputs.n8n_digest }}
+      n8n_image: ${{ steps.digests.outputs.n8n_image }}
+      n8n_pc_digest: ${{ steps.digests.outputs.n8n_pc_digest }}
+      n8n_pc_image: ${{ steps.digests.outputs.n8n_pc_image }}
+      runners_digest: ${{ steps.digests.outputs.runners_digest }}
+      runners_image: ${{ steps.digests.outputs.runners_image }}
+      runners_distroless_digest: ${{ steps.digests.outputs.runners_distroless_digest }}
+      runners_distroless_image: ${{ steps.digests.outputs.runners_distroless_image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          # The image compiles native bindings against this Node version later.
+          node-version: ${{ env.NODE_VERSION }}
+          build-command: pnpm build:n8n
+        env:
+          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
+
+      # A real publish uses these tags unchanged. The prototype swaps the GHCR
+      # prefix for the Namespace registry.
+      - name: Determine Docker tags for all images
+        id: determine-tags
+        env:
+          VERSION: ${{ needs.determine-build-context.outputs.n8n_version }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
+        run: |
+          if [ -z "${NSC_CONTAINER_REGISTRY:-}" ]; then
+            echo "::error::NSC_CONTAINER_REGISTRY is not set on this runner"
+            exit 1
+          fi
+          RAW="$(mktemp)"
+          GITHUB_OUTPUT="$RAW" node .github/scripts/docker/docker-tags.mjs --all --version "$VERSION" --sha "$SHORT_SHA"
+          sed "s#ghcr.io/${GITHUB_REPOSITORY_OWNER}/#${NSC_CONTAINER_REGISTRY}/n8n-publish-poc/#g" "$RAW" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Build and push multi-platform images
+        env:
+          N8N_VERSION: ${{ needs.determine-build-context.outputs.n8n_version }}
+          N8N_RELEASE_TYPE: ${{ needs.determine-build-context.outputs.release_type }}
+          PLATFORMS: ${{ join(fromJSON(needs.determine-build-context.outputs.build_matrix).include.*.docker_platform, ',') }}
+          N8N_TAGS: ${{ steps.determine-tags.outputs.n8n_tags }}
+          N8N_PC_TAGS: ${{ steps.determine-tags.outputs.n8n_pc_tags }}
+          RUNNERS_TAGS: ${{ steps.determine-tags.outputs.runners_tags }}
+          RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+        run: |
+          echo "Platforms: $PLATFORMS"
+          # oci-mediatypes keeps the index an OCI image index (#31997).
+          docker buildx bake -f docker/docker-bake.hcl release \
+            --provenance=false \
+            --sbom=false \
+            --set '*.output=type=image,oci-mediatypes=true,push=true' \
+            --metadata-file /tmp/bake-metadata.json
+
+      - name: Assert pushed images are OCI image indexes
+        env:
+          PLATFORMS: ${{ join(fromJSON(needs.determine-build-context.outputs.build_matrix).include.*.docker_platform, ',') }}
+          N8N_TAG: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
+          N8N_PC_TAG: ${{ steps.determine-tags.outputs.n8n_pc_primary_tag }}
+          RUNNERS_TAG: ${{ steps.determine-tags.outputs.runners_primary_tag }}
+          RUNNERS_DISTROLESS_TAG: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+        run: |
+          set -euo pipefail
+          EXPECT="$(echo "$PLATFORMS" | tr ',' '\n' | grep -c .)"
+          for TAG in "$N8N_TAG" "$N8N_PC_TAG" "$RUNNERS_TAG" "$RUNNERS_DISTROLESS_TAG"; do
+            node .github/scripts/docker/assert-manifest-format.mjs "$TAG" --expect-platforms "$EXPECT"
+          done
+
+      - name: Get manifest digests for attestation
+        id: digests
+        env:
+          N8N_TAG: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
+          N8N_PC_TAG: ${{ steps.determine-tags.outputs.n8n_pc_primary_tag }}
+          RUNNERS_TAG: ${{ steps.determine-tags.outputs.runners_primary_tag }}
+          DISTROLESS_TAG: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+        run: node .github/scripts/docker/get-manifest-digests.mjs
+
   build-app:
     name: Build application for Docker images
     needs: determine-build-context
+    if: ${{ !inputs.namespace_single_job }}
     runs-on: ${{ inputs.namespace_poc && 'namespace-profile-n8n-docker-poc' || 'blacksmith-8vcpu-ubuntu-2204' }}
     timeout-minutes: 35
     permissions:
