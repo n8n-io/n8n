@@ -848,7 +848,7 @@ const sortedWorkflows = computed(() => {
 			<div :class="$style.quickFilters">
 				<N8nButton
 					v-if="currentUserId"
-					:variant="workflowFilters.owner === currentUserId ? 'solid' : 'subtle'"
+					:variant="workflowFilters.owner === currentUserId ? 'solid' : 'outline'"
 					size="small"
 					icon="user"
 					:aria-pressed="workflowFilters.owner === currentUserId"
@@ -863,7 +863,7 @@ const sortedWorkflows = computed(() => {
 					}}
 				</N8nButton>
 				<N8nButton
-					:variant="stateFilter === 'open' ? 'solid' : 'subtle'"
+					:variant="stateFilter === 'open' ? 'solid' : 'outline'"
 					size="small"
 					:aria-pressed="stateFilter === 'open'"
 					data-test-id="migration-rule-quick-filter-open"
@@ -872,7 +872,7 @@ const sortedWorkflows = computed(() => {
 					{{ quickFilterLabel('settings.migrationReport.detail.quickFilter.open', openCount) }}
 				</N8nButton>
 				<N8nButton
-					:variant="stateFilter === 'wont_fix' ? 'solid' : 'subtle'"
+					:variant="stateFilter === 'wont_fix' ? 'solid' : 'outline'"
 					size="small"
 					:aria-pressed="stateFilter === 'wont_fix'"
 					data-test-id="migration-rule-quick-filter-wont-fix"
@@ -883,7 +883,7 @@ const sortedWorkflows = computed(() => {
 					}}
 				</N8nButton>
 				<N8nButton
-					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'subtle'"
+					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'outline'"
 					size="small"
 					:aria-pressed="workflowFilters.owner === UNASSIGNED_OWNER"
 					data-test-id="migration-rule-quick-filter-unassigned"
@@ -920,7 +920,7 @@ const sortedWorkflows = computed(() => {
 				@select="onSortSelect"
 			>
 				<template #trigger>
-					<N8nButton variant="subtle" size="small" data-test-id="migration-rule-sort-trigger">
+					<N8nButton variant="outline" size="small" data-test-id="migration-rule-sort-trigger">
 						{{ sortLabel }}
 					</N8nButton>
 				</template>
@@ -1048,7 +1048,7 @@ const sortedWorkflows = computed(() => {
 				<div :class="$style.actions">
 					<N8nButton
 						v-if="canNotifyRow(item)"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:loading="notifyingWorkflowIds.has(item.id)"
 						:label="
@@ -1102,7 +1102,7 @@ const sortedWorkflows = computed(() => {
 				<template #actions>
 					<N8nButton
 						v-if="showMigrate"
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.migrate')"
 						data-test-id="migration-bulk-migrate-button"
 						@click="openMigrateModal(selectedWorkflows)"
@@ -1130,14 +1130,14 @@ const sortedWorkflows = computed(() => {
 						</N8nText>
 					</template>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.reopen')"
 						:disabled="bulkTargets('open').length === 0"
 						data-test-id="migration-bulk-reopen-button"
