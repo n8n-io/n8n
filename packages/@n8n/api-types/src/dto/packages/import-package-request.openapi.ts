@@ -29,6 +29,8 @@ export const importPackageRequestFieldDocs = {
 			'`credentials.seeded` and only allow workflow publishing when the package confirms ' +
 			'that all source data was retained. Partial or unverified data blocks publishing ' +
 			'with `stub-credential`. ' +
+			'For API key callers, `create-with-values` requires the `credential:create` scope ' +
+			'when the import creates a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	bindings: {
