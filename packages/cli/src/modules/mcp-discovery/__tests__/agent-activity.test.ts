@@ -1,4 +1,5 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
@@ -11,15 +12,20 @@ import { Agent } from '@/modules/agents/entities/agent.entity';
 
 describe('AgentModificationTelemetryService Assistant activity', () => {
 	const user = mock<User>({ id: 'builder-user' });
+	const config = {
+		name: 'Support',
+		model: 'test-model',
+		instructions: 'Help users',
+	} satisfies AgentJsonConfig;
 	const agent = Object.assign(new Agent(), {
 		id: 'agent-1',
-		schema: { name: 'Support', model: 'test-model', instructions: 'Help users' },
+		schema: config,
 		integrations: [],
 		activeVersionId: null,
 	});
 	const event = {
 		agent,
-		config: agent.schema,
+		config,
 		user,
 		projectId: 'project-1',
 		by: 'builder',
@@ -62,10 +68,11 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 	);
 
 	it('does not count renaming an empty agent shell', () => {
+		const emptyConfig = { name: 'New name', model: '', instructions: '' } satisfies AgentJsonConfig;
 		service.record({
 			...event,
-			agent: Object.assign(new Agent(), { schema: { name: 'New name' }, integrations: [] }),
-			config: { name: 'New name' },
+			agent: Object.assign(new Agent(), { schema: emptyConfig, integrations: [] }),
+			config: emptyConfig,
 			wasUnconfigured: true,
 			changedParts: ['name'],
 		});
