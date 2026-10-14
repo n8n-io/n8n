@@ -5,6 +5,16 @@ import { getMessageInteractives } from './messageMappers';
 import { getMessageThinkingSegments } from './thinking';
 import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall } from './types';
 
+/** Values of the `kind` tag that tells the `DisplayGroup` variants apart. */
+export const DISPLAY_GROUP_KIND = {
+	/** A notice about background jobs of the agent that came to an end. */
+	BACKGROUND_JOB_SIGNAL: 'backgroundJobSignal',
+	/** One user or assistant message that the list does not fold. */
+	MESSAGE: 'message',
+	/** Consecutive tool-only assistant messages folded into one block. */
+	TOOL_RUN: 'toolRun',
+} as const;
+
 /**
  * Presentation group for the message list. The builder persists one assistant
  * message per tool-use turn, so a single conversation fragments into many robot
@@ -19,18 +29,18 @@ import type { AgentsChatMessage, InteractivePayload, ThinkingSegment, ToolCall }
  */
 export type DisplayGroup =
 	| {
-			kind: 'backgroundJobSignal';
+			kind: typeof DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL;
 			id: string;
 			signal: AgentBackgroundJobSignal;
 	  }
 	| {
-			kind: 'message';
+			kind: typeof DISPLAY_GROUP_KIND.MESSAGE;
 			id: string;
 			message: AgentsChatMessage;
 			thinkingSegments: ThinkingSegment[];
 	  }
 	| {
-			kind: 'toolRun';
+			kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN;
 			id: string;
 			thinkingSegments: ThinkingSegment[];
 			active: boolean;
@@ -58,22 +68,26 @@ export type DisplayGroup =
 			executionId?: string;
 	  };
 
-export type TurnDisplayGroup = Exclude<DisplayGroup, { kind: 'backgroundJobSignal' }>;
+export type TurnDisplayGroup = Exclude<
+	DisplayGroup,
+	{ kind: typeof DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL }
+>;
 
 export function isGroupable(message: AgentsChatMessage): boolean {
 	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
 }
 
-type ToolRunGroup = Extract<DisplayGroup, { kind: 'toolRun' }>;
+type ToolRunGroup = Extract<DisplayGroup, { kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN }>;
 
 export function isAssistantGroup(group: DisplayGroup): group is TurnDisplayGroup {
 	return (
-		group.kind === 'toolRun' || (group.kind === 'message' && group.message.role === 'assistant')
+		group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ||
+		(group.kind === DISPLAY_GROUP_KIND.MESSAGE && group.message.role === 'assistant')
 	);
 }
 
 function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
-	return group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+	return group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
 }
 
 /** Keep one reasoning block at the tail of each assistant run, below its final output. */
@@ -208,7 +222,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 		if (message.role === 'assistant' && message.backgroundJobSignal) {
 			// Keep the signal key stable when the same turn gains text or tool calls.
 			groups.push({
-				kind: 'backgroundJobSignal',
+				kind: DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL,
 				id: `${message.executionId ?? message.id}:background-job-signal`,
 				signal: message.backgroundJobSignal,
 			});
@@ -223,7 +237,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 		}
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
-			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
+			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
 				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
 				last.thinkingSegments.push(...getMessageThinkingSegments(message));
 				last.active ||= message.status === 'streaming';
@@ -237,7 +251,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				continue;
 			}
 			groups.push({
-				kind: 'toolRun',
+				kind: DISPLAY_GROUP_KIND.TOOL_RUN,
 				id: message.id,
 				thinkingSegments: getMessageThinkingSegments(message),
 				active: message.status === 'streaming',
@@ -252,7 +266,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 
 		if (message.role === 'assistant') {
 			const last = groups[groups.length - 1];
-			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
+			if (last?.kind === DISPLAY_GROUP_KIND.TOOL_RUN && canAppendToToolRun(last, message)) {
 				last.finalMessage = message;
 				last.executionId ??= message.executionId;
 				last.thinkingSegments.push(...getMessageThinkingSegments(message));
@@ -271,7 +285,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 		}
 
 		groups.push({
-			kind: 'message',
+			kind: DISPLAY_GROUP_KIND.MESSAGE,
 			id: message.id,
 			message,
 			thinkingSegments: message.role === 'assistant' ? getMessageThinkingSegments(message) : [],

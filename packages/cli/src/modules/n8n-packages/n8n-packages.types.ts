@@ -30,7 +30,7 @@ export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishin
 export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
-export type CredentialMissingMode = 'must-preexist' | 'create-stub';
+export type CredentialMissingMode = 'must-preexist' | 'create-stub' | 'create-with-values';
 
 export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
 
@@ -140,9 +140,9 @@ export const DataTableSchemaConflictPolicy = {
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
-	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
+	/** Changes a matched target table to match the package schema: renames the table, adds, renames, removes, and retypes columns, and sets the column order. The values in removed or retyped columns are removed. When the package has column ids, a column that is only renamed keeps its values. */
 	Overwrite: 'overwrite',
-	/** Like `overwrite`, but fails the import when a change deletes data: a removed (target-only or renamed) or retyped column. */
+	/** Like `overwrite`, but fails the import when a change removes or retypes a column. A target-only column counts as removed. */
 	OverwriteNonDestructive: 'overwrite-non-destructive',
 } as const;
 
@@ -697,6 +697,8 @@ export interface ImportPackageSummary {
 export interface ImportCredentialSummary {
 	matched: string[];
 	stubbed: string[];
+	/** Source ids of credentials created and seeded from the package's bundled expression data. */
+	seeded: string[];
 }
 
 export interface ImportVariableSummary {

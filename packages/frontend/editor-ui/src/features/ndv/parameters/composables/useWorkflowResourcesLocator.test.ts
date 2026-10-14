@@ -12,6 +12,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
+import type { Scope } from '@n8n/permissions';
 import { createTestingPinia } from '@pinia/testing';
 
 const useCanvasOperations = vi.hoisted(() => vi.fn());
@@ -19,6 +20,22 @@ const useCanvasOperations = vi.hoisted(() => vi.fn());
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations,
 }));
+
+const documentScopes = vi.hoisted(() => ({ value: [] as string[] }));
+
+// The document store exposes `scopes` as read-only, so the tests provide a stand-in.
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
+	const { computed } = await import('vue');
+	return {
+		...actual,
+		injectWorkflowDocumentStore: () =>
+			computed(() => ({
+				documentId: actual.createWorkflowDocumentId(''),
+				scopes: documentScopes.value,
+			})),
+	};
+});
 
 describe('useWorkflowResourcesLocator', () => {
 	let workflowsListStoreMock: MockedStore<typeof useWorkflowsListStore>;
@@ -32,6 +49,7 @@ describe('useWorkflowResourcesLocator', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		documentScopes.value = [];
 
 		createTestingPinia();
 		workflowsListStoreMock = mockedStore(useWorkflowsListStore);
@@ -238,40 +256,86 @@ describe('useWorkflowResourcesLocator', () => {
 			expect(hasMoreWorkflowsToLoad.value).toBe(false);
 		});
 
-		it('should include callable subworkflow filter when inside an open workflow', async () => {
-			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
-			workflowsStoreMock.workflowId = 'parent-wf-id';
+		describe('callable sub-workflows', () => {
+			const setUpParentWorkflow = (scopes: Scope[]) => {
+				workflowsStoreMock.workflowId = 'parent-wf-id';
+				workflowsStoreMock.isNewWorkflow = false;
+				documentScopes.value = scopes;
+			};
 
-			const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
-			await populateNextWorkflowsPage();
+			it('should list callable sub-workflows when the user can update a saved parent', async () => {
+				setUpParentWorkflow(['workflow:read', 'workflow:update']);
+				workflowsListStoreMock.fetchCallableSubworkflowsPage.mockResolvedValue({
+					count: 3,
+					data: [
+						{ id: '1', name: 'Team Sub', active: true, isArchived: false, projectName: 'Team' },
+						{ id: '2', name: 'Personal Sub', active: false, isArchived: true },
+					],
+				});
 
-			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
-				undefined,
-				1,
-				40,
-				'updatedAt:desc',
-				{
-					triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-					includeCallableSubworkflows: true,
-					parentWorkflowId: 'parent-wf-id',
-				},
-			);
-		});
+				const { onSearchFilter, workflowsResources, hasMoreWorkflowsToLoad, getWorkflowName } =
+					useWorkflowResourcesLocator(routerMock);
+				await onSearchFilter('sub');
 
-		it('should not include callable subworkflow filter when no workflow is open', async () => {
-			workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
-			workflowsStoreMock.workflowId = '';
+				expect(workflowsListStoreMock.fetchCallableSubworkflowsPage).toHaveBeenCalledWith(
+					'parent-wf-id',
+					1,
+					40,
+					'sub',
+				);
+				expect(workflowsListStoreMock.fetchWorkflowsPage).not.toHaveBeenCalled();
+				expect(workflowsResources.value).toEqual([
+					{
+						name: 'Team — Team Sub',
+						value: '1',
+						url: expect.any(String) as string,
+						isArchived: false,
+						active: true,
+					},
+					{
+						name: 'Personal Sub',
+						value: '2',
+						url: expect.any(String) as string,
+						isArchived: true,
+						active: false,
+					},
+				]);
+				expect(hasMoreWorkflowsToLoad.value).toBe(true);
+				expect(getWorkflowName('1')).toBe('Team — Team Sub');
+				// Callable rows can belong to workflows the user cannot read, so they
+				// must stay out of the workflows cache.
+				expect(workflowsListStoreMock.addWorkflow).not.toHaveBeenCalled();
+				expect(workflowsListStoreMock.setWorkflows).not.toHaveBeenCalled();
+			});
 
-			const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
-			await populateNextWorkflowsPage();
+			it('should list readable workflows when the user cannot update the parent', async () => {
+				setUpParentWorkflow(['workflow:read']);
+				workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
 
-			expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
-				undefined,
-				1,
-				40,
-				'updatedAt:desc',
-				{ triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'] },
-			);
+				const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
+				await populateNextWorkflowsPage();
+
+				expect(workflowsListStoreMock.fetchCallableSubworkflowsPage).not.toHaveBeenCalled();
+				expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalledWith(
+					undefined,
+					1,
+					40,
+					'updatedAt:desc',
+					{ triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'] },
+				);
+			});
+
+			it('should list readable workflows when the parent is not saved', async () => {
+				setUpParentWorkflow(['workflow:read', 'workflow:update']);
+				workflowsStoreMock.isNewWorkflow = true;
+				workflowsListStoreMock.fetchWorkflowsPage.mockResolvedValue([]);
+
+				const { populateNextWorkflowsPage } = useWorkflowResourcesLocator(routerMock);
+				await populateNextWorkflowsPage();
+
+				expect(workflowsListStoreMock.fetchCallableSubworkflowsPage).not.toHaveBeenCalled();
+				expect(workflowsListStoreMock.fetchWorkflowsPage).toHaveBeenCalled();
+			});
 		});
 
 		it('should handle multiple page loads correctly', async () => {

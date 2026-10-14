@@ -14,6 +14,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
 	enforceCredentialUsabilityRedaction: false,
+	inaccessibleCredentialIds: [],
 	memo: new Map(),
 	...overrides,
 });

@@ -23,11 +23,13 @@ import { listAgentTasks, readAgentSkill } from './agent-context-readers';
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentTaskService } from './agent-task.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { AgentsService } from './agents.service';
 import { AttachableWorkflowsService } from './attachable-workflows.service';
 import { AGENT_CAPABILITIES, AGENT_LIMITATIONS } from './agent-capabilities';
 import { formatPreviewSessionContext } from './builder/format-preview-context';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { jsonSchemaToCompactText } from './json-config/schema-text-serializer';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -84,12 +86,18 @@ export class InstanceAiAgentContextAdapterService {
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly agentsToolsService: AgentsToolsService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentsSettingsService: AgentsSettingsService,
 	) {}
 
 	createReader(user: User, projectId: string): InstanceAiAgentContextReader {
 		let canReadAgents: Promise<boolean> | undefined;
 		return {
 			lookup: async (input) => {
+				// Checked on every lookup, so a run loses access as soon as Agents are turned off.
+				await this.agentsSettingsService.assertEnabled().catch((error: unknown) => {
+					throw error instanceof ForbiddenError ? new UserError(error.message) : error;
+				});
 				canReadAgents ??= userHasScopes(user, ['agent:read'], false, { projectId });
 				if (!(await canReadAgents)) {
 					throw new UserError("You don't have permission to read Agents in this project.");
@@ -163,7 +171,9 @@ export class InstanceAiAgentContextAdapterService {
 
 		const agent = await this.agentsService.findById(input.agentId, projectId);
 		if (!agent) throw new UserError('Agent not found.');
-		const config = composeJsonConfig(agent);
+		// Refs only: the skill bodies are read in the `skills` case, which needs them.
+		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
+		const config = composeJsonConfig(agent, skillRefs);
 
 		switch (input.type) {
 			case 'config':
@@ -181,12 +191,14 @@ export class InstanceAiAgentContextAdapterService {
 					configHash: getAgentConfigHash(config),
 				};
 			case 'skills': {
+				// The skills hub keeps no skill on an agent that is not attached.
+				const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
 				return {
-					skills: Object.entries(agent.skills ?? {}).map(([id, skill]) => ({
+					skills: Object.entries(skills).map(([id, skill]) => ({
 						id,
 						name: skill.name,
 						description: skill.description,
-						attached: (config?.skills ?? []).some((ref) => ref.id === id),
+						attached: true,
 					})),
 				};
 			}

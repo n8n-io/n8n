@@ -1085,6 +1085,7 @@ describe('Form Node', () => {
 				redirect: vi.fn(),
 				send: vi.fn(),
 				setHeader: vi.fn(),
+				removeHeader: vi.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
@@ -1094,6 +1095,7 @@ describe('Form Node', () => {
 			const result = await form.webhook(mockWebhookFunctions);
 
 			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: 'test',
 				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',

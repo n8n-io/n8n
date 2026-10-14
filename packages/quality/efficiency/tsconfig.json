@@ -1,0 +1,10 @@
+{
+	"extends": "../../../tsconfig.json",
+	"compilerOptions": {
+		"sourceMap": false,
+		"declaration": false,
+		"lib": ["esnext", "dom"],
+		"types": ["@playwright/test", "node"]
+	},
+	"include": ["playwright.config.ts", "images/**/*.ts"]
+}

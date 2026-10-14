@@ -21,10 +21,12 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import { In, type EntityManager } from '@n8n/typeorm';
 import isEqual from 'lodash/isEqual';
-import type { INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
+import omit from 'lodash/omit';
+import type { INode, INodeTypeDescription, IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import {
 	isNodeWithWorkflowSelector,
 	jsonParse,
+	NodeHelpers,
 	NodeOperationError,
 	PROJECT_ROOT,
 	UserError,
@@ -40,13 +42,45 @@ import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
+import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { stripToolSuffix } from '@/utils';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
+
+/**
+ * Database workflows use their own project permissions at runtime.
+ * Parameter workflows contain JSON we can inspect before saving.
+ */
+const INSPECTABLE_SUBWORKFLOW_SOURCES = new Set(['database', 'parameter']);
+
+/** Exclude allowed edits and temporary editor state from the definition comparison. */
+const FREELY_EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled', 'color', 'issues', 'status'];
+
+/** Tool and HITL tool variants use the same source rules as their base node. */
+function isWorkflowSelectorNode(node: INode): boolean {
+	if (typeof node.type !== 'string') return false;
+	return isNodeWithWorkflowSelector({ ...node, type: stripToolSuffix(node.type) });
+}
+
+type CredentialReferences = {
+	/** Resolvable credential ids. */
+	ids: string[];
+	/** A non-managed credential carrying no id, i.e. only a name. */
+	hasUnresolved: boolean;
+	/** A sub-workflow source whose content is not available at save time. */
+	hasUninspectableSource: boolean;
+};
+
+export type CredentialGuardOptions = {
+	/** Allow content loaded at runtime only for users who can use every credential. */
+	allowUninspectableSource?: boolean;
+};
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -66,6 +100,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
@@ -185,6 +220,7 @@ export class EnterpriseWorkflowService {
 	validateCredentialPermissionsToUser(
 		workflow: IWorkflowBase,
 		allowedCredentials: Array<{ id: string }> | ReadonlySet<string>,
+		options: CredentialGuardOptions = {},
 	) {
 		// Reuse the shared collector so inline sub-workflow credentials (Execute
 		// Sub-workflow, Workflow Tool, Workflow Retriever) and unresolved name-only
@@ -192,8 +228,16 @@ export class EnterpriseWorkflowService {
 		const allowedCredentialIds: ReadonlySet<string> = Array.isArray(allowedCredentials)
 			? new Set(allowedCredentials.map(({ id }) => id))
 			: allowedCredentials;
-		const inaccessibleNodes = this.getNodesWithInaccessibleCreds(workflow, allowedCredentialIds);
+		const inaccessibleNodes = this.getNodesWithInaccessibleCreds(
+			workflow,
+			allowedCredentialIds,
+			options,
+		);
 		if (inaccessibleNodes.length > 0) {
+			const uninspectableNode = inaccessibleNodes.find((node) =>
+				this.isBlockedByUninspectableSource(node, options),
+			);
+			if (uninspectableNode) throw new UninspectableSubworkflowSourceError(uninspectableNode);
 			throw new UserError('The workflow contains credentials that you do not have access to');
 		}
 	}
@@ -224,6 +268,7 @@ export class EnterpriseWorkflowService {
 				previousVersion,
 				allCredentials,
 				restoredNodes,
+				{ allowUninspectableSource: this.canUseEveryCredential(user) },
 			);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
@@ -240,20 +285,12 @@ export class EnterpriseWorkflowService {
 		previousWorkflowVersion: IWorkflowBase,
 		credentialsUserHasAccessTo: Array<{ id: string }>,
 		restoredNodes: INode[] = [],
+		options: CredentialGuardOptions = {},
 	) {
-		/**
-		 * We only need to check nodes that use credentials the current user cannot access,
-		 * since these can be 2 possibilities:
-		 * - It matches exactly one previous node that already used such a credential: it's a
-		 *   read only node and therefore cannot be changed
-		 * - It's a new node, or an editable node that newly references such a credential,
-		 *   which indicates tampering and therefore must fail saving
-		 */
-
 		const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
 
 		const nodesWithCredentialsUserDoesNotHaveAccessTo = new Set(
-			this.getNodesWithInaccessibleCreds(newWorkflowVersion, allowedCredentialIds),
+			this.getNodesWithInaccessibleCreds(newWorkflowVersion, allowedCredentialIds, options),
 		);
 
 		// If there are no nodes with credentials the user does not have access to we can skip the rest
@@ -265,9 +302,11 @@ export class EnterpriseWorkflowService {
 		// the user could edit that now carries a credential they cannot use fails the
 		// save like a new node does; restoring it would drop the other edits silently.
 		const readOnlyNodeIds = new Set(
-			this.getNodesWithInaccessibleCreds(previousWorkflowVersion, allowedCredentialIds).map(
-				(node) => node.id,
-			),
+			this.getNodesWithInaccessibleCreds(
+				previousWorkflowVersion,
+				allowedCredentialIds,
+				options,
+			).map((node) => node.id),
 		);
 
 		// Node ids are meant to be unique. Edge case: where stored data still repeats one, match the
@@ -295,6 +334,7 @@ export class EnterpriseWorkflowService {
 			// ambiguous, and an ambiguous match is not a proof, so no claimant is trusted.
 			const previousNode = previousNodesById.get(node.id);
 			const idClaimedOnce = submittedIdCounts.get(node.id) === 1;
+			const blockedBySource = this.isBlockedByUninspectableSource(node, options);
 
 			// A restore brings back a node exactly as a version from this workflow's history
 			// stored it. Any change to it makes it a new edit, which the checks below judge.
@@ -308,10 +348,20 @@ export class EnterpriseWorkflowService {
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
+				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
 				throw new NodeOperationError(
 					node,
 					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
 				);
+			}
+
+			// The editor allows these source settings to be edited. Reject changes
+			// instead of silently discarding them when we restore the stored node.
+			if (
+				blockedBySource &&
+				!isEqual(this.getNodeDefinition(node), this.getNodeDefinition(previousNode))
+			) {
+				throw new UninspectableSubworkflowSourceError(node);
 			}
 
 			this.logger.debug('Replacing node with previous version when saving updated workflow', {
@@ -335,62 +385,120 @@ export class EnterpriseWorkflowService {
 	}
 
 	/**
-	 * Get all nodes in a workflow whose credentials the user cannot use: either a
-	 * referenced credential id is not accessible, or the node carries an unresolved
-	 * non-managed reference (id null/empty) that could resolve by name to a
-	 * credential the user does not own. Inline sub-workflow credentials are included.
+	 * Find nodes with inaccessible credentials, unresolved references, or blocked sources.
+	 * Include credentials and sources in nested workflows and agents.
 	 */
-	getNodesWithInaccessibleCreds(workflow: IWorkflowBase, userCredIds: Iterable<string>) {
+	getNodesWithInaccessibleCreds(
+		workflow: IWorkflowBase,
+		userCredIds: Iterable<string>,
+		options: CredentialGuardOptions = {},
+	) {
 		if (!workflow.nodes) {
 			return [];
 		}
 		const allowedCredentialIds = userCredIds instanceof Set ? userCredIds : new Set(userCredIds);
 		return workflow.nodes.filter((node) => {
-			const { ids, hasUnresolved } = this.getNodeCredentialRefs(node);
-			return hasUnresolved || ids.some((credId) => !allowedCredentialIds.has(credId));
+			const { ids, hasUnresolved, hasUninspectableSource } = this.getNodeCredentialRefs(node);
+			return (
+				hasUnresolved ||
+				(hasUninspectableSource && !options.allowUninspectableSource) ||
+				ids.some((credId) => !allowedCredentialIds.has(credId))
+			);
 		});
 	}
 
 	collectCredentialReferences(workflow: IWorkflowBase): {
 		ids: Set<string>;
 		hasUnresolved: boolean;
+		hasUninspectableSource: boolean;
 	} {
 		const ids = new Set<string>();
 		let hasUnresolved = false;
+		let hasUninspectableSource = false;
 
 		for (const node of workflow.nodes ?? []) {
 			const references = this.getNodeCredentialRefs(node);
 			for (const id of references.ids) ids.add(id);
 			hasUnresolved ||= references.hasUnresolved;
+			hasUninspectableSource ||= references.hasUninspectableSource;
 		}
 
-		return { ids, hasUnresolved };
+		return { ids, hasUnresolved, hasUninspectableSource };
+	}
+
+	canUseEveryCredential(user: User): boolean {
+		return hasGlobalScope(user, 'credential:use');
+	}
+
+	private isBlockedByUninspectableSource(node: INode, options: CredentialGuardOptions): boolean {
+		if (options.allowUninspectableSource) return false;
+		return this.getNodeCredentialRefs(node).hasUninspectableSource;
 	}
 
 	/**
-	 * Collect the credential references a node uses. Besides the node's own
-	 * `credentials`, a node with an inline workflow selector (Execute
-	 * Sub-workflow, Workflow Tool, Workflow Retriever) embeds a whole workflow —
-	 * including its nodes' credentials — inside its `workflowJson` string
-	 * parameter, so those references are walked as well.
-	 *
-	 * Returns `ids` (resolvable credential ids) and `hasUnresolved` (a non-managed
-	 * credential carrying no id, i.e. only a name). A name-only reference can be
-	 * resolved by name to a credential the user cannot access, so callers gating a
-	 * save must reject it rather than treat the node as credential-free.
-	 * `__aiGatewayManaged` credentials with a null id are resolved at execution and
-	 * are exempt.
-	 *
-	 * An inline sub-workflow may itself contain inline sub-workflows, so the walk
-	 * is iterative over an explicit stack: every referenced credential is
-	 * inspected regardless of nesting depth, with no silent cut-off that could let
-	 * a deeply nested reference escape validation. Nesting is inherently bounded by
-	 * the request size (each level embeds its child as literal escaped JSON) and
-	 * cannot cycle, so the stack cannot grow unbounded.
+	 * Compare node behavior without treating editor formatting or allowed edits as changes.
 	 */
-	private getNodeCredentialRefs(node: INode): { ids: string[]; hasUnresolved: boolean } {
+	private getNodeDefinition(node: INode): Record<string, unknown> {
+		const definition: Record<string, unknown> = omit(node, FREELY_EDITABLE_NODE_FIELDS);
+		definition.parameters = this.getDisplayedParameters(node);
+
+		const credentials = node.credentials ?? {};
+		if (Object.keys(credentials).length === 0) delete definition.credentials;
+		// The editor persists these only when they differ from their default.
+		if (!node.continueOnFail) delete definition.continueOnFail;
+		if (!node.onError || node.onError === 'stopWorkflow') delete definition.onError;
+		if (!node.notes) delete definition.notes;
+
+		return definition;
+	}
+
+	/**
+	 * The editor omits default values and hidden parameters on save.
+	 * Compare displayed parameters with defaults filled in so an unchanged node still matches.
+	 */
+	private getDisplayedParameters(node: INode) {
+		const parameters = node.parameters ?? {};
+		const description = this.getNodeTypeDescription(node);
+		if (!description) return parameters;
+		return (
+			NodeHelpers.getNodeParameters(
+				description.properties,
+				parameters,
+				true,
+				false,
+				node,
+				description,
+			) ?? {}
+		);
+	}
+
+	private getNodeTypeDescription(node: INode): INodeTypeDescription | null {
+		try {
+			return this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * A missing source defaults to Database. Expressions are not resolved until runtime.
+	 */
+	private hasUninspectableSubworkflowSource(node: INode): boolean {
+		const source = node.parameters?.source;
+		if (source === undefined) return false;
+		return !(typeof source === 'string' && INSPECTABLE_SUBWORKFLOW_SOURCES.has(source));
+	}
+
+	/**
+	 * Inspect the node and its embedded workflows and agents at every nesting level.
+	 * Report name-only credentials and runtime-loaded sources separately from known IDs;
+	 * neither means the node uses no credentials. Managed Gateway credentials are exempt.
+	 * Use a stack to avoid a call-stack limit. Serialized input bounds the nesting depth.
+	 */
+	private getNodeCredentialRefs(node: INode): CredentialReferences {
 		const ids: string[] = [];
 		let hasUnresolved = false;
+		let hasUninspectableSource = false;
 		const stack: INode[] = [node];
 
 		while (stack.length > 0) {
@@ -409,7 +517,8 @@ export class EnterpriseWorkflowService {
 				}
 			}
 
-			if (isNodeWithWorkflowSelector(current)) {
+			if (isWorkflowSelectorNode(current)) {
+				hasUninspectableSource ||= this.hasUninspectableSubworkflowSource(current);
 				stack.push(...this.getInlineWorkflowNodes(current.parameters?.workflowJson));
 			}
 
@@ -420,7 +529,7 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		return { ids, hasUnresolved };
+		return { ids, hasUnresolved, hasUninspectableSource };
 	}
 
 	/**
@@ -452,9 +561,8 @@ export class EnterpriseWorkflowService {
 		const nested = Object.values(config).flatMap((value) => this.getAgentToolNodes(value));
 		if (typeof config.nodeType !== 'string') return nested;
 
-		// A node runs as a tool under its `…Tool` variant, which carries the same
-		// parameters as the node itself.
-		const type = config.nodeType.replace(/Tool$/, '');
+		// Tool variants keep the base node's parameters.
+		const type = stripToolSuffix(config.nodeType);
 		const parameters = isRecord(config.nodeParameters) ? config.nodeParameters : {};
 
 		return [...nested, { type, parameters } as INode];

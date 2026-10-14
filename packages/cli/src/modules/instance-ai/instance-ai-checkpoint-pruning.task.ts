@@ -1,6 +1,12 @@
-import { InstanceAiConfig } from '@n8n/config';
-import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { DatabaseConfig, InstanceAiConfig, statementTimeoutSeconds } from '@n8n/config';
+import { Time } from '@n8n/constants';
+import {
+	clusterTarget,
+	intervalFromMilliseconds,
+	SystemTask,
+	timeoutAfterLimit,
+} from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceAiService } from './instance-ai.service';
 
@@ -17,18 +23,26 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 		this.instanceAiConfig.pruneInterval,
 	);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
-		scope: 'cluster',
-		durable: true,
-		runOnTakeover: true,
-	};
-
-	readonly retryDelaySeconds = 30;
+	readonly target = clusterTarget({
+		scheduler: {
+			retryOnFailure: true,
+			// The pass runs three statements in a row that ignore the signal, so it can
+			// take three statement timeouts. A timeout that stops the run before they end
+			// lets the next run start them again, so it waits for all three first.
+			timeoutSeconds: timeoutAfterLimit(
+				3 * statementTimeoutSeconds(this.databaseConfig),
+				5 * Time.minutes.toSeconds,
+			),
+		},
+		leaderTimer: {
+			runOnTakeover: true,
+			retryDelaySeconds: 30,
+		},
+	});
 
 	constructor(
 		private readonly instanceAiConfig: InstanceAiConfig,
+		private readonly databaseConfig: DatabaseConfig,
 		private readonly instanceAiService: InstanceAiService,
 	) {}
 
