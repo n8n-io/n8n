@@ -354,36 +354,6 @@ describe('LoadNodesAndCredentials', () => {
 				);
 			});
 
-			it('should let the node hook choose the variant', () => {
-				const getOutputSchemaVariant = vi.fn().mockReturnValue('custom');
-				provideNode({ getOutputSchemaVariant });
-
-				expect(
-					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
-				).toEqual({ type: 'object', title: 'custom' });
-				expect(getOutputSchemaVariant).toHaveBeenCalledWith({ simple: false });
-			});
-
-			it('should use the parameter convention when the hook returns nothing', () => {
-				provideNode({ getOutputSchemaVariant: () => undefined });
-
-				expect(
-					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: false } }),
-				).toEqual(rawSchema);
-			});
-
-			it('should ignore a hook that throws', () => {
-				provideNode({
-					getOutputSchemaVariant: () => {
-						throw new Error('boom');
-					},
-				});
-
-				expect(instance.createOutputSchemaLookup()({ ...lookupRef, parameters: {} })).toEqual(
-					plainSchema,
-				);
-			});
-
 			it('should still resolve the plain schema when the node cannot be loaded', () => {
 				vi.spyOn(instance, 'getNode').mockImplementation(() => {
 					throw new Error('not loadable');

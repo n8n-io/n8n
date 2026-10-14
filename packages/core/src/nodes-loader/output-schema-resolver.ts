@@ -26,10 +26,6 @@ export interface OutputSchemaRef {
 	 * (e.g. an attached output parser): probes `v<X>/output.<variant>.json`
 	 * before the plain `v<X>/output.json`. Only meaningful for refs without
 	 * resource/operation, and only with `versionFallback`.
-	 *
-	 * For refs with an operation it names `<operation>.<variant>.json` instead,
-	 * and wins over `parameters`. A name with anything but word characters and
-	 * dashes is ignored.
 	 */
 	variant?: string;
 	/**
@@ -154,18 +150,15 @@ function listOperationVariants(dir: string, operation: string): string[] {
 }
 
 /**
- * The `<operation>.<variant>.json` file for this ref in one version dir: the
- * explicit `variant` first, then the first file whose `<param>-<value>` name
- * matches the node parameters.
+ * The `<operation>.<param>-<value>.json` file for this ref in one version dir:
+ * the first file whose name matches the node parameters.
  */
 function findOperationVariantFile(ref: OutputSchemaRef, versionPath: string): string | undefined {
-	const { operation, resource, variant } = ref;
+	const { operation, resource } = ref;
 	if (!operation) return undefined;
 	const dir = path.resolve(versionPath, resource ?? '');
 	const variants = listOperationVariants(dir, operation);
-	const match =
-		variants.find((name) => name === variant) ??
-		variants.find((name) => variantMatchesParameters(name, ref));
+	const match = variants.find((name) => variantMatchesParameters(name, ref));
 	return match ? path.join(dir, `${operation}.${match}.json`) : undefined;
 }
 

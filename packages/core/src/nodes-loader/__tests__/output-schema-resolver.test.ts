@@ -281,25 +281,14 @@ describe('output-schema-resolver', () => {
 				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: {} })).toBe(plain);
 			});
 
-			it('prefers an explicit variant over the parameters', () => {
-				writeSchema('v2.0.0/message/get.json');
-				writeSchema('v2.0.0/message/get.simple-false.json');
-				const custom = writeSchema('v2.0.0/message/get.custom.json');
+			it('ignores variant files whose name has characters outside word characters and dashes', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.a b-true.json');
+				writeSchema('v2.0.0/message/get.a.b-true.json');
 
 				expect(
-					resolveOutputSchemaPath({
-						nodeDir,
-						...ref,
-						variant: 'custom',
-						parameters: { simple: false },
-					}),
-				).toBe(custom);
-			});
-
-			it('falls through to the plain file when the explicit variant file is missing', () => {
-				const plain = writeSchema('v2.0.0/message/get.json');
-
-				expect(resolveOutputSchemaPath({ nodeDir, ...ref, variant: 'missing' })).toBe(plain);
+					resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { 'a b': true, 'a.b': true } }),
+				).toBe(plain);
 			});
 
 			it('checks each version directory for the variant before using an older version', () => {
@@ -307,15 +296,6 @@ describe('output-schema-resolver', () => {
 				const plain = writeSchema('v2.0.0/message/get.json');
 
 				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { simple: false } })).toBe(
-					plain,
-				);
-			});
-
-			it('does not let a variant escape the __schema__ directory', () => {
-				const plain = writeSchema('v2.0.0/message/get.json');
-				writeFileSync(path.join(nodeDir, 'leak.json'), '{}');
-
-				expect(resolveOutputSchemaPath({ nodeDir, ...ref, variant: '../../../../leak' })).toBe(
 					plain,
 				);
 			});

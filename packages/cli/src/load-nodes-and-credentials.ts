@@ -321,7 +321,6 @@ export class LoadNodesAndCredentials {
 			if (!nodePath) return undefined;
 
 			const nodeType = this.tryGetVersionedNodeType(type, typeVersion);
-			const hookVariant = this.tryGetOutputSchemaVariant(nodeType, parameters ?? {});
 
 			return loadOutputSchema({
 				nodeDir: path.dirname(nodePath),
@@ -329,7 +328,7 @@ export class LoadNodesAndCredentials {
 				resource,
 				operation,
 				versionFallback: true,
-				variant: hookVariant ?? (hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined),
+				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
 				parameters,
 				parameterDefaults: getParameterDefaults(nodeType?.description.properties, {
 					resource,
@@ -343,17 +342,6 @@ export class LoadNodesAndCredentials {
 	private tryGetVersionedNodeType(type: string, version: number): INodeType | undefined {
 		try {
 			return NodeHelpers.getVersionedNodeType(this.getNode(type).type, version);
-		} catch {
-			return undefined;
-		}
-	}
-
-	private tryGetOutputSchemaVariant(
-		nodeType: INodeType | undefined,
-		parameters: Record<string, unknown>,
-	): string | undefined {
-		try {
-			return nodeType?.getOutputSchemaVariant?.(parameters);
 		} catch {
 			return undefined;
 		}
