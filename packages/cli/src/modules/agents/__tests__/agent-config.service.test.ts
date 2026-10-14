@@ -1,6 +1,5 @@
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
-// EOF Experiment cleanup
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -108,7 +107,6 @@ function makeService() {
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const service = new AgentConfigService(
 		mockLogger(),
 		agentRepository,
@@ -123,12 +121,12 @@ function makeService() {
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
 			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 		agentPolicyService,
 		skillRefs,
 	);
-	// EOF Experiment cleanup
 
 	return {
 		service,

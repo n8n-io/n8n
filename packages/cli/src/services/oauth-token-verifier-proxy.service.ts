@@ -30,11 +30,10 @@ export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
  * never is, so no code path can report `oauth` without naming a client or
  * attach a client to an API key.
  */
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export type McpCallerAuth =
 	| { authType: 'oauth'; clientId: string }
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only apiKeyId from the API-key branch; keep McpCallerAuth.
 	| { authType: 'api_key'; clientId?: never; apiKeyId?: string };
-// EOF Experiment cleanup
 
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;

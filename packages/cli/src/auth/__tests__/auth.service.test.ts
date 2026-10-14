@@ -53,8 +53,11 @@ describe('AuthService', () => {
 	const logger = mock<Logger>();
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const discoveryActivity = mock<EventService>();
+	// EOF Experiment cleanup
 	const authService = new AuthService(
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		discoveryActivity,
+		// EOF Experiment cleanup
 		globalConfig,
 		logger,
 		license,
@@ -64,7 +67,6 @@ describe('AuthService', () => {
 		invalidAuthTokenRepository,
 		mfaService,
 	);
-	// EOF Experiment cleanup
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	vi.useFakeTimers({ now });

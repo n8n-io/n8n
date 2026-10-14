@@ -106,7 +106,7 @@ const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCre
 				</N8nTooltip>
 			</N8nLogo>
 		</RouterLink>
-		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the dropdown; restore :menu="menu" and @select="handleMenuSelect". Remove submenu-class and the button @click="trackOpen". -->
 		<N8nNavigationDropdown
 			v-if="!hideCreate"
 			ref="createBtn"
@@ -125,9 +125,11 @@ const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCre
 				aria-label="Add new item"
 				@click="trackOpen"
 			/>
+			<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 			<template #[claudeAppendSlotName]
 				><ClaudeLogo :class="claudeStyles.claudeMenuIcon"
 			/></template>
+			<!-- EOF Experiment cleanup -->
 			<template #[createWorkflowsAppendSlotName]>
 				<N8nTooltip
 					v-if="sourceControlStore.preferences.branchReadOnly"
@@ -177,7 +179,6 @@ const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCre
 				</N8nTooltip>
 			</template>
 		</N8nNavigationDropdown>
-		<!-- EOF Experiment cleanup -->
 		<KeyboardShortcutTooltip
 			v-if="!settingsStore.isCanvasOnly"
 			:placement="isCollapsed ? 'right' : 'bottom'"

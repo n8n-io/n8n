@@ -187,8 +187,9 @@ export const usePostHog = defineStore('posthog', () => {
 
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
-		const variant = name === MCP_DISCOVERY_EXPERIMENT.name ? getVariant(name) : featFlags[name];
 		// EOF Experiment cleanup
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore const variant = featFlags[name].
+		const variant = name === MCP_DISCOVERY_EXPERIMENT.name ? getVariant(name) : featFlags[name];
 		if (!variant || trackedDemoExp.value[name] === variant) {
 			return;
 		}

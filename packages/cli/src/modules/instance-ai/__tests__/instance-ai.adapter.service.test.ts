@@ -2639,9 +2639,10 @@ describe('createDataTableAdapter', () => {
 // createWorkflowAdapter – project scoping
 // ---------------------------------------------------------------------------
 
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 function createWorkflowAdapterForTests(overrides?: {
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	threadId?: string | null;
+	// EOF Experiment cleanup
 	setupPanelVariant?: 'control' | 'variant';
 	namedVersionsLicensed?: boolean;
 	foldersLicensed?: boolean;
@@ -2663,7 +2664,6 @@ function createWorkflowAdapterForTests(overrides?: {
 	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
 	maxExecutionTimeout?: number;
 }) {
-	// EOF Experiment cleanup
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
 	};
@@ -2753,7 +2753,6 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
 		globalConfigStub({
@@ -2803,6 +2802,7 @@ function createWorkflowAdapterForTests(overrides?: {
 			isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): replace discoveryActivity with {}; keep this constructor argument.
 		discoveryActivity as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
@@ -2834,14 +2834,12 @@ function createWorkflowAdapterForTests(overrides?: {
 			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
 	);
-	// EOF Experiment cleanup
 
 	const boundProjectId =
 		overrides && 'projectId' in overrides ? (overrides.projectId ?? undefined) : 'team-project-id';
 	const context = service.createContext(mockUser, {
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore threadId: 'thread-1'.
 		threadId: overrides?.threadId === null ? undefined : (overrides?.threadId ?? 'thread-1'),
-		// EOF Experiment cleanup
 		projectId: boundProjectId,
 		folderExplorationEnabled: overrides?.folderExploration ?? false,
 		setupPanelVariant: overrides?.setupPanelVariant,
@@ -2849,9 +2847,10 @@ function createWorkflowAdapterForTests(overrides?: {
 	});
 	const adapter = context.workflowService;
 
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	return {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		discoveryActivity,
+		// EOF Experiment cleanup
 		adapter,
 		context,
 		savedWorkflow,
@@ -2872,7 +2871,6 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockLogger,
 		mockUser,
 	};
-	// EOF Experiment cleanup
 }
 
 const minimalWorkflowJSON = {

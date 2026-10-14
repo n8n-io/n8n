@@ -1,6 +1,5 @@
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
-// EOF Experiment cleanup
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -144,7 +143,6 @@ function makeService() {
 	Container.set(AgentTaskService, taskService);
 
 	const skillRefs = createAgentSkillRefsService();
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const service = new AgentPublishService(
 		mockLogger(),
 		agentRepository,
@@ -163,6 +161,7 @@ function makeService() {
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
 			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 		),
 		new AgentDefinitionService(
@@ -175,7 +174,6 @@ function makeService() {
 		agentPolicyService,
 		skillRefs,
 	);
-	// EOF Experiment cleanup
 
 	return {
 		service,

@@ -318,8 +318,7 @@ export class AuthService {
 	}
 	// EOF Experiment cleanup
 
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-	// Restore this method as issueCookie when removing the experiment wrapper.
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): rename setAuthCookie to public issueCookie; keep the method body.
 	private setAuthCookie(
 		res: Response,
 		user: User,
@@ -345,7 +344,6 @@ export class AuthService {
 			secure: cookieOverrides?.secure ?? secure,
 		});
 	}
-	// EOF Experiment cleanup
 
 	issueJWT(user: User, usedMfa: boolean = false, browserId?: string, isEmbed?: boolean) {
 		const payload: AuthJwtPayload = {
@@ -500,7 +498,7 @@ export class AuthService {
 			const embedCookieOverrides = jwtPayload.isEmbed
 				? ({ sameSite: 'none' as const, secure: true } as const)
 				: undefined;
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): call issueCookie instead of setAuthCookie; keep the call and its arguments.
 			this.setAuthCookie(
 				res,
 				user,
@@ -509,7 +507,6 @@ export class AuthService {
 				jwtPayload.isEmbed,
 				embedCookieOverrides,
 			);
-			// EOF Experiment cleanup
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];

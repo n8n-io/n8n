@@ -1833,12 +1833,11 @@ describe('WorkflowService', () => {
 
 			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore the direct tuple cast (as [...] instead of as unknown as [...]); keep the hook variables.
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
-			// EOF Experiment cleanup
 			expect(hookName).toBe('workflow.activate');
 			const [candidate, context, actor] = hookArgs;
 			expect(candidate.active).toBe(true);
@@ -2015,12 +2014,11 @@ describe('WorkflowService', () => {
 			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
 
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore the direct tuple cast (as [...] instead of as unknown as [...]); keep the hook variables.
 			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
-			// EOF Experiment cleanup
 			expect(hookName).toBe('workflow.deactivate');
 			const [candidate, context, actor] = hookArgs;
 			expect(candidate.activeVersionId).toBe(PREVIOUS_VERSION_ID);
@@ -2046,12 +2044,11 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
 
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore the direct tuple cast (as [...] instead of as unknown as [...]); keep the hook variables.
 			const [, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
-			// EOF Experiment cleanup
 			expect(hookArgs[0].nodes).not.toBe(workflow.nodes);
 			expect(hookArgs[0].connections).not.toBe(workflow.connections);
 		});

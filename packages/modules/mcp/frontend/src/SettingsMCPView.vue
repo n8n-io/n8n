@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nSettingsLayout :class="$style.layout">
-		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the header; use the description fallback and remove docs-leading-text. Keep the translated docs-label. -->
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
 			:description="
@@ -305,7 +305,6 @@ onBeforeUnmount(() => {
 			:docs-label="i18n.baseText('settings.mcp.page.docsLabel')"
 			data-test-id="mcp-settings-header"
 		/>
-		<!-- EOF Experiment cleanup -->
 
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
@@ -341,7 +340,7 @@ onBeforeUnmount(() => {
 							/>
 						</template>
 					</N8nSettingsRow>
-					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): keep the row and button; use title/description fallbacks, unwrap connectHint, and restore variant="outline". -->
 					<N8nSettingsRow
 						:title="
 							discoveryOverrides?.clientTitle ?? i18n.baseText('settings.mcp.yourClient.title')
@@ -368,7 +367,6 @@ onBeforeUnmount(() => {
 							</component>
 						</template>
 					</N8nSettingsRow>
-					<!-- EOF Experiment cleanup -->
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 

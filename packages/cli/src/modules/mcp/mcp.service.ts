@@ -409,9 +409,8 @@ export class McpService {
 							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
 						status,
 						errorMessage,
-						// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
 						...telemetryCaller,
-						// EOF Experiment cleanup
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -422,9 +421,8 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
 						...telemetryCaller,
-						// EOF Experiment cleanup
 						clientName: clientInfo?.name,
 					});
 					throw error;

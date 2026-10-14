@@ -25,9 +25,8 @@ const Render = () => {
 			Component = CanvasNodeStickyNote;
 			break;
 		case CanvasNodeRenderType.AddNodes:
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore Component = CanvasNodeAddNodes.
 			Component = showMcpDiscovery.value ? CanvasNodeChoicePrompt : CanvasNodeAddNodes;
-			// EOF Experiment cleanup
 			break;
 		case CanvasNodeRenderType.ChoicePrompt:
 			Component = CanvasNodeChoicePrompt;

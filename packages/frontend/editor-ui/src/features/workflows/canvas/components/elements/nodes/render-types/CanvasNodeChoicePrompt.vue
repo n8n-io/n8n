@@ -132,6 +132,8 @@ async function onClickTemplatesLink() {
 				<ClaudeEntryPoint placement="canvas" />
 			</div>
 		</template>
+		<!-- EOF Experiment cleanup -->
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore v-if on the existing Build with AI option. -->
 		<template v-else-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
 			<!-- Or Divider -->
 			<div :class="$style.orDivider">
@@ -165,7 +167,6 @@ async function onClickTemplatesLink() {
 				</p>
 			</div>
 		</template>
-		<!-- EOF Experiment cleanup -->
 	</div>
 </template>
 

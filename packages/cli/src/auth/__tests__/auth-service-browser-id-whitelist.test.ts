@@ -23,9 +23,10 @@ describe('AuthService Browser ID Whitelist', () => {
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 		const mfaService = mock<MfaService>();
 
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		authService = new AuthService(
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			mock<EventService>(),
+			// EOF Experiment cleanup
 			globalConfig,
 			mock(),
 			mock(),
@@ -35,7 +36,6 @@ describe('AuthService Browser ID Whitelist', () => {
 			invalidAuthTokenRepository,
 			mfaService,
 		);
-		// EOF Experiment cleanup
 	});
 
 	describe('skipBrowserIdCheckEndpoints', () => {

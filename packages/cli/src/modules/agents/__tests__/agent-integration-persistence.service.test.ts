@@ -1,6 +1,5 @@
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
 import { EventService } from '@n8n/backend-services';
-// EOF Experiment cleanup
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
@@ -96,18 +95,17 @@ function setup(options: SetupOptions = {}) {
 	};
 
 	return {
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		service: new AgentIntegrationPersistenceService(
 			agentRepository,
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			eventService,
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
 			new AgentModificationTelemetryService(telemetry, mock<EventService>()),
 			credentialsService,
 			setupCompletionService,
 			createAgentSkillRefsService(),
 		),
-		// EOF Experiment cleanup
 		agent,
 		row,
 		agentRepository,

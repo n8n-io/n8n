@@ -16,7 +16,7 @@ import type { WorkflowPublicationMetricsEventMap } from '../maps/workflow-public
 
 describe('CLI event map', () => {
 	it('registers all existing event payloads on the shared service', () => {
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only McpDiscoveryEventMap from the intersection; keep CliEventMap.
 		type CliEventMap = McpDiscoveryEventMap &
 			RelayEventMap &
 			QueueMetricsEventMap &
@@ -27,7 +27,6 @@ describe('CLI event map', () => {
 			WorkflowPublicationMetricsEventMap &
 			PollTriggerMetricsEventMap &
 			SystemTaskMetricsEventMap;
-		// EOF Experiment cleanup
 
 		expectTypeOf<EventMap>().toMatchTypeOf<CliEventMap>();
 		expectTypeOf<CliEventMap>().toMatchTypeOf<EventMap>();

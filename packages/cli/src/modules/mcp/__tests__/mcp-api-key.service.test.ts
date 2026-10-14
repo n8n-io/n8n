@@ -1,7 +1,6 @@
 import type { Mocked } from 'vitest';
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only ApiKey from this import.
 import type { ApiKey, ApiKeyRepository, User, TokenGrant } from '@n8n/db';
-// EOF Experiment cleanup
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -23,8 +22,9 @@ describe('McpServerApiKeyService', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		apiKeys = mock<ApiKeyRepository>();
 		apiKeys.findOne.mockResolvedValue(null);
-		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
 		// EOF Experiment cleanup
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): replace apiKeys with mock<ApiKeyRepository>(); keep the service.
+		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
 	});
 
 	describe('verifyApiKey', () => {
