@@ -4,9 +4,6 @@ tags:
 summary: Upsert a row in a data table
 description: Update an existing row, or insert a new one if no row matches the filter conditions.
 x-required-scope: dataTableRow:upsert
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
