@@ -1,6 +1,8 @@
 import { EventService, type EventMap } from '@n8n/backend-services';
 import { expectTypeOf } from 'vitest';
 
+import type { DataTableEventMap } from '@/modules/data-table/data-table-event-map';
+
 import type { AiEventMap } from '../maps/ai.event-map';
 import type { ExecutionDataEventMap } from '../maps/execution-data.event-map';
 import type { InstanceAiEventMap } from '../maps/instance-ai.event-map';
@@ -21,7 +23,8 @@ describe('CLI event map', () => {
 			McpPostSaveMetricsEventMap &
 			WorkflowPublicationMetricsEventMap &
 			PollTriggerMetricsEventMap &
-			SystemTaskMetricsEventMap;
+			SystemTaskMetricsEventMap &
+			DataTableEventMap;
 
 		expectTypeOf<EventMap>().toMatchTypeOf<CliEventMap>();
 		expectTypeOf<CliEventMap>().toMatchTypeOf<EventMap>();

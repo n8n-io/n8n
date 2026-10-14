@@ -1,9 +1,8 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { toMb } from '@n8n/utils/number/bytes';
 import { DataTableSizeStatus, DataTablesSizeData } from 'n8n-workflow';
-
-import { Telemetry } from '@/telemetry';
 
 import { DataTableValidationError } from './errors/data-table-validation.error';
 
@@ -15,7 +14,7 @@ export class DataTableSizeValidator {
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
+		private readonly eventService: EventService,
 	) {}
 
 	private shouldRefresh(now: Date): boolean {
@@ -59,9 +58,9 @@ export class DataTableSizeValidator {
 	): Promise<void> {
 		const size = await this.getCachedSizeData(fetchSizeFn, now);
 		if (size.totalBytes >= this.globalConfig.dataTable.maxSize) {
-			this.telemetry.track('User hit data table storage limit', {
-				total_bytes: size.totalBytes,
-				max_bytes: this.globalConfig.dataTable.maxSize,
+			this.eventService.emit('data-table-storage-limit-hit', {
+				totalBytes: size.totalBytes,
+				maxBytes: this.globalConfig.dataTable.maxSize,
 			});
 
 			throw new DataTableValidationError(

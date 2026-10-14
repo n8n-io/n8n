@@ -1,8 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { Mock } from 'vitest';
-
-import { Telemetry } from '@/telemetry';
 
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 
@@ -16,9 +15,9 @@ describe('DataTableSizeValidator', () => {
 			maxSize: 100 * 1024 * 1024,
 		},
 	});
-	const telemetry = mockInstance(Telemetry);
+	const eventService = mockInstance(EventService);
 	beforeEach(() => {
-		validator = new DataTableSizeValidator(globalConfig, telemetry);
+		validator = new DataTableSizeValidator(globalConfig, eventService);
 		fetchSizeFn = vi.fn();
 		vi.clearAllMocks();
 	});
@@ -46,6 +45,10 @@ describe('DataTableSizeValidator', () => {
 			await expect(
 				validator.validateSize(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
 			).rejects.toThrow('Data table size limit exceeded: 150MB used, limit is 100MB');
+			expect(eventService.emit).toHaveBeenCalledWith('data-table-storage-limit-hit', {
+				totalBytes: 150 * 1024 * 1024,
+				maxBytes: 100 * 1024 * 1024,
+			});
 		});
 
 		it('should throw error when size equals limit', async () => {
