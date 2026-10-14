@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  s_8661479fcacbbd::t_5cc9aacbd57351 1-2,354-365
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  s_8661479fcacbbd::t_2086c9a4891085 2,48-55,130,132,148,150,222,224,235,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b0546499e2fb19b9e512e0fa9138f14694100754",
+  "prompts": {},
+  "sessions": {
+    "s_8661479fcacbbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2dfa2039-345b-4ff7-9ade-5eebd300fbec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
