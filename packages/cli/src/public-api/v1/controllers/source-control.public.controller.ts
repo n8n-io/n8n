@@ -166,8 +166,10 @@ export class SourceControlPublicController {
 			}
 
 			res.status(409).json(result.statusResult);
+			return;
 		} catch (error) {
 			res.status(400).send((error as { message: string }).message);
+			return;
 		}
 	}
 }
