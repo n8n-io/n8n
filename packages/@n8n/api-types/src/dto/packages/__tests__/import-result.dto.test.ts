@@ -54,7 +54,7 @@ describe('ImportResultDto', () => {
 				workflows: { 'wf-1': 'wf-1' },
 				credentials: { 'cred-1': 'cred-1' },
 			},
-			credentials: { matched: ['cred-1'], stubbed: [], seeded: [] },
+			credentials: { matched: ['cred-1'], stubbed: [], seeded: [], incomplete: [] },
 			dataTables: { matched: 1, created: 0, updated: 0 },
 			variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
 			tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
@@ -63,7 +63,7 @@ describe('ImportResultDto', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts a workflow with a blocked/failed publishing outcome and the optional fields it carries', () => {
+	it('accepts blocked and unchanged publishing outcomes with their reasons', () => {
 		const result = ImportResultDto.safeParse({
 			package: {
 				sourceN8nVersion: '1.0.0',
@@ -81,7 +81,21 @@ describe('ImportResultDto', () => {
 					isArchived: false,
 					publishing: {
 						state: 'blocked',
-						blockedReason: 'stub-credential',
+						blockedReason: 'incomplete-credential',
+					},
+					status: 'updated',
+				},
+				{
+					sourceWorkflowId: 'wf-2',
+					localId: 'wf-2',
+					name: 'Published workflow',
+					projectId: 'proj-1',
+					parentFolderId: null,
+					activeVersionId: 'ver-1',
+					isArchived: false,
+					publishing: {
+						state: 'unchanged',
+						skippedPublishReason: 'incomplete-credential',
 					},
 					status: 'updated',
 				},
@@ -91,7 +105,7 @@ describe('ImportResultDto', () => {
 			folders: [],
 			projects: [],
 			bindings: { workflows: {}, credentials: {} },
-			credentials: { matched: [], stubbed: [], seeded: [] },
+			credentials: { matched: [], stubbed: [], seeded: [], incomplete: [] },
 			dataTables: { matched: 0, created: 0, updated: 0 },
 			variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
 			tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },

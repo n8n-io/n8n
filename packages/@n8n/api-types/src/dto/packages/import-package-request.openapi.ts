@@ -25,10 +25,11 @@ export const importPackageRequestFieldDocs = {
 			'creates empty credential placeholders in the target project for missing references. ' +
 			'`create-with-values` also creates them, seeded from the expression data bundled in the ' +
 			'package (see the export option `credentialExportPolicy`); a reference the package ' +
-			'carries no data for falls back to an empty stub. Seeded credentials are listed under ' +
-			'`credentials.seeded` and only allow workflow publishing when the package confirms ' +
-			'that all source data was retained. Partial or unverified data blocks publishing ' +
-			'with `stub-credential`. ' +
+			'carries no data for falls back to an empty stub. A credential created with package data ' +
+			'is listed under `credentials.seeded` when the package confirms that all source data ' +
+			'was retained. ' +
+			'Credentials created from partial or unverified data are listed under ' +
+			'`credentials.incomplete` and block workflow publishing with `incomplete-credential`. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	bindings: {
