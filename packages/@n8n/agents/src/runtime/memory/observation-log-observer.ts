@@ -29,8 +29,12 @@ const MARKER_BY_TOKEN: Record<string, ObservationLogMarker> = {
 
 const BULLET_PATTERN =
 	/^(\s*)[*-]\s+(CRITICAL|IMPORTANT|INFO|COMPLETION)(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/iu;
-/** Indented lines that are malformed structure (fence, sentinel, unknown marker), not detail. */
-const NON_DETAIL_PATTERN = /^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?[A-Z_]+\s+\(\d{2}:\d{2}\))/u;
+/**
+ * Indented lines that are malformed structure, not detail: a fence, the sentinel, a timed
+ * unknown marker, or a misspelled marker. Other uppercase words (API, GET) stay detail.
+ */
+const NON_DETAIL_PATTERN =
+	/^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?(?:[A-Z_]+\s+\(\d{2}:\d{2}\)|(?:COMPLET|CRITIC|IMPORTAN|INFO)[A-Z]*\b))/u;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;

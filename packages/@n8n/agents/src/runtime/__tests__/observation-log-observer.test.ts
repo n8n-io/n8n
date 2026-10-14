@@ -280,6 +280,25 @@ describe('parseObservationLogMarkdown', () => {
 			},
 		]);
 	});
+
+	it('keeps detail lines that start with an uppercase word', () => {
+		const parsed = parseObservationLogMarkdown(
+			[
+				'* INFO (10:02) Endpoints checked:',
+				'  * GET /orders returns 200.',
+				'  * API key rotated.',
+			].join('\n'),
+		);
+
+		expect(parsed.entries).toEqual([
+			{
+				marker: 'info',
+				text: 'Endpoints checked: GET /orders returns 200. API key rotated.',
+				parentIndex: null,
+			},
+		]);
+		expect(parsed.skippedLines).toEqual([]);
+	});
 });
 
 describe('renderObserverTranscript', () => {
@@ -692,6 +711,8 @@ describe('runObservationLogObserver', () => {
 		'* CRITICAL Keep this fact.\nUnformatted detail.',
 		'  Indented detail before any entry.\n* CRITICAL Keep this fact.',
 		'* CRITICAL Keep this fact.\n  * COMPLETED (14:31) Unknown marker.',
+		'* CRITICAL Keep this fact.\n  * COMPLETED Deploy is set for noon.',
+		'* CRITICAL Keep this fact.\n  * INFO: Marker with a colon.',
 		'* CRITICAL Keep this fact.\n  ```\n  code\n  ```',
 		'* CRITICAL Keep this fact.\n  NO_OBSERVATIONS',
 		'* INFO    ',
