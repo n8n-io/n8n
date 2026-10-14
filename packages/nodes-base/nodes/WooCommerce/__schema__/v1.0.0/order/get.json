@@ -242,6 +242,23 @@
                     "tax_status": {
                         "type": "string"
                     },
+                    "taxes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "subtotal": {
+                                    "type": "string"
+                                },
+                                "total": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
                     "total": {
                         "type": "string"
                     },
@@ -301,6 +318,9 @@
                     },
                     "quantity": {
                         "type": "integer"
+                    },
+                    "sku": {
+                        "type": "string"
                     },
                     "subtotal": {
                         "type": "string"
@@ -393,6 +413,9 @@
                         "type": "string"
                     },
                     "total": {
+                        "type": "string"
+                    },
+                    "total_tax": {
                         "type": "string"
                     }
                 }
@@ -576,5 +599,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }

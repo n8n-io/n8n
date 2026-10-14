@@ -1,18 +1,30 @@
-import { Logger } from '@n8n/backend-common';
+import type { ToolContext } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { RelatedAgentRun } from 'n8n-workflow';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
+import { AgentRepository } from './repositories/agent.repository';
+import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
 import { AgentTestRunService } from './agent-test-run.service';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import {
+	AgentBackgroundJobService,
+	collectResultData,
+	serializeWorkflowJobResult,
+	settlementStatusForExecution,
+} from './background/agent-background-job.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { readIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -32,6 +44,9 @@ export class AgentWorkflowToolResumeService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
+		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
+		private readonly agentRepository: AgentRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -42,6 +57,13 @@ export class AgentWorkflowToolResumeService {
 		if (!agentRun) return; // Not a sub-execution started by an agent workflow tool.
 		// Parked at a Wait node, so the workflow has not finished.
 		if (ctx.runData.status === 'waiting') return;
+
+		// A backgrounded execution has a job row instead of a suspended checkpoint;
+		// settling it is a plain DB write, so it happens right here — also on
+		// workers, without the pubsub hop the resume below needs. Deliberately
+		// not gated on the feature flag: it is a no-op without a row, and rows
+		// created while the flag was on must settle even after it is turned off.
+		await this.settleBackgroundJob(ctx);
 
 		// Every sub-execution carries the marker, but only one that actually parked left
 		// a suspended checkpoint. Without this an ordinary tool call drives a resume
@@ -72,6 +94,45 @@ export class AgentWorkflowToolResumeService {
 		await this.resumeSafely(agentRun, status);
 	}
 
+	/**
+	 * Settle the background job tracking this execution, carrying a bounded
+	 * serialization of the result — the run data is in memory here, so the job
+	 * row gets its answer without a later read of the executions table.
+	 * The service keeps the last node's output for normal results. It also
+	 * keeps earlier outputs for stop reports. A no-op when the execution was
+	 * not backgrounded. Never throws into the execution's lifecycle.
+	 */
+	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
+		const { status, data } = ctx.runData;
+		if (!isTerminalExecutionStatus(status)) return;
+		// A success callback for a run that has not actually finished must not
+		// seal the job with partial output; reconciliation settles it later.
+		// oxlint-disable-next-line typescript/no-deprecated
+		if (status === 'success' && !ctx.runData.finished) return;
+
+		try {
+			const settlementStatus = settlementStatusForExecution(status);
+			const runData = data.resultData?.runData;
+			await this.backgroundJobService.settleWorkflowJobByExecutionId(
+				ctx.executionId,
+				{
+					status: settlementStatus,
+					result:
+						settlementStatus === 'completed' && runData
+							? serializeWorkflowJobResult(collectResultData(runData, false))
+							: null,
+					error: data.resultData?.error?.message ?? null,
+				},
+				runData,
+			);
+		} catch (error) {
+			this.logger.error('Failed to settle workflow background job', {
+				executionId: ctx.executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	/** Never let a failed agent resume disturb the execution that triggered it. */
 	private async resumeSafely(agentRun: RelatedAgentRun, status: string): Promise<void> {
 		try {
@@ -88,6 +149,10 @@ export class AgentWorkflowToolResumeService {
 	/** The tool handler re-reads the execution, so this payload only says why it woke. */
 	async resume(agentRun: RelatedAgentRun, status: string): Promise<void> {
 		const resumeData = { type: 'workflow_finished', value: status };
+		if (agentRun.publishedN8nChat === true) {
+			await this.resumeInProductionChat(agentRun, resumeData);
+			return;
+		}
 
 		if (agentRun.integrationType === N8N_CHAT_INTEGRATION_TYPE) {
 			await this.resumeInPreviewChat(agentRun, resumeData);
@@ -102,13 +167,20 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
-		// Reply through the connection the thread actually came in on. An agent with
-		// two connections on one platform would otherwise post into whichever
-		// workspace happened to be found first.
-		const credentialId = await this.originatingCredentialId(agentRun);
+		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
+		if (checkpoint.status !== 'active' || checkpoint.checkpoint.status !== 'suspended') return;
+		const persistence = checkpoint.checkpoint.persistence;
+		if (!persistence) return;
+		const route = await this.getIntegrationResumeRoute(
+			agentRun,
+			agentRun.integrationType,
+			persistence,
+		);
+		if (!route) return;
+		const { integrationType, credentialId, messageContext, allowLegacyThreadId } = route;
 		const bridge = this.chatIntegrationService.getBridge(
 			agentRun.agentId,
-			agentRun.integrationType,
+			integrationType,
 			credentialId,
 		);
 		if (!bridge) {
@@ -116,7 +188,7 @@ export class AgentWorkflowToolResumeService {
 			// so the run is recoverable once the integration reconnects.
 			this.logger.warn('No live chat bridge to resume the agent run into', {
 				agentId: agentRun.agentId,
-				integrationType: agentRun.integrationType,
+				integrationType,
 				credentialId,
 				runId: agentRun.runId,
 			});
@@ -128,29 +200,51 @@ export class AgentWorkflowToolResumeService {
 			agentRun.runId,
 			agentRun.toolCallId,
 			resumeData,
+			{ messageContext, allowLegacyThreadId },
 		);
 	}
 
-	/**
-	 * The credential of the connection this thread last exchanged a message on, as
-	 * recorded in the thread's message context. Undefined when unknown, which
-	 * leaves the lookup to fall back to any ingress bridge for the platform.
-	 */
-	private async originatingCredentialId(agentRun: RelatedAgentRun): Promise<string | undefined> {
-		try {
-			const context = await this.messageContextService.getLatest(agentRun.threadId);
-			if (!context || context.platform !== agentRun.integrationType) return undefined;
-			// `integrationConnectionId` is `type` alone for a single-connection agent,
-			// or `type:credentialId` once a credential is bound.
-			const [, credentialId] = context.integrationConnectionId.split(':');
-			return credentialId;
-		} catch (error) {
-			this.logger.warn('Could not read the thread message context for an agent resume', {
-				runId: agentRun.runId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return undefined;
+	private async resumeInProductionChat(
+		agentRun: RelatedAgentRun,
+		resumeData: unknown,
+	): Promise<void> {
+		const user = agentRun.userId
+			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			: null;
+		if (
+			!user ||
+			!(await this.agentRepository.isN8nChatPublished(agentRun.agentId, agentRun.projectId))
+		)
+			return;
+		let executionId: string | undefined;
+		const stream = this.agentExecutionOrchestratorService.resumeForChat({
+			agentId: agentRun.agentId,
+			projectId: agentRun.projectId,
+			runId: agentRun.runId,
+			toolCallId: agentRun.toolCallId,
+			resumeData,
+			user,
+			usePublishedVersion: true,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			chatSurface: 'n8n-chat',
+			expectedMemory: {
+				threadId: agentRun.threadId,
+				resourceId: productionChatMemoryResourceId(user.id),
+			},
+			onExecutionRecorded: (id) => {
+				executionId = id;
+			},
+		});
+		for await (const _chunk of stream) {
+			// Persist the streamed turn before notifying the user's session.
 		}
+		if (executionId)
+			this.executionUpdateBroadcaster.notify({
+				projectId: agentRun.projectId,
+				agentId: agentRun.agentId,
+				threadId: agentRun.threadId,
+				executionId,
+			});
 	}
 
 	/**
@@ -162,7 +256,7 @@ export class AgentWorkflowToolResumeService {
 		// The draft version gates node and workflow tools by the user's access, so
 		// without the user those tools drop and the pending tool call fails to resume.
 		const user = agentRun.userId
-			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			? await this.userRepository.findByIdWithRole(agentRun.userId)
 			: null;
 		if (!user) {
 			this.logger.warn('Cannot resume preview chat run without its user', {
@@ -181,6 +275,8 @@ export class AgentWorkflowToolResumeService {
 			toolCallId: agentRun.toolCallId,
 			resumeData,
 			user,
+			chatSurface: agentRun.previewChat ? 'preview' : undefined,
+			automaticPreviewContinuation: true,
 			response: '',
 		});
 
@@ -200,5 +296,54 @@ export class AgentWorkflowToolResumeService {
 			threadId: agentRun.threadId,
 			executionId: result.executionId ?? '',
 		});
+	}
+
+	private async getIntegrationResumeRoute(
+		agentRun: RelatedAgentRun,
+		integrationType: string,
+		persistence: NonNullable<ToolContext['persistence']>,
+	) {
+		let messageContext = readIntegrationMessageContext(persistence);
+		const allowLegacyThreadId = messageContext === undefined;
+		if (messageContext === undefined) {
+			messageContext = await this.loadLegacyMessageContext(persistence.threadId, agentRun.runId);
+		}
+		const [platform, credentialId] = messageContext?.integrationConnectionId.split(':') ?? [];
+		if (allowLegacyThreadId) {
+			if (messageContext?.platform === integrationType && platform === integrationType) {
+				return { integrationType, credentialId, messageContext, allowLegacyThreadId };
+			}
+			return {
+				integrationType,
+				credentialId: undefined,
+				messageContext: null,
+				allowLegacyThreadId,
+			};
+		}
+		if (!messageContext || messageContext.platform !== platform || !credentialId) {
+			this.logger.warn('Agent resume has no integration reply context', {
+				agentId: agentRun.agentId,
+				runId: agentRun.runId,
+			});
+			return undefined;
+		}
+		return {
+			integrationType: messageContext.platform,
+			credentialId,
+			messageContext,
+			allowLegacyThreadId,
+		};
+	}
+
+	private async loadLegacyMessageContext(threadId: string, runId: string) {
+		try {
+			return await this.messageContextService.getLatest(threadId);
+		} catch (error) {
+			this.logger.warn('Could not read the thread message context for an agent resume', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
 	}
 }

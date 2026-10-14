@@ -205,9 +205,6 @@ export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
 		microsoftAzureMonitorOAuth2Api: {
 			tokenExpiredStatusCode: 403,
 		},
-		microsoftDynamicsOAuth2Api: {
-			property: 'id_token',
-		},
 		philipsHueOAuth2Api: {
 			tokenType: 'Bearer',
 		},

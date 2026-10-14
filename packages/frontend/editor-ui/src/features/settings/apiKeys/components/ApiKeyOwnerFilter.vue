@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from '@n8n/design-system';
-import { N8nAvatar, N8nCheckbox, N8nIcon, N8nPopover, N8nTag, N8nText } from '@n8n/design-system';
+import { N8nAvatar, N8nBadge, N8nCheckbox, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 
 import { getApiKeyOwnerDisplayName } from '../apiKeys.utils';
 
@@ -158,8 +158,7 @@ watch(open, (isOpen, wasOpen) => {
 					/>
 					<N8nIcon v-else icon="users" :class="$style.triggerIcon" />
 					<span :class="$style.triggerText">{{ triggerLabel }}</span>
-					<!-- Same tag component the tabs use for their counts. -->
-					<N8nTag :text="String(pillCount)" :clickable="false" :class="$style.triggerTag" />
+					<N8nBadge :class="$style.triggerTag">{{ pillCount }}</N8nBadge>
 				</span>
 				<N8nIcon icon="chevron-down" :class="$style.chevron" />
 			</button>

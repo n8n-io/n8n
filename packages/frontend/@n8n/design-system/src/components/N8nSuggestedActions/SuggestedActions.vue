@@ -2,12 +2,12 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nBadge from '../N8nBadge';
 import N8nCallout from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
 import N8nPopover from '../N8nPopover';
-import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 
 interface SuggestedAction {
@@ -65,12 +65,10 @@ const handleActionClick = (action: SuggestedAction) => {
 	>
 		<template #trigger>
 			<span v-if="hideTrigger" :class="$style.hiddenTrigger" />
-			<div
-				v-else
-				:class="[$style.triggerContainer, open ? $style.activeTrigger : '']"
-				data-test-id="suggested-action-count"
-			>
-				<N8nTag :text="`${completedCount} / ${actions.length}`" />
+			<div v-else :class="$style.triggerContainer" data-test-id="suggested-action-count">
+				<N8nBadge :class="[$style.countBadge, { [$style.activeTrigger]: open }]" size="small">
+					{{ completedCount }} / {{ actions.length }}
+				</N8nBadge>
 			</div>
 		</template>
 		<template #content>
@@ -135,7 +133,7 @@ const handleActionClick = (action: SuggestedAction) => {
 .triggerContainer {
 	display: inline-block;
 	position: relative;
-	--tag--height: 24px;
+	cursor: pointer;
 }
 
 .hiddenTrigger {
@@ -144,9 +142,9 @@ const handleActionClick = (action: SuggestedAction) => {
 	height: 0;
 }
 
-.activeTrigger {
-	--tag--color--text: var(--color--primary);
-	--tag--border-color: var(--color--primary);
+.countBadge.activeTrigger {
+	--n8n-badge--text-color: var(--color--primary);
+	--n8n-badge--border-color: var(--color--primary);
 }
 
 .popoverContent {

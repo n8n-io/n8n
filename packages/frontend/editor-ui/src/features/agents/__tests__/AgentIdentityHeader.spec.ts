@@ -103,16 +103,16 @@ describe('AgentIdentityHeader', () => {
 			},
 		});
 
-		const avatar = wrapper.find('[data-testid="agent-personalisation-icon"]');
+		const header = wrapper.find('[data-testid="agent-identity-header"]');
 		const picker = wrapper.find('[data-testid="agent-personalisation-picker"]');
 
 		expect(picker.attributes('data-icon')).toBe('search');
 		expect(picker.attributes('data-icons-only')).toBe('true');
-		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-from: #111111');
-		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-to: #222222');
-		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-angle: 135deg');
-		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-from-stop: 0%');
-		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-to-stop: 100%');
+		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-from: #111111');
+		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-to: #222222');
+		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-angle: 135deg');
+		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-from-stop: 0%');
+		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-to-stop: 100%');
 	});
 
 	it('emits the picked icon while preserving the saved gradient', async () => {

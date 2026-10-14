@@ -19,13 +19,13 @@ describe('isEmptyModelTurn', () => {
 		).toBe(true);
 	});
 
-	it('is true for a reasoning-only stop turn', () => {
+	it('is false for a reasoning-only stop turn', () => {
 		expect(
 			isEmptyModelTurn({
 				aiFinishReason: 'stop',
 				newMessages: [assistant([{ type: 'reasoning', text: 'thinking…' }])],
 			}),
-		).toBe(true);
+		).toBe(false);
 	});
 
 	it('is false when the turn has text', () => {

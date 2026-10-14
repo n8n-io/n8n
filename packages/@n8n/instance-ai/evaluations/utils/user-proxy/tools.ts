@@ -126,6 +126,9 @@ const chooseCredentialSetupOptionDecisionSchema = z.object({
 	existingCredentialId: z.string().optional(),
 });
 
+const RUN_WORKFLOW_DESCRIPTION =
+	'Workflow to run before sending this message. Set only when the director says the user runs it. Select the intended workflow, not a prerequisite or cleanup workflow. This runs normally, without mocks, and supports credential-free manual or schedule workflows only.';
+
 const sendFollowUpMessageDecisionSchema = z.object({
 	action: z.literal('send_follow_up_message'),
 	message: z.string(),
@@ -147,6 +150,7 @@ const sendFollowUpMessageDecisionSchema = z.object({
 	 * that workflow already carries this name.
 	 */
 	renameWorkflowTo: z.string().min(1).optional(),
+	runWorkflowId: z.string().min(1).optional().describe(RUN_WORKFLOW_DESCRIPTION),
 });
 
 const declareDoneDecisionSchema = z.object({
@@ -162,6 +166,11 @@ const declareDoneDecisionSchema = z.object({
  * The schema handed to the model per mode IS the action menu — actions that
  * cannot function at that moment are not offered at all.
  */
+export const userTurnWithoutExecutionSchema = z.discriminatedUnion('action', [
+	sendFollowUpMessageDecisionSchema.omit({ runWorkflowId: true }).strict(),
+	declareDoneDecisionSchema,
+]);
+
 export type ProxyDecisionMode = 'confirmation' | 'user-turn';
 
 export const confirmationDecisionSchema = z.discriminatedUnion('action', [
@@ -173,10 +182,20 @@ export const confirmationDecisionSchema = z.discriminatedUnion('action', [
 	chooseCredentialSetupOptionDecisionSchema,
 ]);
 
-export const userTurnDecisionSchema = z.discriminatedUnion('action', [
-	sendFollowUpMessageDecisionSchema,
-	declareDoneDecisionSchema,
-]);
+export function createUserTurnDecisionSchema(savedWorkflowIds: string[]) {
+	const [firstId, ...remainingIds] = savedWorkflowIds;
+	if (firstId === undefined) return userTurnWithoutExecutionSchema;
+
+	return z.discriminatedUnion('action', [
+		sendFollowUpMessageDecisionSchema.extend({
+			runWorkflowId: z
+				.enum([firstId, ...remainingIds])
+				.optional()
+				.describe(RUN_WORKFLOW_DESCRIPTION),
+		}),
+		declareDoneDecisionSchema,
+	]);
+}
 
 /** Full union — the type every decision consumer handles. Agents are only ever
  *  offered the mode-scoped subsets above. */
@@ -354,18 +373,66 @@ export async function encodeConfirmationDecision(
 			};
 		}
 
-		case 'choose_credential_setup_option':
+		case 'choose_credential_setup_option': {
+			const wizardFill = wizardFillForStandaloneDecision(
+				decision,
+				credentialSetupContext,
+				setupContext,
+			);
+			if (wizardFill) {
+				return await encodeConfirmationDecision(
+					{
+						action: 'apply_setup_wizard',
+						nodeParametersJson: '{}',
+						nodeCredentialsJson: JSON.stringify(wizardFill.nodeCredentials),
+						workingCredentialTypes: [wizardFill.credentialType],
+					},
+					onParseFailure,
+					setupContext,
+					credentialSetupContext,
+					createCredential,
+				);
+			}
 			return await encodeCredentialSetupDecision(
 				decision,
 				onParseFailure,
 				credentialSetupContext,
 				createCredential,
 			);
+		}
 
 		case 'send_follow_up_message':
 		case 'declare_done':
 			return null;
 	}
+}
+
+/**
+ * The model answered a setup-wizard card with the standalone-card action. A
+ * `manual` pick still names the credential the direction wants filled, so route
+ * it to the wizard slot(s) of that type instead of dismissing the card. Generic
+ * auth types such as httpTemplatedCustomAuth only ever arrive as wizard slots.
+ */
+function wizardFillForStandaloneDecision(
+	decision: Extract<Decision, { action: 'choose_credential_setup_option' }>,
+	credentialSetupContext: CredentialSetupParseContext | undefined,
+	setupContext: SetupWizardParseContext | undefined,
+): { credentialType: string; nodeCredentials: Record<string, Record<string, string>> } | undefined {
+	if (decision.option !== 'manual' || credentialSetupContext || !setupContext) return undefined;
+	const slots = setupContext.nodes.flatMap((node) =>
+		node.credentialRequests
+			.filter((r) => !decision.credentialType || r.credentialType === decision.credentialType)
+			.map((r) => ({ nodeName: node.nodeName, credentialType: r.credentialType })),
+	);
+	const types = new Set(slots.map((slot) => slot.credentialType));
+	if (types.size !== 1) return undefined;
+	const [credentialType] = types;
+	const nodeCredentials: Record<string, Record<string, string>> = {};
+	for (const slot of slots) {
+		(nodeCredentials[slot.nodeName] ??= {})[credentialType] =
+			decision.existingCredentialId ?? 'new';
+	}
+	return { credentialType, nodeCredentials };
 }
 
 async function encodeCredentialSetupDecision(
@@ -422,7 +489,7 @@ async function resolveManualCredentialSelection(
 ): Promise<InstanceAiConfirmRequest> {
 	const credentialType = request?.credentialType ?? decision.credentialType;
 
-	if (request && request.existingCredentials.length === 0) {
+	if (request?.existingCredentials.length === 0) {
 		const created = await tryCreateCredential(
 			createCredential,
 			request.credentialType,

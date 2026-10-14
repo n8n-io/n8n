@@ -1,4 +1,4 @@
-import { DEFAULT_MISFIRE_GRACE_SECONDS, Time } from '@n8n/constants';
+import { DEFAULT_MISFIRE_GRACE_SECONDS, MAX_TIMER_DELAY_SECONDS, Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
@@ -24,23 +24,31 @@ const jitterRatioSchema = z.number({ coerce: true }).nonnegative().lt(1);
  * they start, so they survive restarts and, in a multi-instance setup, each run
  * is picked up by exactly one instance instead of every instance firing it.
  *
- * Off by default. While {@link enabled} is false none of these settings have any
- * effect and the existing in-memory Schedule Trigger behaviour is unchanged. The
- * tunables below only matter once the scheduler is turned on; the defaults suit
- * most instances, so change them only to tune timing precision or storage.
+ * On by default. It takes over Schedule Trigger nodes only while the workflow
+ * publication service is also on. Set {@link enabled} to false to keep the
+ * in-memory Schedule Trigger behaviour. Then none of these settings have any
+ * effect. The defaults suit most instances, so change them only to tune timing
+ * precision or storage.
  */
 @Config
 export class SchedulerConfig {
 	/**
-	 * Turn on the durable scheduler. Off by default so existing self-hosted setups
-	 * keep using the in-memory scheduler and behave exactly as before.
+	 * Turn on the durable scheduler. On by default. Set it to false to go back to
+	 * the in-memory scheduler.
 	 *
 	 * When on, scheduled runs are stored in the database before they execute, so a
 	 * restart doesn't drop them and, across multiple instances, each run executes
 	 * once rather than once per instance.
+	 *
+	 * Schedule Trigger nodes move to the durable scheduler only while the workflow
+	 * publication service (`N8N_USE_WORKFLOW_PUBLICATION_SERVICE`) is also on.
+	 * Otherwise they keep using the in-memory scheduler.
+	 *
+	 * @deprecated The durable scheduler is now the default. This variable and the
+	 * in-memory scheduler will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * How far into the future, in seconds, the scheduler works out and records the
@@ -239,7 +247,7 @@ export class SchedulerConfig {
 
 	/**
 	 * How a Schedule Trigger node's "every N seconds/minutes" schedules run under
-	 * the durable scheduler. Defaults to `legacy`.
+	 * the durable scheduler. Defaults to `new`.
 	 *
 	 * - `legacy`: fires stay aligned to the clock (on the minute, on the hour) and
 	 *   match the in-memory scheduler exactly.
@@ -251,14 +259,16 @@ export class SchedulerConfig {
 	 * for example, leaves a 4-second gap across each minute boundary); `new` keeps
 	 * a uniform gap throughout.
 	 *
-	 * `legacy` is the default so timing is unchanged while the durable scheduler
-	 * rolls out; `new` is the intended future default. Only "every N
-	 * seconds/minutes" schedules are affected: longer schedules (every N
-	 * hours/days/weeks/months) and raw cron expressions run the same way under
-	 * either setting.
+	 * Set it to `legacy` to keep the clock-aligned timing of the in-memory
+	 * scheduler. Only "every N seconds/minutes" schedules are affected: longer
+	 * schedules (every N hours/days/weeks/months) and raw cron expressions run the
+	 * same way under either setting.
+	 *
+	 * @deprecated `new` is now the default. This variable and the `legacy` mode
+	 * will be removed in a future version.
 	 */
 	@Env('N8N_SCHEDULER_TRIGGER_NODE_MODE', z.enum(['legacy', 'new']))
-	triggerNodeMode: 'legacy' | 'new' = 'legacy';
+	triggerNodeMode: 'legacy' | 'new' = 'new';
 
 	/**
 	 * Whether nodes that poll on a schedule (e.g. checking an inbox or API on an
@@ -276,12 +286,8 @@ export class SchedulerConfig {
 	 * was and the next scheduled poll covers the same ground. It counts as a poll
 	 * failure, so a source that keeps timing out is polled at a widening interval.
 	 * Guards against a poll stuck on an unresponsive source running indefinitely.
-	 *
-	 * Keep it below {@link leaseDurationSeconds}: the deadline only starts after
-	 * the occurrence's setup reads, so a poll allowed to run as long as the claim
-	 * on its run can still be in flight when that claim expires and another
-	 * instance takes the run over. The default leaves that headroom, and the
-	 * scheduler warns at startup when the timeout reaches the lease duration.
+	 * A new value applies to a poll trigger the next time it is provisioned, for
+	 * example at startup or when its workflow is activated.
 	 * Must be greater than 0 and at most one day.
 	 */
 	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
@@ -313,27 +319,32 @@ export class SchedulerConfig {
 	 * side (for example during a rolling deploy), the older instances still run
 	 * these jobs on their own timers, so the same job could run twice at the
 	 * same time.
+	 *
+	 * Give every instance the same value, and the same {@link enabled}.
 	 */
 	@Env('N8N_SCHEDULER_SYSTEM_TASKS_ENABLED')
 	enabledForSystemTasks: boolean = false;
 
 	/**
-	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
-	 * Off by default; intended to be removed once the durable scheduler is GA.
+	 * Whether the durable scheduler runs agent scheduled tasks instead of the
+	 * in-process timer of n8n. Off by default. Requires {@link enabled} to also
+	 * be on.
 	 *
-	 * When on, the Schedule Trigger node shows a "Skip Durable Scheduler" toggle; a
-	 * trigger with it checked keeps using the in-memory scheduler even while
-	 * {@link enabled} is on, so an operator can move an individual schedule back
-	 * while testing. When off, the toggle is hidden and every schedule follows
-	 * {@link enabled}.
+	 * In a multi-instance setup, turn this on only when every instance runs a
+	 * version of n8n that supports it. While older and newer versions run side by
+	 * side (for example during a rolling deploy), the older leader still runs
+	 * these tasks on its own timer. Then the same task can run twice.
 	 *
-	 * Named with the `N8N_ENV_FEAT_` prefix so the frontend picks it up through the
-	 * env-feature-flag channel that gates the node property's visibility. Only has
-	 * an effect while {@link enabled} is on: with the durable scheduler off, every
-	 * schedule already runs in memory.
+	 * Give every main the same value. A main that starts with this flag off
+	 * removes the durable agent-task jobs, also the ones that a main with the
+	 * flag on has created.
+	 *
+	 * The two schedulers differ on a DST spring-forward: a time inside the
+	 * skipped hour runs at the moment the clock jumps on the in-process timer,
+	 * and shifts forward by the skipped hour on the durable scheduler.
 	 */
-	@Env('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER')
-	allowSkipDurableScheduler: boolean = false;
+	@Env('N8N_SCHEDULER_AGENT_TASKS_ENABLED')
+	enabledForAgentTasks: boolean = false;
 
 	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
@@ -344,6 +355,20 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MAX_ATTEMPTS', positiveIntSchema)
 	maxAttempts: number = 5;
+
+	/**
+	 * How long, in seconds, one run of a scheduled task may take before the
+	 * scheduler aborts its signal and gives the run back. A handler that ignores
+	 * the signal keeps running. Defaults to 300 seconds.
+	 *
+	 * A timed-out run that had not started its work counts as a failed attempt (see
+	 * {@link maxAttempts}). Some tasks set their own timeout, which wins over this one.
+	 * A new value applies to a schedule the next time it is provisioned, for
+	 * example at startup or when its workflow is activated.
+	 * Must be greater than 0 and at most 2147483 (about 24 days).
+	 */
+	@Env('N8N_SCHEDULER_TASK_TIMEOUT_SECONDS', positiveIntSchema.max(MAX_TIMER_DELAY_SECONDS))
+	taskTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
 
 	/**
 	 * How late, in seconds, a scheduled run may start and still count as on time. A
@@ -361,4 +386,61 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_SCHEDULER_MISFIRE_GRACE', positiveIntSchema.max(30 * Time.days.toSeconds))
 	misfireGraceSeconds: number = DEFAULT_MISFIRE_GRACE_SECONDS;
+
+	/**
+	 * Whether the scheduler periodically checks that every schedule still has
+	 * something that owns it, and cleans up the ones left behind by a deletion
+	 * that didn't finish. On by default.
+	 *
+	 * Turning it off leaves those leftovers in place, disabled but never removed.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_ENABLED')
+	ownerReconciliationEnabled: boolean = true;
+
+	/**
+	 * How often, in seconds, that check runs. Defaults to 15 minutes. It is a
+	 * safety net rather than the normal cleanup path, so a long interval is fine.
+	 * Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_INTERVAL', positiveIntSchema)
+	ownerReconciliationIntervalSeconds: number = 15 * Time.minutes.toSeconds;
+
+	/**
+	 * How long, in seconds, one of those checks may run before it is abandoned
+	 * and retried on its next interval. Defaults to 5 minutes. Must be greater
+	 * than 0.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_TIMEOUT', positiveIntSchema)
+	ownerReconciliationTimeoutSeconds: number = 5 * Time.minutes.toSeconds;
+
+	/**
+	 * How many owners the check looks at per database round-trip. Defaults to 500.
+	 * Must be between 1 and 1000.
+	 *
+	 * The owner ids of a batch travel as one `IN` list, so the cap keeps the
+	 * statement under the driver's bind-parameter ceiling.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_RECONCILIATION_BATCH_SIZE', positiveIntSchema.max(1000))
+	ownerReconciliationBatchSize: number = 500;
+
+	/**
+	 * How long, in seconds, a schedule found to have no owner is kept disabled
+	 * before it is deleted. Defaults to 1 day. Must be greater than 0.
+	 *
+	 * The schedule stops running immediately, so this window only delays the
+	 * delete. Raise it for a longer window to correct a wrong "no owner" answer,
+	 * lower it to reclaim rows sooner.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_QUARANTINE_GRACE', positiveIntSchema)
+	ownerQuarantineGraceSeconds: number = Time.days.toSeconds;
+
+	/**
+	 * How long, in seconds, a newly created schedule is left out of that check.
+	 * Defaults to 300 seconds. Must be greater than 0.
+	 *
+	 * A schedule can be written a moment before the thing that owns it, so this
+	 * grace stops a brand-new schedule being mistaken for an abandoned one.
+	 */
+	@Env('N8N_SCHEDULER_OWNER_SETTLE_PERIOD', positiveIntSchema)
+	ownerSettleSeconds: number = 5 * Time.minutes.toSeconds;
 }

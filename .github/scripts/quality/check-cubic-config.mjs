@@ -26,7 +26,11 @@ import { parse } from 'yaml';
 /** https://docs.cubic.dev/ai-review/custom-agents — only the first N agents take effect. */
 export const MAX_CUBIC_AGENTS = 5;
 
-/** Description plus linked file contents; characters past this are dropped from the prompt. */
+/**
+ * Description, linked file contents, *and* `reviews.custom_instructions`;
+ * characters past this are dropped from the prompt. The shared block is
+ * prepended to every agent, so it is spent once per agent, not once overall.
+ */
 export const MAX_RULE_CHARS = 10_000;
 
 /** Fraction of the ceiling at which a rule is reported as close to silent truncation. */
@@ -105,7 +109,7 @@ function ruleFiles() {
  * @param {any} config - parsed cubic.yaml
  * @param {(path: string) => number} charsIn - characters in a linked file, -1 if missing
  * @param {string[]} [onDisk] - rule files that must each be linked by some agent
- * @returns {{ violations: string[], warnings: string[], ruleLengths: Record<string, number> }}
+ * @returns {{ violations: string[], warnings: string[], ruleLengths: Record<string, number>, sharedChars: number }}
  */
 export function checkConfig(config, charsIn, onDisk = []) {
 	const violations = [];
@@ -119,10 +123,23 @@ export function checkConfig(config, charsIn, onDisk = []) {
 		violations.push(`\`version\` must be 1, found ${JSON.stringify(config?.version)}.`);
 	}
 
+	// Prepended to every agent's prompt, so it is charged against each one's
+	// ceiling separately. A line added here is paid as many times as there are
+	// agents.
+	const sharedChars = (config?.reviews?.custom_instructions ?? '').length;
+
+	if (sharedChars >= MAX_RULE_CHARS) {
+		violations.push(
+			`\`reviews.custom_instructions\` is ${sharedChars.toLocaleString()} characters, which ` +
+				`alone fills the ${MAX_RULE_CHARS.toLocaleString()}-character ceiling every agent ` +
+				`shares. No agent's own rules would survive.`,
+		);
+	}
+
 	const rules = config?.reviews?.custom_rules ?? [];
 	if (!Array.isArray(rules)) {
 		violations.push('`reviews.custom_rules` must be a list.');
-		return { violations, warnings, ruleLengths };
+		return { violations, warnings, ruleLengths, sharedChars };
 	}
 
 	if (rules.length > MAX_CUBIC_AGENTS) {
@@ -147,7 +164,7 @@ export function checkConfig(config, charsIn, onDisk = []) {
 			violations.push(`${label} needs a \`description\`, \`file_paths\`, or both.`);
 		}
 
-		let total = description.length;
+		let total = sharedChars + description.length;
 		for (const path of filePaths) {
 			linked.add(path);
 			const chars = charsIn(path);
@@ -158,15 +175,23 @@ export function checkConfig(config, charsIn, onDisk = []) {
 			total += chars;
 		}
 
+		// Spell out the split: an agent can bust the ceiling on shared text alone,
+		// and trimming its own rules would not be the fix.
+		const split = sharedChars
+			? ` (${(total - sharedChars).toLocaleString()} its own + ` +
+				`${sharedChars.toLocaleString()} shared \`custom_instructions\`)`
+			: '';
+
 		if (total > MAX_RULE_CHARS) {
 			violations.push(
-				`${label} is ${total.toLocaleString()} characters; everything past ` +
+				`${label} is ${total.toLocaleString()} characters${split}; everything past ` +
 					`${MAX_RULE_CHARS.toLocaleString()} is dropped from the review prompt.`,
 			);
 		} else if (total > MAX_RULE_CHARS * WARN_RATIO) {
 			warnings.push(
 				`${label} is at ${Math.round((total / MAX_RULE_CHARS) * 100)}% of the ` +
-					`${MAX_RULE_CHARS.toLocaleString()}-character ceiling. Trim it before adding more.`,
+					`${MAX_RULE_CHARS.toLocaleString()}-character ceiling${split}. ` +
+					'Trim it before adding more.',
 			);
 		}
 
@@ -179,7 +204,7 @@ export function checkConfig(config, charsIn, onDisk = []) {
 		}
 	}
 
-	return { violations, warnings, ruleLengths };
+	return { violations, warnings, ruleLengths, sharedChars };
 }
 
 async function refreshSchema() {
@@ -202,9 +227,17 @@ async function main() {
 	const config = parse(readFileSync(join(REPO_ROOT, 'cubic.yaml'), 'utf8'));
 	const schema = JSON.parse(readFileSync(join(REPO_ROOT, SCHEMA_PATH), 'utf8'));
 
-	const { violations, warnings, ruleLengths } = checkConfig(config, fileCharacters, ruleFiles());
+	const { violations, warnings, ruleLengths, sharedChars } = checkConfig(
+		config,
+		fileCharacters,
+		ruleFiles(),
+	);
 	violations.unshift(...schemaErrors(config, schema));
 
+	console.log(
+		`Shared \`custom_instructions\`: ${sharedChars.toLocaleString()} characters, ` +
+			'included in every agent below.',
+	);
 	console.log("Rule sizes:")
 	for (const [label, ruleLength] of Object.entries(ruleLengths)) {
 		console.log(`	${label}: ${ruleLength} characters (${Math.floor(ruleLength / MAX_RULE_CHARS * 100)}%)`);

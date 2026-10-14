@@ -8,14 +8,17 @@ import type TestAgent from 'supertest/lib/agent';
 import type { LicenseMocker } from './license';
 
 type EndpointGroup =
+	| 'activeWorkflows'
 	| 'health'
 	| 'me'
 	| 'users'
 	| 'auth'
 	| 'oauth1'
 	| 'oauth2'
+	| 'jwks'
 	| 'owner'
 	| 'passwordReset'
+	| 'changeEmail'
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
@@ -28,6 +31,8 @@ type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'ai-preferences'
+	| 'instance-ai'
 	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
@@ -49,31 +54,39 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'promotions'
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
+	| 'trusted-sources'
 	| 'encryption-keys'
 	| 'workflow-reviews'
-	| 'test-webhooks';
+	| 'test-webhooks'
+	| 'type-availability-policies';
 
 type ModuleName =
 	| 'insights'
 	| 'external-secrets'
 	| 'community-packages'
 	| 'data-table'
+	| 'instance-ai'
 	| 'mcp'
+	| 'oauth-jwe'
 	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
-	| 'git-connections'
+	| 'promotions'
+	| 'n8n-packages'
 	| 'token-exchange'
 	| 'policy-infrastructure'
-	| 'workflow-reviews';
+	| 'workflow-reviews'
+	| 'type-availability-policies'
+	| 'inbound-auth-core';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

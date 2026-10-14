@@ -21,7 +21,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 | `N8N_INSTANCE_AI_SUPPORTS_STRUCTURED_OUTPUTS` | string | unset | Optional `true`/`false` for `custom/*` structured-output support. Unset = known-model map; still unresolved = omit. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
 | `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
-| `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Allow Instance AI to receive workflow and node parameter values. When `false`, the adapter replaces values with structure or placeholders before it sends context to the agent. This is a global n8n AI setting. |
+| `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` | boolean | `true` | Deprecated; removal is planned for v4. Allow Instance AI to receive workflow and node parameter values. The effective value is `true` only when this variable and the "Send actual data values" setting in Settings > AI usage are both on. Instance AI reads it at the start of each run. When it is `false`, the adapter hides parameter values and execution data, and the Assistant runs in a limited mode: it cannot create or edit workflows. After it is turned on, the Assistant must read a workflow again before it can rebuild or save it. This is a global n8n AI setting. |
 
 For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `COHERE_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`,
@@ -43,11 +43,17 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
-| `N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED` | boolean | `false` | Force-enable the MCP-connections experiment. `false` falls back to the PostHog flag. The MCP registry module and admin MCP access must also be enabled before the MCP registry discovery tool is wired. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflows(action="list")`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
-| `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
-| `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
+| `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
+
+The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.
+`variant` enables the async panel. `control` or an unavailable assignment uses
+the wizard. For local testing, set
+`N8N_FEATURE_FLAG_OVERRIDES='{"118_instance_ai_setup_overhaul":"variant"}'`
+on the n8n server, then restart it and reload the editor. Use `control` to test
+the wizard.
 
 ### Debugging
 
@@ -99,13 +105,13 @@ without search results. `research(action="fetch-url")` still works.
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 | `N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS` | number | `900` | Eval-harness-only Daytona cold-provisioning timeout in seconds. It must be a positive integer. |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, sandboxes are created ephemeral: the provider deletes them once idle instead of leaving them stopped. Applies to both `n8n-sandbox` and `daytona`. Intended for throwaway eval instances so sandboxes don't accumulate. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
 | `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` | number | `900000` | Idle TTL for the in-process thread-workspace cache. Expiry removes the cache entry but does not delete the remote sandbox. `0` disables cache eviction. |
 | `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | number | `300000` | How early a Daytona token is refreshed before expiry (5 minutes). |
-| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all three packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | boolean | `false` | Local-dev only. When `1` or `true`, pack `@n8n/utils`, `@n8n/errors`, `n8n-workflow`, and `@n8n/workflow-sdk` from the host monorepo into each sandbox after `npm install`. Build all four packages first. Start a new AI thread after changing this because existing sandboxes keep their initialized `node_modules`. |
 
 When sandbox is enabled, Instance AI writes workflow source files in the runtime
 workspace and `build-workflow` runs TypeScript sources through the sandbox
@@ -147,28 +153,18 @@ These environment variables are read directly by `BuilderTemplatesService`.
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 | `N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION` | number | `604800000` | Retention period in ms for expired checkpoint tombstones before hard deletion. `0` keeps tombstones. |
 
-### Output Filtering
+### Output filtering
 
-The stream output redactor runs only when the durable event log is disabled.
-The durable event log is enabled by default, so these settings do not redact
-the default durable stream path. On the legacy path, the scan covers assistant
-text, reasoning, tool-call arguments, tool results, tool errors, and confirmation
-text. It records category counts when it redacts content.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED` | boolean | `true` | Master switch. When `false`, output passes through untouched. |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS` | boolean | `true` | Redact credential/secret patterns (API keys, tokens, auth headers, `key=value` pairs). |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PII` | string | `credit-card` | Comma-separated PII categories. Available values are `email`, `phone`, `credit-card`, `ssn-us`, `iban`, `crypto-wallet`, `ip`, `mac`, and `url`. Empty disables PII scanning. Unrecognized values are ignored. |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER` | string | `[REDACTED]` | Replacement text substituted for each redacted match. |
-
-Secret detection matches known token shapes and explicit secret fields. PII
-detection applies the pattern registered for each selected category.
+Instance AI does not scan or redact agent output on the streaming path.
+Agent output is stored raw, consistent with workflow execution data, and
+redaction applies at egress boundaries instead — the LangSmith telemetry
+redactor is a separate layer and is unaffected. There are no
+`N8N_INSTANCE_AI_OUTPUT_REDACTION_*` settings.
 
 ## Provider connections
 
 On self-hosted deployments, owners and admins can configure the model, sandbox, and
-web-search connections from the AI Assistant settings page. These connections are
+web-search connections from the n8n Assistant settings page. These connections are
 managed centrally and are not offered as workflow-canvas credentials.
 
 The environment variables above remain the fallback when no provider connection is
@@ -181,6 +177,13 @@ these values from the managed service instead.
 The `instance-ai` module is in the default module set. It does not need to be
 listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
+
+The `agents` module is also in the default module set. When it is active and
+the Settings > Agents switch is on, the Assistant gets the `build-agent` and
+`agent-context` tools, the `agent-builder` and `intent-recognition` skills, and
+Agent preview handoff. When an admin turns the switch off, the Assistant loses
+all of these at once. A run that is building an Agent fails at its next step.
+To remove the module, add `agents` to `N8N_DISABLED_MODULES`.
 
 Chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`.
 Member-facing entry points are additionally gated by `isSetupCompleted()`, which
@@ -220,7 +223,7 @@ The same storage backend is used for:
 - Message history
 - Observational memory (observation log, cursors, and task locks)
 - Plan storage (thread-scoped in thread metadata)
-- Run snapshots and checkpoints (separate tables)
+- Checkpoints (separate table)
 
 ## Event Bus
 
@@ -229,19 +232,13 @@ The event bus transport is selected automatically:
 - **Single instance**: In-process `EventEmitter` — zero infrastructure
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
-Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
-`true` since Gate A of the durable-log rollout; pre-existing runs are
-backfilled by migration). On, coalesced step-level facts (completed
-text/reasoning blocks, tool calls and results, run lifecycle) are appended to
-the `instance_ai_events` table and replay reads the database; token deltas
-are never persisted. Rows cascade-delete with their thread
-(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
-switch until the legacy paths sunset at Gate B: events then live only in a
-bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
-reset on restart, so replay does not survive a restart). That bound is
-per-thread only: a buffer is released when its thread is deleted or expires,
-so a main's memory scales with the number of threads it has served until the
-process restarts. The main logs a warning at boot when the switch is set.
+Events are persisted to the durable event log, which is the only storage
+path — there is no setting to turn it off. Coalesced step-level facts
+(completed text/reasoning blocks, tool calls and results, run lifecycle) are
+appended to the `instance_ai_events` table and replay reads the database;
+token deltas are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Nothing is retained in the process, so
+cursors stay valid across restarts and across mains sharing one database.
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`
@@ -271,8 +268,8 @@ N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=BSA-xxx
 
 # With sandbox (n8n sandbox service)
-# CI can start it with:
-# pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
+# For local development, start it with:
+# pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
@@ -294,11 +291,6 @@ N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
 N8N_INSTANCE_AI_VERTEX_LOCATION=global
 N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
-
-# Legacy non-durable stream filtering — email with a custom placeholder
-N8N_INSTANCE_AI_DURABLE_LOG=false
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER=‹redacted›
 
 # Observational memory tuning
 N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000

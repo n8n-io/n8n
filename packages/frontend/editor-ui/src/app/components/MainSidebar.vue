@@ -110,7 +110,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -122,7 +122,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -162,7 +162,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'docs',
-				icon: 'book',
+				icon: 'book-open',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
 					href: EXTERNAL_LINKS.DOCUMENTATION,
@@ -171,7 +171,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'forum',
-				icon: 'users',
+				icon: 'book',
 				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
 				link: {
 					href: EXTERNAL_LINKS.FORUM,
@@ -184,6 +184,16 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
 				link: {
 					href: EXTERNAL_LINKS.COURSES,
+					target: '_blank',
+				},
+			},
+			{
+				id: 'contact-support',
+				icon: 'life-buoy',
+				label: i18n.baseText('mainSidebar.helpMenuItems.contactSupport'),
+				available: settingsStore.isCloudDeployment,
+				link: {
+					href: EXTERNAL_LINKS.SUPPORT,
 					target: '_blank',
 				},
 			},
@@ -207,14 +217,19 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'settings',
 		label: i18n.baseText('mainSidebar.settings'),
-		icon: 'settings',
+		icon: 'wrench',
 		available: true,
 		children: settingsItems.value,
 	},
 ]);
 
 const visibleMenuItems = computed<IMenuItem[]>(() =>
-	mainMenuItems.value.filter((item) => item.available !== false),
+	mainMenuItems.value
+		.filter((item) => item.available !== false)
+		.map((item) => ({
+			...item,
+			children: item.children?.filter((child) => child.available !== false),
+		})),
 );
 
 const checkOverflow = () => {
@@ -301,6 +316,7 @@ const handleSelect = (key: string) => {
 			void handleSettingsItemSelect(key);
 			break;
 		}
+		case 'contact-support':
 		case 'quickstart':
 		case 'docs':
 		case 'forum':
@@ -391,6 +407,8 @@ useKeybindings({
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;

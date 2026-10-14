@@ -6,12 +6,12 @@ describe('hashAgentSandboxPrincipal', () => {
 			[{ type: 'n8n-user', userId: 'user/123:raw' }, 'Gt4H3q6RzhJe9cTxQm6be0AdIZQlifuy3w9OPSykmYo'],
 			[
 				{
-					type: 'integration-user',
+					type: 'integration-thread',
 					connectionId: 'connection/raw:id',
 					platform: 'slack',
-					platformUserId: 'U/raw:123',
+					platformThreadId: 'U/raw:123',
 				},
-				'7Zqe0BHA0mDnH7Ci9p-Zy7W2uVPQhf_4h01KkKpHnlU',
+				'bF-c4xD_YB5olL855a3TQXsyS-TvX2aKdqrytb4k3Hg',
 			],
 			[
 				{ type: 'project-session', projectId: 'project|one', sessionId: 'session|two' },
@@ -35,19 +35,19 @@ describe('hashAgentSandboxPrincipal', () => {
 
 	it('does not collide when delimiter characters move between fields', () => {
 		const first = hashAgentSandboxPrincipal({
-			type: 'integration-user',
+			type: 'integration-thread',
 			connectionId: 'a',
 			platform: 'b|c',
-			platformUserId: 'd',
+			platformThreadId: 'd',
 		});
 		const second = hashAgentSandboxPrincipal({
-			type: 'integration-user',
+			type: 'integration-thread',
 			connectionId: 'a|b',
 			platform: 'c',
-			platformUserId: 'd',
+			platformThreadId: 'd',
 		});
 
-		expect(first).toBe('f1q_0RPATJAPJMFC_AVuRad38wcVRFv0MfTsU_k1K90');
-		expect(second).toBe('U1sl-BmMZxJ_coVScXBuMDpW3mI4oQZOUbi2-xYbn0c');
+		expect(first).toBe('2W2mWtU9wk1MhhyPLNO7HIcs1tpgCOlju4rzWDJM7sk');
+		expect(second).toBe('nGmrPnD4mkVX3tHZEqRSx76bnz4EtWGbrWUghMiUXro');
 	});
 });

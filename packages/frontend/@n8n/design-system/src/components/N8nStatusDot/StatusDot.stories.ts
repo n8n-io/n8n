@@ -43,7 +43,7 @@ export const Variants = {
 	render: () => ({
 		components: { N8nStatusDot },
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 16px; padding: 40px;">
+		<div style="display: flex; flex-direction: column; gap: 16px">
 			<div style="display: flex; align-items: center; gap: 8px;">
 				<N8nStatusDot variant="success" /> Success
 			</div>
@@ -62,7 +62,7 @@ export const Pulsing = {
 	render: () => ({
 		components: { N8nStatusDot },
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 16px; padding: 40px;">
+		<div style="display: flex; flex-direction: column; gap: 16px">
 			<div style="display: flex; align-items: center; gap: 8px;">
 				<N8nStatusDot variant="success" pulse /> Enabled
 			</div>

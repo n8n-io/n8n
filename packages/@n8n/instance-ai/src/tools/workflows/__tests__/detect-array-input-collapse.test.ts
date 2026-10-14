@@ -87,6 +87,14 @@ describe('detectArrayInputCollapse', () => {
 		expect(codes(workflow('https://example.com/list.json', js))).toEqual([]);
 	});
 
+	it('checks later assignments when the first value is not used as an array', () => {
+		const js =
+			'const first = $input.first().json;\nconst second = items[0].json;\nreturn second.slice(0, 3);';
+		expect(codes(workflow('https://example.test/list', js))).toEqual([
+			'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM',
+		]);
+	});
+
 	it('does NOT flag an array op on a sub-field of the first item (single-object response)', () => {
 		const js =
 			'const rows = $input.first().json.results.slice(0, 3);\nreturn rows.map(r => ({ json: r }));';

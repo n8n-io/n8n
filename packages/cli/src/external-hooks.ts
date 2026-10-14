@@ -1,4 +1,4 @@
-import type { FrontendSettings, UserUpdateRequestDto } from '@n8n/api-types';
+import type { FrontendSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
@@ -104,7 +104,7 @@ type ExternalHooksMap = {
 	'user.profile.beforeUpdate': [
 		userId: string,
 		currentEmail: string,
-		payload: UserUpdateRequestDto,
+		payload: { email?: string; firstName?: string; lastName?: string },
 	];
 	'user.profile.update': [currentEmail: string, publicUser: PublicUser];
 	'user.password.update': [updatedEmail: string, updatedPassword: string | null];

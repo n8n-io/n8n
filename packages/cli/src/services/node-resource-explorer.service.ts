@@ -15,7 +15,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -29,7 +29,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 const MAX_AVAILABILITY_PAGES = 5;
 
 /** Display name for the managed n8n Connect credential slot in explore-resources. */
-const N8N_CONNECT_DISPLAY_NAME = 'n8n credits';
+const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
 
 /**
  * Looks up dynamic resource locator and load-options values for a node on

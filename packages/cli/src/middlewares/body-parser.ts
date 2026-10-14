@@ -9,17 +9,19 @@ import { type Readable } from 'stream';
 import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
 
-const xmlParser = new XmlParser({
-	async: true,
-	normalize: true, // Trim whitespace inside text nodes
-	normalizeTags: true, // Transform tags to lowercase
-	explicitArray: false, // Only put properties in array if length > 1
-	tagNameProcessors: [sanitizeXmlName],
-	attrNameProcessors: [sanitizeXmlName],
-});
+// One parser per request: xml2js keeps parse state on the instance, and async
+// mode spreads large bodies over several ticks.
+const createXmlParser = () =>
+	new XmlParser({
+		async: true,
+		normalize: true, // Trim whitespace inside text nodes
+		normalizeTags: true, // Transform tags to lowercase
+		explicitArray: false, // Only put properties in array if length > 1
+		tagNameProcessors: [sanitizeXmlName],
+		attrNameProcessors: [sanitizeXmlName],
+	});
 
 const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
 
@@ -98,7 +100,7 @@ export const parseBody = async (req: Request) => {
 				req.body = jsonParse(stripBom(rawBody.toString(encoding)));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
+				req.body = await createXmlParser().parseStringPromise(rawBody.toString(encoding));
 			} else if (contentType === 'application/x-www-form-urlencoded') {
 				req.body = parseQueryString(stripBom(rawBody.toString(encoding)), undefined, undefined, {
 					maxKeys: 1000,

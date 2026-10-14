@@ -11,6 +11,7 @@ import {
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
+import { generateId } from '../../database/generate-id';
 import type { WorkflowGraph } from '../../graph';
 import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import {
@@ -19,6 +20,7 @@ import {
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
+import { noopExecutionResponseSender } from '../../response-channel';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -73,6 +75,7 @@ describe('execution start (integration)', () => {
 				stepQueue,
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
+				noopExecutionResponseSender,
 			),
 		);
 		worker.start();
@@ -96,7 +99,10 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
+			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
+			executionId: generateId(),
+			callerContext: { hostMode: 'trigger' },
 		});
 		await ready;
 
@@ -134,12 +140,17 @@ describe('execution start (integration)', () => {
 			noopLifecycleEventPublisher,
 		);
 
-		const { id: executionId } = await executionStore.createExecution({
+		const executionId = generateId();
+		await executionStore.createExecution({
+			id: executionId,
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
+			workflow: {},
 			triggerOutputs: null,
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

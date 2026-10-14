@@ -1,29 +1,78 @@
+import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { BooleanLicenseFeature } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
+import type {
+	AccessScope,
+	ApiKeyScopeRequirement,
+	Controller,
+	DeprecationInfo,
+	RequestBodyMedia,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
+import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
+import { assertContentType } from '@/public-api/media-types/content-type';
+import { sendBinaryResponse } from '@/public-api/media-types/binary-response';
+import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { assertJsonContentType } from '@/public-api/public-api-media-type';
+import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
+import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
-	isDtoArg,
+	findBodyArg,
+	findValidatedParamArgs,
 	isRequestBodyRequired,
+	resolvePublicApiRoutes,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
-import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
+
+function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
+	const output = z.object({ [key]: schema }).safeParse(params);
+
+	if (!output.success) {
+		throw new BadRequestError(formatValidationError('params', output.error));
+	}
+
+	return output.data[key];
+}
+
+/**
+ * Whether an Express route template (`/widgets/:widgetId`) matches a request path. A `:param`
+ * segment matches any single segment. Any other segment must be equal.
+ */
+function matchesPathTemplate(template: string, path: string): boolean {
+	const templateSegments = template.split('/');
+	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
+		'/',
+	);
+	return (
+		templateSegments.length === pathSegments.length &&
+		templateSegments.every(
+			(segment, i) =>
+				segment.startsWith(':') || segment.toLowerCase() === pathSegments[i].toLowerCase(),
+		)
+	);
+}
+
+// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
+function routePath(prefix: string, req: Request): string {
+	const path = (prefix === '/' ? '' : prefix) + req.path;
+	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -35,10 +84,56 @@ export class PublicApiControllerRegistry {
 	) {}
 
 	activate(router: Router, apiVersion: string) {
+		const methodsByTemplate = new Map<string, string[]>();
+		for (const route of resolvePublicApiRoutes()) {
+			const methods = methodsByTemplate.get(route.path) ?? [];
+			methods.push(route.method.toUpperCase());
+			methodsByTemplate.set(route.path, methods);
+		}
+
+		// A URL can match several templates, for example `/:id/archive` and `/:id/:versionId`.
+		// Allow lists the methods of every template that matches this URL.
+		const allowedMethodsFor = (path: string): string[] => {
+			const allowed = new Set<string>();
+			for (const [template, methods] of methodsByTemplate) {
+				if (!matchesPathTemplate(template, path)) {
+					continue;
+				}
+				for (const method of methods) {
+					allowed.add(method);
+				}
+			}
+			return [...allowed];
+		};
+
+		// HEAD is not supported. Express would otherwise run the GET handler for it.
+		router.use((req, res, next) => {
+			if (req.method !== 'HEAD') {
+				return next();
+			}
+
+			const allowed = allowedMethodsFor(req.path);
+			if (allowed.length === 0) {
+				return next();
+			}
+
+			res.set('Allow', allowed.join(', '));
+			res.status(405).json({ message: 'HEAD method not allowed' });
+		});
+
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (!metadata.isPublicApi) continue;
 			this.activateController(router, controllerClass, apiVersion);
+		}
+
+		// A known path with a method no controller serves.
+		// Registered after every controller, so it only runs when no route matched.
+		for (const path of methodsByTemplate.keys()) {
+			router.all(path, (req, res) => {
+				res.set('Allow', allowedMethodsFor(req.path).join(', '));
+				res.status(405).json({ message: `${req.method} method not allowed` });
+			});
 		}
 	}
 
@@ -62,50 +157,76 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
-			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
-			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+			const bodyArg = findBodyArg(resolvedArgs);
+			const bodyRequired = bodyArg
+				? (bodyArg.required ?? isRequestBodyRequired(bodyArg.dto))
+				: false;
 
 			const handler = async (req: Request, res: Response) => {
-				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
-
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
-						args.push(req.params[arg.key]);
-					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
-						if (output.success) {
-							args.push(output.data);
-						} else {
-							throw new BadRequestError(formatValidationError(arg.type, output.error));
-						}
+						args.push(
+							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
+						);
+						continue;
 					}
+
+					const isBodyArg = arg.type === 'body' && bodyArg;
+					const input = isBodyArg ? bodyArg.handler.readInput(req) : req[arg.type];
+
+					const output = arg.dto.safeParse(input);
+					if (output.success) {
+						args.push(output.data);
+					} else {
+						const message = isBodyArg
+							? bodyArg.handler.formatValidationError(output.error)
+							: formatValidationError(arg.type, output.error);
+						throw new BadRequestError(message);
+					}
+				}
+
+				if (route.binaryResponse) {
+					const result = await controller[handlerName](...args);
+					await sendBinaryResponse(
+						res,
+						route.binaryResponse,
+						successStatus,
+						`${controllerClass.name}.${handlerName}`,
+						result,
+					);
+					return;
 				}
 
 				const result = await controller[handlerName](...args);
 
 				if (res.headersSent) return;
 
-				if (successStatus === 204) {
-					res.status(204).send();
+				if (successStatus === 204 || (!route.responseDto && result === undefined)) {
+					res.status(successStatus).send();
 					return;
 				}
 
-				if (route.responseDto) {
-					res.status(successStatus).json(route.responseDto.parse(result));
-					return;
-				}
-
-				res.status(successStatus).json(result);
+				res
+					.status(successStatus)
+					.json(route.responseDto ? route.responseDto.parse(result) : result);
 			};
 
 			const middlewares: RequestHandler[] = [];
 
 			if (route.deprecated) {
-				middlewares.push(deprecated(route.deprecated));
+				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion));
+			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
+
+			// Path param validation must run before the scope checks, so that a malformed param always
+			// returns 400, rather than 404 or 403 depending on the caller's access.
+			const paramArgs = findValidatedParamArgs(resolvedArgs);
+
+			if (paramArgs.length) {
+				middlewares.push(this.createPathParamMiddleware(paramArgs));
+			}
 
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
@@ -117,6 +238,15 @@ export class PublicApiControllerRegistry {
 
 			if (route.licenseFeature) {
 				middlewares.push(this.createLicenseMiddleware(route.licenseFeature));
+			}
+
+			if (route.requiresUserQuota) {
+				middlewares.push(this.createUserQuotaMiddleware());
+			}
+
+			// After every access gate, the body's Content-Type is checked and then parsed.
+			if (bodyArg) {
+				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
@@ -140,7 +270,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
 			const authenticated = await this.authStrategyRegistry.authenticate(
 				req as AuthenticatedRequest,
@@ -156,13 +286,26 @@ export class PublicApiControllerRegistry {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.eventService.emit('public-api-invoked', {
 					userId,
-					path: req.path,
+					path: routePath(prefix, req),
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
 				});
 			}
 
+			next();
+		};
+	}
+
+	/**
+	 * Sets the RFC 9745 `Deprecation` header. The wire format (`@<unix-seconds>`) is built here, so
+	 * call sites pass a `Date`. `since` is fixed per route, so the header is the same on every request.
+	 */
+	private createDeprecationMiddleware({ since }: DeprecationInfo): RequestHandler {
+		const deprecation = `@${Math.floor(since.getTime() / 1000)}`;
+
+		return (_req, res, next) => {
+			res.setHeader('Deprecation', deprecation);
 			next();
 		};
 	}
@@ -184,6 +327,73 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (!Container.get(License).isLicensed(feature)) {
 				res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createUserQuotaMiddleware(): RequestHandler {
+		return (_req, res, next) => {
+			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
+				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createBodyMiddleware(
+		media: RequestBodyMedia,
+		bodyRequired: boolean,
+		handler: RequestBodyHandler,
+	): RequestHandler {
+		return async (req, res, next) => {
+			let matched: boolean;
+			try {
+				matched = assertContentType({
+					header: req.headers['content-type'],
+					expected: media.mediaType,
+					bodyRequired,
+				});
+			} catch (error) {
+				sendPublicApiErrorResponse(
+					res,
+					error instanceof UnsupportedMediaTypeError ? error : new Error(String(error)),
+				);
+				return;
+			}
+
+			if (!matched || !handler.parseBody) {
+				next();
+				return;
+			}
+
+			try {
+				await handler.parseBody(media, req, res);
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
+				return;
+			}
+
+			next();
+		};
+	}
+
+	/**
+	 * Rejects a path param that breaks its `@Param` schema, ahead of the scope middlewares. The
+	 * handler parses the params again to bind its arguments; by then they are known to be valid.
+	 */
+	private createPathParamMiddleware(args: ValidatedParamArg[]): RequestHandler {
+		return (req, res, next) => {
+			try {
+				for (const { key, schema } of args) {
+					parsePathParam(key, schema, req.params);
+				}
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
 

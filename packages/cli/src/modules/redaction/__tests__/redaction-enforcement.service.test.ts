@@ -2,7 +2,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@n8n/errors';
 
 import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 import { RedactionEnforcementService } from '../redaction-enforcement.service';

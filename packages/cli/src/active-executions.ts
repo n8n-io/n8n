@@ -1,9 +1,13 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
@@ -12,7 +16,11 @@ import type {
 	StructuredChunk,
 	WebhookResponseMode,
 } from 'n8n-workflow';
-import { ExecutionCancelledError, SystemShutdownExecutionCancelledError } from 'n8n-workflow';
+import {
+	ExecutionCancelledError,
+	OperationalError,
+	SystemShutdownExecutionCancelledError,
+} from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
@@ -30,7 +38,8 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import { EventService } from './events/event.service';
+
+const DEFAULT_CANCEL_WRITE_TIMEOUT_MS = 3 * Time.seconds.toMilliseconds;
 
 @Service()
 export class ActiveExecutions {
@@ -51,6 +60,7 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	has(executionId: string) {
@@ -188,8 +198,14 @@ export class ActiveExecutions {
 	 * Attaches an execution
 	 */
 
-	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
+	attachWorkflowExecution(
+		executionId: string,
+		workflowExecution: PCancelable<IRun>,
+		options?: { isQueueJob?: boolean },
+	) {
+		const execution = this.getExecutionOrFail(executionId);
+		execution.workflowExecution = workflowExecution;
+		execution.isQueueJob = options?.isQueueJob;
 	}
 
 	attachResponsePromise(
@@ -311,6 +327,73 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
+	getRunningExecutionIds(): string[] {
+		// An enqueued execution runs as a Bull job, which the queue drain tracks, so this only returns executions this process runs outside the queue.
+		return Object.keys(this.activeExecutions).filter(
+			(executionId) =>
+				this.activeExecutions[executionId].status === 'running' &&
+				!this.activeExecutions[executionId].isQueueJob,
+		);
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return {
+			executions: Object.keys(this.activeExecutions).length,
+			responseModes: this.responseModes.size,
+		};
+	}
+
+	/**
+	 * @param writeDeadlineMs - How long to wait for the cancelled status to be recorded.
+	 *   Pass what the caller's own shutdown window can still afford.
+	 */
+	async cancelRunningExecutions(
+		writeDeadlineMs = DEFAULT_CANCEL_WRITE_TIMEOUT_MS,
+	): Promise<string[]> {
+		// An execution is registered before its workflow execution is attached. To
+		// cancel inside that window records the execution as failed, not cancelled.
+		const executionIds = this.getRunningExecutionIds().filter(
+			(executionId) => this.activeExecutions[executionId].workflowExecution !== undefined,
+		);
+
+		if (executionIds.length === 0) return executionIds;
+
+		// The engine's own write for a cancel is fire-and-forget and conditional on the
+		// execution not being canceled, so recording first makes it a no-op, not a race.
+		await this.recordAsCancelled(executionIds, writeDeadlineMs);
+
+		for (const executionId of executionIds) {
+			this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
+		}
+
+		return executionIds;
+	}
+
+	/** Record executions as cancelled, bounded so a stalling database cannot hold up shutdown. */
+	private async recordAsCancelled(executionIds: string[], writeDeadlineMs: number) {
+		let timeout: NodeJS.Timeout | undefined;
+
+		try {
+			await Promise.race([
+				this.executionRepository.cancelManyRunning(executionIds),
+				new Promise<never>((_, reject) => {
+					timeout = setTimeout(
+						() => reject(new OperationalError('Timed out writing the cancelled status')),
+						writeDeadlineMs,
+					);
+				}),
+			]);
+		} catch (error) {
+			this.logger.error(
+				`Failed to record ${executionIds.length} cancelled executions: ${ensureError(error).message}`,
+				{ executionIds },
+			);
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+
 	setStatus(executionId: string, status: ExecutionStatus) {
 		this.getExecutionOrFail(executionId).status = status;
 	}
@@ -336,15 +419,16 @@ export class ActiveExecutions {
 			this.concurrencyControl.disable();
 		}
 
+		const isWorker = this.instanceSettings.instanceType === 'worker';
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { status } = this.activeExecutions[executionId];
+			const { status, isQueueJob } = this.activeExecutions[executionId];
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
-			} else if (status === 'waiting' || status === 'new') {
-				// Remove waiting and new executions to not block shutdown
+			} else if (status === 'waiting' || status === 'new' || (isWorker && isQueueJob)) {
+				// Remove waiting, new and, on a worker, enqueued executions: these run as Bull jobs that this draining worker never picks up
 				delete this.activeExecutions[executionId];
 			}
 		}
@@ -359,6 +443,11 @@ export class ActiveExecutions {
 			}
 
 			await sleep(500);
+			if (isWorker) {
+				for (const [executionId, { isQueueJob }] of Object.entries(this.activeExecutions)) {
+					if (isQueueJob) delete this.activeExecutions[executionId];
+				}
+			}
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}

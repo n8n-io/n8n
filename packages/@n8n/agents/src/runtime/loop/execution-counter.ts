@@ -51,9 +51,5 @@ export function incrementTokenCountFromUsage(
 		usage.totalTokens ?? usage.tokens ?? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
 	if (tokenCount <= 0) return;
 
-	try {
-		counter.incrementTokenCount(tokenCount);
-	} catch {
-		// Aggregate counters are best-effort and must never affect agent execution.
-	}
+	recordExecutionCounter(() => counter.incrementTokenCount(tokenCount));
 }

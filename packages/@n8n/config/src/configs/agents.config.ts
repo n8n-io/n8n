@@ -34,6 +34,9 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 
 @Config
 export class AgentsConfig {
+	@Env('N8N_AGENTS_PLAN_TOOLS_ENABLED')
+	planToolsEnabled: boolean = false;
+
 	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
@@ -71,6 +74,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
+	/**
+	 * Enable durable background jobs for agents: spawning sub-agents that outlive
+	 * the parent's turn, and detached tracking of waiting workflow tools. Must be
+	 * set to the same value on mains and workers — workers settle workflow jobs.
+	 */
+	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
+	backgroundTasksEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
@@ -90,7 +101,7 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
-	/** When true, Daytona deletes the knowledge sandbox when it stops. */
+	/** When true, the sandbox provider deletes the knowledge sandbox once it goes idle. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
 
@@ -102,4 +113,12 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
 	channelReconcileIntervalSeconds: number = 60;
+
+	/**
+	 * For testing only. Lets the WhatsApp setup accept a short-lived access token,
+	 * like the one on the API Setup page in Meta. A channel that uses one stops
+	 * working when the token expires, about a day later.
+	 */
+	@Env('N8N_AGENTS_WHATSAPP_ALLOW_TEMPORARY_TOKEN')
+	whatsAppAllowTemporaryToken: boolean = false;
 }

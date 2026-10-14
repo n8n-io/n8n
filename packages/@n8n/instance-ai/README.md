@@ -1,6 +1,6 @@
 # @n8n/instance-ai
 
-Instance AI is the agent runtime behind the AI assistant experience in n8n. It
+Instance AI is the agent runtime behind the n8n Assistant experience in n8n. It
 lets users ask for help with workflows, executions, credentials, nodes, and
 workflow building from inside an n8n instance.
 
@@ -14,8 +14,7 @@ database entities, settings, and n8n service adapters live in
 Instance AI is built around a deep-agent loop:
 
 - An orchestrator agent receives the user's request and maintains the plan.
-- Most work runs in the orchestrator. Eval setup uses a focused background agent.
-- Eval data preparation runs synchronously in the orchestrator.
+- Evaluation setup runs in the orchestrator through the config-evals skill.
 - Domain tools read and update n8n resources through backend adapters.
 - Observational memory condenses long conversations.
 - Workflow building runs in a sandbox workspace, validates generated TypeScript,

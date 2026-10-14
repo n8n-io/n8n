@@ -16,6 +16,7 @@ import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.e
 import { TaskRequesterAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-requester-accept-timeout.error';
 import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
+import { TaskRunnerShutdownTimeoutError } from '@/task-runners/task-broker/errors/task-runner-shutdown-timeout.error';
 import { TaskRunnerUnreachableError } from '@/task-runners/task-broker/errors/task-runner-unreachable.error';
 import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -32,6 +33,8 @@ export interface Task {
 	requesterId: string;
 	taskType: string;
 	timeout?: NodeJS.Timeout;
+	/** Epoch ms when `timeout` fires. Lets the shutdown cap skip timers already due sooner. */
+	timesOutAt?: number;
 }
 
 export interface TaskOffer {
@@ -98,6 +101,9 @@ export class TaskBroker {
 	 */
 	private isDraining = false;
 
+	/** Epoch ms by which every task and task-request timeout must fire once shutdown has begun. */
+	private shutdownDeadline?: number;
+
 	private runnerAcceptRejects: Map<
 		Task['id'],
 		{ accept: RunnerAcceptCallback; reject: TaskRejectCallback; runnerId: TaskRunner['id'] }
@@ -120,6 +126,9 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
+	/** Epoch ms when each request timeout fires, keyed by its handle so a due time always matches the live timer. */
+	private requestTimesOutAt = new WeakMap<NodeJS.Timeout, number>();
+
 	/** Request IDs that have already logged a task-type mismatch warning */
 	private mismatchWarned = new Set<string>();
 
@@ -141,9 +150,18 @@ export class TaskBroker {
 	}
 
 	private createRequestTimeout(requestId: string): NodeJS.Timeout {
-		return setTimeout(() => {
-			this.handleRequestTimeout(requestId);
-		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+		const now = Date.now();
+		const requestTimeoutMs =
+			this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds;
+		const timesOutAt = Math.min(now + requestTimeoutMs, this.shutdownDeadline ?? Infinity);
+		const timeout = setTimeout(
+			() => {
+				this.handleRequestTimeout(requestId);
+			},
+			Math.max(timesOutAt - now, 0),
+		);
+		this.requestTimesOutAt.set(timeout, timesOutAt);
+		return timeout;
 	}
 
 	/**
@@ -594,9 +612,11 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
+		const taskTimeoutMs = this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds;
+		task.timesOutAt = Math.min(Date.now() + taskTimeoutMs, this.shutdownDeadline ?? Infinity);
 		task.timeout = setTimeout(async () => {
 			await this.handleTaskTimeout(taskId);
-		}, this.taskRunnersConfig.taskTimeout * Time.seconds.toMilliseconds);
+		}, task.timesOutAt - Date.now());
 
 		await this.messageRunner(runner.id, {
 			type: 'broker:tasksettings',
@@ -609,15 +629,24 @@ export class TaskBroker {
 		const task = this.tasks.get(taskId);
 		if (!task) return;
 
+		// A capped timer fires at the shutdown deadline, not the task's own timeout.
+		const isCappedByShutdown =
+			this.shutdownDeadline !== undefined && task.timesOutAt === this.shutdownDeadline;
+
 		if (this.taskRunnersConfig.mode === 'internal') {
-			this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
-				runnerId: task.runnerId,
-			});
+			// Don't restart a runner that shutdown is about to stop anyway.
+			if (this.shutdownDeadline === undefined) {
+				this.taskRunnerLifecycleEvents.emit('runner:timed-out-during-task', {
+					runnerId: task.runnerId,
+				});
+			}
 		} else if (this.taskRunnersConfig.mode === 'external') {
 			await this.messageRunner(task.runnerId, {
 				type: 'broker:taskcancel',
 				taskId,
-				reason: 'Task execution timed out',
+				reason: isCappedByShutdown
+					? 'Task aborted because this n8n instance is shutting down'
+					: 'Task execution timed out',
 			});
 		}
 
@@ -625,11 +654,13 @@ export class TaskBroker {
 
 		await this.taskErrorHandler(
 			taskId,
-			new TaskRunnerExecutionTimeoutError({
-				taskTimeout,
-				isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
-				mode,
-			}),
+			isCappedByShutdown
+				? new TaskRunnerShutdownTimeoutError()
+				: new TaskRunnerExecutionTimeoutError({
+						taskTimeout,
+						isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+						mode,
+					}),
 		);
 	}
 
@@ -744,9 +775,7 @@ export class TaskBroker {
 			const acceptPromise = new Promise<RequesterMessage.ToBroker.TaskSettings['settings']>(
 				(resolve, reject) => {
 					this.requesterAcceptRejects.set(taskId, {
-						accept: resolve as (
-							settings: RequesterMessage.ToBroker.TaskSettings['settings'],
-						) => void,
+						accept: resolve,
 						reject,
 					});
 
@@ -977,6 +1006,52 @@ export class TaskBroker {
 
 	hasActiveTasks() {
 		return this.tasks.size > 0;
+	}
+
+	/**
+	 * Caps every task and pending task-request timeout, current and future, to fire no
+	 * later than `deadline`, without extending timers already due sooner. A task or
+	 * request that fails inside the shutdown window lets its error propagate normally
+	 * and the worker drain complete.
+	 */
+	capTaskTimeoutsForShutdown(deadline: number) {
+		this.shutdownDeadline = deadline;
+
+		const cappedTaskIds: Array<Task['id']> = [];
+
+		for (const [taskId, task] of this.tasks) {
+			if (!task.timeout) continue;
+			if (task.timesOutAt !== undefined && task.timesOutAt <= deadline) continue;
+
+			clearTimeout(task.timeout);
+			task.timesOutAt = deadline;
+			task.timeout = setTimeout(
+				async () => {
+					await this.handleTaskTimeout(taskId);
+				},
+				Math.max(deadline - Date.now(), 0),
+			);
+			cappedTaskIds.push(taskId);
+		}
+
+		this.capRequestTimeoutsForShutdown(deadline);
+
+		if (cappedTaskIds.length > 0) {
+			this.logger.info(
+				`Capped ${cappedTaskIds.length} in-flight task timeout(s) to fit the shutdown window (task IDs: ${cappedTaskIds.join(', ')})`,
+			);
+		}
+	}
+
+	private capRequestTimeoutsForShutdown(deadline: number) {
+		for (const request of this.pendingTaskRequests) {
+			if (!request.timeout) continue;
+			const timesOutAt = this.requestTimesOutAt.get(request.timeout);
+			if (timesOutAt !== undefined && timesOutAt <= deadline) continue;
+
+			clearTimeout(request.timeout);
+			request.timeout = this.createRequestTimeout(request.requestId);
+		}
 	}
 
 	/**

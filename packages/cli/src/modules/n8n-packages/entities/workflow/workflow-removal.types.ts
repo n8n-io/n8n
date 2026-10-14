@@ -2,12 +2,14 @@ import type { WorkflowPlanItem } from './workflow-import.types';
 import type {
 	FolderConflictPolicy,
 	OverwriteDeletionPolicy,
+	PackageImportSource,
 	WorkflowRemovalFailure,
+	WorkflowRemovalConflict,
 } from '../../n8n-packages.types';
 
 /** What the package accounts for in one project scope, against which the target is reconciled. */
 export interface WorkflowRemovalRequest {
-	/** Decides whether reconciliation applies at all; only `overwrite` removes anything. */
+	/** Only `overwrite` removes workflows omitted from the package. */
 	folderConflictPolicy: FolderConflictPolicy;
 	deletionPolicy: OverwriteDeletionPolicy;
 	/** The decided plan for the package's own workflows; their target ids are retained. */
@@ -18,6 +20,13 @@ export interface WorkflowRemovalRequest {
 	subWorkflowRequirementIds?: string[];
 	/** The project does not exist yet, so it holds nothing to reconcile against. */
 	projectPendingCreation?: boolean;
+	/** Git pulls reconcile all folders; package imports preserve folders they do not represent. */
+	importSource?: PackageImportSource;
+	/**
+	 * A non-empty list limits removal to these destination workflow IDs, regardless of the folder
+	 * conflict policy. An empty list uses the normal reconciliation rules.
+	 */
+	explicitDeleteIds?: string[];
 }
 
 /** A workflow on the target that the package does not account for. */
@@ -30,6 +39,7 @@ export interface RemovableWorkflow {
 export interface WorkflowRemovalPlan {
 	removals: RemovableWorkflow[];
 	failures: WorkflowRemovalFailure[];
+	conflicts: WorkflowRemovalConflict[];
 	deletionPolicy: OverwriteDeletionPolicy;
 	/**
 	 * Folders still holding a workflow once the removals above are done, so folder reconciliation

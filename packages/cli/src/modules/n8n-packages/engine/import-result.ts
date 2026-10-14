@@ -11,6 +11,7 @@ import type {
 	RemovedWorkflowSummary,
 	ImportBindingMap,
 	ImportCredentialSummary,
+	ImportDataTableSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
@@ -21,7 +22,10 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '../spec/requirements.schema';
 
 export function toPackageSummary(manifest: PackageManifest): ImportPackageSummary {
 	return {
@@ -53,6 +57,7 @@ export function toImportedWorkflowSummaries(
 			projectId,
 			parentFolderId: current.parentFolder?.id ?? null,
 			activeVersionId: current.activeVersionId ?? null,
+			isArchived: current.isArchived,
 			publishing: result?.publishing ?? { state: 'unchanged' },
 			status,
 		};
@@ -68,6 +73,7 @@ export function buildImportResult(input: {
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }): ImportResult {
@@ -80,6 +86,7 @@ export function buildImportResult(input: {
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials,
+		dataTables: input.dataTables,
 		variables: input.variables,
 		tags: input.tags,
 	};
@@ -157,9 +164,9 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
 }
 
 /**
- * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
+ * Keep only requirements and consumers for the imported workflows.
  */
-export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
+export function identifyRequirements<T extends { usedBy: PackageRequirementConsumer[] }>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],
 ): T[] | undefined {
@@ -169,9 +176,11 @@ export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
 	return requirements
 		.map((requirement) => ({
 			...requirement,
-			usedByWorkflows: requirement.usedByWorkflows.filter((id) => importedIds.has(id)),
+			usedBy: requirement.usedBy.filter(
+				({ kind, id }) => kind === 'workflow' && importedIds.has(id),
+			),
 		}))
-		.filter((requirement) => requirement.usedByWorkflows.length > 0);
+		.filter((requirement) => requirement.usedBy.length > 0);
 }
 
 /**

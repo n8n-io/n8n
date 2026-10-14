@@ -6,12 +6,13 @@ on:
     - cron: '0 0 * * 1'
   workflow_dispatch: # Allow manual trigger for testing
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   update-popularity:
+    permissions:
+      contents: write
+      pull-requests: write
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n')
@@ -27,7 +28,7 @@ jobs:
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.generate-token.outputs.token }}
 
@@ -79,6 +80,9 @@ jobs:
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
 
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     needs: [update-popularity]
     if: |
       needs.update-popularity.outputs.pull-request-number != '' &&

@@ -4,27 +4,34 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useToast } from '@n8n/composables/useToast';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useAgentsListEmptyStateTemplatesExperiment } from '@/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment';
 import {
+	duplicateAgent,
 	listAgentsPage,
 	listAgentsPageGlobal,
 	type ListAgentsSortBy,
 } from '../composables/useAgentApi';
+import { upsertProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useCreateAgent } from '../composables/useCreateAgent';
+import type { AgentTemplate } from '../agentTemplates';
 import type { AgentResource } from '../types';
-import { AGENT_BUILDER_VIEW, AGENT_PREVIEW_VIEW, NEW_SESSION_PARAM } from '../constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
+import AgentsListIntro from '../components/AgentsListIntro.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
 function isAgentResource(value: unknown): value is AgentResource {
@@ -47,8 +54,17 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
+const uiStore = useUIStore();
+const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
+const { isFeatureEnabled: templatesExperimentEnabled } =
+	useAgentsListEmptyStateTemplatesExperiment();
+const instanceAiReady = useInstanceAiReady();
+const showTemplatesIntro = computed(
+	() => templatesExperimentEnabled.value && instanceAiReady.value,
+);
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
@@ -114,9 +130,62 @@ function onSelectAgent(agentId: string, agentProjectId: string) {
 
 function onNewAgentChat(agentId: string, agentProjectId: string) {
 	void router.push({
-		name: AGENT_PREVIEW_VIEW,
+		name: AGENT_BUILDER_VIEW,
 		params: { projectId: agentProjectId, agentId },
 		query: { [NEW_SESSION_PARAM]: 'true' },
+	});
+}
+
+function onAgentDuplicate(agentId: string) {
+	const agent = allAgents.value.find((a) => a.id === agentId);
+	if (!agent) return;
+	// An unconfigured agent has no config to clone — duplicating it would only
+	// yield an empty draft, so inform the user instead of opening the modal.
+	if (!agent.schema) {
+		toast.showMessage({
+			title: locale.baseText('agents.duplicate.modal.unconfigured'),
+			type: 'info',
+		});
+		return;
+	}
+	uiStore.openModalWithData({
+		name: AGENT_DUPLICATE_MODAL_KEY,
+		data: {
+			projectId: agent.projectId,
+			agentId: agent.id,
+			name: agent.name,
+			existingNames: allAgents.value.map((a) => a.name),
+			onConfirm: async (newName: string) => {
+				try {
+					const duplicated = await duplicateAgent(
+						rootStore.restApiContext,
+						agent.projectId,
+						agent.id,
+						newName,
+					);
+					// A duplicate is born configured, so the backend creation events
+					// never fire for it (its first edit reports a modification).
+					// Track the duplicate directly, mirroring "User duplicated
+					// workflow" — the source agent id distinguishes it from an
+					// organic creation. Routed through the safe wrapper so a
+					// telemetry failure can't misreport a successful duplicate.
+					agentTelemetry.trackDuplicatedAgent({
+						sourceAgentId: agent.id,
+						agentId: duplicated.id,
+						projectId: agent.projectId,
+					});
+					upsertProjectAgentsListCache(agent.projectId, duplicated);
+					toast.showMessage({
+						title: locale.baseText('agents.duplicate.modal.success'),
+						type: 'success',
+					});
+					onSelectAgent(duplicated.id, agent.projectId);
+				} catch (error) {
+					toast.showError(error, locale.baseText('agents.duplicate.modal.error'));
+					throw error;
+				}
+			},
+		},
 	});
 }
 
@@ -171,11 +240,27 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 	}
 }
 
+function targetProjectIdForCreate() {
+	return projectId.value ?? projectsStore.personalProject?.id ?? '';
+}
+
 function onCreateAgentClick() {
-	const agentId = generateNanoId();
-	agentTelemetry.trackClickedNewAgent('button', agentId);
-	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
-	void router.push(instanceAiCreateAgentRoute(targetProjectId, agentId));
+	createAgent('button', targetProjectIdForCreate());
+}
+
+function onCreateBlank() {
+	createAgent('empty_state_blank', targetProjectIdForCreate());
+}
+
+function onCreateFromPrompt(text: string) {
+	createAgent('empty_state_prompt', targetProjectIdForCreate(), { kind: 'prompt', text });
+}
+
+function onCreateFromTemplate(template: AgentTemplate) {
+	createAgent('empty_state_template', targetProjectIdForCreate(), {
+		kind: 'template',
+		templateId: template.id,
+	});
 }
 
 onMounted(async () => {
@@ -218,7 +303,15 @@ onMounted(async () => {
 		</template>
 
 		<template #empty>
+			<AgentsListIntro
+				v-if="showTemplatesIntro"
+				:disabled="!canCreateAgent"
+				@create-blank="onCreateBlank"
+				@submit="onCreateFromPrompt"
+				@select="onCreateFromTemplate"
+			/>
 			<ResourcesListEmptyState
+				v-else
 				resource-key="agents"
 				:button-disabled="!canCreateAgent"
 				@click:button="onCreateAgentClick"
@@ -236,6 +329,7 @@ onMounted(async () => {
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"
+				@duplicate="onAgentDuplicate"
 			/>
 		</template>
 	</ResourcesListLayout>

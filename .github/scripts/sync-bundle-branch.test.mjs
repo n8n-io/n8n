@@ -3,13 +3,14 @@ import { test } from 'node:test';
 
 import { annotation, syncBundleBranch } from './sync-bundle-branch.mjs';
 
-// A git stub: routes calls by a matcher, records every invocation.
+// A git stub: routes calls by a matcher, records every invocation. Route results also receive
+// the calls so far, which is how FETCH_HEAD is modelled — see `fetchHead`.
 function makeStub(routes = []) {
 	const calls = [];
 	const fn = (args) => {
 		calls.push(args);
 		for (const [match, result] of routes) {
-			if (match(args)) return typeof result === 'function' ? result(args) : result;
+			if (match(args)) return typeof result === 'function' ? result(args, calls) : result;
 		}
 		return '';
 	};
@@ -27,9 +28,12 @@ const fail =
 	};
 
 const PRE_HEAD = 'PREHEAD';
-const BASE = 'BASESHA';
+const PUBLIC = 'PUBLICSHA';
 const MERGE_TREE = 'MERGETREEOID';
 const REMOTE = 'https://x-access-token:tok@github.com/n8n-io/n8n-private.git';
+// Spelled out rather than imported: a duplicated literal is what makes the "the private token
+// never reaches the public repo" assertion below a real one.
+const PUBLIC_REMOTE = 'https://github.com/n8n-io/n8n.git';
 
 const env = {
 	BUNDLE_BRANCH: 'bundle/2.x',
@@ -46,14 +50,23 @@ const isPush = (a) => a[0] === 'push';
 const conflictedMergeTree = (...paths) =>
 	fail(`${MERGE_TREE}\n${paths.join('\n')}\n\nCONFLICT (content): Merge conflict in ${paths[0]}`);
 
-// Routes shared by every path: base fetched, the bundle branch hasn't absorbed it yet, the
-// merge tree is computable, and the merge lands on exactly that tree. git grep exits
-// non-zero => no markers.
+// FETCH_HEAD is one slot holding whatever the last fetch brought down, so the stub has to answer
+// by looking back at that fetch.
+const fetchHead = (_args, calls) => {
+	const [, url, ref] = [...calls].reverse().find((a) => a[0] === 'fetch') ?? [];
+	if (url === PUBLIC_REMOTE) return PUBLIC;
+	if (ref?.startsWith('bundle/')) return PRE_HEAD;
+	return '';
+};
+
+// Routes shared by every path: the bundle branch has not absorbed the public base yet, the
+// merge tree is computable, and the merge lands on exactly that tree. git grep exits non-zero
+// => no markers.
 const baseGitRoutes = [
 	[(a) => a[0] === 'ls-remote', `${PRE_HEAD}\trefs/heads/bundle/2.x`],
-	[(a) => a[0] === 'rev-parse' && a[1] === 'FETCH_HEAD', BASE],
+	[(a) => a[0] === 'rev-parse' && a[1] === 'FETCH_HEAD', fetchHead],
 	[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD', PRE_HEAD],
-	[(a) => a[0] === 'merge-base', fail()],
+	[(a) => a[0] === 'merge-base' && a[3] === PRE_HEAD, fail()],
 	[(a) => a[0] === 'merge-tree', MERGE_TREE],
 	[(a) => a[0] === 'rev-parse' && a[1] === 'HEAD^{tree}', MERGE_TREE],
 	[(a) => a[0] === 'grep', fail()],
@@ -83,21 +96,45 @@ test('a clean sync merges the base in and pushes without forcing', () => {
 		'--no-edit',
 		'-m',
 		'Merge master into bundle/2.x',
-		BASE,
+		PUBLIC,
 	]);
 	// No lease and no --force: the branch is append-only, so a non-fast-forward must be
 	// refused by git rather than resolved by overwriting whatever landed.
 	assert.deepEqual(git.calls.find(isPush), ['push', REMOTE, 'HEAD:refs/heads/bundle/2.x']);
 });
 
-test('both fetches are authenticated — the private repo rejects an anonymous origin fetch', () => {
+test('the bundle fetch is authenticated and the public base fetch is not', () => {
 	const git = makeStub(baseGitRoutes);
 	syncBundleBranch({ git, env, log: silent });
 
+	// The private repo rejects an anonymous fetch; the public repo needs no credential.
 	assert.deepEqual(
 		git.calls.filter((a) => a[0] === 'fetch'),
 		[
-			['fetch', REMOTE, 'master'],
+			['fetch', PUBLIC_REMOTE, 'master'],
+			['fetch', REMOTE, 'bundle/2.x'],
+		],
+	);
+
+	// The token is scoped to the private repo, so it must never be sent to the public one.
+	assert.equal(
+		git.calls.some((a) =>
+			a.some((arg) => String(arg).includes('x-access-token') && String(arg).includes('/n8n.git')),
+		),
+		false,
+	);
+});
+
+test('the public tip is read straight after its own fetch', () => {
+	const git = makeStub(baseGitRoutes);
+	syncBundleBranch({ git, env, log: silent });
+
+	// Separating a fetch from the read that consumes it would silently pin the wrong SHA.
+	assert.deepEqual(
+		git.calls.filter((a) => a[0] === 'fetch' || (a[0] === 'rev-parse' && a[1] === 'FETCH_HEAD')),
+		[
+			['fetch', PUBLIC_REMOTE, 'master'],
+			['rev-parse', 'FETCH_HEAD'],
 			['fetch', REMOTE, 'bundle/2.x'],
 		],
 	);
@@ -105,7 +142,7 @@ test('both fetches are authenticated — the private repo rejects an anonymous o
 
 test('a bundle branch that already contains its base is left alone', () => {
 	const git = makeStub([
-		[(a) => a[0] === 'merge-base', ''], // --is-ancestor succeeds
+		[(a) => a[0] === 'merge-base' && a[3] === PRE_HEAD, ''], // --is-ancestor succeeds
 		...baseGitRoutes,
 	]);
 	const result = syncBundleBranch({ git, env, log: silent });
@@ -173,8 +210,9 @@ test('a fix landing mid-run is retried from a fresh fetch, never forced', () => 
 
 	assert.deepEqual(result, { status: 'merged' });
 	assert.equal(pushes, 2);
-	// The retry re-fetches rather than reusing the tip it already merged onto.
+	// The retry re-fetches both tips instead of reusing the merge that lost the push race.
 	assert.equal(git.calls.filter((a) => a[0] === 'fetch').length, 4);
+	assert.equal(git.calls.filter((a) => a[1] === PUBLIC_REMOTE).length, 2);
 	assert.equal(
 		git.calls.every((a) => !a.some((arg) => String(arg).includes('force-with-lease'))),
 		true,
@@ -189,19 +227,19 @@ test('a branch that keeps moving fails instead of forcing', () => {
 	});
 });
 
-test('a bundle branch that does not exist yet is created at its base', () => {
+test('a bundle branch that does not exist yet is created at the public base', () => {
 	const git = makeStub([[(a) => a[0] === 'ls-remote', ''], ...baseGitRoutes]);
 	const result = syncBundleBranch({ git, env, log: silent });
 
 	assert.deepEqual(result, { status: 'created' });
 	assert.deepEqual(
 		git.calls.find((a) => a[0] === 'checkout'),
-		['checkout', '--force', '-B', 'bundle/2.x', BASE],
+		['checkout', '--force', '-B', 'bundle/2.x', PUBLIC],
 	);
 	assert.equal(git.calls.some(isMerge), false);
 	assert.deepEqual(
 		git.calls.filter((a) => a[0] === 'fetch'),
-		[['fetch', REMOTE, 'master']],
+		[['fetch', PUBLIC_REMOTE, 'master']],
 	);
 	assert.deepEqual(git.calls.find(isPush), ['push', REMOTE, 'HEAD:refs/heads/bundle/2.x']);
 });
@@ -241,4 +279,41 @@ test('a branch created under us mid-run is merged into on the retry', () => {
 
 test('annotation keeps a multi-line message on one line', () => {
 	assert.equal(annotation('t', 'a\nb'), '::error title=t::a%0Ab');
+});
+
+test('a public fetch that fails stops the run instead of guessing', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'fetch' && a[1] === PUBLIC_REMOTE, fail('could not read from remote')],
+		...baseGitRoutes,
+	]);
+
+	assert.throws(() => syncBundleBranch({ git, env, log: silent }), {
+		message: /Could not fetch master from the public repo/,
+	});
+	assert.equal(
+		git.calls.some((a) => a[0] === 'checkout'),
+		false,
+	);
+	assert.equal(git.calls.some(isPush), false);
+});
+
+test('the 1.x bundle branch is checked against public 1.x', () => {
+	const git = makeStub([
+		[(a) => a[0] === 'ls-remote', `${PRE_HEAD}\trefs/heads/bundle/1.x`],
+		...baseGitRoutes,
+	]);
+	syncBundleBranch({
+		git,
+		env: { ...env, BUNDLE_BRANCH: 'bundle/1.x', BASE_BRANCH: '1.x' },
+		log: silent,
+	});
+
+	// The base branch name carries over to the public side unchanged.
+	assert.deepEqual(
+		git.calls.filter((a) => a[0] === 'fetch'),
+		[
+			['fetch', PUBLIC_REMOTE, '1.x'],
+			['fetch', REMOTE, 'bundle/1.x'],
+		],
+	);
 });

@@ -7,6 +7,10 @@ import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-wor
 
 import type { ITables, OperationInputData } from './interfaces';
 
+function toOptionalNumber(value: unknown) {
+	return value === undefined || value === null || value === '' ? undefined : Number(value);
+}
+
 /**
  * Returns a copy of the item which only contains the json data and
  * of that only the defined properties
@@ -97,13 +101,13 @@ export function formatColumns(columns: string) {
 export function configurePool(credentials: IDataObject) {
 	const config = {
 		server: credentials.server as string,
-		port: credentials.port as number,
+		port: toOptionalNumber(credentials.port),
 		database: credentials.database as string,
 		user: credentials.user as string,
 		password: credentials.password as string,
 		domain: credentials.domain ? (credentials.domain as string) : undefined,
-		connectionTimeout: credentials.connectTimeout as number,
-		requestTimeout: credentials.requestTimeout as number,
+		connectionTimeout: toOptionalNumber(credentials.connectTimeout),
+		requestTimeout: toOptionalNumber(credentials.requestTimeout),
 		options: {
 			encrypt: credentials.tls as boolean,
 			enableArithAbort: false,
@@ -277,20 +281,11 @@ export async function executeSqlQueryAndPrepareResults(
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
-	queryValues: Array<string | number | boolean | IDataObject> = [],
+	queryValues: Array<string | number | boolean | IDataObject | null> = [],
 	nodeVersion?: number,
 ): Promise<INodeExecutionData[]> {
 	const request = pool.request();
-
-	let processedQuery = rawQuery;
-	if (queryValues.length > 0) {
-		// Process in reverse order so $10 is replaced before $1
-		for (let i = queryValues.length; i >= 1; i--) {
-			const paramName = `p${i}`;
-			processedQuery = safeRegex.replace(`\\$${i}(?!\\d)`, processedQuery, 'g', `@${paramName}`);
-			request.input(paramName, queryValues[i - 1]);
-		}
-	}
+	const processedQuery = bindQueryParameters(request, rawQuery, queryValues);
 
 	const rawResult: IResult<any> = await request.query(processedQuery);
 	const { recordsets, rowsAffected } = rawResult;
@@ -324,4 +319,38 @@ export async function executeSqlQueryAndPrepareResults(
 			},
 		];
 	}
+}
+
+export function bindQueryParameters(
+	request: mssql.Request,
+	rawQuery: string,
+	queryValues: Array<string | number | boolean | IDataObject | null> = [],
+): string {
+	let processedQuery = rawQuery;
+	if (queryValues.length > 0) {
+		// Process in reverse order so $10 is replaced before $1
+		for (let i = queryValues.length; i >= 1; i--) {
+			const paramName = `p${i}`;
+			processedQuery = safeRegex.replace(`\\$${i}(?!\\d)`, processedQuery, 'g', `@${paramName}`);
+			request.input(paramName, queryValues[i - 1]);
+		}
+	}
+	return processedQuery;
+}
+
+export function normalizeQueryReplacement(
+	queryReplacement: unknown,
+): Array<string | number | boolean | IDataObject | null> {
+	// null/undefined bind as SQL NULL, not ''. An unbound $N is read by T-SQL as a
+	// money literal (`id = $1` means `id = 1`), matching a row instead of none.
+	let normalized: unknown = queryReplacement ?? null;
+
+	if (typeof normalized === 'string' && normalized) {
+		normalized = normalized.split(',').map((entry) => entry.trim());
+	}
+	if (normalized !== '' && !Array.isArray(normalized)) {
+		normalized = [normalized];
+	}
+
+	return Array.isArray(normalized) ? normalized : [];
 }

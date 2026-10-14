@@ -50,10 +50,23 @@ describe('verifyActionToken', () => {
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
 	});
 
-	it('rejects a token whose scope is not the required one', () => {
-		// The scope type has one member, so this shape is unreachable through mint.
+	it('rejects a lifecycle-events:write token when credentials:read is required', () => {
+		const token = mintActionToken(secret, 'lifecycle-events:write');
+
+		expect(() => verifyActionToken(secret, token, 'credentials:read')).toThrow(
+			InvalidActionTokenError,
+		);
+	});
+
+	it('rejects a credentials:read token when lifecycle-events:write is required', () => {
+		const token = mintActionToken(secret, 'credentials:read');
+
+		expect(() => verify(token)).toThrow(InvalidActionTokenError);
+	});
+
+	it('rejects a token whose scope is not one the data plane can mint', () => {
 		const token = signRawToken(
-			{ scope: 'credential:read' },
+			{ scope: 'credentials:write' },
 			{ expiresIn: ACTION_TOKEN.ttlSeconds },
 		);
 

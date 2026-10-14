@@ -57,20 +57,8 @@ $E: null;
 	@include scroll-bar;
 	scrollbar-color: transparent transparent;
 
-	&::-webkit-scrollbar-thumb {
-		background-color: transparent;
-	}
-
 	&:hover {
 		scrollbar-color: var.$scrollbar-background-color transparent;
-
-		&::-webkit-scrollbar-thumb {
-			background-color: var.$scrollbar-background-color;
-
-			&:hover {
-				background-color: var.$scrollbar-hover-background-color;
-			}
-		}
 	}
 }
 

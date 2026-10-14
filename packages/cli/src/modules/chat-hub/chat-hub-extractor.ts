@@ -10,10 +10,11 @@ import {
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse } from 'n8n-workflow';
+import { type ICredentialContext, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { AuthService } from '@/auth/auth.service';
+import { ExecutingUserIdentifierProxy } from '@/credentials/executing-user-identifier-proxy';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),
@@ -52,6 +53,7 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cipher: Cipher,
+		private readonly executingUserIdentifierProxy: ExecutingUserIdentifierProxy,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -88,20 +90,32 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 				const parsed = jsonParse(decrypted);
 				const chatHubInformation = ChatHubAuthenticationMetadataSchema.safeParse(parsed);
 				if (chatHubInformation.success) {
+					const credentials: ICredentialContext = {
+						version: 1,
+						identity: chatHubInformation.data.authToken,
+						metadata: {
+							source: 'chat-hub-injected',
+							browserId: chatHubInformation.data.browserId,
+							method: chatHubInformation.data.method,
+							endpoint: chatHubInformation.data.endpoint,
+						},
+					};
+
+					const contextUpdate: ContextEstablishmentResult['contextUpdate'] = { credentials };
+
+					// The private-credential flag is set by the global
+					// DynamicCredentialsContextHook, which runs before node extractors like
+					// this one. The chat-hub identity is only available here, so attribute
+					// the run's owner now — a run that fails before the credential resolves
+					// still grants the initiating user access to their own data.
+					if (options.context?.usesDynamicCredentials) {
+						const executedByUserId = await this.executingUserIdentifierProxy.identify(credentials);
+						if (executedByUserId) contextUpdate.executedByUserId = executedByUserId;
+					}
+
 					return {
 						triggerItems: options.triggerItems,
-						contextUpdate: {
-							credentials: {
-								version: 1,
-								identity: chatHubInformation.data.authToken,
-								metadata: {
-									source: 'chat-hub-injected',
-									browserId: chatHubInformation.data.browserId,
-									method: chatHubInformation.data.method,
-									endpoint: chatHubInformation.data.endpoint,
-								},
-							},
-						},
+						contextUpdate,
 					};
 				} else {
 					this.logger.warn('Invalid format for encryptedMetadata in chathub extractor', {

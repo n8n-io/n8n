@@ -1,10 +1,17 @@
 import type { PolicyViolation } from '@n8n/decorators';
-import { UserError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import { classifyHttpError, HttpErrorKind } from '@/errors/http-error-classifier';
-import { serializeInternalRestError } from '@/errors/http-error-serializers';
+import { classifyRestError, RestErrorKind } from '@n8n/backend-services';
+import { serializeInternalRestError } from '@n8n/backend-services';
 
-import { PolicyViolationError, type NonEmptyViolations } from '../policy-violation.error';
+import {
+	findPolicyViolations,
+	isPolicyRefusal,
+	PolicyViolationError,
+	type NonEmptyViolations,
+} from '../policy-violation.error';
 
 const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation => ({
 	kind: 'node-type-unavailable',
@@ -63,7 +70,7 @@ describe('PolicyViolationError', () => {
 		});
 	});
 
-	describe('classifyHttpError', () => {
+	describe('classifyRestError', () => {
 		it('classifies as a responseError carrying the violations in meta', () => {
 			const violations: NonEmptyViolations = [
 				violation(),
@@ -71,8 +78,8 @@ describe('PolicyViolationError', () => {
 			];
 			const error = new PolicyViolationError(violations);
 
-			expect(classifyHttpError(error)).toEqual({
-				kind: HttpErrorKind.responseError,
+			expect(classifyRestError(error)).toEqual({
+				kind: RestErrorKind.responseError,
 				status: 403,
 				code: 403,
 				message: error.message,
@@ -81,11 +88,79 @@ describe('PolicyViolationError', () => {
 		});
 
 		it('carries the violations into the REST response body', () => {
-			const descriptor = classifyHttpError(new PolicyViolationError([violation()]));
+			const descriptor = classifyRestError(new PolicyViolationError([violation()]));
 			const { status, body } = serializeInternalRestError(descriptor);
 
 			expect(status).toBe(403);
 			expect(body.meta).toEqual({ violations: [violation()] });
+		});
+	});
+
+	describe('isPolicyRefusal', () => {
+		const violation = () =>
+			new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked' },
+			]);
+
+		it('recognises a live error', () => {
+			expect(isPolicyRefusal(violation())).toBe(true);
+		});
+
+		// `WorkflowRunner.processError` spreads a failed execution's error into a plain
+		// object, dropping the prototype, so `instanceof` no longer holds.
+		it('recognises one flattened by execution failure serialization', () => {
+			const error = violation();
+			const flattened = { ...error, message: error.message, stack: error.stack };
+
+			expect(flattened instanceof PolicyViolationError).toBe(false);
+			expect(isPolicyRefusal(flattened)).toBe(true);
+		});
+
+		it.each([
+			['an ordinary error', new Error('boom')],
+			['an unrelated object', { violations: [] }],
+			['null', null],
+			['undefined', undefined],
+		])('does not recognise %s', (_label, value) => {
+			expect(isPolicyRefusal(value)).toBe(false);
+		});
+	});
+
+	describe('findPolicyViolations', () => {
+		function wrapWithCauses(innermost: Error, wrapperCount: number): Error {
+			let current = innermost;
+			for (let i = 0; i < wrapperCount; i++) {
+				current = new Error(`wrapper ${i}`, { cause: current });
+			}
+			return current;
+		}
+
+		const violations: NonEmptyViolations = [violation()];
+
+		it('returns the violations of a direct refusal', () => {
+			expect(findPolicyViolations(new PolicyViolationError(violations))).toEqual(violations);
+		});
+
+		it('returns the violations of a refusal a node error wraps', () => {
+			const nodeError = new NodeOperationError(mock<INode>(), new PolicyViolationError(violations));
+
+			expect(findPolicyViolations(nodeError)).toEqual(violations);
+		});
+
+		it('walks at most five errors down the cause chain', () => {
+			const refusal = new PolicyViolationError(violations);
+
+			expect(findPolicyViolations(wrapWithCauses(refusal, 4))).toEqual(violations);
+			expect(findPolicyViolations(wrapWithCauses(refusal, 5))).toBeUndefined();
+		});
+
+		it.each([
+			['a plain error chain', wrapWithCauses(new Error('root cause'), 3)],
+			['a plain object', { violations }],
+			['a string', 'boom'],
+			['undefined', undefined],
+		])('returns undefined for %s', (_label, value) => {
+			expect(findPolicyViolations(value)).toBeUndefined();
 		});
 	});
 });

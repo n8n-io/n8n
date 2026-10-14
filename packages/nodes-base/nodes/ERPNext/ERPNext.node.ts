@@ -122,7 +122,7 @@ export class ERPNext implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
+			// https://docs.frappe.io/framework/user/en/api/rest
 			// https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
 
 			if (resource === 'document') {
@@ -135,7 +135,7 @@ export class ERPNext implements INodeType {
 					//          document: get
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
+					// https://docs.frappe.io/framework/user/en/api/rest#read
 
 					const docType = this.getNodeParameter('docType', i) as string;
 					const documentName = this.getNodeParameter('documentName', i) as string;
@@ -153,7 +153,7 @@ export class ERPNext implements INodeType {
 					//         document: getAll
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
+					// https://docs.frappe.io/framework/user/en/api/rest#listing-documents
 
 					const docType = this.getNodeParameter('docType', i) as string;
 					const endpoint = `/api/resource/${docType}`;
@@ -206,7 +206,7 @@ export class ERPNext implements INodeType {
 					//         document: create
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/post_api_resource__DocType_
+					// https://docs.frappe.io/framework/user/en/api/rest#create
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
@@ -236,7 +236,7 @@ export class ERPNext implements INodeType {
 					//         document: delete
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
+					// https://docs.frappe.io/framework/user/en/api/rest#delete
 
 					const docType = this.getNodeParameter('docType', i) as string;
 					const documentName = this.getNodeParameter('documentName', i) as string;
@@ -251,7 +251,7 @@ export class ERPNext implements INodeType {
 					//         document: update
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/put_api_resource__DocType___DocumentName_
+					// https://docs.frappe.io/framework/user/en/api/rest#update
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 

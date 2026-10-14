@@ -1,3 +1,5 @@
+import type { DataTableReadParameters } from './data-table-read';
+
 /**
  * Shared types for LLM mock/pin-data generation.
  *
@@ -21,6 +23,8 @@ export type OutputSchemaLookup = (node: {
 	operation?: string;
 	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
 	hasOutputParser?: boolean;
+	/** The node's parameters — pick a shape variant such as `simple: false`. */
+	parameters?: Record<string, unknown>;
 }) => Record<string, unknown> | undefined;
 
 /** Structured-output-parser info for an AI root node (Agent/Chain). */
@@ -65,7 +69,10 @@ export interface NodeSchemaContext {
 	outputParser?: OutputParserContext;
 	/** Real Data Table columns for dataTable reads — rendered in the prompt as the authoritative row shape. */
 	dataTableColumns?: DataTableColumnInfo[];
+	/** The filter a Data Table `get` node applies; the pinned rows are its output, not the table. */
+	dataTableRead?: DataTableReadParameters;
 	declaredFields?: DeclaredFieldContract;
+	classifierReportsConfidence?: boolean;
 }
 
 export interface PinDataGenerationInstructions {

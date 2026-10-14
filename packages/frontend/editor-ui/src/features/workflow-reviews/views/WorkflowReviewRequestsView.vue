@@ -7,12 +7,15 @@ import {
 	N8nEmptyState,
 	N8nHeading,
 	N8nLoading,
+	N8nResizeWrapper,
 	type EmptyStateIconCards,
 	type IconOrEmoji,
 } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useResizablePanel } from '@n8n/design-system';
+import { LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH } from '@/app/constants/localStorage';
 import { useToast } from '@n8n/composables/useToast';
 
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
@@ -63,6 +66,23 @@ const sidebarSections = computed<ReviewInboxSidebarSection[]>(() =>
 
 const route = useRoute();
 const router = useRouter();
+
+const contentRef = ref<HTMLElement | null>(null);
+const sidebarResizer = useResizablePanel({
+	container: contentRef,
+	width: {
+		localStorageKey: LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH,
+		defaultSize: function getDefaultWidth(size) {
+			return Math.min(Math.max(size * 0.25, 240), 400);
+		},
+		minSize: 240,
+		maxSize: function getMaxWidth(size) {
+			return Math.min(size * 0.5, 640);
+		},
+		snap: true,
+	},
+});
+const sidebarWidth = sidebarResizer.width;
 
 function firstParam(value: string | string[] | undefined): string | null {
 	const param = Array.isArray(value) ? value[0] : value;
@@ -298,23 +318,32 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
-		<div :class="$style.content">
-			<WorkflowReviewRequestsSidebar
-				:sections="sidebarSections"
-				:loading="isLoadingActiveTab"
-				:initial-load-failed="activeTabInitialLoadFailed"
-				:active-tab="activeTab"
-				:open-count="openCount"
-				:closed-count="closedCount"
-				:selected-id="selectedReviewId"
-				@select="onSelect"
-				@clear="onClearSelection"
-				@update:active-tab="onActiveTabChange"
-				@load-more="onLoadMore"
-				@retry="onRetrySection"
-				@retry-active-tab="onRetryActiveTab"
-			/>
+	<PageViewLayout :class="$style.layout" full-width data-test-id="workflow-review-requests-view">
+		<div ref="contentRef" :class="$style.content">
+			<N8nResizeWrapper
+				:class="$style.sidebarResizer"
+				:style="{ width: `${sidebarWidth}px` }"
+				:resizer="sidebarResizer"
+				:supported-directions="['right']"
+				data-test-id="workflow-reviews-sidebar-resizer"
+			>
+				<WorkflowReviewRequestsSidebar
+					:class="$style.sidebar"
+					:sections="sidebarSections"
+					:loading="isLoadingActiveTab"
+					:initial-load-failed="activeTabInitialLoadFailed"
+					:active-tab="activeTab"
+					:open-count="openCount"
+					:closed-count="closedCount"
+					:selected-id="selectedReviewId"
+					@select="onSelect"
+					@clear="onClearSelection"
+					@update:active-tab="onActiveTabChange"
+					@load-more="onLoadMore"
+					@retry="onRetrySection"
+					@retry-active-tab="onRetryActiveTab"
+				/>
+			</N8nResizeWrapper>
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
@@ -404,19 +433,29 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
+.layout {
+	padding-top: 0;
+}
+
 .content {
 	--review-tab-bar--height: var(--height--sm);
-	--review-tab-bar--indicator-overhang: 11px;
+	--review-tab-bar--indicator-overhang: 15px;
 	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 
 	--review-callout--max-width: 34rem;
-	--review-activity--max-width: 48rem;
+	--review-activity--max-width: 45rem;
 
 	display: flex;
 	width: 100%;
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+}
+
+.sidebarResizer {
+	flex: 0 0 auto;
 }
 
 .main {
@@ -427,6 +466,15 @@ onUnmounted(() => {
 	min-height: 0;
 	overflow: hidden;
 	padding: 0 0 var(--spacing--md) var(--spacing--md);
+}
+
+.sidebar,
+.main {
+	padding-top: var(--spacing--lg);
+
+	@include breakpoints.breakpoint('sm-and-down') {
+		padding-top: var(--spacing--sm);
+	}
 }
 
 .columnTitle {

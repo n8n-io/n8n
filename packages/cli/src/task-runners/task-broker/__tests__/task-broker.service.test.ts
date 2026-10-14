@@ -10,6 +10,7 @@ import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifec
 import { TaskRejectError } from '../errors/task-reject.error';
 import { TaskRequesterAcceptTimeoutError } from '../errors/task-requester-accept-timeout.error';
 import { TaskRunnerExecutionTimeoutError } from '../errors/task-runner-execution-timeout.error';
+import { TaskRunnerShutdownTimeoutError } from '../errors/task-runner-shutdown-timeout.error';
 import { TaskRunnerUnreachableError } from '../errors/task-runner-unreachable.error';
 import { TaskBroker } from '../task-broker.service';
 import type {
@@ -1248,6 +1249,145 @@ describe('TaskBroker', () => {
 		});
 	});
 
+	describe('capTaskTimeoutsForShutdown', () => {
+		let taskBroker: TaskBroker;
+		let config: TaskRunnersConfig;
+		let runnerLifecycleEvents: MockProxy<TaskRunnerLifecycleEvents>;
+
+		const taskId = 'task1';
+		const runnerId = 'runner1';
+		const requesterId = 'requester1';
+		let requesterCallback: ReturnType<typeof vi.fn<RequesterMessageCallback>>;
+
+		const setupTaskWithArmedTimer = async () => {
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRequester(requesterId, requesterCallback);
+			taskBroker.setTasks({
+				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
+			});
+			await taskBroker.sendTaskSettings(taskId, {}); // arms the 300s timer
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+			requesterCallback = vi.fn<RequesterMessageCallback>();
+			config = mock<TaskRunnersConfig>({
+				taskTimeout: 300,
+				taskRequestTimeout: 60,
+				taskAcceptTimeout: 2,
+				mode: 'external',
+			});
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should re-arm a timer due after the deadline so the task fails at the deadline', async () => {
+			await setupTaskWithArmedTimer();
+
+			taskBroker.capTaskTimeoutsForShutdown(Date.now() + 96_000);
+
+			await vi.advanceTimersByTimeAsync(96_000);
+
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: expect.any(TaskRunnerShutdownTimeoutError),
+			});
+			expect(taskBroker.getTasks().get(taskId)).toBeUndefined();
+		});
+
+		it('should never extend a timer already due before the deadline', async () => {
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
+			taskBroker.registerRequester(requesterId, requesterCallback);
+			const timesOutAt = Date.now() + 10_000;
+			taskBroker.setTasks({
+				[taskId]: {
+					id: taskId,
+					runnerId,
+					requesterId,
+					taskType: 'test',
+					timesOutAt,
+					timeout: setTimeout(async () => {
+						await taskBroker.taskErrorHandler(taskId, new TaskRunnerExecutionTimeoutError(mock()));
+					}, 10_000),
+				},
+			});
+
+			taskBroker.capTaskTimeoutsForShutdown(Date.now() + 96_000);
+
+			expect(taskBroker.getTasks().get(taskId)?.timesOutAt).toBe(timesOutAt);
+
+			await vi.advanceTimersByTimeAsync(10_000);
+
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: expect.any(TaskRunnerExecutionTimeoutError),
+			});
+		});
+
+		it('should cap timers armed after the deadline was set', async () => {
+			taskBroker.capTaskTimeoutsForShutdown(Date.now() + 96_000);
+
+			await setupTaskWithArmedTimer();
+
+			expect(taskBroker.getTasks().get(taskId)?.timesOutAt).toBe(Date.now() + 96_000);
+
+			await vi.advanceTimersByTimeAsync(96_000);
+
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: expect.any(TaskRunnerShutdownTimeoutError),
+			});
+		});
+
+		it('[internal mode] should not restart the runner when a capped timer fires', async () => {
+			config = mock<TaskRunnersConfig>({
+				taskTimeout: 300,
+				taskRequestTimeout: 60,
+				taskAcceptTimeout: 2,
+				mode: 'internal',
+			});
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
+			await setupTaskWithArmedTimer();
+
+			taskBroker.capTaskTimeoutsForShutdown(Date.now() + 96_000);
+
+			await vi.advanceTimersByTimeAsync(96_000);
+
+			expect(runnerLifecycleEvents.emit).not.toHaveBeenCalledWith(
+				'runner:timed-out-during-task',
+				expect.anything(),
+			);
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:taskerror',
+				taskId,
+				error: expect.any(TaskRunnerShutdownTimeoutError),
+			});
+		});
+
+		it('should not fail a task that completes before the deadline', async () => {
+			await setupTaskWithArmedTimer();
+
+			taskBroker.capTaskTimeoutsForShutdown(Date.now() + 96_000);
+
+			await taskBroker.taskDoneHandler(taskId, { result: [] });
+			await vi.advanceTimersByTimeAsync(96_000);
+
+			expect(requesterCallback).toHaveBeenCalledTimes(1);
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:taskdone',
+				taskId,
+				data: { result: [] },
+			});
+		});
+	});
+
 	describe('task runner accept timeout', () => {
 		const ACCEPT_TIMEOUT_MS = 2100;
 
@@ -2332,6 +2472,159 @@ describe('TaskBroker', () => {
 			});
 
 			handleTimeoutSpy.mockRestore();
+		});
+
+		describe('with a shutdown deadline', () => {
+			it('expires a pending request at the deadline instead of its full timeout', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				const deadline = Date.now() + 20_000;
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				vi.advanceTimersByTime(20_000 - 1);
+				await Promise.resolve();
+
+				expect(requesterCallback).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'broker:requestexpired' }),
+				);
+
+				vi.advanceTimersByTime(1);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+
+			it('expires a request made after the deadline was set at that deadline', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const deadline = Date.now() + 20_000;
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				vi.advanceTimersByTime(20_000);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+
+			it('does not extend a request whose own timeout is due before the deadline', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				vi.advanceTimersByTime(30_000);
+
+				taskBroker.capTaskTimeoutsForShutdown(Date.now() + 120_000);
+
+				vi.advanceTimersByTime(29_999);
+				await Promise.resolve();
+
+				expect(requesterCallback).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'broker:requestexpired' }),
+				);
+
+				vi.advanceTimersByTime(1);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+
+			it('still expires a refreshed request no later than the deadline', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+				taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+					acceptInProgress: true,
+				};
+				taskBroker.setPendingTaskRequests([request]);
+
+				const deadline = Date.now() + 10_000;
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				vi.advanceTimersByTime(5_000);
+
+				const acceptPromise = taskBroker.acceptOffer(
+					{
+						offerId: 'offer1',
+						runnerId: 'runner1',
+						taskType: 'taskType1',
+						validFor: 10_000,
+						validUntil: createValidUntil(10_000),
+					},
+					request,
+				);
+				vi.advanceTimersByTime(2_100);
+				await acceptPromise;
+
+				vi.advanceTimersByTime(deadline - Date.now() - 1);
+				await Promise.resolve();
+
+				expect(requesterCallback).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'broker:requestexpired' }),
+				);
+
+				vi.advanceTimersByTime(1);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
 		});
 	});
 });

@@ -602,4 +602,120 @@ describe('autoFixConnections', () => {
 			expect(result.fixed).toHaveLength(1);
 		});
 	});
+
+	describe('reserved node names', () => {
+		afterEach(() => {
+			delete (Object.prototype as Record<string, unknown>).ai_languageModel;
+		});
+
+		it('should not connect a sub-node whose name is not a usable object key', () => {
+			// Auto-fix keys the connection map by source node name, so a name that cannot be
+			// an own key of that map must not produce a connection.
+			const workflow = createWorkflow([
+				createNode({ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				createNode({ name: '__proto__', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			]);
+
+			const violations: ProgrammaticViolation[] = [
+				{
+					name: 'node-missing-required-input',
+					type: 'critical',
+					description:
+						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
+					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
+				},
+				{
+					name: 'sub-node-not-connected',
+					type: 'critical',
+					description:
+						'Sub-node __proto__ (@n8n/n8n-nodes-langchain.lmChatOpenAi) provides ai_languageModel but is not connected to a root node.',
+					pointsDeducted: 50,
+					metadata: {
+						nodeName: '__proto__',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						outputType: 'ai_languageModel',
+					},
+				},
+			];
+
+			const result = autoFixConnections(workflow, mockNodeTypes, violations);
+
+			expect(({} as Record<string, unknown>).ai_languageModel).toBeUndefined();
+			expect(Object.keys(result.updatedConnections)).toEqual([]);
+			// createConnection refuses the key and returns the map unchanged, so the result must
+			// not report a fix that was never applied either.
+			expect(result.fixed).toEqual([]);
+			expect(result.unfixable.length).toBeGreaterThan(0);
+		});
+
+		// The name only has to be a string by convention, and bracket access would coerce a
+		// non-string back to the name being guarded against.
+		it.each([
+			['a string', '__proto__'],
+			['an array', ['__proto__']],
+			['an object with toString', { toString: (): string => '__proto__' }],
+		])('should not connect a sub-node whose name is %s', (_label, subNodeName) => {
+			const workflow = createWorkflow([
+				createNode({ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				{
+					...createNode({
+						name: 'placeholder',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					}),
+					name: subNodeName as string,
+				},
+			]);
+
+			const violations: ProgrammaticViolation[] = [
+				{
+					name: 'node-missing-required-input',
+					type: 'critical',
+					description: 'Node AI Agent is missing required input of type ai_languageModel',
+					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
+				},
+			];
+
+			const result = autoFixConnections(workflow, mockNodeTypes, violations);
+
+			expect(({} as Record<string, unknown>).ai_languageModel).toBeUndefined();
+			expect(Object.keys(result.updatedConnections)).toEqual([]);
+			expect(result.fixed).toEqual([]);
+		});
+
+		it('should still connect a sub-node with a usable name', () => {
+			const workflow = createWorkflow([
+				createNode({ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+				createNode({ name: 'OpenAI Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+			]);
+
+			const violations: ProgrammaticViolation[] = [
+				{
+					name: 'node-missing-required-input',
+					type: 'critical',
+					description:
+						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
+					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
+				},
+			];
+
+			const result = autoFixConnections(workflow, mockNodeTypes, violations);
+
+			expect(result.updatedConnections['OpenAI Model']?.ai_languageModel).toBeDefined();
+		});
+	});
 });

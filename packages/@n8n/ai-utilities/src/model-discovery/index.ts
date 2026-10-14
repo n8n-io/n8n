@@ -57,11 +57,27 @@ export async function listModelsForProvider(
 	return await listModels(options);
 }
 
-export { listAlibabaModels } from './providers/alibaba';
+export {
+	classifyChatModelFailure,
+	type ChatModelFailureKind,
+} from './chat-model-errors';
+export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
+export {
+	listAzureOpenAiModels,
+	shouldIncludeAzureModel,
+	type AzureOpenAiListModelsOptions,
+} from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
-export { listGoogleModels } from './providers/google';
+export {
+	getGoogleModelLabel,
+	listGoogleModels,
+	parseGoogleModels,
+	shouldIncludeGoogleModel,
+	type GoogleModel,
+} from './providers/google';
+export { pinPrioritizedModels } from '@n8n/api-types';
 export { listGroqModels } from './providers/groq';
 export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';

@@ -10,12 +10,18 @@
         "formattedText": {
             "type": "string"
         },
+        "markupSyntax": {
+            "type": "string"
+        },
         "name": {
             "type": "string"
         },
         "sender": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
                 "displayName": {
                     "type": "string"
                 },
@@ -73,5 +79,5 @@
             }
         }
     },
-    "version": 6
+    "version": 8
 }

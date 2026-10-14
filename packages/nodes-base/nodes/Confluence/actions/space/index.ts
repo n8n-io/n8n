@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as get from './get.operation';
 import * as getMany from './getMany.operation';
+import { siteRLC } from '../common';
 
 export { get, getMany };
 
@@ -31,6 +32,14 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'getMany',
+	},
+	{
+		...siteRLC,
+		displayOptions: {
+			show: {
+				resource: ['space'],
+			},
+		},
 	},
 	...get.description,
 	...getMany.description,

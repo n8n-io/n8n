@@ -40,9 +40,6 @@ parameters:
     required: false
     name: excludePinnedData
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -62,6 +59,8 @@ responses:
                     type: string
                   active:
                     type: boolean
+                    description: Deprecated. Check whether `activeVersionId` is not null instead.
+                    deprecated: true
                   activeVersionId:
                     type: string
                     nullable: true
@@ -344,14 +343,19 @@ responses:
                       properties:
                         id:
                           type: string
+                          readOnly: true
+                          example: 2tUt1wbLX592XDdX
                         name:
                           type: string
+                          example: Production
                         createdAt:
                           type: string
                           format: date-time
+                          readOnly: true
                         updatedAt:
                           type: string
                           format: date-time
+                          readOnly: true
                       required:
                         - id
                         - name

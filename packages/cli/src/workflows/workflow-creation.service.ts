@@ -1,5 +1,6 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
@@ -8,18 +9,15 @@ import {
 	SharedWorkflowRepository,
 	TagRepository,
 	WorkflowEntity,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
-import { EventService } from '@/events/event.service';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -35,6 +33,8 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
+import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
+import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -74,6 +74,9 @@ export class WorkflowCreationService {
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async prepareBatchContext(
@@ -168,6 +171,7 @@ export class WorkflowCreationService {
 		} = options;
 
 		// Ensure workflow is created as inactive
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 		newWorkflow.parentFolder = null;
@@ -211,10 +215,17 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
+		// Only a workflow with groups needs the flags.
+		const rules = newWorkflow.nodeGroups?.length
+			? await this.nodeGroupRulesFlagGate.getEnabledRules(user)
+			: {};
+
 		WorkflowHelpers.validateWorkflowNodeGroups(
 			newWorkflow,
 			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+			rules,
 		);
+		this.deprecatedNodesValidationService.validateOnCreate(newWorkflow.nodes, newWorkflow.id);
 
 		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 			if (!batchContext) {
@@ -229,8 +240,11 @@ export class WorkflowCreationService {
 		if (this.licenseState.isSharingLicensed()) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
-			const { ids: credentialIds, hasUnresolved } =
-				this.enterpriseWorkflowService.collectCredentialReferences(newWorkflow);
+			const {
+				ids: credentialIds,
+				hasUnresolved,
+				hasUninspectableSource,
+			} = this.enterpriseWorkflowService.collectCredentialReferences(newWorkflow);
 			if (batchContext) {
 				const uncheckedIds = [...credentialIds].filter(
 					(id) => !batchContext.checkedCredentialIds.has(id),
@@ -260,8 +274,15 @@ export class WorkflowCreationService {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
 					newWorkflow,
 					hasUnresolved ? new Set() : accessibleCredentialIds,
+					{
+						allowUninspectableSource:
+							hasUninspectableSource && this.enterpriseWorkflowService.canUseEveryCredential(user),
+					},
 				);
 			} catch (error) {
+				if (error instanceof UninspectableSubworkflowSourceError) {
+					throw new BadRequestError(error.message);
+				}
 				throw new BadRequestError(
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
@@ -287,88 +308,94 @@ export class WorkflowCreationService {
 
 		// Gate the save on policy before persisting, so the author learns about a violation
 		// while editing rather than at runtime. No stored workflow: this one is new.
-		await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-			storedWorkflow: null,
-			projectId: effectiveProjectId,
-		});
+		// The clearance binds to the node hash while the row has no id, so nothing below
+		// may touch `newWorkflow.nodes` — the sealed write would reject it.
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+				storedWorkflow: null,
+				projectId: effectiveProjectId,
+			},
+			{ kind: 'user', user },
+		);
 
 		const floor = batchContext?.redactionFloor ?? (await this.readActiveRedactionFloor());
 
-		const { manager: dbManager } = this.projectRepository;
-
-		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			project = await this.projectService.getProjectWithScope(
-				user,
-				effectiveProjectId,
-				['workflow:create'],
-				transactionManager,
-			);
-
-			if (project === null) {
-				const message = "You don't have the permissions to save the workflow in this project.";
-				if (publicApi) {
-					throw new ForbiddenError(message);
-				}
-				throw new BadRequestError(message);
-			}
-
-			await this.resolveRedactionPolicyOnCreate(
-				newWorkflow,
-				user,
-				effectiveProjectId,
-				transactionManager,
-				floor,
-			);
-
-			await this.resolveMcpExposureOnCreate(
-				newWorkflow,
-				transactionManager,
-				batchContext?.autoExposeNewWorkflows,
-			);
-
-			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
-				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
-					parentFolderId,
-					project.id,
+		const savedWorkflow = await this.workflowRepository.runInTransaction(
+			{ policyCleared: cleared },
+			async (transactionManager, ctx) => {
+				project = await this.projectService.getProjectWithScope(
+					user,
+					effectiveProjectId,
+					['workflow:create'],
 					transactionManager,
 				);
-			}
 
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+				if (project === null) {
+					const message = "You don't have the permissions to save the workflow in this project.";
+					if (publicApi) {
+						throw new ForbiddenError(message);
+					}
+					throw new BadRequestError(message);
+				}
 
-			const newSharedWorkflow = this.sharedWorkflowRepository.create({
-				role: 'workflow:owner',
-				projectId: project.id,
-				workflow,
-			});
+				await this.resolveRedactionPolicyOnCreate(
+					newWorkflow,
+					user,
+					effectiveProjectId,
+					transactionManager,
+					floor,
+				);
 
-			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+				await this.resolveMcpExposureOnCreate(
+					newWorkflow,
+					transactionManager,
+					batchContext?.autoExposeNewWorkflows,
+				);
 
-			await this.workflowHistoryService.saveVersion(
-				user,
-				workflow,
-				workflow.id,
-				autosaved,
-				source,
-				transactionManager,
-				versionName || versionDescription
-					? { name: versionName, description: versionDescription }
-					: undefined,
-			);
+				if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
+					newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
+						parentFolderId,
+						project.id,
+						transactionManager,
+					);
+				}
 
-			return await this.workflowFinderService.findWorkflowForUser(
-				workflow.id,
-				user,
-				['workflow:read'],
-				{
-					em: transactionManager,
-					includeTags: true,
-					includeParentFolder: true,
-					includeActiveVersion: true,
-				},
-			);
-		});
+				const workflow = await this.workflowRepository.createContent(newWorkflow, ctx);
+
+				const newSharedWorkflow = this.sharedWorkflowRepository.create({
+					role: 'workflow:owner',
+					projectId: project.id,
+					workflow,
+				});
+
+				await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+
+				await this.workflowHistoryService.saveVersion(
+					user,
+					workflow,
+					workflow.id,
+					autosaved,
+					source,
+					transactionManager,
+					versionName || versionDescription
+						? { name: versionName, description: versionDescription }
+						: undefined,
+				);
+
+				return await this.workflowFinderService.findWorkflowForUser(
+					workflow.id,
+					user,
+					['workflow:read'],
+					{
+						em: transactionManager,
+						includeTags: true,
+						includeParentFolder: true,
+						includeActiveVersion: true,
+					},
+				);
+			},
+		);
 
 		if (!savedWorkflow) {
 			this.logger.error('Failed to create workflow', { userId: user.id });

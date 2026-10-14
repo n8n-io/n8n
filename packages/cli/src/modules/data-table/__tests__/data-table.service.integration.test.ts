@@ -3475,6 +3475,40 @@ describe('dataTable', () => {
 	});
 
 	describe('getManyRowsAndCount', () => {
+		it('rejects a sort column that does not exist', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+
+			const result = dataTableService.getManyRowsAndCount(dataTableId, project1.id, {
+				sortBy: ['bogusCol', 'ASC'],
+			});
+
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow(
+				"Validation error with data table request: unknown column name 'bogusCol'",
+			);
+		});
+
+		it.each(['name', 'id', 'createdAt', 'updatedAt'])(
+			'sorts by existing column %s',
+			async (columnName) => {
+				const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+					name: 'dataTable',
+					columns: [{ name: 'name', type: 'string' }],
+				});
+				await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {
+					sortBy: [columnName, 'ASC'],
+				});
+				expect(result.count).toBe(1);
+				expect(result.data[0].name).toBe('Alice');
+			},
+		);
+
 		it('retrieves rows correctly', async () => {
 			// ARRANGE
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {

@@ -1,4 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
+import { ScheduledJobOwnerType } from '@n8n/constants';
 import type { ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,14 +9,13 @@ import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
 /**
- * A job with no owning workflow (`workflowId`/`nodeId` NULL), the shape system
- * tasks use: identified by a well-known unique `name`, matched to its handler
- * by `taskType` alone. Pins the engine's indifference to the NULL scope across
- * materialize -> claim -> fire -> retention, and the misfire behaviour that
- * changes without an owner. The mechanics themselves are covered by the
- * sibling suites; this one is the named contract A6/A7 build on.
+ * A self-owned job (`ownerType` `system-task`, `ownerId` its own name), the
+ * shape system tasks use: a well-known unique `name`, matched to its handler by
+ * `taskType` alone. Pins that the engine stays indifferent to the owner kind
+ * across materialize -> claim -> fire -> retention. The sibling suites cover the
+ * mechanics themselves.
  */
-describe('system jobs (no owning workflow)', () => {
+describe('system jobs (self-owned)', () => {
 	const TASK_TYPE = 'system:integration-test';
 	const JOB_NAME = 'system:integration-test';
 
@@ -55,12 +55,14 @@ describe('system jobs (no owning workflow)', () => {
 		await testDb.terminate();
 	});
 
-	const createSystemJob = async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	const createSystemJob = async (overrides: Partial<ScheduledJob> = {}) => {
+		const name = overrides.name ?? JOB_NAME;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: JOB_NAME,
-				workflowId: null,
-				nodeId: null,
+				name,
+				ownerType: ScheduledJobOwnerType.SystemTask,
+				ownerId: name,
+				ownerMemberId: null,
 				taskType: TASK_TYPE,
 				payload: {},
 				kind: 'interval',
@@ -71,6 +73,7 @@ describe('system jobs (no owning workflow)', () => {
 				...overrides,
 			}),
 		);
+	};
 
 	const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 10_000) => {
 		const deadline = Date.now() + timeoutMs;
@@ -83,7 +86,7 @@ describe('system jobs (no owning workflow)', () => {
 		throw new Error('condition not met in time');
 	};
 
-	it('runs end to end and stays workflow-less: materialized, fired, pruned', async () => {
+	it('runs end to end and stays self-owned: materialized, fired, pruned', async () => {
 		const job = await createSystemJob({ payload: { origin: 'system' } });
 
 		const summary = await scheduler.materialize();
@@ -100,11 +103,12 @@ describe('system jobs (no owning workflow)', () => {
 		expect(executed[0].payload).toEqual({ origin: 'system' });
 
 		// The system-job access path is the well-known name; the whole lifecycle
-		// left the row without an owner.
+		// left the row self-owned.
 		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
 		expect(row.id).toBe(job.id);
-		expect(row.workflowId).toBeNull();
-		expect(row.nodeId).toBeNull();
+		expect(row.ownerType).toBe(ScheduledJobOwnerType.SystemTask);
+		expect(row.ownerId).toBe(JOB_NAME);
+		expect(row.ownerMemberId).toBeNull();
 		expect(row.lastFiredAt).not.toBeNull();
 
 		// Retention treats the finished occurrence like any other's.
@@ -127,10 +131,9 @@ describe('system jobs (no owning workflow)', () => {
 		expect(await taskRepo.count()).toBe(0);
 	}, 15_000);
 
-	it('under coalesce_owner, ownerless jobs are not grouped: each keeps its own catch-up run', async () => {
-		// Two system jobs overdue beyond their grace. With an owner they would
-		// coalesce into one catch-up run; without one, `coalesce_owner` must leave
-		// each job its own late run instead of grouping unrelated system jobs.
+	it('under coalesce_owner, self-owned jobs are not grouped: each keeps its own catch-up run', async () => {
+		// Two system jobs overdue beyond their grace. A shared owner would coalesce
+		// them into one catch-up run; self-owned, each keeps its own late run.
 		const misfire = {
 			misfirePolicy: 'coalesce_owner',
 			misfireGraceSeconds: 30,

@@ -220,6 +220,16 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'The Google Docs node reads responseData.replies[0] unconditionally; a body without a non-empty replies array throws. No quirk existed for Google Docs before (TRUST-309).',
 		addedAt: '2026-07-16',
 	},
+	{
+		service: 'Sheets',
+		hostnames: ['sheets.googleapis.com'],
+		endpoint: 'GET /v4/spreadsheets/*/values/*',
+		guidance:
+			'Google Sheets `GET /v4/spreadsheets/{id}/values/{range}` → `{ "range": "<A1 range>", "majorDimension": "ROWS", "values": [[...], ...] }`. When the range is a whole sheet (e.g. `Sheet1`) or starts at row 1, `values[0]` is the HEADER row with the column names the scenario gives. The n8n Google Sheets node reads whole sheets and takes `values[0]` as the column names, so NEVER drop the header row. Every following row lists its cells in the same column order as the header. Keep each cell exactly as the scenario states it: a date written as text (e.g. `01/12/2026`) stays that text. A blank cell inside a row is `""`; trailing blank cells and trailing blank rows are left out.',
+		rationale:
+			'The node maps each row by the first row of the response. Observed in eval runs: the mock left out the header row, so the first data row became the column names. In another run the mock swapped two columns between rows and rewrote a text date as ISO. Shape per the ValueRange reference: https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values#ValueRange',
+		addedAt: '2026-09-30',
+	},
 ];
 
 /**

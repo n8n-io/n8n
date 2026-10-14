@@ -1,4 +1,4 @@
-import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
 
@@ -8,7 +8,7 @@ import { WORKFLOW_REVIEW_REQUESTS_VIEW } from './constants';
 const WorkflowReviewRequestsView = async () =>
 	await import('./views/WorkflowReviewRequestsView.vue');
 
-export const WorkflowReviewsModule: FrontendModuleDescription = {
+export const WorkflowReviewsModule = defineFrontendModule({
 	id: 'workflow-reviews',
 	name: 'Workflow Reviews',
 	description: 'Cross-project workflow review inbox.',
@@ -31,4 +31,4 @@ export const WorkflowReviewsModule: FrontendModuleDescription = {
 			},
 		},
 	],
-};
+});

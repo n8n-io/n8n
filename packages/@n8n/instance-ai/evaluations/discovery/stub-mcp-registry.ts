@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { sanitizeToolName, wrapToolForApproval, type BuiltTool } from '@n8n/agents';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS, type InstanceAiPermissions } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ApprovalResponder } from './confirmation-policy';
@@ -14,33 +15,39 @@ import { createToolRegistry } from '../../src/tool-registry';
 import type {
 	InstanceAiMcpService,
 	InstanceAiToolRegistry,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	McpServerConfig,
 } from '../../src/types';
 
-/** What production derives for cli's shared e2e fixtures (`registry/mock-servers.ts`):
- *  `description` is the tagline, `credentialType` is derived. Search below drops the
- *  real relevance scoring, only observable past the tool's 5-result cap. */
-const CATALOGUE: McpRegistryServerSummary[] = [
+/** What production derives for cli's shared e2e fixtures (`registry/mock-servers.ts`).
+ * Search below drops credential options and real relevance scoring. */
+const CATALOGUE: McpRegistryConnectServerSummary[] = [
 	{
 		slug: 'notion',
 		title: 'Notion',
 		description: 'Connect to the Notion MCP Server',
-		credentialType: 'notionMcpOAuth2Api',
+		usesCredentials: [
+			{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+		],
 		tools: ['notion-search', 'notion-fetch', 'notion-create-pages'],
 	},
 	{
 		slug: 'linear',
 		title: 'Linear',
 		description: 'Connect to the Linear MCP Server',
-		credentialType: 'linearMcpOAuth2Api',
+		usesCredentials: [
+			{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+		],
 		tools: ['list_issues', 'get_issue', 'save_issue'],
 	},
 	{
 		slug: 'slack',
 		title: 'Slack',
 		description: 'Connect to the Slack MCP Server',
-		credentialType: 'slackMcpOAuth2Api',
+		usesCredentials: [
+			{ credentialType: 'slackMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+		],
 		tools: [],
 	},
 ];
@@ -61,7 +68,7 @@ export interface StubMcpRegistry {
 	markConnected: (slugs: string[]) => void;
 }
 
-function catalogueServer(slug: string): McpRegistryServerSummary {
+function catalogueServer(slug: string): McpRegistryConnectServerSummary {
 	const server = CATALOGUE.find((entry) => entry.slug === slug);
 	if (!server) {
 		const known = CATALOGUE.map((entry) => entry.slug).join(', ');
@@ -88,7 +95,7 @@ export function createStubMcpRegistry(state: DiscoveryMcpState): StubMcpRegistry
 					servers.filter(
 						(server) =>
 							!connected.has(server.slug) && queries.some((query) => matches(server, query)),
-					),
+					).map(({ slug, title, description, tools }) => ({ slug, title, description, tools })),
 				),
 			getServers: async (slugs) =>
 				await Promise.resolve(servers.filter((server) => slugs.includes(server.slug))),
@@ -178,8 +185,12 @@ export class StubMcpClientManager extends McpClientManager {
 	override async getRegularTools(
 		_configs: McpServerConfig[],
 		_logger?: Logger,
-		requireApproval = true,
+		{
+			mcpRead,
+			mcpWrite,
+		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
 	) {
+		const requireApproval = mcpRead !== 'always_allow' || mcpWrite !== 'always_allow';
 		const tools = requireApproval ? withApprovalGate(this.stubTools) : this.stubTools;
 		return await Promise.resolve({ tools, connectionFailures: [] });
 	}

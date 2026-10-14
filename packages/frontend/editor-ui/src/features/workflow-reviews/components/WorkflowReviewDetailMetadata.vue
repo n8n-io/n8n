@@ -24,8 +24,8 @@ const otherAuthors = computed(() =>
 	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
 );
 
-const statusSummary = computed(
-	() => getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision).label,
+const statusSummary = computed(() =>
+	getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision),
 );
 </script>
 
@@ -39,7 +39,11 @@ const statusSummary = computed(
 			</template>
 			<div :class="$style.status">
 				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
-				<N8nText size="medium">{{ statusSummary }}</N8nText>
+				<N8nText size="medium">
+					{{ statusSummary.stateLabel }}
+					<span aria-hidden="true" :class="$style.statusSeparator">|</span>
+					{{ statusSummary.decisionLabel }}
+				</N8nText>
 			</div>
 		</N8nCard>
 
@@ -136,6 +140,9 @@ const statusSummary = computed(
 
 <style module lang="scss">
 .metadata {
+	position: sticky;
+	top: 0;
+	align-self: flex-start;
 	display: flex;
 	flex: 0 0 min(18rem, 30%);
 	flex-direction: column;
@@ -171,6 +178,11 @@ const statusSummary = computed(
 	min-width: 0;
 }
 
+.statusSeparator {
+	margin-inline: var(--spacing--3xs);
+	color: var(--text-color--subtler);
+}
+
 .peopleCard {
 	--n8n--card-body--gap: var(--spacing--sm);
 }
@@ -180,6 +192,8 @@ const statusSummary = computed(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+	/* Names wrap at spaces; an email breaks mid-word only when it does not fit. */
+	overflow-wrap: anywhere;
 }
 
 .workflow {
@@ -222,7 +236,6 @@ const statusSummary = computed(
 		flex-basis: auto;
 		width: 100%;
 		min-width: 0;
-		padding-inline-end: var(--spacing--2xs);
 	}
 }
 </style>

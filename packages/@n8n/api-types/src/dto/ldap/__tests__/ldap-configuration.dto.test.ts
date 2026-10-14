@@ -1,15 +1,21 @@
-import { zodObjectFieldsAreAllRequired } from '../../../__tests__/helpers/zod-object-keys-match';
-import { UpdateLdapConfigurationDto } from '../ldap-configuration.dto';
-import { LdapSyncDto } from '../ldap-sync.dto';
+import {
+	zodObjectFieldsAreAllRequired,
+	zodObjectKeysMatch,
+} from '../../../__tests__/helpers/zod-object-keys-match';
+import {
+	LdapConfigurationPublicDto,
+	UpdateLdapConfigurationPublicDto,
+} from '../ldap-configuration-public.dto';
+import { LdapSyncHistoryPublicDto, RunLdapSyncPublicDto } from '../ldap-sync-public.dto';
 
 describe('LDAP DTOs', () => {
-	describe('UpdateLdapConfigurationDto', () => {
-		const fullBody = {
+	describe('UpdateLdapConfigurationPublicDto', () => {
+		const fullBody: UpdateLdapConfigurationPublicDto = {
 			loginEnabled: true,
 			loginLabel: 'LDAP Login',
 			connectionUrl: 'ldap://example.com',
 			allowUnauthorizedCerts: false,
-			connectionSecurity: 'startTls' as const,
+			connectionSecurity: 'startTls',
 			connectionPort: 389,
 			baseDn: 'dc=example,dc=com',
 			bindingAdminDn: 'cn=admin,dc=example,dc=com',
@@ -28,18 +34,43 @@ describe('LDAP DTOs', () => {
 		};
 
 		it('requires every field with no optional or default - guards against .optional() / .default() on PUT fields', () => {
-			expect(zodObjectFieldsAreAllRequired(UpdateLdapConfigurationDto.schema)).toBe(true);
+			expect(zodObjectFieldsAreAllRequired(UpdateLdapConfigurationPublicDto.schema)).toBe(true);
+		});
+
+		it('uses the same fields as the GET response', () => {
+			expect(
+				zodObjectKeysMatch(
+					UpdateLdapConfigurationPublicDto.schema,
+					LdapConfigurationPublicDto.schema,
+				),
+			).toBe(true);
 		});
 
 		it('accepts a complete valid configuration', () => {
-			const result = UpdateLdapConfigurationDto.safeParse(fullBody);
+			const result = UpdateLdapConfigurationPublicDto.safeParse(fullBody);
 			expect(result.success).toBe(true);
 			expect(result.data?.connectionUrl).toBe('ldap://example.com');
 			expect(result.data?.connectionSecurity).toBe('startTls');
 		});
 
+		it('returns non-integer numbers the editor can store and rejects them on update', () => {
+			const withFractions = {
+				...fullBody,
+				connectionPort: 389.5,
+				synchronizationInterval: 60.5,
+				searchPageSize: 1000.5,
+				searchTimeout: 60.5,
+			};
+
+			expect(LdapConfigurationPublicDto.safeParse(withFractions).success).toBe(true);
+
+			const update = UpdateLdapConfigurationPublicDto.safeParse(withFractions);
+			assert(!update.success, 'expected a non-integer connectionPort to fail');
+			expect(update.error.issues[0].path).toEqual(['connectionPort']);
+		});
+
 		it('rejects connectionPort as a string instead of number', () => {
-			const result = UpdateLdapConfigurationDto.safeParse({
+			const result = UpdateLdapConfigurationPublicDto.safeParse({
 				...fullBody,
 				connectionPort: '389',
 			});
@@ -48,7 +79,7 @@ describe('LDAP DTOs', () => {
 		});
 
 		it('rejects invalid connectionSecurity value', () => {
-			const result = UpdateLdapConfigurationDto.safeParse({
+			const result = UpdateLdapConfigurationPublicDto.safeParse({
 				...fullBody,
 				connectionSecurity: 'bogus',
 			});
@@ -56,44 +87,68 @@ describe('LDAP DTOs', () => {
 			expect(result.error.issues[0].path).toEqual(['connectionSecurity']);
 		});
 
-		it('strips unknown properties during parsing', () => {
-			const result = UpdateLdapConfigurationDto.safeParse({
+		it('rejects unknown properties', () => {
+			const result = UpdateLdapConfigurationPublicDto.safeParse({
 				...fullBody,
-				unknownField: 'should-be-ignored',
+				unknownField: 'should-be-rejected',
 			});
-			expect(result.success).toBe(true);
-			expect(result.data?.['unknownField' as keyof typeof result.data]).toBeUndefined();
+			assert(!result.success, 'expected an unknown property to fail');
+			expect(result.error.issues[0].code).toBe('unrecognized_keys');
 		});
 	});
 
-	describe('LdapSyncDto', () => {
+	describe('RunLdapSyncPublicDto', () => {
 		it('accepts valid live sync type', () => {
-			const result = LdapSyncDto.safeParse({ type: 'live' });
+			const result = RunLdapSyncPublicDto.safeParse({ type: 'live' });
 			expect(result.success).toBe(true);
 			expect(result.data?.type).toBe('live');
 		});
 
 		it('accepts valid dry sync type', () => {
-			const result = LdapSyncDto.safeParse({ type: 'dry' });
+			const result = RunLdapSyncPublicDto.safeParse({ type: 'dry' });
 			expect(result.success).toBe(true);
 			expect(result.data?.type).toBe('dry');
 		});
 
 		it('rejects invalid sync type', () => {
-			const result = LdapSyncDto.safeParse({ type: 'weekly' });
+			const result = RunLdapSyncPublicDto.safeParse({ type: 'weekly' });
 			assert(!result.success, 'expected an out-of-enum sync type to fail');
 			expect(result.error.issues[0].path).toEqual(['type']);
 			expect(result.error.issues[0].code).toBe('invalid_enum_value');
 		});
 
 		it('rejects empty body', () => {
-			const result = LdapSyncDto.safeParse({});
+			const result = RunLdapSyncPublicDto.safeParse({});
 			assert(!result.success, 'expected an empty body to fail');
 			expect(result.error.issues[0].path).toEqual(['type']);
 		});
 
+		it('rejects unknown properties', () => {
+			const result = RunLdapSyncPublicDto.safeParse({ type: 'dry', unknownField: 'nope' });
+			assert(!result.success, 'expected an unknown property to fail');
+			expect(result.error.issues[0].code).toBe('unrecognized_keys');
+		});
+
 		it('requires every field with no optional or default', () => {
-			expect(zodObjectFieldsAreAllRequired(LdapSyncDto.schema)).toBe(true);
+			expect(zodObjectFieldsAreAllRequired(RunLdapSyncPublicDto.schema)).toBe(true);
+		});
+	});
+
+	describe('LdapSyncHistoryPublicDto', () => {
+		it('accepts a history record', () => {
+			const result = LdapSyncHistoryPublicDto.safeParse({
+				id: 1,
+				runMode: 'live',
+				status: 'success',
+				startedAt: '2025-07-21T10:30:00.000Z',
+				endedAt: '2025-07-21T10:35:00.000Z',
+				scanned: 42,
+				created: 5,
+				updated: 3,
+				disabled: 0,
+				error: '',
+			});
+			expect(result.success).toBe(true);
 		});
 	});
 });

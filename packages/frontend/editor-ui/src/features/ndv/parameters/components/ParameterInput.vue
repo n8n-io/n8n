@@ -1,8 +1,23 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	onUpdated,
+	ref,
+	useId,
+	watch,
+} from 'vue';
 import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
+import truncate from 'lodash/truncate';
+import {
+	CompactParameterHintsKey,
+	ParameterInputModalContextKey,
+} from '@/app/constants/injectionKeys';
 
 import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
@@ -47,11 +62,13 @@ import {
 	formatAsExpression,
 	getParameterTypeOption,
 	isResourceLocatorParameterType,
+	isObjectInPlainParameter,
 	isValidParameterOption,
 	parseFromExpression,
 	shouldSkipParamValidation,
 } from '@/features/ndv/shared/ndv.utils';
 import { hasExpressionMapping, isValueExpression } from '@/app/utils/nodeTypesUtils';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 
 import {
 	AI_TRANSFORM_NODE_TYPE,
@@ -66,7 +83,6 @@ import {
 } from '@/app/constants';
 
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
@@ -186,7 +202,6 @@ const ndvStore = injectNDVStoreIfProvided();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
-const { askAi } = useEditorContext();
 const aiGateway = useAiGateway();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -198,6 +213,8 @@ const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
+const parameterEditorId = useId();
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -209,6 +226,14 @@ const remoteParameterOptions = ref<INodePropertyOptions[]>([]);
 const remoteParameterOptionsLoading = ref(false);
 const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
 const textEditDialogVisible = ref(false);
+watch(
+	() =>
+		codeEditDialogVisible.value || expressionEditDialogVisible.value || textEditDialogVisible.value,
+	(open) => {
+		if (open) parameterModalContext?.openDialogs.value.add(parameterEditorId);
+		else parameterModalContext?.openDialogs.value.delete(parameterEditorId);
+	},
+);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
 const jsonValidationError = ref<string | null>(null);
@@ -270,6 +295,22 @@ const isModelValueExpression = computed(() => isValueExpression(props.parameter,
 
 const isResourceLocatorParameter = computed<boolean>(() => {
 	return isResourceLocatorParameterType(props.parameter.type);
+});
+
+const parameterType = computed(() => props.parameter.type);
+const { contributedComponent, capabilities: contributedCapabilities } =
+	useParameterInputContribution(parameterType);
+
+/**
+ * A contributed input that owns expression rendering replaces every built-in
+ * branch. One that does not yields to the expression editor first, exactly as a
+ * built-in non-resource-locator type does.
+ */
+const showContributedComponent = computed<boolean>(() => {
+	if (!contributedComponent.value) return false;
+	if (contributedCapabilities.value.ownsExpressionRendering) return true;
+
+	return !isModelValueExpression.value && !props.forceShowExpression;
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -336,7 +377,13 @@ const parameterOptions = computed(() => {
 	// the unsupported-action notice instead of showing a blank dropdown.
 	const paramName = props.parameter.name;
 	if (paramName !== 'resource' && paramName !== 'operation') return displayableOptions;
-	if (shortPath.value !== paramName) return displayableOptions;
+	// Filter only the top-level resource/operation param (not one nested in a
+	// collection). The path root is 'parameters' in the NDV and empty in the
+	// standalone tool-config form, so accept both roots instead of relying on the
+	// stripped `shortPath`, which is empty when there is no root segment.
+	if (props.path !== paramName && props.path !== `parameters.${paramName}`) {
+		return displayableOptions;
+	}
 
 	const currentValue = isResourceLocatorValue(props.modelValue)
 		? props.modelValue.value
@@ -347,6 +394,28 @@ const parameterOptions = computed(() => {
 			aiGateway.isActionOptionVisible(node.value ?? null, paramName, String(option.value)),
 	);
 });
+
+// Search text typed into an options dropdown. The search matches the label or
+// the value, so a model shown by its product name is still found by its id.
+const optionsSearch = ref('');
+
+const searchedParameterOptions = computed(() => {
+	const search = optionsSearch.value.trim().toLocaleLowerCase();
+	if (!search) return parameterOptions.value;
+	return parameterOptions.value.filter(
+		(option) =>
+			getOptionsOptionDisplayName(option).toLocaleLowerCase().includes(search) ||
+			String(option.value).toLocaleLowerCase().includes(search),
+	);
+});
+
+function onOptionsSearch(search = '') {
+	optionsSearch.value = search;
+}
+
+function onOptionsVisibleChange(visible: boolean) {
+	if (!visible) optionsSearch.value = '';
+}
 
 const modelValueString = computed<string>(() => {
 	const value = props.modelValue;
@@ -461,14 +530,15 @@ const displayValue = computed(() => {
 	}
 
 	let returnValue;
-	if (!isModelValueExpression.value) {
-		returnValue = isResourceLocatorParameter.value
-			? isResourceLocatorValue(props.modelValue)
-				? props.modelValue.value
-				: ''
-			: props.modelValue;
-	} else {
+	if (isModelValueExpression.value) {
 		returnValue = props.expressionEvaluated;
+	} else if (isResourceLocatorParameter.value) {
+		returnValue = isResourceLocatorValue(props.modelValue) ? props.modelValue.value : '';
+	} else if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		// Saved workflows can still hold a value carried over from a same-named parameter
+		returnValue = JSON.stringify(props.modelValue);
+	} else {
+		returnValue = props.modelValue;
 	}
 
 	if (props.parameter.type === 'credentialsSelect' && typeof props.modelValue === 'string') {
@@ -501,6 +571,16 @@ const displayValue = computed(() => {
 
 	return returnValue as string;
 });
+
+function normalizeNumberValue(value: unknown): number | undefined {
+	if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+	if (typeof value !== 'string' || value.trim() === '') return undefined;
+
+	const parsedValue = Number(value);
+	return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+const numberDisplayValue = computed(() => normalizeNumberValue(displayValue.value));
 
 const expressionDisplayValue = computed(() => {
 	if (props.forceShowExpression) {
@@ -599,7 +679,10 @@ const getIssues = computed<string[]>(() => {
 		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
-	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
+	if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		issues.parameters = issues.parameters ?? {};
+		issues.parameters[props.parameter.name] = [i18n.baseText('parameterInput.valueTypeMismatch')];
+	} else if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
 		issues.parameters = issues.parameters ?? {};
 
 		const issue = i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
@@ -774,7 +857,7 @@ const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression === true ||
 		props.isReadOnly ||
-		isResourceLocatorParameter.value ||
+		contributedCapabilities.value.disableDrop ||
 		isModelValueExpression.value,
 );
 const showDragnDropTip = computed(
@@ -825,13 +908,19 @@ function credentialSelected(updateInformation: INodeUpdatePropertiesInformation)
 	void externalHooks.run('nodeSettings.credentialSelected', { updateInformation });
 }
 
-function getPlaceholder(): string {
+const compactHints = inject(CompactParameterHintsKey, false);
+const fullPlaceholderHint = computed(() => {
 	const rawValue = isResourceLocatorValue(props.modelValue)
 		? props.modelValue.value
 		: props.modelValue;
-	if (typeof rawValue === 'string') {
-		const labels = extractPlaceholderLabels(rawValue);
-		if (labels.length > 0) return labels[0];
+	return typeof rawValue === 'string' ? extractPlaceholderLabels(rawValue)[0] : undefined;
+});
+
+function getPlaceholder(): string {
+	if (fullPlaceholderHint.value) {
+		return compactHints
+			? truncate(fullPlaceholderHint.value, { length: 60, separator: ' ' })
+			: fullPlaceholderHint.value;
 	}
 
 	return props.isForCredential
@@ -1382,6 +1471,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
+	parameterModalContext?.openDialogs.value.delete(parameterEditorId);
 	valueChangedDebounced.flush();
 	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
@@ -1523,8 +1613,30 @@ onUpdated(async () => {
 			:style="parameterInputWrapperStyle"
 			:data-parameter-path="path"
 		>
+			<component
+				:is="contributedComponent"
+				v-if="showContributedComponent"
+				:parameter="parameter"
+				:model-value="modelValue"
+				:path="path"
+				:node="node"
+				:display-title="displayTitle"
+				:is-read-only="isReadOnly"
+				:is-value-expression="isModelValueExpression"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:dependent-parameters-values="dependentParametersValues"
+				:parameter-issues="getIssues"
+				:droppable="droppable ?? false"
+				:event-bus="eventBus"
+				@update:model-value="valueChangedDebounced"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<ResourceLocator
-				v-if="parameter.type === 'resourceLocator'"
+				v-else-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:model-value="modelValueResourceLocator"
@@ -1621,7 +1733,8 @@ onUpdated(async () => {
 					width="calc(100% - var(--spacing--3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
-					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+					:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+					:append-to-body="parameterModalContext?.appendTo === 'body'"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
@@ -1637,7 +1750,6 @@ onUpdated(async () => {
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
-							:disable-ask-ai="!askAi"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1710,7 +1822,6 @@ onUpdated(async () => {
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
-					:disable-ask-ai="!askAi"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1853,7 +1964,6 @@ onUpdated(async () => {
 						:language="editorLanguage"
 						:is-read-only="true"
 						:rows="editorRows"
-						:disable-ask-ai="!askAi"
 					/>
 				</div>
 				<N8nInput
@@ -1870,7 +1980,8 @@ onUpdated(async () => {
 						remoteParameterOptionsLoading ||
 						remoteParameterOptionsLoadingIssues !== null
 					"
-					:title="displayTitle"
+					:title="compactHints && fullPlaceholderHint ? fullPlaceholderHint : displayTitle"
+					:aria-label="compactHints ? switchLabel : undefined"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
 					@update:model-value="
@@ -1964,7 +2075,7 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:model-value="displayValue"
+				:model-value="numberDisplayValue"
 				:controls="false"
 				:max="getTypeOption('maxValue')"
 				:min="getTypeOption('minValue')"
@@ -1973,7 +2084,7 @@ onUpdated(async () => {
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@update:model-value="onUpdateTextInput"
+				@update:model-value="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@paste="onPasteNumber"
@@ -2004,6 +2115,7 @@ onUpdated(async () => {
 				ref="inputField"
 				:size="inputSize"
 				filterable
+				:filter-method="onOptionsSearch"
 				:model-value="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
@@ -2015,9 +2127,10 @@ onUpdated(async () => {
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
+				@visible-change="onOptionsVisibleChange"
 			>
 				<N8nOption
-					v-for="option in parameterOptions"
+					v-for="option in searchedParameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
 					:disabled="isOptionDisabled(option)"
@@ -2184,6 +2297,8 @@ onUpdated(async () => {
 </style>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .ql-editor {
 	padding: 6px;
 	line-height: 26px;
@@ -2240,10 +2355,6 @@ onUpdated(async () => {
 	}
 }
 
-.el-dropdown {
-	color: var(--color--text--tint-1);
-}
-
 .list-option {
 	margin: 6px 0;
 	white-space: normal;
@@ -2288,10 +2399,6 @@ onUpdated(async () => {
 
 .input-with-opener .el-input__suffix {
 	right: 0;
-}
-
-.el-input--suffix .el-input__inner {
-	padding-right: 0;
 }
 
 .textarea-modal-opener {

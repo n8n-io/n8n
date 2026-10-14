@@ -3,7 +3,7 @@ import type { Settings, SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import { ChatHubSettingsService } from '../chat-hub.settings.service';
 

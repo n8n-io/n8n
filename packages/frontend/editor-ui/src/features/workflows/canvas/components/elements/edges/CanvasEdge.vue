@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
 import type { CanvasConnectionData } from '../../../canvas.types';
+import { HOVER_DELAY } from '@/app/constants/durations';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
@@ -41,7 +42,6 @@ const connectionType = computed(() =>
 
 const delayedHovered = ref(props.hovered);
 const delayedHoveredSetTimeoutRef = ref<NodeJS.Timeout | null>(null);
-const delayedHoveredTimeout = 600;
 
 watch(
 	() => props.hovered,
@@ -52,7 +52,7 @@ watch(
 		} else {
 			delayedHoveredSetTimeoutRef.value = setTimeout(() => {
 				delayedHovered.value = false;
-			}, delayedHoveredTimeout);
+			}, HOVER_DELAY.LEAVE);
 		}
 	},
 	{ immediate: true },
@@ -71,13 +71,13 @@ const edgeStyle = computed(() => ({
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
-	hovered: delayedHovered.value,
+	hovered: props.hovered,
 	'bring-to-front': props.bringToFront,
 }));
 
 const edgeToolbarStyle = computed(() => ({
 	transform: `translate(-50%, -50%) translate(${labelPosition.value[0]}px, ${labelPosition.value[1]}px)`,
-	...(delayedHovered.value && props.bringToFront ? { zIndex: 1 } : {}),
+	...(delayedHovered.value && (props.bringToFront || !props.hovered) ? { zIndex: 1 } : {}),
 }));
 
 const edgeToolbarClasses = computed(() => ({
@@ -118,7 +118,7 @@ const edgeColor = computed(() => {
 
 // For colored edges (success/pinned), don't apply hover effect
 const hasColoredStatus = computed(() => status.value === 'success' || status.value === 'pinned');
-const hoveredForLightness = computed(() => (hasColoredStatus.value ? false : delayedHovered.value));
+const hoveredForLightness = computed(() => (hasColoredStatus.value ? false : props.hovered));
 
 const edgeLightness = calculateEdgeLightness(hoveredForLightness);
 

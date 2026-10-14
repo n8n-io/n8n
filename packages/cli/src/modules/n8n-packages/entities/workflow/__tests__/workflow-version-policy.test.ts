@@ -1,6 +1,6 @@
 import { WorkflowEntity } from '@n8n/db';
 
-import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../../n8n-packages.types';
 import { applyWorkflowVersionPolicy } from '../workflow-version-policy';
 
 /**
@@ -17,7 +17,53 @@ describe('applyWorkflowVersionPolicy', () => {
 		});
 
 		expect(() =>
-			applyWorkflowVersionPolicy([workflow], WorkflowVersionPolicy.PublishedStrict),
+			applyWorkflowVersionPolicy([workflow], ExportVersionPolicy.PublishedStrict),
 		).toThrow('Published version was not loaded for workflow');
+	});
+
+	it('exports archived workflows at their latest version under published-strict', () => {
+		const published = Object.assign(new WorkflowEntity(), {
+			id: 'wf-published',
+			isArchived: false,
+			nodes: [{ name: 'Draft' }],
+			activeVersionId: 'v-published',
+			activeVersion: { versionId: 'v-published', nodes: [{ name: 'Live' }], connections: {} },
+		});
+		const archived = Object.assign(new WorkflowEntity(), {
+			id: 'wf-archived',
+			isArchived: true,
+			nodes: [{ name: 'Latest' }],
+			activeVersionId: null,
+			activeVersion: null,
+		});
+
+		const result = applyWorkflowVersionPolicy(
+			[archived, published],
+			ExportVersionPolicy.PublishedStrict,
+		);
+
+		expect(result.map(({ id }) => id)).toEqual(['wf-published', 'wf-archived']);
+		expect(result[0].nodes).toEqual([{ name: 'Live' }]);
+		expect(result[1].nodes).toEqual([{ name: 'Latest' }]);
+	});
+
+	it('keeps archived workflows under ignore-unpublished', () => {
+		const unpublished = Object.assign(new WorkflowEntity(), {
+			id: 'wf-unpublished',
+			isArchived: false,
+			activeVersionId: null,
+		});
+		const archived = Object.assign(new WorkflowEntity(), {
+			id: 'wf-archived',
+			isArchived: true,
+			activeVersionId: null,
+		});
+
+		const result = applyWorkflowVersionPolicy(
+			[unpublished, archived],
+			ExportVersionPolicy.IgnoreUnpublished,
+		);
+
+		expect(result.map(({ id }) => id)).toEqual(['wf-archived']);
 	});
 });

@@ -8,12 +8,15 @@ import type { EngineDataPlaneProvider } from '../engine-data-plane-proxy.service
 import { EngineDataPlaneProxyService } from '../engine-data-plane-proxy.service';
 
 describe('EngineDataPlaneProxyService', () => {
+	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
+
 	const request: StartExecutionRequest = {
 		workflowId: 'wf-1',
 		graph: { nodes: [], edges: [] },
+		workflow: {},
+		executionId,
+		callerContext: { hostMode: 'trigger' },
 	};
-
-	const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa' as ExecutionIdV2;
 
 	let proxy: EngineDataPlaneProxyService;
 
@@ -48,6 +51,24 @@ describe('EngineDataPlaneProxyService', () => {
 		await expect(proxy.getExecution(executionId)).resolves.toBeUndefined();
 	});
 
+	it('returns an empty search without a provider', async () => {
+		await expect(proxy.searchExecutions({ workflowIds: 'all', limit: 20 })).resolves.toEqual({
+			items: [],
+			nextCursor: null,
+			total: 0,
+		});
+	});
+
+	it('forwards search filters and propagates provider failures', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		proxy.registerProvider(provider);
+		provider.searchExecutions.mockRejectedValue(new Error('unavailable'));
+		await expect(proxy.searchExecutions({ workflowIds: ['wf'], limit: 20 })).rejects.toThrow(
+			'unavailable',
+		);
+		expect(provider.searchExecutions).toHaveBeenCalledWith({ workflowIds: ['wf'], limit: 20 });
+	});
+
 	it('delegates a read to the registered provider', async () => {
 		const provider = mock<EngineDataPlaneProvider>();
 		const snapshot = mock<ExecutionSnapshot>({ id: executionId });
@@ -55,6 +76,34 @@ describe('EngineDataPlaneProxyService', () => {
 		proxy.registerProvider(provider);
 
 		await expect(proxy.getExecution(executionId)).resolves.toBe(snapshot);
-		expect(provider.getExecution).toHaveBeenCalledWith(executionId);
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, undefined);
+	});
+
+	it('passes the read options through to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		proxy.registerProvider(provider);
+
+		await proxy.getExecution(executionId, { includeSteps: true });
+
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
+	});
+
+	it('reports no execution to cancel without a provider', async () => {
+		await expect(proxy.cancelExecution(executionId)).resolves.toBeUndefined();
+	});
+
+	it('forwards a cancel to the provider', async () => {
+		const provider = mock<EngineDataPlaneProvider>();
+		provider.cancelExecution.mockResolvedValue({
+			cancelled: true,
+			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+		});
+		proxy.registerProvider(provider);
+
+		await expect(proxy.cancelExecution(executionId)).resolves.toEqual({
+			cancelled: true,
+			finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+		});
+		expect(provider.cancelExecution).toHaveBeenCalledWith(executionId);
 	});
 });

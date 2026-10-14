@@ -22,9 +22,12 @@ export type JobData = {
 	loadStaticData: boolean;
 	pushRef?: string;
 	streamingEnabled?: boolean;
+	/** What on main awaits this run's outcome, see IWorkflowExecutionDataProcess. */
+	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
+	poolName?: string;
 
 	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
 	encryptedRunnerIdentity?: string;
@@ -92,6 +95,7 @@ export type JobFinishedProps = {
 };
 
 /** Message sent by worker to main to report a job has finished. */
+// oxlint-disable-next-line typescript/no-deprecated
 export type JobFinishedMessage = JobFinishedMessageV1 | JobFinishedMessageV2;
 
 /** @deprecated Old format without execution result details. */
@@ -145,6 +149,11 @@ export type AbortJobMessage = {
 
 export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
+	/**
+	 * Present only when the job may be suspended at worker shutdown. Returns
+	 * false while the run still owes its webhook caller a response.
+	 */
+	suspend?: () => boolean;
 };
 
 export type QueueRecoveryContext = {

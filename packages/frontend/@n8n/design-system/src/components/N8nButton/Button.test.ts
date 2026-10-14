@@ -7,6 +7,11 @@ const stubs = ['N8nSpinner', 'N8nIcon'];
 
 describe('components', () => {
 	describe('N8nButton', () => {
+		it('maps the legacy subtle variant to brand', () => {
+			const wrapper = render(N8nButton, { props: { variant: 'subtle' }, global: { stubs } });
+			expect(wrapper.getByRole('button').className).toContain('brand');
+		});
+
 		describe('rendering', () => {
 			it('should render correctly with default props', () => {
 				const wrapper = render(N8nButton, {
@@ -82,7 +87,7 @@ describe('components', () => {
 
 		describe('props', () => {
 			describe('variant', () => {
-				it.each(['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'] as const)(
+				it.each(['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'] as const)(
 					'should render %s variant',
 					(variant) => {
 						const wrapper = render(N8nButton, {
@@ -331,6 +336,15 @@ describe('components', () => {
 		});
 
 		describe('accessibility', () => {
+			it('uses a polite live region unless the caller overrides it', async () => {
+				const { getByRole, rerender } = render(N8nButton, {
+					slots: { default: 'Status' },
+				});
+				expect(getByRole('button')).toHaveAttribute('aria-live', 'polite');
+				await rerender({ 'aria-live': 'off' });
+				expect(getByRole('button')).toHaveAttribute('aria-live', 'off');
+			});
+
 			it('should be keyboard accessible', async () => {
 				const handleClick = vi.fn();
 				const wrapper = render(N8nButton, {

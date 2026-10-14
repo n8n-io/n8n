@@ -21,17 +21,6 @@ export const description: INodeProperties[] = [
 	...bodyProperties(['append']),
 ];
 
-function parseAdfAddition(value: string): IDataObject {
-	// The envelope already guarantees valid JSON of an object
-	const doc = jsonParse<IDataObject>(value);
-	if (!Array.isArray(doc.content)) {
-		throw new Error(
-			'ADF JSON body must be a document with a "content" array, e.g. { "type": "doc", "version": 1, "content": [] }',
-		);
-	}
-	return doc;
-}
-
 export function mergeAdfDocuments(currentValue: string, additionDoc: IDataObject): string {
 	// Pages saved without ADF content can come back with an empty body value
 	if (currentValue.trim() === '') return JSON.stringify(additionDoc);
@@ -58,17 +47,12 @@ export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
 ) {
-	const addition = readBodyEnvelope(this, itemIndex);
-
 	// Validated before any API call (a By Title page lookup is one already)
-	let additionDoc: IDataObject | undefined;
-	if (addition.representation === 'atlas_doc_format') {
-		try {
-			additionDoc = parseAdfAddition(addition.value);
-		} catch (error) {
-			throw new NodeOperationError(this.getNode(), (error as Error).message, { itemIndex });
-		}
-	}
+	const addition = readBodyEnvelope(this, itemIndex);
+	const additionDoc =
+		addition.representation === 'atlas_doc_format'
+			? jsonParse<IDataObject>(addition.value)
+			: undefined;
 
 	const pageId = await resolvePageId.call(this, itemIndex);
 

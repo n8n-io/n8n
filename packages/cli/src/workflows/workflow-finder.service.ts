@@ -1,12 +1,25 @@
-import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
-import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, chunkIds } from '@n8n/db';
+import { RoleService } from '@n8n/backend-services';
+import type {
+	SharedWorkflow,
+	User,
+	WorkflowEntity,
+	ListQuery,
+	PublishHistoryScope,
+	OperationContext,
+} from '@n8n/db';
+import {
+	SharedWorkflowRepository,
+	FolderRepository,
+	WorkflowRepository,
+	RoleRepository,
+	chunkIds,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { RoleService } from '@/services/role.service';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {
@@ -31,6 +44,7 @@ export class WorkflowFinderService {
 		private readonly folderRepository: FolderRepository,
 		private readonly roleService: RoleService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	async findWorkflowForUser(
@@ -41,17 +55,18 @@ export class WorkflowFinderService {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			em?: EntityManager;
-		} = {},
+			publishHistory?: PublishHistoryScope;
+		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
-		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em ?? options.ctx);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
 			includeActiveVersion: options.includeActiveVersion,
-			em: options.em,
+			publishHistory: options.publishHistory,
+			...(options.em ? { em: options.em } : { ctx: options.ctx }),
 		});
 
 		if (!sharedWorkflow) {
@@ -70,7 +85,7 @@ export class WorkflowFinderService {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-	): Promise<{ versionId: string; updatedAt: Date } | null> {
+	): Promise<{ versionId: string; activeVersionId: string | null; updatedAt: Date } | null> {
 		const where = await this.buildSingleWorkflowReadWhere(user, scopes);
 		const sw = await this.sharedWorkflowRepository.findOne({
 			where: { workflowId, ...where },
@@ -78,23 +93,32 @@ export class WorkflowFinderService {
 			select: {
 				workflowId: true,
 				projectId: true,
-				workflow: { id: true, versionId: true, updatedAt: true },
+				workflow: { id: true, versionId: true, activeVersionId: true, updatedAt: true },
 			},
 		});
 		if (!sw?.workflow) return null;
-		return { versionId: sw.workflow.versionId, updatedAt: sw.workflow.updatedAt };
+		return {
+			versionId: sw.workflow.versionId,
+			activeVersionId: sw.workflow.activeVersionId,
+			updatedAt: sw.workflow.updatedAt,
+		};
 	}
 
 	private async buildSingleWorkflowReadWhere(
 		user: User,
 		scopes: Scope[],
-		em?: EntityManager,
+		context?: EntityManager | OperationContext,
 	): Promise<FindOptionsWhere<SharedWorkflow>> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
+		const loadRoles = context ? async () => await this.roleRepository.findAll(context) : undefined;
+		const rolesWithScope = async (namespace: 'project' | 'workflow') =>
+			loadRoles
+				? await this.roleService.rolesWithScope(namespace, scopes, loadRoles)
+				: await this.roleService.rolesWithScope(namespace, scopes);
 
 		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roleService.rolesWithScope('project', scopes, em),
-			this.roleService.rolesWithScope('workflow', scopes, em),
+			rolesWithScope('project'),
+			rolesWithScope('workflow'),
 		]);
 
 		return {
@@ -108,7 +132,12 @@ export class WorkflowFinderService {
 		};
 	}
 
-	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
+	private async findAllWhere(
+		user: AuthPrincipal & Pick<User, 'id'>,
+		scopes: Scope[],
+		folderId?: string,
+		projectId?: string,
+	) {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (folderId) {
@@ -156,7 +185,7 @@ export class WorkflowFinderService {
 
 	async findWorkflowIdsWithScopeForUser(
 		workflowIds: string[],
-		user: User,
+		user: AuthPrincipal & Pick<User, 'id'>,
 		scopes: Scope[],
 	): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
@@ -221,7 +250,10 @@ export class WorkflowFinderService {
 		return workflows;
 	}
 
-	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
+	async findWorkflowIdsByFolder(
+		folderIds: string[],
+		options: { includeArchived?: boolean } = {},
+	): Promise<Map<string, string[]>> {
 		if (folderIds.length === 0) return new Map();
 
 		const byFolder = new Map<string, string[]>();
@@ -229,7 +261,12 @@ export class WorkflowFinderService {
 
 		for (const chunk of chunkIds(folderIds)) {
 			const rows = await this.sharedWorkflowRepository.find({
-				where: { workflow: { parentFolder: In(chunk) } },
+				where: {
+					workflow: {
+						parentFolder: In(chunk),
+						...(options.includeArchived ? {} : { isArchived: false }),
+					},
+				},
 				relations: { workflow: { parentFolder: true } },
 				select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
 			});
@@ -248,6 +285,18 @@ export class WorkflowFinderService {
 		return byFolder;
 	}
 
+	async findOwnedWorkflowRemovalCandidates(
+		projectId: string,
+		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
+	) {
+		return await this.sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates(
+			projectId,
+			workflowIds,
+			options,
+		);
+	}
+
 	/**
 	 * Workflows a project owns, each paired with the folder holding it (`null` at the
 	 * project root). Archived workflows are excluded unless asked for; a reconciling
@@ -255,8 +304,7 @@ export class WorkflowFinderService {
 	 *
 	 * The widest of the three scope lookups here — use {@link findRootWorkflowIdsInProject} when
 	 * only the project root matters, or {@link findWorkflowIdsByFolder} for folders that need not
-	 * belong to one project. This one is for reconciling a whole project, so it is the only one
-	 * that carries names and filters archived rows.
+	 * belong to one project. For explicit removals, use {@link findOwnedWorkflowRemovalCandidates}.
 	 */
 	async findOwnedWorkflowPlacementsInProject(
 		projectId: string,
@@ -288,12 +336,18 @@ export class WorkflowFinderService {
 	/**
 	 * List root workflows of a project only.
 	 */
-	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {
+	async findRootWorkflowIdsInProject(
+		projectId: string,
+		options: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
 		const rows = await this.sharedWorkflowRepository.find({
 			where: {
 				project: { id: projectId },
 				role: 'workflow:owner',
-				workflow: { parentFolder: IsNull() },
+				workflow: {
+					parentFolder: IsNull(),
+					...(options.includeArchived ? {} : { isArchived: false }),
+				},
 			},
 			relations: { workflow: { parentFolder: true } },
 			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
@@ -305,12 +359,17 @@ export class WorkflowFinderService {
 	/**
 	 * Finds owned workflows in a project that may match package workflows either
 	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
-	 * authored on this instance).
+	 * authored on this instance). Archived workflows are left out unless
+	 * `includeArchived` is set.
 	 */
 	async findOwnedWorkflowsBySourceWorkflowIds(
 		projectId: string,
 		sourceWorkflowIds: string[],
-		options: { includeActiveVersion?: boolean; includeParentFolder?: boolean } = {},
+		options: {
+			includeActiveVersion?: boolean;
+			includeParentFolder?: boolean;
+			includeArchived?: boolean;
+		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (sourceWorkflowIds.length === 0) return [];
 
@@ -318,6 +377,7 @@ export class WorkflowFinderService {
 			activeVersion: options.includeActiveVersion,
 			parentFolder: options.includeParentFolder,
 		};
+		const archivedFilter = options.includeArchived ? {} : { isArchived: false };
 
 		const workflows = new Map<string, WorkflowEntity>();
 
@@ -330,7 +390,7 @@ export class WorkflowFinderService {
 					{
 						projectId,
 						role: 'workflow:owner',
-						workflow: { sourceWorkflowId: In(chunk), isArchived: false },
+						workflow: { sourceWorkflowId: In(chunk), ...archivedFilter },
 					},
 					{
 						projectId,
@@ -338,7 +398,7 @@ export class WorkflowFinderService {
 						workflow: {
 							id: In(chunk),
 							sourceWorkflowId: IsNull(),
-							isArchived: false,
+							...archivedFilter,
 						},
 					},
 				],
@@ -408,6 +468,7 @@ export class WorkflowFinderService {
 			? [folderId, ...(await this.folderRepository.getAllFolderIdsInHierarchy(folderId, projectId))]
 			: undefined;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const select: NonNullable<ListQuery.Options['select']> = {
 			id: true,
 			name: true,

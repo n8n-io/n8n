@@ -17,9 +17,9 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
@@ -323,7 +323,14 @@ describe('test vs production form resources', () => {
 
 		const mint = async (resourceUrl: string) => {
 			const pair = tokenService.generateTokenPair(owner.id, clientId, resourceUrl, []);
-			await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, owner.id, []);
+			await tokenService.saveTokenPair(
+				pair.accessToken,
+				pair.refreshToken,
+				clientId,
+				owner.id,
+				[],
+				pair.audience,
+			);
 			return pair.accessToken;
 		};
 

@@ -79,7 +79,7 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 import DemoDiffView from './DemoDiffView.vue';
 import { setActivePinia } from 'pinia';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 
 // Capture props from WorkflowDiffView
 let capturedTidyUpProp: boolean | undefined = undefined;

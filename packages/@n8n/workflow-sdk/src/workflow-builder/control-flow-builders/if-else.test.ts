@@ -399,3 +399,355 @@ describe('IF Else fluent API', () => {
 		});
 	});
 });
+
+describe('inline branch chains that end in an IF node', () => {
+	const ifNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.if', version: 2.2, config: { name } }) as IfNode;
+	const noOp = (name: string) =>
+		node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name } });
+	const setNode = (name: string) =>
+		node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name } });
+	const manualTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name } });
+	const webhookTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { name } });
+	const scheduleTrigger = (name: string) =>
+		trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { name } });
+
+	it('expands a multi-node chain passed inline to .onFalse() instead of collapsing it', () => {
+		// Repro from a production trace: the retry chain passed to .onFalse() used to
+		// collapse to its IF tail. Build Repair 2, OpenRouter Call 2, and Validate Attempt 2
+		// were silently dropped, and IF 1 connected straight to IF 2.
+		const code = `
+const t = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'Sub Trigger' } });
+const validate1 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Validate Attempt 1' } });
+const if1 = ifElse({ version: 2.2, config: { name: 'Attempt 1 Valid?' } });
+const repair2 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Build Repair 2' } });
+const http2 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { name: 'OpenRouter Call 2' } });
+const validate2 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Validate Attempt 2' } });
+const if2 = ifElse({ version: 2.2, config: { name: 'Attempt 2 Valid?' } });
+const repair3 = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Build Repair 3' } });
+const finalize = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Finalize' } });
+
+export default workflow('test-id', 'Test')
+  .add(t)
+  .to(validate1)
+  .to(if1)
+  .onTrue(finalize)
+  .onFalse(
+    repair2
+      .to(http2)
+      .to(validate2)
+      .to(if2)
+      .onTrue(finalize)
+      .onFalse(repair3.to(finalize))
+  );
+`;
+		const json = parseWorkflowCode(code);
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual([
+			'Attempt 1 Valid?',
+			'Attempt 2 Valid?',
+			'Build Repair 2',
+			'Build Repair 3',
+			'Finalize',
+			'OpenRouter Call 2',
+			'Sub Trigger',
+			'Validate Attempt 1',
+			'Validate Attempt 2',
+		]);
+
+		// IF 1 false output lands on the chain head, not the inner IF
+		expect(json.connections['Attempt 1 Valid?'].main[0]![0].node).toBe('Finalize');
+		expect(json.connections['Attempt 1 Valid?'].main[1]![0].node).toBe('Build Repair 2');
+
+		// Chain internal connections are preserved
+		expect(json.connections['Build Repair 2'].main[0]![0].node).toBe('OpenRouter Call 2');
+		expect(json.connections['OpenRouter Call 2'].main[0]![0].node).toBe('Validate Attempt 2');
+		expect(json.connections['Validate Attempt 2'].main[0]![0].node).toBe('Attempt 2 Valid?');
+
+		// Inner IF branches are wired
+		expect(json.connections['Attempt 2 Valid?'].main[0]![0].node).toBe('Finalize');
+		expect(json.connections['Attempt 2 Valid?'].main[1]![0].node).toBe('Build Repair 3');
+		expect(json.connections['Build Repair 3'].main[0]![0].node).toBe('Finalize');
+	});
+
+	it('routes a nested branch target built from a chain to the chain head', () => {
+		const t = manualTrigger('Start');
+		const outerIf = ifNode('Outer IF');
+		const ok = noOp('OK');
+		const prep = setNode('Prep');
+		const innerIf = ifNode('Inner IF');
+		const done = noOp('Done');
+		const retry = noOp('Retry');
+
+		const inner = prep.to(innerIf).onTrue!(done).onFalse(retry);
+		const wf = workflow('test-id', 'Test').add(t).to(outerIf.onTrue!(ok).onFalse(inner));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Done', 'Inner IF', 'OK', 'Outer IF', 'Prep', 'Retry', 'Start']);
+
+		expect(json.connections['Outer IF'].main[0]![0].node).toBe('OK');
+		expect(json.connections['Outer IF'].main[1]![0].node).toBe('Prep');
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Inner IF');
+		expect(json.connections['Inner IF'].main[0]![0].node).toBe('Done');
+		expect(json.connections['Inner IF'].main[1]![0].node).toBe('Retry');
+	});
+
+	it('connects the prefix node to the IF node when the chain tail is an existing builder', () => {
+		// t.to(builder) makes the builder the chain tail; .onFalse then returns that
+		// same builder with the chain recorded as a feeder. The chain-internal edge
+		// must land on the IF node, not resolve back to the chain head (self-loop).
+		const t = manualTrigger('Start');
+		const check = ifNode('Route');
+		const yes = noOp('Yes');
+		const no = noOp('No');
+
+		const builder = check.onTrue!(yes);
+		const wf = workflow('test-id', 'Test').add(t.to(builder).onFalse!(no));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['No', 'Route', 'Start', 'Yes']);
+
+		expect(json.connections['Start'].main[0]![0].node).toBe('Route');
+		expect(json.connections['Route'].main[0]![0].node).toBe('Yes');
+		expect(json.connections['Route'].main[1]![0].node).toBe('No');
+	});
+
+	it('merges branches into the renamed IF node when its name collides with an existing node', () => {
+		const t = manualTrigger('Start');
+		const existingCheck = ifNode('Check');
+		const prep = setNode('Prep');
+		const check = ifNode('Check');
+		const yes = noOp('Yes');
+		const no = noOp('No');
+
+		const wf = workflow('test-id', 'Test')
+			.add(t)
+			.to(existingCheck)
+			.add(prep.to(check).onTrue!(yes).onFalse(no));
+
+		const json = wf.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Check', 'Check 1', 'No', 'Prep', 'Start', 'Yes']);
+
+		// The chain's IF node was renamed to 'Check 1'; the branches belong to it
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Check 1');
+		expect(json.connections['Check 1'].main[0]![0].node).toBe('Yes');
+		expect(json.connections['Check 1'].main[1]![0].node).toBe('No');
+		// The pre-existing 'Check' must not receive the builder branches
+		expect(json.connections['Check']).toBeUndefined();
+	});
+
+	it('keeps a second chain connected to the IF node when the first chain adds a branch', () => {
+		// Two chains share one builder object. When one chain calls .onFalse, it becomes
+		// one of the builder's feeders. The other chain's edge must still land
+		// on the IF node, not on the claiming chain's head.
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+
+		const branch = check.onTrue!(slack);
+		const fromWebhook = webhook.to(branch);
+		const fromSchedule = schedule.to(branch);
+
+		const json = workflow('id', 'w').add(fromWebhook.onFalse!(logError)).add(fromSchedule).toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Is Valid?'].main[0]![0].node).toBe('Send Slack');
+		expect(json.connections['Is Valid?'].main[1]![0].node).toBe('Log Error');
+	});
+
+	it('keeps a second chain connected to the IF node regardless of add order', () => {
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+
+		const branch = check.onTrue!(slack);
+		const fromWebhook = webhook.to(branch);
+		const fromSchedule = schedule.to(branch);
+
+		const json = workflow('id', 'w').add(fromSchedule).add(fromWebhook.onFalse!(logError)).toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+	});
+
+	it('routes a branch edge into a shared builder to the IF node, not the claiming chain head', () => {
+		// A builder claimed by a feeder chain (webhook.to(branch).onFalse(...)) can also
+		// be referenced as a branch target of another IF. That branch edge must land on
+		// the builder's IF node, not on the feeder chain's head.
+		const t = manualTrigger('Start');
+		const outer = ifNode('Outer IF');
+		const ok = noOp('OK');
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+
+		const branch = check.onTrue!(slack);
+		const claimed = webhook.to(branch).onFalse!(logError);
+
+		const json = workflow('id', 'w')
+			.add(t)
+			.to(outer.onTrue!(ok).onFalse(branch))
+			.add(claimed)
+			.toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual([
+			'Is Valid?',
+			'Log Error',
+			'OK',
+			'Outer IF',
+			'Send Slack',
+			'Start',
+			'Webhook',
+		]);
+
+		expect(json.connections['Outer IF'].main[0]![0].node).toBe('OK');
+		expect(json.connections['Outer IF'].main[1]![0].node).toBe('Is Valid?');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Is Valid?'].main[0]![0].node).toBe('Send Slack');
+		expect(json.connections['Is Valid?'].main[1]![0].node).toBe('Log Error');
+	});
+
+	it('routes a workflow cursor edge into a shared builder to the IF node', () => {
+		// wf.add(schedule).to(sharedBuilder): the cursor edge resolves through the
+		// composite head. A builder claimed by another chain must expose the IF node
+		// as its entry, not the claiming chain's head.
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+
+		const branch = check.onTrue!(slack);
+		const fromWebhook = webhook.to(branch);
+
+		const json = workflow('id', 'w')
+			.add(fromWebhook.onFalse!(logError))
+			.add(schedule)
+			.to(branch)
+			.toJSON();
+
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+	});
+
+	it('routes a composite literal branch into a shared builder to the IF node', () => {
+		// { ifNode, trueBranch, falseBranch } literals resolve branch entries through
+		// addBranchToGraph. A shared builder branch must land on its IF node.
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const t = manualTrigger('Start');
+		const ok = noOp('OK');
+
+		const branch = check.onTrue!(slack);
+		const claimed = webhook.to(branch).onFalse!(logError);
+
+		const outerIfNode = ifElse({ version: 2.2, config: { name: 'Outer IF' } });
+		const outer = {
+			ifNode: outerIfNode,
+			trueBranch: ok,
+			falseBranch: branch,
+		} as unknown as Parameters<ReturnType<typeof workflow>['to']>[0];
+		const json = workflow('id', 'w').add(t).to(outer).add(claimed).toJSON();
+
+		expect(json.connections['Outer IF'].main[0]![0].node).toBe('OK');
+		expect(json.connections['Outer IF'].main[1]![0].node).toBe('Is Valid?');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+	});
+
+	it('enters at the IF node when a cursor edge targets an inline chain that feeds an existing builder', () => {
+		// .to(prep.to(builder).onFalse(x)) returns the builder itself, and the same
+		// object can be shared by other chains. The cursor edge lands on the IF node;
+		// the feeder keeps its own retargeted edge into the IF node.
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const prev = manualTrigger('Start');
+		const feeder = setNode('Prep');
+
+		const branch = check.onTrue!(slack);
+
+		const json = workflow('id', 'w').add(prev).to(feeder.to(branch).onFalse!(logError)).toJSON();
+
+		expect(json.connections['Start'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Is Valid?'].main[0]![0].node).toBe('Send Slack');
+		expect(json.connections['Is Valid?'].main[1]![0].node).toBe('Log Error');
+	});
+
+	it('materializes every chain that claims a shared builder, not only the last one', () => {
+		// Two chains claim the same builder via chain-position onX. Both are feeders
+		// into the IF node; both must reach the graph. Keeping only the last claim
+		// drops the earlier chain's nodes.
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const webhook = webhookTrigger('Webhook');
+		const schedule = scheduleTrigger('Schedule');
+		const t = manualTrigger('Start');
+		const ok = noOp('OK');
+		const outer = ifNode('Outer IF');
+
+		const branch = check.onTrue!(slack);
+		webhook.to(branch).onFalse!(logError);
+		schedule.to(branch).onTrue!(slack);
+
+		const json = workflow('id', 'w').add(t).to(outer.onTrue!(ok).onFalse(branch)).toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual([
+			'Is Valid?',
+			'Log Error',
+			'OK',
+			'Outer IF',
+			'Schedule',
+			'Send Slack',
+			'Start',
+			'Webhook',
+		]);
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Schedule'].main[0]![0].node).toBe('Is Valid?');
+	});
+
+	it('keeps the prefix entry when a feeder chain also claims the builder', () => {
+		// prep.to(check).onTrue(x) creates the builder with a prefix chain. A second
+		// chain claiming it via onFalse is a feeder: it wires straight into the IF node
+		// and must not displace the prefix entry or drop the prefix nodes.
+		const check = ifNode('Is Valid?');
+		const slack = noOp('Send Slack');
+		const logError = noOp('Log Error');
+		const prep = setNode('Prep');
+		const webhook = webhookTrigger('Webhook');
+		const t = manualTrigger('Start');
+
+		const branch = prep.to(check).onTrue!(slack);
+		webhook.to(branch).onFalse!(logError);
+
+		const json = workflow('id', 'w').add(t).to(branch).toJSON();
+
+		const names = json.nodes.map((n) => n.name).sort();
+		expect(names).toEqual(['Is Valid?', 'Log Error', 'Prep', 'Send Slack', 'Start', 'Webhook']);
+		expect(json.connections['Start'].main[0]![0].node).toBe('Prep');
+		expect(json.connections['Prep'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Webhook'].main[0]![0].node).toBe('Is Valid?');
+		expect(json.connections['Is Valid?'].main[0]![0].node).toBe('Send Slack');
+		expect(json.connections['Is Valid?'].main[1]![0].node).toBe('Log Error');
+	});
+});

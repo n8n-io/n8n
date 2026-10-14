@@ -13,6 +13,8 @@ import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-tri
 
 import { createOwner } from '../shared/db/users';
 
+import { workflowOwned } from './shared/job-factory';
+
 describe('PollTriggerJobRegistrar', () => {
 	const node: INode = {
 		id: 'node-1',
@@ -95,7 +97,7 @@ describe('PollTriggerJobRegistrar', () => {
 
 		expect(inserted).toBe(true);
 		const jobs = await scheduledJobRepository.find({
-			where: { workflowId: workflow.id, nodeId: node.id },
+			where: { ...workflowOwned(workflow.id, node.id) },
 		});
 		expect(jobs).toHaveLength(1);
 

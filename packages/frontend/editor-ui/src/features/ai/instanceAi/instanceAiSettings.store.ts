@@ -25,24 +25,29 @@ import {
 	getBrowserStatus,
 	getGatewayStatus,
 } from './instanceAi.api';
-import type {
-	FrontendModuleSettings,
-	InstanceAiAdminSettingsResponse,
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiUserPreferencesResponse,
-	InstanceAiProviderConnection,
-	InstanceAiPermissions,
-	InstanceAiPermissionMode,
-	InstanceAiModelCatalogResponse,
-	ToolCategory,
-	InstanceAiVerifyModelRequest,
-	InstanceAiVerifySandboxRequest,
-	InstanceAiVerifySearchRequest,
-	InstanceAiVerificationResponse,
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type ComputerUseChannel,
+	type FrontendModuleSettings,
+	type InstanceAiAdminSettingsResponse,
+	type InstanceAiAdminSettingsUpdateRequest,
+	type InstanceAiUserPreferencesResponse,
+	type InstanceAiProviderConnection,
+	type InstanceAiPermissions,
+	type InstanceAiPermissionMode,
+	type InstanceAiModelCatalogResponse,
+	type ToolCategory,
+	type InstanceAiVerifyModelRequest,
+	type InstanceAiVerifySandboxRequest,
+	type InstanceAiVerifySearchRequest,
+	type InstanceAiVerificationResponse,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
 import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
+import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -96,6 +101,30 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isBrowserUseEnabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
 	);
+	const isMcpAvailable = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.mcpConnectionsAvailable === true,
+	);
+
+	const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
+
+	const isComputerUseAvailable = computed(
+		() => isComputerUseFeatureEnabled.value && !isLocalGatewayDisabledByAdmin.value,
+	);
+	const isBrowserUseAvailable = computed(
+		() => isBrowserUseSupportedOnDevice() && isBrowserUseEnabledByAdmin.value,
+	);
+
+	/**
+	 * The Computer Use entries the + menu renders for this user. Sent with every
+	 * message: the rollout and the device are visible only here, so the backend
+	 * cannot work them out and must not advertise an entry we do not report.
+	 */
+	const computerUseChannels = computed<ComputerUseChannel[]>(() => {
+		const channels: ComputerUseChannel[] = [];
+		if (isComputerUseAvailable.value) channels.push('localComputer');
+		if (isBrowserUseAvailable.value) channels.push('browser');
+		return channels;
+	});
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
 	);
@@ -108,6 +137,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
+	const { isEnabled: isInstanceAiSetupPanelEnabled } = useInstanceAiSetupPanelExperiment();
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,
@@ -121,6 +151,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		);
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
+			mcpConnectionsAvailable:
+				adminRes.mcpAccessEnabled && (prev?.mcpConnectionsAvailable ?? false),
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
 			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
@@ -150,7 +182,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		hasPermission(['rbac'], { rbac: { scope: 'credential:manageInstance' } }),
 	);
 
-	async function fetch(): Promise<void> {
+	async function fetch(): Promise<boolean> {
 		isLoading.value = true;
 		try {
 			const promises: [
@@ -174,11 +206,13 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				instanceModelCredentials.value = imc;
 			}
 			clearDraft();
+			return true;
 		} catch {
 			toast.showError(
 				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
 				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
 			);
+			return false;
 		} finally {
 			isLoading.value = false;
 		}
@@ -327,7 +361,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	function getPermission(key: keyof InstanceAiPermissions): InstanceAiPermissionMode {
 		const draftVal = draft.permissions?.[key];
 		if (draftVal !== undefined) return draftVal;
-		return settings.value?.permissions?.[key] ?? 'require_approval';
+		// A key the server did not send falls back to its own default, not to
+		// `require_approval`: not every permission defaults to approval.
+		return settings.value?.permissions?.[key] ?? DEFAULT_INSTANCE_AI_PERMISSIONS[key];
 	}
 
 	// ── Gateway status fetch ──────────────────────────────────────────────
@@ -635,10 +671,15 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
+		isMcpAvailable,
+		isComputerUseAvailable,
+		isBrowserUseAvailable,
+		computerUseChannels,
 		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
+		isInstanceAiSetupPanelEnabled,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,

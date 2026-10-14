@@ -7,6 +7,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	CancelExecutionService,
 	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
@@ -14,11 +15,14 @@ import {
 	StepReadyHandler,
 	StepSettledHandler,
 	StepWorker,
+	WaitSweeper,
 } from '../execution';
 import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '../lifecycle-events';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
+import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
 
 export interface EngineRuntimeOptions {
@@ -27,6 +31,13 @@ export interface EngineRuntimeOptions {
 	admittance: AdmittanceService;
 	/** Verifies the identity token on every `/api` request. No default: an unauthenticated engine must never boot by omission. */
 	identityVerifier: IdentityVerifier;
+	/** Where the engine writes its own messages. Defaults to the console. */
+	logger?: EngineLogger;
+	/**
+	 * Where an execution sends responses. The host owns it. No default: a host
+	 * that discards responses says so with `noopExecutionResponseSender`.
+	 */
+	responseSender: ExecutionResponseSender;
 	/**
 	 * Builds the capabilities the engine does not own. It receives the engine's
 	 * stores, because a `v1-node` executor reads step data through them and the
@@ -37,6 +48,8 @@ export interface EngineRuntimeOptions {
 	 * package, so only an integrated host can supply it.
 	 */
 	externalDependencies?: (stores: EngineStores) => ExternalDependencies;
+	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
+	waitSweepIntervalMs?: number;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -61,10 +74,13 @@ export function createEngineRuntime({
 	dataSource,
 	admittance,
 	identityVerifier,
+	logger = createConsoleLogger(),
+	responseSender,
 	externalDependencies,
+	waitSweepIntervalMs,
 }: EngineRuntimeOptions): EngineRuntime {
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-	const stepQueue = new InMemoryWorkQueue<StepMessage>();
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
+	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
@@ -87,8 +103,10 @@ export function createEngineRuntime({
 			stepQueue,
 			orchestrationQueue,
 			lifecycleEventPublisher,
+			responseSender,
 		),
 	);
+	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
 	const stepWorker = new StepWorker(
 		stepQueue,
 		new StepReadyHandler(
@@ -97,13 +115,23 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			dependencies,
 			lifecycleEventPublisher,
+			responseSender,
+			// A deadline set after the sweeper armed would otherwise wait for its next pass.
+			() => waitSweeper.noteSuspended(),
 		),
 	);
 
 	const { app } = createEngineServer({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			lifecycleEventPublisher,
+			responseSender,
+		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier,
+		logger,
 	});
 
 	return {
@@ -112,12 +140,17 @@ export function createEngineRuntime({
 		start: () => {
 			orchestrationWorker.start();
 			stepWorker.start();
+			waitSweeper.start();
 		},
 
 		stop: async () => {
 			// TODO(CAT-3882): drain in-flight work instead. Stopping a worker waits
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
+
+			// The sweeper stops first: it feeds the step queue, so nothing lands
+			// there after the workers have drained.
+			await waitSweeper.stop();
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();

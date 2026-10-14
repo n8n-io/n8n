@@ -113,7 +113,7 @@ export class WorkflowExpression {
 			}
 
 			return this.resolveSimpleParameterValue(
-				value as NodeParameterValue,
+				value,
 				siblingParameters,
 				runExecutionData,
 				runIndex,
@@ -132,7 +132,7 @@ export class WorkflowExpression {
 		// Early return for simple non-expression values (performance optimization + timezone correctness)
 		if (!isComplexParameter(parameterValue)) {
 			return this.resolveSimpleParameterValue(
-				parameterValue as NodeParameterValue,
+				parameterValue,
 				{},
 				runExecutionData,
 				runIndex,

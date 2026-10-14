@@ -1,6 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { Message, Thread } from 'chat';
+import escapeRegExp from 'lodash/escapeRegExp';
 
 import type {
 	BridgeExecutionContext,
@@ -26,11 +27,12 @@ const SLACK_HISTORY_CLOSE_TAG = '</slack_thread_history>';
 const SLACK_HISTORY_FRAMING_CHARS =
 	SLACK_HISTORY_HEADER.length + SLACK_HISTORY_OPEN_TAG.length + SLACK_HISTORY_CLOSE_TAG.length + 2;
 
-interface SlackThreadContext {
+export interface SlackThreadContext {
 	channelId: string;
 	threadTs: string;
 	hasRealThreadTs: boolean;
 	canUseThreadTs: boolean;
+	recipientTeamId?: string;
 }
 
 interface SlackAssistantStatusAdapter {
@@ -93,7 +95,7 @@ export async function createSlackBridgeExecutionContext(
 	const [statusHandle, historyContext] = await Promise.all([
 		// When the reply is optional the agent may stay silent — showing
 		// "Thinking..." would telegraph a reply that never comes.
-		params.replyExpectation === 'optional'
+		params.startStatus === false || params.replyExpectation === 'optional'
 			? Promise.resolve(undefined)
 			: startSlackThinkingStatus(params.thread, {
 					chat: params.chat,
@@ -115,6 +117,7 @@ export async function createSlackBridgeExecutionContext(
 
 	return {
 		platformAgentContext,
+		slackThreadContext,
 		forceBuffered: slackThreadContext?.canUseThreadTs !== true,
 		statusHandle,
 		...(historyContext ? { historyContext } : {}),
@@ -126,6 +129,7 @@ export async function createSlackResumeExecutionContext(params: {
 	thread: Thread<unknown, unknown>;
 	logger: BridgeMessageContextParams['logger'];
 	agentId: string;
+	slackThreadContext?: SlackThreadContext;
 }): Promise<BridgeResumeExecutionContext> {
 	// Slack action payloads do not reliably include the original message's raw
 	// thread_ts, so resume responses use the same safe buffered path as top-level
@@ -136,6 +140,8 @@ export async function createSlackResumeExecutionContext(params: {
 			chat: params.chat,
 			logger: params.logger,
 			agentId: params.agentId,
+			slackThreadContext: params.slackThreadContext,
+			statusRetry: new AbortController(),
 		}),
 	};
 }
@@ -400,6 +406,7 @@ function getSlackThreadContext(
 		threadTs,
 		hasRealThreadTs: realThreadTs !== undefined,
 		canUseThreadTs: realThreadTs !== undefined || (usesAgentMessagingExperience && isDm),
+		recipientTeamId: stringValue(raw.team_id) ?? stringValue(raw.team),
 	};
 }
 
@@ -425,10 +432,6 @@ function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantS
 
 function stringValue(value: unknown): string | undefined {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function escapeRegExp(value: string): string {
-	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function getSlackErrorCode(error: unknown): string | undefined {

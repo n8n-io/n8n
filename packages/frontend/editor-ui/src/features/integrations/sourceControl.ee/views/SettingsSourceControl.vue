@@ -7,6 +7,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useSourceControlStore } from '../sourceControl.store';
+import {
+	SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
+	SOURCE_CONTROL_SSH_REPO_URL_REGEX,
+} from '../sourceControl.constants';
 import type { SshKeyTypes, SourceControlPreferences } from '../sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
 import type { Rule, RuleGroup } from '@n8n/design-system';
@@ -182,8 +186,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 		baseRules.push({
 			name: 'MATCH_REGEX',
 			config: {
-				regex:
-					/^(?:git@|ssh:\/\/git@|[\w.-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+				regex: SOURCE_CONTROL_SSH_REPO_URL_REGEX,
 				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 			},
 		});
@@ -191,7 +194,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 		baseRules.push({
 			name: 'MATCH_REGEX',
 			config: {
-				regex: /^https:\/\/.+$/,
+				regex: SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
 				message: locale.baseText('settings.sourceControl.enterValidHttpsUrl'),
 			},
 		});
@@ -335,7 +338,7 @@ watch(connectionType, () => {
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-if="isConnected"
 						:class="$style.disconnectButton"
 						size="large"
@@ -434,7 +437,7 @@ watch(connectionType, () => {
 						:copy-button-text="locale.baseText('generic.clickToCopy')"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-if="!isConnected"
 						size="large"
 						icon="refresh-cw"
@@ -496,7 +499,7 @@ watch(connectionType, () => {
 								</span>
 							</template>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								iconOnly
 								size="xlarge"
 								icon="refresh-cw"

@@ -1,4 +1,9 @@
-import type { InjectionKey, Ref } from 'vue';
+import type {
+	AgentPersonalisation,
+	McpToolPermissions,
+	NodeTypeAvailability,
+} from '@n8n/api-types';
+import type { Component, InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -10,10 +15,23 @@ export type ConnectionItemKind =
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
-	| { type: 'icon'; name: string; color?: string };
+	| { type: 'icon'; name: string; color?: string }
+	| { type: 'avatar'; personalisation: AgentPersonalisation };
+
+/** The subset of `ToolIconSource` that `N8nNodeIcon` can render; avatar sources need their own tile. */
+export type NodeIconSource = Extract<ToolIconSource, { type: 'file' } | { type: 'icon' }>;
+
+/**
+ * Renderer for `{ type: 'avatar' }` icon sources. The consumer that passes
+ * avatar items injects the component at its mount site.
+ */
+export const TOOL_ICON_AVATAR_RENDERER_KEY = Symbol(
+	'tool-icon-avatar-renderer',
+) as InjectionKey<Component | null>;
 
 export interface ToolCredentialRef {
 	authType: string;
+	displayName?: string;
 	credentialId?: string;
 	required?: boolean;
 }
@@ -23,6 +41,8 @@ export interface ToolCredentialRef {
  * an existing connection that is currently unavailable.
  */
 export type ToolConnectionStatus = 'none' | 'connecting' | 'connected' | 'disconnected';
+
+export type ToolConnectionFailureReason = 'server_unavailable' | 'authentication' | 'unknown';
 
 /** Whether a connection exists or is currently being established. */
 export function hasToolConnection(status: ToolConnectionStatus): boolean {
@@ -35,6 +55,7 @@ export interface BaseConnectionItem {
 	description?: string;
 	iconSource?: ToolIconSource;
 	status: ToolConnectionStatus;
+	connectionFailureReason?: ToolConnectionFailureReason;
 	credentials?: ToolCredentialRef[];
 	longDescription?: string;
 	/** Tab this item belongs to. Falls back to `CATEGORY_BY_KIND` when unset. */
@@ -61,11 +82,15 @@ export interface BaseConnectionItem {
 export interface NodeConnectionItem extends BaseConnectionItem {
 	kind: 'node';
 	nodeTypeName: string;
+	/** Set when a node type policy blocks this type. */
+	restriction?: NodeTypeAvailability;
 }
 
 export interface WorkflowConnectionItem extends BaseConnectionItem {
 	kind: 'workflow';
 	workflowId: string;
+	/** Short caveat shown next to the title, e.g. the workflow is not published. */
+	warning?: string;
 }
 
 export interface McpServerTool {
@@ -81,19 +106,16 @@ export interface PublisherInfo {
 	url?: string;
 }
 
-export type McpToolInclusionMode = 'all' | 'selected' | 'except';
-
-export interface McpToolSettings {
-	inclusionMode: McpToolInclusionMode;
-	selectedTools: string[];
-	excludedTools: string[];
-}
+export type McpToolSettings = McpToolPermissions & {
+	connectionTimeoutMs?: number;
+};
 
 export type ToolConnectionSettings = McpToolSettings;
 
 export interface McpServerConnectionItem extends BaseConnectionItem {
 	kind: 'mcp-server';
 	availableTools: McpServerTool[];
+	isOfficial?: boolean;
 	settings?: McpToolSettings;
 	publisher?: PublisherInfo;
 	version?: string;
@@ -124,9 +146,8 @@ export type ToolConnectionItem =
 	| ServiceConnectionItem;
 
 /**
- * One tab in the modal. Consumers declare the subset they support; `agents` and
- * `data` have no supplier yet and are reserved for folding the sub-agent and
- * vector-store pickers in later.
+ * One tab in the modal. Consumers declare the subset they support. `data` has
+ * no supplier yet and is reserved for folding the vector-store picker in later.
  */
 export type ToolCategoryKey =
 	| 'all'
@@ -174,7 +195,11 @@ export interface PickableCredential {
  */
 export interface ToolConnectionCredentialAdapter {
 	getCredentialsByType: (authType: string) => readonly PickableCredential[];
-	openNewCredential: (authType: string, item: ToolConnectionItem) => void;
+	openNewCredential: (
+		authType: string,
+		item: ToolConnectionItem,
+		credentialTypes?: readonly string[],
+	) => void;
 	openExistingCredential: (credentialId: string) => void;
 }
 

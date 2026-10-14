@@ -1,5 +1,11 @@
-import { Logger } from '@n8n/backend-common';
+import { LockAcquisitionTimeoutError, LockService, Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
+import {
+	CacheService,
+	EventService,
+	UrlService,
+	CredentialsFinderService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { AuthError as OAuth2AuthError } from '@n8n/client-oauth2';
@@ -16,13 +22,9 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -36,8 +38,6 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');
@@ -80,6 +80,7 @@ const requestMock = vi.fn(async (options: IHttpRequestOptions) => {
 
 describe('OauthService', () => {
 	const logger = mockInstance(Logger);
+	const lockService = mockInstance(LockService);
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
@@ -110,6 +111,9 @@ describe('OauthService', () => {
 		// path opt in explicitly; the rest fall back to the legacy URL-encoded state.
 		cacheService.get.mockResolvedValue(undefined);
 		credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+		lockService.withLease.mockImplementation(
+			async (_namespace, _key, operation) => await operation(new AbortController().signal),
+		);
 
 		globalConfig.endpoints = { rest: 'rest' } as any;
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
@@ -137,6 +141,7 @@ describe('OauthService', () => {
 
 		service = new OauthService(
 			logger,
+			lockService,
 			credentialsHelper,
 			credentialsRepository,
 			credentialsFinderService,
@@ -446,9 +451,6 @@ describe('OauthService', () => {
 			await service.encryptAndSaveData(credential, toUpdate, toDelete);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith('1', {
-				id: '1',
-				name: expect.anything(),
-				type: 'test',
 				data: expect.any(String),
 				updatedAt: expect.any(Date),
 			});
@@ -467,9 +469,6 @@ describe('OauthService', () => {
 			await service.encryptAndSaveData(credential, toUpdate);
 
 			expect(credentialsRepository.update).toHaveBeenCalledWith('1', {
-				id: '1',
-				name: expect.anything(),
-				type: 'test',
 				data: expect.any(String),
 				updatedAt: expect.any(Date),
 			});
@@ -1228,6 +1227,8 @@ describe('OauthService', () => {
 			// Flow state read from cache and consumed (replay protection)
 			expect(result[4]).toEqual({ csrfSecret: 'csrf-secret', codeVerifier: 'code-verifier' });
 			expect(cacheService.delete).toHaveBeenCalledWith(`oauth:flow:${stateToken}`);
+			// Names the user on a policy block while the credential is decrypted.
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({ userId: 'user-id' });
 		});
 
 		it('should reject the callback when the flow state is missing (replay / unknown state)', async () => {
@@ -1442,6 +1443,8 @@ describe('OauthService', () => {
 
 			// Should succeed despite no user because origin is dynamic-credential
 			expect(result[0]).toEqual(mockCredential);
+			// The starter comes from the state, since the callback carries no user.
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({ userId: 'user-id' });
 			expect(result[1]).toEqual(mockDecryptedData);
 			expect(result[2]).toEqual(mockOAuthCredentials);
 			expect(result[3]).toMatchObject({
@@ -2040,6 +2043,7 @@ describe('OauthService', () => {
 			});
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
+			expect(service.getOAuthCredentials).toHaveBeenCalledWith(credential, 'user-id');
 			// CSRF/PKCE state must not be persisted to the credential; it lives in the cache.
 			expect(service.encryptAndSaveData).not.toHaveBeenCalled();
 			expect(cacheService.set).toHaveBeenCalledWith(
@@ -2313,7 +2317,7 @@ describe('OauthService', () => {
 					grant_types: ['authorization_code', 'refresh_token'],
 				}),
 			);
-			// JWE fields are only added behind both feature gates (flag + jweEnabled).
+			// JWE fields are only added when the oauth-jwe handler is set and jweEnabled is true.
 			const dcrPayload = httpClientMock.post.mock.calls[0][1];
 			expect(dcrPayload).not.toHaveProperty('jwks_uri');
 			expect(dcrPayload).not.toHaveProperty('id_token_encrypted_response_alg');
@@ -5379,8 +5383,174 @@ describe('OauthService', () => {
 
 			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
 
-			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(result).toEqual({ headers: { Authorization: 'Bearer new-token' } });
 			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
+		});
+
+		it('stores and returns the new token expiry time', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const refreshed = {
+				data: { access_token: 'new-token', token_type: 'bearer', expires_in: 3600 },
+				accessToken: 'new-token',
+			};
+			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
+			const credential = makeCredential({ isGlobal: true });
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+			credentialsRepository.findOne.mockResolvedValue(credential as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-token',
+					expires_in: 3600,
+					n8n_expires_at: String(timestamp - 1),
+				},
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+			const expiresAt = timestamp + 3_600_000;
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer new-token' },
+				expiresAt,
+				expiresInSeconds: 3600,
+			});
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-token',
+					n8n_expires_at: String(expiresAt),
+				}),
+			});
+		});
+
+		it('shares one refresh between concurrent callers', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			let finishRefresh: ((value: unknown) => void) | undefined;
+			const refresh = vi.fn().mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						finishRefresh = resolve;
+					}),
+			);
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue({ refresh, client: {} }) } as never;
+			});
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-token' },
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const results = [
+				service.refreshOAuth2CredentialById(credentialId, projectId),
+				service.refreshOAuth2CredentialById(credentialId, projectId),
+			];
+			await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+			finishRefresh?.({ data: { access_token: 'new-token' }, accessToken: 'new-token' });
+
+			await expect(Promise.all(results)).resolves.toEqual([
+				{ headers: { Authorization: 'Bearer new-token' } },
+				{ headers: { Authorization: 'Bearer new-token' } },
+			]);
+			expect(lockService.withLease).toHaveBeenCalledTimes(1);
+		});
+
+		it('uses token data refreshed by another lock holder', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials')
+				.mockResolvedValueOnce({
+					clientId: 'id',
+					accessTokenUrl: 'https://example.com/token',
+					oauthTokenData: { access_token: 'stale', refresh_token: 'old-refresh' },
+				} as unknown as OAuth2CredentialData)
+				.mockResolvedValueOnce({
+					clientId: 'id',
+					accessTokenUrl: 'https://example.com/token',
+					oauthTokenData: { access_token: 'fresh', refresh_token: 'new-refresh' },
+				} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ headers: { Authorization: 'Bearer fresh' } });
+			expect(ClientOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('uses the stored token when the caller has an older token revision', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const expiresAt = timestamp + 3_600_000;
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				accessTokenUrl: 'https://example.com/token',
+				oauthTokenData: {
+					access_token: 'fresh',
+					refresh_token: 'new-refresh',
+					expires_in: 3600,
+					n8n_expires_at: String(expiresAt),
+				},
+			} as unknown as OAuth2CredentialData);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId, {
+				accessToken: 'stale',
+				expiresAt: timestamp - 1,
+			});
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer fresh' },
+				expiresAt,
+				expiresInSeconds: 3600,
+			});
+			expect(ClientOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('refreshes without a credential lease when lease acquisition times out', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockToken = {
+				refresh: vi.fn().mockResolvedValue({
+					data: { access_token: 'new-token', token_type: 'bearer' },
+					accessToken: 'new-token',
+				}),
+				client: {},
+			};
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+			lockService.withLease.mockRejectedValue(
+				new LockAcquisitionTimeoutError('Timed out waiting for the credential lock'),
+			);
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-token' },
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId, {
+				accessToken: 'stale',
+			});
+
+			expect(result).toEqual({ headers: { Authorization: 'Bearer new-token' } });
+			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
+			expect(service.encryptAndSaveData).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Refreshing the OAuth2 credential without cross-process coordination',
+				expect.objectContaining({ credentialId }),
+			);
 		});
 
 		describe('outbound network policy', () => {
@@ -5431,7 +5601,7 @@ describe('OauthService', () => {
 				const { capturedOptions, result } = await captureRefreshClientOptions();
 
 				expect(capturedOptions.ssrfBridge).toBe(ssrfProtectionService);
-				expect(result).toEqual({ Authorization: 'Bearer new-token' });
+				expect(result).toEqual({ headers: { Authorization: 'Bearer new-token' } });
 			});
 
 			it('should build the refresh client without a bridge when the guard is disabled', async () => {
@@ -5441,7 +5611,7 @@ describe('OauthService', () => {
 
 				expect(capturedOptions.ssrfBridge).toBeUndefined();
 				// The refresh must still succeed, so instances that leave the guard off are unaffected.
-				expect(result).toEqual({ Authorization: 'Bearer new-token' });
+				expect(result).toEqual({ headers: { Authorization: 'Bearer new-token' } });
 			});
 		});
 
@@ -5478,7 +5648,7 @@ describe('OauthService', () => {
 
 			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
 
-			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(result).toEqual({ headers: { Authorization: 'Bearer new-token' } });
 			expect(capturedOptions).toEqual(
 				expect.objectContaining({
 					clientCredentialType: 'certificate',
@@ -5542,7 +5712,7 @@ describe('OauthService', () => {
 
 			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
 
-			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
+			expect(result).toEqual({ headers: { Authorization: 'Bearer cc-token' } });
 			expect(getToken).toHaveBeenCalledTimes(1);
 			expect(mockToken.refresh).not.toHaveBeenCalled();
 		});
@@ -5573,7 +5743,7 @@ describe('OauthService', () => {
 
 			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
 
-			expect(result).toEqual({ Authorization: 'Bearer cc-token' });
+			expect(result).toEqual({ headers: { Authorization: 'Bearer cc-token' } });
 			expect(capturedOptions).toEqual(expect.objectContaining({ resource }));
 			expect(service.encryptAndSaveData).toHaveBeenCalledWith(credential, {
 				oauthTokenData: {
@@ -5612,7 +5782,33 @@ describe('OauthService', () => {
 			);
 		});
 
-		it('still returns the auth header even when persisting the new token data fails', async () => {
+		it('asks the user to reconnect when the refresh grant is invalid', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockToken = {
+				refresh: vi
+					.fn()
+					.mockRejectedValue(new OAuth2AuthError('invalid grant', { error: 'invalid_grant' })),
+				client: {},
+			};
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientSecret: 'secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: { access_token: 'stale', refresh_token: 'refresh-token' },
+			} as unknown as OAuth2CredentialData);
+
+			await expect(service.refreshOAuth2CredentialById(credentialId, projectId)).rejects.toThrow(
+				'This credential needs to be reconnected.',
+			);
+		});
+
+		it('rejects the refreshed token when persisting the new token data fails', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const refreshed = { data: { access_token: 'new-token' }, accessToken: 'new-token' };
 			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
@@ -5631,9 +5827,9 @@ describe('OauthService', () => {
 			} as unknown as OAuth2CredentialData);
 			vi.spyOn(service, 'encryptAndSaveData').mockRejectedValue(new Error('db write error'));
 
-			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
-
-			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			await expect(service.refreshOAuth2CredentialById(credentialId, projectId)).rejects.toThrow(
+				'Could not save the refreshed OAuth2 token.',
+			);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Refreshed OAuth2 token but failed to persist new token data',
 				expect.objectContaining({ credentialId }),

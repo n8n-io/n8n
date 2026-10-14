@@ -1,4 +1,5 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { SecurityConfig } from '@n8n/config';
 import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -16,7 +17,6 @@ import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -29,14 +29,16 @@ import * as ResponseHelper from '@/response-helper';
 import { resolveContentSecurityPolicies } from '@/security/content-security-policy';
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
+import * as requestPath from '@/utils/request-path';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
+import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
+import '@/controllers/ai-preference.controller';
 import '@/controllers/dynamic-node-parameters.controller';
-import '@/controllers/instance-ai-examples.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
 import '@/controllers/node-types.controller';
@@ -46,6 +48,7 @@ import '@/controllers/orchestration.controller';
 import '@/controllers/owner.controller';
 import '@/controllers/password-reset.controller';
 import '@/controllers/project.controller';
+import '@/controllers/project-pool-settings.controller.ee';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
@@ -56,9 +59,11 @@ import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
+import '@/credentials/credential-options.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';
+import '@/jwks/jwks.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/evaluation.ee/evaluation-config.controller';
@@ -113,7 +118,7 @@ export class Server extends AbstractServer {
 		await super.start();
 		this.logger.debug(`Server ID: ${this.instanceSettings.hostId}`);
 
-		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+		if (process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
@@ -129,6 +134,10 @@ export class Server extends AbstractServer {
 
 		if (inE2ETests) {
 			await import('@/controllers/e2e.controller.js');
+		}
+
+		if (process.env.N8N_DEV_RELOAD === 'true') {
+			await import('@/controllers/dev.controller.js');
 		}
 
 		if (isMfaFeatureEnabled()) {
@@ -340,31 +349,28 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
+		const cacheOptions: { maxAge?: number } = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
-		// Protect type files with authentication regardless of UI availability
-		const authService = Container.get(AuthService);
-		const protectedTypeFiles = [
-			'/types/nodes.json',
-			'/types/credentials.json',
-			'/types/node-versions.json',
-		];
-		protectedTypeFiles.forEach((path) => {
-			this.app.get(
-				path,
-				authService.createAuthMiddleware({ allowSkipMFA: true, allowSkipPreviewAuth: true }),
-				async (_, res: express.Response) => {
-					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-					res.sendFile(path.substring(1), {
-						root: staticCacheDir,
-					});
-				},
-			);
-		});
+		this.protectTypeFiles(staticCacheDir);
 
 		if (frontendService) {
-			this.app.use(
+			const assetAuthMiddleware = Container.get(AuthService).createAssetAuthMiddleware();
+
+			const registerAuthenticatedRoutes = (paths: string[], handler: express.RequestHandler) => {
+				for (const assetPath of paths) {
+					this.app.get(assetPath, assetAuthMiddleware, handler);
+				}
+			};
+
+			const respondWithPrivateFile = (res: express.Response, filePath: string, assetMaxAge = 0) => {
+				const maxAgeSeconds = Math.floor(assetMaxAge * Time.milliseconds.toSeconds);
+				// `res.sendFile` writes its own `Cache-Control` only when the response carries none.
+				res.setHeader('Cache-Control', `private, max-age=${maxAgeSeconds}`);
+				return res.sendFile(filePath, { maxAge: assetMaxAge, dotfiles: 'allow' });
+			};
+
+			registerAuthenticatedRoutes(
 				[
 					'/icons/{@:scope/}:packageName/*path/*file.svg',
 					'/icons/{@:scope/}:packageName/*path/*file.png',
@@ -377,7 +383,7 @@ export class Server extends AbstractServer {
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
-							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+							return respondWithPrivateFile(res, filePath, maxAge);
 						} catch {}
 					}
 					res.sendStatus(404);
@@ -396,12 +402,15 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
+						return respondWithPrivateFile(res, filePath, cacheOptions.maxAge);
 					} catch {}
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			registerAuthenticatedRoutes(
+				['/schemas/:node/:version{/:resource}{/:operation}.json'],
+				serveSchemas,
+			);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -438,6 +447,7 @@ export class Server extends AbstractServer {
 				'assets',
 				'static',
 				'types',
+				'\\.well-known',
 				this.endpointHealth,
 				'metrics',
 				'e2e',
@@ -445,7 +455,9 @@ export class Server extends AbstractServer {
 				this.endpointPresetCredentials,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
-			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+			// Matched against the normalised path, so a non-UI asset requested in another
+			// case or spelling reaches the static handler rather than the editor page.
+			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`, 'i');
 
 			// `index.html` does not change while n8n runs. Read it once and keep it split
 			// around the nonce placeholders, so serving a request is only a join.
@@ -469,7 +481,7 @@ export class Server extends AbstractServer {
 					method === 'GET' &&
 					(!accept || req.accepts('html') || accept.includes('*/*')) &&
 					!req.path.endsWith('.wasm') &&
-					!nonUIRoutesRegex.test(req.path)
+					!nonUIRoutesRegex.test(requestPath.normalize(req.path))
 				) {
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
 
@@ -491,24 +503,44 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
-			const setCustomCacheHeader = (res: express.Response) => {
-				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
-					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-				}
-			};
-
 			this.app.use(
 				'/',
 				historyApiHandler,
-				express.static(staticCacheDir, {
-					...cacheOptions,
-					setHeaders: setCustomCacheHeader,
-				}),
+				express.static(staticCacheDir, cacheOptions),
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+	}
+
+	/** Authenticates every request that can reach a type file, whether or not the editor is served. */
+	private protectTypeFiles(staticCacheDir: string) {
+		const authMiddleware = Container.get(AuthService).createAuthMiddleware({
+			allowSkipMFA: true,
+			allowSkipPreviewAuth: true,
+		});
+
+		// Match exact urls. We always expect them in this form, and only a matched route
+		// path can skip AuthService's browser-id check, which the editor's fetch needs.
+		const typeFiles = ['/types/nodes.json', '/types/credentials.json', '/types/node-versions.json'];
+		typeFiles.forEach((typeFile) => {
+			this.app.get(typeFile, authMiddleware, async (_, res: express.Response) => {
+				res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				res.sendFile(typeFile.substring(1), { root: staticCacheDir });
+			});
+		});
+
+		// Deny any request that can reach /types/* that isn't caught above, rather than
+		// authenticating it: no client asks for those forms, and authenticating here would
+		// clear the session cookie of a signed-in caller, since this matches no route.
+		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			if (requestPath.mayReachDirectory(req.path, 'types')) {
+				res.status(401).end();
+				return;
+			}
+			next();
+		});
 	}
 
 	private configureSettingsRoute() {

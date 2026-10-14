@@ -1,14 +1,13 @@
 import type { SerializedFields } from '@langchain/core/dist/load/map_keys';
 import type { SerializedNotImplemented, SerializedSecret } from '@langchain/core/load/serializable';
 import { isRecord } from '@n8n/utils/is-record';
+import { ALWAYS_SENSITIVE_HEADERS } from '@n8n/utils/redaction/sensitive-headers';
 
 type SerializedOptions = SerializedSecret | SerializedNotImplemented | SerializedFields;
 
 const REDACTED_HEADER_VALUE = '**********';
 
 const HEADER_CONTAINER_KEYS = ['defaultheaders', 'headers'];
-
-const ALWAYS_REDACTED_HEADERS = ['authorization', 'x-api-key', 'api-key', 'cookie'];
 
 function maskHeaderContainer(
 	headers: Record<string, unknown>,
@@ -18,7 +17,7 @@ function maskHeaderContainer(
 	let changed = false;
 	for (const key of Object.keys(headers)) {
 		const lowerKey = key.toLowerCase();
-		if (lowerHeaderNames.includes(lowerKey) || ALWAYS_REDACTED_HEADERS.includes(lowerKey)) {
+		if (lowerHeaderNames.includes(lowerKey) || ALWAYS_SENSITIVE_HEADERS.includes(lowerKey)) {
 			masked[key] = REDACTED_HEADER_VALUE;
 			changed = true;
 		}

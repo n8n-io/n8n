@@ -1,0 +1,24 @@
+import { mock } from 'vitest-mock-extended';
+
+import { TrustedKeyRefreshTask } from '../trusted-key-refresh.task';
+import type { TrustedKeyService } from '../trusted-key.service';
+
+describe('TrustedKeyRefreshTask', () => {
+	const trustedKeyService = mock<TrustedKeyService>();
+	const task = new TrustedKeyRefreshTask(trustedKeyService);
+
+	it('should declare a durable 60-second poll cadence', () => {
+		expect(task.name).toBe('trusted-key-refresh');
+		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
+		expect(task.target).toEqual({ scope: 'cluster', scheduler: { retryOnFailure: true } });
+	});
+
+	it('should refresh the due sources on run', async () => {
+		const { signal } = new AbortController();
+
+		await task.run(signal);
+
+		expect(trustedKeyService.refreshDueSources).toHaveBeenCalledTimes(1);
+		expect(trustedKeyService.refreshDueSources).toHaveBeenCalledWith(signal);
+	});
+});

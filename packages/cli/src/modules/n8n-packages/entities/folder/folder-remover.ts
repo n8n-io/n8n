@@ -17,9 +17,8 @@ interface FolderPlacement {
  * nothing surviving inside them.
  *
  * Emptiness is the whole safeguard. `FolderService.deleteFolder` archives a folder's contents on the
- * way out, so removing a folder that still holds something would sweep up workflows the workflow
- * reconciliation deliberately sheltered — those under folders the package knows nothing about. A
- * target-only folder therefore survives exactly as long as something is in it.
+ * way out, so removing a folder that still holds something would sweep up workflows that
+ * reconciliation deliberately retained. A target-only folder survives while it contains one.
  */
 @Service()
 export class FolderRemover {

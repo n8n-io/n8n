@@ -249,6 +249,27 @@ export class DurableEventLog {
 		return await this.repo.getForRuns(threadId, runIds);
 	}
 
+	/** Latest persisted setup panel snapshot per workflow (see repository). */
+	async getSetupItemsSnapshots(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getSetupItemsSnapshots(threadId);
+	}
+
+	/** The run that sent the ai-preferences block the thread still carries (see repository). */
+	async getLastPreferencesInjectionRunId(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getLastPreferencesInjectionRunId(threadId);
+	}
+
+	/**
+	 * What the thread's latest turn reported as applied (see repository). No flush: the
+	 * caller reads the SSE cursor first, so a fact still queued here replays over SSE,
+	 * and a flush would cut an open text segment in two on every thread open.
+	 */
+	async getLastAppliedPreferences(threadId: string) {
+		return await this.repo.getLastAppliedPreferences(threadId);
+	}
+
 	/**
 	 * The thread's still-open streamed segments, read from the coalesce buffers.
 	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous
@@ -508,9 +529,8 @@ export class DurableEventLog {
 	 * Append `events` with contiguous seqs, retrying on (threadId, seq) PK
 	 * collision — another main won the range (multi-main only), so re-seed from
 	 * the DB and try again. Returns the first assigned seq, or undefined when
-	 * the batch had to be dropped (logged; live delivery still happens).
-	 * INS-844 merges the shared-sequence drain (#33558) here: its Redis INCRBY
-	 * becomes this batch-INSERT's id assignment, one round trip.
+	 * the batch had to be dropped (logged; live delivery still happens). The
+	 * batch INSERT is also what assigns the ids, so it is one round trip.
 	 */
 	private async persistWithRetry(
 		threadId: string,
@@ -726,8 +746,6 @@ export class DurableEventLog {
 		const cached = this.lastSeq.get(threadId);
 		if (cached !== undefined) return cached;
 		const max = await this.repo.maxSeq(threadId);
-		// Cutover note (RFC Q&A on cursors): INS-844 seeds from max(DB, Redis
-		// high-water mark) so cursors minted by the live shared sequence stay valid.
 		this.lastSeq.set(threadId, max);
 		return max;
 	}

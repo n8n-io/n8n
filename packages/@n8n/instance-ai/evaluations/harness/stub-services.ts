@@ -11,6 +11,10 @@
 // enough for the `build-workflow` tool path to succeed. The workflow JSON
 // is captured via `workflowService.createFromWorkflowJSON` and exposed on
 // the capture array returned from `createStubServices`.
+//
+// A case can seed workflows, data tables, failed prior runs, and accounts
+// (`seed`, `credentials`). The read methods then return them, so the agent
+// finds what a real instance would hold.
 // ---------------------------------------------------------------------------
 
 /* eslint-disable @typescript-eslint/require-await */
@@ -33,7 +37,11 @@ import {
 	listNodeDiscriminators,
 	resolveNodeTypeDefinition,
 } from '../../../../cli/src/modules/instance-ai/node-definition-resolver';
+import type { CaseSeed } from './schema';
 import type {
+	CredentialSummary,
+	ExecutionResult,
+	ExecutionSummary,
 	InstanceAiContext,
 	InstanceAiCredentialService,
 	InstanceAiDataTableService,
@@ -43,7 +51,10 @@ import type {
 	NodeDescription,
 	SearchableNodeDescription,
 	WorkflowDetail,
+	WorkflowNode,
+	WorkflowSummary,
 } from '../../src/types';
+import type { TestCaseCredential } from '../types';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -61,6 +72,9 @@ export interface StubServiceHandle {
 	capturedWorkflows: WorkflowJSON[];
 }
 
+/** The user of the stub instance, unless a caller sets one. */
+export const STUB_USER_ID = 'eval-user';
+
 export interface CreateStubServicesOptions {
 	/**
 	 * Absolute path to the nodes.json file produced by
@@ -70,7 +84,16 @@ export interface CreateStubServicesOptions {
 	nodesJsonPath: string;
 	/** Optional user id. */
 	userId?: string;
+	/** Workflows, data tables and failed runs the instance holds before the turn. */
+	seed?: StubSeed;
+	/** Accounts the instance holds. Each passes its connection test unless it is `blank` or `valid: false`. */
+	credentials?: TestCaseCredential[];
 }
+
+/** The inline case seed slots the stub instance serves. */
+export type StubSeed = Partial<
+	Pick<Extract<CaseSeed, { mode: 'inline' }>, 'workflows' | 'dataTables' | 'priorRuns'>
+>;
 
 export async function createStubServices(
 	options: CreateStubServicesOptions,
@@ -78,25 +101,144 @@ export async function createStubServices(
 	const { searchableNodes, descriptionsByName } = await loadNodeCatalogue(options.nodesJsonPath);
 	const nodeDefinitionDirs = resolveEvalNodeDefinitionDirs();
 	const capturedWorkflows: WorkflowJSON[] = [];
+	// Published version of the stubbed workflow. Null until an eval publishes.
+	// The stub models one version, so a published workflow is always
+	// `live-current` — it cannot produce a stale live version.
+	let activeVersionId: string | null = null;
+
+	// ponytail: seeded state is read-only. A save or publish of a seeded workflow
+	// does not change what later reads return; routing runs stop before that.
+	const seededAt = new Date().toISOString();
+	const seededWorkflows = new Map(
+		(options.seed?.workflows ?? []).map((workflow) => {
+			const summary: WorkflowSummary = {
+				id: workflow.id,
+				name: workflow.name,
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				activeVersionId: workflow.published ? EVAL_WORKFLOW_VERSION_ID : null,
+				isArchived: false,
+				createdAt: seededAt,
+				updatedAt: seededAt,
+			};
+			// The case schema checked the envelope; the round trip drops the loose node type.
+			const nodes = jsonParse<WorkflowNode[]>(JSON.stringify(workflow.nodes));
+			const json = jsonParse<WorkflowJSON>(
+				JSON.stringify({
+					id: workflow.id,
+					name: workflow.name,
+					nodes,
+					connections: workflow.connections,
+				}),
+			);
+			return [workflow.id, { summary, nodes, json }] as const;
+		}),
+	);
+	// One failed run for each prior run, an hour apart, the last one an hour ago.
+	const priorRuns = (options.seed?.priorRuns ?? []).map((run, index, all) => {
+		const startedAt = new Date(Date.now() - (all.length - index) * 3_600_000).toISOString();
+		const summary: ExecutionSummary = {
+			id: `seed-exec-${String(index + 1)}`,
+			workflowId: run.workflow,
+			workflowName: seededWorkflows.get(run.workflow)?.summary.name ?? run.workflow,
+			status: 'error',
+			startedAt,
+			finishedAt: startedAt,
+			mode: 'trigger',
+			workflowVersionId: EVAL_WORKFLOW_VERSION_ID,
+		};
+		const result: ExecutionResult = {
+			executionId: summary.id,
+			status: 'error',
+			error: run.hints ?? 'The execution failed.',
+			startedAt,
+			finishedAt: startedAt,
+			workflowVersionId: EVAL_WORKFLOW_VERSION_ID,
+		};
+		return { summary, result };
+	});
+	const priorRunResult = (executionId: string) =>
+		priorRuns.find((run) => run.summary.id === executionId)?.result ??
+		stubExecutionResult('stub: execution disabled in eval');
+	const seededTables = (options.seed?.dataTables ?? []).map((table) => ({
+		id: table.id,
+		name: table.name,
+		columns: table.columns.map((column, index) => ({
+			id: `${table.id}-col-${String(index)}`,
+			index,
+			...column,
+		})),
+	}));
+	const seededCredentials = (options.credentials ?? []).map((credential, index) => {
+		const summary: CredentialSummary = {
+			id: `seed-cred-${String(index + 1)}`,
+			name: credential.name ?? credential.type,
+			type: credential.type,
+			...(credential.description !== undefined ? { description: credential.description } : {}),
+		};
+		return { summary, works: credential.valid !== false && !credential.blank };
+	});
+	const seededCredential = (credentialId: string) =>
+		seededCredentials.find((credential) => credential.summary.id === credentialId);
+
+	// A seeded workflow, else the last captured build.
+	const latestJson = (workflowId: string): WorkflowJSON =>
+		seededWorkflows.get(workflowId)?.json ??
+		capturedWorkflows[capturedWorkflows.length - 1] ?? {
+			id: workflowId,
+			name: 'empty',
+			nodes: [],
+			connections: {},
+		};
 
 	const workflowService: InstanceAiWorkflowService = {
-		async list() {
-			return { workflows: [], total: 0, totalInScope: 0 };
+		async list(options) {
+			// A folder request gets a realistic miss so the transcript shows what the
+			// agent does with `folderResolution`, instead of an empty success.
+			const requestedFolder = options?.folderId ?? options?.folderPath;
+			if (requestedFolder !== undefined) {
+				return {
+					workflows: [],
+					total: 0,
+					totalInScope: 0,
+					folderResolution: {
+						requested: requestedFolder,
+						reason: 'not-found',
+						candidates: ['Clients/Acme', 'Clients/Globex'],
+					},
+				};
+			}
+			// ponytail: filters seeded workflows by name only; `status` and `nodeTypes` are ignored.
+			const query = options?.query?.trim().toLowerCase();
+			const workflows = [...seededWorkflows.values()]
+				.map((workflow) => workflow.summary)
+				.filter((summary) => !query || summary.name.toLowerCase().includes(query));
+			return {
+				workflows: workflows.slice(0, options?.limit),
+				total: workflows.length,
+				totalInScope: seededWorkflows.size,
+			};
 		},
 		async get(workflowId: string) {
-			return emptyWorkflowDetail(workflowId);
+			const seeded = seededWorkflows.get(workflowId);
+			if (seeded) {
+				return { ...seeded.summary, nodes: seeded.nodes, connections: seeded.json.connections };
+			}
+			return { ...emptyWorkflowDetail(workflowId), activeVersionId };
 		},
 		async getAsWorkflowJSON(workflowId: string) {
-			const latest = capturedWorkflows[capturedWorkflows.length - 1];
-			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
+			return latestJson(workflowId);
 		},
-		async getWorkflowHead() {
-			return { versionId: EVAL_WORKFLOW_VERSION_ID, updatedAt: 0 };
+		async getWorkflowHead(workflowId: string) {
+			const seeded = seededWorkflows.get(workflowId);
+			return {
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				activeVersionId: seeded ? seeded.summary.activeVersionId : activeVersionId,
+				updatedAt: 0,
+			};
 		},
 		async getWorkflowSnapshot(workflowId: string) {
-			const latest = capturedWorkflows[capturedWorkflows.length - 1];
 			return {
-				json: latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} },
+				json: latestJson(workflowId),
 				versionId: EVAL_WORKFLOW_VERSION_ID,
 				updatedAt: 0,
 			};
@@ -113,6 +255,7 @@ export async function createStubServices(
 			return {
 				...emptyWorkflowDetail(workflowId),
 				name: json.name,
+				activeVersionId,
 			};
 		},
 		async archive() {},
@@ -122,20 +265,36 @@ export async function createStubServices(
 			return false;
 		},
 		async publish() {
-			return { activeVersionId: 'eval-version' };
+			// Track it: a verification claim after a publish must read
+			// `live-current`, not `unpublished`.
+			activeVersionId = EVAL_WORKFLOW_VERSION_ID;
+			return { activeVersionId };
 		},
-		async unpublish() {},
+		async unpublish() {
+			activeVersionId = null;
+		},
 	};
 
 	const credentialService: InstanceAiCredentialService = {
-		async list() {
-			return [];
+		async list(options) {
+			return seededCredentials
+				.map((credential) => credential.summary)
+				.filter((summary) => !options?.type || summary.type === options.type);
 		},
 		async get(credentialId: string) {
-			return { id: credentialId, name: credentialId, type: 'unknown' };
+			return (
+				seededCredential(credentialId)?.summary ?? {
+					id: credentialId,
+					name: credentialId,
+					type: 'unknown',
+				}
+			);
 		},
 		async delete() {},
-		async test() {
+		async test(credentialId: string) {
+			const seeded = seededCredential(credentialId);
+			if (seeded?.works) return { success: true };
+			if (seeded) return { success: false, message: 'The connection test failed.' };
 			return { success: false, message: 'stub: credentials unavailable in eval' };
 		},
 		async searchCredentialTypes() {
@@ -204,8 +363,14 @@ export async function createStubServices(
 	};
 
 	const executionService: InstanceAiExecutionService = {
-		async list() {
-			return [];
+		async list(options) {
+			// Every seeded run failed, so any other status filter matches none.
+			if (options?.status !== undefined && options.status !== 'error') return [];
+			return priorRuns
+				.map((run) => run.summary)
+				.filter((summary) => !options?.workflowId || summary.workflowId === options.workflowId)
+				.reverse()
+				.slice(0, options?.limit);
 		},
 		// `verify-built-workflow` invokes `executionService.run()` after the
 		// eval has captured a built workflow JSON. The eval has no execution
@@ -216,29 +381,46 @@ export async function createStubServices(
 				executionId: 'eval-exec-' + nanoid(),
 				status: 'success' as const,
 				data: { __eval_synthetic_verify__: [{ workflowId }] },
+				// The verification claim reports no publish state without it.
+				workflowVersionId: EVAL_WORKFLOW_VERSION_ID,
 				startedAt: new Date().toISOString(),
 				finishedAt: new Date().toISOString(),
 			};
 		},
-		async getStatus() {
-			return stubExecutionResult('stub: execution disabled in eval');
+		// Same synthetic answer as `run`: the eval has no execution backend, and a
+		// hard "not available" here would derail a thread that reasonably reaches
+		// for a step run.
+		async runStep(workflowId, nodeName) {
+			return {
+				executionId: 'eval-exec-' + nanoid(),
+				status: 'success' as const,
+				nodeName,
+				inputMode: 'chain' as const,
+				mockedNodeNames: [],
+				data: { __eval_synthetic_step__: [{ workflowId, nodeName }] },
+				startedAt: new Date().toISOString(),
+				finishedAt: new Date().toISOString(),
+			};
 		},
-		async getResult() {
-			return stubExecutionResult('stub: execution disabled in eval');
+		async getStatus(executionId: string) {
+			return priorRunResult(executionId);
+		},
+		async getResult(executionId: string) {
+			return priorRunResult(executionId);
 		},
 		async stop() {
 			return { success: false, message: 'stub: execution disabled in eval' };
 		},
-		async getDebugInfo() {
+		async getDebugInfo(executionId: string) {
 			return {
-				...stubExecutionResult('stub: execution disabled in eval'),
+				...priorRunResult(executionId),
 				nodeTrace: [],
 			};
 		},
 		async getNodeOutput(_executionId: string, nodeName: string) {
 			return {
 				nodeName,
-				items: [],
+				outputs: [],
 				totalItems: 0,
 				returned: { from: 0, to: 0 },
 			};
@@ -259,7 +441,12 @@ export async function createStubServices(
 
 	const dataTableService: InstanceAiDataTableService = {
 		async list() {
-			return [];
+			return seededTables.map((table) => ({
+				...table,
+				columns: table.columns.map(({ id, name, type }) => ({ id, name, type })),
+				createdAt: seededAt,
+				updatedAt: seededAt,
+			}));
 		},
 		async create(name: string) {
 			return {
@@ -271,8 +458,8 @@ export async function createStubServices(
 			};
 		},
 		async delete() {},
-		async getSchema() {
-			return [];
+		async getSchema(dataTableId: string) {
+			return seededTables.find((table) => table.id === dataTableId)?.columns ?? [];
 		},
 		async addColumn(_dataTableId: string, column) {
 			return { id: 'col-' + nanoid(), name: column.name, type: column.type, index: 0 };
@@ -309,7 +496,7 @@ export async function createStubServices(
 	};
 
 	const context: InstanceAiContext = {
-		userId: options.userId ?? 'eval-user',
+		userId: options.userId ?? STUB_USER_ID,
 		logger: { info() {}, warn() {}, error() {}, debug() {} },
 		workflowService,
 		executionService,

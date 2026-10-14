@@ -29,6 +29,7 @@ export function headersPairsToString(pairs: Array<{ key: string; value: string }
 
 const defaultSettings: OtelSettings = {
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n',
@@ -36,6 +37,8 @@ const defaultSettings: OtelSettings = {
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2_000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 };
@@ -105,6 +108,7 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		testError.value = '';
 		try {
 			const result = await sendOtelTestTrace(rootStore.restApiContext, {
+				exporterProtocol: settings.value.exporterProtocol,
 				exporterEndpoint: settings.value.exporterEndpoint,
 				exporterTracingPath: settings.value.exporterTracingPath,
 				exporterServiceName: settings.value.exporterServiceName,

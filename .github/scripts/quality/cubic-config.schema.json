@@ -18,6 +18,15 @@
 			"description": "AI review behavior and optional YAML-defined custom agents.",
 			"additionalProperties": false,
 			"properties": {
+				"senior_reviewers": {
+					"type": "array",
+					"maxItems": 5,
+					"items": {
+						"type": "string",
+						"pattern": "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$"
+					},
+					"description": "GitHub usernames to learn review patterns from. Overrides dashboard selections; an empty list disables senior reviewer learning."
+				},
 				"enabled": {
 					"type": "boolean",
 					"description": "Master toggle for AI reviews on this repository."
@@ -248,8 +257,20 @@
 				},
 				"exclude_external_contributors": {
 					"type": "boolean",
-					"default": false,
-					"description": "If true, public-repository PRs from external contributors are reviewed but never auto-approved."
+					"default": true,
+					"description": "If true, public-repository PRs from external contributors, or from authors cubic cannot verify, are reviewed but never auto-approved."
+				},
+				"allow_open_issues": {
+					"type": "string",
+					"enum": [
+						"none",
+						"p3",
+						"p2_and_p3",
+						"p1_to_p3",
+						"all"
+					],
+					"default": "none",
+					"description": "Open cubic findings that don't block auto-approval, by priority. none blocks on any open finding; p3, p2_and_p3, and p1_to_p3 allow that range; all allows every open finding. A finding without a recorded priority blocks unless this is all. Every other auto-approval rule still applies."
 				},
 				"exclude_authors": {
 					"$ref": "#/$defs/globList",

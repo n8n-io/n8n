@@ -77,7 +77,7 @@ const RadioGroupDefaultDemo = defineComponent({
 		return { value, scopeOptions, radioItemId, onUpdate: action('update:modelValue') };
 	},
 	template: `
-		<div style="padding: 40px;">
+		<div>
 			<RadioGroup
 				v-model="value"
 				:orientation="orientation"
@@ -110,9 +110,9 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 		return { value, scopeOptions, radioItemId, onUpdate: action('update:modelValue') };
 	},
 	template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+		<div style="display: flex; flex-direction: column; gap: 32px">
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Controlled</h3>
 				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
 					Parent-controlled selection via <code>v-model</code>. Use the buttons below to set the value externally.
 				</p>
@@ -146,7 +146,7 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 				<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value }}</strong></p>
 			</section>
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Uncontrolled</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Uncontrolled</h3>
 				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
 					Initial selection set with <code>defaultValue="readOnly"</code>. The parent does not track changes.
 				</p>
@@ -179,9 +179,9 @@ const RadioGroupOrientationDemo = defineComponent({
 		return { verticalValue, horizontalValue, scopeOptions, radioItemId };
 	},
 	template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+		<div style="display: flex; flex-direction: column; gap: 32px">
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Vertical</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Vertical</h3>
 				<RadioGroup
 					key="vertical"
 					v-model="verticalValue"
@@ -201,7 +201,7 @@ const RadioGroupOrientationDemo = defineComponent({
 				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ verticalValue }}</p>
 			</section>
 			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Horizontal</h3>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: var(--font-weight--medium);">Horizontal</h3>
 				<RadioGroup
 					key="horizontal"
 					v-model="horizontalValue"
@@ -227,7 +227,7 @@ const RadioGroupDisabledOptionDemo = defineComponent({
 		return { value };
 	},
 	template: `
-		<div style="padding: 40px;">
+		<div>
 			<RadioGroup v-model="value" name="radio-group-disabled-option" aria-label="Country">
 				<RadioGroupItem id="radio-group-disabled-option-france" value="france" label="France" />
 				<RadioGroupItem id="radio-group-disabled-option-germany" value="germany" label="Germany" />
@@ -246,7 +246,7 @@ const RadioGroupCustomLabelDemo = defineComponent({
 		return { value };
 	},
 	template: `
-		<div style="padding: 40px;">
+		<div>
 			<RadioGroup v-model="value" name="radio-group-custom-label" aria-label="Agreement">
 				<RadioGroupItem id="radio-group-custom-label-terms" value="terms">
 					<template #label>
@@ -271,7 +271,7 @@ const RadioGroupLongLabelsDemo = defineComponent({
 		return { value, longLabelOptions, radioItemId };
 	},
 	template: `
-		<div style="padding: 40px; max-width: 360px;">
+		<div style="max-width: 360px">
 			<RadioGroup v-model="value" name="radio-group-long-labels" aria-label="Workflow configuration options">
 				<RadioGroupItem
 					v-for="option in longLabelOptions"

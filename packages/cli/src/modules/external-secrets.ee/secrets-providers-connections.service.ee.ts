@@ -10,6 +10,7 @@ import {
 	testSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { SecretsProviderAccessRole, SecretsProviderConnection } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
@@ -25,9 +26,7 @@ import {
 	CredentialDependencyService,
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 } from '@/credentials/credential-dependency.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';

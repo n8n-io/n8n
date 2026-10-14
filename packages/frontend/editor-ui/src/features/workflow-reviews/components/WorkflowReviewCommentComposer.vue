@@ -51,6 +51,7 @@ async function onSubmit() {
 		</span>
 		<N8nChatInput
 			v-model="draft"
+			layout="adaptive"
 			:max-length="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
@@ -66,9 +67,6 @@ async function onSubmit() {
 <style lang="scss" module>
 .composer {
 	display: block;
-	flex-shrink: 0;
-	/* Prevent focus-ring clipping and vertically align with feed comments */
-	padding: var(--spacing--lg) var(--spacing--2xs) var(--spacing--5xs) var(--spacing--5xs);
 }
 
 .srOnly {

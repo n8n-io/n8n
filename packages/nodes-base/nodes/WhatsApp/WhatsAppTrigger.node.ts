@@ -289,12 +289,10 @@ export class WhatsAppTrigger implements INodeType {
 			return {};
 		}
 
-		const events = await Promise.all(
-			bodyData.entry
-				.map((entry) => entry.changes)
-				.flat()
-				.map((change) => ({ ...change.value, field: change.field })),
-		);
+		const events = bodyData.entry
+			.map((entry) => entry.changes)
+			.flat()
+			.map((change) => ({ ...change.value, field: change.field }));
 
 		const options = this.getNodeParameter('options', {}) as { messageStatusUpdates?: string[] };
 

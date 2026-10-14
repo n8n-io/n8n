@@ -17,8 +17,10 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { extractSharedFields } from './shared-fields';
+import { carriesN8nIdentity } from '../credential-resolvers/identifiers/n8n-identifier';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialStorageError } from '../errors/credential-storage.error';
+import { N8nIdentityNotSupportedError } from '../errors/n8n-identity-not-supported.error';
 
 @Service()
 export class DynamicCredentialStorageService implements IDynamicCredentialStorageProvider {
@@ -70,6 +72,10 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 
 			if (!resolver) {
 				return this.handleMissingResolver(credentialStoreMetadata, resolverId);
+			}
+
+			if (carriesN8nIdentity(credentialContext) && !resolver.resolveOwningUserId) {
+				throw new N8nIdentityNotSupportedError(credentialStoreMetadata.name);
 			}
 
 			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
