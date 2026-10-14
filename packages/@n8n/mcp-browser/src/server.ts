@@ -110,6 +110,25 @@ export async function startHttpTransport(opts: {
 	// id -- one that never finishes initializing has no session id at all, and would otherwise
 	// never become reapable.
 	const lastActivityAt = new Map<StreamableHTTPServerTransport, number>();
+	const inFlightRequests = new Map<StreamableHTTPServerTransport, number>();
+
+	const trackRequest = (transport: StreamableHTTPServerTransport, res: ServerResponse) => {
+		lastActivityAt.set(transport, Date.now());
+		inFlightRequests.set(transport, (inFlightRequests.get(transport) ?? 0) + 1);
+
+		const onResponseClose = () => {
+			const inFlight = inFlightRequests.get(transport);
+			if (inFlight === undefined) return;
+			if (inFlight === 1) inFlightRequests.delete(transport);
+			else inFlightRequests.set(transport, inFlight - 1);
+
+			// A long-running request counts as activity when it completes. Do not let the
+			// next sweep evict it immediately just because it started before the TTL.
+			if (lastActivityAt.has(transport)) lastActivityAt.set(transport, Date.now());
+		};
+
+		res.once('close', onResponseClose);
+	};
 	const allowedHosts = buildAllowedHosts(host, port);
 
 	const httpServer = createServer((req, res) => {
@@ -131,7 +150,7 @@ export async function startHttpTransport(opts: {
 		const existingTransport = sessionId ? sessions.get(sessionId) : undefined;
 
 		if (existingTransport) {
-			lastActivityAt.set(existingTransport, Date.now());
+			trackRequest(existingTransport, res);
 			void existingTransport.handleRequest(req, res);
 			return;
 		}
@@ -167,9 +186,11 @@ export async function startHttpTransport(opts: {
 		transport.onclose = () => {
 			if (transport.sessionId) sessions.delete(transport.sessionId);
 			lastActivityAt.delete(transport);
+			inFlightRequests.delete(transport);
 			activeConnections.delete(connection);
 			void connection.shutdown();
 		};
+		trackRequest(transport, res);
 
 		const mcpServer = new McpServer({ name: 'n8n-browser', version: '1.0.0' });
 		registerTools(mcpServer, tools);
@@ -184,6 +205,7 @@ export async function startHttpTransport(opts: {
 	const sweeper = setInterval(() => {
 		const cutoff = Date.now() - sessionIdleTtlMs;
 		for (const [transport, seenAt] of [...lastActivityAt]) {
+			if ((inFlightRequests.get(transport) ?? 0) > 0) continue;
 			if (seenAt > cutoff) continue;
 			// `transport.close()` fires onclose, which removes the session, drops the connection
 			// from activeConnections and shuts the browser down -- same teardown path as an

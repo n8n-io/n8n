@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { vi } from 'vitest';
 
 import { buildAllowedHosts, isAuthorized, startHttpTransport } from '../server';
 
@@ -193,20 +194,23 @@ describe('idle session eviction', () => {
 	}
 
 	it('evicts sessions that go idle past the TTL, shutting down their browser connections', async () => {
+		vi.useFakeTimers({ toFake: ['setInterval', 'Date'] });
 		const booted = await boot(token, { sessionIdleTtlMs: 50, sessionSweepIntervalMs: 10 });
 		try {
 			for (let i = 0; i < 3; i++) await openSession(booted.baseUrl, i);
 			expect(booted.started.activeConnections.size).toBe(3);
 
-			await new Promise((resolve) => setTimeout(resolve, 200));
+			await vi.advanceTimersByTimeAsync(200);
 
 			expect(booted.started.activeConnections.size).toBe(0);
 		} finally {
+			vi.useRealTimers();
 			await booted.close();
 		}
 	});
 
 	it('keeps a session alive while its client keeps making requests', async () => {
+		vi.useFakeTimers({ toFake: ['setInterval', 'Date'] });
 		const ttl = 100;
 		const booted = await boot(token, { sessionIdleTtlMs: ttl, sessionSweepIntervalMs: 10 });
 		try {
@@ -217,12 +221,73 @@ describe('idle session eviction', () => {
 			// so the session survives a span it would certainly have been evicted across
 			// had it stayed idle.
 			for (let i = 0; i < 6; i++) {
-				await new Promise((resolve) => setTimeout(resolve, ttl / 2));
+				await vi.advanceTimersByTimeAsync(ttl / 2);
 				await pingSession(booted.baseUrl, sessionId, 100 + i);
 			}
 
 			expect(booted.started.activeConnections.size).toBe(1);
 		} finally {
+			vi.useRealTimers();
+			await booted.close();
+		}
+	});
+
+	it('does not evict a session while an SSE request is still open', async () => {
+		vi.useFakeTimers({ toFake: ['setInterval', 'Date'] });
+		const booted = await boot(token, { sessionIdleTtlMs: 50, sessionSweepIntervalMs: 10 });
+		const controller = new AbortController();
+		let response: Response | undefined;
+		try {
+			const sessionId = await openSession(booted.baseUrl, 1);
+			response = await fetch(`${booted.baseUrl}/mcp`, {
+				method: 'GET',
+				headers: {
+					authorization: `Bearer ${token}`,
+					accept: 'text/event-stream',
+					// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+					'mcp-session-id': sessionId,
+					// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+					'mcp-protocol-version': '2025-06-18',
+				},
+				signal: controller.signal,
+			});
+
+			expect(response.status).toBe(200);
+			await vi.advanceTimersByTimeAsync(200);
+
+			expect(booted.started.activeConnections.size).toBe(1);
+		} finally {
+			controller.abort();
+			await response?.body?.cancel().catch(() => undefined);
+			vi.useRealTimers();
+			await booted.close();
+		}
+	});
+
+	it('evicts a transport whose request never completes initialization', async () => {
+		vi.useFakeTimers({ toFake: ['setInterval', 'Date'] });
+		const booted = await boot(token, { sessionIdleTtlMs: 50, sessionSweepIntervalMs: 10 });
+		try {
+			const response = await fetch(`${booted.baseUrl}/mcp`, {
+				method: 'POST',
+				headers: {
+					authorization: `Bearer ${token}`,
+					// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+					'content-type': 'application/json',
+					accept: 'application/json, text/event-stream',
+					// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+					'mcp-protocol-version': '2025-06-18',
+				},
+				body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+			});
+
+			expect(response.status).toBe(400);
+			expect(booted.started.activeConnections.size).toBe(1);
+			await vi.advanceTimersByTimeAsync(100);
+
+			expect(booted.started.activeConnections.size).toBe(0);
+		} finally {
+			vi.useRealTimers();
 			await booted.close();
 		}
 	});
