@@ -6,8 +6,8 @@ import { mock } from 'vitest-mock-extended';
 import type {
 	ProtectedResource,
 	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry';
-import type { UrlService } from '@n8n/backend-services';
+	UrlService,
+} from '@n8n/backend-services';
 
 import type { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthServerService } from '../oauth-server.service';

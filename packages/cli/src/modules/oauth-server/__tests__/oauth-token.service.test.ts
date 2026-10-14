@@ -30,8 +30,7 @@ import {
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry, type UrlService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const LEGACY_HMAC_SECRET = 'legacy-hmac-secret';

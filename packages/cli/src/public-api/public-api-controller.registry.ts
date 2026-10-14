@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, AuthStrategyRegistry } from '@n8n/backend-services';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -36,7 +36,6 @@ import {
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
 function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {

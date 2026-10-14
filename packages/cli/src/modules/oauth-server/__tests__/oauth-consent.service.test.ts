@@ -13,8 +13,8 @@ import { UserConsentRepository } from '../database/repositories/oauth-user-conse
 import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
+	UrlService,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 

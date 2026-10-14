@@ -13,8 +13,8 @@ import { ForbiddenError } from '@n8n/errors';
 import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
+	UrlService,
+} from '@n8n/backend-services';
 
 type ConsentDetailsResult =
 	| {

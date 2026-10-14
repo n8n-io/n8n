@@ -1,4 +1,4 @@
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, ProtectedResourceRegistry } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import {
 	JwkSchema,
@@ -6,8 +6,6 @@ import {
 	type AuthorizationServerMetadata,
 	type Jwk,
 } from '@n8n/inbound-auth';
-
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 import { OAuthSigningJwksProvider } from './oauth-signing-jwks.provider';
 

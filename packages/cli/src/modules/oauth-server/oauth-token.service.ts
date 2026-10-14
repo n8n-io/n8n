@@ -16,13 +16,13 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';
 import { JwtService } from '@/services/jwt.service';
-import type {
-	OAuthTokenVerifier,
-	UserWithContext,
-} from '@/services/oauth-token-verifier-proxy.service';
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
+import {
+	type OAuthTokenVerifier,
+	type UserWithContext,
+	type ProtectedResource,
+	ProtectedResourceRegistry,
+	UrlService,
+} from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';

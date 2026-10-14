@@ -4,8 +4,7 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
-import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResourceResolver, UrlService } from '@n8n/backend-services';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

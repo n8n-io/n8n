@@ -1,6 +1,6 @@
 import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { CacheService, EventService } from '@n8n/backend-services';
+import { CacheService, EventService, RoleMappingProxyService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,7 +25,6 @@ import { TrustedSourceIdentityService } from '@/modules/inbound-auth-core/identi
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
 import { ProvisioningRoleMappingProvider } from '@/modules/provisioning.ee/role-mapping-provider.ee';
 import { RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
-import { RoleMappingProxyService } from '@/services/role-mapping-proxy.service';
 import { UserService } from '@/services/user.service';
 
 import { createAdmin, createMember, createOwner, createUser } from '../shared/db/users';
