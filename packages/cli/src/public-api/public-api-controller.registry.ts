@@ -74,9 +74,16 @@ export class PublicApiControllerRegistry {
 
 		// A known path with a method no controller serves.
 		// Registered after every controller, so it only runs when no route matched.
-		const knownPaths = new Set(resolvePublicApiRoutes().map((route) => route.path));
-		for (const path of knownPaths) {
+		const allowedMethodsByPath = new Map<string, string[]>();
+		for (const route of resolvePublicApiRoutes()) {
+			const allowedMethods = allowedMethodsByPath.get(route.path) ?? [];
+			allowedMethods.push(route.method.toUpperCase());
+			allowedMethodsByPath.set(route.path, allowedMethods);
+		}
+
+		for (const [path, allowedMethods] of allowedMethodsByPath) {
 			router.all(path, (req, res) => {
+				res.set('Allow', allowedMethods.join(', '));
 				res.status(405).json({ message: `${req.method} method not allowed` });
 			});
 		}

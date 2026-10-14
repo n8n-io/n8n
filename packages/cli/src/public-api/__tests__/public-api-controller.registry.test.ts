@@ -111,6 +111,26 @@ describe('PublicApiControllerRegistry', () => {
 		await request(app).get('/api/v1/widgets/w-1/parts').expect(200, { ok: true });
 	});
 
+	it('lists every method the path serves in the Allow header of its 405 response', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			list() {
+				return { ok: true };
+			}
+
+			@Post('/')
+			@ApiResponse(201)
+			create() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate()).put('/api/v1/widgets').expect(405).expect('Allow', 'GET, POST');
+	});
+
 	it('emits the Deprecation header for a route marked @Deprecated', async () => {
 		const since = new Date('2026-07-23T00:00:00Z');
 
