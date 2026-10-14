@@ -41,6 +41,7 @@ import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
+import { pipeline } from 'node:stream/promises';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { sendErrorResponse } from '@/response-helper';
@@ -155,11 +156,28 @@ export class ChatHubController {
 			return;
 		}
 
-		return await new Promise<void>((resolve, reject) => {
-			attachmentAsStreamOrBuffer.stream.on('end', resolve);
-			attachmentAsStreamOrBuffer.stream.on('error', reject);
-			attachmentAsStreamOrBuffer.stream.pipe(res);
-		});
+		const { stream } = attachmentAsStreamOrBuffer;
+
+		// pipeline does not destroy the source if the client is already gone.
+		if (res.destroyed) {
+			stream.destroy();
+			return;
+		}
+
+		// pipeline destroys the source when the client disconnects during the download,
+		// so aborted downloads don't leak file descriptors.
+		try {
+			await pipeline(stream, res);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				'code' in error &&
+				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
+			) {
+				return;
+			}
+			throw error;
+		}
 	}
 
 	@GlobalScope('chatHub:message')
