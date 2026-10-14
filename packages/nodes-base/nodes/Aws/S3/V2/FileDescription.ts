@@ -905,12 +905,12 @@ export const fileFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Remove File Metadata',
+				displayName: 'Omit Content-Disposition Override',
 				name: 'noContentDisposition',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether disabled, return a URL without file metadata in the response, which results in the file being displayed in the browser instead of downloaded',
+					'Whether to omit the Content-Disposition override and let the browser use the object metadata to decide whether to display or download the file',
 			},
 		],
 	},
