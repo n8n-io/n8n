@@ -23,3 +23,15 @@ export const getWhatsAppWebhookStatus = async (
 	agentId: string,
 ): Promise<WhatsAppWebhookStatus> =>
 	await makeRestApiRequest(context, 'GET', `${integrationPath(projectId, agentId)}/webhook-status`);
+
+/** Forgets an earlier handshake, so only one that happens after this confirms the step. */
+export const resetWhatsAppWebhookStatus = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<WhatsAppWebhookStatus> =>
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${integrationPath(projectId, agentId)}/webhook-status`,
+	);
