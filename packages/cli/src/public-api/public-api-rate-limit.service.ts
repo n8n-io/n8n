@@ -1,12 +1,10 @@
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
 import type { Method, RateLimitAccessName } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { Request, RequestHandler } from 'express';
-import { rateLimit } from 'express-rate-limit';
+import type { RequestHandler } from 'express';
 
-const getApiKeyId = (req: Request) => (req as AuthenticatedRequest).tokenGrant?.apiKeyId;
+import { RateLimitService } from '@/services/rate-limit.service';
 
 type RequestLimit = { maxRequests: number; windowSeconds: number };
 
@@ -26,7 +24,10 @@ export class PublicApiRateLimitService {
 		RequestHandler | undefined
 	>();
 
-	constructor(private readonly globalConfig: GlobalConfig) {}
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly rateLimitService: RateLimitService,
+	) {}
 
 	private get config() {
 		return this.globalConfig.publicApi.rateLimit;
@@ -46,14 +47,14 @@ export class PublicApiRateLimitService {
 	}
 
 	private createPerEndpointLimiter(access: RateLimitAccessName) {
-		return createRateLimiter(this.getLimitsFromConfig(access).perEndpoint);
+		return this.createRateLimiter(this.getLimitsFromConfig(access).perEndpoint);
 	}
 
 	private getAllEndpointsLimiter(access: RateLimitAccessName) {
 		if (!this.allEndpointsLimiterCache.has(access)) {
 			this.allEndpointsLimiterCache.set(
 				access,
-				createRateLimiter(this.getLimitsFromConfig(access).allEndpoints),
+				this.createRateLimiter(this.getLimitsFromConfig(access).allEndpoints),
 			);
 		}
 		return this.allEndpointsLimiterCache.get(access);
@@ -85,22 +86,13 @@ export class PublicApiRateLimitService {
 		};
 		return limits[access];
 	}
-}
 
-function createRateLimiter({
-	maxRequests,
-	windowSeconds,
-}: RequestLimit): RequestHandler | undefined {
-	if (maxRequests === 0) return undefined;
+	private createRateLimiter({ maxRequests, windowSeconds }: RequestLimit) {
+		if (maxRequests === 0) return undefined;
 
-	return rateLimit({
-		limit: maxRequests,
-		windowMs: windowSeconds * Time.seconds.toMilliseconds,
-		legacyHeaders: true,
-		standardHeaders: false,
-		message: { message: 'Too many requests' },
-		passOnStoreError: true,
-		skip: (req) => getApiKeyId(req) === undefined,
-		keyGenerator: (req) => getApiKeyId(req) ?? '',
-	});
+		return this.rateLimitService.createApiKeyRateLimitMiddleware({
+			limit: maxRequests,
+			windowMs: windowSeconds * Time.seconds.toMilliseconds,
+		});
+	}
 }

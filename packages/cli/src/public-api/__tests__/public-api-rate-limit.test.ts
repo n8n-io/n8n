@@ -18,6 +18,7 @@ import { mock } from 'vitest-mock-extended';
 import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
+import { RateLimitService } from '@/services/rate-limit.service';
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -55,7 +56,7 @@ describe('Public API rate limiting', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			mock<EventService>(),
-			new PublicApiRateLimitService(globalConfig),
+			new PublicApiRateLimitService(globalConfig, new RateLimitService()),
 		).activate(router, 'v1');
 		app.use('/api/v1', router);
 		return app;

@@ -74,6 +74,26 @@ export class RateLimitService {
 		});
 	}
 
+	/**
+	 * Creates a rate limit middleware keyed by API key.
+	 * Runs AFTER authentication. Requests without an API key are not counted.
+	 */
+	createApiKeyRateLimitMiddleware(limits: Required<RateLimiterLimits>): RequestHandler {
+		return expressRateLimit({
+			limit: limits.limit,
+			windowMs: limits.windowMs,
+			legacyHeaders: true,
+			standardHeaders: false,
+			message: { message: 'Too many requests' },
+			passOnStoreError: true,
+			keyGenerator: (req: AuthenticatedRequest) => this.extractApiKeyIdentifier(req),
+			skip: (req: AuthenticatedRequest) => {
+				const identifier = this.extractApiKeyIdentifier(req);
+				return identifier.startsWith('skip:');
+			},
+		});
+	}
+
 	private extractBodyIdentifier(body: unknown, fieldName: string, fieldSchema: ZodTypeAny): string {
 		if (!body || typeof body !== 'object') {
 			return 'skip:empty-body';
@@ -94,5 +114,10 @@ export class RateLimitService {
 
 	private extractUserIdentifier(req: AuthenticatedRequest): string {
 		return `user:${req.user.id}`;
+	}
+
+	private extractApiKeyIdentifier(req: AuthenticatedRequest): string {
+		const apiKeyId = req.tokenGrant?.apiKeyId;
+		return apiKeyId === undefined ? 'skip:no-api-key' : `apiKey:${apiKeyId}`;
 	}
 }
