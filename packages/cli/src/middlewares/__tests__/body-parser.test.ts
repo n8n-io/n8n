@@ -4,7 +4,7 @@ import { Readable } from 'stream';
 
 import { BadRequestError } from '@n8n/errors';
 
-import { rawBodyReader } from '../body-parser';
+import { parseBody, rawBodyReader } from '../body-parser';
 
 /** Build a request backed by a real readable stream carrying `payload`. */
 const mockRequest = (payload = '', headers: Record<string, string> = {}) => {
@@ -55,5 +55,31 @@ describe('rawBodyReader', () => {
 			constructor: BadRequestError,
 			cause: { type: 'request.aborted' },
 		});
+	});
+});
+
+describe('parseBody', () => {
+	const xmlRequest = (body: string) =>
+		({
+			contentType: 'text/xml',
+			encoding: 'utf-8',
+			rawBody: Buffer.from(body),
+			readRawBody: async () => {},
+		}) as unknown as Request;
+
+	// Bodies over 10,000 chars make xml2js parse in chunks across ticks.
+	const largeXml = (id: string) =>
+		`<?xml version="1.0"?><Envelope><Body>${'<Item><Name>x</Name></Item>'.repeat(1000)}<Id>${id}</Id></Body></Envelope>`;
+
+	it('parses concurrent large XML bodies independently', async () => {
+		const requests = ['a', 'b', 'c'].map((id) => xmlRequest(largeXml(id)));
+
+		await Promise.all(requests.map(parseBody));
+
+		expect(requests.map((req) => req.body.envelope.body.id)).toEqual(['a', 'b', 'c']);
+
+		const after = xmlRequest('<root><id>after</id></root>');
+		await parseBody(after);
+		expect(after.body).toEqual({ root: { id: 'after' } });
 	});
 });
