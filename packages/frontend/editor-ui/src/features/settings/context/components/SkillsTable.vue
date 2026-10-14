@@ -9,6 +9,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
+import { skillCreatorLabel } from '../skills.utils';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 
 type SkillAction = 'edit' | 'delete';
@@ -90,21 +91,28 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
-		width: 440,
+		width: 380,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
-		width: 260,
+		width: 240,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.agents'),
 		key: 'usedByAgents',
-		width: 120,
+		width: 110,
+		disableSort: true,
+		resize: false,
+	},
+	{
+		title: i18n.baseText('settings.context.skills.columns.createdBy'),
+		key: 'createdBy',
+		width: 180,
 		disableSort: true,
 		resize: false,
 	},
@@ -162,6 +170,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.usedByAgents`]="{ item }">
 				<SkillAgentsCell :skill="item" />
+			</template>
+
+			<template #[`item.createdBy`]="{ item }">
+				<N8nText size="small" color="text-light" data-test-id="skill-created-by">
+					{{ skillCreatorLabel(i18n, item) }}
+				</N8nText>
 			</template>
 
 			<template #[`item.updatedAt`]="{ item }">

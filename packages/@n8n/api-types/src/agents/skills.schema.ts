@@ -30,6 +30,14 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 export type SkillSource = 'ui' | 'agent';
 
+/** The user who created a skill, as the settings list names them. */
+export type SkillUserDto = {
+	id: string;
+	email: string | null;
+	firstName: string | null;
+	lastName: string | null;
+};
+
 /** One row of the skills list. Name and description come from the latest version. */
 export type SkillListItem = {
 	id: string;
@@ -43,6 +51,8 @@ export type SkillListItem = {
 	agentId: string | null;
 	agentName: string | null;
 	source: SkillSource;
+	/** Null when the creator is unknown or the user no longer exists. */
+	createdBy: SkillUserDto | null;
 	/** Number of the latest version, the one following agents run. */
 	latestVersion: number;
 	/** Distinct agents that use the skill: draft refs plus published pins. */

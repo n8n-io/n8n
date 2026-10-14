@@ -223,6 +223,17 @@ describe('SkillsController', () => {
 	});
 
 	describe('list', () => {
+		it('names the user who created each skill', async () => {
+			await create(owner, { scope: 'instance', skill: body });
+
+			const response = await owner.get('/skills').expect(200);
+
+			expect(response.body.data.data[0].createdBy).toMatchObject({
+				id: ownerUser.id,
+				email: ownerUser.email,
+			});
+		});
+
 		it('lists what the user may see, searched and paged on the server', async () => {
 			const agent = await newAgent('Support bot', project.id);
 			await create(editor, { scope: 'agent', agentId: agent.id, skill: { ...body, name: 'Mine' } });

@@ -47,6 +47,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		agentId: null,
 		agentName: null,
 		source: 'ui',
+		createdBy: null,
 		latestVersion: 1,
 		usedByAgents: 0,
 		canEdit: true,
@@ -231,6 +232,8 @@ describe('SettingsSkillsView', () => {
 				projectId: 'personal-1',
 				skill: content,
 			});
+			// The new row is the feedback, as on the preferences page.
+			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 	});
 
@@ -297,8 +300,9 @@ describe('SettingsSkillsView', () => {
 				's1',
 				expect.objectContaining({ scope: 'project', projectId: 'personal-1' }),
 			);
-			// A move is a change even when the content stays the same.
-			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Skill saved', type: 'success' });
+			// A move is a change even when the content stays the same: no "Nothing to save", and the list reloads.
+			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(skillsStore.fetchSkills).toHaveBeenCalledTimes(2);
 		});
 
 		it('says "Nothing to save" when the content matches the latest version', async () => {

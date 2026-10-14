@@ -190,11 +190,8 @@ function openCreateModal() {
 
 async function onCreate(skill: AgentSkill, scopeValue: string) {
 	try {
+		// No toast: the modal closes and the new row shows, as on the preferences page.
 		await skillsStore.createSkill({ ...parseScope(scopeValue), skill });
-		showMessage({
-			title: i18n.baseText('settings.context.skills.create.success'),
-			type: 'success',
-		});
 		await load();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.save'));
@@ -260,14 +257,13 @@ async function onSave(id: string, skill: AgentSkill, baseSkillHash: string, newS
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
 		});
-		const changed = saved.created || newScope !== undefined;
-		showMessage({
-			title: i18n.baseText(
-				changed ? 'settings.context.skills.save.success' : 'settings.context.skills.save.noChanges',
-			),
-			type: changed ? 'success' : 'info',
-		});
-		if (changed) await load();
+		// A move is a change even when the content stays the same. Only "Nothing to save"
+		// gets a message: a real change shows in the table.
+		if (saved.created || newScope !== undefined) {
+			await load();
+		} else {
+			showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
+		}
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.save'));
 	}
