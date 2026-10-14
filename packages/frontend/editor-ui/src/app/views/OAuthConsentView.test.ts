@@ -65,6 +65,24 @@ describe('OAuthConsentView', () => {
 		expect(queryByText('Get a list of your workflows')).toBeNull();
 	});
 
+	it('should show a neutral heading and the scope picker when a named resource advertises scopes', async () => {
+		consentStore.consentDetails = {
+			clientName: 'Test MCP Client',
+			clientId: 'test-client-id',
+			resourceName: 'n8n public API',
+			scopes: ['workflow:list', 'workflow:create'],
+		};
+		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+
+		const { getByText, getByTestId, queryByText } = renderComponent();
+		await waitAllPromises();
+
+		expect(getByText('Test MCP Client requests access to n8n public API')).toBeVisible();
+		expect(getByText(/Choose what Test MCP Client is allowed to do/)).toBeVisible();
+		expect(getByTestId('consent-scopes')).toBeVisible();
+		expect(queryByText(/access this workflow on your behalf/)).toBeNull();
+	});
+
 	it('should show the generic heading and permission list when no resource is named', async () => {
 		consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails!);
 
