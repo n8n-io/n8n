@@ -952,7 +952,6 @@ describe('InstanceAiController', () => {
 				isSuspended: false,
 				backgroundTasks: [],
 			});
-
 			type Subscriber = Parameters<InProcessEventBus['subscribe']>[1];
 			let deliver: Subscriber | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -960,7 +959,6 @@ describe('InstanceAiController', () => {
 				return vi.fn();
 			});
 			const { sseReq, sseRes, frames } = sseIo();
-
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
 			const emit = (id: number) =>
 				deliver?.({
@@ -972,7 +970,6 @@ describe('InstanceAiController', () => {
 						payload: { text: String(id) },
 					},
 				});
-
 			emit(1);
 			emit(2);
 			const incoming = ownership.promise.then(() => emit(3));

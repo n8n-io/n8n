@@ -146,7 +146,6 @@ it('captures a detached baseline without creating a suggestion', async () => {
 
 it('checks a current baseline without creating a suggestion', async () => {
 	await expect(service.requireCurrentBaseline(baseline)).resolves.toEqual(user);
-
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
@@ -166,9 +165,7 @@ it.each([
 	}
 	if (change === 'snapshot') baseline.original.name = 'Changed';
 	if (change === 'project') workflow.shared[0].projectId = 'other';
-
 	await expect(service.requireCurrentBaseline(baseline)).rejects.toThrow('baseline');
-
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 

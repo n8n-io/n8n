@@ -27,9 +27,7 @@ beforeAll(async () => {
 	await testDb.init();
 	repository = Container.get(SelfHealingTemporaryWorkflowRepository);
 });
-
 afterAll(async () => await testDb.terminate());
-
 afterEach(async () => {
 	await repository.clear();
 	await testDb.truncate(['WorkflowEntity']);
@@ -52,14 +50,12 @@ async function fixture() {
 	const originalHistory = await Container.get(WorkflowHistoryRepository).findBy({
 		workflowId: original.id,
 	});
-
 	const editorProject = await createTeamProject();
 	await Container.get(SharedWorkflowRepository).insert({
 		workflowId: original.id,
 		projectId: editorProject.id,
 		role: 'workflow:editor',
 	});
-
 	const temporary = new WorkflowEntity();
 	temporary.name = 'Assistant verification';
 	temporary.nodes = structuredClone(original.nodes);
@@ -70,7 +66,6 @@ async function fixture() {
 	temporary.activeVersionId = null;
 	temporary.isArchived = true;
 	temporary.versionId = randomUUID();
-
 	const policyCleared = await new PolicyEnforcementService().enforceWorkflowSave(
 		{ workflow: temporary, storedWorkflow: null, projectId: project.id },
 		{ kind: 'system', reason: 'execution' },
@@ -79,7 +74,6 @@ async function fixture() {
 		{ policyCleared },
 		async (ctx) => await repository.createTemporary(temporary, original.id, ctx),
 	);
-
 	return { original, originalHistory, saved, projectId: project.id };
 }
 
@@ -87,22 +81,17 @@ it('copies access and keeps the original workflow and its history unchanged', as
 	const { original, originalHistory, saved } = await fixture();
 	const workflows = Container.get(WorkflowRepository);
 	const shares = Container.get(SharedWorkflowRepository);
-
 	expect(saved.id).not.toBe(original.id);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-
 	const access = async (workflowId: string) =>
 		(await shares.findBy({ workflowId }))
 			.map(({ projectId, role }) => ({ projectId, role }))
 			.sort((left, right) => left.projectId.localeCompare(right.projectId));
-
 	expect(await access(saved.id)).toEqual(await access(original.id));
 	expect(await Container.get(WorkflowHistoryRepository).countBy({ workflowId: saved.id })).toBe(0);
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(true);
-
 	await workflows.update(saved.id, { staticData: { global: { cursor: 20 } }, pinData: {} });
 	await repository.deleteTemporary(saved.id);
-
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(
 		await Container.get(WorkflowHistoryRepository).findBy({ workflowId: original.id }),
@@ -111,12 +100,9 @@ it('copies access and keeps the original workflow and its history unchanged', as
 
 it('permits cleanup only for marked temporary workflows', async () => {
 	const { original, saved } = await fixture();
-
 	expect(await repository.canDelete(original.id)).toBe(false);
 	expect(await repository.canDelete(saved.id)).toBe(true);
-
 	await repository.deleteTemporary(saved.id);
-
 	expect(await Container.get(WorkflowRepository).existsBy({ id: saved.id })).toBe(false);
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
 });
@@ -132,7 +118,6 @@ it.each(['new', 'running', 'waiting', 'unknown'] as const)(
 			createdAt: new Date(),
 			finished: false,
 		});
-
 		expect(await repository.findUnfinishedExecutionIds(saved.id)).toEqual([execution.id]);
 		expect(await repository.canDelete(saved.id)).toBe(false);
 	},
@@ -142,11 +127,8 @@ it('recovers only old verification markers', async () => {
 	const { saved } = await fixture();
 	const old = new Date('2026-10-10T00:00:00Z');
 	await repository.save({ id: `thread:${randomUUID()}`, createdAt: old });
-
 	expect(await repository.findAbandonedIds(new Date('2026-10-11T00:00:00Z'))).toEqual([]);
-
 	await repository.update({ id: markerId(saved.id) }, { createdAt: old });
-
 	expect(await repository.findAbandonedIds(new Date('2026-10-11T00:00:00Z'))).toEqual([saved.id]);
 });
 
@@ -159,14 +141,11 @@ it('keeps canceled executions until recovery can safely remove the snapshot', as
 		createdAt: new Date(),
 		finished: false,
 	});
-
 	expect(await repository.canDelete(saved.id)).toBe(false);
-
 	await repository.update(
 		{ id: markerId(saved.id) },
 		{ createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
 	);
-
 	expect(await repository.canDelete(saved.id)).toBe(true);
 });
 
@@ -183,11 +162,8 @@ it('keeps an old snapshot when its execution was just canceled', async () => {
 		stoppedAt: new Date(),
 		finished: false,
 	});
-
 	expect(await repository.canDelete(saved.id)).toBe(false);
-
 	await executions.update(execution.id, { stoppedAt: old });
-
 	expect(await repository.canDelete(saved.id)).toBe(true);
 });
 
@@ -200,25 +176,17 @@ it('keeps cleanup markers when the investigation thread is deleted', async () =>
 		resourceId: 'test-verification',
 		title: '',
 	});
-
 	await Container.get(InstanceAiThreadRepository).delete(threadId);
-
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(true);
-
 	await repository.deleteTemporary(saved.id);
-
 	expect(await Container.get(WorkflowRepository).existsBy({ id: saved.id })).toBe(false);
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
 });
 
 it('removes the cleanup marker when the workflow was already deleted', async () => {
 	const { saved } = await fixture();
-
 	await Container.get(WorkflowRepository).delete(saved.id);
-
 	expect(await repository.canDelete(saved.id)).toBe(true);
-
 	await repository.deleteTemporary(saved.id);
-
 	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
 });

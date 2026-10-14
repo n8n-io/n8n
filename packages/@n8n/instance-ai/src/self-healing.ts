@@ -66,7 +66,6 @@ export const selfHealingCandidateInputSchema = z
 	.strict();
 
 export type SelfHealingCandidateInput = z.infer<typeof selfHealingCandidateInputSchema>;
-
 export type SelfHealingCandidateVerifier = (
 	input: SelfHealingCandidateInput,
 	abortSignal?: AbortSignal,

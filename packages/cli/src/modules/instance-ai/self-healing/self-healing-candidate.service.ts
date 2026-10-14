@@ -33,7 +33,6 @@ type CandidateInput = SelfHealingCandidateInput & {
 	context: InstanceAiContext;
 	abortSignal: AbortSignal;
 };
-
 type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }> & {
 	candidateChecksum: string;
 };
