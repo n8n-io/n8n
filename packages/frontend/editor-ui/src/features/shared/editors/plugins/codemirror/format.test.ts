@@ -3,6 +3,8 @@ import { EditorView } from '@codemirror/view';
 
 import { formatDocument, languageFacet, type CodeEditorLanguage } from './format';
 
+vi.mock('prettier', async () => await import('prettier/standalone'));
+
 describe('formatDocument', () => {
 	const editors: EditorView[] = [];
 
