@@ -9374,7 +9374,7 @@
 	"agents.channels.whatsapp.setup.verify.description": "Click Verify and save. Then next to Webhook fields, click Manage and subscribe to messages.",
 	"agents.channels.whatsapp.setup.verify.waiting": "We’ll confirm here once Meta reaches the agent…",
 	"agents.channels.whatsapp.setup.verify.verified": "Meta can reach this agent",
-	"agents.channels.whatsapp.setup.verify.resetError": "Couldn’t clear an earlier webhook verification. If you changed Meta apps, click Verify and save in Meta again before you connect.",
+	"agents.channels.whatsapp.setup.verify.resetError": "Couldn’t clear an earlier webhook verification. We’ll keep trying, and confirm this step only after that works.",
 	"agents.channels.whatsapp.setup.connect.title": "Connect",
 	"agents.channels.whatsapp.setup.connect.description": "People message this number and reach the agent.",
 	"agents.channels.whatsapp.setup.connect.button": "Connect",
