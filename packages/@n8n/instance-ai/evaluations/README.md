@@ -31,7 +31,7 @@ Each run:
 
 1. **Build** — the test case prompt goes to Instance AI, which builds a workflow.
 2. **Phase 1** — the server analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario).
-3. **Phase 2** — the workflow executes with every HTTP request intercepted and answered by an LLM using the node's configuration and API docs from Context7.
+3. **Phase 2** — the workflow executes with every HTTP request intercepted and answered by an LLM using the node's configuration and its own knowledge of the API.
 4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see [Failure categories](#failure-categories)).
 
 ### What gets mocked
@@ -64,7 +64,6 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
    N8N_EVAL_PASSWORD=PlaywrightTest123
    # Optional — see "Environment variables" for the full list
    LANGSMITH_API_KEY=...
-   CONTEXT7_API_KEY=...
    ```
 
 2. **Start the instance**:
@@ -161,6 +160,20 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
 | `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
 
+### Eval LLM settings (env)
+
+Set the mock settings on the n8n server process and the judge settings on the CLI process. Effort values apply to Anthropic models only: `low`, `medium`, `high`, `xhigh`, `max`.
+
+| Env var | Default | Description |
+|---------|---------|-------------|
+| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-4-6` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI |
+| `N8N_INSTANCE_AI_EVAL_EFFORT` | `medium` | Effort of the same agents |
+| `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | `anthropic/claude-sonnet-5-5` | Model of the judges: checklist verifier, expectations judge, binary LLM checks, computer-use grader. The user proxy and the mocks keep their model |
+| `N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT` | `high` | Effort of the judges |
+| `N8N_INSTANCE_AI_EVAL_USAGE_LOG` | — | File path. Appends one JSON line per model call: agent, model, effort, input tokens with the cache split, output and reasoning tokens, duration, stop reason |
+
+Each verifier snapshot in `.data/` (or `--output-dir`) holds the verifier's input as `verifierInput`, so you can replay the verdict on another judge model. `DEBUG_JUDGE_CONTEXT=<file>` writes each expectations-judge prompt.
+
 **pass@k / pass^k**: with `--iterations N`, each unit — an execution scenario or an evaluated process/outcome expectation — is measured N times. `pass@k` is the fraction of units that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
 ### Test-case datasets (logical groupings)
@@ -241,7 +254,7 @@ Operational details:
 
 - Checks run **once per built workflow**, not per scenario — every scenario row in LangSmith carries the same outcomes for its build.
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
-- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_describes_changes_accurately`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
+- LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_describes_changes_accurately`) use the judge model (`N8N_INSTANCE_AI_EVAL_JUDGE_MODEL`) — auto-skipped (N/A) when no Anthropic key is set.
 
 ### Build expectations (per test case)
 
@@ -250,7 +263,7 @@ A test case can declare optional natural-language assertions, split by what they
 - **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
 - **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
 
-Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
+Both are graded by the same judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
 
 Use them for things the binary checks and `successCriteria` don't cover:
 
@@ -348,7 +361,6 @@ on disk. Losing this field turns it into a normal attachment test.
 | `LANGSMITH_ENDPOINT` | No | Region (`https://api.smith.langchain.com` US, `https://eu.api.smith.langchain.com` EU) |
 | `LANGSMITH_REVISION_ID` | No | Commit SHA to tag the experiment with (auto-set in CI) |
 | `LANGSMITH_BRANCH` | No | Branch name to tag the experiment with (auto-set in CI) |
-| `CONTEXT7_API_KEY` | No | Context7 key for API-doc lookups. Improves mock realism for less-common services; the LLM falls back to training data when unset |
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
@@ -767,7 +779,7 @@ reliable signal. Two specific things to know:
 
 1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
 2. **Phase 1** — analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario)
-3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and API documentation from Context7
+3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and its own knowledge of the API
 4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see Failure categories below)
 
 ### What gets mocked
@@ -862,6 +874,8 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 ### Build isolation
 
 Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
+
+If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
 ### Credentials
 
@@ -1302,7 +1316,6 @@ packages/cli/src/modules/instance-ai/eval/
 ├── execution.service.ts  # Phase 1 + Phase 2 orchestration
 ├── workflow-analysis.ts  # Hint generation (Phase 1)
 ├── mock-handler.ts       # Per-request mock generation (Phase 2)
-├── api-docs.ts           # Context7 API doc fetcher
 ├── node-config.ts        # Node config serializer
 └── pin-data-generator.ts # LLM pin data for bypass nodes (Phase 1.5)
 ```

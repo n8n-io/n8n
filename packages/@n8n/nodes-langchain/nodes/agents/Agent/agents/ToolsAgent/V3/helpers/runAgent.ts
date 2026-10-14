@@ -36,7 +36,12 @@ export function appendToolAttributions(
 ): string {
 	// A reply with no text would show as the label alone, which reads as a glitch
 	if (output.trim() === '') return output;
-	const calledTools = new Set(steps.map((step) => step.action.tool));
+	// A denied or failed call produced no partner result, so it earns no label
+	const calledTools = new Set(
+		steps
+			.filter((step) => !step.action.hitlDenied && !step.action.errored)
+			.map((step) => step.action.tool),
+	);
 	const attributions = new Set<string>();
 	for (const tool of tools) {
 		const attribution = tool.metadata?.attribution;

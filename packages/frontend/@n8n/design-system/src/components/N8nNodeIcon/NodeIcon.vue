@@ -88,7 +88,7 @@ const iconStyleData = computed((): Record<string, string> => {
 	line-height: var(--node--icon--size, 26px);
 	font-size: 1.1em;
 	text-align: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: 20px;
 }
 
