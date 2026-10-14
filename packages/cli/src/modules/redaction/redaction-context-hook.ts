@@ -6,7 +6,7 @@ import {
 	HookDescription,
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
-import { policyToChannels, redactionSettingToChannels, type RedactionSource } from 'n8n-workflow';
+import { effectiveRedactionChannels, policyToChannels, type RedactionSource } from 'n8n-workflow';
 
 import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
 
@@ -41,8 +41,10 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 	 * For a sub-workflow the context also carries the snapshot inherited from the
 	 * parent execution; it is folded in the same way, so the child's own record is
 	 * redacted per its own policy while still inheriting the parent's redaction
-	 * (top-down escalation). Root executions carry no inherited snapshot, so it is
-	 * a no-op there.
+	 * (top-down escalation). The inherited redaction includes the channels that
+	 * earlier sub-workflows reported to the parent (`subWorkflowRedaction`), so a
+	 * later sibling that receives their output is redacted too. Root executions
+	 * carry no inherited snapshot, so it is a no-op there.
 	 */
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 		// Unlicensed instances never redact. Write an explicit no-redaction
@@ -58,7 +60,7 @@ export class RedactionContextHook implements IContextEstablishmentHook {
 
 		const floor = await this.instanceRedactionEnforcementService.get();
 		const workflow = policyToChannels(options.workflow.settings?.redactionPolicy ?? 'none');
-		const inherited = redactionSettingToChannels(options.context?.redaction);
+		const inherited = effectiveRedactionChannels(options.context);
 
 		const floorEnforcesProduction = floor !== 'off';
 		const floorEnforcesManual = floor === 'all';

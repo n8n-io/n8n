@@ -23,6 +23,7 @@ import type {
 	ITaskData,
 	WorkflowExecuteMode,
 	ExecuteAgentWorkflowContext,
+	IExecutionContext,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -894,6 +895,144 @@ describe('WorkflowExecuteAdditionalData', () => {
 					);
 					await expect(promise).rejects.toThrow('child failed');
 					await expect(promise).rejects.not.toHaveProperty('dynamicCredentialsUsage');
+				});
+			});
+		});
+
+		describe('sub-workflow redaction reporting', () => {
+			const childContext = (fields: Partial<IExecutionContext>): IExecutionContext => ({
+				version: 1,
+				establishedAt: 0,
+				source: 'integrated',
+				...fields,
+			});
+
+			// A plain object: `mock()` does not keep `false` values in nested objects.
+			const getMockRunWithContext = (runtimeData: IExecutionContext, failed = false) =>
+				({
+					data: {
+						subWorkflowOutput: undefined,
+						resultData: {
+							runData: {
+								[LAST_NODE_EXECUTED]: [
+									{ startTime: 100, data: { main: [[{ json: { test: 1 } }]] } },
+								],
+							},
+							lastNodeExecuted: LAST_NODE_EXECUTED,
+							...(failed && { error: { message: 'child failed', name: 'NodeOperationError' } }),
+						},
+						executionData: { runtimeData },
+					},
+					finished: !failed,
+					mode: 'integrated',
+					startedAt: new Date(),
+					status: failed ? 'error' : 'success',
+					waitTill: undefined,
+				}) as unknown as IRun;
+
+			const run = async (doNotWaitToFinish = false) =>
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish }),
+				);
+
+			it('reports the channels the sub-workflow redacts', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: true, manual: false } }),
+						),
+					),
+				);
+
+				const response = await run();
+
+				expect(response.subWorkflowRedaction).toEqual({ production: true, manual: false });
+			});
+
+			it('also reports the channels its own sub-workflows reported to it', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({
+								redaction: { version: 2, production: false, manual: false },
+								subWorkflowRedaction: { production: true, manual: true },
+							}),
+						),
+					),
+				);
+
+				const response = await run();
+
+				expect(response.subWorkflowRedaction).toEqual({ production: true, manual: true });
+			});
+
+			it('reports nothing when the sub-workflow redacts no channel', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: false, manual: false } }),
+						),
+					),
+				);
+
+				const response = await run();
+
+				expect(response.subWorkflowRedaction).toBeUndefined();
+			});
+
+			it('reports nothing for detached sub-workflows (no embedded output)', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: true, manual: true } }),
+						),
+					),
+				);
+
+				const response = await run(true);
+
+				expect(response.subWorkflowRedaction).toBeUndefined();
+			});
+
+			it('attaches the channels to the error of a failed sub-workflow', async () => {
+				processRunExecutionData.mockReturnValue(
+					getCancelablePromise(
+						getMockRunWithContext(
+							childContext({ redaction: { version: 2, production: true, manual: false } }),
+							true,
+						),
+					),
+				);
+
+				await expect(run()).rejects.toMatchObject({
+					message: 'child failed',
+					subWorkflowRedaction: { production: true, manual: false },
+				});
+			});
+
+			it('attaches the channels to the error when the engine throws mid-run', async () => {
+				const executionData = createRunExecutionData();
+				// The engine mutates the run data in place, so the context it established
+				// before the crash is still readable.
+				processRunExecutionData.mockImplementationOnce(async () => {
+					executionData.executionData!.runtimeData = childContext({
+						redaction: { version: 2, production: true, manual: true },
+					});
+					throw new Error('engine crashed');
+				});
+
+				await expect(
+					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
+						...mock<ExecuteWorkflowOptions>(),
+						loadedWorkflowData: undefined,
+						loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
+						doNotWaitToFinish: false,
+					}),
+				).rejects.toMatchObject({
+					message: 'engine crashed',
+					subWorkflowRedaction: { production: true, manual: true },
 				});
 			});
 		});

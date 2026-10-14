@@ -152,6 +152,7 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 			floor: 'off' | 'production' | 'all',
 			childPolicy: WorkflowSettings.RedactionPolicy | undefined,
 			inheritedRedaction: IExecutionContext['redaction'],
+			inheritedSubWorkflowRedaction?: IExecutionContext['subWorkflowRedaction'],
 		) => {
 			enforcementService.get.mockResolvedValue(floor);
 
@@ -163,6 +164,9 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 					establishedAt: 1_000,
 					source: 'manual',
 					redaction: inheritedRedaction,
+					...(inheritedSubWorkflowRedaction && {
+						subWorkflowRedaction: inheritedSubWorkflowRedaction,
+					}),
 				},
 			};
 
@@ -207,6 +211,18 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 			expect(
 				await establishSubWorkflow('all', 'none', { version: 2, production: false, manual: false }),
 			).toEqual({ version: 2, production: true, manual: true, source: 'instance' });
+		});
+
+		// P → C1 (redacted) → C2: C1 reported its channels to P, and C2 receives C1's output.
+		it("redacts a later sibling's record from the channels an earlier sibling reported", async () => {
+			expect(
+				await establishSubWorkflow(
+					'off',
+					'none',
+					{ version: 2, production: false, manual: false },
+					{ production: true, manual: true },
+				),
+			).toEqual({ version: 2, production: true, manual: true, source: 'workflow' });
 		});
 	});
 

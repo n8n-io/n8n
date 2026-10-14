@@ -1,7 +1,12 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import type { IRedactionSetting, Workflow, WorkflowSettings } from 'n8n-workflow';
+import type {
+	IRedactionSetting,
+	RedactionChannels,
+	Workflow,
+	WorkflowSettings,
+} from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,6 +21,7 @@ describe('RedactionContextHook', () => {
 	const buildOptions = (
 		workflowRedactionPolicy?: WorkflowSettings.RedactionPolicy,
 		inheritedRedaction?: IRedactionSetting,
+		inheritedSubWorkflowRedaction?: RedactionChannels,
 	): ContextEstablishmentOptions =>
 		mock<ContextEstablishmentOptions>({
 			workflow: mock<Workflow>({
@@ -23,7 +29,13 @@ describe('RedactionContextHook', () => {
 			}),
 			// Real object (not a deep mock) so `context.redaction` is deterministic:
 			// absent for root executions, the inherited parent snapshot for sub-workflows.
-			context: { version: 1, establishedAt: 0, source: 'manual', redaction: inheritedRedaction },
+			context: {
+				version: 1,
+				establishedAt: 0,
+				source: 'manual',
+				redaction: inheritedRedaction,
+				subWorkflowRedaction: inheritedSubWorkflowRedaction,
+			},
 		});
 
 	const setFloor = (floor: RedactionFloor) => {
@@ -225,6 +237,28 @@ describe('RedactionContextHook', () => {
 			const result = await hook.execute(buildOptions('none', v2(false, false)));
 
 			expect(result).toEqual(expectChannels(true, true, 'instance'));
+		});
+
+		// P → C1 (redacted) → C2: C2 receives C1's output, so it inherits the
+		// channels C1 reported to P.
+		it('folds in the channels earlier sub-workflows reported to the parent', async () => {
+			setFloor('off');
+
+			const result = await hook.execute(
+				buildOptions('none', v2(false, false), { production: true, manual: false }),
+			);
+
+			expect(result).toEqual(expectChannels(true, false));
+		});
+
+		it('merges the reported channels per channel with the inherited snapshot', async () => {
+			setFloor('off');
+
+			const result = await hook.execute(
+				buildOptions('none', v2(true, false), { production: true, manual: true }),
+			);
+
+			expect(result).toEqual(expectChannels(true, true));
 		});
 	});
 
