@@ -142,7 +142,6 @@ if (!savedCredentialId.value) {
 	});
 }
 
-// The sign-in the recommended setup runs on, which names who approves file access.
 const organization = computed(() => {
 	const managed = props.managedRuntime;
 	const id = managed?.managerCredentialId.value;

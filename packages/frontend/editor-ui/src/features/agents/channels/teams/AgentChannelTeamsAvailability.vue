@@ -36,7 +36,6 @@ const props = withDefaults(
 		fileAccessConsentUrl?: string | null;
 		/** What to say about file access. Only the saved channel can check it, so the setup always asks. */
 		fileAccessState?: 'request' | 'approved' | 'hidden';
-		/** The organisation an administrator approves for, where known. */
 		organization?: string;
 		/**
 		 * Microsoft returns to the agent page, which reopens the settings. The
@@ -206,7 +205,7 @@ const summary = computed(() => {
 					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessNeeded') }}
 					{{ i18n.baseText(fileAccessRequest.hint) }}
 					<template #trailingContent>
-						<!-- Teleported: the row group clips anything that overflows it. -->
+						<!-- Left teleported: the row group clips anything that overflows it. -->
 						<N8nActionDropdown
 							:items="fileAccessMenuItems"
 							placement="bottom-end"
