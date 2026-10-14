@@ -140,10 +140,13 @@ export class TeamsManifestService {
 	/**
 	 * What Teams would show from this manifest, so two builds can be compared.
 	 * The version is left out: it moves on every build without changing the app.
+	 * The agent's icon is included ahead of the package carrying it.
 	 */
-	fingerprint(manifest: TeamsAgentAppManifest): string {
+	fingerprint(manifest: TeamsAgentAppManifest, icon?: unknown): string {
 		const { version: _version, ...content } = manifest;
-		return createHash('sha256').update(JSON.stringify(content)).digest('hex');
+		return createHash('sha256')
+			.update(JSON.stringify({ content, icon: icon ?? null }))
+			.digest('hex');
 	}
 
 	/**

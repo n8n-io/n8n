@@ -217,16 +217,18 @@ export class TeamsCatalogService {
 		state: TeamsCatalogState,
 		fingerprint: string,
 	): Promise<void> {
-		if (!state.teamsAppId || state.status === 'unknown') return;
-		// Rewritten even when it says the same thing: the timestamp is what
-		// bounds it, so a re-publish has to push the window out.
 		if (!options.credentialId) return;
-		await this.notes.write(options.user, options.credentialId, {
-			publishedTeamsAppId: state.teamsAppId,
-			publishedTeamsAppState: state.status,
-			publishedTeamsAppAt: new Date().toISOString(),
-			teamsAppFingerprint: fingerprint,
-		});
+		// Microsoft took the package even when it has not listed it yet, so what
+		// was handed over is recorded either way.
+		const notes: Record<string, string> = { teamsAppFingerprint: fingerprint };
+		if (state.teamsAppId && state.status !== 'unknown') {
+			// Rewritten even when it says the same thing: the timestamp is what
+			// bounds it, so a re-publish has to push the window out.
+			notes.publishedTeamsAppId = state.teamsAppId;
+			notes.publishedTeamsAppState = state.status;
+			notes.publishedTeamsAppAt = new Date().toISOString();
+		}
+		await this.notes.write(options.user, options.credentialId, notes);
 	}
 
 	/** What the last publish made, for when the catalogue will not say. */

@@ -135,7 +135,10 @@ export class TeamsSetupService {
 		};
 		return {
 			archive: await this.manifestService.buildPackage(options),
-			fingerprint: this.manifestService.fingerprint(this.manifestService.buildManifest(options)),
+			fingerprint: this.manifestService.fingerprint(
+				this.manifestService.buildManifest(options),
+				agent.schema?.personalisation,
+			),
 			credentialId,
 		};
 	}
@@ -311,7 +314,10 @@ export class TeamsSetupService {
 			versionAt: agent.updatedAt,
 			settings: this.teamsSettingsOf(agent),
 		});
-		return this.manifestService.fingerprint(current) !== identity.teamsAppFingerprint;
+		return (
+			this.manifestService.fingerprint(current, agent.schema?.personalisation) !==
+			identity.teamsAppFingerprint
+		);
 	}
 
 	private azureBot(identity: BotIdentity | null): TeamsAgentSetupState['azureBot'] {

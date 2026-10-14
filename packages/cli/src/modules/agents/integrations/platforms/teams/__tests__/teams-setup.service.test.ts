@@ -276,6 +276,22 @@ describe('TeamsSetupService', () => {
 
 			expect((await service.getSetupState(user, scope)).appOutdated).toBe(true);
 		});
+
+		it('flags an agent whose icon changed since then', async () => {
+			const withIcon = (icon: string) =>
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					Object.assign(agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }]), {
+						schema: { personalisation: { icon } },
+					}),
+				);
+			connectTeamsCredential();
+			withIcon('robot');
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+			withIcon('rocket');
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(true);
+		});
 	});
 
 	describe('a credential another agent already uses', () => {

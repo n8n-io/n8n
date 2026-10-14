@@ -540,6 +540,17 @@ describe('TeamsCatalogService', () => {
 			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
+		it('records what it handed over even before Microsoft lists the app', async () => {
+			withBotCredential({ clientId: 'app-1' });
+			graph.postZip.mockResolvedValue(ok({}));
+
+			await service.publish({ ...publishOptions, settings: undefined });
+
+			const written = credentialsService.update.mock.calls[0][3] as Record<string, unknown>;
+			expect(written.teamsAppFingerprint).toBe('fingerprint-1');
+			expect(written.publishedTeamsAppId).toBeUndefined();
+		});
+
 		/** Microsoft has the app either way, so losing the note must not undo it. */
 		it('still reports the publish when the note cannot be written', async () => {
 			withBotCredential({ clientId: 'app-1' });
