@@ -24,7 +24,11 @@ const TMP_PDF_DEST_DIR = path.join(BASE_TMP_DIR, 'testData', 'pdfs');
  * @param options Options for `child_process.execFile`. `cwd` is typically required.
  * @returns A promise that resolves with the stdout of the command, or rejects on error.
  */
-async function runN8nCliCommand(command: string, args: string[], options: { cwd: string }) {
+async function runN8nCliCommand(
+	command: string,
+	args: string[],
+	options: { cwd: string; env?: NodeJS.ProcessEnv },
+) {
 	const packagesRoot = findPackagesRoot('cli');
 	const n8nExecutablePath = path.join(packagesRoot, 'cli/bin/n8n');
 	console.log(`Executing n8n command: n8n ${command} ${args.join(' ')}`);
@@ -85,6 +89,7 @@ export async function globalWorkflowSetup(): Promise<void> {
 		console.log('📥 Importing test workflows...');
 		await runN8nCliCommand('import:workflow', ['--separate', '--input', WORKFLOWS_DIR_NAME], {
 			cwd: __dirname,
+			env: { ...process.env, N8N_DEPRECATED_NODES_BLOCK: 'false' },
 		});
 
 		console.log('📁 Copying test assets...');

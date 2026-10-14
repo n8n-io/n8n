@@ -131,6 +131,7 @@ beforeAll(async () => {
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
+		mock(),
 	);
 });
 

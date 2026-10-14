@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { NodesConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
@@ -12,7 +13,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { WorkflowRunner } from '@/workflow-runner';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import { ExecuteNodeService } from '../execute-node.service';
 import type { ExecuteNodeRequest } from '../execute-node.service';
@@ -55,6 +58,11 @@ describe('ExecuteNodeService', () => {
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const executionPersistence = mockInstance(ExecutionPersistence);
 	const instanceSettings = mockInstance(InstanceSettings);
+	const deprecatedNodesValidationService = new DeprecatedNodesValidationService(
+		logger,
+		mock<NodesConfig>({ blockDeprecated: true }),
+		nodeTypes,
+	);
 
 	const service = new ExecuteNodeService(
 		nodeTypes,
@@ -65,6 +73,7 @@ describe('ExecuteNodeService', () => {
 		activeExecutions,
 		executionPersistence,
 		instanceSettings,
+		deprecatedNodesValidationService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -87,6 +96,17 @@ describe('ExecuteNodeService', () => {
 	});
 
 	describe('pre-flight validation', () => {
+		it('rejects a deprecated node type before creating any workflow row', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({ description: { ...testNodeDescription, deprecated: true } }),
+			);
+
+			await expect(
+				service.run(user, baseRequest({ type: 'n8n-nodes-base.function', version: 1 })),
+			).rejects.toThrow(DeprecatedNodesError);
+			expect(workflowRepository.createWorkflowWithOwner).not.toHaveBeenCalled();
+		});
+
 		it('rejects an unknown node type before creating any workflow row', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('unknown');

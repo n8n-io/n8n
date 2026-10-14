@@ -1,7 +1,7 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.49.0",
+  "version": "1.49.1",
   "files": [
     "dist"
   ],
@@ -41,13 +41,15 @@
   },
   "dependencies": {
     "@n8n/constants": "workspace:*",
-    "nanoid": "catalog:"
+    "nanoid": "catalog:",
+    "semver": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
+    "@types/semver": "catalog:",
     "fast-check": "catalog:",
     "tsdown": "catalog:typescript",
     "typescript": "catalog:typescript",

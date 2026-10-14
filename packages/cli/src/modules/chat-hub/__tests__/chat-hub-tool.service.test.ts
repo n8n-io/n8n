@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { NodesConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INode, INodeType } from 'n8n-workflow';
@@ -6,8 +7,10 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { NodeTypes } from '@/node-types';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import type { ChatHubTool } from '../chat-hub-tool.entity';
 import type { ChatHubToolRepository } from '../chat-hub-tool.repository';
@@ -74,7 +77,16 @@ describe('ChatHubToolService', () => {
 			description: { properties: [] },
 		} as unknown as INodeType);
 
-		service = new ChatHubToolService(logger, chatToolRepository, nodeTypes);
+		service = new ChatHubToolService(
+			logger,
+			chatToolRepository,
+			nodeTypes,
+			new DeprecatedNodesValidationService(
+				logger,
+				mock<NodesConfig>({ blockDeprecated: true }),
+				nodeTypes,
+			),
+		);
 	});
 
 	describe('getToolsByUserId', () => {
@@ -125,7 +137,34 @@ describe('ChatHubToolService', () => {
 		});
 	});
 
+	const deprecatedCodeTool: INode = {
+		...mockDefinition,
+		type: '@n8n/n8n-nodes-langchain.code',
+		parameters: { code: { supplyData: { code: 'return 1;' } } },
+	};
+
+	const markCodeNodeDeprecated = () => {
+		nodeTypes.getByNameAndVersion.mockImplementation(
+			(type) =>
+				({
+					description: {
+						properties: [],
+						deprecated: type === deprecatedCodeTool.type ? true : undefined,
+					},
+				}) as unknown as INodeType,
+		);
+	};
+
 	describe('createTool', () => {
+		it('rejects a tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+
+			await expect(
+				service.createTool(mockUser, { definition: deprecatedCodeTool }),
+			).rejects.toThrow(DeprecatedNodesError);
+			expect(chatToolRepository.createTool).not.toHaveBeenCalled();
+		});
+
 		it('should create a tool from the definition', async () => {
 			const created = makeTool();
 			chatToolRepository.createTool.mockResolvedValue(created);
@@ -289,6 +328,40 @@ describe('ChatHubToolService', () => {
 	});
 
 	describe('updateTool', () => {
+		it('rejects changing a tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(makeTool({ definition: deprecatedCodeTool }));
+
+			await expect(
+				service.updateTool('tool-1', mockUser, {
+					definition: { ...deprecatedCodeTool, name: 'Renamed tool' },
+				}),
+			).rejects.toThrow(DeprecatedNodesError);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('rejects enabling a stored tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(
+				makeTool({ definition: deprecatedCodeTool, enabled: false }),
+			);
+
+			await expect(service.updateTool('tool-1', mockUser, { enabled: true })).rejects.toThrow(
+				DeprecatedNodesError,
+			);
+			expect(chatToolRepository.updateTool).not.toHaveBeenCalled();
+		});
+
+		it('allows disabling a stored tool of a deprecated node type', async () => {
+			markCodeNodeDeprecated();
+			chatToolRepository.getOneById.mockResolvedValue(makeTool({ definition: deprecatedCodeTool }));
+			chatToolRepository.updateTool.mockResolvedValue(makeTool({ enabled: false }));
+
+			await service.updateTool('tool-1', mockUser, { enabled: false });
+
+			expect(chatToolRepository.updateTool).toHaveBeenCalled();
+		});
+
 		it('should update tool definition and denormalized fields', async () => {
 			const existingTool = makeTool();
 			const updatedDef: INode = { ...mockDefinition, name: 'Updated Tool' };
