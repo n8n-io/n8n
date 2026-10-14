@@ -1,8 +1,8 @@
 import { resolveWhatsAppSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
+import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -18,15 +18,11 @@ export class AgentChannelMediaRetentionTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
-	readonly effects: SystemTaskEffects = 'idempotent';
-
-	readonly placement: SystemTaskPlacement = {
-		scope: 'cluster',
-		durable: true,
-		runOnTakeover: true,
-	};
-
-	readonly retryDelaySeconds = 60;
+	// Deleting media that is already gone does nothing, so a retry is safe.
+	readonly target = clusterTarget({
+		scheduler: { retryOnFailure: true },
+		leaderTimer: { runOnTakeover: true, retryDelaySeconds: 60 },
+	});
 
 	constructor(
 		private readonly agentRepository: AgentRepository,

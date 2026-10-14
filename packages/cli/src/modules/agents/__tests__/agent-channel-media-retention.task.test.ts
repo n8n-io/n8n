@@ -35,8 +35,11 @@ describe('AgentChannelMediaRetentionTask', () => {
 	it('declares an hourly cluster-wide cadence', () => {
 		expect(task.name).toBe('agent-channel-media-retention');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 60 },
+		});
 	});
 
 	it('looks up only agents with a WhatsApp channel', async () => {
