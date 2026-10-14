@@ -1162,7 +1162,7 @@ describe('CredentialsController', () => {
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(true);
 
 			const deleteReq = {
 				user: { id: 'u1' },

@@ -29,6 +29,13 @@ export const agentPlanDocumentSchema = z
 	.object({
 		title: z.string().min(1),
 		description: z.string(),
+		presentation: z
+			.object({
+				label: z.string().trim().min(1),
+				detail: z.string().trim().min(1).optional(),
+			})
+			.strict()
+			.optional(),
 		items: z.array(z.discriminatedUnion('kind', [agentPlanTaskSchema, agentPlanGroupSchema])),
 	})
 	.strict();

@@ -42,6 +42,7 @@ import type {
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import type { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentRunTracingService } from '@/modules/agents/agent-run-tracing.service';
 import type { AgentSandboxRuntimeService } from '@/modules/agents/agent-sandbox-runtime.service';
@@ -140,7 +141,6 @@ describe('AgentExecutionRepository', () => {
 			projectId,
 			integrations: [],
 			tools: {},
-			skills: {},
 		} as Partial<Agent>);
 		await agentRepo.save(agent);
 		agentId = agent.id;
@@ -237,7 +237,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-			connection ? new AgentRepository(connection) : agentRepo,
+			connection ? new AgentRepository(connection, txRunner) : agentRepo,
 			attachmentService,
 			queueUpdates,
 			messageRepository,
@@ -379,7 +379,9 @@ describe('AgentExecutionRepository', () => {
 		});
 	}
 
-	describe('background child approvals', () => {
+	describe('background child approvals', { timeout: 20_000 }, () => {
+		const childSettleTimeoutMs = 8_000;
+
 		afterEach(async () => {
 			vi.restoreAllMocks();
 			await Container.get(AgentBackgroundJobRepository).delete({});
@@ -445,10 +447,6 @@ describe('AgentExecutionRepository', () => {
 				},
 			);
 			const wake = mock<AgentWakeService>();
-			const initialSuspensionPersisted = createDeferredPromise();
-			wake.requestWake.mockImplementation(async () => {
-				initialSuspensionPersisted.resolve();
-			});
 			const getService = Container.get.bind(Container);
 			vi.spyOn(Container, 'get').mockImplementation((service) => {
 				if (service === AgentRuntimeReconstructionService) return reconstruction;
@@ -529,8 +527,32 @@ describe('AgentExecutionRepository', () => {
 				if (!approval) throw new Error('Expected a pending approval');
 				return { job, approval };
 			};
-			await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id));
-			await initialSuspensionPersisted.promise;
+			// spawn returns before the child suspends. Read the job row before the
+			// wake assertion so a failed child is distinct from a late wake.
+			const deadline = Date.now() + childSettleTimeoutMs;
+			let suspendedJob = await jobs.findById(receipt.jobId);
+			while (suspendedJob?.status === 'running' && Date.now() < deadline) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				suspendedJob = await jobs.findById(receipt.jobId);
+			}
+			const jobState = [
+				`status=${suspendedJob?.status ?? 'missing'}`,
+				`error=${suspendedJob?.error ?? 'null'}`,
+			].join(', ');
+			if (!suspendedJob || suspendedJob.status !== 'suspended' || suspendedJob.error !== null) {
+				throw new Error(`Background child did not suspend (${jobState})`);
+			}
+			try {
+				await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id), {
+					timeout: childSettleTimeoutMs,
+					interval: 50,
+				});
+			} catch (error) {
+				throw new Error(
+					`Background child is suspended but requestWake was not called for ${parent.id}`,
+					{ cause: error },
+				);
+			}
 			expect(await jobs.findById(receipt.jobId)).toMatchObject({
 				status: 'suspended',
 				error: null,
@@ -579,11 +601,13 @@ describe('AgentExecutionRepository', () => {
 					{ token: approval.token, resumeData: { approved } },
 					context,
 				);
-				await vi.waitFor(async () =>
-					expect(await jobs.findById(job.id)).toMatchObject({
-						status: 'completed',
-						childThreadId: job.childThreadId,
-					}),
+				await vi.waitFor(
+					async () =>
+						expect(await jobs.findById(job.id)).toMatchObject({
+							status: 'completed',
+							childThreadId: job.childThreadId,
+						}),
+					{ timeout: childSettleTimeoutMs },
 				);
 				expect(fixture.action).toHaveBeenCalledTimes(approved ? 1 : 0);
 				expect(fixture.workspaceService.getAgentWorkspace).toHaveBeenCalledWith(
@@ -620,11 +644,14 @@ describe('AgentExecutionRepository', () => {
 					.runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
 			]);
 			expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
-			await vi.waitFor(async () => {
-				const current = await fixture.readApproval();
-				expect(current.job.status).toBe('suspended');
-				expect(current.approval.token).not.toBe(approval.token);
-			});
+			await vi.waitFor(
+				async () => {
+					const current = await fixture.readApproval();
+					expect(current.job.status).toBe('suspended');
+					expect(current.approval.token).not.toBe(approval.token);
+				},
+				{ timeout: childSettleTimeoutMs },
+			);
 			const next = await fixture.readApproval();
 			expect(
 				await fixture.service.settle(
@@ -648,8 +675,9 @@ describe('AgentExecutionRepository', () => {
 				{ token: next.approval.token, resumeData: { approved: true } },
 				context,
 			);
-			await vi.waitFor(async () =>
-				expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+			await vi.waitFor(
+				async () => expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+				{ timeout: childSettleTimeoutMs },
 			);
 			expect(fixture.action).toHaveBeenCalledTimes(2);
 		});
@@ -681,8 +709,9 @@ describe('AgentExecutionRepository', () => {
 				{ token: retry.approval.token, resumeData: { approved: true } },
 				context,
 			);
-			await vi.waitFor(async () =>
-				expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+			await vi.waitFor(
+				async () => expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+				{ timeout: childSettleTimeoutMs },
 			);
 			expect(action).toHaveBeenCalledOnce();
 		});
@@ -1018,7 +1047,6 @@ describe('AgentExecutionRepository', () => {
 				projectId,
 				integrations: [],
 				tools: {},
-				skills: {},
 			}),
 		);
 		const childThread = await createThread({
@@ -1484,6 +1512,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentBackgroundJobRepository>(),
 				mock<AgentBackgroundJobService>(),
 				mock<AgentsSettingsService>(),
+				mock<AgentSkillRefsService>(),
 			);
 			const resume = async (
 				user: User,
@@ -1576,7 +1605,9 @@ describe('AgentExecutionRepository', () => {
 			timeline,
 		});
 		await repository.update(executionId, {
-			updatedAt: new Date(Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS - 1),
+			updatedAt: new Date(
+				Date.now() - AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * 1000 - 1,
+			),
 		});
 		const sweeper = new AgentInterruptedExecutionSweeper(
 			mockLogger(),
@@ -1661,7 +1692,14 @@ describe('AgentExecutionRepository', () => {
 				];
 				const pending = await enqueue(remote, pendingInput);
 				const steered = await enqueue(remote, input(threadId, 'Accepted steering'));
-				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
+				};
 				await local.queue.steer({
 					...target,
 					queueId: steered.id,
@@ -1776,7 +1814,7 @@ describe('AgentExecutionRepository', () => {
 						services.turns.execute({
 							...common,
 							agentInstance: runtime,
-							previewChat: true,
+							chatSurface: 'preview',
 							automaticPreviewContinuation,
 							onExecutionStarted: (id) => {
 								executionId = id;
@@ -1907,7 +1945,14 @@ describe('AgentExecutionRepository', () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview' as const,
+				resourceId: `draft-chat:${owner.id}`,
+			};
 			await enqueue(local, input(threadId, 'A', 'new'));
 			const active = await claim(local, threadId);
 			const executionId = active.admission.executionId;
@@ -2042,7 +2087,14 @@ describe('AgentExecutionRepository', () => {
 		it('rolls back messages and timeline markers if consumption fails', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview' as const,
+				resourceId: `draft-chat:${owner.id}`,
+			};
 			await enqueue(services, input(threadId, 'A', 'new'));
 			const active = await claim(services, threadId);
 			const executionId = active.admission.executionId;
@@ -2096,7 +2148,14 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
+				};
 				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
@@ -2194,6 +2253,7 @@ describe('AgentExecutionRepository', () => {
 					threadId,
 					userId: owner.id,
 					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
 					queueId: c.id,
 					executionId,
 				};
@@ -2834,6 +2894,7 @@ describe('AgentExecutionRepository', () => {
 					userId: owner.id,
 					queueId: pending.id,
 					executionId: active.admission.executionId,
+					kind: 'preview',
 				});
 				const runId = uuid();
 				const state: SerializableAgentState = {
@@ -3611,7 +3672,6 @@ describe('AgentExecutionRepository', () => {
 				projectId,
 				integrations: [],
 				tools: {},
-				skills: {},
 			}),
 		);
 		const { executionService, txRunner } = recordingServices();

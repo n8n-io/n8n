@@ -1445,12 +1445,13 @@ describe('WorkflowValidationService', () => {
 		it('is valid when the publisher can use every referenced credential', async () => {
 			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([]);
 
-			const result = await service.validatePublisherCredentialAccess(user, nodes);
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
 
 			expect(result).toEqual({ isValid: true });
 			expect(mockCredentialsPermissionChecker.findInaccessibleForUser).toHaveBeenCalledWith(
 				user.id,
 				nodes,
+				'workflow-1',
 			);
 		});
 
@@ -1459,7 +1460,7 @@ describe('WorkflowValidationService', () => {
 				{ id: 'cred-1', name: 'Cred One', exists: true },
 			]);
 
-			const result = await service.validatePublisherCredentialAccess(user, nodes);
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
 
 			expect(result).toEqual({
 				isValid: false,
@@ -1473,7 +1474,7 @@ describe('WorkflowValidationService', () => {
 				{ id: 'cred-1', name: 'Cred One', exists: false },
 			]);
 
-			const result = await service.validatePublisherCredentialAccess(user, nodes);
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
 
 			expect(result).toEqual({
 				isValid: false,
@@ -1488,7 +1489,7 @@ describe('WorkflowValidationService', () => {
 				{ id: 'cred-2', name: 'Cred Two', exists: false },
 			]);
 
-			const result = await service.validatePublisherCredentialAccess(user, nodes);
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
 
 			expect(result).toEqual({
 				isValid: false,
@@ -1503,7 +1504,7 @@ describe('WorkflowValidationService', () => {
 				{ id: 'cred-2', name: 'Cred Two', exists: true },
 			]);
 
-			const result = await service.validatePublisherCredentialAccess(user, nodes);
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
 
 			expect(result).toEqual({
 				isValid: false,

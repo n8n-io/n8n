@@ -70,6 +70,23 @@ export class SettingsRepository extends BaseRepository<Settings> {
 		return (result.affected ?? 0) > 0;
 	}
 
+	/**
+	 * Stores the value, not loaded on startup, only when the key does not exist yet.
+	 * Returns whether the stored value is this value, so exactly one of several
+	 * concurrent callers with different values wins.
+	 */
+	async insertIfAbsent(key: string, value: string): Promise<boolean> {
+		await this.manager
+			.createQueryBuilder()
+			.insert()
+			.into(Settings)
+			.values({ key, value, loadOnStartup: false })
+			.orIgnore()
+			.execute();
+		const stored = await this.findByKey(key);
+		return stored?.value === value;
+	}
+
 	async findByKeys(keys: string[]): Promise<Settings[]> {
 		return await this.findBy({ key: In(keys) });
 	}

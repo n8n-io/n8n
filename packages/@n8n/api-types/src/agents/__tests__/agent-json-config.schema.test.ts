@@ -16,7 +16,7 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		const activation = enabled === undefined ? {} : { enabled };
 		const config = {
 			...minimalConfig,
-			skills: [{ type: 'skill', id: 'notes', ...activation }],
+			skills: [{ type: 'skill', id: 'notes' }],
 			tools: [
 				{ type: 'custom', id: 'search', requireApproval: true, ...activation },
 				{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', ...activation },
@@ -41,21 +41,24 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({
 				...minimalConfig,
-				skills: [{ type: 'skill', id: 'notes', enabled: 'false' }],
+				tools: [{ type: 'custom', id: 'search', enabled: 'false' }],
 			}).success,
 		).toBe(false);
 	});
 });
 
 describe('AgentJsonConfigSchema — model', () => {
-	it('accepts AWS Bedrock model names containing a version colon', () => {
-		const result = AgentJsonConfigSchema.safeParse({
-			...minimalConfig,
-			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
-		});
+	it.each(['aws-bedrock/anthropic.claude-sonnet-4-5-v1:0', 'google-vertex/claude-fable-5@default'])(
+		'accepts the versioned model ID %s',
+		(model) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				model,
+			});
 
-		expect(result.success).toBe(true);
-	});
+			expect(result.success).toBe(true);
+		},
+	);
 });
 
 describe('AgentJsonConfigSchema — reasoning', () => {
@@ -633,6 +636,38 @@ describe('AgentJsonConfigSchema — model/credential coupling', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — MCP permissions', () => {
+	it('accepts category defaults and exact tool overrides', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					url: 'https://mcp.example.com',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+						tools: { delete_repository: 'blocked' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ toolFilter: { mode: 'exclude', tools: ['delete_repository'] } },
+		{ approval: { mode: 'global' } },
+	])('rejects migrated legacy MCP settings: %o', (legacySettings) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [{ name: 'github', url: 'https://mcp.example.com', ...legacySettings }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('formatAgentConfigZodError', () => {
 	it('formats an invalid MCP server name as path: message without a Zod JSON dump', () => {
 		const result = AgentJsonConfigSchema.safeParse({
@@ -659,18 +694,21 @@ describe('formatAgentConfigZodError', () => {
 });
 
 describe('WorkflowToolJsonConfigSchema — inputs', () => {
-	it('accepts AI and fixed input bindings on a workflow tool', () => {
+	it('round-trips workflow input bindings', () => {
+		const inputs = {
+			chatId: { mode: 'ai' },
+			query: { mode: 'ai', description: 'Input guidance' },
+			shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
+			label: { mode: 'fixed', value: '={{ literal }}' },
+			count: { mode: 'expression', value: '={{ 1 + 2 }}' },
+		};
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
 			tools: [
 				{
 					type: 'workflow',
 					workflow: 'Show Shopping List',
-					inputs: {
-						chatId: { mode: 'ai' },
-						shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
-						botName: { mode: 'fixed', value: 'Jarvis' },
-					},
+					inputs,
 				},
 			],
 		});
@@ -679,16 +717,17 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 		if (result.success) {
 			expect(result.data.tools?.[0]).toMatchObject({
 				type: 'workflow',
-				inputs: {
-					chatId: { mode: 'ai' },
-					shoppingListId: { mode: 'fixed', value: 'OySx3QNU0BcCs8yz' },
-					botName: { mode: 'fixed', value: 'Jarvis' },
-				},
+				inputs,
 			});
 		}
 	});
 
-	it('rejects a fixed binding without a value', () => {
+	it.each([
+		{ mode: 'fixed' },
+		{ mode: 'expression' },
+		{ mode: 'expression', value: '{{ 1 }}' },
+		{ mode: 'expression', value: '=   ' },
+	])('rejects an invalid binding: %j', (binding) => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
 			tools: [
@@ -696,7 +735,7 @@ describe('WorkflowToolJsonConfigSchema — inputs', () => {
 					type: 'workflow',
 					workflow: 'Show Shopping List',
 					inputs: {
-						botName: { mode: 'fixed' },
+						botName: binding,
 					},
 				},
 			],

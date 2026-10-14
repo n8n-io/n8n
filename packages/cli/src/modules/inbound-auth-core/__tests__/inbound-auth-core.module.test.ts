@@ -1,86 +1,100 @@
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
+	AuthenticationPipeline,
 	AuthenticationService,
 	IdentityService,
-	migrateToLatest,
-	TrustedSourceConfigSchema,
+	LocalAuthorizationServer,
 	TrustedSourceGate,
-	type Extracted,
-	type TrustedSource,
-	type Verified,
+	TrustedSourceStore,
 } from '@n8n/inbound-auth';
+import { InstanceSettings } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
+import { InboundAuthPipeline } from '../authentication-pipeline';
+import { OAuth2AuthenticationService } from '../authentication.service';
+import { TrustedSourceIdentityService } from '../identity/trusted-source-identity.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
+import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
+import { TrustedSourceDbGate } from '../trusted-source.gate';
+import { TrustedSourceDbStore } from '../trusted-source.store';
+
+// A mocked module's factory runs on its first import, so the first `init()` that imports the
+// controller is the one that proves the gate. Keep the "loaded" case last.
+const { loadController } = vi.hoisted(() => ({ loadController: vi.fn() }));
+const FLAG = 'N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED';
+vi.mock('../trusted-source.controller', () => {
+	loadController();
+	return {};
+});
 
 describe('InboundAuthCoreModule', () => {
 	describe('init', () => {
-		const extracted = {
-			surface: 'instance-mcp',
-			resource: { url: 'https://n8n.example/mcp', acceptedAudiences: ['https://n8n.example/mcp'] },
-			request: { method: 'POST', url: '/mcp', headers: {}, ip: '203.0.113.7' },
-			receivedAt: new Date(),
-			credential: { kind: 'bearer', token: 'a.b.c' },
-		} satisfies Extracted;
+		const dbStore = mock<TrustedSourceDbStore>();
+		const dbGate = mock<TrustedSourceDbGate>();
+		const identityService = mock<TrustedSourceIdentityService>();
 
 		beforeAll(async () => {
+			// The shell may carry the flag; the first init must not be the one that imports the controller.
+			vi.stubEnv(FLAG, '');
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			Container.set(TrustedSourceDbStore, dbStore);
+			Container.set(TrustedSourceDbGate, dbGate);
+			Container.set(TrustedSourceIdentityService, identityService);
 			await new InboundAuthCoreModule().init();
 		});
 
-		it('binds an AuthenticationService that fails closed until a driver is registered', async () => {
-			const result = await Container.get(AuthenticationService).authenticate(extracted);
-
-			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
+		it('binds the TrustedSourceStore contract to the database store', () => {
+			expect(Container.get(TrustedSourceStore)).toBe(dbStore);
 		});
 
-		it('binds an IdentityService that fails closed until an implementation is registered', async () => {
-			const source: TrustedSource = {
-				id: 'source-1',
-				name: 'Example IdP',
-				type: 'oauth2',
-				issuer: 'https://idp.example',
-				managedBy: 'admin',
-				status: 'unchecked',
-				lastError: null,
-				lastCheckedAt: null,
-				createdAt: '2026-09-30T10:00:00.000Z',
-				updatedAt: '2026-09-30T10:00:00.000Z',
-				config: migrateToLatest(
-					TrustedSourceConfigSchema.parse({
-						version: 1,
-						authentication: { type: 'oauth2' },
-						surfaces: { 'instance-mcp': {} },
-					}),
-				),
-				metadata: null,
-			};
-			const {
-				credential,
-				request: { headers: _headers, ...request },
-				...rest
-			} = extracted;
-			const verified = {
-				...rest,
-				request,
-				credentialKind: credential.kind,
-				source,
-				claims: { sub: 'alice' },
-				expiresAt: new Date(),
-			} satisfies Verified;
-
-			const result = await Container.get(IdentityService).identify(verified);
-
-			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
+		it('binds the TrustedSourceGate contract to the database gate', () => {
+			expect(Container.get(TrustedSourceGate)).toBe(dbGate);
 		});
 
-		it('binds a TrustedSourceGate that denies until an implementation is registered', async () => {
-			const allowed = await Container.get(TrustedSourceGate).authorizeSealed({
-				userId: 'user-1',
-				grant: { audiences: ['https://n8n.example/mcp'] },
-			});
+		it('seeds the system trusted source once', async () => {
+			// Mock history from `beforeAll` does not survive into the test, so init again here.
+			dbStore.seedSystemSource.mockClear();
+			await new InboundAuthCoreModule().init();
 
-			expect(allowed).toBe(false);
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+			expect(dbStore.seedSystemSource).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'n8n-internal' }),
+			);
+		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'does not seed the system trusted source on a %s instance',
+			async (instanceType) => {
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.seedSystemSource.mockClear();
+
+				await new InboundAuthCoreModule().init();
+
+				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			},
+		);
+
+		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
+			const server = Container.get(LocalAuthorizationServer);
+
+			await expect(server.getMetadata()).rejects.toThrow(OperationalError);
+			await expect(server.getJwks()).rejects.toThrow(OperationalError);
+		});
+
+		it('binds the OAuth2 AuthenticationService', () => {
+			expect(Container.get(AuthenticationService)).toBeInstanceOf(OAuth2AuthenticationService);
+		});
+
+		it('binds the IdentityService contract to the trusted-source identity service', () => {
+			expect(Container.get(IdentityService)).toBe(identityService);
+		});
+
+		it('binds the AuthenticationPipeline contract to the inbound-auth pipeline', () => {
+			expect(Container.get(AuthenticationPipeline)).toBeInstanceOf(InboundAuthPipeline);
 		});
 	});
 
@@ -92,6 +106,13 @@ describe('InboundAuthCoreModule', () => {
 		expect(entry?.licenseFlag).toBeUndefined();
 	});
 
+	it('exposes the discovery task as its only system task', async () => {
+		const module: ModuleInterface = new InboundAuthCoreModule();
+
+		expect(module.systemTasks).toBeDefined();
+		expect(await module.systemTasks?.()).toEqual([TrustedSourceDiscoveryTask]);
+	});
+
 	it('exposes its entities so the datasource picks them up', async () => {
 		const module = new InboundAuthCoreModule();
 
@@ -101,5 +122,42 @@ describe('InboundAuthCoreModule', () => {
 			'TrustedSourceEntity',
 			'TrustedSourceIdentityEntity',
 		]);
+	});
+	describe('management controller', () => {
+		beforeEach(() => {
+			loadController.mockClear();
+			vi.stubEnv(FLAG, '');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+		});
+
+		it('is not loaded while the flag is unset', async () => {
+			await new InboundAuthCoreModule().init();
+
+			expect(loadController).not.toHaveBeenCalled();
+		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'is not loaded on a %s instance even with the flag',
+			async (instanceType) => {
+				vi.stubEnv(FLAG, 'true');
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+
+				await new InboundAuthCoreModule().init();
+
+				expect(loadController).not.toHaveBeenCalled();
+			},
+		);
+
+		it('is loaded on a main instance when the flag is true', async () => {
+			vi.stubEnv(FLAG, 'true');
+
+			await new InboundAuthCoreModule().init();
+
+			expect(loadController).toHaveBeenCalledOnce();
+		});
 	});
 });

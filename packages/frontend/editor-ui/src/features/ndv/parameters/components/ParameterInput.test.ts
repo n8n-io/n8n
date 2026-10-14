@@ -1,7 +1,8 @@
-import { computed, defineComponent, h, nextTick, reactive, shallowRef } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	ToolConfigCredentialSelectedKey,
+	ParameterInputModalContextKey,
 	WorkflowDocumentStoreKey,
 	WorkflowIdKey,
 } from '@/app/constants/injectionKeys';
@@ -298,6 +299,37 @@ describe('ParameterInput.vue', () => {
 			'Search every page and database in the workspace.Returns complete metadata and matching content for the agent.',
 		);
 		expect(description).toHaveClass('option-description--clamped');
+	});
+
+	test('should match the search in an options dropdown against the label and the value', async () => {
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'modelName',
+				parameter: createTestNodeProperties({
+					displayName: 'Model',
+					name: 'modelName',
+					type: 'options',
+					options: [
+						{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+						{ name: 'Gemini 2.5 Flash', value: 'models/gemini-2.5-flash' },
+					],
+					default: 'models/gemini-2.5-flash',
+				}),
+				modelValue: 'models/gemini-2.5-flash',
+			},
+		});
+		const select = container.querySelector('input') as HTMLInputElement;
+		const optionHeadlines = () =>
+			Array.from(baseElement.querySelectorAll('.option-headline')).map((el) =>
+				el.textContent?.trim(),
+			);
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		await fireEvent.update(select, 'gemini-2.5-pro');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Pro']));
+
+		await fireEvent.update(select, '2.5 flash');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Flash']));
 	});
 
 	test('should pass option disabled state to N8nOption', async () => {
@@ -611,6 +643,27 @@ describe('ParameterInput.vue', () => {
 		await waitFor(() =>
 			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'foo' })]),
 		);
+	});
+
+	test('shows an object held by a string parameter as JSON with an issue', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				path: 'channelId',
+				parameter: createTestNodeProperties({
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+				}),
+				modelValue: { __rl: true, mode: 'id', value: 'C0123' },
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelector('input')).toHaveValue(
+				'{"__rl":true,"mode":"id","value":"C0123"}',
+			),
+		);
+		expect(getByTestId('parameter-issues')).toBeInTheDocument();
 	});
 
 	test('should normalize a numeric string and emit numbers from a credential number parameter', async () => {
@@ -1004,6 +1057,33 @@ describe('ParameterInput.vue', () => {
 		expect(expressionEditor).toBeInTheDocument();
 		const expressionEditorInput = within(expressionEditor).getByRole('textbox');
 		await waitFor(() => expect(expressionEditorInput).toHaveFocus());
+	});
+
+	it('hosts the expanded expression editor and clears its focus state on close or unmount', async () => {
+		const openDialogs = ref(new Set<string>());
+		const view = renderComponent({
+			global: {
+				provide: { [ParameterInputModalContextKey]: { openDialogs, appendTo: 'body' } },
+			},
+			props: {
+				path: 'name',
+				parameter: createTestNodeProperties({ name: 'name', type: 'string' }),
+				modelValue: '={{ $json.name }}',
+			},
+		});
+
+		await fireEvent.click(view.getByTestId('expander'));
+		const expandedInput = await view.findByTestId('expression-modal-input');
+		expect(view.container.contains(expandedInput)).toBe(false);
+		expect(expandedInput.closest('#app-modals')).toBeNull();
+		expect(openDialogs.value.size).toBe(1);
+		await fireEvent.click(view.getByRole('button', { name: 'Close this dialog' }));
+		await waitFor(() => expect(openDialogs.value.size).toBe(0));
+
+		await fireEvent.click(view.getByTestId('expander'));
+		expect(openDialogs.value.size).toBe(1);
+		view.unmount();
+		expect(openDialogs.value.size).toBe(0);
 	});
 
 	describe('when not in focus', () => {

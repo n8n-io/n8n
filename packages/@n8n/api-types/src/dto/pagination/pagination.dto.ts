@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Z } from '../../zod-class';
 
 export const MAX_ITEMS_PER_PAGE = 250;
+export const DEFAULT_PUBLIC_API_LIMIT = 100;
 
 const skipValidator = z
 	.string()
@@ -61,14 +62,14 @@ const createLimitValidator = (maxItems: number) =>
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : 100))
+		.transform((val) => (val ? parseInt(val, 10) : DEFAULT_PUBLIC_API_LIMIT))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `limit` must be a valid integer',
 		})
 		.refine((val) => val >= 0, {
 			message: 'Param `limit` must be a non-negative integer',
 		})
-		.transform((val) => Math.min(val, maxItems));
+		.transform((val) => Math.min(val === 0 ? DEFAULT_PUBLIC_API_LIMIT : val, maxItems));
 
 export const publicApiPaginationSchema = {
 	offset: offsetValidator,

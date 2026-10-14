@@ -1,7 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { h } from 'vue';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
-import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { planMessage, planTask, planView } from './fixtures/agent-plan';
+import { computed } from 'vue';
+import { AGENTS_CHAT_INTERACTION_EXTENSIONS } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import {
+	TEST_RESULT_TOOL_NAME,
+	testToolResultExtension,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
 const copySpy = vi.fn();
 
@@ -50,6 +58,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['theme', 'icon', 'iconless', 'slim'],
 	},
 	N8nButton: {
+		name: 'N8nButton',
 		template:
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 		emits: ['click'],
@@ -79,10 +88,6 @@ vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
 		template: '<div data-test-id="shared-reasoning-block">{{ entry.content }}</div>',
 		props: ['entry', 'streaming'],
 	},
-}));
-
-vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
-	default: { template: '<div data-test-id="typing-indicator" />' },
 }));
 
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
@@ -135,6 +140,219 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	const emptyAnswerError =
+		'The model finished without returning an answer. Try again or use another model.';
+	const streamStallError =
+		'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+
+	it.each([
+		{ content: emptyAnswerError, withTools: false },
+		{ content: emptyAnswerError, withTools: true },
+		{ content: streamStallError, withTools: false },
+		{ content: streamStallError, withTools: true },
+	])('puts resend inside the retry error callout: %j', async ({ content, withTools }) => {
+		const toolMessage: ChatMessage = {
+			id: 'tools',
+			role: 'assistant',
+			content: '',
+			toolCalls: [{ tool: 'lookup', toolCallId: 'lookup-1', state: 'done' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					...(withTools ? [toolMessage] : []),
+					{ id: 'failed', role: 'assistant', content, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+				retryDisabled: true,
+			},
+		});
+		const callout = wrapper.get('[data-testid="agent-chat-retry-error"]');
+		const retry = callout.get('[data-testid="agent-chat-retry"]');
+		expect(wrapper.findComponent({ name: 'N8nButton' }).props('variant')).toBe('subtle');
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toBeUndefined();
+		await wrapper.setProps({ retryDisabled: false });
+		await retry.trigger('click');
+		expect(wrapper.emitted('retry')).toEqual([['user-message']]);
+		expect(callout.text()).toContain(content);
+		wrapper.unmount();
+	});
+
+	it.each([
+		{ content: 'Invalid API key. Check the credential and try again.', status: 'error' },
+		{ content: 'Try again', status: 'error' },
+		{ content: emptyAnswerError, status: 'success' },
+	] as const)('does not show resend for other errors or model replies: %j', async (message) => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'assistant', role: 'assistant', ...message }],
+				messagingState: 'idle',
+				retryMessageId: 'user-message',
+			},
+		});
+		expect(wrapper.find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain(message.content);
+		wrapper.unmount();
+	});
+
+	it('keeps earlier retry errors visible without a resend button', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'old-error', role: 'assistant', content: emptyAnswerError, status: 'error' },
+					{ id: 'new-user', role: 'user', content: 'New request' },
+					{ id: 'new-error', role: 'assistant', content: streamStallError, status: 'error' },
+				],
+				messagingState: 'idle',
+				retryMessageId: 'new-user',
+			},
+		});
+		const callouts = wrapper.findAll('[data-testid="agent-chat-retry-error"]');
+		expect(callouts).toHaveLength(2);
+		expect(callouts[0].find('[data-testid="agent-chat-retry"]').exists()).toBe(false);
+		expect(callouts[1].find('[data-testid="agent-chat-retry"]').exists()).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
+		const initial = planView();
+		const previous = { ...planMessage(initial), content: 'Starting research.' };
+		const stopped: ChatMessage = {
+			...planMessage({ ...initial, revision: 2 }, { tool: 'update_plan' }),
+			status: 'success',
+			budgetNotices: [{ id: 'budget-stop', code: 'budget.session' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [previous, stopped],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const cards = wrapper.findAll('[data-testid="agent-budget-notice-card"]');
+		expect(cards).toHaveLength(1);
+		expect(cards[0].attributes('data-can-increase')).toBe('true');
+		await cards[0].get('button').trigger('click');
+		expect(wrapper.emitted('increase-budget')).toEqual([
+			[{ field: 'sessionCostCapUsd', amount: 10 }],
+		]);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it.each(['success', 'awaitingUser'] as const)(
+		'hides tool-run typing dots when the final message is %s',
+		async (status) => {
+			const initial = planView();
+			const previous = { ...planMessage(initial), content: 'Starting research.' };
+			const progress: ChatMessage = {
+				...planMessage(undefined, {
+					tool: 'update_plan',
+					state: 'running',
+					input: { planId: initial.planId, expectedRevision: 1, document: initial.document },
+				}),
+				status: 'streaming',
+			};
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [previous, progress], messagingState: 'receiving' },
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			const finalMessage: ChatMessage = { id: 'final', role: 'assistant', content: '', status };
+			await wrapper.setProps({ messages: [previous, progress, finalMessage] });
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+
+			await wrapper.setProps({
+				messages: [previous, progress, { ...finalMessage, status: 'streaming' }],
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			await wrapper.setProps({
+				messages: [
+					previous,
+					progress,
+					{ ...finalMessage, status: 'streaming', content: 'Found candidates.' },
+				],
+			});
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
+
+	it('hides plan progress during streaming and completion but keeps errors and chat text', async () => {
+		const initial = planView();
+		const document = { ...initial.document, presentation: { label: 'Research candidates' } };
+		const previous = { ...planMessage(initial), id: 'previous', content: 'Starting research.' };
+		const pending: ChatMessage = {
+			...planMessage(undefined, {
+				tool: 'update_plan',
+				toolCallId: 'update',
+				state: 'running',
+				input: { planId: initial.planId, expectedRevision: 1, document },
+			}),
+			id: 'update',
+			status: 'streaming',
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [previous, pending], messagingState: 'receiving' },
+		});
+		const calls = () =>
+			wrapper
+				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.flatMap((steps) => steps.props('toolCalls') as ToolCall[]);
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(true);
+		const completed: ChatMessage = {
+			...pending,
+			status: 'success',
+			toolCalls: [
+				{ ...pending.toolCalls![0], state: 'done', output: { ...initial, revision: 2, document } },
+			],
+		};
+		await wrapper.setProps({ messages: [previous, completed], messagingState: 'idle' });
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.findAll('[data-testid="markdown-chunk"]')).toHaveLength(1);
+		await wrapper.setProps({
+			messages: [previous, { ...completed, content: 'Found candidates.' }],
+		});
+		expect(wrapper.text()).toContain('Found candidates.');
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [{ ...completed.toolCalls![0], output: { error: 'conflict' } }],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		await wrapper.setProps({
+			messages: [
+				previous,
+				{
+					...completed,
+					toolCalls: [
+						{
+							...completed.toolCalls![0],
+							output: {
+								...initial,
+								revision: 2,
+								document: { ...document, items: [...document.items, planTask(99)] },
+							},
+						},
+					],
+				},
+			],
+		});
+		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		wrapper.unmount();
+	});
+
 	it('keeps signal expansion and order when the response gains tools and text', async () => {
 		const message: ChatMessage = {
 			id: 'wake:assistant',
@@ -289,7 +507,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
 			'Inspect the request. Then answer.',
 		);
-		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
 	});
 
 	it('renders thinking below standalone assistant output', () => {
@@ -517,6 +735,91 @@ describe('AgentChatMessageList', () => {
 		]);
 	});
 
+	describe('message-actions slot', () => {
+		const messageActionsSlot = (props: { message: ChatMessage; executionId?: string }) =>
+			h('button', {
+				'data-test-id': 'host-message-action',
+				'data-message-id': props.message.id,
+				'data-execution-id': props.executionId,
+			});
+
+		it('renders nothing extra without the slot', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'a-1', role: 'assistant', content: 'Reply', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+			});
+
+			expect(wrapper.find('[data-test-id="host-message-action"]').exists()).toBe(false);
+		});
+
+		it('passes the reply and its execution id for a text reply', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a-1',
+							role: 'assistant',
+							content: 'Reply',
+							status: 'success',
+							executionId: 'exec-1',
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+				slots: { 'message-actions': messageActionsSlot },
+			});
+
+			const action = wrapper.find(
+				'[data-test-id="agent-chat-message-actions"] [data-test-id="host-message-action"]',
+			);
+			expect(action.attributes('data-message-id')).toBe('a-1');
+			expect(action.attributes('data-execution-id')).toBe('exec-1');
+		});
+
+		it('passes the final reply and the turn execution id for a tool run', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a-tools',
+							role: 'assistant',
+							content: '',
+							status: 'success',
+							executionId: 'exec-2',
+							toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done', output: {} }],
+						},
+						{ id: 'a-final', role: 'assistant', content: 'Done', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+				slots: { 'message-actions': messageActionsSlot },
+			});
+
+			const actions = wrapper.findAll('[data-test-id="host-message-action"]');
+			expect(actions).toHaveLength(1);
+			expect(actions[0].attributes('data-message-id')).toBe('a-final');
+			expect(actions[0].attributes('data-execution-id')).toBe('exec-2');
+		});
+
+		it('does not render the slot while the reply streams', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'a-1', role: 'assistant', content: 'Repl', status: 'streaming' },
+					] satisfies ChatMessage[],
+					messagingState: 'receiving',
+				},
+				slots: { 'message-actions': messageActionsSlot },
+			});
+
+			expect(wrapper.find('[data-test-id="host-message-action"]').exists()).toBe(false);
+		});
+	});
+
 	it('does not render actions for user text messages', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
@@ -611,6 +914,52 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.emitted('increase-budget')?.[0]).toEqual([
 			{ field: 'sessionCostCapUsd', amount: 10 },
 		]);
+	});
+
+	it('hides the increase action on a notice owned by a different agent', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				agentId: 'agent-1',
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.monthly', agentId: 'agent-2' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const card = wrapper.get('[data-testid="agent-budget-notice-card"]');
+		expect(card.attributes('data-can-increase')).toBe('false');
+	});
+
+	it('shows the increase action on a notice owned by the previewed agent', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				agentId: 'agent-1',
+				messages: [
+					{
+						id: 'assistant-tools',
+						role: 'assistant',
+						content: '',
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+						status: 'success',
+						budgetNotices: [{ id: 'n1', code: 'budget.monthly', agentId: 'agent-1' }],
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const card = wrapper.get('[data-testid="agent-budget-notice-card"]');
+		expect(card.attributes('data-can-increase')).toBe('true');
 	});
 
 	it('passes the increase permission and pending state to the notice cards', () => {
@@ -1085,6 +1434,120 @@ describe('AgentChatMessageList', () => {
 			});
 
 			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(0);
+		});
+	});
+	describe('host tool-result renderers', () => {
+		const savedNote: ToolCall = {
+			tool: TEST_RESULT_TOOL_NAME,
+			toolCallId: 'tc-note',
+			state: 'done',
+			input: { text: 'Remember this' },
+			output: { saved: true },
+		};
+		const httpCall: ToolCall = {
+			tool: 'http_request',
+			toolCallId: 'tc-http',
+			state: 'done',
+			output: { status: 200 },
+		};
+
+		function assistantMessage(toolCalls: ToolCall[], content = ''): ChatMessage {
+			return { id: 'assistant-1', role: 'assistant', content, toolCalls, status: 'success' };
+		}
+
+		function mountList(messages: ChatMessage[], withExtension = true) {
+			return mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle' },
+				global: withExtension
+					? {
+							provide: {
+								[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolResultExtension]),
+							},
+						}
+					: {},
+			});
+		}
+
+		function stepToolCallIds(wrapper: ReturnType<typeof mountList>): string[] {
+			return wrapper
+				.findAllComponents({ name: 'AgentChatToolSteps' })
+				.flatMap((steps) => (steps.props('toolCalls') as ToolCall[]).map((tc) => tc.toolCallId));
+		}
+
+		it.each([
+			['a tool run', ''],
+			['a message with text', 'Saved your note.'],
+		])('renders the host component in place of the default step in %s', (_, content) => {
+			const wrapper = mountList([assistantMessage([httpCall, savedNote], content)]);
+
+			const results = wrapper.findAll('[data-testid="agent-chat-host-tool-result"]');
+			expect(results).toHaveLength(1);
+			expect(results[0].find('[data-testid="test-tool-result"]').text()).toContain('tc-note');
+			expect(results[0].text()).toContain('{"saved":true}');
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-http']);
+			wrapper.unmount();
+		});
+
+		it('hides the tool steps when the host renders every call', () => {
+			const wrapper = mountList([assistantMessage([savedNote])]);
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(wrapper.findComponent({ name: 'AgentChatToolSteps' }).exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('renders the default step without extensions', () => {
+			const wrapper = mountList([assistantMessage([httpCall, savedNote])], false);
+
+			expect(wrapper.find('[data-testid="agent-chat-host-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-http', 'tc-note']);
+			wrapper.unmount();
+		});
+
+		it('falls back to the default step until the call finishes', async () => {
+			const running: ToolCall = { ...savedNote, state: 'running', output: undefined };
+			const wrapper = mountList([assistantMessage([running])]);
+
+			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+
+			await wrapper.setProps({ messages: [assistantMessage([savedNote])] });
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(stepToolCallIds(wrapper)).toEqual([]);
+			wrapper.unmount();
+		});
+
+		it('falls back to the default step until the output arrives', () => {
+			const ended: ToolCall = { ...savedNote, output: undefined };
+			const wrapper = mountList([assistantMessage([ended])]);
+
+			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+			wrapper.unmount();
+		});
+
+		it('keeps the default step for a suspended copy of a call that finished later', () => {
+			const suspended: ToolCall = { ...savedNote, state: 'suspended', output: undefined };
+			const wrapper = mountList([
+				{ ...assistantMessage([suspended], 'Saving your note.'), id: 'assistant-1' },
+				{ ...assistantMessage([savedNote]), id: 'assistant-2' },
+			]);
+
+			const results = wrapper.findAll('[data-testid="test-tool-result"]');
+			expect(results).toHaveLength(1);
+			expect(results[0].text()).toContain('{"saved":true}');
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+			wrapper.unmount();
+		});
+
+		it('falls back to the default step for a failed call', () => {
+			const failed: ToolCall = { ...savedNote, state: 'error', output: 'boom' };
+			const wrapper = mountList([assistantMessage([failed])]);
+
+			expect(wrapper.find('[data-testid="test-tool-result"]').exists()).toBe(false);
+			expect(stepToolCallIds(wrapper)).toEqual(['tc-note']);
+			wrapper.unmount();
 		});
 	});
 });

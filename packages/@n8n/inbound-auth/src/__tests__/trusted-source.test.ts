@@ -1,7 +1,10 @@
 import {
 	deriveCapabilities,
+	resolveOAuth2Endpoints,
 	TrustedSourceMetadataSchema,
 	type Capability,
+	type DiscoveryDocument,
+	type OAuth2Endpoints,
 	type TrustedSourceMetadata,
 } from '../trusted-source';
 import {
@@ -28,6 +31,18 @@ const jwksDocument = {
 	url: `${issuer}/keys`,
 	keys: [{ kid: 'k1', kty: 'RSA', use: 'sig', alg: 'RS256', n: 'AQAB', e: 'AQAB' }],
 };
+
+const config = (
+	authentication: Record<string, unknown>,
+	managedBy: ManagedBy = 'admin',
+): TrustedSourceConfigLatest =>
+	migrateToLatest(
+		trustedSourceConfigSchemaFor(managedBy).parse({
+			version: 1,
+			authentication: { type: 'oauth2', ...authentication },
+			surfaces: { 'public-api': {} },
+		}),
+	);
 
 describe('TrustedSourceMetadataSchema', () => {
 	it('accepts a v1 list with an OIDC document, an RFC 8414 document and a JWKS', () => {
@@ -68,13 +83,31 @@ describe('TrustedSourceMetadataSchema', () => {
 		});
 	});
 
+	// The local server's documents carry http URLs in dev; https is the client's job at fetch time.
+	it.each([
+		[
+			'an http issuer and jwks_uri in a metadata document',
+			[
+				{
+					...oidcDocument,
+					document: {
+						issuer: 'http://localhost:5678',
+						jwks_uri: 'http://localhost:5678/oauth2/jwks',
+					},
+				},
+			],
+		],
+		['an http JWKS url', [{ ...jwksDocument, url: 'http://localhost:5678/oauth2/jwks' }]],
+	])('accepts %s', (_label, documents) => {
+		expect(TrustedSourceMetadataSchema.safeParse({ version: 1, documents }).success).toBe(true);
+	});
+
 	it.each([
 		['an unknown document kind', [{ ...oidcDocument, kind: 'saml' }]],
 		[
-			'a non-https jwks_uri in a metadata document',
-			[{ ...oidcDocument, document: { ...fullMetadata, jwks_uri: 'http://idp.example/keys' } }],
+			'a jwks_uri that is not a URL',
+			[{ ...oidcDocument, document: { ...fullMetadata, jwks_uri: 'not a url' } }],
 		],
-		['a non-https JWKS url', [{ ...jwksDocument, url: 'http://idp.example/keys' }]],
 		['a key without kty', [{ ...jwksDocument, keys: [{ kid: 'k1' }] }]],
 		['two documents of the same kind', [oidcDocument, oidcDocument]],
 	])('rejects %s', (_label, documents) => {
@@ -89,18 +122,6 @@ describe('TrustedSourceMetadataSchema', () => {
 });
 
 describe('deriveCapabilities', () => {
-	const config = (
-		authentication: Record<string, unknown>,
-		managedBy: ManagedBy = 'admin',
-	): TrustedSourceConfigLatest =>
-		migrateToLatest(
-			trustedSourceConfigSchemaFor(managedBy).parse({
-				version: 1,
-				authentication: { type: 'oauth2', ...authentication },
-				surfaces: { 'public-api': {} },
-			}),
-		);
-
 	type Fields = Partial<Omit<typeof fullMetadata, 'issuer'>>;
 	const metadata = (documents: {
 		oidc?: Fields;
@@ -149,9 +170,15 @@ describe('deriveCapabilities', () => {
 			['verify-jwt'],
 		],
 		[
-			'local-keystore grants verify-jwt without metadata',
+			'local-keystore grants nothing without metadata',
 			config({ keys: { kind: 'local-keystore' } }, 'system'),
 			() => null,
+			[],
+		],
+		[
+			'local-keystore with a discovered jwks_uri grants verify-jwt',
+			config({ keys: { kind: 'local-keystore' } }, 'system'),
+			() => metadata({ oauth2: { jwks_uri: `${issuer}/keys` } }),
 			['verify-jwt'],
 		],
 		[
@@ -228,5 +255,130 @@ describe('deriveCapabilities', () => {
 
 	it.each(cases)('%s', (_label, cfg, meta, expected) => {
 		expect([...deriveCapabilities(cfg, meta())].sort()).toEqual([...expected].sort());
+	});
+});
+
+describe('resolveOAuth2Endpoints', () => {
+	const oidc = (fields: Partial<typeof fullMetadata>): DiscoveryDocument => ({
+		kind: 'openid-configuration',
+		fetchedAt,
+		document: { issuer, ...fields },
+	});
+	const oauth2 = (fields: Partial<typeof fullMetadata>): DiscoveryDocument => ({
+		kind: 'oauth2-authorization-server',
+		fetchedAt,
+		document: { issuer, ...fields },
+	});
+	const manual = {
+		mode: 'manual',
+		jwksUri: `${issuer}/manual/keys`,
+		authorizationEndpoint: `${issuer}/manual/authorize`,
+		tokenEndpoint: `${issuer}/manual/token`,
+	};
+	const allOidc = oidc({
+		jwks_uri: `${issuer}/oidc/keys`,
+		authorization_endpoint: `${issuer}/oidc/authorize`,
+		token_endpoint: `${issuer}/oidc/token`,
+	});
+	const allOauth2 = oauth2({
+		jwks_uri: `${issuer}/rfc8414/keys`,
+		authorization_endpoint: `${issuer}/rfc8414/authorize`,
+		token_endpoint: `${issuer}/rfc8414/token`,
+	});
+
+	// Field by field: manual config wins, then the OIDC document, then the RFC 8414 document.
+	const cases: Array<[string, TrustedSourceConfigLatest, DiscoveryDocument[], OAuth2Endpoints]> = [
+		[
+			'a manual jwksUri wins over both documents',
+			config({ discovery: { mode: 'manual', jwksUri: manual.jwksUri } }),
+			[allOidc, allOauth2],
+			{
+				jwksUri: manual.jwksUri,
+				authorizationEndpoint: `${issuer}/oidc/authorize`,
+				tokenEndpoint: `${issuer}/oidc/token`,
+			},
+		],
+		[
+			'a manual authorizationEndpoint wins over both documents',
+			config({
+				discovery: {
+					mode: 'manual',
+					authorizationEndpoint: manual.authorizationEndpoint,
+					jwksUri: manual.jwksUri,
+				},
+			}),
+			[allOidc, allOauth2],
+			{
+				jwksUri: manual.jwksUri,
+				authorizationEndpoint: manual.authorizationEndpoint,
+				tokenEndpoint: `${issuer}/oidc/token`,
+			},
+		],
+		[
+			'a manual tokenEndpoint wins over both documents',
+			config({
+				discovery: { mode: 'manual', tokenEndpoint: manual.tokenEndpoint, jwksUri: manual.jwksUri },
+			}),
+			[allOidc, allOauth2],
+			{
+				jwksUri: manual.jwksUri,
+				authorizationEndpoint: `${issuer}/oidc/authorize`,
+				tokenEndpoint: manual.tokenEndpoint,
+			},
+		],
+		[
+			'the OIDC document wins over the RFC 8414 document',
+			config({}),
+			[allOauth2, allOidc],
+			{
+				jwksUri: `${issuer}/oidc/keys`,
+				authorizationEndpoint: `${issuer}/oidc/authorize`,
+				tokenEndpoint: `${issuer}/oidc/token`,
+			},
+		],
+		[
+			'the RFC 8414 document fills what the OIDC document lacks',
+			config({}),
+			[oidc({ jwks_uri: `${issuer}/oidc/keys` }), allOauth2],
+			{
+				jwksUri: `${issuer}/oidc/keys`,
+				authorizationEndpoint: `${issuer}/rfc8414/authorize`,
+				tokenEndpoint: `${issuer}/rfc8414/token`,
+			},
+		],
+		[
+			'a field missing everywhere is undefined',
+			config({}),
+			[
+				oidc({ jwks_uri: `${issuer}/oidc/keys` }),
+				oauth2({ token_endpoint: `${issuer}/rfc8414/token` }),
+			],
+			{
+				jwksUri: `${issuer}/oidc/keys`,
+				authorizationEndpoint: undefined,
+				tokenEndpoint: `${issuer}/rfc8414/token`,
+			},
+		],
+		['no documents and no manual config resolve to nothing', config({}), [], {}],
+		[
+			'a JWKS document carries no endpoints',
+			config({}),
+			[{ kind: 'jwks', fetchedAt, url: `${issuer}/keys`, keys: [] }],
+			{},
+		],
+	];
+
+	it.each(cases)('%s', (_label, cfg, documents, expected) => {
+		expect(resolveOAuth2Endpoints(cfg, documents)).toEqual(expected);
+	});
+
+	it('resolves nothing for a non-oauth2 authentication', () => {
+		// Only `oauth2` exists today; a future member must not inherit OAuth2 endpoints.
+		const cfg = {
+			...config({}),
+			authentication: { type: 'saml' },
+		} as unknown as TrustedSourceConfigLatest;
+
+		expect(resolveOAuth2Endpoints(cfg, [allOidc])).toEqual({});
 	});
 });

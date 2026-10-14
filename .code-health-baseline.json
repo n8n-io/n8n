@@ -989,14 +989,6 @@
 				"hash": "26b2999a3856"
 			}
 		],
-		"packages/extensions/insights/oxlint.config.mts": [
-			{
-				"rule": "lint-config-layering",
-				"line": 9,
-				"message": "packages/extensions/insights turns 'typescript/no-deprecated' down to 'off' for the whole package.",
-				"hash": "f936bed8fa8d"
-			}
-		],
 		"packages/frontend/editor-ui/eslint.config.mjs": [
 			{
 				"rule": "lint-config-layering",
@@ -1411,6 +1403,650 @@
 				"line": 459,
 				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
 				"hash": "9ac3dbae3d22"
+			}
+		],
+		"packages/cli/src/binary-data/database.manager.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 2,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "a4aeaccef8b6"
+			}
+		],
+		"packages/cli/src/credentials/credential-connection-status-provider.interface.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 1,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "4d287b55d52a"
+			}
+		],
+		"packages/cli/src/credentials/credential-connection-status-proxy.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 2,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "f425e2b10e7f"
+			}
+		],
+		"packages/cli/src/credentials/credential-dependency.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 8,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "abdb9e128ab8"
+			}
+		],
+		"packages/cli/src/credentials/credentials.controller.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 32,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "510cfb224f30"
+			}
+		],
+		"packages/cli/src/credentials/credentials.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 12,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "f759a907bfa6"
+			}
+		],
+		"packages/cli/src/credentials/credentials.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 32,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "7f1b3146a6a5"
+			}
+		],
+		"packages/cli/src/executions/execution-persistence.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 7,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "9c7a73941bb9"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "packages/cli imports the TypeORM re-export `FindManyOptions` from @n8n/db.",
+				"hash": "2beb2d36dbee"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 11,
+				"message": "packages/cli imports the TypeORM re-export `FindOptionsWhere` from @n8n/db.",
+				"hash": "ef8617dcfa5a"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 18,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "be7b5858aa7c"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 18,
+				"message": "packages/cli imports the TypeORM re-export `Not` from @n8n/db.",
+				"hash": "5faea85ebf23"
+			}
+		],
+		"packages/cli/src/permissions.ee/check-access.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 2,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "ffa998a4f0e7"
+			}
+		],
+		"packages/cli/src/scheduling/durable-job-provisioner.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 5,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "7341e70aa4d7"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "packages/cli imports the TypeORM re-export `DataSource` from @n8n/db.",
+				"hash": "64f5ed0abb25"
+			}
+		],
+		"packages/cli/src/scheduling/durable-scheduler.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "packages/cli imports the TypeORM re-export `DataSource` from @n8n/db.",
+				"hash": "aac4ac3f74d8"
+			}
+		],
+		"packages/cli/src/services/export.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "079882e3843e"
+			}
+		],
+		"packages/cli/src/services/folder.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "b71b84bbde01"
+			}
+		],
+		"packages/cli/src/services/hooks.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 15,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "112edc87061f"
+			}
+		],
+		"packages/cli/src/services/import.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 17,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "5f09782b0c0a"
+			}
+		],
+		"packages/cli/src/services/project.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 33,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "5f5086c28a45"
+			}
+		],
+		"packages/cli/src/services/public-api-key.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 15,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "848bd2e47604"
+			}
+		],
+		"packages/cli/src/services/user.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 15,
+				"message": "packages/cli imports the TypeORM re-export `Not` from @n8n/db.",
+				"hash": "afb93b8300ff"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 16,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "2fd9c6af03c1"
+			}
+		],
+		"packages/cli/src/workflows/workflow-creation.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 5,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "db8f5c7d285b"
+			}
+		],
+		"packages/cli/src/workflows/workflow-finder.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 11,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "81b365efba5a"
+			}
+		],
+		"packages/cli/src/workflows/workflow-validation.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "fce2fb07a423"
+			}
+		],
+		"packages/cli/src/workflows/workflow.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 22,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "1e39cc245dd5"
+			}
+		],
+		"packages/cli/src/workflows/workflow.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 23,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "ba3b76242d76"
+			}
+		],
+		"packages/cli/src/workflows/workflows.controller.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 39,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "63742f55819c"
+			}
+		],
+		"packages/cli/src/commands/import/credentials.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 19,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "a5cc02a1d765"
+			}
+		],
+		"packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 17,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "d34dbe0bf9e7"
+			}
+		],
+		"packages/cli/src/events/relays/telemetry.event-relay.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 8,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "d8a744f2e2b8"
+			}
+		],
+		"packages/cli/src/executions/execution-data/db-store.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 1,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "c19615f89980"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 2,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "47398e9fd892"
+			}
+		],
+		"packages/cli/src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 3,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "b6baaab2dc92"
+			}
+		],
+		"packages/cli/src/modules/agents/agent-publish.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 15,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "9857b27c5bb1"
+			}
+		],
+		"packages/cli/src/modules/agents/agent-task.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 8,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "1799d75327d9"
+			}
+		],
+		"packages/cli/src/modules/agents/agents.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 18,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "e893390cf6b7"
+			}
+		],
+		"packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 13,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "a2f27310e801"
+			}
+		],
+		"packages/cli/src/modules/breaking-changes/breaking-changes.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 12,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "680ac8daac26"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub-agent.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "0aef6c89993c"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub-credentials.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 8,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "6125ed3d7f9b"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub-title.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 11,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "57eab6d29eed"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub-tool.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 7,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "7069ba20f7cd"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub-workflow.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 25,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "7305b701b234"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub.attachment.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 3,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "07380799ff46"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub.models.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "830f87d4b9eb"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 17,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "55126ad50e59"
+			}
+		],
+		"packages/cli/src/modules/chat-hub/chat-hub.settings.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 11,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "ee4b7ca996c4"
+			}
+		],
+		"packages/cli/src/modules/data-table/data-table-ddl.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 3,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "9d6b2c45c02a"
+			}
+		],
+		"packages/cli/src/modules/data-table/data-table.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 18,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "b1aa220b40ab"
+			}
+		],
+		"packages/cli/src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 20,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "45167590d2e2"
+			}
+		],
+		"packages/cli/src/modules/favorites/favorites.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 12,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "03cdaa860f2a"
+			}
+		],
+		"packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 117,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "afbc7f6b5ec7"
+			}
+		],
+		"packages/cli/src/modules/instance-ai/suspended-thread-persistence.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 3,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "5f8f9db2966f"
+			}
+		],
+		"packages/cli/src/modules/log-streaming.ee/log-streaming-destination.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 5,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "f31366dabfeb"
+			}
+		],
+		"packages/cli/src/modules/mcp/mcp-api-key.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 3,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "c2cbaae08659"
+			}
+		],
+		"packages/cli/src/modules/mcp/mcp.settings.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 8,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "6ff9d5453466"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 11,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "4c5e31384fc0"
+			}
+		],
+		"packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 23,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "fd2fa9036a75"
+			}
+		],
+		"packages/cli/src/modules/provisioning.ee/role-mapping-rule.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 16,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "d060301c09ad"
+			}
+		],
+		"packages/cli/src/modules/provisioning.ee/role-resolver.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "15464f0f7a2a"
+			}
+		],
+		"packages/cli/src/modules/source-control.ee/source-control-context.factory.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 5,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "cbc873aadc22"
+			}
+		],
+		"packages/cli/src/modules/source-control.ee/source-control-export.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 15,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "8e15c3127f0d"
+			}
+		],
+		"packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "packages/cli imports the TypeORM re-export `FindOptionsWhere` from @n8n/db.",
+				"hash": "2ca6a59e5a14"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 29,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "e472973ab769"
+			}
+		],
+		"packages/cli/src/modules/source-control.ee/source-control-scoped.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 12,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "12e1f73d1d57"
+			}
+		],
+		"packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 7,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "627dc538505e"
+			}
+		],
+		"packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 17,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "27681e00a358"
+			}
+		],
+		"packages/cli/src/scheduling/poll-trigger-node/poll-trigger-job-registrar.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "faaf4ec6e197"
+			}
+		],
+		"packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "packages/cli imports the TypeORM re-export `EntityManager` from @n8n/db.",
+				"hash": "795cfafd58f5"
+			}
+		],
+		"packages/cli/src/workflows/workflow-history/workflow-history.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 12,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "4405da700deb"
+			}
+		],
+		"packages/cli/src/modules/agents/integrations/n8n-memory.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 45,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "3f27e7921159"
+			}
+		],
+		"packages/cli/src/modules/data-table/utils/sql-utils.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "9780aefcf874"
+			}
+		],
+		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-connection-status.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 4,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "00c000824ff4"
+			},
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 13,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "15940453447b"
+			}
+		],
+		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 1,
+				"message": "packages/cli imports the TypeORM re-export `In` from @n8n/db.",
+				"hash": "e867f51e2b7c"
+			}
+		],
+		"packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 10,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "9b6ffe4b90ce"
+			}
+		],
+		"packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 3,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "5cac6e5f7c07"
+			}
+		],
+		"packages/cli/src/modules/instance-ai/storage/typeorm-agent-memory.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 30,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "eb011718641f"
+			}
+		],
+		"packages/cli/src/modules/instance-ai/storage/typeorm-observation-log-store.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 20,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "e45963a37c9c"
+			}
+		],
+		"packages/cli/src/modules/token-exchange/services/trusted-key.service.ts": [
+			{
+				"rule": "typeorm-persistence-boundary",
+				"line": 6,
+				"message": "Business logic imports TypeORM directly.",
+				"hash": "b44bfdcf5ae3"
 			}
 		]
 	}

@@ -24,6 +24,8 @@ import {
 	WidgetQueryDto,
 	WidgetResponseDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
+import { JSON_REQUEST_BODY_MEDIA } from '@/public-api/media-types/request-body';
+import { jsonRequestBody } from '@/public-api/media-types/request-body/json.request-body';
 
 import {
 	apiKeyScopesSatisfy,
@@ -61,7 +63,14 @@ describe('public-api-route-resolver', () => {
 				method(@Body _body: WidgetBodyDto) {}
 			}
 
-			expect(resolve(TestController as Controller)).toEqual([{ type: 'body', dto: WidgetBodyDto }]);
+			expect(resolve(TestController as Controller)).toEqual([
+				{
+					type: 'body',
+					dto: WidgetBodyDto,
+					media: JSON_REQUEST_BODY_MEDIA,
+					handler: jsonRequestBody,
+				},
+			]);
 		});
 
 		it('resolves a query arg to its Zod DTO via design:paramtypes reflection', () => {
@@ -80,7 +89,12 @@ describe('public-api-route-resolver', () => {
 			}
 
 			expect(resolve(TestController as Controller)).toEqual([
-				{ type: 'body', dto: WidgetArrayResponseDto },
+				{
+					type: 'body',
+					dto: WidgetArrayResponseDto,
+					media: JSON_REQUEST_BODY_MEDIA,
+					handler: jsonRequestBody,
+				},
 			]);
 		});
 
@@ -95,7 +109,12 @@ describe('public-api-route-resolver', () => {
 
 			expect(resolve(TestController as Controller)).toEqual([
 				{ type: 'param', key: 'id' },
-				{ type: 'body', dto: WidgetBodyDto },
+				{
+					type: 'body',
+					dto: WidgetBodyDto,
+					media: JSON_REQUEST_BODY_MEDIA,
+					handler: jsonRequestBody,
+				},
 				{ type: 'query', dto: WidgetQueryDto },
 			]);
 		});

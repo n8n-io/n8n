@@ -125,6 +125,21 @@ describe('PostHog', () => {
 			);
 			expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
 		});
+
+		it('skips PostHog on an eval instance and still applies overrides', async () => {
+			globalConfig.instanceAi.evalInstance = true;
+			globalConfig.featureFlags.override = { '110_instance_ai_folder_exploration': 'test' };
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+
+			const flags = await ph.getFeatureFlags({ id: 'user-1', createdAt: new Date() });
+
+			expect(PostHog.prototype.constructor).not.toHaveBeenCalled();
+			expect(PostHog.prototype.evaluateFlags).not.toHaveBeenCalled();
+			expect(flags['110_instance_ai_folder_exploration']).toBe('test');
+			globalConfig.instanceAi.evalInstance = false;
+			globalConfig.featureFlags.override = {};
+		});
 	});
 
 	it('captures PostHog events', async () => {

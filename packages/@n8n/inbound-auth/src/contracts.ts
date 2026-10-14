@@ -1,13 +1,19 @@
-import type { ConsentUiHints } from '@n8n/api-types';
 import type { AuthPrincipal, SecurityContext } from '@n8n/permissions';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
-import type { Extracted, Inbound, Result, Verified } from './pipeline';
-import type { TrustedSource } from './trusted-source';
+import type { Credential, Extracted, Inbound, Result, Verified } from './pipeline';
+import type { AuthorizationServerMetadata, Jwk, TrustedSource } from './trusted-source';
 import type { SurfaceId } from './trusted-source-config';
 
 /** What a protected resource reads from the user. The `User` entity satisfies it. */
 export type ResourceUser = AuthPrincipal & { id: string; createdAt: Date };
+
+export interface ConsentUiHints {
+	/** design-system icon name (updatedIconSet) for the consent logo tile; omit to fall back to the generic mcp icon */
+	icon?: string;
+	/** noun key inserted into first-party consent copy, e.g. 'form' (later 'webhook'); resolved to a localized word on the frontend */
+	consentType?: string;
+}
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -92,6 +98,14 @@ export interface ProtectedResource {
 /** What a resource contributes to advertising: RFC 9728 metadata and the 401 challenge. */
 export type AdvertisedResource = Pick<Inbound, 'surface' | 'resource' | 'acceptedSourceIds'>;
 
+/**
+ * Authenticates, then identifies, in one call. Stops before resource authorization: the
+ * caller decides what the returned context may do.
+ */
+export abstract class AuthenticationPipeline {
+	abstract run(extracted: Extracted): Promise<Result<SecurityContext>>;
+}
+
 /** The dispatcher. Owns what every method shares: driver lookup and surface acceptance. */
 export abstract class AuthenticationService {
 	abstract authenticate(extracted: Extracted): Promise<Result<Verified>>;
@@ -99,6 +113,25 @@ export abstract class AuthenticationService {
 	abstract advertise(
 		resource: AdvertisedResource,
 	): Promise<{ authorizationServers: string[]; challenges: string[] }>;
+}
+
+/**
+ * One driver per credential kind and protocol family (`bearer` x `oauth2`). How the driver
+ * verifies (signed JWT, introspection) is the driver's business, not a boundary.
+ */
+export abstract class AuthenticationDriver {
+	abstract readonly credentialKind: Credential['kind'];
+
+	abstract readonly sourceTypes: Array<TrustedSource['type']>;
+
+	abstract selectSource(extracted: Extracted): Promise<TrustedSource | undefined>;
+
+	abstract verify(extracted: Extracted, source: TrustedSource): Promise<Result<Verified>>;
+
+	abstract advertise(
+		resource: AdvertisedResource,
+		sources: TrustedSource[],
+	): { authorizationServers?: string[]; challenge?: string };
 }
 
 export abstract class IdentityService {
@@ -112,6 +145,13 @@ export abstract class TrustedSourceStore {
 	abstract getByIssuer(issuer: string): Promise<TrustedSource | undefined>;
 
 	abstract listBySurface(surface: SurfaceId): Promise<TrustedSource[]>;
+}
+
+/** The running instance's own OAuth2 server, read in process so its source is discovered like any other. */
+export abstract class LocalAuthorizationServer {
+	abstract getMetadata(): Promise<AuthorizationServerMetadata>;
+
+	abstract getJwks(): Promise<{ keys: Jwk[] }>;
 }
 
 export abstract class TrustedSourceGate {

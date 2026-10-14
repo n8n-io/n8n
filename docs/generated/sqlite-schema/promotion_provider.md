@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "authType" varchar(32) NOT NULL, "config" text NOT NULL, "auth" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_provider_type" CHECK ("type" IN ('git')), CONSTRAINT "CHK_promotion_provider_authType" CHECK ("authType" IN ('ssh-key', 'token')))
+CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "authType" varchar(32) NOT NULL, "config" text NOT NULL, "auth" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_promotion_provider_authType" CHECK (("authType" IN ('ssh-key', 'token'))), CONSTRAINT "CHK_promotion_provider_type" CHECK ("type" IN ('git', 'gitlab')))
 ```
 
 </details>
@@ -28,8 +28,8 @@ CREATE TABLE "promotion_provider" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("type" IN ('git')) |
-| - | CHECK | CHECK ("authType" IN ('ssh-key', 'token')) |
+| - | CHECK | CHECK (("authType" IN ('ssh-key', 'token'))) |
+| - | CHECK | CHECK ("type" IN ('git', 'gitlab')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_promotion_provider_1 | PRIMARY KEY | PRIMARY KEY (id) |
 

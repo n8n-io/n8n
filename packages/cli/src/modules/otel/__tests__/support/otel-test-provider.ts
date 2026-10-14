@@ -8,6 +8,7 @@ import {
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { mock } from 'vitest-mock-extended';
 
+import { ExecutionIdentitySpanProcessor } from '../../execution-identity';
 import type { OtelService } from '../../otel.service';
 
 /**
@@ -75,7 +76,7 @@ export class OtelTestProvider {
 	static create(options: { withContextManager?: boolean } = {}): OtelTestProvider {
 		const exporter = new InMemorySpanExporter();
 		const provider = new NodeTracerProvider({
-			spanProcessors: [new SimpleSpanProcessor(exporter)],
+			spanProcessors: [new ExecutionIdentitySpanProcessor(), new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
 		if (options.withContextManager) {

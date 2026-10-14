@@ -76,6 +76,9 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			isRedacted: true,
 			reason,
 			canReveal: context.userCanReveal,
+			...(reason === 'credential_inaccessible' && {
+				credentialIds: [...context.inaccessibleCredentialIds],
+			}),
 		};
 	}
 

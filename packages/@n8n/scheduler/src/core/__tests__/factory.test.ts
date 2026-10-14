@@ -250,6 +250,7 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	status: ScheduledTaskStatus.Running,
 	attempts: 0,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	...overrides,
 });
@@ -355,6 +356,7 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -402,6 +404,7 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1279,6 +1282,7 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1333,6 +1337,7 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1630,6 +1635,7 @@ describe('createScheduler metrics', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
 			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
@@ -1778,6 +1784,118 @@ describe('createScheduler metrics', () => {
 			expect(metrics.recordLeaseLost).toHaveBeenCalledWith('test-task');
 		});
 		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+	});
+
+	describe('lease renewal', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		// A 15s lease renews every 5 seconds, the shortest interval.
+		const LEASE_SECONDS = 15;
+		const RENEWAL_INTERVAL_MS = 5_000;
+
+		/** Fires one long handler that stays pending until `finish` is called. */
+		const fireLongHandler = async (metrics: SchedulerMetrics, task = claimedTask()) => {
+			const made = makeScheduler({
+				metrics,
+				executor: { leaseSeconds: LEASE_SECONDS, lookaheadSeconds: 1 },
+			});
+			let finish!: () => void;
+			made.scheduler.registerTaskHandler('test-task', {
+				execute: async (_task, report) => {
+					await new Promise<void>((resolve) => {
+						finish = resolve;
+					});
+					return report.notDispatched();
+				},
+			});
+			made.taskStore.claimDueTasks.mockResolvedValue([task]);
+			made.taskStore.beginDispatch.mockResolvedValue(1);
+			made.taskStore.completeTask.mockResolvedValue(1);
+			await made.scheduler.execute();
+			return { ...made, finish: () => finish() };
+		};
+
+		it('maps renewals onto the renewal metric, and warns when the claim is lost', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockResolvedValueOnce(true).mockResolvedValue(false);
+
+			await vi.advanceTimersByTimeAsync(2 * RENEWAL_INTERVAL_MS);
+
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'renewed');
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'lost');
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message:
+					'Scheduler lost the claim of a running task; another instance may run it unless it was already dispatched',
+				context: { taskId: claimedTask().id, taskType: 'test-task' },
+			});
+			finish();
+		});
+
+		it('maps a whole lease without a renewal onto the renewal metric, and warns', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockRejectedValue(new Error('db down'));
+
+			await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000);
+
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'expired');
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message:
+					'Scheduler could not renew the lease of a running task in time; another instance may run it unless it was already dispatched',
+				context: { taskId: claimedTask().id, taskType: 'test-task' },
+			});
+			finish();
+		});
+
+		it('warns when a renewal write fails', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockRejectedValue(new Error('db down'));
+
+			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'warn',
+					message: 'Scheduler could not renew the lease of a running task; retrying',
+				}),
+			);
+			expect(metrics.recordLeaseRenewal).not.toHaveBeenCalled();
+			finish();
+		});
+
+		it('counts and warns once when a run reaches its timeout', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockResolvedValue(true);
+			const { timeoutSeconds } = claimedTask();
+			const timeoutWarning = {
+				level: 'warn',
+				message: 'Scheduler task run reached its timeout',
+				context: { taskId: claimedTask().id, taskType: 'test-task', timeoutSeconds },
+			};
+
+			await vi.advanceTimersByTimeAsync(timeoutSeconds * 1_000 - 1);
+			expect(onEvent).not.toHaveBeenCalledWith(timeoutWarning);
+			expect(metrics.recordTaskTimeout).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			const warnings = onEvent.mock.calls.filter(
+				([event]) => event.message === timeoutWarning.message,
+			);
+			expect(warnings).toEqual([[timeoutWarning]]);
+			expect(metrics.recordTaskTimeout).toHaveBeenCalledExactlyOnceWith('test-task');
+			finish();
+		});
 	});
 
 	it('does not let a throwing metrics sink break a pass', async () => {

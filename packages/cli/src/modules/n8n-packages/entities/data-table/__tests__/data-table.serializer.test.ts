@@ -22,7 +22,7 @@ describe('DataTableSerializer', () => {
 		const dataTable = makeDataTable({
 			columns: [
 				{
-					id: 'col-1',
+					id: 'col1',
 					name: 'email',
 					type: 'string',
 					index: 0,
@@ -38,15 +38,15 @@ describe('DataTableSerializer', () => {
 		expect(serialized).toEqual({
 			id: 'dt1',
 			name: 'Customers',
-			columns: [{ name: 'email', type: 'string', index: 0 }],
+			columns: [{ id: 'col1', name: 'email', type: 'string', index: 0 }],
 		});
 	});
 
 	it('sorts columns by index regardless of input order', () => {
 		const dataTable = makeDataTable({
 			columns: [
-				{ id: 'col-2', name: 'age', type: 'number', index: 1 },
-				{ id: 'col-1', name: 'email', type: 'string', index: 0 },
+				{ id: 'col2', name: 'age', type: 'number', index: 1 },
+				{ id: 'col1', name: 'email', type: 'string', index: 0 },
 			] as DataTable['columns'],
 		});
 

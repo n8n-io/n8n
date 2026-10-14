@@ -2,8 +2,7 @@
 import Modal from '@/app/components/Modal.vue';
 import { useMcpJsonNudgeEligibility } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeEligibility';
 import type { McpJsonNudgeAction } from '@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger';
-import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { McpClientLogoCards, MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
@@ -102,7 +101,7 @@ onBeforeUnmount(() => {
 				</N8nCheckbox>
 				<div :class="$style.actions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="small"
 						:label="i18n.baseText('experiments.mcpJsonNudge.modal.skip')"
 						data-test-id="mcp-json-nudge-skip-button"

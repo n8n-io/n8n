@@ -48,6 +48,7 @@ function createNdvStub(
 		appliedSkills: Array<{ id: string; skill: { name: string } }>;
 		loading: boolean;
 		isUnavailable: boolean;
+		agentsDisabled: boolean;
 	}> = {},
 ) {
 	const openBuilder = vi.fn();
@@ -63,6 +64,7 @@ function createNdvStub(
 			appliedSkills: computed(() => overrides.appliedSkills ?? []),
 			loading: ref(overrides.loading ?? false),
 			isUnavailable: ref(overrides.isUnavailable ?? false),
+			agentsDisabled: ref(overrides.agentsDisabled ?? false),
 			openBuilder,
 		},
 	} as unknown as UseNdvAgentConfigReturn;
@@ -82,6 +84,13 @@ function mountSummary(ndv: UseNdvAgentConfigReturn, props: { isReadOnly?: boolea
 }
 
 describe('AgentNdvReferencedSummary', () => {
+	it('says agents are disabled instead of claiming the agent is gone', () => {
+		const wrapper = mountSummary(createNdvStub({ agentsDisabled: true, config: null }).value);
+
+		expect(wrapper.find('[data-test-id="agent-ndv-agents-disabled"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-ndv-unavailable"]').exists()).toBe(false);
+	});
+
 	it('renders only when an agent is referenced', () => {
 		const withAgent = mountSummary(createNdvStub().value);
 		expect(withAgent.find('[data-test-id="agent-ndv-referenced-summary"]').exists()).toBe(true);

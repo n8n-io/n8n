@@ -24,6 +24,22 @@ export const ENGINE_PORT = 3000;
 /** Port the main's control plane server listens on. The engine dials it. */
 export const ENGINE_CONTROL_PLANE_PORT = 3001;
 
+/**
+ * The storage path of both planes in `container` mode, where binary data is
+ * kept. The two containers share one store: the main stores a webhook upload
+ * that the engine reads, and the engine stores a file that the main streams in
+ * a response. The stack mounts one host dir here in both containers. The stack
+ * owns the path: a caller's `N8N_STORAGE_PATH` or deprecated
+ * `N8N_BINARY_DATA_STORAGE_PATH` would point the planes at different dirs, or
+ * fail the start when the two differ.
+ */
+export const ENGINE_SHARED_STORAGE_PATH = '/data/storage';
+
+function applySharedStoragePath(env: Record<string, string>): void {
+	env.N8N_STORAGE_PATH = ENGINE_SHARED_STORAGE_PATH;
+	delete env.N8N_BINARY_DATA_STORAGE_PATH;
+}
+
 /** Every value the URL interpolates, so a missing one is named, not printed. */
 const CONNECTION_KEYS = [
 	'DB_POSTGRESDB_USER',
@@ -131,6 +147,7 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
+		applySharedStoragePath(env);
 		// The main never touches the data plane database in this mode.
 		delete env.N8N_ENGINE_DATABASE_URL;
 		return;
@@ -162,6 +179,8 @@ export function engineContainerEnv(
 				!CONTROL_PLANE_ONLY_PREFIXES.some((prefix) => key.startsWith(prefix)),
 		),
 	);
+
+	applySharedStoragePath(env);
 
 	return {
 		...env,

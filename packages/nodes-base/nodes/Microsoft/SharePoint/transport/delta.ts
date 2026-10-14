@@ -60,6 +60,9 @@ function statusOf(error: unknown): number | undefined {
 	return httpCode === undefined || httpCode === null ? undefined : Number(httpCode);
 }
 
+/** A 404 on a delta feed means the drive, list or site behind it is gone. */
+export const isTargetMissing = (error: unknown): boolean => statusOf(error) === 404;
+
 function resyncFromError(error: unknown): DeltaResync | undefined {
 	if (statusOf(error) !== 410) return undefined;
 	for (const level of errorChain(error)) {

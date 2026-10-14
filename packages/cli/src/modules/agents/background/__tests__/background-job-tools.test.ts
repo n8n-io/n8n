@@ -12,10 +12,12 @@ import {
 	createCancelBackgroundJobTool,
 	createCheckBackgroundJobsTool,
 	createResumeBackgroundJobsTool,
-	createSpawnBackgroundSubAgentTool,
+	createBackgroundSubAgentHandler,
 	type BackgroundJobToolsOptions,
 } from '../background-job-tools';
 import type { SubAgentBackgroundRunner } from '../sub-agent-background-runner';
+import { createN8nDelegateSubAgentTool } from '../../sub-agents/delegate-sub-agent-tool';
+import type { SubAgentRunner } from '../../sub-agents/sub-agent-runner';
 import {
 	BACKGROUND_PAUSE_USER_TURN_KEY,
 	PARENT_TASK_CANCELLED_REASON,
@@ -61,7 +63,37 @@ function setup() {
 	return { jobService, backgroundRunner, options };
 }
 
-describe('spawn_background_subagent', () => {
+function createBackgroundDelegateTool(options: BackgroundJobToolsOptions) {
+	return createN8nDelegateSubAgentTool({
+		...options.runContext,
+		runner: mock<SubAgentRunner>(),
+		sourcesById: options.sourcesById,
+		availableSubAgents: options.availableSubAgents,
+		projectId: options.projectId,
+		parentAgentId: options.parentAgentId,
+		runBackgroundSubAgent: createBackgroundSubAgentHandler(options),
+	});
+}
+
+describe('delegate_subagent background mode', () => {
+	it.each([255, 256])('enforces the stored job title limit (%s characters)', async (length) => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool(options);
+
+		const output = await tool.handler!(
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'a'.repeat(length), goal: 'Research' },
+			{ persistence },
+		);
+
+		if (length === 255) {
+			expect(output).toMatchObject({ status: 'started', jobId: 'job-1' });
+		} else {
+			expect(output).toMatchObject({ status: 'rejected' });
+			expect(backgroundRunner.spawn).not.toHaveBeenCalled();
+		}
+	});
+
 	it.each([true, false])(
 		'handles a Stop during registration without treating disconnects as cancellation (%s)',
 		async (stop) => {
@@ -71,9 +103,9 @@ describe('spawn_background_subagent', () => {
 				controller.abort(stop ? PARENT_TASK_CANCELLED_REASON : new Error('Connection closed'));
 				return { status: 'started', jobId: 'job-1' };
 			});
-			const tool = createSpawnBackgroundSubAgentTool(options);
+			const tool = createBackgroundDelegateTool(options);
 			await tool.handler!(
-				{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+				{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
 				{ persistence, abortSignal: controller.signal },
 			);
 			if (stop) expect(jobService.cancel).toHaveBeenCalledWith('thread-1', 'job-1');
@@ -84,10 +116,10 @@ describe('spawn_background_subagent', () => {
 	it('reads the parent thread from ctx.persistence at call time', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
 			{ persistence },
 		);
 
@@ -100,10 +132,10 @@ describe('spawn_background_subagent', () => {
 
 	it('rejects background jobs in task sessions', async () => {
 		const { backgroundRunner, options } = setup();
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
 			{ persistence: { ...persistence, resourceId: 'task:task-1' } },
 		);
 
@@ -113,10 +145,10 @@ describe('spawn_background_subagent', () => {
 
 	it('rejects when the thread carries no host metadata', async () => {
 		const { backgroundRunner, options } = setup();
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
 			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
 		);
 
@@ -126,10 +158,10 @@ describe('spawn_background_subagent', () => {
 
 	it('rejects when no persisted thread is active', async () => {
 		const { backgroundRunner, options } = setup();
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
 			{},
 		);
 
@@ -139,10 +171,10 @@ describe('spawn_background_subagent', () => {
 
 	it('rejects unknown sub-agent ids listing the available ones', async () => {
 		const { backgroundRunner, options } = setup();
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'nope', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'nope', taskName: 'research', goal: 'find things' },
 			{ persistence },
 		);
 
@@ -153,10 +185,11 @@ describe('spawn_background_subagent', () => {
 	it('forwards context and expectedOutput to the spawn request', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		await tool.handler!(
 			{
+				mode: 'background',
 				subAgentId: 'sub-1',
 				taskName: 'research',
 				goal: 'find things',
@@ -175,8 +208,13 @@ describe('spawn_background_subagent', () => {
 	it('forwards the sandbox principal when the host scope matches the project', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
-		const tool = createSpawnBackgroundSubAgentTool(options);
-		const input = { subAgentId: 'sub-1', taskName: 'research', goal: 'find things' };
+		const tool = createBackgroundDelegateTool(options);
+		const input = {
+			mode: 'background',
+			subAgentId: 'sub-1',
+			taskName: 'research',
+			goal: 'find things',
+		};
 
 		await tool.handler!(input, {
 			persistence: {
@@ -201,10 +239,16 @@ describe('spawn_background_subagent', () => {
 	it('spawns a copy of the parent for inline self-delegation, with its difficulty', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'inline', taskName: 'research', goal: 'find things', difficulty: 'high' },
+			{
+				mode: 'background',
+				subAgentId: 'inline',
+				taskName: 'research',
+				goal: 'find things',
+				difficulty: 'high',
+			},
 			{ persistence },
 		);
 
@@ -219,10 +263,16 @@ describe('spawn_background_subagent', () => {
 	it('ignores difficulty for configured sub-agents — it only applies to self-delegation', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		await tool.handler!(
-			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things', difficulty: 'high' },
+			{
+				mode: 'background',
+				subAgentId: 'sub-1',
+				taskName: 'research',
+				goal: 'find things',
+				difficulty: 'high',
+			},
 			{ persistence },
 		);
 
@@ -232,10 +282,10 @@ describe('spawn_background_subagent', () => {
 	it('echoes a limit-reached receipt in the tool output', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'limit-reached' });
-		const tool = createSpawnBackgroundSubAgentTool(options);
+		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
-			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
 			{ persistence },
 		);
 
@@ -358,7 +408,20 @@ describe('resume_background_jobs', () => {
 			mock<AgentBackgroundJob>({ id: 'job-2' }),
 		];
 		const timeoutAt = new Date(Date.now() + 60_000);
-		jobService.preparePausedResume.mockResolvedValue({ status: 'ready', jobs, timeoutAt });
+		const workflowsToRestart = [
+			{
+				jobId: 'workflow-job',
+				title: 'Send request',
+				workflowId: 'workflow-1',
+				previousExecutionId: 'execution-1',
+			},
+		];
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs,
+			timeoutAt,
+			workflowsToRestart,
+		});
 		backgroundRunner.resumePaused
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('checkpoint has expired'));
@@ -372,6 +435,7 @@ describe('resume_background_jobs', () => {
 					error: expect.stringContaining('checkpoint has expired'),
 				},
 			],
+			workflowsToRestart,
 		});
 		expect(jobService.preparePausedResume).toHaveBeenLastCalledWith(
 			'agent-1',
@@ -381,6 +445,19 @@ describe('resume_background_jobs', () => {
 		);
 		expect(backgroundRunner.resumePaused).toHaveBeenCalledTimes(2);
 		expect(jobService.releaseResumeReservations).toHaveBeenCalledWith(jobs, timeoutAt);
+		backgroundRunner.resumePaused.mockClear();
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs: [],
+			timeoutAt,
+			workflowsToRestart,
+		});
+		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
+			status: 'ready',
+			jobs: [],
+			workflowsToRestart,
+		});
+		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
 	});
 });
 

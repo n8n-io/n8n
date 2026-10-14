@@ -41,6 +41,24 @@ export const migrationFindingStatusSchema = z.enum([
 ]);
 export type MigrationFindingStatus = z.infer<typeof migrationFindingStatusSchema>;
 
+/** The statuses a user can set on a finding. The scan sets the other statuses. */
+export const migrationFindingTriageStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'wont_fix',
+]);
+export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriageStatusSchema>;
+
+/**
+ * The statuses the rule detail lists. A `notified` finding is still unresolved:
+ * only the notification sets it apart from `open`.
+ */
+export const migrationFindingListedStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'notified',
+	'wont_fix',
+]);
+export type MigrationFindingListedStatus = z.infer<typeof migrationFindingListedStatusSchema>;
+
 /**
  * The target n8n major version for the migration/breaking-changes report.
  *
@@ -73,6 +91,23 @@ const workflowIssueSchema = instanceIssueSchema.extend({
 });
 export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
 
+/** `suggested` by the owner heuristic, or `assigned` by a person. */
+export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
+export type MigrationOwnerSource = z.infer<typeof migrationOwnerSourceSchema>;
+
+/** The user responsible for fixing a workflow's findings. The name and email columns of a user are nullable. */
+const workflowOwnerSchema = z.object({
+	id: z.string(),
+	firstName: z.string().nullable(),
+	lastName: z.string().nullable(),
+	email: z.string().nullable(),
+	source: migrationOwnerSourceSchema,
+});
+export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
+
+/** The owner of a workflow after a change to it. `null` when nobody owns it. */
+export type MigrationWorkflowOwnerResponse = { owner: BreakingChangeWorkflowOwner | null };
+
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -81,6 +116,10 @@ const affectedWorkflowSchema = z.object({
 	lastUpdatedAt: z.date(),
 	lastExecutedAt: z.date().optional(),
 	issues: z.array(workflowIssueSchema),
+	// Absent when no owner is known for the workflow.
+	owner: workflowOwnerSchema.optional(),
+	// The project that owns the workflow, so an owner picker can list its members.
+	homeProjectId: z.string().optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 
@@ -106,6 +145,19 @@ const workflowRuleResultsSchema = ruleResultBaseSchema.extend({
 });
 export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResultsSchema>;
 
+// The rule detail lists each workflow with the status of its finding.
+const ruleDetailWorkflowSchema = affectedWorkflowSchema.extend({
+	status: migrationFindingListedStatusSchema,
+	// When the owner was last notified about the finding. Absent until the first notification.
+	notifiedAt: z.date().optional(),
+});
+export type BreakingChangeRuleDetailWorkflow = z.infer<typeof ruleDetailWorkflowSchema>;
+
+const ruleDetailResultSchema = workflowRuleResultsSchema.extend({
+	affectedWorkflows: z.array(ruleDetailWorkflowSchema),
+});
+export type BreakingChangeRuleDetailResult = z.infer<typeof ruleDetailResultSchema>;
+
 const breakingChangeReportDataSchema = {
 	generatedAt: z.date(),
 	targetVersion: z.string(),
@@ -117,13 +169,17 @@ const breakingChangeReportDataSchema = {
 const breakingChangeReportSchema = z.object(breakingChangeReportDataSchema).strict();
 
 const breakingChangeLightReportDataSchema = {
-	generatedAt: z.date(),
+	// Absent until the first sync of the target version completes.
+	generatedAt: z.date().optional(),
 	targetVersion: z.string(),
 	currentVersion: z.string(),
 	instanceResults: z.array(instanceRuleResultsSchema),
 	workflowResults: z.array(
 		workflowRuleResultsSchema.omit({ affectedWorkflows: true }).extend({
+			// Workflows with an open or notified finding for the rule.
 			nbAffectedWorkflows: z.number(),
+			// Workflows with a won't fix finding for the rule.
+			nbWontFixWorkflows: z.number(),
 		}),
 	),
 } as const;
@@ -166,3 +222,16 @@ const workflowMigrationResultSchema = z.object({
 	republishable: z.boolean(),
 });
 export type WorkflowMigrationResult = z.infer<typeof workflowMigrationResultSchema>;
+
+/**
+ * Why a workflow was left out of a notification: it has no owner with an email,
+ * its finding is no longer open, or the email could not be sent.
+ */
+export const migrationNotifySkipReasonSchema = z.enum(['no_owner', 'no_finding', 'send_failed']);
+export type MigrationNotifySkipReason = z.infer<typeof migrationNotifySkipReasonSchema>;
+
+/** The outcome of notifying the owners of the findings of one rule. */
+export type MigrationNotifyResult = {
+	notifiedWorkflowIds: string[];
+	skipped: Array<{ workflowId: string; reason: MigrationNotifySkipReason }>;
+};

@@ -340,7 +340,7 @@ function messageOf(error: unknown, fallbackKey: FailureKey): string {
 			>
 				{{ i18n.baseText('instanceAi.preferenceCard.modal.remove') }}
 			</N8nButton>
-			<N8nButton variant="subtle" :disabled="busy" @click="open = false">
+			<N8nButton variant="outline" :disabled="busy" @click="open = false">
 				{{ i18n.baseText('instanceAi.preferenceCard.modal.cancel') }}
 			</N8nButton>
 			<N8nButton

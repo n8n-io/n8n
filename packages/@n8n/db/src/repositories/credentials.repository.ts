@@ -2,7 +2,7 @@ import { assertClearedFor, credentialContentSubject, credentialSubject } from '@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { FindManyOptions, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
@@ -248,6 +248,29 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	/**
+	 * Writes re-encrypted credential data only while the row still holds `expectedData`, the
+	 * ciphertext the caller decrypted. Returns false when another write landed in between, so the
+	 * caller can drop a value it derived from content that is no longer stored.
+	 *
+	 * Ciphertext only, like the runtime OAuth token write-back: a payload that cannot carry
+	 * `type` stays off the sealed `credentialSave` path.
+	 */
+	async updateDataIfUnchanged(
+		id: string,
+		type: string,
+		expectedData: string,
+		data: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			CredentialsEntity,
+			{ id, type, data: expectedData },
+			{ data, updatedAt: new Date() },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
 	 * Persists an imported credential row, gated on a clearance for `contentImport`. Binds to the
 	 * id when there is one, else to the type hash, same as `WorkflowRepository`.
 	 */
@@ -293,6 +316,24 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			id: credentialId,
 			usageScope: 'instance',
 		});
+	}
+
+	/**
+	 * Finds a project credential that has no `shared_credentials` row at all. Such a credential has
+	 * no owner, so the project-scoped lookups cannot find it. Returns `null` if the credential does
+	 * not exist or still has any `shared_credentials` row — even a non-owner share keeps the
+	 * credential reachable through the regular, access-checked delete path, so it is not orphaned.
+	 */
+	async findProjectCredentialWithoutOwner(
+		credentialId: string,
+		ctx: OperationContext = {},
+	): Promise<CredentialsEntity | null> {
+		const credential = await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id: credentialId, usageScope: 'project' },
+			relations: { shared: true },
+		});
+		if (!credential || credential.shared.length > 0) return null;
+		return credential;
 	}
 
 	async deleteInstanceCredentialIfUnassigned(
@@ -419,7 +460,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		const { filter, select, take, skip, sortBy } = listQueryOptions;
 
 		if (typeof filter?.name === 'string' && filter?.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
+			filter.name = ILike(`%${filter.name}%`);
 		}
 
 		if (typeof filter?.type === 'string' && filter?.type !== '') {

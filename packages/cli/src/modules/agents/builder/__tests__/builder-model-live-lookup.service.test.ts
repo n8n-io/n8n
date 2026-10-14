@@ -262,6 +262,36 @@ describe('BuilderModelLiveLookupService', () => {
 			});
 		});
 
+		it('passes a priority from Gateway credits discovery on to the model choice', async () => {
+			const { service, aiGatewayService } = makeService();
+			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('googlePalmApi');
+			aiGatewayService.getSyntheticCredential.mockResolvedValue({
+				apiKey: 'gateway-jwt',
+				host: 'https://gw.example/v1/gateway/google',
+			});
+			listModelsForProvider.mockResolvedValue([
+				{ id: 'models/gemini-featured', name: 'Gemini Featured', priority: 10 },
+				{ id: 'models/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+			]);
+
+			const result = await service.lookup(
+				user,
+				projectId,
+				AI_GATEWAY_MANAGED_TAG,
+				'googlePalmApi',
+				'google',
+			);
+
+			expect(result).toEqual({
+				status: 'success',
+				policy: 'managed',
+				models: [
+					{ name: 'Gemini Featured', value: 'models/gemini-featured', priority: 10 },
+					{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+				],
+			});
+		});
+
 		it('keeps list compatible with successful and unavailable lookups', async () => {
 			const { service } = makeService();
 			const models = [{ name: 'GPT-5', value: 'gpt-5' }];
@@ -299,6 +329,7 @@ describe('BuilderModelLiveLookupService', () => {
 		expect(result).toEqual([{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId,
+			excludePersonalRoute: true,
 		});
 		// Credential fields are mapped for the provider (anthropic: apiKey + url→baseURL).
 		expect(listModelsForProvider).toHaveBeenCalledWith(

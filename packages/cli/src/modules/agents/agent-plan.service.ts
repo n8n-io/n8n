@@ -1,8 +1,12 @@
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { parseAgentPlan } from './plans/agent-plan.schema';
-import { getAgentPlanReadiness, prepareAgentPlan } from './plans/agent-plan.validation';
+import { parseAgentPlan, type AgentPlanDocument } from './plans/agent-plan.schema';
+import {
+	getAgentPlanReadiness,
+	prepareAgentPlan,
+	type AgentPlanReadiness,
+} from './plans/agent-plan.validation';
 import {
 	AgentPlanRepository,
 	AgentPlanWriteConflictError,
@@ -12,6 +16,11 @@ import {
 
 type PlanDocumentInput = { data: unknown; formatVersion: number };
 type PlanWrite = { threadId: string; planId: string; expectedRevision: number };
+
+export type AgentPlanSnapshot = Omit<AgentPlanRecord, 'data'> & {
+	data: AgentPlanDocument;
+	readiness: AgentPlanReadiness;
+};
 
 @Service()
 export class AgentPlanService {
@@ -25,7 +34,7 @@ export class AgentPlanService {
 		return this.decode(await this.repository.createActivePlan({ ...input, data }, ctx));
 	}
 
-	async findActivePlan(threadId: string, ctx: OperationContext) {
+	async findActivePlan(threadId: string, ctx: OperationContext): Promise<AgentPlanSnapshot | null> {
 		const plan = await this.repository.findActivePlan(threadId, ctx);
 		return plan ? this.decode(plan) : null;
 	}
