@@ -1598,6 +1598,26 @@ describe('Promotions in Public API', () => {
 			).toEqual(target);
 		});
 
+		it('rejects Git operations for a legacy URL outside the provider host', async () => {
+			const providerId = await savedProvider();
+			const id = await selectedConnection(providerId);
+			const target = {
+				schemaVersion: 1 as const,
+				remoteUrl: 'https://other.example.com/platform/workflows.git',
+			};
+			await Container.get(PromotionConnectionRepository).updateConnection(id, providerId, {
+				target,
+			});
+			for (const direction of ['apply', 'promote'] as const) {
+				await expect(
+					Container.get(PromotionConfigResolver).resolveForConnection(id, direction),
+				).rejects.toThrow('Select the repository again');
+			}
+			const read = await testServer.publicApiAgentFor(owner).get(`/promotions/connections/${id}`);
+			expect(read.status).toBe(200);
+			expect(read.body.target).toEqual(target);
+		});
+
 		it('reads legacy URL targets and converts them to paths when the target is resaved', async () => {
 			const providerId = await savedProvider();
 			const id = await selectedConnection(providerId);

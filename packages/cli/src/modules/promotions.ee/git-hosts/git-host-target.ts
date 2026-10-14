@@ -84,6 +84,24 @@ export function resolvePromotionTarget(
 	};
 }
 
+export function resolvePromotionGitTarget(
+	provider: GitHostProvider,
+	stored: unknown,
+): PromotionConnectionTarget {
+	const target = resolvePromotionTarget(provider, stored);
+	if (!isPromotionGitHostType(provider.type)) return target;
+	const baseUrl = hostBaseUrl(provider);
+	let repositoryPath: string;
+	try {
+		repositoryPath = repositoryPathFromUrl(baseUrl, target.remoteUrl);
+	} catch {
+		throw new BadRequestError(
+			'The saved repository URL does not use the GitLab base URL. Select the repository again.',
+		);
+	}
+	return { schemaVersion: 1, remoteUrl: repositoryUrlFromPath(baseUrl, repositoryPath) };
+}
+
 export function repositoryUrlFromPath(baseUrl: string, repositoryPath: string): string {
 	if (!repositoryPathSchema.safeParse(repositoryPath).success) {
 		throw new BadRequestError('The repository path cannot be read. Select the repository again.');

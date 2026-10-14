@@ -59,8 +59,8 @@ The API accepts and returns `remoteUrl`. New GitLab targets store only a
 `repositoryPath`. Reads and Git operations derive the URL from the provider.
 Plain Git and existing URL-based targets stay compatible. Resave an existing
 GitLab target to convert it to a path. Older versions cannot read path targets.
-Connection responses also return the stored `repositoryPath`. Use it as the
-`repositoryId` to list branches of a saved connection.
+Connection responses also return the stored `repositoryPath`. URL-encode it
+before you use it as the `repositoryId` to list branches of a saved connection.
 
 ## GitLab
 

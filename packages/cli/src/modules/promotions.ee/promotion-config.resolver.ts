@@ -9,7 +9,7 @@ import type { PromotionConfig } from './database/entities/promotion-config.entit
 import { PromotionConfigRepository } from './database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from './database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
-import { resolvePromotionTarget } from './git-hosts/git-host-target';
+import { resolvePromotionGitTarget } from './git-hosts/git-host-target';
 import { resolveStoredConfig } from './promotion-config-settings';
 import type { PromotionOperationInput } from './promotions.types';
 
@@ -97,7 +97,7 @@ export class PromotionConfigResolver {
 			throw new BadRequestError('The stored provider type is not supported');
 		}
 
-		const target = resolvePromotionTarget(provider, connection.target);
+		const target = resolvePromotionGitTarget(provider, connection.target);
 
 		const resolved = resolveStoredConfig(config);
 		if (!resolved) {

@@ -39,7 +39,7 @@ export type PromotionConnectionTarget = z.infer<typeof promotionConnectionTarget
 const promotionConnectionTargetPublicSchema = promotionConnectionTargetSchema.extend({
 	repositoryPath: z.string().optional().openapi({
 		description:
-			'The stored repository path of a GitLab target. Use it as repositoryId to list branches. Requests do not accept it.',
+			'The stored repository path of a GitLab target. URL-encode it before you use it as repositoryId to list branches. Requests do not accept it.',
 	}),
 });
 

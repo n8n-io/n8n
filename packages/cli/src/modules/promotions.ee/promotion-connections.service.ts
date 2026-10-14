@@ -33,7 +33,7 @@ import {
 } from './database/repositories/promotion-connection.repository';
 import { resolveStoredConfig } from './promotion-config-settings';
 import {
-	promotionStoredConnectionTargetSchema,
+	resolvePromotionGitTarget,
 	resolvePromotionTarget,
 	storePromotionTarget,
 } from './git-hosts/git-host-target';
@@ -413,14 +413,18 @@ export class PromotionConnectionsService {
 
 		// Read the target the same way an operation does, so the reported state and the
 		// enforced state cannot drift. A target this version cannot read is not usable.
-		const target = promotionStoredConnectionTargetSchema.safeParse(connection.target);
-		if (!target.success) return { hasCheckout, matchesConfig: false };
+		let target: PromotionConnectionTarget;
+		try {
+			target = resolvePromotionGitTarget(connection.provider, connection.target);
+		} catch {
+			return { hasCheckout, matchesConfig: false };
+		}
 
 		const matchesConfig = await this.workingDirectory.matchesDescriptor(
 			buildCacheDescriptor({
 				connectionId: connection.id,
 				configId: config.id,
-				target: resolvePromotionTarget(connection.provider, target.data),
+				target,
 				config: resolved,
 			}),
 		);
