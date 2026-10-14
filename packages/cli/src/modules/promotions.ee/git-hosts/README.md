@@ -43,10 +43,11 @@ A cursor keeps its page size. It does not create a snapshot of GitLab data.
 Repository IDs and clone URLs come from GitLab. Branch names include the
 default-branch flag.
 
-GitLab repository discovery lists all projects accessible to the token. It does
-not require membership. Search matches repository names and
-namespace paths. Branch search uses GitLab's branch-name filter. An empty list
-is valid. Invalid credentials and inaccessible repositories return errors.
+GitLab repository discovery lists projects with Developer access or higher
+(`min_access_level=30`). Search matches repository names and namespace paths.
+Search results use similarity order. Other results use ascending repository IDs.
+Branch search uses GitLab's branch-name filter. An empty list is valid.
+Invalid credentials and inaccessible repositories return errors.
 
 The client never follows a pagination URL. It computes each page on the saved
 host. If a proxy omits pagination headers, a full page gets a continuation cursor.

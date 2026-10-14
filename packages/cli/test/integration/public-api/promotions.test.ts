@@ -854,6 +854,7 @@ describe('Promotions in Public API', () => {
 		};
 		const repositoryQuery = {
 			simple: 'true',
+			min_access_level: '30',
 			order_by: 'id',
 			sort: 'asc',
 			per_page: '100',
@@ -974,21 +975,25 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('discovers accessible repositories without membership or a connection and preserves credentials', async () => {
+		it('requests Developer-level repositories without a connection and preserves credentials', async () => {
 			const id = await savedProvider();
 			const stored = await Container.get(PromotionProviderRepository).findById(id);
 			const decrypt = vi.spyOn(Container.get(Cipher), 'decryptV2');
 			const api = discoveryApi().reply(
 				200,
 				[
-					{ ...project, access_token: 'not-public' },
+					{
+						...project,
+						access_token: 'not-public',
+						permissions: { project_access: { access_level: 40 }, group_access: null },
+					},
 					{
 						...project,
 						id: 43,
 						path_with_namespace: 'shared/workflows',
 						http_url_to_repo: 'https://gitlab.example.com/shared/workflows.git',
 						visibility: 'public',
-						permissions: { project_access: null, group_access: null },
+						permissions: { project_access: null, group_access: { access_level: 30 } },
 					},
 				],
 				{ 'X-Next-Page': '' },
@@ -1108,9 +1113,16 @@ describe('Promotions in Public API', () => {
 			const id = await savedProvider();
 			const repositories = route === 'repositories';
 			const path = repositories ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches';
-			const query = repositories ? { ...repositoryQuery, search_namespaces: 'true' } : {};
+			const query = repositories
+				? {
+						...repositoryQuery,
+						order_by: 'similarity',
+						sort: 'desc',
+						search_namespaces: 'true',
+					}
+				: {};
 			const firstData = repositories
-				? [project, { ...project, id: 43, path_with_namespace: 'other/workflows' }]
+				? [{ ...project, id: 43, path_with_namespace: 'other/workflows' }, project]
 				: [
 						{ name: 'main', default: true },
 						{ name: 'release', default: false },
@@ -1136,6 +1148,12 @@ describe('Promotions in Public API', () => {
 				.query({ limit: 2, search: ' workflows ' });
 			expect(first.status, JSON.stringify(first.body)).toBe(200);
 			expect(first.body.data).toHaveLength(2);
+			if (repositories) {
+				expect(first.body.data).toEqual([
+					expect.objectContaining({ id: '43' }),
+					expect.objectContaining({ id: '42' }),
+				]);
+			}
 			expect(typeof first.body.nextCursor).toBe('string');
 			const next = await agent
 				.get(`/promotions/providers/${id}/${route}`)
@@ -1201,7 +1219,7 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it.each(routes)('returns an empty %s list for valid credentials', async (route) => {
+		it.each(routes)('returns an empty %s list for a blank search', async (route) => {
 			const id = await savedProvider();
 			const path =
 				route === 'repositories' ? '/api/v4/projects' : '/api/v4/projects/42/repository/branches';
@@ -1211,7 +1229,8 @@ describe('Promotions in Public API', () => {
 			).reply(200, []);
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.get(`/promotions/providers/${id}/${route}`);
+				.get(`/promotions/providers/${id}/${route}`)
+				.query({ search: '  ' });
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual({ data: [], nextCursor: null });
 			api.done();

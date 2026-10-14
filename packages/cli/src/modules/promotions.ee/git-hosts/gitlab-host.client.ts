@@ -104,8 +104,9 @@ export class GitLabHostClient implements GitHostClient {
 			'projects',
 			{
 				simple: true,
-				order_by: 'id',
-				sort: 'asc',
+				min_access_level: 30,
+				order_by: search ? 'similarity' : 'id',
+				sort: search ? 'desc' : 'asc',
 				per_page: limit,
 				page: offset / limit + 1,
 				...(search && { search, search_namespaces: true }),

@@ -201,7 +201,7 @@ export class PromotionsPublicController {
 	@GlobalScope('gitConnection:discovery')
 	@ApiSummary('List repositories of a promotion provider')
 	@ApiDescription(
-		'Lists repositories accessible to the GitLab token, including repositories where its identity is not a member. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
+		'Lists repositories where the GitLab token identity has at least the Developer role. The token also needs Git write scope for promotions. Protected branches can restrict pushes. Use remoteUrl as a connection target. Supports repository and namespace search and cursor pagination. Search results use similarity order. Other results use ascending repository ID order. The limit is an upper bound. GitLab returns at most 100 items per page. Follow nextCursor even when a page has fewer items than the requested limit. A saved connection is not required. Invalid credentials return an error, not an empty list. If a response is too large, restart the list with a smaller limit and no cursor.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionRepositoryListPublicDto)
