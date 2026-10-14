@@ -2,27 +2,6 @@ name: 'Test: E2E'
 
 on:
   workflow_call:
-    secrets:
-      CURRENTS_RECORD_KEY:
-        required: false
-      CURRENTS_API_KEY:
-        required: false
-      QA_METRICS_WEBHOOK_URL:
-        required: false
-      QA_METRICS_WEBHOOK_USER:
-        required: false
-      QA_METRICS_WEBHOOK_PASSWORD:
-        required: false
-      N8N_LICENSE_ACTIVATION_KEY:
-        required: false
-      N8N_LICENSE_CERT:
-        required: false
-      N8N_ENCRYPTION_KEY:
-        required: false
-      N8N_SANDBOX_SERVICE_URL:
-        required: false
-      N8N_SANDBOX_SERVICE_API_KEY:
-        required: false
     inputs:
       branch:
         description: 'GitHub branch to test.'
@@ -78,16 +57,6 @@ on:
         required: false
         default: 'e2e'
         type: string
-      report-directory:
-        description: 'Workspace directory with Playwright reports'
-        required: false
-        default: 'packages/quality/testing/playwright'
-        type: string
-      install-browsers:
-        description: 'Install browsers for browser-backed suites'
-        required: false
-        default: true
-        type: boolean
       build-variant:
         description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard, coverage, or pc).'
         required: false
@@ -134,7 +103,6 @@ jobs:
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
 
       - name: Install Browsers
-        if: inputs.install-browsers
         run: pnpm turbo run install-browsers --filter=n8n-playwright
 
       - name: Load n8n image from cache
@@ -227,9 +195,9 @@ jobs:
         with:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
-            ${{ inputs.report-directory }}/test-results/
-            ${{ inputs.report-directory }}/test-results.json
-            ${{ inputs.report-directory }}/playwright-report/
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/test-results.json
+            packages/quality/testing/playwright/playwright-report/
             packages/quality/testing/playwright/coverage/lcov.info
             packages/quality/testing/playwright/coverage/by-spec/
             packages/quality/testing/playwright/coverage/index.html

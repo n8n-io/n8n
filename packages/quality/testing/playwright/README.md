@@ -39,7 +39,8 @@ Other private workspaces can declare `n8n-playwright` and the catalog-pinned `@p
 | `n8n-playwright/memory` | `getStableHeap()` with the existing GC and memory sampling method |
 
 The configuration factory accepts standard Playwright options. It does not start a browser, application, or container stack.
-Reporter paths resolve from this package. Test paths and report outputs resolve from the consuming workspace.
+Reporter paths resolve from this package. Test paths resolve from the consuming workspace.
+Local reports stay in the consuming workspace. CI artifacts and reports default to this package directory for the shared workflow upload.
 Supply `reporter` to replace the defaults, or append suite-specific reporters to `qualityReporters()`.
 The product fixtures reuse the shared container lifecycle from `fixtures/containers.ts`.
 
