@@ -170,6 +170,7 @@ describe('createSelfHealingAgent', () => {
 				build(): Promise<{
 					tools: BuiltTool[];
 					instructions: string;
+					checkpointStorage?: unknown;
 					observationalMemory?: unknown;
 					skillSource?: unknown;
 				}>;
@@ -196,6 +197,7 @@ describe('createSelfHealingAgent', () => {
 		expect(config.instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
 		expect(config.instructions).toContain('Filesystem access is scoped to `/workspace`');
 		expect(config.instructions).toContain('execute commands in the workspace');
+		expect(config.checkpointStorage).toBe('memory');
 		expect(config.observationalMemory).toBeUndefined();
 		expect(config.skillSource).toBeUndefined();
 		expect(await loadInstanceAiRuntimeSkillSource().loadSkill('self-healing')).toBeNull();

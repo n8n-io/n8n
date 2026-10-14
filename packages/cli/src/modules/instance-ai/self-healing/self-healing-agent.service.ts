@@ -46,7 +46,6 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { InstanceAiSandboxService } from '../sandbox/instance-ai-sandbox.service';
-import { TypeORMAgentCheckpointStore } from '../storage/typeorm-agent-checkpoint-store';
 import { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
 import type { InstanceAiTracingService } from '../tracing/instance-ai-tracing.service';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
@@ -100,12 +99,11 @@ export type SelfHealingRunOptions = {
 	sandbox: Pick<InstanceAiSandboxService, 'getOrCreateWorkspace' | 'destroySandbox'>;
 	tracing: Pick<
 		InstanceAiTracingService,
-		'storeTraceContext' | 'finalizeRunTracing' | 'finalizeMessageTraceRoot'
+		'registerTraceContext' | 'finalizeRunTracing' | 'finalizeMessageTraceRoot'
 	>;
 	createProxyRunConfig: () => Promise<ProxyRunConfig>;
 	assertCreditsAvailable: () => Promise<void>;
 	onActivity: () => void;
-	onTracing: (tracing: InstanceAiTraceContext) => void;
 	getAbortReason: () => string;
 	onFinish: (
 		result: Pick<SelfHealingRunResult, 'status' | 'reason' | 'finishReason'>,
@@ -125,7 +123,6 @@ export class SelfHealingAgentService {
 		private readonly sharedWorkflows: SharedWorkflowRepository,
 		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly memory: TypeORMAgentMemory,
-		private readonly checkpoints: TypeORMAgentCheckpointStore,
 		private readonly adapter: InstanceAiAdapterService,
 		private readonly models: InstanceAiModelService,
 		private readonly settings: InstanceAiSettingsService,
@@ -159,8 +156,6 @@ export class SelfHealingAgentService {
 
 		const metadata: SelfHealingThreadMetadata = {
 			selfHealing: {
-				version: 1,
-				purpose: 'self-healing',
 				backgroundUserId: user.id,
 				projectId: baseline.projectId,
 				workflowId: baseline.workflowId,
@@ -220,8 +215,7 @@ export class SelfHealingAgentService {
 				workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			});
 			if (tracing) {
-				options.onTracing(tracing);
-				options.tracing.storeTraceContext(runId, threadId, tracing, options.messageGroupId);
+				options.tracing.registerTraceContext(runId, threadId, tracing, options.messageGroupId);
 			}
 			context.tracing = tracing;
 
@@ -390,7 +384,6 @@ export class SelfHealingAgentService {
 			modelId,
 			context,
 			memory: this.memory,
-			checkpointStore: this.checkpoints,
 			thinkingEnabled: this.config.instanceAi.thinkingEnabled,
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
@@ -465,17 +458,6 @@ export class SelfHealingAgentService {
 		options: SelfHealingRunOptions,
 	): Promise<void> {
 		try {
-			if (stream?.status === 'suspended' && stream.agentRunId) {
-				await this.checkpoints.delete(stream.agentRunId);
-			}
-		} catch (error) {
-			this.logger.warn('Could not retire the self-healing checkpoint.', {
-				runId: result.runId,
-				error: getErrorMessage(error),
-			});
-		}
-
-		try {
 			options.onFinish(result, modelId, stream);
 		} catch (error) {
 			this.logger.warn('Could not report self-healing completion.', {
@@ -492,24 +474,10 @@ export class SelfHealingAgentService {
 			outputs: { output: result.output, validationError: result.validationError },
 		} satisfies Parameters<InstanceAiTracingService['finalizeRunTracing']>[2];
 
-		try {
-			await options.tracing.finalizeRunTracing(result.runId, tracing, finalization);
-		} catch (error) {
-			this.logger.warn('Could not finalize the self-healing run trace.', {
-				runId: result.runId,
-				error: getErrorMessage(error),
-			});
-		}
+		await options.tracing.finalizeRunTracing(result.runId, tracing, finalization);
 
 		if (tracing) {
-			try {
-				await options.tracing.finalizeMessageTraceRoot(result.runId, tracing, finalization);
-			} catch (error) {
-				this.logger.warn('Could not finalize the self-healing message trace.', {
-					runId: result.runId,
-					error: getErrorMessage(error),
-				});
-			}
+			await options.tracing.finalizeMessageTraceRoot(result.runId, tracing, finalization);
 		}
 	}
 }

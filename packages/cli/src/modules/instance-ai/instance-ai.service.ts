@@ -82,7 +82,6 @@ import {
 	isParseableAttachment,
 	enrichMessageWithBackgroundTasks,
 	isQuotaExhaustedError,
-	isSelfHealingResourceId,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
@@ -1556,7 +1555,6 @@ export class InstanceAiService {
 				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
 				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
 				onActivity: () => this.runState.touchActiveRun(threadId),
-				onTracing: (tracing) => this.runState.attachTracing(threadId, tracing),
 				getAbortReason: () => {
 					if (this.liveness.consumeRunTimeout(runId).timedOut)
 						return INSTANCE_AI_RUN_TIMEOUT_REASON;
@@ -5502,10 +5500,7 @@ export class InstanceAiService {
 		// to resume.
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
-			if (!state || isSelfHealingResourceId(state.persistence?.resourceId)) {
-				return { kind: 'no-checkpoint' };
-			}
-
+			if (!state) return { kind: 'no-checkpoint' };
 			const pendingToolCall = state.pendingToolCalls?.[orphan.toolCallId];
 			if (pendingToolCall?.suspended) {
 				toolName = pendingToolCall.toolName;

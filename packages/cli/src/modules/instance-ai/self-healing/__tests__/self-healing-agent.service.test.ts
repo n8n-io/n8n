@@ -23,7 +23,6 @@ import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import type { InstanceAiModelService } from '../../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { RuntimeSandboxEntry } from '../../sandbox/instance-ai-sandbox.service';
-import type { TypeORMAgentCheckpointStore } from '../../storage/typeorm-agent-checkpoint-store';
 import type { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import {
@@ -96,7 +95,6 @@ describe('SelfHealingAgentService', () => {
 	const projects = mock<SharedWorkflowRepository>();
 	const executions = mock<SelfHealingExecutionReferenceService>();
 	const memory = mock<TypeORMAgentMemory>();
-	const checkpoints = mock<TypeORMAgentCheckpointStore>();
 	const adapter = mock<InstanceAiAdapterService>();
 	const models = mock<InstanceAiModelService>();
 	const settings = mock<InstanceAiSettingsService>();
@@ -113,7 +111,6 @@ describe('SelfHealingAgentService', () => {
 		projects,
 		executions,
 		memory,
-		checkpoints,
 		adapter,
 		models,
 		settings,
@@ -147,14 +144,13 @@ describe('SelfHealingAgentService', () => {
 				destroySandbox: vi.fn().mockResolvedValue(undefined),
 			},
 			tracing: {
-				storeTraceContext: vi.fn(),
+				registerTraceContext: vi.fn(),
 				finalizeRunTracing: vi.fn(),
 				finalizeMessageTraceRoot: vi.fn(),
 			},
 			createProxyRunConfig: vi.fn().mockResolvedValue({}),
 			assertCreditsAvailable: vi.fn().mockResolvedValue(undefined),
 			onActivity: vi.fn(),
-			onTracing: vi.fn(),
 			getAbortReason: () => 'shutdown',
 			onFinish: vi.fn(),
 		};
@@ -336,16 +332,13 @@ describe('SelfHealingAgentService', () => {
 		});
 	});
 
-	it('preserves completion and closes both traces when diagnostics fail', async () => {
+	it('preserves output and closes both traces when completion reporting fails', async () => {
 		const tracing = mock<InstanceAiTraceContext>();
 		tracing.withActiveSpan.mockImplementation(async (_span, fn) => await fn());
 		vi.mocked(createInstanceAiTraceContext).mockResolvedValueOnce(tracing);
 		vi.mocked(options.onFinish).mockImplementationOnce(() => {
 			throw new Error('Metric unavailable');
 		});
-		vi.mocked(options.tracing.finalizeRunTracing).mockRejectedValueOnce(
-			new Error('Trace unavailable'),
-		);
 		const result = await service.execute(input, verifier, options);
 		expect(result.output).toEqual(validOutput);
 		expect(options.tracing.finalizeRunTracing).toHaveBeenCalledTimes(1);
@@ -380,13 +373,12 @@ describe('SelfHealingAgentService', () => {
 		expect(result.usage.credits).toBe(0.25);
 	});
 
-	it('retires unexpected suspension without creating a confirmation', async () => {
+	it('reports unexpected suspension without creating a confirmation', async () => {
 		stream.status = 'suspended';
 		stream.structuredOutput = undefined;
 		const result = await service.execute(input, verifier, options);
 		expect(result).toMatchObject({ status: 'suspended', reason: 'unexpected_suspension' });
 		expect(result.candidate).toBeUndefined();
-		expect(checkpoints.delete).toHaveBeenCalledWith('sdk-run');
 		expect(options.onFinish).toHaveBeenCalledWith(
 			expect.objectContaining({ reason: 'unexpected_suspension' }),
 			'test/model',

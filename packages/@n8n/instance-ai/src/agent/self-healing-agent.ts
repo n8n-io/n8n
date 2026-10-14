@@ -4,7 +4,6 @@ import {
 	Tool,
 	loadRuntimeSkillSourceFromDirectory,
 	type BuiltMemory,
-	type CheckpointStore,
 } from '@n8n/agents';
 import { resolve } from 'node:path';
 
@@ -38,7 +37,6 @@ export interface CreateSelfHealingAgentOptions {
 	modelId: ModelConfig;
 	context: InstanceAiContext;
 	memory?: BuiltMemory;
-	checkpointStore?: CheckpointStore;
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
@@ -143,7 +141,7 @@ export async function createSelfHealingAgent(
 		})
 		.tool(toolRegistryValues(tracedTools))
 		.structuredOutput(selfHealingOutputSchema)
-		.checkpoint(options.checkpointStore ?? 'memory');
+		.checkpoint('memory');
 
 	if (workspace) agent.workspace(workspace);
 	if (options.memory) agent.memory(new Memory().storage(options.memory));

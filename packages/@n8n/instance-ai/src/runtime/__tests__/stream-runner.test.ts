@@ -56,48 +56,6 @@ async function collectAsyncIterable(stream: AsyncIterable<unknown>) {
 }
 
 describe('streamAgentRun', () => {
-	it.each(['completed', 'cancelled', 'errored', 'suspended'] as const)(
-		'preserves terminal output, reason, and usage for %s runs',
-		async (status) => {
-			const terminalResult = {
-				status,
-				agentRunId: 'agent-run-1',
-				workSummary: emptyWorkSummary,
-				structuredOutput: { summary: 'Checked the candidate.' },
-				finishReason: 'max-iterations' as const,
-				usage: { promptTokens: 10, completionTokens: 0, totalTokens: 10, costUsd: 0 },
-			};
-			vi.mocked(executeResumableStream).mockResolvedValue(terminalResult);
-			const agent = {
-				stream: vi.fn().mockResolvedValue({
-					runId: 'agent-run-1',
-					fullStream: emptyStream(),
-				}),
-			};
-
-			const result = await streamAgentRun(
-				agent,
-				'test input',
-				{ recoverUsageOnAbort: true },
-				{
-					threadId: 'thread-1',
-					runId: 'run-1',
-					agentId: 'agent-1',
-					signal: new AbortController().signal,
-					eventBus: createEventBus(),
-					logger: createLogger(),
-					captureStreamErrors: true,
-				},
-			);
-
-			expect(result).toEqual(terminalResult);
-			expect(agent.stream).toHaveBeenCalledWith('test input', { recoverUsageOnAbort: true });
-			expect(executeResumableStream).toHaveBeenLastCalledWith(
-				expect.objectContaining({ captureStreamErrors: true }),
-			);
-		},
-	);
-
 	it('returns errored status when agent stream contains an error chunk', async () => {
 		vi.mocked(executeResumableStream).mockResolvedValue({
 			status: 'errored',
@@ -134,12 +92,16 @@ describe('streamAgentRun', () => {
 		expect(result.workSummary).toBe(emptyWorkSummary);
 	});
 
-	it('returns completed status for successful streams', async () => {
-		vi.mocked(executeResumableStream).mockResolvedValue({
+	it('preserves terminal details for successful streams', async () => {
+		const terminalResult = {
 			status: 'completed',
 			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
-		});
+			structuredOutput: { summary: 'Checked the candidate.' },
+			finishReason: 'max-iterations',
+			usage: { promptTokens: 10, completionTokens: 0, totalTokens: 10, costUsd: 0 },
+		} satisfies ResumableStreamExecutor.ExecuteResumableStreamResult;
+		vi.mocked(executeResumableStream).mockResolvedValue(terminalResult);
 		const eventBus = createEventBus();
 		const agent = {
 			stream: vi.fn().mockResolvedValue({
@@ -151,7 +113,7 @@ describe('streamAgentRun', () => {
 		const result = await streamAgentRun(
 			agent,
 			'test input',
-			{},
+			{ recoverUsageOnAbort: true },
 			{
 				threadId: 'thread-1',
 				runId: 'run-1',
@@ -159,11 +121,15 @@ describe('streamAgentRun', () => {
 				signal: new AbortController().signal,
 				eventBus,
 				logger: createLogger(),
+				captureStreamErrors: true,
 			},
 		);
 
-		expect(result.status).toBe('completed');
-		expect(result.workSummary).toBe(emptyWorkSummary);
+		expect(result).toEqual(terminalResult);
+		expect(agent.stream).toHaveBeenCalledWith('test input', { recoverUsageOnAbort: true });
+		expect(executeResumableStream).toHaveBeenLastCalledWith(
+			expect.objectContaining({ captureStreamErrors: true }),
+		);
 	});
 
 	it('passes through the buffered manual confirmation event', async () => {

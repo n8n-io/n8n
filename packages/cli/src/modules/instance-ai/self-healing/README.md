@@ -34,14 +34,14 @@ Unknown usage measurements stay null. The invocation claims measured credits onc
 Callers must not claim those credits again.
 
 Each invocation has a separate thread under `ia-self-healing:<actorId>`.
-The thread, memory, and checkpoint keep this resource identity.
-Versioned server metadata keeps the actor, project, workflow, and execution IDs.
+The thread and memory keep this resource identity. Checkpoints stay in memory.
+Server metadata records the actor, project, workflow, and execution IDs.
 The conversation stays hidden from every user, including the actor.
 Account credit updates omit its thread ID and thread total.
 Deleting the actor also removes these internal threads.
 
 The host uses its existing admission limits, run registry, sandbox, tracing, and shutdown drain.
-An unexpected suspension stops the invocation and removes its suspended checkpoint.
+An unexpected suspension stops the invocation.
 A crashed invocation becomes `crash_interrupted`. It cannot resume as ordinary chat.
 Workspace retention follows the existing sandbox lifecycle.
 Read and persist accepted candidate data before workspace cleanup removes it.

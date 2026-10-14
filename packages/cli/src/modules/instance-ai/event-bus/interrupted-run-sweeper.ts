@@ -1,11 +1,7 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import {
-	createSubAgentResourceIdPrefix,
-	isSelfHealingResourceId,
-	orchestratorAgentId,
-} from '@n8n/instance-ai';
+import { createSubAgentResourceIdPrefix, orchestratorAgentId } from '@n8n/instance-ai';
 import { InstanceSettings } from 'n8n-core';
 
 import { DurableLogMetrics } from './durable-log-metrics';
@@ -215,14 +211,7 @@ export class InterruptedRunSweeper {
 		// orphan path; terminalizing it would destroy that recovery. Only this
 		// run's own checkpoint counts — another run suspended on the same thread
 		// must not shield a crashed run.
-		// Internal producer runs cannot wait for a user confirmation.
-		if (
-			runCheckpoints.some(
-				(row) =>
-					row.state?.status === 'suspended' && !isSelfHealingResourceId(row.resourceId ?? ''),
-			)
-		)
-			return null;
+		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return null;
 
 		// Multi-main: durable activity is the liveness heartbeat — a sibling
 		// main driving this run appends facts and upserts its checkpoint every
