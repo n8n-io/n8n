@@ -640,6 +640,30 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({ handled: false });
 			expect(nativeOn('{{ $json.list.at(0) }}', { $json })).toEqual({ handled: true, value: 'a' });
 		});
+<<<<<<< HEAD
+=======
+
+		// extendSyntax rewrites the call into extend() dispatch regardless.
+		test('an own property does not shadow an extension', () => {
+			const $json = { list: Object.assign(['a'], { last: null }) };
+			expect(nativeOn('{{ $json.list.last() }}', { $json })).toEqual({ handled: true, value: 'a' });
+		});
+
+		// In combined binary mode the host copies every item per all() call, so a
+		// body calling it per visit is charged for the items each call returns.
+		test('node reference calls in a callback body are charged per item', () => {
+			const items = new Array<number>(MAX_RESULT_LENGTH).fill(0);
+			const $input = { all: () => items };
+			const visits = (count: number) => ({
+				$json: { list: new Array<number>(count).fill(0) },
+				$input,
+			});
+			const expr = '{{ $json.list.some(n => $input.all().length === -1) }}';
+			const fits = MAX_WORK / MAX_RESULT_LENGTH - 1;
+			expect(nativeOn(expr, visits(fits + 2))).toEqual({ handled: false });
+			expect(nativeOn(expr, visits(fits))).toEqual({ handled: true, value: false });
+		});
+>>>>>>> b270d486 (fix(core): Charge node reference calls against the native evaluation work budget (no-changelog) (#41080))
 	});
 
 	// extendSyntax rewrites calls to extension-named methods into extend()

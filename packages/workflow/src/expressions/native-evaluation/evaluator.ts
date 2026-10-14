@@ -149,6 +149,9 @@ function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): un
 		throw new EngineFallbackError();
 	}
 
+	// A node reference member (`.item`, `.json`) resolves through the proxy.
+	if (node.object.kind === 'nodeRef') env.charge(1);
+
 	const value = isParameterRead(node) ? readParameter(object, node.key, env) : object[node.key];
 
 	// Neither crosses an engine boundary the same way twice (the vm bridge
@@ -363,7 +366,11 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 	const receiver = evalReceiver(node, env);
 
 	if (node.receiver.kind === 'nodeRef') {
+<<<<<<< HEAD
 		return evalNodeRefCall(receiver, node.method);
+=======
+		return evalNodeRefCall(evalReceiver(node, env), node.method, env);
+>>>>>>> b270d486 (fix(core): Charge node reference calls against the native evaluation work budget (no-changelog) (#41080))
 	}
 
 	if (node.receiver.kind === 'timeRoot') {
@@ -433,12 +440,17 @@ function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): 
  * `first()`, `last()` and `all()` on a node proxy. The proxy hands back a
  * host function that reads run data for the node the reference names, which
  * is what the engines call too (the vm bridge routes it through typed RPC).
+ * The host can copy every item per call (combined binary mode does), so the
+ * result is charged per element; a callback body repeats the call per visit.
  */
-function evalNodeRefCall(proxy: unknown, method: string): unknown {
+function evalNodeRefCall(proxy: unknown, method: string, env: Env): unknown {
 	const fn: unknown = Reflect.get(proxy as object, method);
 	if (typeof fn !== 'function') throw new EngineFallbackError();
 
-	return bounded(fn.call(proxy));
+	const result = bounded(fn.call(proxy));
+	env.charge(isArray(result) ? result.length : 1);
+
+	return result;
 }
 
 /**
