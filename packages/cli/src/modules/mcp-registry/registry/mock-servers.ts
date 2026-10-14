@@ -189,3 +189,28 @@ export const linearMockServer: McpRegistryServer = {
 	status: 'active',
 	tags: ['issue-tracking', 'project-management'],
 } satisfies McpRegistryServer;
+
+/**
+ * LlamaIndex's official hosted MCP server, shaped like a live registry row: OAuth
+ * through dynamic client registration, no tools or tags. The slug matches the
+ * gateway provider, so the `n8n-connect-llamaindex` server pairs with it.
+ */
+export const llamaindexMockServer = {
+	name: 'ai.llamaindex/llamaparse-mcp',
+	slug: 'llamaindex',
+	title: 'LlamaParse',
+	description:
+		'Official LlamaParse MCP server. Parse, classify, extract and split documents, and search indexes of your files.',
+	tagline: 'Connect to the LlamaParse MCP Server',
+	version: '1.0.0',
+	updatedAt: '2026-10-14T10:00:00.000Z',
+	icons: [{ src: 'https://www.llamaindex.ai/favicon.svg', mimeType: 'image/svg+xml' }],
+	websiteUrl: 'https://developers.llamaindex.ai/llamaparse/for-agents/mcp/',
+	authType: 'oauth2',
+	remotes: [{ type: 'streamable-http', url: 'https://mcp.llamaindex.ai/mcp' }],
+	tools: [],
+	isOfficial: true,
+	origin: 'registry',
+	status: 'active',
+	tags: [],
+} satisfies McpRegistryServer;
