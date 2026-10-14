@@ -175,6 +175,22 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 	});
 
+	it('disables the save bar while the status save is in flight', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockReturnValue(new Promise(() => {}));
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
+
+		await dirtyEndpoint(getByTestId);
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).not.toBeDisabled());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeDisabled());
+		expect(updateOtelSettingsMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('saves only the status when enabling and keeps pending form edits unsaved', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
 		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));

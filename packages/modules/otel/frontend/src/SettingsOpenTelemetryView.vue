@@ -148,7 +148,12 @@ function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 		: envVariable;
 }
 
+const statusSaving = ref(false);
+
+// The status save and the form save both send a full PUT. One must wait for the
+// other, or the request that finishes last overwrites the status.
 async function save(): Promise<boolean> {
+	if (statusSaving.value) return false;
 	try {
 		const wasEnabled = otelStore.savedSettings.enabled;
 		await otelStore.saveSettings();
@@ -192,13 +197,12 @@ function discard() {
 	syncHeaderPairsFromStore();
 }
 
-const statusSaving = ref(false);
-
 /*
  * Enabling/disabling is a live status change, not a form draft: it applies
  * immediately with the saved config. Unsaved field edits stay in the save bar.
  */
 async function onToggleEnabled(enabled: boolean) {
+	if (otelStore.saving) return;
 	statusSaving.value = true;
 	try {
 		await otelStore.saveEnabled(enabled);
@@ -431,7 +435,7 @@ watch(
 						<template #action>
 							<OtelStatusControl
 								:enabled="otelStore.settings.enabled"
-								:disabled="isEnvManaged('enabled')"
+								:disabled="isEnvManaged('enabled') || otelStore.saving"
 								:loading="statusSaving"
 								@update:enabled="onToggleEnabled"
 							/>
@@ -789,6 +793,7 @@ watch(
 				:save-label="i18n.baseText('settings.opentelemetry.save')"
 				:discard-label="i18n.baseText('settings.opentelemetry.discard')"
 				:saving="otelStore.saving"
+				:save-disabled="statusSaving"
 				floating
 				@save="save"
 				@discard="discard"
