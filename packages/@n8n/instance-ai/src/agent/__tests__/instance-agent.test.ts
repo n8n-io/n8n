@@ -41,8 +41,16 @@ vi.mock('@n8n/agents', () => ({
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
-	createObservationLogObserveFn: vi.fn((model: unknown) => ({ task: 'observe', model })),
-	createObservationLogReflectFn: vi.fn((model: unknown) => ({ task: 'reflect', model })),
+	createObservationLogObserveFn: vi.fn((model: unknown, options: unknown) => ({
+		task: 'observe',
+		model,
+		options,
+	})),
+	createObservationLogReflectFn: vi.fn((model: unknown, options: unknown) => ({
+		task: 'reflect',
+		model,
+		options,
+	})),
 }));
 
 const mockBuiltTool = (name: string, marker?: string) => ({
@@ -945,12 +953,21 @@ describe('createInstanceAgent', () => {
 		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
 			observerThresholdTokens: 30_000,
 			reflectorThresholdTokens: 40_000,
-			observe: { task: 'observe', model: 'anthropic/claude-haiku-4-5' },
-			reflect: { task: 'reflect', model: 'anthropic/claude-haiku-4-5' },
+			observe: {
+				task: 'observe',
+				model: 'anthropic/claude-haiku-4-5',
+				options: { onUsage: undefined },
+			},
+			reflect: {
+				task: 'reflect',
+				model: 'anthropic/claude-haiku-4-5',
+				options: { onUsage: undefined },
+			},
 		});
 	});
 
 	it('runs the Observer and Reflector on the agent model when only usage reporting is set', async () => {
+		const onTaskUsage = vi.fn();
 		await createInstanceAgent({
 			modelId: 'anthropic/claude-opus-5-5',
 			context: {
@@ -967,7 +984,7 @@ describe('createInstanceAgent', () => {
 				observationalMemory: {
 					observerThresholdTokens: 30_000,
 					reflectorThresholdTokens: 40_000,
-					onTaskUsage: vi.fn(),
+					onTaskUsage,
 				},
 			},
 			mcpManager: createMcpManagerStub(),
@@ -975,8 +992,16 @@ describe('createInstanceAgent', () => {
 
 		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith(
 			expect.objectContaining({
-				observe: { task: 'observe', model: 'anthropic/claude-opus-5-5' },
-				reflect: { task: 'reflect', model: 'anthropic/claude-opus-5-5' },
+				observe: {
+					task: 'observe',
+					model: 'anthropic/claude-opus-5-5',
+					options: { onUsage: onTaskUsage },
+				},
+				reflect: {
+					task: 'reflect',
+					model: 'anthropic/claude-opus-5-5',
+					options: { onUsage: onTaskUsage },
+				},
 			}),
 		);
 	});
