@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type { IDataObject, WorkflowTestData } from 'n8n-workflow';
+import type { IDataObject, INodeParameters, WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
 
 const cleanupUserFolder = await vi.hoisted(async () => {
@@ -15,7 +15,7 @@ const cleanupUserFolder = await vi.hoisted(async () => {
 	};
 });
 
-const workflow = (updateFields: IDataObject): WorkflowTestData['input']['workflowData'] => ({
+const workflow = (updateFields: INodeParameters): WorkflowTestData['input']['workflowData'] => ({
 	nodes: [
 		{
 			id: 'trigger',
@@ -70,7 +70,7 @@ describe('HighLevel v2 contact update', () => {
 
 	const cases: Array<{
 		description: string;
-		updateFields: IDataObject;
+		updateFields: INodeParameters;
 		expectedBody: IDataObject;
 	}> = [
 		{
