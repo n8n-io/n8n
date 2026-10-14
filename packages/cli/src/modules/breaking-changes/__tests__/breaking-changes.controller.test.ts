@@ -11,6 +11,8 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import type { BreakingChangeMigrationService } from '../breaking-changes.migration.service';
 import { BreakingChangesController } from '../breaking-changes.controller';
 import type { RuleRegistry } from '../breaking-changes.rule-registry.service';
@@ -70,6 +72,7 @@ describe('BreakingChangesController', () => {
 	let eventService: MockProxy<EventService>;
 	let ownerAssignmentService: MockProxy<MigrationOwnerAssignmentService>;
 	let notificationService: MockProxy<MigrationFindingNotificationService>;
+	let workflowFinderService: MockProxy<WorkflowFinderService>;
 	let controller: BreakingChangesController;
 
 	beforeEach(() => {
@@ -84,6 +87,12 @@ describe('BreakingChangesController', () => {
 		eventService = mock<EventService>();
 		ownerAssignmentService = mock<MigrationOwnerAssignmentService>();
 		notificationService = mock<MigrationFindingNotificationService>();
+		workflowFinderService = mock<WorkflowFinderService>();
+		// The admin can edit every workflow, the member only wf-1 and wf-2.
+		workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
+			async (workflowIds, user) =>
+				new Set(workflowIds.filter((id) => user === admin || ['wf-1', 'wf-2'].includes(id))),
+		);
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
@@ -94,6 +103,7 @@ describe('BreakingChangesController', () => {
 			eventService,
 			ownerAssignmentService,
 			notificationService,
+			workflowFinderService,
 		);
 	});
 
@@ -380,6 +390,11 @@ describe('BreakingChangesController', () => {
 				'removed-nodes-v3',
 				['wf-1'],
 				'wont_fix',
+			);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf-1', 'wf-3'],
+				member,
+				['workflow:update'],
 			);
 		});
 

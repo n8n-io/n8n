@@ -655,34 +655,41 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
 		});
 
-		it("should mark every unused workflow as won't fix in one request and hide the callout", async () => {
-			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
-			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({
-					affectedWorkflows: [
-						unusedWorkflow,
-						{ ...unusedWorkflow, id: 'workflow-3', name: 'Test Workflow 3' },
-						recentWorkflow,
-					],
-				}),
-			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+		it.each([
+			['with', true],
+			['without', false],
+		])(
+			"should mark every unused workflow as won't fix in one request and hide the callout, %s the migrate scope",
+			async (_, hasMigrateScope) => {
+				rbacStore.hasScope.mockReturnValue(hasMigrateScope);
+				vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							unusedWorkflow,
+							{ ...unusedWorkflow, id: 'workflow-3', name: 'Test Workflow 3' },
+							recentWorkflow,
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
-			await userEvent.click(await screen.findByTestId('migration-rule-unused-mark-all'));
+				await userEvent.click(await screen.findByTestId('migration-rule-unused-mark-all'));
 
-			await waitFor(() => {
-				expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
-				expect(screen.getByText('1 affected')).toBeInTheDocument();
-			});
-			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledTimes(1);
-			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
-				rootStore.restApiContext,
-				'rule-1',
-				['workflow-1', 'workflow-3'],
-				'wont_fix',
-			);
-			expect(breakingChangesApi.updateFindingStatus).not.toHaveBeenCalled();
-		});
+				await waitFor(() => {
+					expect(screen.queryByTestId('migration-rule-unused-callout')).not.toBeInTheDocument();
+					expect(screen.getByText('1 affected')).toBeInTheDocument();
+				});
+				expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledTimes(1);
+				expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
+					rootStore.restApiContext,
+					'rule-1',
+					['workflow-1', 'workflow-3'],
+					'wont_fix',
+				);
+				expect(breakingChangesApi.updateFindingStatus).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should revert the rows and keep the callout when the save fails', async () => {
 			const error = new Error('Request failed');

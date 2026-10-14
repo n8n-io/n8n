@@ -29,6 +29,8 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { MigrationFindingNotificationService } from './notifications/migration-finding-notification.service';
@@ -56,6 +58,7 @@ export class BreakingChangesController {
 		private readonly eventService: EventService,
 		private readonly ownerAssignmentService: MigrationOwnerAssignmentService,
 		private readonly notificationService: MigrationFindingNotificationService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	/**
@@ -73,9 +76,12 @@ export class BreakingChangesController {
 
 	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */
 	private async editableWorkflowIds(user: User, workflowIds: string[]): Promise<string[]> {
-		const scope = await this.scopeFor(user);
-		if (scope.kind === 'instance') return workflowIds;
-		const editable = new Set(scope.workflowIds);
+		// Not `scopeFor`: it gives every workflow to a user with global read access.
+		const editable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			workflowIds,
+			user,
+			['workflow:update'],
+		);
 		return workflowIds.filter((workflowId) => editable.has(workflowId));
 	}
 
