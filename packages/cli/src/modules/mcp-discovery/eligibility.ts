@@ -21,6 +21,7 @@ export function evaluateMcpDiscoveryEligibility(
 	input: McpDiscoveryEligibilityInput,
 ): McpDiscoveryEligibility {
 	const { now, isTrial, firstLoginAt, assistantMutationAt, pickedClaude } = input;
+	if (pickedClaude === false) return { status: 'excluded', reason: 'client' };
 	if (isTrial === undefined) return { status: 'unknown' };
 	if (!isTrial) return { status: 'excluded', reason: 'trial' };
 	if (
@@ -33,12 +34,11 @@ export function evaluateMcpDiscoveryEligibility(
 		return { status: 'unknown' };
 	}
 	const eligibleAt = firstLoginAt + MCP_DISCOVERY_DELAY_MS;
-	if (now < eligibleAt) return { status: 'waiting', eligibleAt };
-	if (pickedClaude === undefined) return { status: 'unknown' };
-	if (!pickedClaude) return { status: 'excluded', reason: 'client' };
 	if (assistantMutationAt !== null && assistantMutationAt <= eligibleAt) {
 		return { status: 'excluded', reason: 'assistant' };
 	}
+	if (now < eligibleAt) return { status: 'waiting', eligibleAt };
+	if (pickedClaude === undefined) return { status: 'unknown' };
 	return { status: 'eligible', eligibleAt };
 }
 // EOF Experiment cleanup

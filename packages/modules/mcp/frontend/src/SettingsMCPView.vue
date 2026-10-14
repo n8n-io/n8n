@@ -349,7 +349,6 @@ onBeforeUnmount(() => {
 							discoveryOverrides?.clientDescription ??
 							i18n.baseText('settings.mcp.yourClient.description')
 						"
-						data-test-id="mcp-connect-next-step"
 					>
 						<template #action>
 							<component

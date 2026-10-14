@@ -61,10 +61,8 @@ it.each(['oauth', 'api_key'] as const)('preserves %s connection identity', async
 it.each([0, 2, undefined])(
 	'preserves the workflow write result (%s operations)',
 	async (operations) => {
-		const caller = { authType: 'api_key', apiKeyId: 'key' } as const;
 		events.emit('experiment-mcp-workflow-write-completed', {
 			userId: 'owner',
-			caller,
 			toolName: 'update_workflow',
 			workflowId: 'workflow',
 			status: 'success',

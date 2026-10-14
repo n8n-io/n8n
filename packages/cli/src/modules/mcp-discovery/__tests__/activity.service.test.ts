@@ -90,25 +90,21 @@ describe('MCP discovery activity', () => {
 		},
 	);
 
-	it.each(['Claude', 'Cursor', undefined])(
-		'exits after a successful MCP write from %s without assuming it is Claude',
-		async (clientName) => {
-			const events = new EventService();
-			const listener = new McpDiscoveryActivityEvents(events, service, mock());
-			listener.init();
-			events.emit('experiment-mcp-workflow-write-completed', {
-				userId: 'owner',
-				clientName,
-				toolName: 'update_workflow',
-				status: 'success',
-				workflowId: 'workflow',
-				structuredContent: { appliedOperations: 1 },
-			});
-			await listener.flush('owner');
-			expect(rows.has(discoveryUserKey('owner', 'claudeMcpUsedAt'))).toBe(true);
-			expect(rows.size).toBe(1);
-		},
-	);
+	it('exits after a successful MCP write without a client identity', async () => {
+		const events = new EventService();
+		const listener = new McpDiscoveryActivityEvents(events, service, mock());
+		listener.init();
+		events.emit('experiment-mcp-workflow-write-completed', {
+			userId: 'owner',
+			toolName: 'update_workflow',
+			status: 'success',
+			workflowId: 'workflow',
+			structuredContent: { appliedOperations: 1 },
+		});
+		await listener.flush('owner');
+		expect(rows.has(discoveryUserKey('owner', 'claudeMcpUsedAt'))).toBe(true);
+		expect(rows.size).toBe(1);
+	});
 
 	it('records a write without a connection observation or credential identity', async () => {
 		await service.recordMcpToolResult('owner', 'update_workflow', 'success', 'workflow', 1);

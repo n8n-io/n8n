@@ -1833,8 +1833,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore the direct tuple cast (as [...] instead of as unknown as [...]); keep the hook variables.
-			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
+			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
@@ -2014,8 +2013,7 @@ describe('WorkflowService', () => {
 			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
 
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore the direct tuple cast (as [...] instead of as unknown as [...]); keep the hook variables.
-			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
+			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
@@ -2044,8 +2042,7 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
 
-			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore the direct tuple cast (as [...] instead of as unknown as [...]); keep the hook variables.
-			const [, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
+			const [, hookArgs] = externalHooksMock.run.mock.calls[0] as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];

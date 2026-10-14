@@ -84,7 +84,12 @@ the value is available. Empty eligibility claims can be completed on a later vis
 
 ## Refresh and telemetry
 
-Check on initialization and every 60 seconds while waiting, unknown, or showing
+Retry unknown data after one minute twice, then after two, four, and at most five
+minutes. Keep retrying so temporary failures can recover. Reset the delay when
+data becomes available or the user changes. Reject a known non-Claude answer
+without waiting for the deadline.
+
+Check on initialization and every 60 seconds while waiting or showing
 entry points. Stop for control, excluded, inactive, or completed treatment users.
 Variant selection uses the existing editor flag lifecycle; this experiment does
 not fetch PostHog flags separately. Missing, disabled or unrecognized variants

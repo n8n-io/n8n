@@ -12,7 +12,8 @@ export interface McpDiscoveryEventMap {
 	'experiment-user-first-login': { userId: string; at: number };
 	'experiment-assistant-change-saved': { userId: string; at: number };
 	'experiment-mcp-client-connected': McpConnection;
-	'experiment-mcp-workflow-write-completed': McpConnection & {
+	'experiment-mcp-workflow-write-completed': {
+		userId: string;
 		toolName: string;
 		status: 'success' | 'error';
 		workflowId?: string;

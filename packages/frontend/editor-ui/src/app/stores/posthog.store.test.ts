@@ -119,7 +119,6 @@ describe('Posthog store', () => {
 		beforeEach(() => {
 			setup();
 		});
-		// EOF Experiment cleanup
 
 		it('should not init if posthog is not enabled', () => {
 			setSettings({ posthog: { ...DEFAULT_POSTHOG_SETTINGS, enabled: false } });
@@ -612,6 +611,7 @@ describe('Posthog store', () => {
 				);
 			});
 		});
+		// EOF Experiment cleanup
 
 		afterEach(() => {
 			resetStores();

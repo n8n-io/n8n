@@ -1,3 +1,10 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { mock } from 'vitest-mock-extended';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { createListTagsTool } from '../tools/list-tags.tool';
+// EOF Experiment cleanup
+
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore `type McpServer`; keep createMcpHandler.
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import {
@@ -16,6 +23,10 @@ import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	GLOBAL_OWNER_ROLE,
+	type UserRepository,
+	// EOF Experiment cleanup
 	ProjectRepository,
 	SharedWorkflowRepository,
 	User,
@@ -942,9 +953,7 @@ describe('McpService', () => {
 				);
 			},
 		);
-		// EOF Experiment cleanup
 
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('records successful Claude workflow results through the production registrar', async () => {
 			const user = mcpUser();
 			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
@@ -961,18 +970,14 @@ describe('McpService', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
 				userId: user.id,
-				clientName: 'Claude',
 				toolName: 'update_workflow',
 				status: 'success',
 				workflowId: 'wf-42',
 				structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
-				caller,
 			});
 		});
-		// EOF Experiment cleanup
 
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-		it('passes credentials to discovery when a legacy tool call has no client name', async () => {
+		it('records a workflow write when the client name is absent', async () => {
 			const user = mcpUser();
 			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
 			const caller = { authType: 'api_key', apiKeyId: 'claude-key' } as const;
@@ -988,14 +993,68 @@ describe('McpService', () => {
 			);
 			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
 				userId: user.id,
-				clientName: undefined,
 				toolName: 'create_workflow_from_code',
 				status: 'success',
 				workflowId: 'wf-42',
 				structuredContent: { workflowId: 'wf-42' },
-				caller,
 			});
 		});
+
+		it.each(['success', 'error'] as const)(
+			'keeps API-key identity out of telemetry and log streaming on %s',
+			async (status) => {
+				const relayEvents = new EventService();
+				const eventBus = mock<MessageEventBus>();
+				new LogStreamingEventRelay(
+					relayEvents,
+					eventBus,
+					mock<InstanceSettings>(),
+					mock<UserRepository>(),
+				).init();
+				vi.mocked(eventService.emit).mockImplementation(relayEvents.emit.bind(relayEvents));
+				const telemetry = mock<Telemetry>();
+				const tags = mock<TagService>();
+				if (status === 'error') tags.listWithUsageCount.mockRejectedValue(new Error('Unavailable'));
+				else tags.listWithUsageCount.mockResolvedValue({ data: [], totalCount: 0 });
+				const user = Object.assign(mcpUser(), { role: GLOBAL_OWNER_ROLE });
+				const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+				const register = mcpService.createToolRegistrar(
+					server,
+					user,
+					{ name: 'Claude' },
+					{
+						grantedScopes: undefined,
+						caller: { authType: 'api_key', apiKeyId: 'claude-key' },
+					},
+				);
+				const tool = register(createListTagsTool(user, tags, telemetry));
+				const invoke = tool.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+				if (status === 'error') await expect(invoke({}, {})).rejects.toThrow('Unavailable');
+				else await invoke({}, {});
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'mcp-tool-called',
+					expect.objectContaining({ authType: 'api_key', status }),
+				);
+				const call = vi
+					.mocked(eventService.emit)
+					.mock.calls.find(([name]) => name === 'mcp-tool-called');
+				expect(call?.[1]).not.toHaveProperty('apiKeyId');
+				expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+					'User called mcp tool',
+					expect.objectContaining({
+						tool_name: 'list_workflow_tags',
+						results: expect.objectContaining({ success: status === 'success' }),
+					}),
+				);
+				expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('apiKeyId');
+				expect(eventBus.sendMcpEvent).toHaveBeenCalledExactlyOnceWith({
+					eventName: 'n8n.audit.mcp.tool.called',
+					payload: expect.objectContaining({ authType: 'api_key', status }),
+				});
+				expect(eventBus.sendMcpEvent.mock.calls[0]?.[0].payload).not.toHaveProperty('apiKeyId');
+			},
+		);
 		// EOF Experiment cleanup
 
 		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {

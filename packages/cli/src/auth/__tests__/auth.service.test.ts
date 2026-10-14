@@ -758,9 +758,7 @@ describe('AuthService', () => {
 				discoveryActivity.emit.mock.invocationCallOrder[0],
 			);
 		});
-		// EOF Experiment cleanup
 
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('does not record a login if cookie issuance fails', () => {
 			res.cookie.mockImplementationOnce(() => {
 				throw new Error('Headers already sent');

@@ -263,6 +263,38 @@ describe('MCP discovery enrollment polling', () => {
 		expect(useMcpDiscoveryStore().shouldShowEntryPoints).toBe(true);
 	});
 
+	it('backs off repeated unknown responses and returns to minute polling after recovery', async () => {
+		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		await start();
+		await vi.advanceTimersByTimeAsync(120_000);
+		expect(mocks.request).toHaveBeenCalledTimes(3);
+		await vi.advanceTimersByTimeAsync(119_999);
+		expect(mocks.request).toHaveBeenCalledTimes(3);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(mocks.request).toHaveBeenCalledTimes(4);
+		await vi.advanceTimersByTimeAsync(240_000);
+		expect(mocks.request).toHaveBeenCalledTimes(5);
+		await vi.advanceTimersByTimeAsync(300_000);
+		expect(mocks.request).toHaveBeenCalledTimes(6);
+		mocks.request.mockResolvedValueOnce(waiting).mockResolvedValue(assigned());
+		await vi.advanceTimersByTimeAsync(300_000);
+		expect(useMcpDiscoveryStore().state.status).toBe('waiting');
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(useMcpDiscoveryStore().state.status).toBe('assigned');
+	});
+
+	it('clears the unknown retry delay when the user changes', async () => {
+		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		await start();
+		await vi.advanceTimersByTimeAsync(120_000);
+		mocks.request.mockResolvedValueOnce(waiting).mockResolvedValue(assigned());
+		reactive(mocks.users).currentUser = { id: 'another-owner' };
+		await vi.advanceTimersByTimeAsync(0);
+		expect(useMcpDiscoveryStore().state.status).toBe('waiting');
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(useMcpDiscoveryStore().state.status).toBe('assigned');
+	});
+
 	it('resumes polling for late flags and stops when the live flag is disabled', async () => {
 		mocks.flags.variant = undefined;
 		mocks.request.mockResolvedValue(assigned());

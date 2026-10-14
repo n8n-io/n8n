@@ -71,26 +71,18 @@ export class McpServerApiKeyService {
 			});
 
 			if (tokenGrant) {
-				// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-				const storedKey = await this.apiKeyRepository
-					.findOne({
-						where: {
-							apiKey,
-							audience: API_KEY_AUDIENCE,
-							userId: (tokenGrant.actor ?? tokenGrant.subject).id,
-						},
-						select: ['id'],
-					})
-					.catch(() => null); // Discovery must not reject an already verified token.
-				// EOF Experiment cleanup
 				return {
 					user: tokenGrant.actor ?? tokenGrant.subject,
 					actor: tokenGrant.actor,
 					// Every non-OAuth bearer token the strategy chain admits is reported
 					// as `api_key`, token-exchange scoped JWTs included. The distinction
 					// between them is not surfaced to telemetry or log streaming.
-					// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore caller: { authType: 'api_key' }.
-					caller: { authType: 'api_key', ...(storedKey ? { apiKeyId: storedKey.id } : {}) },
+					caller: {
+						authType: 'api_key',
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+						...(tokenGrant.apiKeyId ? { apiKeyId: tokenGrant.apiKeyId } : {}),
+						// EOF Experiment cleanup
+					},
 				};
 			}
 

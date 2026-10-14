@@ -1,6 +1,5 @@
 import type { Mocked } from 'vitest';
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only ApiKey from this import.
-import type { ApiKey, ApiKeyRepository, User, TokenGrant } from '@n8n/db';
+import type { ApiKeyRepository, User, TokenGrant } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -21,7 +20,6 @@ describe('McpServerApiKeyService', () => {
 		authStrategyRegistry = mock<AuthStrategyRegistry>();
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		apiKeys = mock<ApiKeyRepository>();
-		apiKeys.findOne.mockResolvedValue(null);
 		// EOF Experiment cleanup
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): replace apiKeys with mock<ApiKeyRepository>(); keep the service.
 		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
@@ -79,23 +77,24 @@ describe('McpServerApiKeyService', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		it('passes only the verified stored key ID for connection tracking', async () => {
 			const subject = makeUser('subject-1');
-			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, scopes: [] });
-			apiKeys.findOne.mockResolvedValue(mock<ApiKey>({ id: 'key-1' }));
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({
+				subject,
+				scopes: [],
+				apiKeyId: 'key-1',
+			});
 			const result = await service.verifyApiKey('secret-key');
 			expect(result.caller).toEqual({ authType: 'api_key', apiKeyId: 'key-1' });
-			expect(apiKeys.findOne).toHaveBeenCalledWith({
-				where: { apiKey: 'secret-key', audience: 'mcp-server-api', userId: subject.id },
-				select: ['id'],
-			});
+			expect(apiKeys.findOne).not.toHaveBeenCalled();
 		});
-		// EOF Experiment cleanup
 
-		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-		it('does not reject a valid login when connection metadata is unavailable', async () => {
+		it('does not look up a key for a scoped JWT grant', async () => {
 			const subject = makeUser('subject-1');
-			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, scopes: [] });
-			apiKeys.findOne.mockRejectedValue(new Error('Temporary failure'));
-			expect((await service.verifyApiKey('token')).user).toBe(subject);
+			const actor = makeUser('actor-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, actor, scopes: [] });
+			const result = await service.verifyApiKey('scoped-jwt');
+			expect(result.user).toBe(actor);
+			expect(result.caller).toEqual({ authType: 'api_key' });
+			expect(apiKeys.findOne).not.toHaveBeenCalled();
 		});
 		// EOF Experiment cleanup
 

@@ -2901,9 +2901,7 @@ describe('createWorkflowAdapter', () => {
 		await adapter.publish('wf-new');
 		expect(discoveryActivity.emit).toHaveBeenCalledTimes(2);
 	});
-	// EOF Experiment cleanup
 
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it('does not record writes without the thread context required by Builder events', async () => {
 		const { adapter, discoveryActivity, mockTelemetry } = createWorkflowAdapterForTests({
 			threadId: null,
@@ -2915,9 +2913,7 @@ describe('createWorkflowAdapter', () => {
 		expect(discoveryActivity.emit).not.toHaveBeenCalled();
 		expect(mockTelemetry.track).not.toHaveBeenCalled();
 	});
-	// EOF Experiment cleanup
 
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it.each(['create', 'update'] as const)(
 		'does not record a failed Builder %s',
 		async (operation) => {
@@ -2935,9 +2931,7 @@ describe('createWorkflowAdapter', () => {
 			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		},
 	);
-	// EOF Experiment cleanup
 
-	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	it('records a successful save even when telemetry fails', async () => {
 		const { adapter, discoveryActivity, mockTelemetry, mockUser } = createWorkflowAdapterForTests();
 		mockTelemetry.track.mockImplementationOnce(() => {

@@ -47,6 +47,30 @@ describe('MCP discovery eligibility', () => {
 		});
 	});
 
+	it.each([firstVisit, undefined])(
+		'excludes a non-Claude answer before waiting (login: %s)',
+		(firstLoginAt) => {
+			expect(
+				evaluateMcpDiscoveryEligibility({
+					...eligible,
+					now: firstVisit,
+					firstLoginAt,
+					pickedClaude: false,
+				}),
+			).toEqual({ status: 'excluded', reason: 'client' });
+		},
+	);
+
+	it('excludes an Assistant edit before the waiting period ends', () => {
+		expect(
+			evaluateMcpDiscoveryEligibility({
+				...eligible,
+				now: firstVisit + 1000,
+				assistantMutationAt: firstVisit + 500,
+			}),
+		).toEqual({ status: 'excluded', reason: 'assistant' });
+	});
+
 	it('excludes an account that is not trialing', () => {
 		expect(evaluateMcpDiscoveryEligibility({ ...eligible, isTrial: false })).toEqual({
 			status: 'excluded',

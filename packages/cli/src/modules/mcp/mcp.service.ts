@@ -392,12 +392,10 @@ export class McpService {
 					) {
 						this.eventService.emit('experiment-mcp-workflow-write-completed', {
 							userId: user.id,
-							clientName: clientInfo?.name,
 							toolName: tool.name,
 							status,
 							workflowId: getWorkflowId(result.structuredContent),
 							structuredContent: result.structuredContent,
-							caller: auth?.caller,
 						});
 					}
 					// EOF Experiment cleanup
