@@ -657,28 +657,44 @@ export class AgentWorkflowExecutionService {
 		});
 	}
 
+	/**
+	 * Release the isolated agent after the run. `close()` disconnects its MCP
+	 * clients. A close failure must not replace the run result or error.
+	 */
+	private async closeAgentQuietly(agent: BuiltAgent): Promise<void> {
+		await agent.close().catch((error) => {
+			this.logger.warn('Failed to close workflow agent after execution', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	}
+
 	private async executeForWorkflowInternal(
 		params: StoredWorkflowExecutionContext,
 	): Promise<ExecuteAgentData> {
 		const { agentId, projectId, threadId, outputSchema, sandboxScope } = params;
 		const { agentInstance, recordingParams, runType, budget } =
 			await this.prepareStoredWorkflowRun(params);
-		const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
-			telemetryAgentId: agentId,
-			savedAgentId: agentId,
-			runType,
-			budget,
-			recordingParams: { ...recordingParams, agentName: agentInstance.name },
-			...(sandboxScope
-				? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
-				: {}),
-		});
-		return this.buildWorkflowResult({
-			run,
-			// The caller remaps the scoped thread key to its session id.
-			session: { agentId, projectId, sessionId: threadId, threadId },
-			outputSchema,
-		});
+		try {
+			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
+				telemetryAgentId: agentId,
+				savedAgentId: agentId,
+				runType,
+				budget,
+				recordingParams: { ...recordingParams, agentName: agentInstance.name },
+				...(sandboxScope
+					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
+					: {}),
+			});
+			return this.buildWorkflowResult({
+				run,
+				// The caller remaps the scoped thread key to its session id.
+				session: { agentId, projectId, sessionId: threadId, threadId },
+				outputSchema,
+			});
+		} finally {
+			await this.closeAgentQuietly(agentInstance);
+		}
 	}
 
 	private async prepareStoredWorkflowRun(params: StoredWorkflowExecutionContext) {
@@ -880,13 +896,18 @@ export class AgentWorkflowExecutionService {
 			workflowContext,
 			streamObserver,
 		};
-		const run = await this.streamCompiledWorkflowAgent(compiled.agent, params, {
-			telemetryAgentId: syntheticAgentId,
-			runType,
-			budget: compiled.budget,
-		});
-		this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
-		return this.buildWorkflowResult({ run, session: null, outputSchema });
+		const agentInstance = compiled.agent;
+		try {
+			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
+				telemetryAgentId: syntheticAgentId,
+				runType,
+				budget: compiled.budget,
+			});
+			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
+			return this.buildWorkflowResult({ run, session: null, outputSchema });
+		} finally {
+			await this.closeAgentQuietly(agentInstance);
+		}
 	}
 
 	private async prepareInlineRuntime(
