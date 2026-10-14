@@ -222,7 +222,7 @@ export class PublicApiControllerRegistry {
 
 			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
 			middlewares.push(
-				...this.rateLimitService.createMiddlewares(route.method, route.rateLimitTier),
+				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitTier),
 			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always

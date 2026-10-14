@@ -12,7 +12,7 @@ Object.assign(Container.get(GlobalConfig).publicApi.rateLimit, {
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 describe('Public API rate limiting', () => {
-	test('should return 429 when an API key goes over the total read limit', async () => {
+	test('should return 429 when an API key goes over the all-endpoints read limit', async () => {
 		const owner = await createOwnerWithApiKey();
 		const agent = testServer.publicApiAgentFor(owner);
 

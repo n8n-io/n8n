@@ -144,7 +144,7 @@ describe('Public API rate limiting', () => {
 		await sendTimes(app, 3, 'get', '/widgets');
 	});
 
-	it('returns 429 with rate-limit headers when the total read limit is reached', async () => {
+	it('returns 429 with rate-limit headers when the all-endpoints read limit is reached', async () => {
 		const app = activate({ globalReadLimit: 2 });
 
 		await send(app, 'get', '/widgets');
@@ -213,7 +213,7 @@ describe('Public API rate limiting', () => {
 		await sendTimes(app, 2, 'get', '/widgets/other');
 	});
 
-	it('does not count a request that the endpoint limit blocks against the total', async () => {
+	it('does not count a request that the per-endpoint limit blocks toward the all-endpoints limit', async () => {
 		const app = activate({ globalReadLimit: 3, endpointReadLimit: 1 });
 
 		await send(app, 'get', '/widgets');
@@ -224,7 +224,7 @@ describe('Public API rate limiting', () => {
 		await sendTimes(app, 1, 'get', '/widgets/1');
 	});
 
-	it('reports the total limit in the headers of a successful request', async () => {
+	it('reports the all-endpoints limit in the headers of a successful request', async () => {
 		const app = activate({ globalReadLimit: 10, endpointReadLimit: 5 });
 
 		const response = await send(app, 'get', '/widgets');

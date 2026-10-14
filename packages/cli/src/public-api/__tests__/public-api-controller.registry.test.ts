@@ -59,7 +59,7 @@ describe('PublicApiControllerRegistry', () => {
 			authStrategyRegistry,
 			lastActiveAtService,
 			eventService,
-			mock<PublicApiRateLimitService>({ createMiddlewares: () => [] }),
+			mock<PublicApiRateLimitService>({ createRouteLimiters: () => [] }),
 		).activate(router, 'v1');
 		// mirrors the production mount, `apiController.use('/api/v1', ..., controllerRouter)`
 		app.use('/api/v1', router);
