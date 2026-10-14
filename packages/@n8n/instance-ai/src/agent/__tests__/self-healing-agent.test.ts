@@ -170,6 +170,7 @@ describe('createSelfHealingAgent', () => {
 				build(): Promise<{
 					tools: BuiltTool[];
 					instructions: string;
+					checkpointStorage?: unknown;
 					observationalMemory?: unknown;
 					skillSource?: unknown;
 				}>;
@@ -196,6 +197,7 @@ describe('createSelfHealingAgent', () => {
 		expect(config.instructions).toContain('knowledge-base/reference/workflow-sdk-language.md');
 		expect(config.instructions).toContain('Filesystem access is scoped to `/workspace`');
 		expect(config.instructions).toContain('execute commands in the workspace');
+		expect(config.checkpointStorage).toBe('memory');
 		expect(config.observationalMemory).toBeUndefined();
 		expect(config.skillSource).toBeUndefined();
 		expect(await loadInstanceAiRuntimeSkillSource().loadSkill('self-healing')).toBeNull();
@@ -211,11 +213,10 @@ describe('createSelfHealingAgent', () => {
 		['data-tables', { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
 		['nodes', { action: 'execute', nodeType: 'n8n-nodes-base.httpRequest' }],
 		['nodes', { action: 'explore-resources', nodeType: 'n8n-nodes-base.slack' }],
-	])('rejects unavailable %s actions in the schema and handler', async (name, input) => {
+	])('rejects unavailable %s actions in the schema', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);
 		expect(parseToolInput(tool, input).success).toBe(false);
-		await expect(executeTool(tool, input)).rejects.toThrow('action is not available');
 	});
 
 	it('keeps execution reads and adapter access checks', async () => {

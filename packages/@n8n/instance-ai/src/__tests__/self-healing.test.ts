@@ -1,4 +1,4 @@
-import { selfHealingOutputSchema, selfHealingThreadMetadataSchema } from '../self-healing';
+import { selfHealingOutputSchema } from '../self-healing';
 
 const report = { summary: 'Correct the field mapping.', report: 'The field name changed.' };
 
@@ -29,37 +29,5 @@ describe('self-healing output', () => {
 	it('rejects missing and malformed output', () => {
 		expect(selfHealingOutputSchema.safeParse(undefined).success).toBe(false);
 		expect(selfHealingOutputSchema.safeParse('could_not_fix').success).toBe(false);
-	});
-});
-
-describe('self-healing thread metadata', () => {
-	const metadata = {
-		profileVersion: 'self-healing-v1',
-		selfHealing: {
-			version: 1,
-			purpose: 'self-healing',
-			backgroundUserId: 'actor',
-			projectId: 'project',
-			workflowId: 'workflow',
-			executionId: 'execution',
-		},
-	};
-
-	it('reads identity alongside unrelated thread metadata', () => {
-		expect(selfHealingThreadMetadataSchema.parse({ ...metadata, title: 'Internal' })).toEqual(
-			metadata,
-		);
-	});
-
-	it('rejects unsupported identity and profile versions', () => {
-		expect(
-			selfHealingThreadMetadataSchema.safeParse({ ...metadata, profileVersion: 'v2' }).success,
-		).toBe(false);
-		expect(
-			selfHealingThreadMetadataSchema.safeParse({
-				...metadata,
-				selfHealing: { ...metadata.selfHealing, version: 2 },
-			}).success,
-		).toBe(false);
 	});
 });

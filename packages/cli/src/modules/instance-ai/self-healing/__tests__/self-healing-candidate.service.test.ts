@@ -9,10 +9,8 @@ import { mock } from 'vitest-mock-extended';
 import type { License } from '@/license';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import { toWorkflowJSON } from '../../workflow-json';
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import { SelfHealingCandidateService } from '../self-healing-candidate.service';
-import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import type { SelfHealingTemporaryWorkflowService } from '../self-healing-temporary-workflow.service';
 
 const user = mock<User>({ id: 'actor-1', disabled: false });
@@ -65,7 +63,6 @@ function candidateSource(
 
 describe('SelfHealingCandidateService', () => {
 	const suggestions = mock<WorkflowSuggestionService>();
-	const executions = mock<SelfHealingExecutionReferenceService>();
 	const temporaryWorkflows = mock<SelfHealingTemporaryWorkflowService>();
 	const logger = mock<Logger>();
 	const enterpriseWorkflows = mock<EnterpriseWorkflowService>();
@@ -75,7 +72,6 @@ describe('SelfHealingCandidateService', () => {
 	const workspace = mock<Workspace>({ filesystem });
 	const service = new SelfHealingCandidateService(
 		suggestions,
-		executions,
 		temporaryWorkflows,
 		logger,
 		enterpriseWorkflows,
@@ -91,7 +87,6 @@ describe('SelfHealingCandidateService', () => {
 		source = candidateSource('Repaired process');
 		filesystem.readFile.mockImplementation(async () => source);
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
-		executions.getReference.mockResolvedValue({ status: 'available', id: 'failed-1' });
 		temporaryWorkflows.withTemporaryWorkflow.mockImplementation(async (_input, verify) => {
 			return await verify('temporary-1');
 		});
@@ -104,7 +99,6 @@ describe('SelfHealingCandidateService', () => {
 		input = {
 			user,
 			baseline: structuredClone(baseline),
-			executionId: 'failed-1',
 			filePath: 'self-healing/candidate.json',
 			abortSignal: new AbortController().signal,
 			context: mock<InstanceAiContext>({
@@ -113,10 +107,7 @@ describe('SelfHealingCandidateService', () => {
 				workspace,
 				logger,
 				executionService,
-				workflowService: mock<InstanceAiContext['workflowService']>({
-					getAsWorkflowJSON: async () =>
-						toWorkflowJSON({ ...baseline.original, id: baseline.workflowId }),
-				}),
+				workflowService: mock<InstanceAiContext['workflowService']>(),
 				nodeService: mock<InstanceAiContext['nodeService']>(),
 				credentialService: mock<InstanceAiContext['credentialService']>({
 					list: async () => [],
@@ -337,16 +328,6 @@ describe('SelfHealingCandidateService', () => {
 		expect(result).toMatchObject({
 			verification: { success: false, error: 'The workflow baseline has changed.' },
 		});
-		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
-		expect(executionService.run).not.toHaveBeenCalled();
-	});
-
-	it('rejects unavailable execution context before reading the candidate', async () => {
-		executions.getReference.mockResolvedValueOnce({ status: 'unavailable' });
-
-		await expect(service.verify(input)).rejects.toThrow('The failed execution is unavailable');
-
-		expect(filesystem.readFile).not.toHaveBeenCalled();
 		expect(temporaryWorkflows.withTemporaryWorkflow).not.toHaveBeenCalled();
 		expect(executionService.run).not.toHaveBeenCalled();
 	});

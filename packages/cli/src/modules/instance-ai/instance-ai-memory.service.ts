@@ -23,7 +23,7 @@ import {
 	getSelfHealingResourceId,
 	isSelfHealingResourceId,
 	patchThread,
-	selfHealingThreadMetadataSchema,
+	SELF_HEALING_RESOURCE_PREFIX,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
 	type AgentTreeSnapshot,
@@ -301,12 +301,7 @@ export class InstanceAiMemoryService {
 		if (!thread) return undefined;
 		if (!isSelfHealingResourceId(thread.resourceId)) return thread.resourceId;
 
-		const metadata = selfHealingThreadMetadataSchema.safeParse(thread.metadata);
-		if (!metadata.success) return undefined;
-
-		const actorId = metadata.data.selfHealing.backgroundUserId;
-
-		return getSelfHealingResourceId(actorId) === thread.resourceId ? actorId : undefined;
+		return thread.resourceId.slice(SELF_HEALING_RESOURCE_PREFIX.length) || undefined;
 	}
 
 	async listThreadHistory(

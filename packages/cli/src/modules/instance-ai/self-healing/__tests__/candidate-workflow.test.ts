@@ -86,10 +86,7 @@ describe('compileCandidateWorkflow', () => {
 		context = mock<InstanceAiContext>({
 			workspace: createScopedWorkspace(new Workspace({ filesystem }), directory),
 			nodeTypesProvider: undefined,
-			workflowService: mock<InstanceAiContext['workflowService']>({
-				getAsWorkflowJSON: async () =>
-					toWorkflowJSON({ ...baseline.original, id: baseline.workflowId }),
-			}),
+			workflowService: mock<InstanceAiContext['workflowService']>(),
 			nodeService: mock<InstanceAiContext['nodeService']>(),
 			credentialService: mock<InstanceAiContext['credentialService']>({
 				list: async () => [
@@ -198,25 +195,6 @@ describe('compileCandidateWorkflow', () => {
 		const compiledRequest = result.workflow.nodes.find((node) => node.id === 'request');
 		expect(compiledRequest).not.toHaveProperty('continueOnFail');
 		expect(compiledRequest).not.toHaveProperty('onError');
-	});
-
-	it('reads each edit to the same file', async () => {
-		const workflow = generatedWorkflow();
-		changeUrl(workflow, 'https://example.test/first');
-		await writeCandidate(workflow);
-		const first = await compile();
-		changeUrl(workflow, 'https://example.test/second');
-		await writeCandidate(workflow);
-		const second = await compile();
-
-		expect(first.success && second.success).toBe(true);
-		if (!first.success || !second.success) return;
-		expect(first.workflow.nodes.find((node) => node.id === 'request')?.parameters.url).toBe(
-			'https://example.test/first',
-		);
-		expect(second.workflow.nodes.find((node) => node.id === 'request')?.parameters.url).toBe(
-			'https://example.test/second',
-		);
 	});
 
 	it('accepts added nodes and connection changes', async () => {

@@ -17,7 +17,6 @@ import { randomUUID } from 'node:crypto';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 
-import { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
 import { SelfHealingTemporaryWorkflowRepository } from '../database/self-healing-temporary-workflow.repository';
 
 let repository: SelfHealingTemporaryWorkflowRepository;
@@ -74,7 +73,7 @@ async function fixture() {
 		{ policyCleared },
 		async (ctx) => await repository.createTemporary(temporary, original.id, ctx),
 	);
-	return { original, originalHistory, saved, projectId: project.id };
+	return { original, originalHistory, saved };
 }
 
 it('copies access and keeps the original workflow and its history unchanged', async () => {
@@ -165,22 +164,6 @@ it('keeps an old snapshot when its execution was just canceled', async () => {
 	expect(await repository.canDelete(saved.id)).toBe(false);
 	await executions.update(execution.id, { stoppedAt: old });
 	expect(await repository.canDelete(saved.id)).toBe(true);
-});
-
-it('keeps cleanup markers when the investigation thread is deleted', async () => {
-	const { saved, projectId } = await fixture();
-	const threadId = randomUUID();
-	await Container.get(InstanceAiThreadRepository).save({
-		id: threadId,
-		projectId,
-		resourceId: 'test-verification',
-		title: '',
-	});
-	await Container.get(InstanceAiThreadRepository).delete(threadId);
-	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(true);
-	await repository.deleteTemporary(saved.id);
-	expect(await Container.get(WorkflowRepository).existsBy({ id: saved.id })).toBe(false);
-	expect(await repository.existsBy({ id: markerId(saved.id) })).toBe(false);
 });
 
 it('removes the cleanup marker when the workflow was already deleted', async () => {

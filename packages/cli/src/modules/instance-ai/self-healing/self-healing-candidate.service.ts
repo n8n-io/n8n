@@ -23,13 +23,11 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import { toWorkflowJSON } from '../workflow-json';
 import { compileCandidateWorkflow, type CandidateWorkflowResult } from './candidate-workflow';
-import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingTemporaryWorkflowService } from './self-healing-temporary-workflow.service';
 
 type CandidateInput = SelfHealingCandidateInput & {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
-	executionId: string;
 	context: InstanceAiContext;
 	abortSignal: AbortSignal;
 };
@@ -41,7 +39,6 @@ type CompiledCandidate = Extract<CandidateWorkflowResult, { success: true }> & {
 export class SelfHealingCandidateService {
 	constructor(
 		private readonly suggestions: WorkflowSuggestionService,
-		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly temporaryWorkflows: SelfHealingTemporaryWorkflowService,
 		private readonly logger: Logger,
 		private readonly enterpriseWorkflows: EnterpriseWorkflowService,
@@ -57,14 +54,6 @@ export class SelfHealingCandidateService {
 		}
 
 		const user = await this.suggestions.requireCurrentBaseline(baseline);
-		const execution = await this.executions.getReference(
-			user,
-			baseline.workflowId,
-			input.executionId,
-		);
-		if (execution.status !== 'available') {
-			throw new ForbiddenError('The failed execution is unavailable for this workflow.');
-		}
 
 		const compiled = await compileCandidateWorkflow({
 			baseline,

@@ -601,10 +601,6 @@ export function createExecutionsTool(
 		.suspend(suspendSchema)
 		.resume(resumeSchema)
 		.handler(async (input: Input, ctx) => {
-			if (options.allowedActions && !options.allowedActions.includes(input.action)) {
-				throw new Error('Execution action is not available');
-			}
-
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);

@@ -4,7 +4,6 @@ import {
 	Tool,
 	loadRuntimeSkillSourceFromDirectory,
 	type BuiltMemory,
-	type CheckpointStore,
 } from '@n8n/agents';
 import { resolve } from 'node:path';
 
@@ -38,7 +37,6 @@ export interface CreateSelfHealingAgentOptions {
 	modelId: ModelConfig;
 	context: InstanceAiContext;
 	memory?: BuiltMemory;
-	checkpointStore?: CheckpointStore;
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
@@ -75,15 +73,13 @@ function createSelfHealingTools(
 		createN8nDocsTool(context),
 		createResearchTool(context, { interactive: false }),
 		new Tool('verify_candidate')
-			.description(
-				'Verify the candidate against the original failed execution and workflow baseline.',
-			)
+			.description('Verify the candidate against the captured workflow baseline.')
 			.input(selfHealingCandidateInputSchema)
 			.handler(async (input, ctx) => {
 				const signal = abortSignal ?? ctx.abortSignal;
 				signal?.throwIfAborted();
 
-				return await verifyCandidate(selfHealingCandidateInputSchema.parse(input), signal);
+				return await verifyCandidate(input, signal);
 			})
 			.build(),
 	]);
@@ -143,7 +139,7 @@ export async function createSelfHealingAgent(
 		})
 		.tool(toolRegistryValues(tracedTools))
 		.structuredOutput(selfHealingOutputSchema)
-		.checkpoint(options.checkpointStore ?? 'memory');
+		.checkpoint('memory');
 
 	if (workspace) agent.workspace(workspace);
 	if (options.memory) agent.memory(new Memory().storage(options.memory));

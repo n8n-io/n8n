@@ -936,7 +936,6 @@ export const isSelfHealingResourceId: typeof SelfHealingMod.isSelfHealingResourc
 );
 export type {
 	SelfHealingOutput,
-	SelfHealingIdentity,
 	SelfHealingThreadMetadata,
 	SelfHealingCandidateInput,
 	SelfHealingCandidateVerifier,
@@ -960,10 +959,3 @@ defineLazyExport(
 );
 export declare const selfHealingOutputSchema: typeof SelfHealingMod.selfHealingOutputSchema;
 defineLazyExport('selfHealingOutputSchema', () => loadSelfHealing().selfHealingOutputSchema);
-export declare const selfHealingIdentitySchema: typeof SelfHealingMod.selfHealingIdentitySchema;
-defineLazyExport('selfHealingIdentitySchema', () => loadSelfHealing().selfHealingIdentitySchema);
-export declare const selfHealingThreadMetadataSchema: typeof SelfHealingMod.selfHealingThreadMetadataSchema;
-defineLazyExport(
-	'selfHealingThreadMetadataSchema',
-	() => loadSelfHealing().selfHealingThreadMetadataSchema,
-);

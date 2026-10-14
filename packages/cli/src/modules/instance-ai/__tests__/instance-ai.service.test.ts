@@ -18,7 +18,6 @@ vi.mock('@n8n/instance-ai', async () => {
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
-		isSelfHealingResourceId: profiles.isSelfHealingResourceId,
 		RunStateRegistry: profiles.RunStateRegistry,
 		describePromptProfile: profiles.describePromptProfile,
 		setTracePromptVersion: vi.fn(),
@@ -1551,7 +1550,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 			projectId: 'project-1',
 		}),
 		executionId: 'execution-1',
-		message: 'The execution failed.',
 	};
 
 	function createLauncher() {
@@ -1803,39 +1801,6 @@ describe('InstanceAiService — self-healing launcher', () => {
 		);
 		expect(service.emitRunMetrics).toHaveBeenCalledTimes(1);
 	});
-
-	it.each([undefined, { selfHealing: { version: 99 }, profileVersion: 'unsupported' }])(
-		'rejects internal checkpoints before rebuilding ordinary chat tools: %j',
-		async (hostMetadata) => {
-			const service = Object.assign(createTerminalGuardOrderService(), {
-				revalidateActiveUser: vi.fn(async () => fakeUser),
-				createExecutionEnvironment: vi.fn(),
-				createAgentFromEnvironment: vi.fn(),
-			});
-			service.checkpointStore.load.mockResolvedValue({
-				status: 'suspended',
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-				persistence: {
-					threadId: 'internal-thread',
-					resourceId: `ia-self-healing:${fakeUser.id}`,
-					hostMetadata,
-				},
-			});
-
-			const result = await service.rebuildSuspendedRunFromCheckpoint(
-				mock<ResumableOrphan>({
-					userId: fakeUser.id,
-					threadId: 'internal-thread',
-					checkpointKey: 'checkpoint-1',
-				}),
-			);
-
-			expect(result).toEqual({ kind: 'no-checkpoint' });
-			expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
-			expect(service.createAgentFromEnvironment).not.toHaveBeenCalled();
-		},
-	);
 
 	it('rejects an actor who tries to use a producer thread as ordinary chat', async () => {
 		const service = Object.assign(

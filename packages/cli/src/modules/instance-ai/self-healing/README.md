@@ -7,8 +7,7 @@ It also provides the result review API.
 
 Call `InstanceAiService.startSelfHealingRun(input)` from backend code.
 Set `N8N_INSTANCE_AI_SELF_HEALING_ENABLED=true` before startup.
-Supply the acting `user`, captured `WorkflowSuggestionBaseline`, failed `executionId`,
-and failure description in `message`.
+Supply the acting `user`, captured `WorkflowSuggestionBaseline`, and failed `executionId`.
 The actor must match `baseline.backgroundUserId` and have current workflow read and edit access.
 The baseline project and execution must belong to `baseline.workflowId`.
 
@@ -34,14 +33,14 @@ Unknown usage measurements stay null. The invocation claims measured credits onc
 Callers must not claim those credits again.
 
 Each invocation has a separate thread under `ia-self-healing:<actorId>`.
-The thread, memory, and checkpoint keep this resource identity.
-Versioned server metadata keeps the actor, project, workflow, and execution IDs.
+The thread and memory keep this resource identity. Checkpoints stay in memory.
+Server metadata records the actor, project, workflow, and execution IDs.
 The conversation stays hidden from every user, including the actor.
 Account credit updates omit its thread ID and thread total.
 Deleting the actor also removes these internal threads.
 
 The host uses its existing admission limits, run registry, sandbox, tracing, and shutdown drain.
-An unexpected suspension stops the invocation and removes its suspended checkpoint.
+An unexpected suspension stops the invocation.
 A crashed invocation becomes `crash_interrupted`. It cannot resume as ordinary chat.
 Workspace retention follows the existing sandbox lifecycle.
 Read and persist accepted candidate data before workspace cleanup removes it.

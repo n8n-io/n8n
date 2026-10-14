@@ -4600,6 +4600,7 @@ describe('createWorkflowAdapter', () => {
 					typeVersion: 4.2,
 					position: [0, 0],
 					parameters: { url: 'https://example.com' },
+					credentials: { httpHeaderAuth: { id: 'credential-id', name: 'Credential' } },
 				},
 			],
 			connections: {},
@@ -4615,6 +4616,8 @@ describe('createWorkflowAdapter', () => {
 			const result = await adapter.getAsWorkflowJSON('wf-1');
 
 			expect(result.nodes[0].parameters).toEqual({});
+			expect(result.nodes[0].credentials).toEqual(workflowWithParameters.nodes[0].credentials);
+			expect(workflowWithParameters.nodes[0].parameters).toEqual({ url: 'https://example.com' });
 		});
 
 		it('includes parameters on reads when the run allows them, even if the env value is off', async () => {
@@ -7828,29 +7831,20 @@ describe('createContext — builder delegate wiring', () => {
 		return builderDelegateAdapter;
 	}
 
-	it.each([undefined, true, false])(
-		'resolves delegation services only when enabled (builderDelegateEnabled=%s)',
-		(builderDelegateEnabled) => {
-			const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
-			const delegate = mock<InstanceAiBuilderDelegate>();
-			const builderDelegateAdapter = mockBuilderModuleActive(delegate);
+	it('skips delegation services when builderDelegateEnabled is false', () => {
+		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });
+		const builderDelegateAdapter = mockBuilderModuleActive(mock<InstanceAiBuilderDelegate>());
 
-			const context = service.createContext(mockUser, {
-				projectId: 'proj-1',
-				builderDelegateEnabled,
-			});
+		const context = service.createContext(mockUser, {
+			projectId: 'proj-1',
+			builderDelegateEnabled: false,
+		});
 
-			if (builderDelegateEnabled === false) {
-				expect(context.builderDelegate).toBeUndefined();
-				expect(Container.get).not.toHaveBeenCalledWith(ModuleRegistry);
-				expect(Container.get).not.toHaveBeenCalledWith(InstanceAiBuilderDelegateAdapterService);
-				expect(builderDelegateAdapter.createDelegate).not.toHaveBeenCalled();
-			} else {
-				expect(context.builderDelegate).toBe(delegate);
-				expect(Container.get).toHaveBeenCalledWith(InstanceAiBuilderDelegateAdapterService);
-			}
-		},
-	);
+		expect(context.builderDelegate).toBeUndefined();
+		expect(Container.get).not.toHaveBeenCalledWith(ModuleRegistry);
+		expect(Container.get).not.toHaveBeenCalledWith(InstanceAiBuilderDelegateAdapterService);
+		expect(builderDelegateAdapter.createDelegate).not.toHaveBeenCalled();
+	});
 
 	it.each([
 		{

@@ -2317,9 +2317,6 @@ export function createWorkflowsTool(
 		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
-			if (options.allowedActions && !options.allowedActions.includes(workflowInput.action)) {
-				throw new Error('Workflow action is not available');
-			}
 
 			switch (workflowInput.action) {
 				case 'list':
