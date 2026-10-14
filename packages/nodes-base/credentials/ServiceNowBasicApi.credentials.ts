@@ -1,9 +1,4 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ServiceNowBasicApi implements ICredentialType {
 	name = 'serviceNowBasicApi';
@@ -49,19 +44,6 @@ export class ServiceNowBasicApi implements ICredentialType {
 				username: '={{$credentials.user}}',
 				password: '={{$credentials.password}}',
 			},
-		},
-	};
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: '=https://{{$credentials?.subdomain}}.service-now.com',
-			url: '/api/now/table/sys_user',
-			qs: {
-				sysparm_query: '=user_name={{$credentials.user}}',
-				sysparm_limit: '1',
-				sysparm_fields: 'sys_id',
-			},
-			ignoreHttpStatusErrors: { ignore: true, except: [401] },
 		},
 	};
 }

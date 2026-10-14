@@ -1,11 +1,8 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { ServiceNowBasicApi } from 'n8n-nodes-base/credentials/ServiceNowBasicApi.credentials';
-import type {
-	ICredentialsDecrypted,
-	INodeType,
-	IWorkflowExecuteAdditionalData,
-} from 'n8n-workflow';
+import { ServiceNow } from 'n8n-nodes-base/nodes/ServiceNow/ServiceNow.node';
+import type { ICredentialsDecrypted, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
@@ -58,16 +55,13 @@ describe('ServiceNow Basic Auth credential test', () => {
 		nock.disableNetConnect();
 		credentialTypes.getByName.mockReturnValue(credentialType);
 		credentialTypes.getParentTypes.mockReturnValue(['httpBasicAuth']);
-		nodeTypes.getByNameAndVersion.mockReturnValue(
-			mock<INodeType>({
-				description: { name: 'n8n-nodes-base.noOp', version: 1, properties: [] },
-			}),
-		);
+		credentialTypes.getSupportedNodes.mockReturnValue(['n8n-nodes-base.serviceNow']);
+		nodeTypes.getByName.mockReturnValue(new ServiceNow());
 		vi.spyOn(credentialsHelper, 'applyDefaultsAndOverwrites').mockImplementation(
 			async (_additionalData, data) => data,
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>({ credentialsHelper }),
+			mock<IWorkflowExecuteAdditionalData>({ credentialsHelper, hooks: undefined }),
 		);
 	});
 
@@ -77,12 +71,12 @@ describe('ServiceNow Basic Auth credential test', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('accepts credentials when ServiceNow returns 200', async () => {
+	it.each([200, 204, 299])('accepts credentials when ServiceNow returns %i', async (statusCode) => {
 		const serviceNow = nock(baseURL)
 			.get(/.*/)
 			.query(true)
 			.basicAuth({ user: credentialsData.user, pass: credentialsData.password })
-			.reply(200, { result: [{ sys_id: 'record-id' }] });
+			.reply(statusCode, { result: [{ sys_id: 'record-id' }] });
 
 		const result = await testCredentials();
 
@@ -99,6 +93,40 @@ describe('ServiceNow Basic Auth credential test', () => {
 			.reply(401, { error: { message: 'User Not Authenticated' } });
 
 		const result = await testCredentials({ ...credentialsData, password: 'incorrect-password' });
+
+		expect(serviceNow.isDone()).toBe(true);
+		expect(result).toEqual({
+			status: 'Error',
+			message: 'Authentication failed. Check your user and password.',
+		});
+	});
+
+	it.each([302, 400, 404, 418, 429, 500, 503])(
+		'reports an error when ServiceNow returns %i',
+		async (statusCode) => {
+			const serviceNow = nock(baseURL)
+				.persist()
+				.get(/.*/)
+				.query(true)
+				.basicAuth({ user: credentialsData.user, pass: credentialsData.password })
+				.reply(statusCode, { error: { message: 'Request failed' } });
+
+			const result = await testCredentials();
+
+			expect(serviceNow.isDone()).toBe(true);
+			expect(result.status).toBe('Error');
+			expect(result.message).toContain(`ServiceNow returned HTTP ${statusCode}`);
+		},
+	);
+
+	it('reports an error when ServiceNow cannot be reached', async () => {
+		const serviceNow = nock(baseURL)
+			.get(/.*/)
+			.query(true)
+			.basicAuth({ user: credentialsData.user, pass: credentialsData.password })
+			.replyWithError(new Error('Connection refused'));
+
+		const result = await testCredentials();
 
 		expect(serviceNow.isDone()).toBe(true);
 		expect(result.status).toBe('Error');
@@ -123,16 +151,10 @@ describe('ServiceNow Basic Auth credential test', () => {
 		expect(incidentResponse).toEqual({ result: [{ sys_id: 'incident-id' }] });
 
 		const credentialCheck = nock(baseURL)
-			.get(/.*/)
+			.get('/api/now/table/sys_user')
 			.query(true)
 			.basicAuth({ user: credentialsData.user, pass: credentialsData.password })
-			.reply((uri) => {
-				const { pathname } = new URL(uri, baseURL);
-				if (pathname.startsWith('/api/now/table/') && pathname !== '/api/now/table/incident') {
-					return [403, { error: { message: 'User Not Authorized', detail: 'Read access denied' } }];
-				}
-				return [200, { result: [] }];
-			});
+			.reply(403, { error: { message: 'User Not Authorized', detail: 'Read access denied' } });
 
 		const result = await testCredentials();
 
@@ -156,10 +178,11 @@ describe('ServiceNow Basic Auth credential test', () => {
 
 		expect(serviceNow.isDone()).toBe(true);
 		expect(result.status).toBe('OK');
-		expect(requestedUrl).toBeDefined();
-		if (requestedUrl?.pathname.startsWith('/api/now/table/')) {
-			expect.soft(requestedUrl.searchParams.get('sysparm_limit')).toBe('1');
-			expect.soft(requestedUrl.searchParams.get('sysparm_fields')).toBe('sys_id');
-		}
+		expect(requestedUrl?.pathname).toBe('/api/now/table/sys_user');
+		expect
+			.soft(requestedUrl?.searchParams.get('sysparm_query'))
+			.toBe(`user_name=${credentialsData.user}`);
+		expect.soft(requestedUrl?.searchParams.get('sysparm_limit')).toBe('1');
+		expect.soft(requestedUrl?.searchParams.get('sysparm_fields')).toBe('sys_id');
 	});
 });

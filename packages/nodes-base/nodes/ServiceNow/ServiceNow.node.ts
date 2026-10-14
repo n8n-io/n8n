@@ -1,11 +1,16 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, toPathSegment } from 'n8n-workflow';
 
@@ -61,6 +66,7 @@ export class ServiceNow implements INodeType {
 			{
 				name: 'serviceNowBasicApi',
 				required: true,
+				testedBy: 'serviceNowBasicApiTest',
 				displayOptions: {
 					show: {
 						authentication: ['basicAuth'],
@@ -169,6 +175,63 @@ export class ServiceNow implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async serviceNowBasicApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const { user, password, subdomain } = credential.data ?? {};
+				if (
+					typeof user !== 'string' ||
+					typeof password !== 'string' ||
+					typeof subdomain !== 'string'
+				) {
+					return {
+						status: 'Error',
+						message: 'Connection failed. Enter your user, password, and subdomain.',
+					};
+				}
+
+				const options: IRequestOptions = {
+					method: 'GET',
+					uri: `https://${subdomain}.service-now.com/api/now/table/sys_user`,
+					auth: { user, pass: password },
+					qs: {
+						sysparm_query: `user_name=${user}`,
+						sysparm_limit: '1',
+						sysparm_fields: 'sys_id',
+					},
+					json: true,
+					simple: false,
+					resolveWithFullResponse: true,
+				};
+
+				try {
+					const response: unknown = await this.helpers.request(options);
+					if (isRecord(response) && typeof response.statusCode === 'number') {
+						const { statusCode } = response;
+						// A table permission response does not mean that authentication failed.
+						if ((statusCode >= 200 && statusCode < 300) || statusCode === 403) {
+							return { status: 'OK', message: 'Connection successful!' };
+						}
+						return {
+							status: 'Error',
+							message:
+								statusCode === 401
+									? 'Authentication failed. Check your user and password.'
+									: `Connection failed. ServiceNow returned HTTP ${statusCode}. Check your instance and try again.`,
+						};
+					}
+				} catch {
+					// A failed request cannot verify the credentials.
+				}
+
+				return {
+					status: 'Error',
+					message: 'Connection failed. Check your ServiceNow instance and try again.',
+				};
+			},
+		},
 		loadOptions: {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
