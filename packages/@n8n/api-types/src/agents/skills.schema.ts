@@ -116,6 +116,21 @@ export class ListSkillsQueryDto extends Z.class({
 	attachableTo: z.string().max(36).optional(),
 }) {}
 
+/**
+ * Asks for a name that no skill in the scope has yet, as `/workflows/new` does for a
+ * workflow: the requested name, or the same name with the first free number after it.
+ */
+export class SkillNewNameQueryDto extends Z.class({
+	scope: skillScopeSchema,
+	/** Required for a project skill, absent otherwise. */
+	projectId: z.string().max(36).optional(),
+	/** Required for an agent skill, absent otherwise. */
+	agentId: z.string().max(36).optional(),
+	name: agentSkillShape.name,
+}) {}
+
+export type SkillNewNameResponse = { name: string };
+
 export class CreateSkillDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */

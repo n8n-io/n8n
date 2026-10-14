@@ -44,6 +44,11 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await fetchSkills({ take: 1 });
 	}
 
+	/** A default name that no skill in the scope has yet. */
+	async function fetchNewSkillName(query: Parameters<typeof api.getNewSkillName>[1]) {
+		return await api.getNewSkillName(rootStore.restApiContext, query);
+	}
+
 	async function fetchSkill(id: string): Promise<SkillDetail> {
 		return await api.getSkill(rootStore.restApiContext, id);
 	}
@@ -67,6 +72,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		fetchSkills,
 		fetchSkillCount,
 		fetchSkill,
+		fetchNewSkillName,
 		createSkill,
 		saveSkill,
 		deleteSkill,

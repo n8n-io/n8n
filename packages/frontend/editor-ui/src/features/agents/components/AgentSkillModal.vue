@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -46,6 +46,11 @@ export type AgentSkillModalData = {
 	 */
 	scopeOptions?: AgentSkillModalScopeOption[];
 	initialScope?: string;
+	/**
+	 * Skills hub only: a default name that no skill in the scope has yet, as new workflows
+	 * get one. Called with the chosen scope value when the user starts a skill by hand.
+	 */
+	getDefaultName?: (scope: string) => Promise<string>;
 	/** Locks the scope field and explains why in a tooltip: a saved skill keeps its scope. */
 	scopeLockedReason?: string;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
@@ -92,6 +97,34 @@ const step = ref<'upload' | 'manual' | 'edit'>(
 );
 const isImporting = ref(false);
 const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
+
+/** The last default name the server gave. A name the user typed is never replaced. */
+const serverDefaultName = ref<string | null>(null);
+
+async function refreshDefaultName() {
+	if (!props.data.getDefaultName || props.data.skillId) return;
+	const current = skill.value.name;
+	if (current !== getDefaultSkillName() && current !== serverDefaultName.value) return;
+	try {
+		const name = await props.data.getDefaultName(scope.value);
+		// The user may have typed while the request ran.
+		if (skill.value.name !== current) return;
+		serverDefaultName.value = name;
+		skill.value = { ...skill.value, name };
+	} catch {
+		// Keep the local default. The save still refuses a taken name.
+	}
+}
+
+function onAddManually() {
+	step.value = 'manual';
+	void refreshDefaultName();
+}
+
+// A new scope can hold other names, so a default name follows the scope.
+watch(scope, () => {
+	if (step.value === 'manual') void refreshDefaultName();
+});
 const showScope = computed(() => !!props.data.scopeOptions?.length);
 const canChangeScope = computed(
 	() => showScope.value && !props.data.scopeLockedReason && !props.data.readOnly,
@@ -309,7 +342,7 @@ function onRemove() {
 				v-if="step === 'upload'"
 				v-model:busy="isImporting"
 				@uploaded="onSkillUploaded"
-				@add-manually="step = 'manual'"
+				@add-manually="onAddManually"
 				@import:skill="onImportSkill"
 			/>
 			<template v-else>

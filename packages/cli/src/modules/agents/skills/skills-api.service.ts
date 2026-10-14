@@ -8,6 +8,8 @@ import type {
 	SaveSkillDto,
 	SkillScope,
 	SkillUserDto,
+	SkillNewNameQueryDto,
+	SkillNewNameResponse,
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, UserRepository, type User } from '@n8n/db';
@@ -65,6 +67,12 @@ export class SkillsApiService {
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
 		return await this.toDetail(user, await this.requireAccess(user, skillId, 'read'));
+	}
+
+	/** A free name for a new skill. Needs the create permission there, so it shows no other scope. */
+	async newName(user: User, query: SkillNewNameQueryDto): Promise<SkillNewNameResponse> {
+		const target = await this.targetForCreate(user, query);
+		return { name: await this.skillService.freeName(query.name, target) };
 	}
 
 	async create(user: User, payload: CreateSkillDto): Promise<SkillDetail> {

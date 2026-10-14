@@ -214,6 +214,22 @@ describe('SettingsSkillsView', () => {
 			});
 		});
 
+		it('asks for a free default name in the scope the user picks', async () => {
+			skillsStore.fetchNewSkillName.mockResolvedValue('New skill 2');
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('skills-create-button'));
+
+			const name = await lastModalData().getDefaultName?.('project:personal-1');
+
+			expect(name).toBe('New skill 2');
+			expect(skillsStore.fetchNewSkillName).toHaveBeenCalledWith({
+				scope: 'project',
+				projectId: 'personal-1',
+				name: 'New skill',
+			});
+		});
+
 		it('creates the skill in the chosen scope', async () => {
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
 			// The reloaded list holds the new skill.
