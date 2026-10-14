@@ -1483,13 +1483,23 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(t): t is { nodeName: string; nodeType: string } =>
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
-				// Setup routing is scoped to nodes this build actually changed:
+				// Setup routing is scoped to nodes this run's builds actually changed:
 				// pre-existing nodes the build merely round-tripped must not route
-				// the user into setup for an unrelated edit. Undefined = unscoped
-				// (new workflow, or prior state unreadable).
-				const changedNodeNames = savedWorkflowSnapshot
+				// the user into setup for an unrelated edit. Earlier builds in the same
+				// run stay in scope, so a fix that leaves a new node alone keeps its
+				// pending setup. Undefined = unscoped (workflow created in this run, or
+				// prior state unreadable).
+				const runId = buildContext?.runId ?? context.runId;
+				const runScope =
+					runId && binding.setupScope?.runId === runId ? binding.setupScope : undefined;
+				const buildChanges = savedWorkflowSnapshot
 					? computeChangedNodeNames(json, savedWorkflowSnapshot)
 					: undefined;
+				const changedNodeNames = !runScope
+					? buildChanges
+					: runScope.nodeNames && buildChanges
+						? [...new Set([...runScope.nodeNames, ...buildChanges])]
+						: undefined;
 				const isInSetupScope = (nodeName: string | undefined) =>
 					changedNodeNames === undefined ||
 					(nodeName !== undefined && changedNodeNames.includes(nodeName));
@@ -1555,7 +1565,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						scriptedGateCount: waitGateScripts?.length ?? 0,
 						savedWorkflowId: saved.id,
 					});
-					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
 					binding = await saveWorkflowSourceFileBinding(context, {
@@ -1565,6 +1574,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
 						sourceHash,
 						setupPending: undefined,
+						...(runId ? { setupScope: { runId, nodeNames: changedNodeNames } } : {}),
 						...(setupPreferences
 							? {
 									setupPreferences: {

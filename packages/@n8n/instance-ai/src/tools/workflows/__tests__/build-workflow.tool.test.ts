@@ -1612,6 +1612,69 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	describe('setup scope across rebuilds', () => {
+		const pendingWebhook = {
+			node: {
+				id: 'webhook-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0],
+			},
+			parameterIssues: { path: ['Missing webhook path'] },
+			isTrigger: true,
+			needsAction: true,
+		} as SetupRequest;
+
+		// The first build creates the workflow, so every node is in scope. The rebuild
+		// leaves the pending node untouched.
+		async function rebuildUnchanged({
+			nextRunId,
+			failInBetween = false,
+		}: { nextRunId?: string; failInBetween?: boolean } = {}) {
+			vi.mocked(analyzeWorkflow).mockResolvedValue([pendingWebhook]);
+			const { context, filePath } = makeContext({ source: 'workflow source' });
+			const tool = createBuildWorkflowTool(context);
+			await executeTool<BuildToolOutput>(tool, { filePath, name: 'Webhook flow' });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				...structuredClone(generatedWorkflow),
+				name: 'Webhook flow',
+			});
+			if (failInBetween) {
+				vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+					success: false,
+					reason: 'workflow_json_invalid',
+					editable: true,
+					errors: ['Workflow JSON must include name, nodes, and connections.'],
+					summary: 'Workflow JSON source is missing required workflow fields.',
+				});
+				expect(await executeTool<BuildToolOutput>(tool, { filePath })).toMatchObject({
+					success: false,
+				});
+			}
+			if (nextRunId) context.runId = nextRunId;
+			return await executeTool<BuildToolOutput>(tool, { filePath });
+		}
+
+		it.each([false, true])(
+			'keeps pending setup for a node an earlier build in the same run created (failed rebuild in between: %s)',
+			async (failInBetween) => {
+				expect(await rebuildUnchanged({ failInBetween })).toMatchObject({
+					success: true,
+					setupRequirement: { status: 'required' },
+				});
+			},
+		);
+
+		it('drops the earlier scope in a later run', async () => {
+			expect(await rebuildUnchanged({ nextRunId: 'run-2' })).toMatchObject({
+				success: true,
+				setupRequirement: { status: 'not_required' },
+			});
+		});
+	});
+
 	it('updates the workflow bound to the source file and remembers the binding', async () => {
 		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
