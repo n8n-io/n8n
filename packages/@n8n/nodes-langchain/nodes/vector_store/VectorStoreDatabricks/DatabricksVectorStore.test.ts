@@ -13,17 +13,21 @@ const managedDescribe = {
 	name: 'cat.sch.idx',
 	primary_key: 'id',
 	index_type: 'DELTA_SYNC',
+	endpoint_name: 'ep',
 	delta_sync_index_spec: {
 		source_table: 'cat.sch.docs',
 		embedding_source_columns: [{ name: 'text', embedding_model_endpoint_name: 'e5' }],
 	},
 };
 const ucTable = { columns: [{ name: 'id' }, { name: 'text' }, { name: 'source' }] };
+const standardEndpoint = { name: 'ep', endpoint_type: 'STANDARD' };
+const storageOptimizedEndpoint = { name: 'ep', endpoint_type: 'STORAGE_OPTIMIZED' };
 
 const directDescribe = {
 	name: 'cat.sch.idx',
 	primary_key: 'id',
 	index_type: 'DIRECT_ACCESS',
+	endpoint_name: 'ep',
 	direct_access_index_spec: {
 		embedding_vector_columns: [{ name: 'embedding', embedding_dimension: 3 }],
 		schema_json: '{"id":"string","text":"string","source":"string","embedding":"array<float>"}',
@@ -58,9 +62,12 @@ describe('DatabricksVectorStore', () => {
 		describe: unknown,
 		overrides: Partial<DatabricksVectorStoreConfig> = {},
 		ucReply?: Response,
+		// STANDARD by default, so the filters pass-through tests double as the gate test
+		endpointReply = json(standardEndpoint),
 	) => {
 		fetchMock.mockResolvedValueOnce(json(describe));
 		if (ucReply) fetchMock.mockResolvedValueOnce(ucReply);
+		fetchMock.mockResolvedValueOnce(endpointReply);
 		const store = await DatabricksVectorStore.fromExistingIndex(embeddings, {
 			fetch: fetchMock,
 			host,
@@ -70,8 +77,10 @@ describe('DatabricksVectorStore', () => {
 		fetchMock.mockClear();
 		return store;
 	};
-	const managedStore = async (overrides: Partial<DatabricksVectorStoreConfig> = {}) =>
-		await createStore(managedDescribe, overrides, json(ucTable));
+	const managedStore = async (
+		overrides: Partial<DatabricksVectorStoreConfig> = {},
+		endpointReply?: Response,
+	) => await createStore(managedDescribe, overrides, json(ucTable), endpointReply);
 	const directStore = async (overrides: Partial<DatabricksVectorStoreConfig> = {}) =>
 		await createStore(directDescribe, { contentColumn: 'text', ...overrides });
 
@@ -94,6 +103,7 @@ describe('DatabricksVectorStore', () => {
 				embedding: { kind: 'managed', sourceColumn: 'text', modelEndpoint: 'e5' },
 				schemaColumns: undefined,
 				sourceTable: 'cat.sch.docs',
+				endpointName: 'ep',
 			});
 		});
 
@@ -147,27 +157,34 @@ describe('DatabricksVectorStore', () => {
 					},
 				}),
 			);
+			fetchMock.mockResolvedValueOnce(json(standardEndpoint));
 
 			const info = await DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
 
-			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(info.schemaColumns).toEqual(['id', 'text']);
 		});
 
 		it('reads the Delta Sync columns from Unity Catalog', async () => {
-			fetchMock.mockResolvedValueOnce(json(managedDescribe)).mockResolvedValueOnce(json(ucTable));
+			fetchMock
+				.mockResolvedValueOnce(json(managedDescribe))
+				.mockResolvedValueOnce(json(ucTable))
+				.mockResolvedValueOnce(json(standardEndpoint));
 
 			const info = await DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
 
 			expect(urlOf(0)).toBe(`${host}/api/2.0/vector-search/indexes/cat.sch.idx`);
 			expect(urlOf(1)).toBe(`${host}/api/2.1/unity-catalog/tables/cat.sch.docs`);
+			expect(urlOf(2)).toBe(`${host}/api/2.0/vector-search/endpoints/ep`);
 			expect(info.schemaColumns).toEqual(['id', 'text', 'source']);
+			expect(info.endpointType).toBe('STANDARD');
 		});
 
 		it('leaves the columns unknown when Unity Catalog denies the table', async () => {
 			fetchMock
 				.mockResolvedValueOnce(json(managedDescribe))
-				.mockResolvedValueOnce(json({ error_code: 'PERMISSION_DENIED' }, 403));
+				.mockResolvedValueOnce(json({ error_code: 'PERMISSION_DENIED' }, 403))
+				.mockResolvedValueOnce(json(standardEndpoint));
 
 			const info = await DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
 
@@ -203,12 +220,25 @@ describe('DatabricksVectorStore', () => {
 		});
 
 		it('does not call Unity Catalog for a Direct Access index', async () => {
-			fetchMock.mockResolvedValueOnce(json(directDescribe));
+			fetchMock
+				.mockResolvedValueOnce(json(directDescribe))
+				.mockResolvedValueOnce(json(standardEndpoint));
+
+			const info = await DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
+
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+			expect(urlOf(1)).toBe(`${host}/api/2.0/vector-search/endpoints/ep`);
+			expect(info.schemaColumns).toEqual(['id', 'text', 'source', 'embedding']);
+		});
+
+		it('skips the endpoint GET when the index names no endpoint', async () => {
+			const { endpoint_name: _, ...noEndpoint } = directDescribe;
+			fetchMock.mockResolvedValueOnce(json(noEndpoint));
 
 			const info = await DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
 
 			expect(fetchMock).toHaveBeenCalledTimes(1);
-			expect(info.schemaColumns).toEqual(['id', 'text', 'source', 'embedding']);
+			expect(info.endpointType).toBeUndefined();
 		});
 
 		it.each(['..', 'cat.sch/x.y', 'cat.sch'])(
@@ -337,7 +367,9 @@ describe('DatabricksVectorStore', () => {
 		});
 
 		it('rejects an empty content column', async () => {
-			fetchMock.mockResolvedValueOnce(json(directDescribe));
+			fetchMock
+				.mockResolvedValueOnce(json(directDescribe))
+				.mockResolvedValueOnce(json(standardEndpoint));
 
 			await expect(
 				DatabricksVectorStore.fromExistingIndex(embeddings, {
@@ -371,6 +403,69 @@ describe('DatabricksVectorStore', () => {
 			await store.similaritySearchWithScore('hello', 2, call);
 
 			expect(bodyOf(0).filters_json).toEqual(expected);
+		});
+
+		const denied = json({ error_code: 'PERMISSION_DENIED' }, 403);
+
+		it.each([
+			{
+				label: 'the call filter on a STORAGE_OPTIMIZED endpoint',
+				endpoint: json(storageOptimizedEndpoint),
+				config: undefined,
+				search: async (store: DatabricksVectorStore) =>
+					await store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
+				fragment: 'of type STORAGE_OPTIMIZED',
+			},
+			{
+				label: 'the config filter on a STORAGE_OPTIMIZED endpoint',
+				endpoint: json(storageOptimizedEndpoint),
+				config: { source: 'hr' },
+				search: async (store: DatabricksVectorStore) => await store.similaritySearch('hello', 2),
+				fragment: 'needs a SQL filter string (filter_string)',
+			},
+			{
+				label: 'a filter when the endpoint cannot be read',
+				endpoint: denied,
+				config: undefined,
+				search: async (store: DatabricksVectorStore) =>
+					await store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
+				fragment: 'Check that you can read endpoint ep',
+			},
+		])('refuses $label before any request', async ({ endpoint, config, search, fragment }) => {
+			const store = await managedStore({ filter: config }, endpoint);
+
+			const attempt = search(store);
+
+			await expect(attempt).rejects.toThrow(UserError);
+			await expect(attempt).rejects.toThrow(fragment);
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{
+				label: 'STORAGE_OPTIMIZED',
+				endpoint: () => json(storageOptimizedEndpoint),
+				call: undefined,
+			},
+			{ label: 'STORAGE_OPTIMIZED', endpoint: () => json(storageOptimizedEndpoint), call: {} },
+			{
+				label: 'an unreadable',
+				endpoint: () => json({ error_code: 'PERMISSION_DENIED' }, 403),
+				call: undefined,
+			},
+			{
+				label: 'an unreadable',
+				endpoint: () => json({ error_code: 'PERMISSION_DENIED' }, 403),
+				call: {},
+			},
+		])('queries $label endpoint without a filter ($call)', async ({ endpoint, call }) => {
+			const store = await managedStore({}, endpoint());
+			fetchMock.mockResolvedValue(json(queryReply));
+
+			await store.similaritySearchWithScore('hello', 2, call);
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(bodyOf(0)).not.toHaveProperty('filters_json');
 		});
 	});
 
