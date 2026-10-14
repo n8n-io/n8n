@@ -456,6 +456,47 @@ describe('PromotionsSettingsView', () => {
 			);
 		});
 
+		it('keeps same-path repository drafts scoped to their provider during host edits', async () => {
+			const saved = mockGitlabConnection();
+			const providerB = gitlabProvider({ id: 'provider-b', name: 'GitLab B' });
+			const movedRepository = {
+				...repository,
+				remoteUrl: 'https://other.example.com/team/workflows.git',
+			};
+			api.fetchPromotionProviders
+				.mockResolvedValueOnce([saved.provider, summaryOf(providerB)])
+				.mockResolvedValue([summaryOf(providerB), saved.provider]);
+			api.fetchPromotionProvider
+				.mockResolvedValueOnce(gitlabProvider())
+				.mockResolvedValue(providerB);
+			api.updatePromotionProvider
+				.mockResolvedValueOnce(
+					gitlabProvider({ config: { schemaVersion: 1, baseUrl: 'https://other.example.com' } }),
+				)
+				.mockResolvedValue({
+					...providerB,
+					config: { schemaVersion: 1, baseUrl: 'https://new.example.com' },
+				});
+			api.fetchPromotionConnection
+				.mockResolvedValueOnce(saved)
+				.mockResolvedValue({ ...saved, target: targetOf(movedRepository) });
+			await renderReadyView();
+			await selectProvider('GitLab B');
+			await selectRepository(repository);
+			await selectBranches();
+			await editGitlabProvider({ baseUrl: 'https://other.example.com', token: 'test-token' });
+			expect(selectedValue('provider')).toHaveValue('GitLab B');
+			expect(selectedValue('repository')).toHaveValue(repository.fullPath);
+			await editGitlabProvider({ baseUrl: 'https://new.example.com', token: 'test-token' });
+			expect(selectedValue('repository')).toHaveValue('');
+			expect(selectedValue('apply-branch')).toBeDisabled();
+			expect(
+				within(screen.getByTestId('promotion-connection-save-bar')).getByRole('button', {
+					name: /save settings/i,
+				}),
+			).toBeDisabled();
+		});
+
 		it.each(['saved', 'new'] as const)(
 			'clears a repository picked from the old host after a host edit on a %s connection',
 			async (state) => {

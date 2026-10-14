@@ -92,7 +92,11 @@ watch(
 		// Refresh saved state without replacing the draft.
 		current.value = connection;
 		// A provider host change keeps the path but changes the derived URL.
-		if (form.repositoryPath && form.repositoryPath === connection?.target.repositoryPath) {
+		if (
+			form.repositoryPath &&
+			form.providerId === connection?.provider.id &&
+			form.repositoryPath === connection?.target.repositoryPath
+		) {
 			form.remoteUrl = connection.target.remoteUrl;
 		}
 		form.apply.name = connection?.configs.apply?.name;
@@ -113,7 +117,11 @@ function applyProviderChange(change: PromotionProviderChange) {
 	}
 	if (change.id !== form.providerId) return;
 	// The new host rejects a URL picked from the old host, unless it is the saved repository.
-	if (change.hostChanged && form.repositoryPath !== current.value?.target.repositoryPath) {
+	if (
+		change.hostChanged &&
+		(form.providerId !== current.value?.provider.id ||
+			form.repositoryPath !== current.value?.target.repositoryPath)
+	) {
 		form.remoteUrl = '';
 		form.repositoryPath = undefined;
 	}
