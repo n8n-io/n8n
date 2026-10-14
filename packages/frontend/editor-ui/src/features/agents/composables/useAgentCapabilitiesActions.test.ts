@@ -14,9 +14,10 @@ import type {
 } from '../types';
 
 const { openModalWithData } = vi.hoisted(() => ({ openModalWithData: vi.fn() }));
-const { hub, getSkill, showMessage } = vi.hoisted(() => ({
+const { hub, getSkill, getNewSkillName, showMessage } = vi.hoisted(() => ({
 	hub: { enabled: false, canWriteProject: false, canWriteInstance: false },
 	getSkill: vi.fn(),
+	getNewSkillName: vi.fn(),
 	showMessage: vi.fn(),
 }));
 
@@ -25,7 +26,7 @@ vi.mock('@/features/settings/context/context.utils', () => ({
 	canWriteProjectSkillScope: () => hub.canWriteProject,
 	canWriteInstanceSkillScope: () => hub.canWriteInstance,
 }));
-vi.mock('@/features/settings/context/skills.api', () => ({ getSkill }));
+vi.mock('@/features/settings/context/skills.api', () => ({ getSkill, getNewSkillName }));
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		myProjects: [{ id: 'proj-1', name: 'Darwin', type: 'team' }],
@@ -189,6 +190,34 @@ describe('useAgentCapabilitiesActions', () => {
 				{ value: 'instance', label: 'settings.context.skills.scope.instance', icon: 'globe' },
 			]);
 			expect(lastModal().data.initialScope).toBe('agent');
+		});
+
+		it('asks for a free default name in the scope the user picks', async () => {
+			hub.enabled = true;
+			getNewSkillName.mockResolvedValue('New skill 2');
+			const { actions } = makeActions();
+			actions.onOpenAddSkillModal();
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+			(lastModal().data.onCreate as () => void)();
+			const getDefaultName = lastModal().data.getDefaultName as (scope: string) => Promise<string>;
+
+			expect(await getDefaultName('agent')).toBe('New skill 2');
+			await getDefaultName('project');
+			await getDefaultName('instance');
+
+			expect(getNewSkillName.mock.calls.map(([, query]) => query)).toEqual([
+				{ scope: 'agent', agentId: 'agent-1', name: 'agents.builder.skills.defaultName' },
+				{ scope: 'project', projectId: 'proj-1', name: 'agents.builder.skills.defaultName' },
+				{ scope: 'instance', name: 'agents.builder.skills.defaultName' },
+			]);
+		});
+
+		it('keeps the old default name logic while the flag is off', () => {
+			const { actions } = makeActions();
+
+			actions.onOpenAddSkillModal();
+
+			expect(lastModal().data).not.toHaveProperty('getDefaultName');
 		});
 
 		it('offers only this agent to a user without project or instance rights', async () => {

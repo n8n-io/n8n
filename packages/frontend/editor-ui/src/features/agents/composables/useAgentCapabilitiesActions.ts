@@ -19,7 +19,7 @@ import {
 	canWriteProjectSkillScope,
 	isContextSkillsEnabled,
 } from '@/features/settings/context/context.utils';
-import { getSkill } from '@/features/settings/context/skills.api';
+import { getNewSkillName, getSkill } from '@/features/settings/context/skills.api';
 import type { AgentSkillModalScopeOption } from '../components/AgentSkillModal.vue';
 import type { AgentSkillPickerModalData } from '../components/AgentSkillPickerModal.vue';
 import { createAgentSkill } from './useAgentApi';
@@ -594,7 +594,22 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
-				...(scopeOptions ? { scopeOptions, initialScope: scopeOptions[0]?.value } : {}),
+				...(scopeOptions
+					? {
+							scopeOptions,
+							initialScope: scopeOptions[0]?.value,
+							// A default name that the chosen scope does not hold yet.
+							getDefaultName: async (scope: string) =>
+								await getNewSkillName(rootStore.restApiContext, {
+									...(scope === 'agent'
+										? { scope: 'agent', agentId: targetAgentId }
+										: scope === 'project'
+											? { scope: 'project', projectId: targetProjectId }
+											: { scope: 'instance' }),
+									name: locale.baseText('agents.builder.skills.defaultName'),
+								}),
+						}
+					: {}),
 				onConfirm: ({ skill, scope }: { id?: string; skill: AgentSkill; scope?: string }) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
