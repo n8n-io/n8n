@@ -14,19 +14,16 @@ Notion for why the substrate looks the way it does.
 
 ## Turn it on
 
-Two gates, both required:
+This is a default module. The license feature `feat:typeAvailabilityPolicies` is the only gate.
+Without it, `init()` never runs, so the controllers are not mounted and no check is registered.
 
-1. The license feature `feat:typeAvailabilityPolicies`. Without it, `init()` never runs, so the
-   controllers are not mounted and no check is registered.
-2. `N8N_ENABLED_MODULES=type-availability-policies`. This module is not a default module yet.
+**Do not disable the module on only some instance types.** Each process reads its own
+configuration. An instance that disables it only on its queue workers enforces saves and
+publishes on main, and enforces nothing at all on the workers — every execution there is
+admitted.
 
-**Set the environment variable on every instance type.** The module has no instance-type
-restriction, but each process reads its own configuration. An instance that enables it only on
-main enforces saves and publishes, and enforces nothing at all on its queue workers — every
-execution there is admitted.
-
-The break-glass levers stay the ones the substrate documents: remove this module from
-`N8N_ENABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
+The break-glass levers stay the ones the substrate documents: add this module to
+`N8N_DISABLED_MODULES`, or disable `policy-infrastructure` to stop every policy feature.
 
 ## What each point decides
 
