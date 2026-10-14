@@ -89,6 +89,8 @@ let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let unmounted = false;
 // Set when the status check found no saved agent. Picking a credential saves it.
 let waitingForAgent = false;
+// A failing reset is retried on every poll tick, so say so only once.
+let resetErrorShown = false;
 
 const webhookUrl = computed(() => {
 	const base = rootStore.urlBaseWebhook.replace(/\/$/, '');
@@ -223,12 +225,21 @@ async function resetThenPollWebhookStatus() {
 	try {
 		await resetWhatsAppWebhookStatus(rootStore.restApiContext, props.projectId, props.agentId);
 	} catch (error) {
+		if (unmounted) return;
 		// A new agent has no row yet, so it has no record to clear either.
 		if (error instanceof ResponseError && error.httpStatusCode === 404) {
 			waitingForAgent = true;
 			return;
 		}
-		toast.showError(error, i18n.baseText('agents.channels.whatsapp.setup.verify.resetError'));
+		if (!resetErrorShown) {
+			resetErrorShown = true;
+			toast.showError(error, i18n.baseText('agents.channels.whatsapp.setup.verify.resetError'));
+		}
+		// Polling now could read the earlier record and enable Connect, so retry the reset instead.
+		pollTimer = setTimeout(() => {
+			void resetThenPollWebhookStatus();
+		}, WEBHOOK_POLL_MS);
+		return;
 	}
 	if (!unmounted) await pollWebhookStatus();
 }
