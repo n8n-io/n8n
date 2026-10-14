@@ -9,11 +9,14 @@ defineProps<{
 	title: string;
 	isDynamicCredentials: boolean;
 	canReveal: boolean;
+	/** A credential the viewer cannot use but can share with themselves to see the data. */
+	credentialToShare?: { id: string; name: string };
 }>();
 
 const emit = defineEmits<{
 	openSettings: [];
 	reveal: [];
+	shareCredential: [];
 }>();
 
 const i18n = useI18n();
@@ -36,6 +39,22 @@ const i18n = useI18n();
 					}}</N8nLink>
 				</template>
 			</I18nT>
+		</template>
+		<template v-else-if="credentialToShare">
+			{{ i18n.baseText('ndv.redacted.shareCredential.description') }}<br />
+			<N8nLink
+				size="medium"
+				data-test-id="redacted-data-share-credential"
+				@click="emit('shareCredential')"
+			>
+				{{
+					credentialToShare.name
+						? i18n.baseText('ndv.redacted.shareCredential.link', {
+								interpolate: { credential: credentialToShare.name },
+							})
+						: i18n.baseText('ndv.redacted.shareCredential.linkNoName')
+				}}
+			</N8nLink>
 		</template>
 		<template v-else>
 			{{ i18n.baseText('ndv.redacted.noPermission.description') }}

@@ -459,6 +459,7 @@ watch(showAiGatewayErrorNudge, (isVisible) => {
 
 onMounted(async () => {
 	loading.value = !!modalOptions.value?.createCredential;
+	if (modalOptions.value?.initialTab) activeTab.value = modalOptions.value.initialTab;
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
 
