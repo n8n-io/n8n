@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Canvas Actions',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test('adds sticky to canvas with default text and position', async ({ n8n }) => {

@@ -311,24 +311,27 @@ export class RoutingNode {
 
 				const error = responseData.reason;
 
+				const nodeError =
+					error instanceof NodeApiError || error instanceof NodeOperationError
+						? error
+						: new NodeApiError(node, error as JsonObject, {
+								runIndex,
+								itemIndex,
+								message: error?.message,
+								description: error?.description,
+								httpCode:
+									error.isAxiosError && error.response ? String(error.response?.status) : 'none',
+							});
+
+				set(nodeError, 'context.itemIndex', itemIndex);
+				set(nodeError, 'context.runIndex', runIndex);
+
 				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
-					returnData.push({ json: {}, error: error as NodeApiError });
+					returnData.push({ json: {}, error: nodeError });
 					continue;
 				}
 
-				if (error instanceof NodeApiError) {
-					set(error, 'context.itemIndex', itemIndex);
-					set(error, 'context.runIndex', runIndex);
-					throw error;
-				}
-
-				throw new NodeApiError(node, error as JsonObject, {
-					runIndex,
-					itemIndex,
-					message: error?.message,
-					description: error?.description,
-					httpCode: error.isAxiosError && error.response ? String(error.response?.status) : 'none',
-				});
+				throw nodeError;
 			}
 
 			if (itemContext[itemIndex].requestData.maxResults) {

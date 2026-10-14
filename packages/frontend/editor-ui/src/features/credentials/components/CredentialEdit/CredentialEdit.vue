@@ -459,6 +459,7 @@ watch(showAiGatewayErrorNudge, (isVisible) => {
 
 onMounted(async () => {
 	loading.value = !!modalOptions.value?.createCredential;
+	if (modalOptions.value?.initialTab) activeTab.value = modalOptions.value.initialTab;
 	void aiGateway.fetchConfig();
 	void aiGateway.fetchWallet();
 
@@ -1669,7 +1670,7 @@ const { width } = useElementSize(credNameRef);
 									(!isNewCredential && !hasUnsavedChanges && !isTesting) ||
 									!requiredPropertiesFilled
 								"
-								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
+								:variant="hasUnsavedChanges || isTesting ? 'solid' : 'outline'"
 								:is-saving="isSaving || isTesting"
 								:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
 								:saving-label="
@@ -1681,7 +1682,7 @@ const { width } = useElementSize(credNameRef);
 								@click="saveCredential"
 							/>
 							<N8nIconButton
-								variant="subtle"
+								variant="outline"
 								v-if="
 									currentCredential &&
 									!modalOptions?.destination &&

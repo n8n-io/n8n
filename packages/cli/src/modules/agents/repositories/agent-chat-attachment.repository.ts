@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 
@@ -39,5 +39,18 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 
 	async findByIds(ids: string[]): Promise<AgentChatAttachment[]> {
 		return await this.findBy({ id: In(ids) });
+	}
+
+	/** Oldest first, so a capped batch always removes the files most overdue. */
+	async findFromSourceCreatedBefore(
+		scope: { agentId: string; source: string },
+		before: Date,
+		limit: number,
+	): Promise<AgentChatAttachment[]> {
+		return await this.find({
+			where: { agentId: scope.agentId, source: scope.source, createdAt: LessThan(before) },
+			order: { createdAt: 'ASC' },
+			take: limit,
+		});
 	}
 }

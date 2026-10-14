@@ -56,6 +56,7 @@ export { BreakingChangeReportQueryDto } from './breaking-changes/breaking-change
 export { UpdateMigrationFindingStatusRequestDto } from './breaking-changes/update-migration-finding-status-request.dto';
 export { UpdateMigrationFindingStatusesRequestDto } from './breaking-changes/update-migration-finding-statuses-request.dto';
 export { AssignMigrationOwnerDto } from './breaking-changes/assign-migration-owner.dto';
+export { NotifyMigrationOwnersRequestDto } from './breaking-changes/notify-migration-owners-request.dto';
 
 export {
 	AuditPublicDto,
@@ -188,6 +189,8 @@ export {
 	AI_PREFERENCES_DEFAULT_PAGE_SIZE,
 	AI_PREFERENCES_MAX_IDS_FILTER,
 	AI_PREFERENCES_MAX_PAGE_SIZE,
+	AI_PREFERENCES_SORT_OPTIONS,
+	type AiPreferenceSortOption,
 } from './ai-preference/ai-preference-list-query.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
 export {
@@ -243,6 +246,11 @@ export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto';
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
+export {
+	ListCallableSubworkflowsQueryDto,
+	type CallableSubworkflow,
+	type CallableSubworkflowsResponse,
+} from './workflows/list-callable-subworkflows-query.dto';
 export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
@@ -802,3 +810,5 @@ export {
 } from './promotions/promotion-operations.dto';
 
 export { ScimConfigPatchDto } from './scim';
+export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
+export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

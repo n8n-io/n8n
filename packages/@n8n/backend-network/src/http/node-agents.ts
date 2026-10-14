@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';
@@ -81,6 +81,10 @@ export type NodeAgentOptions = https.AgentOptions;
  * therefore has no effect and is rejected to avoid a false sense of control over
  * DNS resolution.
  *
+ * `agentOptions.socketPath` is rejected for a related reason: it replaces the
+ * connection target, leaving the request's host and port unused, so nothing the
+ * policy decides applies to the socket that opens.
+ *
  * `agentOptions` describes the connection to the **target**. Behind a proxy its TLS
  * options travel with the tunnelled session rather than the proxy handshake
  * (see `proxy/proxied-agents.ts`).
@@ -91,8 +95,14 @@ export function buildNodeAgents(
 	agentOptions?: NodeAgentOptions,
 ): { httpAgent: http.Agent; httpsAgent: https.Agent } {
 	if (agentOptions?.lookup) {
-		throw new UnexpectedError(
+		throw new UserError(
 			'`agentOptions.lookup` is not supported: DNS resolution is managed by the SSRF policy. Remove it from `agentOptions`.',
+		);
+	}
+
+	if (agentOptions !== undefined && 'socketPath' in agentOptions && agentOptions.socketPath) {
+		throw new UserError(
+			'`agentOptions.socketPath` is not supported. Remove it from `agentOptions`.',
 		);
 	}
 
@@ -132,15 +142,16 @@ export function buildNodeAgents(
 }
 
 /**
- * Installs {@link installConnectionGuard} on a direct-path agent pair when SSRF protection is active.
+ * Installs {@link installConnectionGuard} on a direct-path agent pair.
+ *
+ * It goes on whatever the SSRF setting, because it also refuses a socket path, which
+ * is not an SSRF decision.
  */
 function applyConnectionGuard(
 	agents: { httpAgent: http.Agent; httpsAgent: https.Agent },
 	ssrf: SsrfOption,
 ): { httpAgent: http.Agent; httpsAgent: https.Agent } {
-	if (ssrf !== 'disabled') {
-		installConnectionGuard(agents.httpAgent, ssrf);
-		installConnectionGuard(agents.httpsAgent, ssrf);
-	}
+	installConnectionGuard(agents.httpAgent, ssrf);
+	installConnectionGuard(agents.httpsAgent, ssrf);
 	return agents;
 }

@@ -29,6 +29,15 @@ export const policyViolationSchema = z.object({
 
 	/** The rule that decided, if a rule did rather than a fallback default. */
 	matchedRuleId: z.string().optional(),
+
+	/**
+	 * The project whose policy was evaluated, also when `scope` is `'instance'`. For a
+	 * sub-workflow this is the sub-workflow's project, not the caller's.
+	 */
+	projectId: z.string().optional(),
+
+	/** The project can lift this block with its own allow rule. Absent means it cannot. */
+	optInAvailable: z.boolean().optional(),
 });
 
 export type PolicyViolation = z.infer<typeof policyViolationSchema>;

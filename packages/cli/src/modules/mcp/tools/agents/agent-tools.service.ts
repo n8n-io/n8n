@@ -102,7 +102,7 @@ function integrationsField(config: unknown): unknown {
 
 /**
  * Collects the credential IDs that `sanitizeUnknownAgentCredentials` rewrote
- * to `''` — the only change that sanitizer ever makes.
+ * to `''` вЂ” the only change that sanitizer ever makes.
  */
 function collectClearedCredentialIds(
 	original: unknown,
@@ -125,8 +125,8 @@ function collectClearedCredentialIds(
 
 /**
  * True when `next` alters the integrations array relative to `current`. Compared
- * structurally rather than by patch path so no operation — including an
- * ancestor or whole-document replace — can slip an integrations change through.
+ * structurally rather than by patch path so no operation вЂ” including an
+ * ancestor or whole-document replace вЂ” can slip an integrations change through.
  */
 function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
 	return (
@@ -1121,6 +1121,11 @@ export class McpAgentToolsService {
 			this.agentSkillsService.listSkills(agentId, projectId),
 			this.agentTaskService.list(agentId),
 		]);
+		const outdatedSkillIds = await this.agentSkillRefs.findOutdatedSkillIds(
+			config.skills ?? [],
+			skills,
+			{},
+		);
 		const taskEnabled = new Map((config.tasks ?? []).map((task) => [task.id, task.enabled]));
 
 		// The hash covers the full persisted config (integrations included) so it
@@ -1148,6 +1153,7 @@ export class McpAgentToolsService {
 			skillHashes: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 			),
+			outdatedSkillIds,
 			tasks: tasks.map((task) => ({ ...task, enabled: taskEnabled.get(task.id) ?? false })),
 			customTools: Object.entries(agent.tools ?? {}).map(([id, tool]) => ({
 				id,
@@ -1527,7 +1533,7 @@ export class McpAgentToolsService {
 	 * mutation itself introduced loudly instead of reporting a success that
 	 * persisted less than the client sent. Instability inherited unchanged from
 	 * the stored config (e.g. a legacy field persisted before the schema
-	 * dropped it) is tolerated — the write path cleans it up.
+	 * dropped it) is tolerated вЂ” the write path cleans it up.
 	 */
 	private assertSanitizeStable(config: unknown, baseConfig: AgentJsonConfig): void {
 		const sanitized = sanitizeAgentJsonConfig(config);
@@ -1571,8 +1577,8 @@ export class McpAgentToolsService {
 	/**
 	 * updateConfig quietly rewrites credential references the calling user
 	 * cannot use to `''` before saving. Surfacing that here turns silent
-	 * credential loss — including references already stored on the agent by
-	 * another user — into an explicit error the client can act on.
+	 * credential loss вЂ” including references already stored on the agent by
+	 * another user вЂ” into an explicit error the client can act on.
 	 */
 	private async assertAccessibleCredentials(
 		config: unknown,
@@ -1617,7 +1623,7 @@ export class McpAgentToolsService {
 	}
 
 	/**
-	 * Publish-scope validation — the same pass `publishAgent` enforces — plus
+	 * Publish-scope validation вЂ” the same pass `publishAgent` enforces вЂ” plus
 	 * the node-tool JSON-Schema checks from `validateConfig`, so validate_agent
 	 * and publish_agent cannot drift from the canonical validator.
 	 */
@@ -1644,10 +1650,18 @@ export class McpAgentToolsService {
 				),
 			),
 		];
+		const warnings = (configuration.warnings ?? []).flatMap((warning) =>
+			warning.code === 'similar_skill_names'
+				? [
+						`Skills ${warning.names.map((name) => `"${name}"`).join(', ')} have names that are hard to tell apart. Rename one of them.`,
+					]
+				: [],
+		);
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
 			missing,
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 
@@ -1673,8 +1687,8 @@ export class McpAgentToolsService {
 						...(truncated ? { hint: 'Pass query to filter models by ID.' } : {}),
 					};
 				}
-				// The full catalog runs to hundreds of KB — far past MCP client
-				// token limits — so without a provider return a summary instead.
+				// The full catalog runs to hundreds of KB вЂ” far past MCP client
+				// token limits вЂ” so without a provider return a summary instead.
 				const catalog = filterOfferedAgentModelProviders(
 					await (await import('@n8n/agents')).fetchProviderCatalog(),
 				);
@@ -1745,6 +1759,9 @@ export class McpAgentToolsService {
 					authentication: input.authentication,
 					credential: input.credential,
 					metadata: input.metadata,
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'always_allow' },
+					},
 					...(input.connectionTimeoutMs !== undefined
 						? { connectionTimeoutMs: input.connectionTimeoutMs }
 						: {}),

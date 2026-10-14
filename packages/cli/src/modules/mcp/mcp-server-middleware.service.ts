@@ -4,7 +4,7 @@ import { NextFunction, Response, Request } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AuthError } from '@n8n/errors';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import {
 	OAuthTokenVerifierProxy,
 	type TelemetryAuthContext,

@@ -413,8 +413,6 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
-		/** Whether this instance is in the activation-capped trial cohort (`N8N_INSTANCE_AI_ACTIVATION_CAPPED`). Optional. */
-		activationCapped?: boolean;
 	};
 
 	/**
@@ -465,6 +463,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether agents use the skills hub (PostHog flag `125_context_skills`, read at startup). */
+		skillsHubEnabled?: boolean;
 	};
 };
 

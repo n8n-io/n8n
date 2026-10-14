@@ -7,6 +7,7 @@ import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { setSkillsHubFlag } from '@/modules/agents/__tests__/test-utils/skills-hub-flag';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
@@ -14,11 +15,11 @@ import { AgentDefinitionService } from '@/modules/agents/agent-definition.servic
 import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
-import type { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { SkillRepository } from '@/modules/agents/repositories/skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
@@ -48,7 +49,6 @@ describe('AgentRepository', () => {
 			schema: { name: 'Test Agent', model: 'm', instructions: 'i' },
 			integrations: [],
 			tools: {},
-			skills: {},
 			versionId: 'version-1',
 			activeVersionId: null,
 			...overrides,
@@ -63,7 +63,6 @@ describe('AgentRepository', () => {
 			author: 'test',
 			schema: null,
 			tools: null,
-			skills: null,
 		});
 	}
 
@@ -83,6 +82,8 @@ describe('AgentRepository', () => {
 	});
 
 	afterEach(async () => {
+		// The rollout keeps the flag it read, so set it back off for the next test.
+		await setSkillsHubFlag(false);
 		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
@@ -179,7 +180,6 @@ describe('AgentRepository', () => {
 				mockLogger(),
 				agentRepo,
 				taskRepo,
-				mock<AgentSkillsService>(),
 				new AgentConfigPreparationService(
 					credentials,
 					mock<WorkflowRepository>(),
@@ -221,7 +221,23 @@ describe('AgentRepository', () => {
 		});
 
 		it('replaces the complete draft and preserves existing task creation times', async () => {
+			await setSkillsHubFlag(true);
 			const agent = await createAgent();
+			await Container.get(SkillRepository).createSkill(
+				{
+					id: 'writing',
+					target: { projectId, agentId: null },
+					source: 'ui',
+					createdById: null,
+				},
+				{
+					name: 'Writing',
+					description: 'Write notes',
+					instructions: 'Use short sentences',
+					frontmatter: null,
+					files: [],
+				},
+			);
 			const createdAt = new Date('2025-01-01T00:00:00.000Z');
 			await taskRepo.insert([
 				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
@@ -268,15 +284,19 @@ describe('AgentRepository', () => {
 			};
 			const restore = async () => await definitionService.replaceDraft(agent, definition);
 			expect(await restore()).toBe(true);
-			expect(await agentRepo.findById(agent.id)).toMatchObject({
+			const { skills: skillRefs, ...storedConfig } = definition.schema!;
+			const stored = await agentRepo.findById(agent.id);
+			expect(stored).toMatchObject({
 				name: 'Restored agent',
-				schema: definition.schema,
+				schema: storedConfig,
 				tools: definition.tools,
-				skills: definition.skills,
 				revision: 1,
-				// The skill refs write keeps the time of the fenced save.
 				updatedAt: agent.updatedAt,
 			});
+			expect(stored?.schema).not.toHaveProperty('skills');
+			// The skill refs live in the dependency rows. The skill body stays in the hub.
+			const agentSkillRefs = Container.get(AgentSkillRefsService);
+			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 			const tasks = await taskRepo.findByAgentId(agent.id);
 			expect(tasks).toHaveLength(2);
 			expect(tasks).toEqual(
@@ -315,7 +335,7 @@ describe('AgentRepository', () => {
 				await definitionService.replaceDraft(agent, {
 					schema: agent.schema ? toAgentDocument(agent.schema, storedSkillRefs(agent)) : null,
 					tools: agent.tools,
-					skills: agent.skills,
+					skills: {},
 					tasks: new Map([['task-1', { ...taskBody, objective: 'Restored objective' }]]),
 				});
 				return task;
@@ -397,7 +417,6 @@ describe('AgentRepository', () => {
 				name: original.name,
 				schema: original.schema,
 				tools: original.tools,
-				skills: original.skills,
 				revision: original.revision,
 			});
 			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'own-task' }]);
@@ -417,7 +436,7 @@ describe('AgentRepository', () => {
 				// Setup validation reads pending edits against their stored base revision.
 				agent.schema = { name: 'Pending edit', model: '', instructions: 'Pending instructions' };
 				await expect(definitionService.readDraft(agent)).resolves.toEqual({
-					schema: agent.schema,
+					schema: { ...agent.schema, skills: [] },
 					tools: {},
 					skills: {},
 					tasks: new Map([['task-1', taskBody]]),
@@ -459,7 +478,6 @@ describe('AgentRepository', () => {
 					? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
 					: null,
 				tools: {},
-				skills: {},
 				publishedBy: 'test',
 			});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
@@ -473,7 +491,6 @@ describe('AgentRepository', () => {
 				agentId: agent.id,
 				schema: agent.schema,
 				tools: {},
-				skills: {},
 				publishedBy: 'test',
 			});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: secondVersion });
@@ -630,7 +647,6 @@ describe('AgentRepository', () => {
 				agentId: agent.id,
 				schema: agent.schema,
 				tools: null,
-				skills: null,
 				publishedBy: 'Someone Else',
 			});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: 'version-1' });
@@ -861,7 +877,6 @@ describe('AgentRepository', () => {
 				author: 'test',
 				schema: storedAgentConfig(publishedSchema(snapshotIntegrations)),
 				tools: null,
-				skills: null,
 			});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
 			return (await agentRepo.findById(agent.id)) as Agent;
@@ -1034,7 +1049,6 @@ describe('AgentRepository', () => {
 					integrations: snapshotIntegrations,
 				},
 				tools: null,
-				skills: null,
 			});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
 			return (await agentRepo.findById(agent.id)) as Agent;
