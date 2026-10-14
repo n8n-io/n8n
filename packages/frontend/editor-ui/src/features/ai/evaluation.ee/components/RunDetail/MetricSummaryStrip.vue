@@ -32,37 +32,43 @@ const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetric
 function metricDelta(
 	name: string,
 	category: MetricSource['category'] | undefined,
-): number | undefined {
+): { value: number | undefined; scale?: MetricScale } {
 	const current = normalizeMetricValue(props.currentMetrics?.[name]);
 	const previous = normalizeMetricValue(props.previousMetrics?.[name]);
-	if (current === undefined || previous === undefined) return undefined;
+	if (current === undefined || previous === undefined) return { value: undefined };
 
+	const currentScale = props.metricScales?.[name];
+	const previousScale = props.previousMetricScales?.[name];
 	const currentIsUnscaled = isUnscaledCustomMetric({
 		key: name,
 		category,
-		scale: props.metricScales?.[name],
+		scale: currentScale,
 	});
 	const previousIsUnscaled = isUnscaledCustomMetric({
 		key: name,
 		category,
-		scale: props.previousMetricScales?.[name],
+		scale: previousScale,
 	});
-	if (currentIsUnscaled !== previousIsUnscaled) return undefined;
-	if (currentIsUnscaled) return current - previous;
+	if (currentIsUnscaled !== previousIsUnscaled) return { value: undefined };
+	if (currentIsUnscaled || currentScale === previousScale) {
+		return { value: current - previous, scale: currentScale };
+	}
 
-	const currentScore = normalizeMetricScore(name, current, props.metricScales?.[name]);
-	const previousScore = normalizeMetricScore(name, previous, props.previousMetricScales?.[name]);
-	if (currentScore === null || previousScore === null) return undefined;
-	return currentScore - previousScore;
+	const currentScore = normalizeMetricScore(name, current, currentScale);
+	const previousScore = normalizeMetricScore(name, previous, previousScale);
+	if (currentScore === null || previousScore === null) return { value: undefined };
+	return { value: currentScore - previousScore, scale: 'unit' };
 }
 
 const cards = computed(() =>
 	metricNames.value.map((name) => {
 		const source = props.metricSources?.[name];
+		const delta = metricDelta(name, source?.category);
 		return {
 			name,
 			currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
-			delta: metricDelta(name, source?.category),
+			delta: delta.value,
+			deltaScale: delta.scale,
 			category: source?.category,
 			scale: props.metricScales?.[name],
 			sourceNodeName: source?.nodeName,
@@ -86,6 +92,7 @@ const cards = computed(() =>
 				:name="card.name"
 				:current-value="card.currentValue"
 				:delta="card.delta"
+				:delta-scale="card.deltaScale"
 				:category="card.category"
 				:scale="card.scale"
 				:source-node-name="card.sourceNodeName"

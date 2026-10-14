@@ -1326,6 +1326,7 @@ describe('utils', () => {
 			expect(formatMetricValue(706, { category: 'custom' })).toBe('706');
 			expect(formatMetricValue(1694, { category: 'custom' })).toBe('1,694');
 			expect(formatMetricValue(1.47, { category: 'custom' })).toBe('1.47');
+			expect(formatMetricValue(12_345_678, { category: 'custom' })).toBe('12,345,678');
 		});
 
 		it.each([
@@ -1461,6 +1462,7 @@ describe('utils', () => {
 
 		it('preserves percentage-point formatting for score deltas', () => {
 			expect(formatMetricDelta(0.04, { key: 'stringSimilarity' })).toBe('+4%');
+			expect(formatMetricDelta(1, { category: 'aiBased' })).toBe('+20%');
 		});
 	});
 

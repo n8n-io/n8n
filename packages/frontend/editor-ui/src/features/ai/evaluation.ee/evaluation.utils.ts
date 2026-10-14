@@ -264,7 +264,7 @@ export function isUnscaledCustomMetric(
 }
 
 function formatMetricNumber(value: number): string {
-	return value.toLocaleString(undefined, { maximumSignificantDigits: 6 });
+	return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
@@ -432,7 +432,7 @@ export function formatMetricDelta(
 		const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
 		return `${sign}${formatMetricNumber(Math.abs(delta))}`;
 	}
-	return formatDeltaPercent(delta);
+	return formatDeltaPercent(delta, options);
 }
 
 // Compact duration: <1s → "243ms", <60s → "8s"/"1.2s", ≥60s → "1m 30s"/"2m".

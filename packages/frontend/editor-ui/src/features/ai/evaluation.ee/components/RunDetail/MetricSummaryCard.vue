@@ -17,6 +17,7 @@ const props = defineProps<{
 	name: string;
 	currentValue: number | undefined;
 	delta: number | undefined;
+	deltaScale?: MetricScale;
 	category?: MetricCategory;
 	scale?: MetricScale;
 	sourceNodeName?: string;
@@ -58,7 +59,7 @@ const valueTooltip = computed(() =>
 				<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			</N8nTooltip>
 			<span v-else :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<TrendDeltaBadge :delta="delta" :name="name" :category="category" :scale="scale" />
+			<TrendDeltaBadge :delta="delta" :name="name" :category="category" :scale="deltaScale" />
 		</div>
 	</div>
 </template>
