@@ -152,6 +152,7 @@
       "dist/nodes/mcp/McpRegistryClientTool/McpRegistryClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
+      "dist/nodes/memory/MemoryLakebaseChat/MemoryLakebaseChat.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
       "dist/nodes/memory/MemoryMongoDbChat/MemoryMongoDbChat.node.js",
