@@ -82,12 +82,15 @@ const onBackClick = () => {
 };
 
 const scopeTypes = computed(() => {
+	let types = SCOPE_TYPES;
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
-		return SCOPE_TYPES.filter(
-			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
-		);
+		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
 	}
-	return SCOPE_TYPES;
+	// Project skills exist only while the skills hub is on.
+	if (!settingsStore.moduleSettings.agents?.skillsHubEnabled) {
+		types = types.filter((type) => type !== 'projectSkill');
+	}
+	return types;
 });
 const scopes = SCOPES;
 

@@ -247,6 +247,11 @@ export { UpdateWorkflowPublicDto } from './workflows/update-workflow-public.dto'
 export { UpdateWorkflowQueryDto } from './workflows/update-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
+	ListCallableSubworkflowsQueryDto,
+	type CallableSubworkflow,
+	type CallableSubworkflowsResponse,
+} from './workflows/list-callable-subworkflows-query.dto';
+export {
 	WorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	WorkflowListPublicDto,
@@ -793,3 +798,5 @@ export {
 } from './promotions/promotion-operations.dto';
 
 export { ScimConfigPatchDto } from './scim';
+export { CreateTrustedSourceDto } from './trusted-source/create-trusted-source.dto';
+export { UpdateTrustedSourceDto } from './trusted-source/update-trusted-source.dto';

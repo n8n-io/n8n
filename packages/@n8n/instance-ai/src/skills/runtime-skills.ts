@@ -5,8 +5,6 @@ import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { resolve } from 'node:path';
 
-import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
-
 import type { Logger } from '../logger';
 import type { InstanceAiTraceContext } from '../types';
 import {
@@ -17,7 +15,6 @@ import {
 import { composeSkillVariants } from '../prompts/skill-variants';
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
-const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder', 'intent-recognition']);
 
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
 const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>();
@@ -34,9 +31,12 @@ export function substituteSkillPlaceholders(instructions: string): string {
 	);
 }
 
+/**
+ * Every bundled runtime skill. The sandbox image, the snapshot and each sandbox
+ * store this set. Hide gated skills per run with `disabledInstanceAiSkillIds`.
+ */
 export function loadInstanceAiRuntimeSkillSource(): RuntimeSkillSource {
 	cachedRuntimeSkillSource ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
-		exclude: isAgentFeatureEnabled() ? [] : [...AGENTS_MODULE_RUNTIME_SKILLS],
 		transformInstructions: substituteSkillPlaceholders,
 	});
 	return cachedRuntimeSkillSource;

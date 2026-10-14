@@ -101,6 +101,7 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
@@ -168,7 +169,7 @@ import {
 	raisedBudgetCaps,
 	type BudgetAmountField,
 } from '../utils/budget-config';
-import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasBlockingIssues, unpublishedWorkflowTools } from '../utils/validationIssues';
 import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
@@ -1888,6 +1889,11 @@ watch(isEditingLocked, (locked) => {
  * re-validates independently, so this is a UX affordance, not the only guard.
  */
 async function refreshValidationBeforePublish(): Promise<boolean> {
+	// Capture the target before the awaits: when the autosave flush or the
+	// validation refresh resolves, the user may have switched to another
+	// agent, and the continuation must not act on the stale one.
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 	// Acquire the write lock before publishing — the lock is lazy.
 	agentCollaborationStore.requestWriteAccess();
 	try {
@@ -1895,8 +1901,26 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	} catch {
 		return false;
 	}
-	await refreshConfigValidation(projectId.value, agentId.value);
-	return configValidation.value !== null && !hasBlockingIssues(configValidation.value.issues);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	await refreshConfigValidation(targetProjectId, targetAgentId);
+	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
+	if (configValidation.value === null) return false;
+	if (hasBlockingIssues(configValidation.value.issues)) return false;
+	// Unpublished workflow tools do not disable the Publish button, but the
+	// backend rejects the publish — surface them here instead of failing the
+	// request (AGENT-1001).
+	const unpublishedWorkflows = unpublishedWorkflowTools(
+		configValidation.value.issues,
+		localConfig.value?.tools ?? [],
+	);
+	if (unpublishedWorkflows.length > 0) {
+		uiStore.openModalWithData({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: unpublishedWorkflows },
+		});
+		return false;
+	}
+	return true;
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {
@@ -3303,7 +3327,6 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
-					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"

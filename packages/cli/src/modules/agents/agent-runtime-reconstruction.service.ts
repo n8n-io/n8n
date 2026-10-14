@@ -294,7 +294,7 @@ export class AgentRuntimeReconstructionService {
 	) {}
 
 	async reconstructFromAgentEntity(
-		{ agent: agentEntity, skillRefs }: AgentRunSource,
+		{ agent: agentEntity, skillRefs, skills }: AgentRunSource,
 		credentialProvider: CredentialProvider,
 		runType: AgentRunTelemetryType,
 		integrationType?: string,
@@ -338,7 +338,7 @@ export class AgentRuntimeReconstructionService {
 			unavailableTools = filtered.unavailable;
 		}
 
-		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity);
+		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity, skills);
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(
 			config,
 			agentEntity.projectId,
@@ -351,7 +351,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName,
-			skills: agentEntity.skills ?? {},
+			skills,
 			runtimeProfile: 'top-level',
 			supportsHitl,
 			runType,
