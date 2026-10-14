@@ -1,4 +1,8 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import {
+	resolveWhatsAppSettings,
+	type AgentIntegrationConfig,
+	type RichCardComponentType,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -13,8 +17,11 @@ import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
+	type AgentIntegrationRemovalContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
@@ -30,6 +37,8 @@ import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
 import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../integration-tool-factory';
+import { startTypingIndicator } from './typing-indicator';
+import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
@@ -53,6 +62,13 @@ const WHATSAPP_DEFAULT_SESSION_IDLE_TIMEOUT_MINUTES = 30;
 
 /** WhatsApp Cloud API's own limit on interactive reply buttons per message. */
 const WHATSAPP_MAX_REPLY_BUTTONS = 3;
+
+/**
+ * WhatsApp's typing indicator ends after about 25 seconds or when a reply is
+ * sent, whichever comes first, so refresh it inside that window.
+ * @see https://developers.facebook.com/docs/whatsapp/cloud-api/typing-indicators
+ */
+const WHATSAPP_TYPING_REFRESH_MS = 20 * 1000;
 
 const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
 
@@ -174,6 +190,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
+		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
 	) {
 		super();
 	}
@@ -184,6 +201,15 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		await this.assertStartupPreconditions(ctx);
+	}
+
+	/**
+	 * A new setup of this agent can use a different Meta app. Without this, step
+	 * 4 would confirm the handshake that the removed channel's app completed.
+	 */
+	async onRemove(ctx: AgentIntegrationRemovalContext): Promise<undefined> {
+		await this.webhookVerification.clear(ctx.agentId);
+		return undefined;
 	}
 
 	/**
@@ -210,7 +236,35 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (token !== this.deriveVerifyToken(context.agentId)) {
 			return { status: 403, body: 'Forbidden', raw: true };
 		}
+		// Recorded so the setup can confirm the step. Not awaited, because Meta
+		// times out the handshake and the record is only for display.
+		void this.webhookVerification.markVerified(context.agentId);
 		return { status: 200, body: challenge, raw: true };
+	}
+
+	/**
+	 * Starts the typing indicator when a queued message is picked up, which is
+	 * when the agent actually starts working on it.
+	 */
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+		integration?: AgentIntegrationConfig;
+	}): Promise<BridgeResumeExecutionContext> {
+		if (!whatsAppSettings(params.integration).typingIndicator) return {};
+		return await Promise.resolve({
+			statusHandle: startTypingIndicator(params.thread, {
+				logger: params.logger,
+				agentId: params.agentId,
+				platform: 'WhatsApp',
+				refreshMs: WHATSAPP_TYPING_REFRESH_MS,
+			}),
+		});
+	}
+
+	shouldDownloadAttachments(integration: AgentIntegrationConfig): boolean {
+		return whatsAppSettings(integration).downloadMedia;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -240,12 +294,23 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		// a persistent limit would let every later reply start its own full
 		// retry cycle against an already-limited number instead of failing fast.
 		const connectionId = buildIntegrationConnectionId(ctx.integration);
+		const webhookVerification = this.webhookVerification;
+		const agentId = ctx.agentId;
 
 		// Wraps the real adapter to enforce the 24-hour customer service window
 		// and the rate-limit backoff (see module doc). `stream` needs no override
 		// of its own — the base adapter's `stream` already delegates to
 		// `this.postMessage`.
 		class ConversationWindowGuardedAdapter extends AdapterClass {
+			// A connected channel answers Meta's handshake here, not in
+			// `handleUnauthenticatedWebhook`. Record it too, so a later setup of
+			// the same agent still confirms the step.
+			protected override handleVerificationChallenge(request: Request): Response {
+				const response = super.handleVerificationChallenge(request);
+				if (response.status === 200) void webhookVerification.markVerified(agentId);
+				return response;
+			}
+
 			override async postMessage(
 				threadId: string,
 				message: AdapterPostableMessage,
@@ -410,6 +475,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (typeof value === 'string' && value.trim()) return value.trim();
 		throw new UserError(message);
 	}
+}
+
+/** The channel's settings, with the defaults for any that were never saved. */
+function whatsAppSettings(integration?: AgentIntegrationConfig) {
+	return resolveWhatsAppSettings(
+		integration?.type === 'whatsapp' ? integration.settings : undefined,
+	);
 }
 
 /**
