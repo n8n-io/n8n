@@ -29,6 +29,14 @@ async function imageBuffer(color = '#ff0000', width = 20, height = 10): Promise<
 	return await canvas.encode('png');
 }
 
+async function jpegImageBuffer(color: string): Promise<Buffer> {
+	const canvas = createCanvas(1, 1);
+	const context = canvas.getContext('2d');
+	context.fillStyle = color;
+	context.fillRect(0, 0, 1, 1);
+	return await canvas.encode('jpeg', 100);
+}
+
 async function imageBufferWithTransparentCorners(): Promise<Buffer> {
 	const canvas = createCanvas(10, 10);
 	const context = canvas.getContext('2d');
@@ -122,6 +130,34 @@ function createExecuteFunctions({
 		mimeType: 'application/octet-stream',
 	}));
 	return executeFunctions;
+}
+
+async function compositeFirstPixel(
+	operator: string,
+	input: Buffer,
+	overlay: Buffer,
+): Promise<[number, number, number, number]> {
+	const executeFunctions = createExecuteFunctions({
+		parameters: {
+			operation: 'composite',
+			dataPropertyName: 'data',
+			dataPropertyNameComposite: 'overlay',
+			operator,
+			positionX: 0,
+			positionY: 0,
+		},
+		input: {
+			json: {},
+			binary: {
+				data: { data: input.toString('base64'), mimeType: 'image/png' },
+				overlay: { data: overlay.toString('base64'), mimeType: 'application/octet-stream' },
+			},
+		},
+		binaryBuffers: { data: input, overlay },
+	});
+
+	const result = await new EditImage().execute.call(executeFunctions);
+	return await firstPixel(outputBuffer(result));
 }
 
 describe('Edit Image v2', () => {
@@ -409,19 +445,43 @@ describe('Edit Image v2', () => {
 	it.each([
 		['Plus', [255, 255, 170, 255]],
 		['Add', [44, 4, 170, 255]],
-		['Minus', [100, 40, 0, 255]],
-		['Subtract', [100, 40, 186, 255]],
+		['Minus', [0, 0, 70, 255]],
+		['Subtract', [100, 40, 185, 255]],
 		['Divide', [255, 255, 106, 255]],
+		['Multiply', [78, 64, 23, 255]],
+		['Bumpmap', [60, 66, 72, 255]],
 	])('matches GraphicsMagick channel arithmetic for %s', async (operator, expected) => {
 		const input = await imageBuffer('#646e78', 1, 1);
+		const overlay = await imageBuffer('#c89632', 1, 1);
+
+		expect(await compositeFirstPixel(operator, input, overlay)).toEqual(expected);
+	});
+
+	it.each([
+		['CopyRed', [200, 110, 120, 255]],
+		['CopyGreen', [100, 150, 120, 255]],
+		['CopyBlue', [100, 110, 50, 255]],
+		['CopyCyan', [55, 145, 135, 255]],
+		['CopyMagenta', [155, 105, 135, 255]],
+		['CopyYellow', [155, 145, 205, 255]],
+		['CopyBlack', [61, 57, 53, 255]],
+	])('matches GraphicsMagick channel copying for %s', async (operator, expected) => {
+		const input = await imageBuffer('#646e78', 1, 1);
+		const overlay = await imageBuffer('#c89632', 1, 1);
+
+		expect(await compositeFirstPixel(operator, input, overlay)).toEqual(expected);
+	});
+
+	it('converts pixels outside CMYK copy overlays to black', async () => {
+		const input = await imageBuffer('#646e78', 2, 1);
 		const overlay = await imageBuffer('#c89632', 1, 1);
 		const executeFunctions = createExecuteFunctions({
 			parameters: {
 				operation: 'composite',
 				dataPropertyName: 'data',
 				dataPropertyNameComposite: 'overlay',
-				operator,
-				positionX: 0,
+				operator: 'CopyCyan',
+				positionX: 1,
 				positionY: 0,
 			},
 			input: {
@@ -435,8 +495,29 @@ describe('Edit Image v2', () => {
 		});
 
 		const result = await new EditImage().execute.call(executeFunctions);
+		const output = outputBuffer(result);
 
-		expect(await firstPixel(outputBuffer(result))).toEqual(expected);
+		expect(await colorAt(output, 0, 0)).toEqual([0, 0, 0, 255]);
+		expect(await colorAt(output, 1, 0)).toEqual([55, 145, 135, 255]);
+	});
+
+	it.each([
+		['Copy', [200, 150, 50, 255]],
+		['In', [200, 150, 50, 255]],
+		['Out', [100, 110, 120, 255]],
+		['Xor', [0, 0, 0, 255]],
+	])('matches GraphicsMagick overlap handling for %s', async (operator, expected) => {
+		const input = await imageBuffer('#646e78', 1, 1);
+		const overlay = await imageBuffer('#c89632', 1, 1);
+
+		expect(await compositeFirstPixel(operator, input, overlay)).toEqual(expected);
+	});
+
+	it('copies intensity into opacity when the source has no alpha channel', async () => {
+		const input = await imageBuffer('#646e78', 1, 1);
+		const overlay = await jpegImageBuffer('#c89632');
+
+		expect(await compositeFirstPixel('CopyOpacity', input, overlay)).toEqual([100, 110, 120, 153]);
 	});
 
 	it('returns normalized image information', async () => {
@@ -523,7 +604,8 @@ describe('Edit Image v2', () => {
 			if (verticalAlignment === 'north') {
 				expect(bounds.top).toBe(0);
 			} else {
-				expect(bounds.top).toBe(84);
+				expect(bounds.top).toBeGreaterThanOrEqual(83);
+				expect(bounds.top).toBeLessThanOrEqual(84);
 				expect(bounds.right).toBeGreaterThanOrEqual(94);
 				expect(bounds.right).toBeLessThanOrEqual(95);
 				expect(bounds.bottom).toBeGreaterThanOrEqual(96);

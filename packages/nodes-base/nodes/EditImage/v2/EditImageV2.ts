@@ -28,24 +28,30 @@ type OperationData = Record<string, unknown>;
 
 type OutputFormat = 'bmp' | 'gif' | 'jpeg' | 'png' | 'tiff' | 'tif' | 'webp';
 
-type CompositeMode =
-	| 'copy'
-	| 'difference'
-	| 'lighter'
-	| 'multiply'
-	| 'source-atop'
-	| 'source-in'
-	| 'source-out'
-	| 'source-over'
-	| 'xor';
+type CompositeMode = 'difference' | 'source-atop' | 'source-over';
 
 const VALID_IMAGE_FORMATS = new Set<string>(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
+const OPAQUE_ARITHMETIC_OPERATORS = new Set(['Plus', 'Add', 'Minus', 'Subtract']);
+const CMYK_COPY_OPERATORS = new Set(['CopyBlack', 'CopyCyan', 'CopyMagenta', 'CopyYellow']);
+const MAX_CHANNEL_VALUE = 255;
+const CHANNEL_VALUE_COUNT = MAX_CHANNEL_VALUE + 1;
+const DEGREES_TO_RADIANS = Math.PI / 180;
+const HALF_ANGLE_DEGREES_TO_RADIANS = Math.PI / 360;
+const TEXT_LINE_HEIGHT_RATIO = 1.2;
+
+// GraphicsMagick calculates pixel intensity with Rec. 601 luma coefficients.
+const LEGACY_LUMINANCE_WEIGHTS = {
+	red: 0.299,
+	green: 0.587,
+	blue: 0.114,
+};
 
 export function toCanvasColor(color: string): string {
 	const match = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(color);
 	if (!match) return color;
 
-	const alpha = (255 - Number.parseInt(match[2], 16)).toString(16).padStart(2, '0');
+	// GraphicsMagick stores opacity, while Canvas stores alpha. The values are inverse.
+	const alpha = (MAX_CHANNEL_VALUE - Number.parseInt(match[2], 16)).toString(16).padStart(2, '0');
 	return `#${match[1]}${alpha}`;
 }
 
@@ -289,31 +295,67 @@ function getCompositeMode(operator: string): CompositeMode | undefined {
 	switch (operator) {
 		case 'Atop':
 			return 'source-atop';
-		case 'Copy':
-			return 'copy';
 		case 'Difference':
 			return 'difference';
-		case 'In':
-			return 'source-in';
-		case 'Multiply':
-			return 'multiply';
-		case 'Out':
-			return 'source-out';
 		case 'Over':
 			return 'source-over';
-		case 'Xor':
-			return 'xor';
 		default:
 			return undefined;
 	}
 }
 
 function clampChannel(value: number): number {
-	return Math.max(0, Math.min(255, Math.round(value)));
+	return Math.max(0, Math.min(MAX_CHANNEL_VALUE, Math.round(value)));
 }
 
 function wrapChannel(value: number): number {
-	return ((Math.round(value) % 256) + 256) % 256;
+	return ((Math.round(value) % CHANNEL_VALUE_COUNT) + CHANNEL_VALUE_COUNT) % CHANNEL_VALUE_COUNT;
+}
+
+function legacyLuminance(red: number, green: number, blue: number): number {
+	return (
+		red * LEGACY_LUMINANCE_WEIGHTS.red +
+		green * LEGACY_LUMINANCE_WEIGHTS.green +
+		blue * LEGACY_LUMINANCE_WEIGHTS.blue
+	);
+}
+
+function colorTypeHasAlpha(colorType: unknown): boolean {
+	// image-rs assigns odd enum values to its alpha-bearing color types.
+	return typeof colorType === 'number' && colorType % 2 === 1;
+}
+
+function applyArithmeticComposite(
+	operator: string,
+	source: number,
+	target: number,
+	luminance: number,
+): number | undefined {
+	switch (operator) {
+		case 'Plus':
+			return clampChannel(source + target);
+		case 'Add':
+			// Add wraps overflow across the 256 possible values of an 8-bit channel.
+			return wrapChannel(source + target);
+		case 'Minus':
+			return clampChannel(target - source);
+		case 'Subtract': {
+			const difference = source - target;
+			// GraphicsMagick wraps Subtract underflow at MaxRGB rather than at 256.
+			return difference < 0 ? Math.round(difference + MAX_CHANNEL_VALUE) : Math.round(difference);
+		}
+		case 'Bumpmap':
+			return Math.floor(target * luminance);
+		case 'Divide':
+			// GraphicsMagick divides the source by the target and normalizes to 8 bits.
+			return target === 0
+				? MAX_CHANNEL_VALUE
+				: Math.min(MAX_CHANNEL_VALUE, Math.floor((source * MAX_CHANNEL_VALUE) / target));
+		case 'Multiply':
+			return Math.floor((source * target) / MAX_CHANNEL_VALUE);
+		default:
+			return undefined;
+	}
 }
 
 function applyCustomComposite(
@@ -322,11 +364,21 @@ function applyCustomComposite(
 	positionX: number,
 	positionY: number,
 	operator: string,
+	sourceHasAlpha: boolean,
 ): void {
 	const context = canvas.getContext('2d');
 	const overlayContext = overlay.getContext('2d');
+	const targetData = context.getImageData(0, 0, canvas.width, canvas.height);
 	const baseData = context.getImageData(0, 0, canvas.width, canvas.height);
 	const overlayData = overlayContext.getImageData(0, 0, overlay.width, overlay.height);
+	if (CMYK_COPY_OPERATORS.has(operator)) {
+		// GraphicsMagick converts the full destination to CMYK before replacing one channel.
+		for (let index = 0; index < baseData.data.length; index += 4) {
+			baseData.data[index] = 0;
+			baseData.data[index + 1] = 0;
+			baseData.data[index + 2] = 0;
+		}
+	}
 
 	for (let overlayY = 0; overlayY < overlay.height; overlayY++) {
 		const baseY = overlayY + Math.round(positionY);
@@ -342,53 +394,77 @@ function applyCustomComposite(
 			const sourceGreen = overlayData.data[sourceIndex + 1];
 			const sourceBlue = overlayData.data[sourceIndex + 2];
 			const sourceAlpha = overlayData.data[sourceIndex + 3];
+			const targetRed = targetData.data[targetIndex];
+			const targetGreen = targetData.data[targetIndex + 1];
+			const targetBlue = targetData.data[targetIndex + 2];
+			const targetAlpha = targetData.data[targetIndex + 3];
 
-			if (operator === 'CopyRed') {
+			if (operator === 'Copy') {
+				baseData.data[targetIndex] = sourceRed;
+				baseData.data[targetIndex + 1] = sourceGreen;
+				baseData.data[targetIndex + 2] = sourceBlue;
+				baseData.data[targetIndex + 3] = sourceAlpha;
+			} else if (operator === 'In') {
+				baseData.data[targetIndex] = sourceRed;
+				baseData.data[targetIndex + 1] = sourceGreen;
+				baseData.data[targetIndex + 2] = sourceBlue;
+				baseData.data[targetIndex + 3] = Math.floor(
+					(sourceAlpha * targetAlpha) / MAX_CHANNEL_VALUE,
+				);
+			} else if (operator === 'Out') {
+				if (targetAlpha === 0) {
+					baseData.data[targetIndex] = sourceRed;
+					baseData.data[targetIndex + 1] = sourceGreen;
+					baseData.data[targetIndex + 2] = sourceBlue;
+					baseData.data[targetIndex + 3] = sourceAlpha;
+				}
+			} else if (operator === 'Xor') {
+				baseData.data[targetIndex] = 0;
+				baseData.data[targetIndex + 1] = 0;
+				baseData.data[targetIndex + 2] = 0;
+				baseData.data[targetIndex + 3] = MAX_CHANNEL_VALUE;
+			} else if (operator === 'CopyRed') {
 				baseData.data[targetIndex] = sourceRed;
 			} else if (operator === 'CopyGreen') {
 				baseData.data[targetIndex + 1] = sourceGreen;
 			} else if (operator === 'CopyBlue') {
 				baseData.data[targetIndex + 2] = sourceBlue;
 			} else if (operator === 'CopyOpacity') {
-				baseData.data[targetIndex + 3] = sourceAlpha;
+				let opacity = sourceAlpha;
+				if (!sourceHasAlpha) {
+					// GraphicsMagick uses source intensity when no alpha channel exists.
+					opacity = Math.floor(legacyLuminance(sourceRed, sourceGreen, sourceBlue));
+				}
+				baseData.data[targetIndex + 3] = opacity;
 			} else if (operator === 'CopyCyan') {
-				baseData.data[targetIndex] = 255 - sourceRed;
+				// GraphicsMagick exposes CMY copies as complemented RGB channels.
+				baseData.data[targetIndex] = MAX_CHANNEL_VALUE - sourceRed;
+				baseData.data[targetIndex + 1] = MAX_CHANNEL_VALUE - targetGreen;
+				baseData.data[targetIndex + 2] = MAX_CHANNEL_VALUE - targetBlue;
 			} else if (operator === 'CopyMagenta') {
-				baseData.data[targetIndex + 1] = 255 - sourceGreen;
+				baseData.data[targetIndex] = MAX_CHANNEL_VALUE - targetRed;
+				baseData.data[targetIndex + 1] = MAX_CHANNEL_VALUE - sourceGreen;
+				baseData.data[targetIndex + 2] = MAX_CHANNEL_VALUE - targetBlue;
 			} else if (operator === 'CopyYellow') {
-				baseData.data[targetIndex + 2] = 255 - sourceBlue;
+				baseData.data[targetIndex] = MAX_CHANNEL_VALUE - targetRed;
+				baseData.data[targetIndex + 1] = MAX_CHANNEL_VALUE - targetGreen;
+				baseData.data[targetIndex + 2] = MAX_CHANNEL_VALUE - sourceBlue;
 			} else if (operator === 'CopyBlack') {
-				const black = 255 - Math.max(sourceRed, sourceGreen, sourceBlue);
-				baseData.data[targetIndex] = black;
-				baseData.data[targetIndex + 1] = black;
-				baseData.data[targetIndex + 2] = black;
+				// Copy Black applies source darkness to the target's complemented RGB channels.
+				const black = 1 - legacyLuminance(sourceRed, sourceGreen, sourceBlue) / MAX_CHANNEL_VALUE;
+				baseData.data[targetIndex] = Math.floor((MAX_CHANNEL_VALUE - targetRed) * black);
+				baseData.data[targetIndex + 1] = Math.floor((MAX_CHANNEL_VALUE - targetGreen) * black);
+				baseData.data[targetIndex + 2] = Math.floor((MAX_CHANNEL_VALUE - targetBlue) * black);
 			} else {
-				const luminance = (sourceRed * 0.2126 + sourceGreen * 0.7152 + sourceBlue * 0.0722) / 255;
+				const luminance = legacyLuminance(sourceRed, sourceGreen, sourceBlue) / MAX_CHANNEL_VALUE;
 				for (let channel = 0; channel < 3; channel++) {
 					const source = overlayData.data[sourceIndex + channel];
-					const target = baseData.data[targetIndex + channel];
-					if (operator === 'Plus') {
-						baseData.data[targetIndex + channel] = clampChannel(source + target);
-					} else if (operator === 'Add') {
-						baseData.data[targetIndex + channel] = wrapChannel(source + target);
-					} else if (operator === 'Minus') {
-						baseData.data[targetIndex + channel] = clampChannel(source - target);
-					} else if (operator === 'Subtract') {
-						baseData.data[targetIndex + channel] = wrapChannel(source - target);
-					} else if (operator === 'Bumpmap') {
-						baseData.data[targetIndex + channel] = clampChannel(target * luminance);
-					} else if (operator === 'Divide') {
-						baseData.data[targetIndex + channel] =
-							target === 0 ? 255 : clampChannel((source * 255) / target);
-					}
+					const target = targetData.data[targetIndex + channel];
+					const result = applyArithmeticComposite(operator, source, target, luminance);
+					if (result !== undefined) baseData.data[targetIndex + channel] = result;
 				}
-				if (
-					operator === 'Plus' ||
-					operator === 'Add' ||
-					operator === 'Minus' ||
-					operator === 'Subtract'
-				) {
-					baseData.data[targetIndex + 3] = 255;
+				if (OPAQUE_ARITHMETIC_OPERATORS.has(operator)) {
+					baseData.data[targetIndex + 3] = MAX_CHANNEL_VALUE;
 				}
 			}
 		}
@@ -410,6 +486,14 @@ async function applyComposite(
 		binaryPropertyName,
 	);
 	const overlay = await loadCanvas(overlayBuffer);
+	let sourceHasAlpha = false;
+	try {
+		const { Transformer } = await import('@napi-rs/image');
+		const metadata = await new Transformer(overlayBuffer).metadata();
+		sourceHasAlpha = colorTypeHasAlpha(metadata.colorType);
+	} catch {
+		// Formats without metadata use GraphicsMagick's no-alpha behavior.
+	}
 	const positionX = getNumber(operation, 'positionX');
 	const positionY = getNumber(operation, 'positionY');
 	const operator = getString(operation, 'operator');
@@ -421,7 +505,7 @@ async function applyComposite(
 		context.drawImage(overlay, positionX, positionY);
 		context.globalCompositeOperation = 'source-over';
 	} else {
-		applyCustomComposite(canvas, overlay, positionX, positionY, operator);
+		applyCustomComposite(canvas, overlay, positionX, positionY, operator, sourceHasAlpha);
 	}
 
 	return canvas;
@@ -497,6 +581,7 @@ export function calculateResizeDimensions(
 		};
 	}
 	if (resizeOption === 'maximumArea') {
+		// GraphicsMagick's @ geometry treats width × height as a total pixel budget.
 		const scale = Math.sqrt((width * height) / (currentWidth * currentHeight));
 		return {
 			width: Math.floor(currentWidth * scale),
@@ -536,7 +621,7 @@ async function applyResize(canvas: Canvas, operation: OperationData): Promise<Ca
 
 async function applyRotate(canvas: Canvas, operation: OperationData): Promise<Canvas> {
 	const angle = getNumber(operation, 'rotate');
-	const radians = (angle * Math.PI) / 180;
+	const radians = angle * DEGREES_TO_RADIANS;
 	const cosine = Math.abs(Math.cos(radians));
 	const sine = Math.abs(Math.sin(radians));
 	const width = Math.max(1, Math.ceil(canvas.width * cosine + canvas.height * sine));
@@ -550,8 +635,9 @@ async function applyRotate(canvas: Canvas, operation: OperationData): Promise<Ca
 }
 
 async function applyShear(canvas: Canvas, operation: OperationData): Promise<Canvas> {
-	const shearX = Math.tan((getNumber(operation, 'degreesX') * Math.PI) / 360);
-	const shearY = Math.sin((getNumber(operation, 'degreesY') * Math.PI) / 180);
+	// GraphicsMagick decomposes shear into tan(X / 2), followed by sin(Y).
+	const shearX = Math.tan(getNumber(operation, 'degreesX') * HALF_ANGLE_DEGREES_TO_RADIANS);
+	const shearY = Math.sin(getNumber(operation, 'degreesY') * DEGREES_TO_RADIANS);
 	const scaleY = 1 - shearX * shearY;
 	const corners = [
 		{ x: 0, y: 0 },
@@ -591,6 +677,44 @@ function wrapText(text: string, lineLength: number): string[] {
 	return lines;
 }
 
+function getCanvasTextAlign(alignment: string): 'left' | 'center' | 'right' {
+	if (alignment === 'center') return 'center';
+	if (alignment === 'east') return 'right';
+	return 'left';
+}
+
+function getTextX(alignment: string, canvasWidth: number, positionX: number): number {
+	if (alignment === 'center') return canvasWidth / 2 + positionX;
+	if (alignment === 'east') return canvasWidth - positionX;
+	return positionX;
+}
+
+function getTextBaselineY({
+	alignment,
+	canvasHeight,
+	positionY,
+	textHeight,
+	ascent,
+	lineCount,
+	lineHeight,
+}: {
+	alignment: string;
+	canvasHeight: number;
+	positionY: number;
+	textHeight: number;
+	ascent: number;
+	lineCount: number;
+	lineHeight: number;
+}): number {
+	if (alignment === 'middle') {
+		return canvasHeight / 2 + positionY - textHeight / 2 + ascent;
+	}
+	if (alignment === 'south') {
+		return canvasHeight - positionY - Math.max(0, lineCount - 1) * lineHeight;
+	}
+	return positionY;
+}
+
 async function applyText(
 	canvas: Canvas,
 	operation: OperationData,
@@ -620,24 +744,15 @@ async function applyText(
 		const verticalAlignment =
 			typeof operation.verticalAlignment === 'string' ? operation.verticalAlignment : 'north';
 		const lines = wrapText(getString(operation, 'text'), getNumber(operation, 'lineLength'));
-		const lineHeight = fontSize * 1.2;
+		// GraphicsMagick uses approximately 1.2 em between text baselines.
+		const lineHeight = fontSize * TEXT_LINE_HEIGHT_RATIO;
 
 		context.font = `${fontSize}px "${family}"`;
 		context.fillStyle = toCanvasColor(getString(operation, 'fontColor'));
-		context.textAlign =
-			horizontalAlignment === 'center'
-				? 'center'
-				: horizontalAlignment === 'east'
-					? 'right'
-					: 'left';
+		context.textAlign = getCanvasTextAlign(horizontalAlignment);
 		context.textBaseline = 'alphabetic';
 
-		const x =
-			horizontalAlignment === 'center'
-				? canvas.width / 2 + positionX
-				: horizontalAlignment === 'east'
-					? canvas.width - positionX
-					: positionX;
+		const x = getTextX(horizontalAlignment, canvas.width, positionX);
 		const metrics = lines.map((line) => context.measureText(line));
 		const measuredAscent = Math.max(
 			...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxAscent),
@@ -648,12 +763,15 @@ async function applyText(
 			...metrics.map((lineMetrics) => lineMetrics.actualBoundingBoxDescent),
 		);
 		const textHeight = ascent + descent + Math.max(0, lines.length - 1) * lineHeight;
-		const y =
-			verticalAlignment === 'middle'
-				? canvas.height / 2 + positionY - textHeight / 2 + ascent
-				: verticalAlignment === 'south'
-					? canvas.height - positionY - Math.max(0, lines.length - 1) * lineHeight
-					: positionY;
+		const y = getTextBaselineY({
+			alignment: verticalAlignment,
+			canvasHeight: canvas.height,
+			positionY,
+			textHeight,
+			ascent,
+			lineCount: lines.length,
+			lineHeight,
+		});
 
 		lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
 	} finally {
@@ -755,11 +873,13 @@ async function encodeCanvas(
 	quality: number | undefined,
 	jpegBackground: string | undefined,
 ): Promise<Buffer> {
-	if (format === 'bmp' || format === 'tiff' || format === 'tif') {
+	if (format === 'bmp' || format === 'png' || format === 'tiff' || format === 'tif') {
 		const { Transformer } = await import('@napi-rs/image');
 		const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
 		const transformer = Transformer.fromRgbaPixels(pixels, canvas.width, canvas.height);
-		return format === 'bmp' ? await transformer.bmp() : await transformer.tiff();
+		if (format === 'bmp') return await transformer.bmp();
+		if (format === 'png') return await transformer.png();
+		return await transformer.tiff();
 	}
 	if (format === 'jpeg') {
 		if (!jpegBackground) return await canvas.encode(format, quality);
@@ -781,6 +901,15 @@ function replaceFileExtension(
 ): string | undefined {
 	if (!fileName?.includes('.')) return fileName;
 	return `${fileName.split('.').slice(0, -1).join('.')}.${format}`;
+}
+
+function getOutputPropertyName(
+	options: EditImageNodeOptions,
+	dataPropertyName: string | IBinaryData,
+): string {
+	if (options.destinationKey !== undefined) return options.destinationKey;
+	if (typeof dataPropertyName === 'string') return dataPropertyName;
+	return 'data';
 }
 
 export async function executeV2(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -848,9 +977,7 @@ export async function executeV2(this: IExecuteFunctions): Promise<INodeExecution
 
 			const format = options.format ?? 'png';
 			const outputBuffer = await encodeCanvas(canvas, format, options.quality, jpegBackground);
-			const binaryPropertyName =
-				options.destinationKey ??
-				(typeof dataPropertyName === 'string' ? dataPropertyName : 'data');
+			const binaryPropertyName = getOutputPropertyName(options, dataPropertyName);
 			if (!isSafeObjectProperty(binaryPropertyName)) {
 				throw new NodeOperationError(node, 'Destination Output Field contains an unsafe name');
 			}
