@@ -526,6 +526,10 @@ describe('SkillsApiService', () => {
 				TX_CTX,
 			);
 			expect(skillService.refreshFollowingAgents).toHaveBeenCalledWith(['agent-1']);
+			// The rename is checked in the old scope before the move checks the new scope.
+			expect(skillService.save.mock.invocationCallOrder[0]).toBeLessThan(
+				skillService.changeTarget.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('does not move a skill that is already in the requested scope', async () => {

@@ -100,7 +100,8 @@ describe('SkillService', () => {
 		vi.resetAllMocks();
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		skills.findLatestSaved.mockResolvedValue(new Map());
-		skills.findAllLatestNames.mockResolvedValue([]);
+		skills.findLatestNamesInTarget.mockResolvedValue([]);
+		skills.findLatestSummaries.mockResolvedValue(new Map());
 		skills.findVersionsByIds.mockResolvedValue(new Map());
 		skills.findDependencies.mockResolvedValue(new Map());
 		skills.findByIds.mockResolvedValue([]);
@@ -234,9 +235,11 @@ describe('SkillService', () => {
 		});
 
 		it.each(['Brand voice', 'brand-voice', '  BRAND_voice '])(
-			'refuses "%s" when another skill in the instance has a name like it',
+			'refuses "%s" when another skill in the same scope has a name like it',
 			async (name) => {
-				skills.findAllLatestNames.mockResolvedValue([{ skillId: 'skill_x', name: 'Brand voice' }]);
+				skills.findLatestNamesInTarget.mockResolvedValue([
+					{ skillId: 'skill_x', name: 'Brand voice' },
+				]);
 
 				await expect(
 					service.create({
@@ -247,12 +250,18 @@ describe('SkillService', () => {
 						checkNameTaken: true,
 					}),
 				).rejects.toThrow('That name is taken, choose another');
+				expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(
+					{ projectId: PROJECT, agentId: null },
+					expect.anything(),
+				);
 				expect(skills.createSkill).not.toHaveBeenCalled();
 			},
 		);
 
 		it('lets a copy keep the name of the skill it copies', async () => {
-			skills.findAllLatestNames.mockResolvedValue([{ skillId: 'skill_x', name: 'Brand voice' }]);
+			skills.findLatestNamesInTarget.mockResolvedValue([
+				{ skillId: 'skill_x', name: 'Brand voice' },
+			]);
 
 			await service.create({
 				target: { projectId: null, agentId: 'agent-2' },
@@ -261,7 +270,7 @@ describe('SkillService', () => {
 				createdById: user.id,
 			});
 
-			expect(skills.findAllLatestNames).not.toHaveBeenCalled();
+			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
 			expect(skills.createSkill).toHaveBeenCalled();
 		});
 	});
@@ -324,9 +333,9 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('refuses a rename to a name that another skill has', async () => {
+		it('refuses a rename to a name that another skill in its scope has', async () => {
 			const baseSkillHash = givenLatest(versionRow(skill, 2));
-			skills.findAllLatestNames.mockResolvedValue([
+			skills.findLatestNamesInTarget.mockResolvedValue([
 				{ skillId: 'skill_a', name: 'Brand voice' },
 				{ skillId: 'skill_x', name: 'Code review' },
 			]);
@@ -334,6 +343,10 @@ describe('SkillService', () => {
 			await expect(
 				service.save('skill_a', { baseSkillHash, name: 'code-review' }, user.id),
 			).rejects.toThrow('That name is taken, choose another');
+			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(
+				{ projectId: PROJECT, agentId: null },
+				TX_CTX,
+			);
 			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
 		});
 
@@ -342,7 +355,7 @@ describe('SkillService', () => {
 
 			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
 
-			expect(skills.findAllLatestNames).not.toHaveBeenCalled();
+			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
 		});
 
 		it('removes references set to an empty list', async () => {
@@ -563,6 +576,25 @@ describe('SkillService', () => {
 			await expect(
 				service.changeTarget('skill_a', { projectId: null, agentId: null }, 'agent-1'),
 			).rejects.toThrow('Other agents use this skill.');
+			expect(skills.updateTarget).not.toHaveBeenCalled();
+		});
+
+		it('refuses to move a skill into a scope that holds a name like it', async () => {
+			skills.findUsingAgentIds.mockResolvedValue([]);
+			skills.findLatestSummaries.mockResolvedValue(
+				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
+			);
+			skills.findLatestNamesInTarget.mockResolvedValue([
+				{ skillId: 'skill_x', name: 'brand_voice' },
+			]);
+
+			await expect(
+				service.changeTarget('skill_a', { projectId: null, agentId: null }, undefined),
+			).rejects.toThrow('That name is taken, choose another');
+			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(
+				{ projectId: null, agentId: null },
+				TX_CTX,
+			);
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
