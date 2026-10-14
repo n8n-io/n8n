@@ -814,6 +814,21 @@ describe('AgentSkillModal', () => {
 				return result;
 			}
 
+			it('enables save only after the skill or its target changes', async () => {
+				const { getByTestId } = await renderEdit(
+					makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
+				);
+
+				expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+
+				await fireEvent.update(
+					getByTestId('agent-skill-description-input').querySelector('input')!,
+					'Use for all replies',
+				);
+
+				expect(getByTestId('agent-skill-create-save')).toBeEnabled();
+			});
+
 			it('changes the target of a skill that no other agent uses', async () => {
 				const onConfirm = vi.fn();
 				const { getByTestId, findByText } = await renderEdit(

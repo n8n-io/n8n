@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import { computed, onMounted, ref } from 'vue';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -90,14 +92,13 @@ function getDefaultSkillName(): string {
 	return `${baseName} ${suffix}`;
 }
 
-const skill = ref<AgentSkill>(
-	normalizeSkill({
-		name: props.data.skill?.name ?? getDefaultSkillName(),
-		description: props.data.skill?.description ?? '',
-		instructions: props.data.skill?.instructions ?? '',
-		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
-	}),
-);
+const initialSkill = normalizeSkill({
+	name: props.data.skill?.name ?? getDefaultSkillName(),
+	description: props.data.skill?.description ?? '',
+	instructions: props.data.skill?.instructions ?? '',
+	...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
+});
+const skill = ref<AgentSkill>(cloneDeep(initialSkill));
 const submitted = ref(false);
 const formIsValid = ref(false);
 const selectedPath = ref(SKILL_FILE);
@@ -189,6 +190,18 @@ const AVAILABILITY_ICONS = {
 	agent: 'bot',
 	instance: 'globe',
 } as const satisfies Record<AgentSkillAvailability, string>;
+const availabilityOptions = computed(() => [
+	{ value: 'project' as const, label: i18n.baseText('agents.builder.skills.availableTo.project') },
+	{ value: 'agent' as const, label: i18n.baseText('agents.builder.skills.availableTo.agent') },
+	...(showInstanceTarget.value
+		? [
+				{
+					value: 'instance' as const,
+					label: i18n.baseText('agents.builder.skills.availableTo.instance'),
+				},
+			]
+		: []),
+]);
 const removeLabel = computed(() =>
 	props.data.hubSkillsEnabled
 		? i18n.baseText('agents.builder.skills.detach')
@@ -263,6 +276,12 @@ const visibleNameError = computed(() =>
 );
 const canSave = computed(
 	() => formIsValid.value && !validationErrors.value.name && !isReadOnly.value,
+);
+const hasChanges = computed(
+	() =>
+		!isEditing.value ||
+		!isEqual(skill.value, initialSkill) ||
+		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value),
 );
 
 function getSimilarNameReason(name: string): string | undefined {
@@ -618,18 +637,16 @@ function onRemove() {
 											/>
 										</template>
 										<N8nOption
-											value="project"
-											:label="i18n.baseText('agents.builder.skills.availableTo.project')"
-										/>
-										<N8nOption
-											value="agent"
-											:label="i18n.baseText('agents.builder.skills.availableTo.agent')"
-										/>
-										<N8nOption
-											v-if="showInstanceTarget"
-											value="instance"
-											:label="i18n.baseText('agents.builder.skills.availableTo.instance')"
-										/>
+											v-for="option in availabilityOptions"
+											:key="option.value"
+											:value="option.value"
+											:label="option.label"
+										>
+											<span :class="$style.availabilityOption">
+												<N8nIcon :icon="AVAILABILITY_ICONS[option.value]" :size="16" />
+												{{ option.label }}
+											</span>
+										</N8nOption>
 									</N8nSelect>
 								</N8nTooltip>
 							</N8nInputLabel>
@@ -674,7 +691,13 @@ function onRemove() {
 			>
 				{{ i18n.baseText('agents.builder.skills.useLatest') }}
 			</N8nButton>
-			<N8nButton v-else variant="solid" data-testid="agent-skill-create-save" @click="onSave">
+			<N8nButton
+				v-else
+				variant="solid"
+				:disabled="!hasChanges"
+				data-testid="agent-skill-create-save"
+				@click="onSave"
+			>
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>
@@ -703,6 +726,12 @@ function onRemove() {
 
 .footerHint {
 	text-align: right;
+}
+
+.availabilityOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 @media (max-width: 480px) {
