@@ -56,3 +56,9 @@ export {
 	type Jwk,
 	type SkippedJwk,
 } from './services/oauth-discovery-client';
+
+export {
+	WorkflowPublishedDataService,
+	type PublishedWorkflowData,
+	type PublishedWorkflowDataForExecution,
+} from './workflows/workflow-published-data.service';
