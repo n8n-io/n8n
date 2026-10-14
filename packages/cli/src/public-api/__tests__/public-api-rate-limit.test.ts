@@ -7,7 +7,7 @@ import {
 	Get,
 	Param,
 	Post,
-	RateLimitTier,
+	RateLimitAccess,
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -90,7 +90,7 @@ describe('Public API rate limiting', () => {
 
 			@Post('/search')
 			@ApiResponse(200)
-			@RateLimitTier('read')
+			@RateLimitAccess('read')
 			search() {
 				return { ok: true };
 			}
@@ -243,7 +243,7 @@ describe('Public API rate limiting', () => {
 		expect((await send(app, 'get', '/widgets')).status).toBe(200);
 	});
 
-	it('uses the tier from @RateLimitTier over the HTTP method', async () => {
+	it('uses the access from @RateLimitAccess over the HTTP method', async () => {
 		const app = activate({ globalReadLimit: 1, globalWriteLimit: 100 });
 
 		await sendTimes(app, 1, 'post', '/widgets/search');

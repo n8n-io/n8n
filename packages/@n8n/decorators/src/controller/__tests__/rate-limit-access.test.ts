@@ -1,11 +1,11 @@
 import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
-import { RateLimitTier } from '../rate-limit-tier';
+import { RateLimitAccess } from '../rate-limit-access';
 import { Post } from '../route';
 import type { Controller } from '../types';
 
-describe('@RateLimitTier Decorator', () => {
+describe('@RateLimitAccess Decorator', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
@@ -13,10 +13,10 @@ describe('@RateLimitTier Decorator', () => {
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);
 	});
 
-	it('should set rateLimitTier on route metadata', () => {
+	it('should set rateLimitAccess on route metadata', () => {
 		class TestController {
 			@Post('/test')
-			@RateLimitTier('read')
+			@RateLimitAccess('read')
 			testMethod() {}
 		}
 
@@ -25,11 +25,11 @@ describe('@RateLimitTier Decorator', () => {
 			'testMethod',
 		);
 
-		expect(routeMetadata.rateLimitTier).toBe('read');
+		expect(routeMetadata.rateLimitAccess).toBe('read');
 		expect(routeMetadata.method).toBe('post');
 	});
 
-	it('should leave rateLimitTier undefined on a route without the decorator', () => {
+	it('should leave rateLimitAccess undefined on a route without the decorator', () => {
 		class TestController {
 			@Post('/test')
 			testMethod() {}
@@ -40,6 +40,6 @@ describe('@RateLimitTier Decorator', () => {
 			'testMethod',
 		);
 
-		expect(routeMetadata.rateLimitTier).toBeUndefined();
+		expect(routeMetadata.rateLimitAccess).toBeUndefined();
 	});
 });
