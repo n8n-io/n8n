@@ -353,7 +353,8 @@ export class SubAgentRunner {
 						context.onBudgetNotice?.(
 							notice.code === 'budget.session'
 								? { code: notice.code }
-								: { ...notice, agentId: runtimeSource.source.sourceId },
+								: // The innermost budget owner wins.
+									{ ...notice, agentId: notice.agentId ?? runtimeSource.source.sourceId },
 						)
 				: undefined;
 			const executionOptions = withBudgetGuardrail(

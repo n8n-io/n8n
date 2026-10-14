@@ -766,10 +766,20 @@ describe('SubAgentRunner', () => {
 		const options = childAgent.stream.mock.calls[0]?.[1];
 		const sink = options?.guardrails?.onNotice;
 		expect(sink).toBeDefined();
+		// A locally-originated notice gets this child's source id.
 		sink?.({ code: 'budget.alert' });
 		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.alert', agentId: 'agent-1' });
+		// A deeper child's stamp survives: the innermost owner wins.
+		sink?.({ code: 'budget.alert', agentId: 'grandchild-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({
+			code: 'budget.alert',
+			agentId: 'grandchild-1',
+		});
+		// A session stop always spends the root bucket, so it carries no owner.
+		sink?.({ code: 'budget.session', agentId: 'grandchild-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session' });
 		sink?.({ code: 'pii.block' });
-		expect(onBudgetNotice).toHaveBeenCalledTimes(1);
+		expect(onBudgetNotice).toHaveBeenCalledTimes(3);
 	});
 
 	it('installs the notice ferry even when the child has no budget bucket', async () => {
