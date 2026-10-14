@@ -45,11 +45,11 @@ describe('SkillsController', () => {
 	});
 
 	beforeEach(async () => {
-		await setSkillsHubFlag(true);
+		setSkillsHubFlag(true);
 	});
 
 	it('hides the skills API when the skills hub is off', async () => {
-		await setSkillsHubFlag(false);
+		setSkillsHubFlag(false);
 
 		await owner.get('/skills').expect(404);
 		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
