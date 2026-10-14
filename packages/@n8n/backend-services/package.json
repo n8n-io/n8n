@@ -35,7 +35,6 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
-    "express-openapi-validator": "5.5.3",
     "ioredis": "5.3.2",
     "n8n-workflow": "workspace:*"
   },

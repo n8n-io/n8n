@@ -21,8 +21,7 @@ check the code, not license to drop a team default.
 ## Non-negotiable rules
 
 - New endpoints are `@PublicApiController` classes under `v1/controllers/`, one
-  `*.public.controller.ts` per feature. A controller is a class — never
-  `export =` (the legacy tuple style; `require-public-api-controller` flags it).
+  `*.public.controller.ts` per feature.
 - Public API and internal REST are separate HTTP surfaces. A public controller
   never calls an internal controller/endpoint; both reuse the same service.
 - Controllers and handlers delegate to a service — never import a repository or
@@ -31,7 +30,6 @@ check the code, not license to drop a team default.
   `@ApiResponse(Dto)`.
 - Register each controller via a side-effect import in `v1/controllers/index.ts`
   (`public-api-controllers.test.ts` fails otherwise).
-- Don't add business logic to legacy `express-openapi-validator` (EOV) handlers.
 - Migrating a legacy endpoint must not change its public contract.
 
 These are `n8n-local-rules` ESLint rules (see `packages/cli/eslint.config.mjs`)
@@ -200,6 +198,5 @@ existing tests.
 - [Test-before-save endpoints](reference.md#test-before-save-endpoints)
 - [Errors](reference.md#errors)
 - [Testing matrix](reference.md#testing-matrix)
-- [Migrating legacy EOV endpoints](reference.md#migrating-legacy-eov-endpoints)
 - [Verifying a migration](reference.md#verifying-a-migration)
 - [CI and merging](reference.md#ci-and-merging)
