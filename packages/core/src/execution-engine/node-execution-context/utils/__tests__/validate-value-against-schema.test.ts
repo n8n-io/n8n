@@ -702,6 +702,15 @@ describe('validateValueAgainstSchema', () => {
 					expect(result).toEqual({ anything: 'kept' });
 				});
 			});
+
+			test('returns a null value as is when the mapper has a schema', () => {
+				const node = makeNode([schemaField('known', 'number')], {});
+				(node.parameters.columns as IDataObject).value = null;
+
+				const result = validateValueAgainstSchema(node, nodeType, null, parameterName, 0, 0);
+
+				expect(result).toBeNull();
+			});
 		});
 	});
 });

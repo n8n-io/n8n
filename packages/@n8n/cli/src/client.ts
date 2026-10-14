@@ -136,6 +136,13 @@ export interface PromotionBindingPreflight {
 	warnings: Array<Record<string, unknown>>;
 }
 
+/** A team project that a full Apply deletes, because the package does not hold it. */
+export type PromotionProjectDeletion = {
+	kind: 'project';
+	code: 'project-deletion';
+	project: { id: string; name: string };
+};
+
 type ApplyPackageIdentity = {
 	connectionId: string;
 	configId: string;

@@ -4,7 +4,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../../token-exchange.types';
 import { ScopedJwtStrategy } from '../scoped-jwt.strategy';
