@@ -132,6 +132,22 @@ describe('ServiceNow Basic Auth credential test', () => {
 		expect(result.status).toBe('Error');
 	});
 
+	it('reports a redirect without sending a second request', async () => {
+		const serviceNow = nock(baseURL)
+			.get('/api/now/table/sys_user')
+			.query(true)
+			.basicAuth({ user: credentialsData.user, pass: credentialsData.password })
+			.reply(302, undefined, { location: 'https://example.com/credential-check' });
+		const destination = nock('https://example.com').get('/credential-check').query(true).reply(200);
+
+		const result = await testCredentials();
+
+		expect(serviceNow.isDone()).toBe(true);
+		expect(destination.isDone()).toBe(false);
+		expect(result.status).toBe('Error');
+		expect(result.message).toContain('ServiceNow returned HTTP 302');
+	});
+
 	// NODE-6020: An incident-only account can authenticate without access to system tables.
 	it('accepts an authenticated account that cannot read system tables', async () => {
 		const incident = nock(baseURL)

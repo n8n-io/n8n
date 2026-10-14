@@ -192,9 +192,32 @@ export class ServiceNow implements INodeType {
 					};
 				}
 
+				if (
+					subdomain.length === 0 ||
+					subdomain.length > 63 ||
+					/[^a-z0-9-]/i.test(subdomain) ||
+					subdomain.startsWith('-') ||
+					subdomain.endsWith('-')
+				) {
+					return {
+						status: 'Error',
+						message: 'Connection failed. Enter only your ServiceNow subdomain, such as dev12345.',
+					};
+				}
+
+				if (ENCODED_QUERY_DELIMITERS.some((delimiter) => user.includes(delimiter))) {
+					return {
+						status: 'Error',
+						message: 'Connection failed. Enter a username without the ^ character.',
+					};
+				}
+
+				const url = new URL(`https://${subdomain}.service-now.com/api/now/table/sys_user`);
 				const options: IRequestOptions = {
 					method: 'GET',
-					uri: `https://${subdomain}.service-now.com/api/now/table/sys_user`,
+					uri: url.href,
+					allowedDomains: url.hostname,
+					followRedirect: false,
 					auth: { user, pass: password },
 					qs: {
 						sysparm_query: `user_name=${user}`,
