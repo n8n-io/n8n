@@ -16,6 +16,12 @@ const toQueryV1 = (query: Request['query']): QueryV1 => {
 	return result;
 };
 
+/** The contract exposes a parsed JSON body, or `undefined` when the request has none. */
+const toJsonBodyV1 = (req: Request): unknown => {
+	if (req.contentType !== 'application/json' || !req.rawBody?.length) return undefined;
+	return req.body;
+};
+
 const toParamsV1 = (params: Request['params']): HttpRequestV1['params'] => {
 	const result: HttpRequestV1['params'] = {};
 	for (const [key, value] of Object.entries(params)) {
@@ -29,8 +35,8 @@ export class PublicHttpService implements HttpApiV1 {
 	readonly version = 1;
 
 	/**
-	 * Mounted before the editor UI fallback routes, so routes that extensions
-	 * add later, during `register`, are still reachable.
+	 * Mounted after the built-in API routes and before the editor UI fallback,
+	 * so routes that extensions add later, during `register`, are still reachable.
 	 */
 	readonly router: ExpressRouter = Router();
 
@@ -49,7 +55,7 @@ export class PublicHttpService implements HttpApiV1 {
 					params: toParamsV1(req.params),
 					query: toQueryV1(req.query),
 					headers: req.headers,
-					body: req.body,
+					body: toJsonBodyV1(req),
 				});
 
 				res.status(response.status);

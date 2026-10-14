@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { OwnershipService } from '@/services/ownership.service';
@@ -50,5 +51,35 @@ describe('PublicOwnershipService', () => {
 		await service.setupOwner(input);
 
 		expect(ownershipService.setupOwner).toHaveBeenCalledWith(input, { overwriteExisting: false });
+	});
+
+	it('should reject an owner that fails the setup request rules', async () => {
+		ownershipService.hasInstanceOwner.mockResolvedValue(false);
+
+		await expect(
+			service.setupOwner({
+				email: 'owner@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+				password: 'short',
+			}),
+		).rejects.toThrow('Password must be 8 to 64 characters long.');
+		expect(ownershipService.setupOwner).not.toHaveBeenCalled();
+	});
+
+	it('should translate a late owner-exists error into owner_already_set_up', async () => {
+		ownershipService.hasInstanceOwner.mockResolvedValue(false);
+		ownershipService.setupOwner.mockRejectedValue(
+			new BadRequestError('Instance owner already setup'),
+		);
+
+		await expect(
+			service.setupOwner({
+				email: 'owner@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+				password: 'Password123',
+			}),
+		).rejects.toMatchObject({ code: 'owner_already_set_up' });
 	});
 });
