@@ -377,15 +377,16 @@ describe('WorkflowExecuteAdditionalData', () => {
 					parameters: {},
 				},
 			];
-			const subWorkflowData = () =>
-				mock<IWorkflowBase>({
+			// Plain object: inline code is structure-validated, which a deep mock fails.
+			const subWorkflowData = (): IWorkflowBase =>
+				({
 					id: 'sub-id',
 					name: 'Sub Workflow',
 					nodes: structuredClone(nodes),
 					connections: {},
 					staticData: {},
 					settings: {},
-				});
+				}) as IWorkflowBase;
 
 			beforeEach(() => {
 				nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
@@ -396,7 +397,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					// `rootExecutionMode` explicit: a deep mock auto-stubs every
 					// property, so leaving it out would hand `??` a truthy proxy.
 					mock<IWorkflowExecuteAdditionalData>({
@@ -413,11 +414,24 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 			});
 
+			it('rejects an inline sub-workflow with a non-boolean disabled flag', async () => {
+				const code = subWorkflowData();
+				code.nodes = code.nodes.map((n) => ({ ...n, disabled: 1 as unknown as boolean }));
+
+				await expect(
+					executeWorkflow({ code }, mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }), {
+						parentWorkflowId: 'parent-1',
+						executionMode: 'manual',
+					}),
+				).rejects.toThrow('Workflow structure is invalid');
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
 			// A sub-workflow's own WorkflowExecute runs as 'integrated', so the
 			// original mode has to come from the root.
 			it('checks against the triggering user through a nested inline sub-workflow', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({
 						userId: 'user-1',
 						rootExecutionMode: 'manual',
@@ -440,7 +454,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			// access to it has since changed.
 			it('keeps the project check for an inline sub-workflow in a triggered run', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({
 						userId: 'publisher-1',
 						rootExecutionMode: undefined,
@@ -465,7 +479,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'checks against the acting user for an inline sub-workflow in a %s run',
 				async (executionMode) => {
 					await executeWorkflow(
-						mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+						{ code: subWorkflowData() },
 						mock<IWorkflowExecuteAdditionalData>({
 							userId: 'user-1',
 							rootExecutionMode: undefined,
@@ -500,7 +514,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
 				const workflowData = subWorkflowData();
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: workflowData }),
+					{ code: workflowData },
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
 					{ parentWorkflowId: 'parent-1', executionMode: 'webhook' },
 				);
@@ -553,7 +567,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('preserves parent static-data persistence for inline definitions without an id', async () => {
 				await executeWorkflow(
-					{ code: mock<IWorkflowBase>({ ...subWorkflowData(), id: undefined }) },
+					{ code: { ...subWorkflowData(), id: undefined } as unknown as IWorkflowBase },
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
 					{ parentWorkflowId: 'parent-1', executionMode: 'webhook' },
 				);
@@ -577,7 +591,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('preserves the triggering user in the sub-workflow additional data for inline sub-workflows so nested inline calls stay scoped to that user', async () => {
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
 					mock<ExecuteWorkflowOptions>({
 						loadedWorkflowData: subWorkflowData(),
@@ -1348,22 +1362,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should use provided workflow code when id is not provided', async () => {
-			const workflowCode = mock<IWorkflowBase>({
+			const workflowCode = {
 				id: 'code-workflow',
 				name: 'Code Workflow',
 				active: false,
 				nodes: [
-					mock<INode>({
+					{
 						id: 'node1',
 						type: 'n8n-nodes-base.set',
 						name: 'Node 1',
 						typeVersion: 1,
 						parameters: {},
 						position: [250, 300],
-					}),
+					} as INode,
 				],
 				connections: {},
-			});
+			} as IWorkflowBase;
 
 			const result = await getPublishedWorkflowData({ code: workflowCode }, 'parent-workflow-id');
 

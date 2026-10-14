@@ -162,6 +162,7 @@ async function fetchWorkflowData(
 				workflowData.nodes ?? [],
 				parentWorkflowId,
 			);
+			WorkflowHelpers.validateWorkflowStructure(workflowData);
 			// An inline sub-workflow is part of the parent that embeds it, not a
 			// workflow of its own, so it runs under the parent workflow's id.
 			workflowData.id = parentWorkflowId;
