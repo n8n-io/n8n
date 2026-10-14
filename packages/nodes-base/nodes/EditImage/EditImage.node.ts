@@ -459,6 +459,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['blur'],
+				'@version': [{ _cnd: { lt: 2 } }],
 			},
 		},
 		description: 'How strong the blur should be',
@@ -475,9 +476,27 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['blur'],
+				'@version': [{ _cnd: { lt: 2 } }],
 			},
 		},
 		description: 'The sigma of the blur',
+	},
+	{
+		displayName: 'Blur Radius',
+		name: 'blurRadius',
+		type: 'number',
+		typeOptions: {
+			minValue: 0,
+			maxValue: 1000,
+		},
+		default: 5,
+		displayOptions: {
+			show: {
+				operation: ['blur'],
+				'@version': [{ _cnd: { gte: 2 } }],
+			},
+		},
+		description: 'Blur radius in pixels',
 	},
 
 	// ----------------------------------

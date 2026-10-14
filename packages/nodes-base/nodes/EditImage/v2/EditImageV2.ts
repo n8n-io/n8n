@@ -42,7 +42,7 @@ type CompositeMode =
 const VALID_IMAGE_FORMATS = new Set<string>(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
 
 const requiredOperationParameters: Record<string, string[]> = {
-	blur: ['blur', 'sigma'],
+	blur: ['blurRadius'],
 	border: ['borderColor', 'borderWidth', 'borderHeight'],
 	composite: ['dataPropertyNameComposite', 'operator', 'positionX', 'positionY'],
 	create: ['backgroundColor', 'height', 'width'],
@@ -75,7 +75,7 @@ const requiredOperationParameters: Record<string, string[]> = {
 };
 
 const numericOperationParameters: Record<string, string[]> = {
-	blur: ['blur', 'sigma'],
+	blur: ['blurRadius'],
 	border: ['borderWidth', 'borderHeight'],
 	composite: ['positionX', 'positionY'],
 	create: ['width', 'height'],
@@ -249,7 +249,7 @@ async function applyBlur(canvas: Canvas, operation: OperationData): Promise<Canv
 	const { createCanvas: createNapiCanvas } = await import('@napi-rs/canvas');
 	const output = createNapiCanvas(canvas.width, canvas.height);
 	const context = output.getContext('2d');
-	context.filter = `blur(${Math.max(getNumber(operation, 'blur'), getNumber(operation, 'sigma'))}px)`;
+	context.filter = `blur(${getNumber(operation, 'blurRadius')}px)`;
 	context.drawImage(canvas, 0, 0);
 	return output;
 }

@@ -87,7 +87,7 @@ describe('Edit Image v2', () => {
 	});
 
 	it.each([
-		['blur', { blur: 2, sigma: 1 }],
+		['blur', { blurRadius: 2 }],
 		['border', { borderColor: '#0000ff', borderWidth: 2, borderHeight: 3 }],
 		['crop', { width: 8, height: 6, positionX: 1, positionY: 1 }],
 		[
