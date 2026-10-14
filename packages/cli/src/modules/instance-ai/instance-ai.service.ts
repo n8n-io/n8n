@@ -174,6 +174,7 @@ import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
+import { isAgentsAccessEnabled } from './agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
@@ -2607,7 +2608,6 @@ export class InstanceAiService {
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
-		resumeAgentBuild = false,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2706,7 +2706,6 @@ export class InstanceAiService {
 			aiPreferencesEnabled,
 			modelId,
 			allowSendingParameterValues,
-			resumeAgentBuild,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2854,6 +2853,8 @@ export class InstanceAiService {
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
 			instanceContextEnabled,
+			// The agent-building skills need the build-agent tool, which needs a builder delegate.
+			agentBuildingEnabled: context.builderDelegate !== undefined,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
@@ -3023,12 +3024,12 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Resolve the agents execution service only when the `agents` module is
-	 * active. Mirrors the builder-delegate gate so agent-preview handoff is
-	 * absent (rather than exploding) when agents are disabled.
+	 * Resolve the agents execution service only when the Assistant can use
+	 * Agents. Mirrors the builder-delegate gate so agent-preview handoff is
+	 * absent (rather than exploding) when Agents are off.
 	 */
 	private getAgentExecutionService(): AgentExecutionService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		if (!isAgentsAccessEnabled()) return null;
 		try {
 			return Container.get(AgentExecutionService);
 		} catch {
@@ -3045,7 +3046,7 @@ export class InstanceAiService {
 		if (!projectId) return;
 		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
 
-		if (!Container.get(ModuleRegistry).isActive('agents')) return;
+		if (!isAgentsAccessEnabled()) return;
 		context.agentContextService = Container.get(InstanceAiAgentContextAdapterService).createReader(
 			user,
 			projectId,
@@ -3064,6 +3065,10 @@ export class InstanceAiService {
 		await resolveAgentPreviewSession(context);
 		const projectId = context.projectId;
 		if (!context.agentPreviewSession || !projectId) return;
+		if (!isAgentsAccessEnabled()) {
+			context.agentPreviewSession = undefined;
+			return;
+		}
 		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
 			context.agentPreviewSession = undefined;
 			return;
@@ -5345,7 +5350,6 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 		instanceContextGates?: InstanceContextGates,
-		resumeAgentBuild = false,
 	): Promise<{
 		agent: InstanceAgent;
 		modelId: ModelConfig;
@@ -5360,8 +5364,6 @@ export class InstanceAiService {
 			pushRef,
 			undefined,
 			instanceContextGates,
-			undefined,
-			resumeAgentBuild,
 		);
 		const agent = await this.createAgentFromEnvironment(
 			environment,
@@ -5375,19 +5377,6 @@ export class InstanceAiService {
 			modelId: environment.modelId,
 			orchestrationContext: environment.orchestrationContext,
 		};
-	}
-
-	private isAgentBuilderSuspension(
-		toolName: string | undefined,
-		suspendPayload: Record<string, unknown> | undefined,
-	): boolean {
-		if (toolName !== 'build-agent') return false;
-		const builderCheckpoint = suspendPayload?.builderCheckpoint;
-		return (
-			isRecord(builderCheckpoint) &&
-			typeof builderCheckpoint.runId === 'string' &&
-			typeof builderCheckpoint.toolCallId === 'string'
-		);
 	}
 
 	/**
@@ -5453,8 +5442,6 @@ export class InstanceAiService {
 				this.threadPushRef.get(orphan.threadId),
 				undefined,
 				instanceContext,
-				undefined,
-				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 		} catch (error: unknown) {
 			return { kind: 'env-failure', error };
@@ -5775,7 +5762,6 @@ export class InstanceAiService {
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
 		instanceContextGates?: InstanceContextGates,
-		resumeAgentBuild = false,
 	): Promise<
 		| {
 				agent: InstanceAgent;
@@ -5794,7 +5780,6 @@ export class InstanceAiService {
 				messageGroupId,
 				this.threadPushRef.get(threadId),
 				instanceContextGates,
-				resumeAgentBuild,
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
 			return {
@@ -5934,7 +5919,6 @@ export class InstanceAiService {
 				runHandoff,
 				messageGroupId,
 				instanceContext,
-				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 			if (!rebuilt) {
 				const rebuildFailure = 'Agent rebuild failed';

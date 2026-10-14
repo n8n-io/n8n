@@ -180,6 +180,13 @@ The `instance-ai` module is in the default module set. It does not need to be
 listed in `N8N_ENABLED_MODULES`. `N8N_AI_ENABLED` controls older global AI
 features and does not gate Instance AI.
 
+The `agents` module is also in the default module set. When it is active and
+the Settings > Agents switch is on, the Assistant gets the `build-agent` and
+`agent-context` tools, the `agent-builder` and `intent-recognition` skills, and
+Agent preview handoff. When an admin turns the switch off, the Assistant loses
+all of these at once. A run that is building an Agent fails at its next step.
+To remove the module, add `agents` to `N8N_DISABLED_MODULES`.
+
 Chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`.
 Member-facing entry points are additionally gated by `isSetupCompleted()`, which
 resolves the admin model selection, the assigned sandbox and search credentials,
