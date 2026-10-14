@@ -603,8 +603,50 @@ describe('SkillsHubStartupCopy', () => {
 
 			const counts = await copy.copyAll();
 
-			expect(counts).toMatchObject({ agents: 1, failed: 0 });
+			// The failed try rolled back, so only the second try counts.
+			expect(counts).toMatchObject({ agents: 1, skills: 1, versions: 1, failed: 0 });
 			expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+		});
+
+		it('copies the inline text as it is when the copy reaches the agent, not when it read the page', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: body('Tone', 'Old.'),
+			});
+			const findPage = agents.findPageForSkillCopy.bind(agents);
+			vi.spyOn(agents, 'findPageForSkillCopy').mockImplementationOnce(async (...args) => {
+				const page = await findPage(...args);
+				// A main with the flag still off saves the draft after the page was read.
+				await agents.update({ id: agent.id }, { skills: { tone: body('Tone', 'New.') } });
+				return page;
+			});
+
+			await copy.copyAll();
+
+			expect(instructionsOf((await skillRefs.readDraft(agent, {})).skills)).toEqual({
+				tone: 'New.',
+			});
+		});
+
+		it('picks a new id when another agent took the same inline id first', async () => {
+			const first = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: body('Tone', 'A.'),
+			});
+			const second = await legacyAgent([{ type: 'skill', id: 'tone' }], {
+				tone: body('Tone', 'B.'),
+			});
+			// As when two mains copy at once: both see `tone` as free, so the second insert
+			// fails on the primary key.
+			vi.spyOn(skills, 'existsById').mockResolvedValueOnce(false).mockResolvedValueOnce(false);
+
+			const counts = await copy.copyAll();
+
+			expect(counts).toMatchObject({ agents: 2, skills: 2, versions: 2, failed: 0 });
+			const [firstRef] = await skillRefs.refsForDraft(first, {});
+			const [secondRef] = await skillRefs.refsForDraft(second, {});
+			expect([firstRef.id, secondRef.id].filter((id) => id === 'tone')).toHaveLength(1);
+			expect(instructionsOf((await skillRefs.readDraft(second, {})).skills)).toEqual({
+				[secondRef.id]: 'B.',
+			});
 		});
 	});
 
