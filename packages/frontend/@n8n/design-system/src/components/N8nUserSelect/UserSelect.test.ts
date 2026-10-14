@@ -171,6 +171,56 @@ describe('UserSelect', () => {
 		});
 	});
 
+	it.each([0, 100])('finishes email checks with %i ms timer latency', async (latency) => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+		const scheduleTimeout = globalThis.setTimeout;
+		// DEVP-1283: Model a busy CI worker without a wall-clock delay.
+		vi.stubGlobal(
+			'setTimeout',
+			(handler: (...args: unknown[]) => void, delay?: number, ...args: unknown[]) =>
+				scheduleTimeout(handler, Math.max(delay ?? 0, latency), ...args),
+		);
+		const { unmount } = renderComponent({ props: { users: sampleUsers } });
+		const runInteraction = async (interaction: Promise<unknown>) => {
+			let settled = false;
+			const completion = interaction.finally(() => {
+				settled = true;
+			});
+			while (!settled) {
+				await vi.advanceTimersToNextTimerAsync();
+			}
+			await completion;
+		};
+
+		try {
+			const startedAt = Date.now();
+
+			await runInteraction(filterInput('alice@example.com'));
+			const aliceOptions = await getRenderedOptions();
+			expect(aliceOptions).toHaveLength(1);
+			expect(aliceOptions[0]).toHaveAttribute('id', 'user-select-option-id-u1');
+
+			await runInteraction(userEvent.click(document.body));
+			await runInteraction(filterInput('Example.com'));
+			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+			await runInteraction(userEvent.click(document.body));
+			await runInteraction(filterInput('example.com'));
+			expect(await getRenderedOptions()).toHaveLength(sampleUsers.length);
+
+			// All three searches share the default Vitest test timeout.
+			expect(Date.now() - startedAt).toBeLessThan(5000);
+		} finally {
+			try {
+				unmount();
+				await vi.runAllTimersAsync();
+			} finally {
+				vi.unstubAllGlobals();
+				vi.useRealTimers();
+			}
+		}
+	});
+
 	it('filters by full name and email and sorts by last name', async () => {
 		const specificUsers: IUser[] = [
 			{
