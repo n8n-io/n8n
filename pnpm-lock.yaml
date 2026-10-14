@@ -1886,6 +1886,12 @@ importers:
       ioredis:
         specifier: 5.3.2
         version: 5.3.2(supports-color@8.1.1)
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.3
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1905,6 +1911,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.10
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17

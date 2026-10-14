@@ -224,8 +224,6 @@ export default defineConfig({
 			// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
 			// verify. Do NOT add a file for any other reason.
 			files: [
-				// Owns the signing key and derives every audience from a purpose.
-				'./src/services/jwt.service.ts',
 				// Verifies subject tokens with a foreign key from the trusted-key store,
 				// against the audience that key is registered for.
 				'./src/modules/token-exchange/services/token-exchange.service.ts',
