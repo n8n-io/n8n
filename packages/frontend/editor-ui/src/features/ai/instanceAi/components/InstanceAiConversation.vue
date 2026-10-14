@@ -22,7 +22,6 @@ import type {
 } from '@n8n/api-types';
 import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
@@ -126,7 +125,6 @@ const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined
 	undefined,
 );
 const { isLowCredits, isOutOfCredits } = storeToRefs(store);
-const appSettingsStore = useSettingsStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
