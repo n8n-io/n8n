@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -22,6 +23,7 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	updateFindingStatuses: vi.fn(),
 	assignWorkflowOwner: vi.fn(),
 	unassignWorkflowOwner: vi.fn(),
+	notifyFindingOwners: vi.fn(),
 }));
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	getUsers: vi.fn(),
@@ -34,14 +36,15 @@ const grace = {
 	email: 'grace@example.com',
 };
 
-const { showError, resolveRoute } = vi.hoisted(() => ({
+const { showError, showMessage, resolveRoute } = vi.hoisted(() => ({
 	showError: vi.fn(),
+	showMessage: vi.fn(),
 	resolveRoute: vi.fn(() => ({ href: '/workflow/workflow-1' })),
 }));
 
 vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
 	...(await importOriginal<object>()),
-	useToast: () => ({ showError }),
+	useToast: () => ({ showError, showMessage }),
 }));
 
 // The test renderer has no router. The open link needs `resolve` to build the workflow URL.
@@ -151,6 +154,7 @@ describe('MigrationRuleDetail', () => {
 		};
 		uiStore = mockedStore(useUIStore);
 		rbacStore = mockedStore(useRBACStore);
+		mockedStore(useSettingsStore).isSmtpSetup = true;
 		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
 		vi.mocked(usersApi.getUsers).mockResolvedValue({ count: 1, items: [grace] });
 
@@ -304,6 +308,33 @@ describe('MigrationRuleDetail', () => {
 			expect(screen.getByText('2 affected')).toBeInTheDocument();
 		});
 
+		it('should keep the notified date when reopening a notified row fails', async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockRejectedValue(
+				new Error('Request failed'),
+			);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							status: 'notified',
+							notifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+						},
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			await selectState('Test Workflow 1', 'Open');
+
+			await waitFor(() => expect(showError).toHaveBeenCalled());
+			const row = screen.getByText('Test Workflow 1').closest('tr');
+			if (!row) throw new Error('Row not found');
+			expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Notified');
+			expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
+		});
+
 		it('should disable the state of a row while its change is saving', async () => {
 			let finishSave = () => {};
 			vi.mocked(breakingChangesApi.updateFindingStatus).mockImplementation(
@@ -453,6 +484,36 @@ describe('MigrationRuleDetail', () => {
 			);
 		});
 
+		it('should reopen a selected notified row and drop its notified date', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							status: 'notified',
+							notifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+						},
+					],
+				}),
+			);
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			expect(screen.getByTestId('migration-bulk-reopen-button')).toBeEnabled();
+			await userEvent.click(screen.getByTestId('migration-bulk-reopen-button'));
+
+			await waitFor(() => expect(getStateSelect('Test Workflow 1')).toHaveTextContent('Open'));
+			expect(screen.queryByTestId('migration-workflow-notified-at')).not.toBeInTheDocument();
+			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-1'],
+				'open',
+			);
+		});
+
 		it('should disable an action that would change none of the selected rows', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await screen.findByText('2 affected');
@@ -493,6 +554,54 @@ describe('MigrationRuleDetail', () => {
 				() => expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected'),
 				{ timeout: 1000 },
 			);
+		});
+
+		it('should open the migrate modal with the selected workflows', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue({
+				...mockRuleResult,
+				migratable: true,
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-migrate-button'));
+
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			expect(data.ruleId).toBe('rule-1');
+			expect(
+				(data.workflows as Array<{ id: string }>).map((workflow) => workflow.id).sort(),
+			).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('should drop a migrated row from the selection', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue({
+				...mockRuleResult,
+				migratable: true,
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-migrate-button'));
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			(data.eventBus as EventBus).emit('migrated', { workflowId: 'workflow-1' });
+
+			await waitFor(() =>
+				expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected'),
+			);
+		});
+
+		it('should not offer a bulk migration when the rule is not migratable', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+
+			await screen.findByTestId('selected-items-info');
+			expect(screen.queryByTestId('migration-bulk-migrate-button')).not.toBeInTheDocument();
 		});
 
 		it('should not offer selection to a user without the migrate scope', async () => {
@@ -692,7 +801,7 @@ describe('MigrationRuleDetail', () => {
 					name: MIGRATE_WORKFLOW_MODAL_KEY,
 					data: expect.objectContaining({
 						ruleId: 'rule-1',
-						workflow: expect.objectContaining({ id: mockWorkflowWithIssue.id }),
+						workflows: [expect.objectContaining({ id: mockWorkflowWithIssue.id })],
 					}),
 				}),
 			);
@@ -993,12 +1102,13 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
-	describe('open link', () => {
-		it('should link each row to its workflow in a new tab', async () => {
+	describe('workflow name link', () => {
+		it('should link each workflow name to its workflow in a new tab', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
-			const [link] = await screen.findAllByTestId('migration-workflow-open-link');
+			const [link] = await screen.findAllByTestId('migration-workflow-name-link');
 
+			expect(link).toHaveTextContent('Test Workflow 1');
 			expect(link).toHaveAttribute('href', '/workflow/workflow-1');
 			expect(link).toHaveAttribute('target', '_blank');
 			expect(resolveRoute).toHaveBeenCalledWith(
@@ -1418,6 +1528,263 @@ describe('MigrationRuleDetail', () => {
 			await waitFor(() => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 				expect(screen.getByTestId('migration-rule-filters')).toHaveTextContent(/^Filters$/);
+			});
+		});
+	});
+	describe('notify owner', () => {
+		const getRow = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return row;
+		};
+
+		it('should offer to notify only a row with an owner, and remind once notified', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			const button = within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button');
+			expect(button).toHaveTextContent('Notify owner');
+			expect(
+				within(getRow('Test Workflow 2')).queryByTestId('migration-notify-owner-button'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should mark the row notified after the email went out and keep it in the affected count', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: ['workflow-1'],
+				skipped: [],
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => {
+				const row = getRow('Test Workflow 1');
+				expect(within(row).getByTestId('migration-finding-state-select')).toHaveTextContent(
+					'Notified',
+				);
+				expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
+				expect(within(row).getByTestId('migration-notify-owner-button')).toHaveTextContent(
+					'Remind',
+				);
+			});
+			expect(screen.getByText('2 affected')).toBeInTheDocument();
+			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-1'],
+			);
+		});
+
+		it('should send the email again when the user clicks Remind', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: ['workflow-1'],
+				skipped: [],
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							status: 'notified',
+							notifiedAt: new Date('2024-01-01T00:00:00.000Z'),
+						},
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+			// The hover must start inside the tooltip trigger, so target the icon in the tip.
+			const notifiedTip = (name: string) =>
+				within(getRow(name))
+					.getByTestId('migration-workflow-notified-at')
+					.querySelector('svg') as Element;
+			await hoverTooltipTrigger(notifiedTip('Test Workflow 1'));
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Last notified'));
+			expect(getTooltip()).not.toHaveTextContent('just now');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalled());
+			// The click closes the open tooltip and the row re-renders, so the pointer
+			// has to leave the old trigger before a hover opens the new one.
+			const trigger = notifiedTip('Test Workflow 1').closest('[data-grace-area-trigger]');
+			trigger?.dispatchEvent(
+				new PointerEvent('pointerleave', { bubbles: true, pointerType: 'mouse' }),
+			);
+			await hoverTooltipTrigger(notifiedTip('Test Workflow 1'));
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Last notified just now'), {
+				timeout: 3000,
+			});
+			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledTimes(1);
+			expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-1'],
+			);
+		});
+
+		it('should not offer to notify an owner without an email', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, owner: { ...mockWorkflowWithIssue.owner, email: null } },
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			expect(screen.queryByTestId('migration-notify-owner-button')).not.toBeInTheDocument();
+		});
+
+		it('should leave the row as it is and show the reason when the server skips it', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: [],
+				skipped: [{ workflowId: 'workflow-1', reason: 'send_failed' }],
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => expect(showMessage).toHaveBeenCalled());
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'error', message: expect.stringContaining('SMTP') }),
+			);
+			expect(
+				within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+			).toHaveTextContent('Open');
+		});
+
+		it('should hide the notify action when SMTP is not set up', async () => {
+			mockedStore(useSettingsStore).isSmtpSetup = false;
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(screen.queryByTestId('migration-notify-owner-button')).not.toBeInTheDocument();
+		});
+
+		describe('bulk', () => {
+			const selectRow = async (workflowName: string) =>
+				await userEvent.click(within(getRow(workflowName)).getByRole('checkbox'));
+
+			it('should notify the selected owners in one request and keep the rows without an owner selected', async () => {
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+					notifiedWorkflowIds: ['workflow-1'],
+					skipped: [],
+				});
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 2');
+				expect(screen.getByTestId('migration-bulk-notify-no-owner')).toHaveTextContent(
+					'1 without an owner',
+				);
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				await waitFor(() => {
+					const row = getRow('Test Workflow 1');
+					expect(within(row).getByTestId('migration-finding-state-select')).toHaveTextContent(
+						'Notified',
+					);
+					expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
+					expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected');
+				});
+				expect(within(getRow('Test Workflow 1')).getByRole('checkbox')).not.toBeChecked();
+				expect(within(getRow('Test Workflow 2')).getByRole('checkbox')).toBeChecked();
+				expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledTimes(1);
+				expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
+					rootStore.restApiContext,
+					'rule-1',
+					['workflow-1'],
+				);
+				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			});
+
+			it('should not change the state of a row while its notification is in flight', async () => {
+				let finishNotify = () => {};
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							finishNotify = () => resolve({ notifiedWorkflowIds: ['workflow-1'], skipped: [] });
+						}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				expect(screen.getByTestId('migration-bulk-wont-fix-button')).toBeDisabled();
+				finishNotify();
+				await waitFor(() =>
+					expect(
+						within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+					).toHaveTextContent('Notified'),
+				);
+				expect(breakingChangesApi.updateFindingStatuses).not.toHaveBeenCalled();
+			});
+
+			it('should disable the action when no selected row has an owner', async () => {
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 2');
+
+				expect(screen.getByTestId('migration-bulk-notify-button')).toBeDisabled();
+			});
+
+			it('should leave a skipped row open and warn with the reason', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							mockWorkflowWithIssue,
+							{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+						],
+					}),
+				);
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+					notifiedWorkflowIds: ['workflow-1'],
+					skipped: [{ workflowId: 'workflow-2', reason: 'send_failed' }],
+				});
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 2');
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				await waitFor(() =>
+					expect(showMessage).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'warning',
+							title: 'Notified owners of 1 of 2 workflows',
+							message: expect.stringContaining('SMTP'),
+						}),
+					),
+				);
+				expect(
+					within(getRow('Test Workflow 2')).getByTestId('migration-finding-state-select'),
+				).toHaveTextContent('Open');
+			});
+
+			it('should hide the action when SMTP is not set up', async () => {
+				mockedStore(useSettingsStore).isSmtpSetup = false;
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+
+				expect(screen.queryByTestId('migration-bulk-notify-button')).not.toBeInTheDocument();
 			});
 		});
 	});

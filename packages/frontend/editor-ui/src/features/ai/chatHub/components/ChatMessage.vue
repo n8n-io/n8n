@@ -385,7 +385,7 @@ onBeforeMount(() => {
 						@click.stop="handleAttachClick"
 					/>
 					<div :class="$style.editActions">
-						<N8nButton variant="subtle" size="small" @click="handleCancelEdit">
+						<N8nButton variant="outline" size="small" @click="handleCancelEdit">
 							{{ i18n.baseText('chatHub.message.edit.cancel') }}
 						</N8nButton>
 						<N8nButton

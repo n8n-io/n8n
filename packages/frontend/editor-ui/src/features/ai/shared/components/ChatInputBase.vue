@@ -16,6 +16,8 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 const props = withDefaults(
 	defineProps<{
+		/** Blocks workflow canvas shortcuts while the textarea has focus. Defaults to true. */
+		blockCanvasShortcuts?: boolean;
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
@@ -49,6 +51,7 @@ const props = withDefaults(
 		maxLength?: number;
 	}>(),
 	{
+		blockCanvasShortcuts: true,
 		placeholder: undefined,
 		showStopButton: undefined,
 		showAttachButton: true,
@@ -273,6 +276,7 @@ defineExpose({
 
 		<N8nChatInput
 			ref="inputRef"
+			:block-canvas-shortcuts="blockCanvasShortcuts"
 			:model-value="modelValue"
 			:placeholder="placeholder"
 			:streaming="showStopButton ?? isStreaming"

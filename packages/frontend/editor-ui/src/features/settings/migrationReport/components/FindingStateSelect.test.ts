@@ -55,4 +55,29 @@ describe('FindingStateSelect', () => {
 			expect(emitted('update:modelValue')).toEqual([['wont_fix']]);
 		});
 	});
+	describe('notified state', () => {
+		it('should show the notified state as a disabled option only while it is current', async () => {
+			renderComponent({ props: { modelValue: 'notified' } });
+
+			expect(screen.getByTestId('migration-finding-state-select')).toHaveTextContent('Notified');
+			const listbox = await openMenu();
+			const options = within(listbox).getAllByRole('option');
+
+			expect(options).toHaveLength(3);
+			expect(options[1]).toHaveTextContent('Notified');
+			expect(options[1]).toHaveAttribute('aria-selected', 'true');
+			expect(options[1]).toHaveAttribute('aria-disabled', 'true');
+		});
+
+		it('should emit a triage state picked from the notified state', async () => {
+			const { emitted } = renderComponent({ props: { modelValue: 'notified' } });
+
+			const listbox = await openMenu();
+			await userEvent.click(within(listbox).getByText("Won't fix"));
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')).toEqual([['wont_fix']]);
+			});
+		});
+	});
 });

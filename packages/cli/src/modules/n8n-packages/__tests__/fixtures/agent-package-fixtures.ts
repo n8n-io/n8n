@@ -54,7 +54,7 @@ function agentFiles(entry: ManifestEntry, availableInMCP: boolean): Record<strin
 			name: entry.name,
 			model: '',
 			instructions: '',
-			skills: [{ type: 'skill', id: skillId, enabled: false }],
+			skills: [{ type: 'skill', id: skillId }],
 			tools: [{ type: 'custom', id: toolId, enabled: false, requireApproval: true }],
 			tasks: [{ type: 'task', id: taskId, enabled: false }],
 			mcpServers: [

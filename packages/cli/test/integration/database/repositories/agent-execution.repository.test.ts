@@ -141,7 +141,6 @@ describe('AgentExecutionRepository', () => {
 			projectId,
 			integrations: [],
 			tools: {},
-			skills: {},
 		} as Partial<Agent>);
 		await agentRepo.save(agent);
 		agentId = agent.id;
@@ -1048,7 +1047,6 @@ describe('AgentExecutionRepository', () => {
 				projectId,
 				integrations: [],
 				tools: {},
-				skills: {},
 			}),
 		);
 		const childThread = await createThread({
@@ -3674,7 +3672,6 @@ describe('AgentExecutionRepository', () => {
 				projectId,
 				integrations: [],
 				tools: {},
-				skills: {},
 			}),
 		);
 		const { executionService, txRunner } = recordingServices();

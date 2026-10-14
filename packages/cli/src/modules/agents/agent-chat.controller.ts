@@ -432,7 +432,7 @@ export class AgentChatController {
 				chatSurface: 'preview',
 				errorMode: 'forward',
 				onChunk,
-				onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
+				onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
 				onExecutionStarted,
 				abortSignal,
 			});
