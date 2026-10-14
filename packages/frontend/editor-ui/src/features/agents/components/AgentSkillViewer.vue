@@ -310,6 +310,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		</template>
 
 		<template v-else-if="isSkillFileSelected">
+			<slot name="fields-start" />
 			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references

@@ -13,6 +13,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
+	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -25,6 +26,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import type {
 	SkillConnectionItem,
+	ToolCategoryKey,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 import { getHubSkill, listAttachableSkills } from '../composables/useAgentApi';
@@ -182,6 +184,16 @@ const showAvailabilitySelect = computed(() => {
 const showInstanceTarget = computed(
 	() => !!props.data.canCreateInstanceSkills || savedTarget.value === 'instance',
 );
+const AVAILABILITY_ICONS = {
+	project: 'layers',
+	agent: 'bot',
+	instance: 'globe',
+} as const satisfies Record<AgentSkillAvailability, string>;
+const removeLabel = computed(() =>
+	props.data.hubSkillsEnabled
+		? i18n.baseText('agents.builder.skills.detach')
+		: i18n.baseText('agents.builder.skills.remove'),
+);
 const footerHint = computed(() => {
 	const shownSkill = step.value === 'preview' ? previewSkill.value : skillAccess.value;
 	if (step.value === 'edit' && isOutdated.value) {
@@ -278,6 +290,17 @@ async function loadLibrarySkills() {
 	} finally {
 		libraryLoading.value = false;
 	}
+}
+
+function targetForPickerCategory(category: ToolCategoryKey): AgentSkillAvailability {
+	if (category === 'project') return 'project';
+	if (category === 'global' && props.data.canCreateInstanceSkills) return 'instance';
+	return 'agent';
+}
+
+function onPickerCreate(category: ToolCategoryKey) {
+	availableTo.value = targetForPickerCategory(category);
+	step.value = 'upload';
 }
 
 async function loadSkillAccess(skillId: string) {
@@ -499,7 +522,6 @@ function onRemove() {
 				"
 				:no-results-message="i18n.baseText('agents.builder.skills.picker.noResults')"
 				:create-action="{
-					category: 'all',
 					label: i18n.baseText('agents.builder.skills.picker.create'),
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
@@ -511,7 +533,7 @@ function onRemove() {
 				@connect="onPickerItemAttach"
 				@disconnect="onPickerItemDetach"
 				@open-detail="onPickerItemPreview"
-				@create="step = 'upload'"
+				@create="onPickerCreate"
 			/>
 		</div>
 		<div
@@ -569,56 +591,61 @@ function onRemove() {
 						@select:path="selectedPath = $event"
 						@update:skill="onSkillUpdate"
 						@update:valid="onValidUpdate"
-					/>
+					>
+						<template v-if="showAvailabilitySelect" #fields-start>
+							<N8nInputLabel
+								:label="i18n.baseText('agents.builder.skills.availableTo.label')"
+								:tooltip-text="i18n.baseText('agents.builder.skills.availableTo.tooltip')"
+								show-tooltip
+								size="small"
+							>
+								<N8nTooltip
+									:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
+									:disabled="!usedByOtherAgents"
+									placement="top"
+								>
+									<N8nSelect
+										v-model="availableTo"
+										:teleported="false"
+										:disabled="usedByOtherAgents"
+										data-testid="agent-skill-availability-select"
+									>
+										<template #prefix>
+											<N8nIcon
+												:icon="AVAILABILITY_ICONS[availableTo]"
+												:size="16"
+												color="text-dark"
+											/>
+										</template>
+										<N8nOption
+											value="project"
+											:label="i18n.baseText('agents.builder.skills.availableTo.project')"
+										/>
+										<N8nOption
+											value="agent"
+											:label="i18n.baseText('agents.builder.skills.availableTo.agent')"
+										/>
+										<N8nOption
+											v-if="showInstanceTarget"
+											value="instance"
+											:label="i18n.baseText('agents.builder.skills.availableTo.instance')"
+										/>
+									</N8nSelect>
+								</N8nTooltip>
+							</N8nInputLabel>
+						</template>
+					</AgentSkillViewer>
 				</template>
 			</div>
 		</template>
 
-		<template v-if="showRemove || showAvailabilitySelect" #footerLeft>
-			<div :class="$style.footerLeft">
-				<N8nButton
-					v-if="showRemove"
-					variant="ghost"
-					data-testid="agent-skill-remove"
-					@click="onRemove"
-				>
-					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
-					{{ i18n.baseText('agents.builder.skills.remove') }}
-				</N8nButton>
-				<label v-if="showAvailabilitySelect" :class="$style.availabilityField">
-					<span :class="$style.availabilityLabel">{{
-						i18n.baseText('agents.builder.skills.availableTo.label')
-					}}</span>
-					<N8nTooltip
-						:content="i18n.baseText('agents.builder.skills.availableTo.locked')"
-						:disabled="!usedByOtherAgents"
-						placement="top"
-					>
-						<N8nSelect
-							v-model="availableTo"
-							size="small"
-							:teleported="false"
-							:disabled="usedByOtherAgents"
-							:class="$style.availabilitySelect"
-							data-testid="agent-skill-availability-select"
-						>
-							<N8nOption
-								value="project"
-								:label="i18n.baseText('agents.builder.skills.availableTo.project')"
-							/>
-							<N8nOption
-								value="agent"
-								:label="i18n.baseText('agents.builder.skills.availableTo.agent')"
-							/>
-							<N8nOption
-								v-if="showInstanceTarget"
-								value="instance"
-								:label="i18n.baseText('agents.builder.skills.availableTo.instance')"
-							/>
-						</N8nSelect>
-					</N8nTooltip>
-				</label>
-			</div>
+		<template v-if="showRemove" #footerLeft>
+			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
+				<template #icon
+					><N8nIcon :icon="data.hubSkillsEnabled ? 'unlink' : 'trash-2'" :size="16"
+				/></template>
+				{{ removeLabel }}
+			</N8nButton>
 		</template>
 		<template v-if="footerHint" #footerBeforeCancel>
 			<N8nText
@@ -676,28 +703,6 @@ function onRemove() {
 
 .footerHint {
 	text-align: right;
-}
-
-.footerLeft {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-}
-
-.availabilityField {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.availabilityLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	white-space: nowrap;
-}
-
-.availabilitySelect {
-	width: calc(var(--spacing--4xl) + var(--spacing--3xl));
 }
 
 @media (max-width: 480px) {

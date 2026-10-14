@@ -52,9 +52,15 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 		template: `
 			<div data-testid="agent-skill-picker">
 				<span data-testid="agent-skill-picker-tabs">{{ categories.join(',') }} {{ categoryLabels?.project }}</span>
-				<button data-testid="agent-skill-picker-create" @click="$emit('create')">
+				<button data-testid="agent-skill-picker-create" @click="$emit('create', 'all')">
 					{{ createAction.label }}
 				</button>
+				<button
+					v-for="category in categories"
+					:key="category"
+					:data-testid="'agent-skill-picker-create-' + category"
+					@click="$emit('create', category)"
+				/>
 				<div v-if="items.length === 0" data-testid="agent-skill-picker-empty">{{ emptyMessage }}</div>
 				<div v-for="item in items" :key="item.id" data-testid="agent-skill-picker-row">
 					<button data-testid="agent-skill-picker-row-open" @click="$emit('open-detail', item)">{{ item.title }}</button>
@@ -678,7 +684,7 @@ describe('AgentSkillModal', () => {
 		});
 
 		it.each([
-			['agent', 'agents.builder.skills.availableTo.agent'],
+			['project', 'agents.builder.skills.availableTo.project'],
 			['instance', 'agents.builder.skills.availableTo.instance'],
 		] as const)(
 			'saves a new skill for the %s from the availability select',
@@ -710,6 +716,38 @@ describe('AgentSkillModal', () => {
 				expect(onConfirm).toHaveBeenCalledWith(
 					expect.objectContaining({ id: undefined, availableTo }),
 				);
+			},
+		);
+
+		it.each([
+			['all', true, 'agent'],
+			['project', true, 'project'],
+			['this-agent', true, 'agent'],
+			['global', true, 'instance'],
+			['global', false, 'agent'],
+		] as const)(
+			'starts a new skill from the %s tab with a matching target (global allowed: %s)',
+			async (category, canCreateInstanceSkills, availableTo) => {
+				listAttachableSkills.mockResolvedValue([]);
+				const onConfirm = vi.fn();
+				const { container, getByTestId } = renderModal({
+					hubSkillsEnabled: true,
+					canCreateInstanceSkills,
+					onAttach: vi.fn(),
+					onConfirm,
+				});
+
+				await fireEvent.click(getByTestId(`agent-skill-picker-create-${category}`));
+				await fireEvent.click(getByTestId('agent-skill-add-manually'));
+				await fireEvent.update(getTitleInput(container), 'Research');
+				await fireEvent.update(
+					getByTestId('agent-skill-description-input').querySelector('input')!,
+					'Use for research',
+				);
+				await fireEvent.update(getByTestId('agent-skill-instructions-editor'), 'Read the guide');
+				await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+				expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ availableTo }));
 			},
 		);
 
