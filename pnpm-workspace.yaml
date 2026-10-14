@@ -111,7 +111,7 @@ catalog:
   '@lezer/lr': 1.4.5
   '@modelcontextprotocol/ext-apps': 1.3.2
   '@modelcontextprotocol/node': 2.0.0
-  '@modelcontextprotocol/sdk': 1.26.0
+  '@modelcontextprotocol/sdk': 1.31.0
   '@modelcontextprotocol/server': 2.0.0
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.27.0
@@ -131,20 +131,20 @@ catalog:
   '@testcontainers/mysql': ^11.13.0
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
-  '@tiptap/core': 3.27.0
-  '@tiptap/extension-link': 3.27.0
-  '@tiptap/extension-placeholder': 3.27.0
-  '@tiptap/extension-table': 3.27.0
-  '@tiptap/extension-table-cell': 3.27.0
-  '@tiptap/extension-table-header': 3.27.0
-  '@tiptap/extension-table-row': 3.27.0
-  '@tiptap/extension-task-item': 3.27.0
-  '@tiptap/extension-task-list': 3.27.0
-  '@tiptap/extension-underline': 3.27.0
-  '@tiptap/markdown': 3.27.0
-  '@tiptap/pm': 3.27.0
-  '@tiptap/starter-kit': 3.27.0
-  '@tiptap/vue-3': 3.27.0
+  '@tiptap/core': 3.30.5
+  '@tiptap/extension-link': 3.30.5
+  '@tiptap/extension-placeholder': 3.30.5
+  '@tiptap/extension-table': 3.30.5
+  '@tiptap/extension-table-cell': 3.30.5
+  '@tiptap/extension-table-header': 3.30.5
+  '@tiptap/extension-table-row': 3.30.5
+  '@tiptap/extension-task-item': 3.30.5
+  '@tiptap/extension-task-list': 3.30.5
+  '@tiptap/extension-underline': 3.30.5
+  '@tiptap/markdown': 3.30.5
+  '@tiptap/pm': 3.30.5
+  '@tiptap/starter-kit': 3.30.5
+  '@tiptap/vue-3': 3.30.5
   '@types/basic-auth': ^1.1.3
   '@types/estree': ^1.0.8
   '@types/express': ^5.0.1
@@ -184,7 +184,7 @@ catalog:
   '@vitest/coverage-v8': 5.0.1
   agent-browser: 0.26.0
   ai: ^7.0.66
-  axios: 1.18.0
+  axios: 1.20.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
@@ -356,7 +356,7 @@ catalogs:
     '@typescript/native': 'npm:typescript@7.0.2'
     typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
-    undici: ^6.28.0
+    undici: ^6.28.1
   undici-v7:
     undici: ^7.29.1
   # knip needs zod 4 while the default catalog pins zod 3.
@@ -432,8 +432,8 @@ overrides:
   picomatch@2: 2.3.2
   picomatch@4: 4.0.4
   avsc: 5.7.9
-  brace-expansion@<2.1.4: 2.1.4
-  '@xmldom/xmldom': 0.8.14
+  brace-expansion@<2.1.7: 2.1.7
+  '@xmldom/xmldom': 0.8.15
   yaml@<=2.8.3: 2.8.3
   axios: 'catalog:'
   fast-xml-builder: 1.2.1
@@ -441,16 +441,16 @@ overrides:
   postcss@<=8.5.22: 8.5.23
   '@anthropic-ai/sdk@<=0.91.1': 0.91.1
   uuid@<=13.0.1: 13.0.1
-  fast-uri: 3.1.6
+  fast-uri: 3.1.8
   cjs-module-lexer@<2.2.0: 2.2.0
   protobufjs: 7.6.5
-  shell-quote: 1.9.0
-  adm-zip: 0.6.0
+  shell-quote: 1.11.0
+  adm-zip: 0.6.1
   ip-address@10: 10.3.1
-  brace-expansion@5: 5.0.9
+  brace-expansion@5: 5.0.12
   '@tootallnate/once@2': 2.0.1
-  '@vue/server-renderer@3.5.26': 3.5.40
-  '@vue/shared@3.5.26': 3.5.40
+  '@vue/server-renderer@3.5.26': 3.5.42
+  '@vue/shared@3.5.26': 3.5.42
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   '@daytona/sdk@0.205.1>@aws-sdk/client-s3': 3.808.0
@@ -479,9 +479,12 @@ overrides:
   nanoid@<3.3.18: 'catalog:'
   '@zone-eu/mailsplit@<5.4.15': 5.4.15
   'strnum@<2.4.2': 2.4.2
+  proxy-addr: 2.0.8
+  source-map-js: 1.2.2
+  '@grpc/grpc-js@<1.14.5': 1.14.5
+  'prosemirror-view@<1.42.3': 1.42.3
 
 patchedDependencies:
-  axios: patches/axios.patch
   bull@4.16.4: patches/bull@4.16.4.patch
   element-plus@2.4.3: patches/element-plus@2.4.3.patch
   pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
