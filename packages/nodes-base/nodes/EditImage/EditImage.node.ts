@@ -17,6 +17,8 @@ import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow'
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
 
+import { executeV2 } from './v2/EditImageV2';
+
 type EditImageNodeOptions = {
 	destinationKey?: string;
 	font?: string;
@@ -874,8 +876,8 @@ export class EditImage implements INodeType {
 		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 2],
+		defaultVersion: 2,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
@@ -1105,6 +1107,10 @@ export class EditImage implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		if (this.getNode().typeVersion >= 2) {
+			return await executeV2.call(this);
+		}
+
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
