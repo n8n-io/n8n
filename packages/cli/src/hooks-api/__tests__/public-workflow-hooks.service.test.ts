@@ -27,6 +27,7 @@ describe('PublicWorkflowHooksService', () => {
 			mode: 'trigger',
 			source: 'instance_ai',
 		});
+		expect(handler.mock.calls[0][0].workflow).not.toBe(workflow);
 	});
 
 	it('should let a handler error stop the execution', async () => {

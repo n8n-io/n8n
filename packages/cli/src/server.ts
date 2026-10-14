@@ -503,6 +503,7 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			await this.mountExtensionRoutes();
 			this.app.use(
 				'/',
 				historyApiHandler,
@@ -510,6 +511,7 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
+			await this.mountExtensionRoutes();
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
 	}

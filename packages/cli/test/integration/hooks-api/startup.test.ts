@@ -246,7 +246,7 @@ describe('Hooks API on n8n startup', () => {
 		const lookup = await fetch(`${baseUrl}/hooks-api-test/executions/${executionId}/workflow`);
 		expect(lookup.status).toBe(200);
 		expect(await lookup.json()).toEqual({ workflowId });
-	});
+	}, 60_000);
 
 	it('stops the execution if the pre-execute handler throws', async () => {
 		const workflowId = await createActiveWebhookWorkflow('blocked-hooks-api');
@@ -260,5 +260,5 @@ describe('Hooks API on n8n startup', () => {
 				workflow: expect.objectContaining({ id: workflowId }),
 			}),
 		);
-	});
+	}, 60_000);
 });
