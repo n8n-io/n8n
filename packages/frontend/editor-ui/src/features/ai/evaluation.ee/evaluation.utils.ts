@@ -241,8 +241,6 @@ export function stringifyValue(value: unknown): string {
 // AI-based handlers (correctness, helpfulness) return 1-5; others return 0-1.
 export type MetricDisplayScale = 'oneToFive' | 'normalized';
 
-export type MetricValueFormat = 'percentage' | 'number';
-
 export function getMetricScale(category: MetricCategory | undefined): MetricDisplayScale {
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
 }
@@ -258,22 +256,15 @@ function resolveDisplayScale(options: {
 	return getMetricScale(options.category);
 }
 
-/**
- * Set Metrics nodes do not declare a scale for custom metrics. Keep 0–1 values
- * as percentages. Display values outside that range as plain numbers. Explicit
- * scales and built-in metrics keep score formatting.
- */
-export function getMetricValueFormat(
-	value: number | undefined,
-	options: { category?: MetricCategory; scale?: MetricScale } = {},
-): MetricValueFormat {
-	if (options.scale || options.category !== 'custom') return 'percentage';
-	const num = normalizeMetricValue(value);
-	return num !== undefined && (num < 0 || num > 1) ? 'number' : 'percentage';
+export function isUnscaledCustomMetric(
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
+): boolean {
+	if (options.scale) return false;
+	return (options.category ?? getMetricCategory(options.key)) === 'custom';
 }
 
 function formatMetricNumber(value: number): string {
-	return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+	return value.toLocaleString(undefined, { maximumSignificantDigits: 6 });
 }
 
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
@@ -327,7 +318,7 @@ export function formatMetricValue(
 ): string {
 	const num = normalizeMetricValue(value);
 	if (num === undefined) return '–';
-	if (getMetricValueFormat(num, options) === 'number') return formatMetricNumber(num);
+	if (isUnscaledCustomMetric(options)) return formatMetricNumber(num);
 	return formatMetricPercent(num, options);
 }
 
@@ -434,12 +425,14 @@ export function formatDeltaPercent(
 
 export function formatMetricDelta(
 	delta: number | undefined,
-	format: MetricValueFormat = 'percentage',
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
 ): string {
 	if (delta === undefined || Number.isNaN(delta)) return '';
-	if (format === 'percentage') return formatDeltaPercent(delta);
-	const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
-	return `${sign}${formatMetricNumber(Math.abs(delta))}`;
+	if (isUnscaledCustomMetric(options)) {
+		const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+		return `${sign}${formatMetricNumber(Math.abs(delta))}`;
+	}
+	return formatDeltaPercent(delta);
 }
 
 // Compact duration: <1s → "243ms", <60s → "8s"/"1.2s", ≥60s → "1m 30s"/"2m".

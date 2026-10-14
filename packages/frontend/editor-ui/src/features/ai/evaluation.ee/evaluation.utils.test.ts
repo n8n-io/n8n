@@ -1328,12 +1328,21 @@ describe('utils', () => {
 			expect(formatMetricValue(1.47, { category: 'custom' })).toBe('1.47');
 		});
 
-		it('preserves percentage formatting for 0–1 custom scores', () => {
-			expect(formatMetricValue(0.73, { category: 'custom' })).toBe('73%');
+		it.each([
+			[0, '0'],
+			[1, '1'],
+			[-0.5, '-0.5'],
+			[0.004, '0.004'],
+		])('renders an unscaled custom value of %s as %s', (value, expected) => {
+			expect(formatMetricValue(value, { category: 'custom' })).toBe(expected);
 		});
 
-		it('renders negative unscaled custom metrics as numbers', () => {
-			expect(formatMetricValue(-0.5, { category: 'custom' })).toBe('-0.5');
+		it('renders a metric with no source or scale as a number', () => {
+			expect(formatMetricValue(0.73, { key: 'metricFromDeletedNode' })).toBe('0.73');
+		});
+
+		it('keeps a built-in metric with no source as a percentage', () => {
+			expect(formatMetricValue(0.73, { key: 'stringSimilarity' })).toBe('73%');
 		});
 
 		it('lets an explicit scale override the custom-metric heuristic', () => {
@@ -1445,12 +1454,13 @@ describe('utils', () => {
 
 	describe('formatMetricDelta', () => {
 		it('renders a raw custom-metric delta without a percent sign', () => {
-			expect(formatMetricDelta(6, 'number')).toBe('+6');
-			expect(formatMetricDelta(-2.5, 'number')).toBe('-2.5');
+			expect(formatMetricDelta(6, { category: 'custom' })).toBe('+6');
+			expect(formatMetricDelta(-2.5, { category: 'custom' })).toBe('-2.5');
+			expect(formatMetricDelta(0.004, { category: 'custom' })).toBe('+0.004');
 		});
 
 		it('preserves percentage-point formatting for score deltas', () => {
-			expect(formatMetricDelta(0.04, 'percentage')).toBe('+4%');
+			expect(formatMetricDelta(0.04, { key: 'stringSimilarity' })).toBe('+4%');
 		});
 	});
 

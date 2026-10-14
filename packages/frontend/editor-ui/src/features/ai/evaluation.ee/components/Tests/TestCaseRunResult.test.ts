@@ -94,18 +94,18 @@ describe('TestCaseRunResult', () => {
 		expect(queryByTestId('tests-result-result-1')).toBeNull();
 	});
 
-	it('renders an out-of-range custom metric as a raw number', () => {
+	it('renders an unscaled custom metric as a raw number', () => {
 		const evaluationStore = seedTwoRuns();
 		evaluationStore.testCaseExecutionsById.eo = {
 			...evaluationStore.testCaseExecutionsById.eo,
-			metrics: { renderedWidth: 706 },
+			metrics: { normalizedLookingValue: 0.5 },
 		} as never;
 
 		const { getByTestId } = renderComponent({ props: { index: 0, runId: 'run-old' } });
-		const badge = getByTestId('tests-result-badge-0-renderedWidth');
+		const badge = getByTestId('tests-result-badge-0-normalizedLookingValue');
 
-		expect(badge.textContent).toContain('706');
-		expect(badge.textContent).not.toContain('706%');
+		expect(badge.textContent).toContain('0.5');
+		expect(badge.textContent).not.toContain('50%');
 	});
 
 	it('uses the target run scale when formatting a custom metric', () => {

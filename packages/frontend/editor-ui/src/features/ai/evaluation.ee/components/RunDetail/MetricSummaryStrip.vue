@@ -5,10 +5,9 @@ import type { MetricScale } from '@n8n/api-types';
 import { normalizeMetricScore } from '@n8n/api-types';
 import {
 	getUserDefinedMetricNames,
-	getMetricValueFormat,
+	isUnscaledCustomMetric,
 	normalizeMetricValue,
 	type MetricSource,
-	type MetricValueFormat,
 } from '../../evaluation.utils';
 import MetricSummaryCard from './MetricSummaryCard.vue';
 
@@ -28,47 +27,42 @@ const props = defineProps<{
 
 const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetrics));
 
-// Compare score deltas on each run's own scale. Compare unscaled custom values
-// outside 0–1 as raw numbers so the delta matches the displayed value.
+// Compare score deltas on each run's own scale. Compare unscaled custom metrics
+// as raw numbers so the delta uses the same unit as the displayed value.
 function metricDelta(
 	name: string,
 	category: MetricSource['category'] | undefined,
-): { value: number | undefined; format: MetricValueFormat } {
+): number | undefined {
 	const current = normalizeMetricValue(props.currentMetrics?.[name]);
 	const previous = normalizeMetricValue(props.previousMetrics?.[name]);
-	if (current === undefined || previous === undefined) {
-		return { value: undefined, format: 'percentage' };
-	}
+	if (current === undefined || previous === undefined) return undefined;
 
-	const currentFormat = getMetricValueFormat(current, {
+	const currentIsUnscaled = isUnscaledCustomMetric({
+		key: name,
 		category,
 		scale: props.metricScales?.[name],
 	});
-	const previousFormat = getMetricValueFormat(previous, {
+	const previousIsUnscaled = isUnscaledCustomMetric({
+		key: name,
 		category,
 		scale: props.previousMetricScales?.[name],
 	});
-	if (currentFormat !== previousFormat) return { value: undefined, format: currentFormat };
-	if (currentFormat === 'number') {
-		return { value: current - previous, format: 'number' };
-	}
+	if (currentIsUnscaled !== previousIsUnscaled) return undefined;
+	if (currentIsUnscaled) return current - previous;
+
 	const currentScore = normalizeMetricScore(name, current, props.metricScales?.[name]);
 	const previousScore = normalizeMetricScore(name, previous, props.previousMetricScales?.[name]);
-	if (currentScore === null || previousScore === null) {
-		return { value: undefined, format: 'percentage' };
-	}
-	return { value: currentScore - previousScore, format: 'percentage' };
+	if (currentScore === null || previousScore === null) return undefined;
+	return currentScore - previousScore;
 }
 
 const cards = computed(() =>
 	metricNames.value.map((name) => {
 		const source = props.metricSources?.[name];
-		const delta = metricDelta(name, source?.category);
 		return {
 			name,
 			currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
-			delta: delta.value,
-			deltaFormat: delta.format,
+			delta: metricDelta(name, source?.category),
 			category: source?.category,
 			scale: props.metricScales?.[name],
 			sourceNodeName: source?.nodeName,
@@ -92,7 +86,6 @@ const cards = computed(() =>
 				:name="card.name"
 				:current-value="card.currentValue"
 				:delta="card.delta"
-				:delta-format="card.deltaFormat"
 				:category="card.category"
 				:scale="card.scale"
 				:source-node-name="card.sourceNodeName"

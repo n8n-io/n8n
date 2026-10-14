@@ -41,21 +41,34 @@ describe('MetricSummaryStrip', () => {
 		expect(deltaText(container)).toContain('+20%');
 	});
 
-	it('renders out-of-range custom metrics and their deltas as raw numbers', () => {
+	it('renders custom metrics and their deltas as raw numbers across the value boundary', () => {
 		const { container, getByText } = renderComponent({
 			props: {
-				currentMetrics: { 'Rendered width': 706 },
-				previousMetrics: { 'Rendered width': 700 },
+				currentMetrics: { 'Rendered width': 1 },
+				previousMetrics: { 'Rendered width': 0.5 },
 				metricSources: {
 					'Rendered width': { category: 'custom', nodeName: 'Set Metrics' },
 				},
 			},
 		});
 
-		expect(getByText('706')).toBeVisible();
-		expect(container.textContent).not.toContain('706%');
-		expect(deltaText(container)).toBe('+6');
+		expect(getByText('1')).toBeVisible();
+		expect(container.textContent).not.toContain('100%');
+		expect(deltaText(container)).toBe('+0.5');
 		expect(deltaText(container)).not.toContain('%');
+	});
+
+	it('renders a custom metric with no current source as a raw number', () => {
+		const { container, getByText } = renderComponent({
+			props: {
+				currentMetrics: { 'Metric from deleted node': 0.004 },
+				previousMetrics: { 'Metric from deleted node': 0.003 },
+			},
+		});
+
+		expect(getByText('0.004')).toBeVisible();
+		expect(container.textContent).not.toContain('%');
+		expect(deltaText(container)).toBe('+0.001');
 	});
 
 	it('renders all metric cards when a run has more than ten metrics', () => {

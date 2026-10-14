@@ -1,22 +1,29 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { MetricScale } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import {
 	formatMetricDelta,
 	getDeltaTone,
 	type DeltaTone,
-	type MetricValueFormat,
+	type MetricCategory,
 } from '../../evaluation.utils';
 
-// Render normalized score deltas as percentage points. Render raw custom metric
-// deltas as numbers.
 const props = defineProps<{
 	delta: number | undefined;
-	format?: MetricValueFormat;
+	name: string;
+	category?: MetricCategory;
+	scale?: MetricScale;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
-const label = computed(() => formatMetricDelta(props.delta, props.format));
+const label = computed(() =>
+	formatMetricDelta(props.delta, {
+		key: props.name,
+		category: props.category,
+		scale: props.scale,
+	}),
+);
 const icon = computed(() => (tone.value === 'negative' ? 'trending-down' : 'trending-up'));
 </script>
 

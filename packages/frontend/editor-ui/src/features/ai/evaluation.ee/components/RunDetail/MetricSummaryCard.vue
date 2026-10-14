@@ -6,11 +6,10 @@ import {
 	formatMetricLabel,
 	formatMetricRawScoreSum,
 	formatMetricValue,
-	getMetricValueFormat,
 	getDeltaTone,
+	isUnscaledCustomMetric,
 	type DeltaTone,
 	type MetricCategory,
-	type MetricValueFormat,
 } from '../../evaluation.utils';
 import TrendDeltaBadge from './TrendDeltaBadge.vue';
 
@@ -18,7 +17,6 @@ const props = defineProps<{
 	name: string;
 	currentValue: number | undefined;
 	delta: number | undefined;
-	deltaFormat?: MetricValueFormat;
 	category?: MetricCategory;
 	scale?: MetricScale;
 	sourceNodeName?: string;
@@ -36,8 +34,7 @@ const formattedValue = computed(() =>
 );
 const formattedLabel = computed(() => formatMetricLabel(props.name));
 const formattedSumScore = computed(() =>
-	getMetricValueFormat(props.currentValue, { category: props.category, scale: props.scale }) ===
-	'percentage'
+	!isUnscaledCustomMetric({ key: props.name, category: props.category, scale: props.scale })
 		? formatMetricRawScoreSum(props.caseValues ?? [], {
 				category: props.category,
 				scale: props.scale,
@@ -61,7 +58,7 @@ const valueTooltip = computed(() =>
 				<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			</N8nTooltip>
 			<span v-else :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<TrendDeltaBadge :delta="delta" :format="deltaFormat" />
+			<TrendDeltaBadge :delta="delta" :name="name" :category="category" :scale="scale" />
 		</div>
 	</div>
 </template>
