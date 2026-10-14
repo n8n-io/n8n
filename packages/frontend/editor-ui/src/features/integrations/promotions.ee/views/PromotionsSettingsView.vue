@@ -128,7 +128,11 @@ function onProviderSaved(change: PromotionProviderChange) {
 	connectionForm.value?.applyProviderChange(change);
 	if (selectAfterCreate.value) {
 		selectAfterCreate.value = false;
-		pendingLoad = load().then(() => connectionForm.value?.selectProvider(id));
+		pendingLoad = load().then(() => {
+			if (providers.value.some((provider) => provider.id === id)) {
+				connectionForm.value?.selectProvider(id);
+			}
+		});
 		return;
 	}
 	pendingLoad = load();

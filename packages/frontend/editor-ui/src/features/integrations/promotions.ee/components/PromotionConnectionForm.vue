@@ -252,6 +252,8 @@ const connectDisabledReason = (direction: PromotionDirection): string | undefine
 	if (!canClone.value) return i18n.baseText('settings.promotions.connection.checkout.noPermission');
 	if (!current.value?.configs[direction])
 		return i18n.baseText('settings.promotions.connection.checkout.saveFirst');
+	if (needsRepositorySelection.value)
+		return i18n.baseText('settings.promotions.discovery.repository.selectAgain');
 	if (isDirty.value)
 		return i18n.baseText('settings.promotions.connection.checkout.saveChangesFirst');
 	return undefined;
