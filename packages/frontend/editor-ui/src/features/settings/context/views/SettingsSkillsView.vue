@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { AgentSkill, CreateSkillDto, SkillListItem, SkillScope } from '@n8n/api-types';
+import type { AgentSkill, SkillListItem, SkillScope } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -131,7 +131,8 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 	return options;
 });
 
-function parseScope(value: string): Pick<CreateSkillDto, 'scope' | 'projectId'> {
+/** Settings creates and moves skills only to a project or the instance, never to one agent. */
+function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
 	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
 		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
 	}
