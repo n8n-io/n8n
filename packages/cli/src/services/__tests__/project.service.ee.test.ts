@@ -1,5 +1,6 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { AppsService } from '@n8n/backend-module-apps';
 import { type EventService, type RoleService } from '@n8n/backend-services';
 import {
 	type FolderRepository,
@@ -25,11 +26,12 @@ import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -1081,6 +1083,133 @@ describe('ProjectService', () => {
 				await projectService.deleteProject(migratingUser, project.id);
 
 				expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('migrating apps', () => {
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			const targetProject = mock<Project>({ id: 'project-2', type: 'team' });
+			const migratingUser = mock<User>({
+				id: 'user-1',
+				role: mock<User['role']>({
+					slug: 'global:owner',
+					scopes: [
+						mock({ slug: 'project:delete' }),
+						mock({ slug: 'credential:create' }),
+						mock({ slug: 'workflow:create' }),
+						mock({ slug: 'dataTable:create' }),
+					],
+				}),
+			});
+			const appsService = mock<AppsService>();
+			const appsServiceGetter = vi.fn(async () => appsService);
+			const dataTableService = mock<DataTableService>();
+			const ownershipTransferService = mock<OwnershipTransferService>();
+
+			beforeEach(() => {
+				Object.defineProperty(projectService, 'appsService', {
+					configurable: true,
+					get: appsServiceGetter,
+				});
+				Object.defineProperty(projectService, 'dataTableService', {
+					configurable: true,
+					get: async () => dataTableService,
+				});
+				Object.defineProperty(projectService, 'ownershipTransferService', {
+					configurable: true,
+					get: async () => ownershipTransferService,
+				});
+				manager.findOne.mockReset();
+				manager.findOne.mockResolvedValueOnce(project).mockResolvedValueOnce(targetProject);
+				sharedWorkflowRepository.find.mockReset().mockResolvedValue([]);
+				sharedCredentialsRepository.find.mockReset().mockResolvedValue([]);
+				projectRelationRepository.findBy.mockReset().mockResolvedValue([]);
+				projectRepository.remove.mockResolvedValue(project);
+				roleService.rolesWithScope.mockResolvedValue(['project:admin']);
+				moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'apps');
+			});
+
+			it('checks destination permissions and transfers apps', async () => {
+				moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'apps');
+
+				await projectService.deleteProject(migratingUser, project.id, {
+					migrateToProject: targetProject.id,
+				});
+
+				expect(roleService.rolesWithScope).toHaveBeenCalledExactlyOnceWith(
+					'project',
+					['credential:create', 'workflow:create', 'dataTable:create', 'app:create'],
+					expect.any(Function),
+				);
+				expect(appsService.transferApps).toHaveBeenCalledExactlyOnceWith(
+					project.id,
+					targetProject.id,
+				);
+				expect(appsService.transferApps.mock.invocationCallOrder[0]).toBeLessThan(
+					projectRepository.remove.mock.invocationCallOrder[0],
+				);
+				expect(projectRepository.remove).toHaveBeenCalledWith(project);
+			});
+
+			it('does not require app creation access or load the service when Apps is inactive', async () => {
+				moduleRegistry.isActive.mockReturnValue(false);
+
+				await projectService.deleteProject(migratingUser, project.id, {
+					migrateToProject: targetProject.id,
+				});
+
+				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+				expect(appsServiceGetter).not.toHaveBeenCalled();
+				expect(appsService.transferApps).not.toHaveBeenCalled();
+				expect(projectRepository.remove).toHaveBeenCalledWith(project);
+			});
+
+			it('rejects missing app creation access before any resources move', async () => {
+				roleService.rolesWithScope.mockResolvedValue([]);
+				manager.findOne.mockReset();
+				manager.findOne.mockResolvedValueOnce(project).mockResolvedValueOnce(null);
+
+				await expect(
+					projectService.deleteProject(migratingUser, project.id, {
+						migrateToProject: targetProject.id,
+					}),
+				).rejects.toThrow(NotFoundError);
+
+				expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+					'project',
+					['credential:create', 'workflow:create', 'dataTable:create', 'app:create'],
+					expect.any(Function),
+				);
+				expect(appsServiceGetter).not.toHaveBeenCalled();
+				expect(sharedWorkflowRepository.makeOwner).not.toHaveBeenCalled();
+				expect(sharedCredentialsRepository.makeOwner).not.toHaveBeenCalled();
+				expect(folderRepository.transferAllFoldersToProject).not.toHaveBeenCalled();
+				expect(projectRepository.remove).not.toHaveBeenCalled();
+			});
+
+			it('does not load the service when deleting a project without a destination', async () => {
+				await projectService.deleteProject(migratingUser, project.id);
+
+				expect(appsServiceGetter).not.toHaveBeenCalled();
+				expect(appsService.transferApps).not.toHaveBeenCalled();
+				expect(projectRepository.remove).toHaveBeenCalledWith(project);
+			});
+
+			it('propagates app transfer errors and keeps the source project', async () => {
+				const error = new Error('App transfer failed');
+				appsService.transferApps.mockRejectedValueOnce(error);
+
+				await expect(
+					projectService.deleteProject(migratingUser, project.id, {
+						migrateToProject: targetProject.id,
+					}),
+				).rejects.toBe(error);
+
+				expect(appsService.transferApps).toHaveBeenCalledExactlyOnceWith(
+					project.id,
+					targetProject.id,
+				);
+				expect(projectRepository.remove).not.toHaveBeenCalled();
 			});
 		});
 
