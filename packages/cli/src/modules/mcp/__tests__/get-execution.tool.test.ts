@@ -352,6 +352,100 @@ describe('get-execution MCP tool', () => {
 				expect(Object.keys(data.resultData.runData)).toEqual(['Node1']);
 			});
 
+			test('excludes HTTP node context data when nodeNames selects another node', async () => {
+				const tool = createGetExecutionTool(
+					user,
+					executionRepository,
+					workflowFinderService,
+					telemetry,
+					executionRedactionServiceProxy,
+				);
+
+				const mockExecutionData = createEmptyRunExecutionData();
+				const httpResponseBody = { message: 'unrequested-http-response' };
+				mockExecutionData.resultData.runData = {
+					Summary: [
+						{
+							executionIndex: 1,
+							startTime: 0,
+							executionTime: 100,
+							source: [],
+							data: { main: [[{ json: { value: 'requested-summary' } }]] },
+						},
+					],
+					'HTTP Request': [
+						{
+							executionIndex: 0,
+							startTime: 0,
+							executionTime: 200,
+							source: [],
+							data: { main: [[{ json: httpResponseBody }]] },
+						},
+					],
+				};
+				// CONTEXT-262: Manual HTTP Request runs also store the full response in node context.
+				mockExecutionData.executionData = {
+					contextData: {
+						'node:HTTP Request': {
+							response: {
+								statusCode: 200,
+								headers: { 'content-type': 'application/json' },
+								body: httpResponseBody,
+								socket: { remoteAddress: '127.0.0.1' },
+							},
+						},
+					},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				};
+
+				const mockExecution = {
+					id: 'execution-1',
+					workflowId: 'workflow-1',
+					mode: 'manual',
+					status: 'success',
+					startedAt: new Date('2025-01-01T00:00:00.000Z'),
+					stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+					retryOf: null,
+					retrySuccessId: null,
+					waitTill: null,
+					data: mockExecutionData,
+				};
+
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+				(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
+
+				const result = await tool.handler(
+					{
+						workflowId: 'workflow-1',
+						executionId: 'execution-1',
+						includeData: true,
+						nodeNames: ['Summary'],
+						truncateData: undefined,
+					},
+					{} as never,
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					execution: { id: 'execution-1', mode: 'manual', status: 'success' },
+					data: {
+						resultData: { runData: { Summary: mockExecutionData.resultData.runData.Summary } },
+					},
+				});
+				expect(result.structuredContent).not.toHaveProperty('error');
+				expect(result.structuredContent).not.toHaveProperty('data.resultData.runData.HTTP Request');
+				expect
+					.soft(result.structuredContent)
+					.not.toHaveProperty('data.executionData.contextData.node:HTTP Request');
+				expect
+					.soft(result.content)
+					.toEqual([
+						{ type: 'text', text: expect.not.stringContaining('unrequested-http-response') },
+					]);
+			});
+
 			test('truncates data items per node output', async () => {
 				const tool = createGetExecutionTool(
 					user,
