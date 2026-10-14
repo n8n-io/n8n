@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
+import {
+	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillSchema,
+	agentSkillShape,
+} from './agent-skill.schema';
 import type { AgentSkill } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
@@ -126,7 +130,8 @@ export class SkillNewNameQueryDto extends Z.class({
 	projectId: z.string().max(36).optional(),
 	/** Required for an agent skill, absent otherwise. */
 	agentId: z.string().max(36).optional(),
-	name: agentSkillShape.name,
+	/** Trimmed first, so a name of only spaces is refused instead of suggested as "". */
+	name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH),
 }) {}
 
 export type SkillNewNameResponse = { name: string };

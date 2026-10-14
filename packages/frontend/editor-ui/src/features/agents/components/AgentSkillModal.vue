@@ -100,19 +100,29 @@ const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value
 
 /** The last default name the server gave. A name the user typed is never replaced. */
 const serverDefaultName = ref<string | null>(null);
+/** Save waits for the lookup, so a taken local default cannot fail after the modal closes. */
+const defaultNameLoading = ref(false);
+let latestNameRequest = 0;
 
 async function refreshDefaultName() {
 	if (!props.data.getDefaultName || props.data.skillId) return;
 	const current = skill.value.name;
 	if (current !== getDefaultSkillName() && current !== serverDefaultName.value) return;
+	const request = ++latestNameRequest;
+	const requestedScope = scope.value;
+	defaultNameLoading.value = true;
 	try {
-		const name = await props.data.getDefaultName(scope.value);
-		// The user may have typed while the request ran.
+		const name = await props.data.getDefaultName(requestedScope);
+		// Only the newest answer for the scope still selected counts, and only while the
+		// user has not typed a name of their own.
+		if (request !== latestNameRequest || scope.value !== requestedScope) return;
 		if (skill.value.name !== current) return;
 		serverDefaultName.value = name;
 		skill.value = { ...skill.value, name };
 	} catch {
 		// Keep the local default. The save still refuses a taken name.
+	} finally {
+		if (request === latestNameRequest) defaultNameLoading.value = false;
 	}
 }
 
@@ -277,7 +287,7 @@ function closeModal() {
 }
 
 function onSave() {
-	if (readOnly.value) return;
+	if (readOnly.value || defaultNameLoading.value) return;
 	submitted.value = true;
 	if (!canSave.value) return;
 
@@ -416,7 +426,12 @@ function onRemove() {
 			</N8nButton>
 		</template>
 		<template #footerActions>
-			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
+			<N8nButton
+				variant="solid"
+				:disabled="defaultNameLoading"
+				data-testid="agent-skill-create-save"
+				@click="onSave"
+			>
 				{{ i18n.baseText('agents.builder.skills.save') }}
 			</N8nButton>
 		</template>

@@ -489,6 +489,46 @@ describe('AgentSkillModal from Settings', () => {
 		await waitFor(() => expect(getTitleInput(document.body)).toHaveValue('New skill 3'));
 	});
 
+	it('blocks Save until the default name lookup answers', async () => {
+		let answer: (name: string) => void = () => {};
+		const { getByTestId } = renderModal({
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				getDefaultName: vi.fn(
+					async () => await new Promise<string>((resolve) => (answer = resolve)),
+				),
+			},
+		});
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+		answer('New skill 2');
+		await waitFor(() => expect(getByTestId('agent-skill-create-save')).not.toBeDisabled());
+	});
+
+	it('ignores an answer that a newer lookup replaced', async () => {
+		const answers: Array<(name: string) => void> = [];
+		const { getByTestId } = renderModal({
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				getDefaultName: vi.fn(
+					async () => await new Promise<string>((resolve) => answers.push(resolve)),
+				),
+			},
+		});
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await fireEvent.click(getByTestId('agent-modal-back'));
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		answers[1]('New skill 3');
+		await waitFor(() => expect(getTitleInput(document.body)).toHaveValue('New skill 3'));
+		answers[0]('New skill 2');
+		await new Promise(process.nextTick);
+
+		expect(getTitleInput(document.body)).toHaveValue('New skill 3');
+	});
+
 	it('keeps the local default name when the server does not answer', async () => {
 		const { getByTestId } = renderModal({
 			settings: {
