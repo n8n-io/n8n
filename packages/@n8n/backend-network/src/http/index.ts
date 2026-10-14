@@ -5,7 +5,12 @@ export {
 } from '../proxy/proxy-resolution';
 export { installGlobalProxyAgent } from './http-proxy';
 export { configureGlobalAxiosDefaults } from './axios/config';
-export { isFormDataInstance, tryParseUrl } from './axios/utils';
+export {
+	getUrlFromProxyConfig,
+	isFormDataInstance,
+	resolveProxyOption,
+	tryParseUrl,
+} from './axios/utils';
 export { removeEmptyBody } from './axios/request';
 export { parseIncomingMessage } from './parse-incoming-message';
 export { binaryToBuffer, streamToBuffer } from './binary-buffer';

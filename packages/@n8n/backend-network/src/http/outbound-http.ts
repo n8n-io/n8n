@@ -200,7 +200,7 @@ export class OutboundHttp {
 		): Promise<T | TypedHttpFullResponse<T>>;
 		async function request(requestOptions: IHttpRequestOptions): Promise<unknown> {
 			try {
-				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
+				return await httpRequest(applyDefaults(requestOptions), ssrfBridge, options?.agents);
 			} catch (error) {
 				// Tag so callers can recognize a client-rejected error transport-agnostically.
 				throw markHttpRequestError(error);
