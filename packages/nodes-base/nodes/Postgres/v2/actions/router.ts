@@ -6,11 +6,12 @@ import type { PostgresType } from './node.type';
 import { addExecutionHints } from '../../../../utils/utilities';
 import { configurePostgres } from '../../transport';
 import type {
+	ConnectionsData,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 	QueriesRunner,
 } from '../helpers/interfaces';
-import { configureQueryRunner } from '../helpers/utils';
+import { configureQueryRunner, parsePostgresError, prepareErrorItem } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -25,7 +26,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	options.nodeVersion = node.typeVersion;
 	options.operation = operation;
 
-	const { db, pgp } = await configurePostgres.call(this, credentials, options);
+	let connection: ConnectionsData;
+	try {
+		connection = await configurePostgres.call(this, credentials, options);
+	} catch (err) {
+		if (!this.continueOnFail()) throw err;
+		const error = parsePostgresError(node, err, []);
+		return [items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index))];
+	}
+	const { db, pgp } = connection;
 
 	const runQueries: QueriesRunner = configureQueryRunner.call(
 		this,
