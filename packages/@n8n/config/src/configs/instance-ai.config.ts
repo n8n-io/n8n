@@ -51,7 +51,7 @@ export class InstanceAiConfig {
 	observerMessageTokens: number = 30_000;
 
 	/**
-	 * Model name for the background tasks that summarize n8n Assistant conversations into memory, for example `claude-haiku-4-5`.
+	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
 	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
 	 * When unset, or when the main model can't switch models, n8n uses the main model.
 	 */

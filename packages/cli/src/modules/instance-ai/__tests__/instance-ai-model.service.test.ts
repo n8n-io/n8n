@@ -286,6 +286,65 @@ describe('InstanceAiModelService', () => {
 			});
 		});
 
+		it.each([
+			['anthropic/claude-opus-5-5', 'anthropic/claude-haiku-5-5', 'anthropic/claude-haiku-5-5'],
+			['anthropic/claude-opus-5-5', 'claude-haiku-5-5', 'anthropic/claude-haiku-5-5'],
+			[
+				'openrouter/anthropic/claude-opus-5.5',
+				'openrouter/anthropic/claude-haiku-5.5',
+				'openrouter/anthropic/claude-haiku-5.5',
+			],
+			[
+				'openrouter/anthropic/claude-opus-5.5',
+				'anthropic/claude-haiku-5.5',
+				'openrouter/anthropic/claude-haiku-5.5',
+			],
+			['custom/qwen3-coder', 'custom/qwen3-small', 'custom/qwen3-small'],
+		])(
+			'reads the memory model like the main model env: main %s with %s uses %s',
+			async (mainId, memoryModel, expectedId) => {
+				settingsService.getConfiguredMemoryModelName.mockReturnValue(memoryModel);
+				settingsService.resolveModelConfig.mockResolvedValue({
+					id: mainId as `${string}/${string}`,
+					url: 'https://provider.example',
+					apiKey: 'main-key',
+				});
+
+				await expect(service.resolveMemoryModelConfig(fakeUser, {})).resolves.toEqual({
+					id: expectedId,
+					url: 'https://provider.example',
+					apiKey: 'main-key',
+				});
+			},
+		);
+
+		it('drops the main provider prefix for a string model id', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('anthropic/claude-haiku-5-5');
+			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude-opus-5-5');
+
+			await expect(service.resolveMemoryModelConfig(fakeUser, {})).resolves.toBe(
+				'anthropic/claude-haiku-5-5',
+			);
+		});
+
+		it('sends the bare model name to the proxy when the value has the main provider prefix', async () => {
+			settingsService.getConfiguredMemoryModelName.mockReturnValue('anthropic/claude-haiku-5-5');
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5-5');
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'anthropic.messages',
+				modelId: 'claude-haiku-5-5',
+			});
+
+			await service.resolveMemoryModelConfig(fakeUser, {
+				proxyBaseUrl: 'https://proxy.base',
+				tokenManager,
+			});
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({ modelId: 'claude-haiku-5-5' }),
+			);
+		});
+
 		it('replaces the model name in a string model id', async () => {
 			settingsService.getConfiguredMemoryModelName.mockReturnValue('claude-haiku-4-5');
 			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude-opus-5-5');

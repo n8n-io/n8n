@@ -149,8 +149,13 @@ export class InstanceAiModelService {
 	): Promise<ModelConfig> {
 		const configuredModelId = this.settingsService.getConfiguredModelId();
 		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
-		const modelId =
-			modelName ?? (isExactKimi ? configuredModelId : this.settingsService.resolveModelName(user));
+		const modelId = modelName
+			? isMoonshotaiKimiK3ModelId(modelName)
+				? modelName
+				: modelNameForProvider(modelName, splitModelId(configuredModelId).provider)
+			: isExactKimi
+				? configuredModelId
+				: this.settingsService.resolveModelName(user);
 		return await createProxyLanguageModel({
 			proxyBaseUrl,
 			modelId,
@@ -191,7 +196,7 @@ export class InstanceAiModelService {
 			apiKey,
 			baseURL: baseURL || undefined,
 			fetch: createAiProxyFetch(this.outboundHttp),
-		})(modelNameOverride ?? modelName);
+		})(modelNameOverride ? modelNameForProvider(modelNameOverride, provider) : modelName);
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
@@ -213,12 +218,27 @@ export class InstanceAiModelService {
  * example a pre-built language model.
  */
 function withModelName(config: ModelConfig, modelName: string): ModelConfig | undefined {
-	const provider = (id: string) => (id.includes('/') ? id.slice(0, id.indexOf('/')) : undefined);
 	if (typeof config === 'string') {
-		const prefix = provider(config);
-		return prefix ? `${prefix}/${modelName}` : undefined;
+		const { provider } = splitModelId(config);
+		return provider ? `${provider}/${modelNameForProvider(modelName, provider)}` : undefined;
 	}
-	if ('project' in config) return { ...config, id: `google-vertex-anthropic/${modelName}` };
-	if ('url' in config) return { ...config, id: `${provider(config.id) ?? 'custom'}/${modelName}` };
+	if ('project' in config) {
+		const name = modelNameForProvider(modelName, 'google-vertex-anthropic');
+		return { ...config, id: `google-vertex-anthropic/${name}` };
+	}
+	if ('url' in config) {
+		const provider = splitModelId(config.id).provider || 'custom';
+		return { ...config, id: `${provider}/${modelNameForProvider(modelName, provider)}` };
+	}
 	return undefined;
+}
+
+/**
+ * Reads a memory model value like `N8N_INSTANCE_AI_MODEL`: a `provider/` prefix that
+ * matches the main model's provider is dropped. Any other value is the provider's own
+ * model name, for example `anthropic/claude-haiku-4.5` on OpenRouter.
+ */
+function modelNameForProvider(value: string, mainProvider: string): string {
+	const { provider, model } = splitModelId(value);
+	return provider && provider === mainProvider ? model : value;
 }
