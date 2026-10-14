@@ -119,7 +119,6 @@ export const workflowParentFolderPublicSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 
-// List rows carry the folder's name and parent, but not its timestamps.
 export const workflowParentFolderSummaryPublicSchema = workflowParentFolderPublicSchema.omit({
 	createdAt: true,
 	updatedAt: true,

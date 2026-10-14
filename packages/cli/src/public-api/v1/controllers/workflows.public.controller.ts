@@ -123,7 +123,6 @@ function toPublicFolder(folder: Folder) {
 	};
 }
 
-/** List rows carry the folder's name and parent, but not its timestamps. */
 function toPublicFolderSummary(folder: Folder | null | undefined) {
 	return folder
 		? { id: folder.id, name: folder.name, parentFolderId: folder.parentFolderId }
