@@ -22,6 +22,14 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'app:create': { displayName: 'Create app', description: 'Create apps in a project.' },
+	'app:read': { displayName: 'View app', description: 'View app details and versions.' },
+	'app:update': { displayName: 'Edit app', description: 'Edit apps in a project.' },
+	'app:delete': { displayName: 'Delete app', description: 'Delete apps and their versions.' },
+	'app:list': {
+		displayName: 'List apps',
+		description: 'List apps in a project.',
+	},
 	'aiPreference:read': {
 		displayName: 'Read AI Preferences',
 		description:
