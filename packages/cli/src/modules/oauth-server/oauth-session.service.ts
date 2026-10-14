@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { Response } from 'express';
 import { z } from 'zod';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 const oauthSessionPayloadSchema = z.object({
 	clientId: z.string(),

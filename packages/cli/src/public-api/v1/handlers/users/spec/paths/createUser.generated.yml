@@ -4,9 +4,6 @@ tags:
 summary: Create multiple users
 description: Create one or more users.
 x-required-scope: user:create
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 requestBody:
   required: true
   content:

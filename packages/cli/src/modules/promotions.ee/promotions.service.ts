@@ -6,6 +6,7 @@ import type {
 	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromotionBindingConflict,
 	PromoteRequest,
 	PromotionCheckoutPublicDto,
 	PromotionDirection,
@@ -76,6 +77,11 @@ import type {
 import { WorkingCopyUpdater, type SelectivePushOptions } from './working-copy-updater';
 
 type ProjectReconciliationResult = { deletedProjectIds: string[] };
+
+/** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
+function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
+	return code === 'destructive-change' || code === 'project-deletion';
+}
 
 // Apply treats the package as source of truth. Callers cannot override this policy,
 // but a confirmed Continue uses `overwrite` for data tables.
@@ -622,7 +628,7 @@ export class PromotionsService {
 			},
 		});
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
@@ -723,7 +729,7 @@ export class PromotionsService {
 			sourceDir: packageFolder,
 		});
 		const blockingConflicts = confirmDestructiveChanges
-			? preflight.conflicts.filter(({ code }) => code !== 'destructive-change')
+			? preflight.conflicts.filter(({ code }) => !isConfirmableConflict(code))
 			: preflight.conflicts;
 		if (
 			preflight.missingBindings.length > 0 ||
@@ -760,7 +766,14 @@ export class PromotionsService {
 			{ sourceDir: packageFolder },
 		);
 		const importedProjectIds = result.projects.map((project) => project.localId);
-		const projectReconciliation = await this.reconcileTeamProjects(actor, importedProjectIds);
+		const confirmedProjectIds = preflight.conflicts.flatMap((conflict) =>
+			conflict.code === 'project-deletion' ? conflict.project.id : [],
+		);
+		const projectReconciliation = await this.reconcileTeamProjects(
+			actor,
+			importedProjectIds,
+			confirmedProjectIds,
+		);
 
 		return {
 			status: 'applied',
@@ -899,13 +912,18 @@ export class PromotionsService {
 		});
 	}
 
+	/** Deletes only the projects that the user confirmed and that the import did not keep. */
 	private async reconcileTeamProjects(
 		actor: User,
 		importedProjectIds: string[],
+		confirmedProjectIds: string[],
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
+		const confirmed = new Set(confirmedProjectIds);
 		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
-		const removedProjectIds = teamProjectIds.filter((projectId) => !imported.has(projectId));
+		const removedProjectIds = teamProjectIds.filter(
+			(projectId) => confirmed.has(projectId) && !imported.has(projectId),
+		);
 
 		for (const projectId of removedProjectIds) {
 			await this.projectService.deleteProject(actor, projectId);

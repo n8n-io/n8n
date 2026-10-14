@@ -4,9 +4,6 @@ tags:
 summary: Stop an execution
 description: Stop an execution by id.
 x-required-scope: execution:stop
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: integer

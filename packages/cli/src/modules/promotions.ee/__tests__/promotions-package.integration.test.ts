@@ -848,7 +848,21 @@ describe('Promote and Apply', () => {
 		);
 		const removedProject = await createTeamProject('Removed from Git', owner);
 
-		const result = await service.apply(connection.id, owner);
+		const blocked = await service.apply(connection.id, owner);
+		assert(blocked.status === 'blocked');
+		expect(blocked.preflight.conflicts).toEqual([
+			{
+				kind: 'project',
+				code: 'project-deletion',
+				project: { id: removedProject.id, name: 'Removed from Git' },
+			},
+		]);
+		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
+
+		const result = await service.continueApply(connection.id, owner, {
+			expectedSource: { configId: blocked.configId, ...blocked.git },
+			confirmDestructiveChanges: true,
+		});
 		assert(result.status === 'applied');
 
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
@@ -866,6 +880,40 @@ describe('Promote and Apply', () => {
 		expect(result.counts.workflows.deleted).toBe(1);
 		expect(result.counts.folders.removed).toBe(1);
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+	});
+
+	it('keeps a project whose folder is on the branch but missing from the manifest', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'apply');
+		const listed = await createTeamProject('Orders', owner);
+		const unlisted = await createTeamProject('Unlisted', owner);
+		const exportDir = path.join(remote.workingDir, 'n8n-export');
+		await packagesService.exportPackageToDirectory(
+			{
+				user: owner,
+				projectIds: [listed.id, unlisted.id],
+				includeVariableValues: true,
+				includeTags: true,
+				dependencyPolicy: ExportDependencyPolicy.Fail,
+				versionPolicy: ExportVersionPolicy.Latest,
+			},
+			{ targetDir: exportDir },
+		);
+		// A bad merge can drop a manifest entry and leave the project folder.
+		const manifestPath = path.join(exportDir, 'manifest.json');
+		const manifest = jsonParse<{ projects: Array<{ id: string }> }>(
+			await readFile(manifestPath, 'utf-8'),
+		);
+		manifest.projects = manifest.projects.filter(({ id }) => id !== unlisted.id);
+		await writeFile(manifestPath, JSON.stringify(manifest));
+		await commitAndPushRemote(remote, 'Drop a manifest entry');
+
+		const result = await service.apply(connection.id, owner);
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		expect(result.counts.projects.deleted).toBe(0);
+		expect(await projectRepository.findOneBy({ id: unlisted.id })).not.toBeNull();
 	});
 
 	it('applies a package whose workflow sits two folders deep', async () => {
@@ -951,7 +999,10 @@ describe('Promote and Apply', () => {
 			);
 			expect(await snapshotApplyState()).toEqual(before);
 			expect(blocked).not.toHaveProperty('counts');
-			const request = { expectedSource: { configId: blocked.configId, ...blocked.git } };
+			const request = {
+				expectedSource: { configId: blocked.configId, ...blocked.git },
+				confirmDestructiveChanges: true,
+			};
 
 			const stillBlocked = (
 				await agent

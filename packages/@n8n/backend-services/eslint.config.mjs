@@ -6,6 +6,26 @@ export default defineConfig(
 	globalIgnores(['coverage/**', 'vitest.config.ts']),
 	backendConfig,
 	{
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/services/jwt.service.ts', './src/**/__tests__/**'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: 'jsonwebtoken',
+							allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+							allowTypeImports: true,
+							message: 'Sign and verify through JwtService.',
+						},
+					],
+					patterns: [{ group: ['jsonwebtoken/*'], message: 'Sign and verify through JwtService.' }],
+				},
+			],
+		},
+	},
+	{
 		rules: {
 			'n8n-local-rules/no-guardrail-disable': [
 				'error',
