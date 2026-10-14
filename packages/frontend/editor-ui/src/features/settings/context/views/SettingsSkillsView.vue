@@ -59,7 +59,6 @@ const tableOptions = ref<TableOptions>({
 	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
 	sortBy: [],
 });
-const selection = ref<string[]>([]);
 const search = ref('');
 const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
 const loadFailed = ref(false);
@@ -72,7 +71,6 @@ const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.valu
 const showEmptyState = computed(
 	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
 );
-const selectedCount = computed(() => selection.value.length);
 
 const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() =>
 	(
@@ -150,13 +148,6 @@ async function load() {
 			tableOptions.value = { ...tableOptions.value, page: lastPage };
 			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
 		}
-		// A selected row can leave the page, or stop being deletable.
-		const deletable = new Set(
-			skillsStore.skills
-				.filter((skill) => skill.canDelete && skill.usedByAgents === 0)
-				.map((skill) => skill.id),
-		);
-		selection.value = selection.value.filter((id) => deletable.has(id));
 	} catch (error) {
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
@@ -282,64 +273,27 @@ async function onSave(id: string, skill: AgentSkill, baseSkillHash: string, newS
 	}
 }
 
-async function confirmDelete(count: number): Promise<boolean> {
+async function onDelete(skill: SkillListItem) {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.context.skills.delete.confirm.message'),
-		i18n.baseText('settings.context.skills.delete.confirm.title', {
-			interpolate: { count },
-			adjustToNumber: count,
-		}),
+		i18n.baseText('settings.context.skills.delete.confirm.title'),
 		{
 			type: 'warning',
 			confirmButtonText: i18n.baseText('settings.context.skills.delete.confirm.button'),
 			cancelButtonText: i18n.baseText('settings.context.skills.delete.cancel'),
 		},
 	);
-	return confirmed === MODAL_CONFIRM;
-}
-
-async function onDelete(skill: SkillListItem) {
-	if (!(await confirmDelete(1))) return;
+	if (confirmed !== MODAL_CONFIRM) return;
 	try {
 		await skillsStore.deleteSkill(skill.id);
 		showMessage({
-			title: i18n.baseText('settings.context.skills.delete.success', { adjustToNumber: 1 }),
+			title: i18n.baseText('settings.context.skills.delete.success'),
 			type: 'success',
 		});
 	} catch (error) {
 		// An agent may have attached the skill since the list loaded: that answers 409.
-		showError(error, i18n.baseText('settings.context.skills.error.delete', { adjustToNumber: 1 }));
+		showError(error, i18n.baseText('settings.context.skills.error.delete'));
 	}
-	await load();
-}
-
-async function onDeleteSelected() {
-	const ids = [...selection.value];
-	if (ids.length === 0 || !(await confirmDelete(ids.length))) return;
-	const results = await Promise.allSettled(
-		ids.map(async (id) => await skillsStore.deleteSkill(id)),
-	);
-	const deleted = results.filter((result) => result.status === 'fulfilled').length;
-	const failures = results.filter((result) => result.status === 'rejected');
-	if (deleted > 0) {
-		showMessage({
-			title: i18n.baseText('settings.context.skills.delete.success', {
-				interpolate: { count: deleted },
-				adjustToNumber: deleted,
-			}),
-			type: 'success',
-		});
-	}
-	if (failures.length > 0) {
-		showError(
-			failures[0].reason,
-			i18n.baseText('settings.context.skills.error.delete', {
-				interpolate: { count: failures.length },
-				adjustToNumber: failures.length,
-			}),
-		);
-	}
-	selection.value = [];
 	await load();
 }
 
@@ -412,21 +366,6 @@ onMounted(async () => {
 				</template>
 			</N8nDropdownMenu>
 			<span :class="$style.spacer" />
-			<N8nText v-if="selectedCount > 0" color="text-light" size="small">
-				{{
-					i18n.baseText('settings.context.skills.selected', {
-						interpolate: { count: selectedCount },
-						adjustToNumber: selectedCount,
-					})
-				}}
-			</N8nText>
-			<N8nButton
-				v-if="selectedCount > 0"
-				variant="outline"
-				:label="i18n.baseText('settings.context.skills.actions.deleteSelected')"
-				data-test-id="skills-delete-selected-button"
-				@click="onDeleteSelected"
-			/>
 			<N8nButton
 				v-if="scopeOptions.length > 0"
 				:label="i18n.baseText('settings.context.skills.actions.create')"
@@ -437,7 +376,6 @@ onMounted(async () => {
 
 		<SkillsTable
 			v-model:table-options="tableOptions"
-			v-model:selection="selection"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"

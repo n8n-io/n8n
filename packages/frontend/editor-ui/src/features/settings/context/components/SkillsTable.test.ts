@@ -127,17 +127,6 @@ describe('SkillsTable', () => {
 		expect(queryAllByText('Edit')).toHaveLength(0);
 	});
 
-	it('selects a row without opening the skill', async () => {
-		const { getByTestId, emitted } = render([skill()]);
-		const checkbox = getByTestId('skills-table').querySelector('tbody [role="checkbox"]');
-		if (!checkbox) throw new Error('Expected a row checkbox');
-
-		await userEvent.click(checkbox);
-
-		expect(emitted('open')).toBeUndefined();
-		expect(emitted('update:selection')).toEqual([[['s1']]]);
-	});
-
 	it('disables Delete while agents use the skill', async () => {
 		const { getByTestId } = render([skill({ usedByAgents: 2 })]);
 
