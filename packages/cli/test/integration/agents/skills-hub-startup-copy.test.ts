@@ -249,33 +249,116 @@ describe('SkillsHubStartupCopy', () => {
 		expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
 	});
 
-	it('copies nothing while the flag is off', async () => {
-		await setSkillsHubFlag(false);
-		await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
-
-		await copy.runOnStartup();
-
-		expect(await skills.findByIds(['tone'])).toEqual([]);
-	});
-
-	it('names the agents with skills in the hub when the flag is off, and counts each once', async () => {
-		const agent = await legacyAgent(
-			[
-				{ type: 'skill', id: 'tone' },
-				{ type: 'skill', id: 'pricing' },
-			],
-			{ tone: body('Tone'), pricing: body('Pricing') },
+	/** Saves new text for a hub skill, as an edit in the builder does. */
+	async function editInHub(skillId: string, instructions: string) {
+		const next = await skills.nextVersionNumber(skillId);
+		await skills.insertSavedVersion(
+			skillId,
+			next,
+			{ name: 'Edited', description: 'd', instructions, frontmatter: null, files: [] },
+			null,
 		);
-		await copy.copyAll();
-		await setSkillsHubFlag(false);
-		const logger = Container.get(Logger);
-		const warn = vi.spyOn(logger, 'warn');
+	}
 
-		await copy.runOnStartup();
+	describe('with the flag off', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(Logger), 'warn');
+		});
 
-		expect(warn).toHaveBeenCalledWith(expect.stringContaining('The skills hub is off'), {
-			agents: 1,
-			agentIds: [agent.id],
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const hubOffWarning = () =>
+			vi
+				.mocked(Container.get(Logger).warn)
+				.mock.calls.find(([message]) => String(message).includes('The skills hub is off'));
+
+		it('copies nothing and reads only the draft refs and their content', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await setSkillsHubFlag(false);
+			const copyReads = [
+				vi.spyOn(agents, 'findPageForSkillCopy'),
+				vi.spyOn(skills, 'findUnpinnedVersions'),
+				vi.spyOn(skills, 'hasHubState'),
+				vi.spyOn(skills, 'findAgentSkillVersions'),
+				vi.spyOn(skills, 'createSkill'),
+				vi.spyOn(skills, 'replaceDependencies'),
+				vi.spyOn(skills, 'insertPins'),
+			];
+
+			await copy.runOnStartup();
+
+			for (const spy of copyReads) expect(spy).not.toHaveBeenCalled();
+			expect(await skills.find()).toEqual([]);
+			expect(hubOffWarning()).toBeUndefined();
+		});
+
+		it('reads nothing from the hub on a main that is not the leader', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await copy.copyAll();
+			await editInHub('tone', 'Edited in the hub.');
+			await setSkillsHubFlag(false);
+			const findRefs = vi.spyOn(skills, 'findAgentIdsWithDraftRefs');
+			const settings = Container.get(InstanceSettings);
+			settings.markAsFollower();
+			try {
+				await copy.runOnStartup();
+			} finally {
+				settings.markAsLeader();
+			}
+
+			expect(findRefs).not.toHaveBeenCalled();
+			expect(hubOffWarning()).toBeUndefined();
+		});
+
+		it('names no agent when the hub runs the same content as the inline skills', async () => {
+			await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await copy.copyAll();
+			await setSkillsHubFlag(false);
+
+			await copy.runOnStartup();
+
+			expect(hubOffWarning()).toBeUndefined();
+		});
+
+		it('names an agent whose skill changed in the hub, and counts it once', async () => {
+			const agent = await legacyAgent(
+				[
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'pricing' },
+				],
+				{ tone: body('Tone'), pricing: body('Pricing') },
+			);
+			await legacyAgent([{ type: 'skill', id: 'other' }], { other: body('Other') });
+			await copy.copyAll();
+			await editInHub('tone', 'Edited in the hub.');
+			await editInHub('pricing', 'Edited in the hub.');
+			await setSkillsHubFlag(false);
+
+			await copy.runOnStartup();
+
+			expect(hubOffWarning()?.[1]).toEqual({ agents: 1, agentIds: [agent.id] });
+		});
+
+		it('names an agent that got a skill only in the hub', async () => {
+			const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+			await copy.copyAll();
+			await skills.createSkill(
+				{
+					id: 'added',
+					target: { projectId: null, agentId: agent.id },
+					source: 'agent',
+					createdById: null,
+				},
+				{ name: 'Added', description: 'd', instructions: 'New.', frontmatter: null, files: [] },
+			);
+			await skills.replaceDependencies(agent.id, [{ skillId: 'tone' }, { skillId: 'added' }]);
+			await setSkillsHubFlag(false);
+
+			await copy.runOnStartup();
+
+			expect(hubOffWarning()?.[1]).toEqual({ agents: 1, agentIds: [agent.id] });
 		});
 	});
 
@@ -742,6 +825,7 @@ describe('SkillsHubStartupCopy', () => {
 				});
 			}
 			await copy.copyAll();
+			for (let index = 0; index < 22; index++) await editInHub(`s${index}`, 'Edited in the hub.');
 			await setSkillsHubFlag(false);
 			const warn = vi.spyOn(Container.get(Logger), 'warn');
 
