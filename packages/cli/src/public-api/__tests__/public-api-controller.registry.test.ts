@@ -1,6 +1,7 @@
 import { ListTagsQueryDto, publicApiUploadedFileSchema, Z } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import type { EventService, AuthStrategyRegistry } from '@n8n/backend-services';
+import type { EventService } from '@n8n/backend-services';
+import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import {

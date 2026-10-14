@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { SsrfBridge } from '@n8n/backend-network';
-import { EventService, OAuthJweServiceProxy } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ClientOAuth2 } from '@n8n/client-oauth2';
 import { type CredentialsEntity, type User } from '@n8n/db';

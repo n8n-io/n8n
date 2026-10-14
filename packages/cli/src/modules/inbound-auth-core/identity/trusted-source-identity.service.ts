@@ -1,12 +1,11 @@
 import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import {
-	EventService,
-	RoleService,
 	RoleMappingProxyService,
 	type ResolvedRoles,
 	type RoleMappingProvider,
-} from '@n8n/backend-services';
+} from '@n8n/backend-services/auth';
 import { Time } from '@n8n/constants';
 import {
 	isValidEmail,

@@ -8,7 +8,7 @@ import { AuthService } from '@/auth/auth.service';
 import { ScopedJwtStrategy } from '@/modules/token-exchange/services/scoped-jwt.strategy';
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { JwtService } from '@/services/jwt.service';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { createMember, createOwner, createOwnerWithApiKey } from '@test-integration/db/users';

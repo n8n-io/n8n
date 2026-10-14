@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService, OAuthJweServiceProxy } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';

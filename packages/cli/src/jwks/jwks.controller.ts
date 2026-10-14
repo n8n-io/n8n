@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import { AuthlessRequest } from '@/requests';
 
 import { JwksConfig } from './jwks.config';
-import { JwksRegistry } from '@n8n/backend-services';
+import { JwksRegistry } from '@n8n/backend-services/auth';
 import { type JwksResponse, PublicJwkSchema } from '@n8n/api-types';
 
 const jwksConfig = Container.get(JwksConfig);

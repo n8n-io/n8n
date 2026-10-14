@@ -11,7 +11,8 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 

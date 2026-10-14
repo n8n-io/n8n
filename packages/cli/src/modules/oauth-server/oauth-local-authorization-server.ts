@@ -1,4 +1,5 @@
-import { UrlService, ProtectedResourceRegistry } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { Service } from '@n8n/di';
 import {
 	JwkSchema,

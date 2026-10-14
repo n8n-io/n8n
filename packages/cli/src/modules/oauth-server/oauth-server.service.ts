@@ -16,12 +16,8 @@ import type {
 import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	EventService,
-	UrlService,
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@n8n/backend-services';
+import { EventService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import type { User } from '@n8n/db';

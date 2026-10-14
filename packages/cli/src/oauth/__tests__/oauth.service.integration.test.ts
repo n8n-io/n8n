@@ -6,8 +6,8 @@ import type {
 	EventService,
 	UrlService,
 	CredentialsFinderService,
-	OAuthJweServiceProxy,
 } from '@n8n/backend-services';
+import type { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';

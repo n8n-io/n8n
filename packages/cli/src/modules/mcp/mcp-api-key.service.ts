@@ -5,7 +5,7 @@ import { randomUUID } from 'crypto';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { AuthStrategyRegistry, UserWithContext } from '@n8n/backend-services';
+import { AuthStrategyRegistry, UserWithContext } from '@n8n/backend-services/auth';
 import { JwtService } from '@/services/jwt.service';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';

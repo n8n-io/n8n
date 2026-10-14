@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
-	EventService,
 	OAuth2FlowProxy,
 	type ProtectedResource,
 	ProtectedResourceRegistry,
-} from '@n8n/backend-services';
+} from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';

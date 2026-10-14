@@ -17,7 +17,8 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });

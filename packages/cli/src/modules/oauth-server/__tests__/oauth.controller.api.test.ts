@@ -5,7 +5,8 @@ import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 

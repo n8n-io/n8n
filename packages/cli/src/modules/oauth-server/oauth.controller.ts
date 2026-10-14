@@ -15,11 +15,8 @@ import {
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import {
-	type ProtectedResource,
-	ProtectedResourceRegistry,
-	UrlService,
-} from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import { OAuthServerLocalAuthorizationServer } from './oauth-local-authorization-server';
 import { OAuthServerConfig } from './oauth-server.config';

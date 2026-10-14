@@ -10,8 +10,8 @@ import {
 	EventService,
 	UrlService,
 	CredentialsFinderService,
-	OAuthJweServiceProxy,
 } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';

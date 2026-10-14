@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
-	EventService,
 	type AuthFailureReason,
 	OAuthTokenVerifierProxy,
 	OAuth2FlowProxy,
 	ProtectedResourceRegistry,
-} from '@n8n/backend-services';
+} from '@n8n/backend-services/auth';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';

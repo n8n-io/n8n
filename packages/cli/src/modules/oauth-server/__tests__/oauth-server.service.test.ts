@@ -3,11 +3,8 @@ import {
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
-import {
-	type EventService,
-	type UrlService,
-	ProtectedResourceRegistry,
-} from '@n8n/backend-services';
+import { type EventService, type UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';

@@ -5,8 +5,8 @@ import {
 	EventService,
 	UrlService,
 	CredentialsFinderService,
-	OAuthJweServiceProxy,
 } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { OAuth2CredentialData } from '@n8n/client-oauth2';
 import { AuthError as OAuth2AuthError } from '@n8n/client-oauth2';

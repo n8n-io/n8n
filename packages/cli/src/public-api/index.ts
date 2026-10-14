@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService, UrlService, AuthStrategyRegistry } from '@n8n/backend-services';
+import { EventService, UrlService } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';

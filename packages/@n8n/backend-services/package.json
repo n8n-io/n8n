@@ -19,6 +19,18 @@
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "module": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "module": "./src/auth.ts",
+      "default": "./dist/auth.js"
+    }
+  },
   "files": [
     "dist/**/*"
   ],

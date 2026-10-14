@@ -16,7 +16,8 @@ import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService, ProtectedResourceRegistry, UrlService } from '@n8n/backend-services';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 

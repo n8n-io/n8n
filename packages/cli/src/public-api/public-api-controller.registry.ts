@@ -1,5 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
-import { EventService, AuthStrategyRegistry } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';

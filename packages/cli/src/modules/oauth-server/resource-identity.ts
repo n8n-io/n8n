@@ -1,4 +1,4 @@
-import type { ProtectedResourceRegistry } from '@n8n/backend-services';
+import type { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 /**
  * Whether two RFC 8707 resource indicators name the same protected resource.

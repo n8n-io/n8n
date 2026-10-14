@@ -1,6 +1,6 @@
 import { EventMessageTypeNames } from 'n8n-workflow';
 
-import type { McpResolvedAuthType } from '@n8n/backend-services';
+import type { McpResolvedAuthType } from '@n8n/backend-services/auth';
 
 import type { EventNamesMcpType } from '.';
 import { AbstractEventMessage } from './abstract-event-message';

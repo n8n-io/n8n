@@ -1,6 +1,7 @@
 import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { CacheService, EventService, RoleMappingProxyService } from '@n8n/backend-services';
+import { CacheService, EventService } from '@n8n/backend-services';
+import { RoleMappingProxyService } from '@n8n/backend-services/auth';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
