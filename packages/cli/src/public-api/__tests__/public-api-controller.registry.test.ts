@@ -92,6 +92,25 @@ describe('PublicApiControllerRegistry', () => {
 		await request(app).get('/api/v1/widgets').expect(200, { ok: true });
 	});
 
+	it('answers 405 for a nested path with an ID that no controller serves with the method', async () => {
+		@Service()
+		class PartsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(PartsPublicController as Controller, '/widgets/:widgetId/parts');
+
+		const app = activate();
+
+		await request(app)
+			.put('/api/v1/widgets/w-1/parts')
+			.expect(405, { message: 'PUT method not allowed' });
+		await request(app).get('/api/v1/widgets/w-1/parts').expect(200, { ok: true });
+	});
+
 	it('emits the Deprecation header for a route marked @Deprecated', async () => {
 		const since = new Date('2026-07-23T00:00:00Z');
 
