@@ -200,6 +200,7 @@ export class AgentTeamsIntegrationsController {
 				projectId,
 				agentId,
 				agentName: identity.agentName,
+				credentialId: payload.credentialId,
 				managerCredentialId: payload.managerCredentialId,
 				subscriptionId: payload.subscriptionId,
 				msaAppId: identity.clientId,

@@ -7,6 +7,7 @@ import { UrlService } from '@n8n/backend-services';
 
 import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
+import { RESOURCE_GROUP } from './teams-bot-provisioning.service';
 import { TeamsManifestService } from './teams-manifest.service';
 import type { Agent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -27,6 +28,8 @@ interface BotIdentity {
 	tenantId: string;
 	/** Written by the recommended setup, so a hand-made credential lacks it. */
 	provisionedForAgentId?: string;
+	azureBotName?: string;
+	azureSubscriptionId?: string;
 }
 
 @Service()
@@ -71,6 +74,7 @@ export class TeamsSetupService {
 			credentialClaimedBy: claimedBy,
 			provisionedByN8n,
 			fileAccessConsentUrl: provisionedByN8n ? this.fileAccessConsentUrl(scope, identity) : null,
+			azureBot: provisionedByN8n ? this.azureBot(identity) : null,
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -273,7 +277,24 @@ export class TeamsSetupService {
 		const clientId = stringProperty(data, 'clientId');
 		const tenantId = stringProperty(data, 'tenantId');
 		const provisionedForAgentId = stringProperty(data, 'provisionedForAgentId');
-		return clientId && tenantId ? { clientId, tenantId, provisionedForAgentId } : null;
+		return clientId && tenantId
+			? {
+					clientId,
+					tenantId,
+					provisionedForAgentId,
+					azureBotName: stringProperty(data, 'azureBotName'),
+					azureSubscriptionId: stringProperty(data, 'azureSubscriptionId'),
+				}
+			: null;
+	}
+
+	private azureBot(identity: BotIdentity | null): TeamsAgentSetupState['azureBot'] {
+		if (!identity?.azureBotName || !identity.azureSubscriptionId) return null;
+		const resource = `/subscriptions/${identity.azureSubscriptionId}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.BotService/botServices/${identity.azureBotName}`;
+		return {
+			name: identity.azureBotName,
+			portalUrl: `https://portal.azure.com/#@${identity.tenantId}/resource${resource}/overview`,
+		};
 	}
 
 	private fileAccessConsentUrl(scope: AgentScope, identity: BotIdentity | null): string | null {

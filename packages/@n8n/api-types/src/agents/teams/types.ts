@@ -86,6 +86,8 @@ export interface TeamsAgentSetupState {
 	 * the consent screen needs.
 	 */
 	fileAccessConsentUrl: string | null;
+	/** The Azure Bot the recommended setup made. Null for one made by hand or before n8n kept it. */
+	azureBot: { name: string; portalUrl: string } | null;
 }
 
 /**

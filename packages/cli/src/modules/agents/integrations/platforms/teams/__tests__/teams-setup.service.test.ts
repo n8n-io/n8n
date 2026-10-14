@@ -182,6 +182,38 @@ describe('TeamsSetupService', () => {
 				expect(state.fileAccessConsentUrl).toContain('/adminconsent?client_id=');
 			});
 
+			it('links the Azure Bot the recommended setup recorded', async () => {
+				provisionedFor(AGENT_ID);
+				credentialsService.decrypt.mockResolvedValue({
+					clientId: CLIENT_ID,
+					tenantId: TENANT_ID,
+					provisionedForAgentId: AGENT_ID,
+					azureBotName: 'support-bot-abcd1234',
+					azureSubscriptionId: 'sub-1',
+				});
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.azureBot).toEqual({
+					name: 'support-bot-abcd1234',
+					portalUrl: `https://portal.azure.com/#@${TENANT_ID}/resource/subscriptions/sub-1/resourceGroups/n8n-agents/providers/Microsoft.BotService/botServices/support-bot-abcd1234/overview`,
+				});
+			});
+
+			it('has no bot link before the bot was recorded', async () => {
+				provisionedFor(AGENT_ID);
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.azureBot).toBeNull();
+			});
+
 			it('disclaims a hand-made credential, which carries no provenance', async () => {
 				connectTeamsCredential();
 
