@@ -598,6 +598,25 @@ describe('SkillService', () => {
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
+		it('checks the name that a rename in the same request gives the skill', async () => {
+			skills.findUsingAgentIds.mockResolvedValue([]);
+
+			await service.changeTarget(
+				'skill_a',
+				{ projectId: null, agentId: null },
+				undefined,
+				{},
+				'Fresh name',
+			);
+
+			expect(skills.findLatestSummaries).not.toHaveBeenCalled();
+			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(
+				{ projectId: null, agentId: null },
+				TX_CTX,
+			);
+			expect(skills.updateTarget).toHaveBeenCalled();
+		});
+
 		it('refuses to move a skill that any agent uses when no agent is kept', async () => {
 			skills.findUsingAgentIds.mockResolvedValue(['agent-1']);
 

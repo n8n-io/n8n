@@ -462,6 +462,8 @@ export class SkillService {
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
+		/** The name the skill has after this request, when the same request renames it. */
+		nameAfterMove?: string,
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -475,10 +477,10 @@ export class SkillService {
 						: 'Agents use this skill. Detach it from every agent first, then change where it can be added.',
 				);
 			}
-			// The skill keeps its name, so the new scope must not already hold a name like it.
-			const name = (await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(
-				skillId,
-			)?.name;
+			// The new scope must not already hold a name like the one the skill has after the move.
+			const name =
+				nameAfterMove ??
+				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
