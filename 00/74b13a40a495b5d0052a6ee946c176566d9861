@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_8631ec10eb1199::t_af502482ecf4e1 236-248,264
+  s_8631ec10eb1199::t_5d15fc05bc9f1f 235
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_8631ec10eb1199::t_5893bf965738f0 130-131,136-145
+  s_8631ec10eb1199::t_af502482ecf4e1 100,122,129,132-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0074b13a40a495b5d0052a6ee946c176566d9861",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
