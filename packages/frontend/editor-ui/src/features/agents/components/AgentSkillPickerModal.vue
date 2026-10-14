@@ -146,6 +146,7 @@ onMounted(load);
 		:title="i18n.baseText('agents.builder.skills.picker.title')"
 		:show-cancel="false"
 		:show-footer="true"
+		:body-scrollable="false"
 		stable-height
 		data-testid="agent-skill-picker-modal"
 		@update:open="!$event && closeModal()"
@@ -260,13 +261,18 @@ onMounted(load);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	height: 100%;
 	min-height: 0;
 }
 
+/* Only the list scrolls, so search and tabs stay in view. */
 .list {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .row {
