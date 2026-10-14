@@ -300,6 +300,18 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	async findWorkflowIdByExecutionId(executionId: string): Promise<string | null> {
+		// Execution IDs are integers. Other values become `NaN` in the query.
+		if (!/^\d+$/.test(executionId)) return null;
+
+		const execution = await this.findOne({
+			select: { workflowId: true },
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		return execution?.workflowId ?? null;
+	}
+
 	async findSingleExecution(
 		id: string,
 		options?: {

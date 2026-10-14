@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Application } from 'express';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
@@ -101,6 +101,11 @@ export class WorkerServer {
 		});
 
 		await new Promise<void>((resolve) => this.server.listen(this.port, this.address, resolve));
+
+		if (this.externalHooks.registerFunctions.length > 0) {
+			const { HooksApiService } = await import('@/hooks-api/hooks-api.service.js');
+			await Container.get(HooksApiService).register();
+		}
 
 		await this.externalHooks.run('worker.ready');
 

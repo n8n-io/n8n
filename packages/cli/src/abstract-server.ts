@@ -341,6 +341,14 @@ export abstract class AbstractServer {
 		// Setup body parsing middleware after the webhook handlers are setup
 		this.app.use(bodyParser);
 
+		// Read from the container: `start()` can run without `init()`, for example in tests.
+		const usesHooksApi = Container.get(ExternalHooks).registerFunctions.length > 0;
+
+		if (usesHooksApi) {
+			const { PublicHttpService } = await import('@/hooks-api/v1/public-http.service.js');
+			this.app.use(Container.get(PublicHttpService).router);
+		}
+
 		await this.configure();
 
 		if (!inTest) {
@@ -349,6 +357,11 @@ export abstract class AbstractServer {
 			const { defaultLocale } = this.globalConfig;
 			if (defaultLocale !== 'en') {
 				this.logger.info(`Locale: ${defaultLocale}`);
+			}
+
+			if (usesHooksApi) {
+				const { HooksApiService } = await import('@/hooks-api/hooks-api.service.js');
+				await Container.get(HooksApiService).register();
 			}
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
