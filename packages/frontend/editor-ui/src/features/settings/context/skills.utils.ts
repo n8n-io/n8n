@@ -7,26 +7,6 @@ import { splitName } from '@/features/collaboration/projects/projects.utils';
 
 export type SkillScopeDisplay = { icon: IconName; label: string };
 
-/**
- * Who made the skill, as the preferences page names a creator: the name alone for a
- * skill made in Settings, the name and the surface for a skill made in the agent builder.
- */
-export function skillCreatorLabel(
-	i18n: ReturnType<typeof useI18n>,
-	skill: Pick<SkillListItem, 'createdBy' | 'source'>,
-): string {
-	const source = i18n.baseText(`settings.context.skills.source.${skill.source}`);
-	const user = skill.createdBy;
-	const name = user
-		? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || ''
-		: '';
-	if (!name) return source;
-	if (skill.source === 'ui') return name;
-	return i18n.baseText('settings.context.skills.createdBy.withSource', {
-		interpolate: { name, source },
-	});
-}
-
 /** How the badge and the modal name the scope of a skill. */
 export function useSkillScopeDisplay() {
 	const i18n = useI18n();
