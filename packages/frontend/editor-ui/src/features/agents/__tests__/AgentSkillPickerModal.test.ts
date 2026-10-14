@@ -30,6 +30,7 @@ function skill(id: string, name: string, scope: SkillListItem['scope']): SkillLi
 		agentId: null,
 		agentName: null,
 		source: 'ui',
+		createdBy: null,
 		latestVersion: 1,
 		usedByAgents: 0,
 		canEdit: true,
