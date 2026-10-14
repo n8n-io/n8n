@@ -412,6 +412,10 @@ describe('Expression - fast native evaluation parity', () => {
 			const data = runDataFor([payload as never]);
 			const run = (native: boolean) =>
 				evaluate('={{ $json.item }}', native, data, [payload as never]) as object;
+			Expression.setNativeEvaluation(true);
+			expect(evaluateNatively('{{ $json.item }}', { $json: payload.json } as never)).toEqual({
+				handled: false,
+			});
 			expect(run(true)).toStrictEqual(run(false));
 			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
 		});
