@@ -159,11 +159,8 @@ export function displayForm({
 		if (node.type !== FORM_TRIGGER_NODE_TYPE) continue;
 		if (!registeredTriggerNodes.includes(node.name)) continue;
 
-		const testUrl = getTestUrl(node);
-		if (!testUrl) continue;
-
 		clearPopupWindowState();
-		openFormPopupWindow(testUrl);
+		openFormPopupWindow(getTestUrl(node));
 	}
 }
 
