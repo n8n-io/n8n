@@ -22,6 +22,7 @@ import {
 	getLakebaseDatabases,
 	getLakebaseProjects,
 	getLakebaseSchemas,
+	getLakebaseChatHistoryTables,
 	getLakebaseTables,
 } from '../methods/listSearch';
 import { resolveLakebaseRestBase } from '../transport';
@@ -481,6 +482,23 @@ describe('listSearch -> getLakebaseTables', () => {
 		const { results } = await getLakebaseTables.call(context, 'ord');
 
 		expect(results).toEqual([{ name: 'orders', value: 'orders' }]);
+	});
+
+	it('lists only the tables with the chat history columns for the memory sub-node', async () => {
+		const context = createLoadOptionsContext(selectedSchema);
+		mockChain(context, {
+			components: {
+				schemas: {
+					n8n_chat_histories: { properties: { id: {}, session_id: {}, message: {} } },
+					spike_items: { properties: { id: {}, name: {} } },
+					orders: {},
+				},
+			},
+		});
+
+		const { results } = await getLakebaseChatHistoryTables.call(context);
+
+		expect(results).toEqual([{ name: 'n8n_chat_histories', value: 'n8n_chat_histories' }]);
 	});
 
 	it('rewrites a PGRST205 error to name the OpenAPI specification setting after the transport retry', async () => {

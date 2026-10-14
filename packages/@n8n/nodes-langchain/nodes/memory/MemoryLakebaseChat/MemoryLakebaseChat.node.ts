@@ -14,10 +14,10 @@ import {
 } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import {
 	getLakebaseBranches,
+	getLakebaseChatHistoryTables,
 	getLakebaseDatabases,
 	getLakebaseProjects,
 	getLakebaseSchemas,
-	getLakebaseTables,
 } from 'n8n-nodes-base/dist/nodes/Databricks/methods/listSearch';
 import { lakebaseLocators } from 'n8n-nodes-base/dist/nodes/Databricks/resources/lakebase/parameters';
 import { lakebaseApiRequest } from 'n8n-nodes-base/dist/nodes/Databricks/transport';
@@ -205,7 +205,8 @@ export class MemoryLakebaseChat implements INodeType {
 			getLakebaseBranches,
 			getLakebaseDatabases,
 			getLakebaseSchemas,
-			getLakebaseTables,
+			// The shared locator names this method
+			getLakebaseTables: getLakebaseChatHistoryTables,
 		},
 	};
 

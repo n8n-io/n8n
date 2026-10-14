@@ -30,7 +30,7 @@ vi.mock('n8n-nodes-base/dist/nodes/Databricks/methods/listSearch', () => ({
 	getLakebaseBranches: vi.fn(),
 	getLakebaseDatabases: vi.fn(),
 	getLakebaseSchemas: vi.fn(),
-	getLakebaseTables: vi.fn(),
+	getLakebaseChatHistoryTables: vi.fn(),
 }));
 
 vi.mock('@n8n/ai-utilities', () => ({
