@@ -64,6 +64,7 @@ vi.mock('node:fs', async (importActual) => ({
 	...(await importActual()),
 	existsSync: vi.fn().mockReturnValue(false),
 	renameSync: vi.fn(),
+	writeFileSync: vi.fn(),
 }));
 
 const nodeTypes = Helpers.NodeTypes();

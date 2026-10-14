@@ -16,9 +16,11 @@ describe('LicenseRenewalTask', () => {
 	it('should declare the SDK renewal check cadence', () => {
 		expect(task.name).toBe('license-renewal');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 900 });
-		expect(task.effects).toBe('non-idempotent');
-		expect(task.durable).toBe(false);
-		expect(task.runOnTakeover).toBe(true);
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: false, missedAfterSeconds: 300, catchUp: true },
+			leaderTimer: { runOnTakeover: true },
+		});
 	});
 
 	it('should run one renewal pass', async () => {

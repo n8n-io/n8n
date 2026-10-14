@@ -17,7 +17,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -41,7 +41,7 @@ describe('AuthService', () => {
 		userManagement: { jwtSecret: 'random-secret' },
 		endpoints: { rest: 'rest' },
 	});
-	const jwtService = new JwtService(mock(), globalConfig);
+	const jwtService = new JwtService(mock(), globalConfig, mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
@@ -63,10 +63,10 @@ describe('AuthService', () => {
 	vi.useFakeTimers({ now });
 
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjUsImF1ZCI6Im44bjpzZXNzaW9uIn0.Non8MLCyq2HdJMu4G2EMKsooOSSZV09f3SJ0vGk3_O8'; // Generated using `authService.issueJWT(user, false, browserId)`
 
 	const validTokenWithMfa =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNSwiYXVkIjoibjhuOnNlc3Npb24ifQ.54_9gexM1Y39cMkmp7Rr2cVFxSx8R0xtgEdPAbagomE'; // Generated using `authService.issueJWT(user, true, browserId)`
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -519,6 +519,210 @@ describe('AuthService', () => {
 		});
 	});
 
+	describe('createAssetAuthMiddleware', () => {
+		const mockReq = () =>
+			mock<AuthenticatedRequest>({
+				cookies: {},
+				user: undefined,
+				browserId,
+			});
+		const res = mock<Response>();
+		const next = vi.fn() as NextFunction;
+
+		const tokenWithPayload = (payload: object, options: jwt.SignOptions = { expiresIn: '1h' }) =>
+			jwtService.sign('session', payload, options);
+
+		it('should 404 if no cookie is set', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+			expect(res.json).not.toHaveBeenCalled();
+		});
+
+		it('should 404 if the token signature does not verify', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = `${validToken}tampered`;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+			expect(res.clearCookie).not.toHaveBeenCalled();
+		});
+
+		it('should 404 if the token has expired', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token with an empty payload', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({});
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload has an id but no hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload has a hash but no id', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload id is not a string', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: 123, hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token whose payload hash is not a string', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123', hash: { value: 'x' } });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should 404 for a token without an expiry whose payload carries no id or hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ sub: '123', scope: 'mcp' }, {});
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).not.toHaveBeenCalled();
+			expect(res.sendStatus).toHaveBeenCalledWith(404);
+		});
+
+		it('should call next for a payload carrying a string id and hash', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = tokenWithPayload({ id: '123', hash: 'mJAYx4Wb7k' });
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		});
+
+		it('should call next for a valid token without any database query', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should call next for a token whose user is gone or whose session was invalidated', () => {
+			const req = mockReq();
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			userRepository.findOne.mockResolvedValue(null);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+			authService.createAssetAuthMiddleware()(req, res, next);
+
+			expect(next).toHaveBeenCalled();
+			expect(res.sendStatus).not.toHaveBeenCalled();
+		});
+
+		it('should call next with no cookie when preview mode is enabled', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).toHaveBeenCalled();
+				expect(res.sendStatus).not.toHaveBeenCalled();
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+
+		it('should call next with a cookie that fails the check when preview mode is enabled', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = `${validToken}tampered`;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).toHaveBeenCalled();
+				expect(res.sendStatus).not.toHaveBeenCalled();
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+
+		it('should 404 with no cookie when preview mode is unset', () => {
+			const originalPreviewMode = process.env.N8N_PREVIEW_MODE;
+			delete process.env.N8N_PREVIEW_MODE;
+
+			try {
+				const req = mockReq();
+				req.cookies[AUTH_COOKIE_NAME] = undefined;
+
+				authService.createAssetAuthMiddleware()(req, res, next);
+
+				expect(next).not.toHaveBeenCalled();
+				expect(res.sendStatus).toHaveBeenCalledWith(404);
+			} finally {
+				if (originalPreviewMode === undefined) {
+					delete process.env.N8N_PREVIEW_MODE;
+				} else {
+					process.env.N8N_PREVIEW_MODE = originalPreviewMode;
+				}
+			}
+		});
+	});
+
 	describe('issueCookie', () => {
 		const res = mock<Response>();
 		it('should issue a cookie with the correct options', () => {
@@ -588,7 +792,7 @@ describe('AuthService', () => {
 				const token = authService.issueJWT(user, false, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
-				const decodedToken = jwtService.verify(token);
+				const decodedToken = jwtService.verify('session', token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					expect.fail('Expected exp and iat to be defined');
 				}
@@ -605,7 +809,7 @@ describe('AuthService', () => {
 				globalConfig.userManagement.jwtSessionDurationHours = testDurationHours;
 				const token = authService.issueJWT(user, false, browserId);
 
-				const decodedToken = jwtService.verify(token);
+				const decodedToken = jwtService.verify('session', token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					expect.fail('Expected exp and iat to be defined on decodedToken');
 				}
@@ -656,6 +860,44 @@ describe('AuthService', () => {
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			['the user id is missing', { hash: 'mJAYx4Wb7k' }],
+			['the user id is empty', { id: '', hash: 'mJAYx4Wb7k' }],
+			['the hash is missing', { id: '123' }],
+		])('should throw when %s', async (_name, payload) => {
+			const token = jwtService.sign('session', payload, { expiresIn: '1h' });
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should throw when the payload is missing the expiry', async () => {
+			// jwt.verify treats an absent `exp` as a token that never expires.
+			const token = jwtService.sign('session', { id: user.id, hash: 'mJAYx4Wb7k' });
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			// `usedMfa` decides the MFA gate, and a non-empty string is truthy there.
+			['usedMfa', { usedMfa: 'false' }],
+			// `isEmbed` relaxes the refreshed cookie to SameSite=None.
+			['isEmbed', { isEmbed: 'yes' }],
+			// `browserId` binds the session to one browser.
+			['browserId', { browserId: 0 }],
+		])('should throw when %s is present but not its declared type', async (_name, claim) => {
+			const token = jwtService.sign(
+				'session',
+				{ id: user.id, hash: 'mJAYx4Wb7k', ...claim },
+				{ expiresIn: '1h' },
+			);
+
+			await expect(authService.resolveJwt(token, req, res)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
 		it('should throw on hijacked tokens', async () => {
 			userRepository.findOne.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({
@@ -695,6 +937,20 @@ describe('AuthService', () => {
 				method: 'GET',
 				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
 				route: { path: '/:agentId/chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should skip browserId check for n8n Chat attachment GET requests', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/projects/9xbqXk3hZVlVlPsN/agents/v2',
+				route: { path: '/:agentId/n8n-chat/attachments/:attachmentId' },
 			});
 
 			const result = await authService.resolveJwt(validToken, req, res);

@@ -301,14 +301,17 @@ describe('WorkflowPublicationApplier', () => {
 
 			await applier.apply(makeRecord(), abort);
 
-			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith({
-				workflow: {
-					id: 'wf-1',
-					name: 'My workflow',
-					nodes: versionWithNodes.nodes,
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: {
+						id: 'wf-1',
+						name: 'My workflow',
+						nodes: versionWithNodes.nodes,
+					},
+					projectId: 'project-1',
 				},
-				projectId: 'project-1',
-			});
+				{ kind: 'system', reason: 'publication' },
+			);
 		});
 
 		// The no-change branch still advances the published version, which running
@@ -997,6 +1000,7 @@ describe('WorkflowPublicationApplier', () => {
 				},
 			],
 		});
+		expect((result as { error: Error }).error).toBe(error);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',

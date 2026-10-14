@@ -145,7 +145,6 @@ export class McpController {
 			auth_type: (req as McpAuthenticatedRequest).mcpCaller?.authType,
 			mcp_apps_enabled: featureFlags.mcpApps.enabled,
 			mcp_apps_variant: featureFlags.mcpApps.variant,
-			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request

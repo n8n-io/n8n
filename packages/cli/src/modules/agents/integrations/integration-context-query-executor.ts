@@ -5,9 +5,8 @@ import { ChatIntegrationService } from './chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import { connectionUnavailable, integrationError, rateLimitExceeded } from './integration-helpers';
 import type {
-	IntegrationContextQuery,
 	IntegrationContextQueryExecutor,
-	IntegrationToolConnectionDescriptor,
+	IntegrationContextQueryParams,
 } from './integration-tools';
 import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
 import { caughtIntegrationError, channelRateLimitMessage } from './channel-rate-limit';
@@ -25,12 +24,7 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		query: IntegrationContextQuery;
-		input: Record<string, unknown>;
-		persistence?: { threadId: string; resourceId: string };
-	}): Promise<unknown> {
+	async execute(params: IntegrationContextQueryParams): Promise<unknown> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (this.channelRateLimitGuard.isBlocked(params.descriptor.integrationConnectionId)) {
@@ -65,11 +59,7 @@ export class ChatIntegrationContextQueryExecutor implements IntegrationContextQu
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
-			type: params.descriptor.integration.type,
-			credentialId,
-		});
-		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+		const chat = await this.chatIntegrationService.getChatInstanceForTools(
 			params.descriptor.agentId,
 			params.descriptor.integration,
 		);

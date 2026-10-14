@@ -37,6 +37,11 @@ on:
         required: false
         default: 'nHHLA5'
         type: string
+      currents-record-key:
+        description: 'Currents record key. When set, Currents keeps the run artifacts and the shards do not upload their own.'
+        required: false
+        default: ''
+        type: string
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
         required: false
@@ -64,7 +69,7 @@ env:
   # Browser cache location - must match install-browsers script.
   # Absolute so nested pnpm invocations (e.g. coverage shard runner) don't
   # re-resolve a relative path against the package's INIT_CWD and double it.
-  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/testing/playwright/.playwright-browsers
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/packages/quality/testing/playwright/.playwright-browsers
   # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
   TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
@@ -118,7 +123,7 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
-          FILTERED=$(echo "$CANDIDATES" | node packages/testing/janitor/dist/cli.js filter-shard | tr '\n' ' ' | sed 's/ *$//')
+          FILTERED=$(echo "$CANDIDATES" | node packages/quality/testing/janitor/dist/cli.js filter-shard | tr '\n' ' ' | sed 's/ *$//')
           echo "specs=$FILTERED" >> "$GITHUB_OUTPUT"
 
       - name: Resolve shard args
@@ -182,19 +187,21 @@ jobs:
           # so a local run stays quiet unless it is asked for.
           PLAYWRIGHT_A11Y_REPORT: '1'
 
+      # Currents already keeps these artifacts for the runs it records, so the
+      # shard upload is only needed when no record key is passed.
       - name: Upload Shard Artifacts
-        if: always()
+        if: ${{ always() && inputs.currents-record-key == '' }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
           path: |
-            packages/testing/playwright/test-results/
-            packages/testing/playwright/test-results.json
-            packages/testing/playwright/playwright-report/
-            packages/testing/playwright/coverage/lcov.info
-            packages/testing/playwright/coverage/by-spec/
-            packages/testing/playwright/coverage/index.html
-            packages/testing/playwright/coverage/assets/
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/test-results.json
+            packages/quality/testing/playwright/playwright-report/
+            packages/quality/testing/playwright/coverage/lcov.info
+            packages/quality/testing/playwright/coverage/by-spec/
+            packages/quality/testing/playwright/coverage/index.html
+            packages/quality/testing/playwright/coverage/assets/
           retention-days: 1
           if-no-files-found: ignore
 
@@ -207,7 +214,7 @@ jobs:
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.artifact-prefix }}-a11y-report-shard-${{ matrix.shard }}
-          path: packages/testing/playwright/a11y-report/
+          path: packages/quality/testing/playwright/a11y-report/
           retention-days: 7
           if-no-files-found: ignore
 

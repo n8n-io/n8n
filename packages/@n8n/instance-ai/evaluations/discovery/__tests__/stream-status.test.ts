@@ -7,7 +7,12 @@ function streamResult(
 	return {
 		status: 'completed',
 		agentRunId: 'run-1',
-		workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		workSummary: {
+			toolCalls: [],
+			totalToolCalls: 0,
+			totalToolErrors: 0,
+			askedClarifyingQuestion: false,
+		},
 		...overrides,
 	};
 }
@@ -53,9 +58,12 @@ describe('resolveStreamStatus', () => {
 		expect(resolveStreamStatus('timed-out', false)).toBe('timed-out');
 	});
 
-	it('reports a suspended run as suspended', () => {
-		expect(resolveStreamStatus(streamResult({ status: 'suspended' }), false)).toBe('suspended');
-	});
+	it.each([streamResult({ status: 'suspended' }), streamResult({ finishReason: 'paused' })])(
+		'reports a suspended or paused run as suspended',
+		(result) => {
+			expect(resolveStreamStatus(result, false)).toBe('suspended');
+		},
+	);
 
 	it('never reads a cancelled run as a clean finish', () => {
 		expect(resolveStreamStatus(streamResult({ status: 'cancelled' }), false)).toBe('timed-out');

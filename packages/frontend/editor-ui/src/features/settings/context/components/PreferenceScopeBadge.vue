@@ -55,13 +55,13 @@ const label = computed(() => {
 
 const theme = computed(() =>
 	audience.value.kind === 'user' || audience.value.kind === 'personalProject'
-		? 'default'
-		: 'tertiary',
+		? 'filled'
+		: 'outline',
 );
 </script>
 
 <template>
-	<N8nBadge :theme="theme" :class="$style.badge" data-test-id="preference-scope-badge">
+	<N8nBadge :variant="theme" :class="$style.badge" data-test-id="preference-scope-badge">
 		<!-- The badge wraps its slot in a text span, so the flex row has to live inside the slot. -->
 		<span :class="$style.content">
 			<N8nText v-if="icon?.type === 'emoji'" :class="$style.emoji">{{ icon.value }}</N8nText>

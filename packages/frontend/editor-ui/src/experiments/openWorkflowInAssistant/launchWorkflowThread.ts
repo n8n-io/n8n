@@ -4,7 +4,7 @@ import { VIEWS } from '@/app/constants';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	ensurePersonalProjectId,
-	provisionLaunchedThread,
+	provisionWorkflowThread,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import {
 	INSTANCE_AI_SOURCE_QUERY,
@@ -50,13 +50,9 @@ export async function launchWorkflowThread(
 		query[INSTANCE_AI_SOURCE_QUERY] === 'workflow_list_button'
 			? 'workflow_list_button'
 			: 'workflow_list_auto';
-	const threadId = await provisionLaunchedThread(
+	const threadId = await provisionWorkflowThread(
 		projectId,
-		{
-			message: '',
-			attachments: [{ type: 'workflow', id: workflowId, name }],
-			authorship: { kind: 'prefill', prefillType: 'workflow_attachment_opener' },
-		},
+		{ type: 'workflow', id: workflowId, name },
 		{ source, origin: 'internal', sourceContext: { workflowId } },
 	);
 	if (!threadId) return editorFallback;

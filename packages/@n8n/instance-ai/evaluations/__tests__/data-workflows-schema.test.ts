@@ -49,6 +49,28 @@ beforeEach(() => {
 });
 
 describe('EvalTestCaseSchema', () => {
+	it.each([
+		{ description: undefined, expected: undefined },
+		{ description: null, expected: null },
+		{ description: ' \n ', expected: null },
+		{ description: ' Production reports ', expected: 'Production reports' },
+	])('normalizes credential description $description', ({ description, expected }) => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			credentials: [{ type: 'slackApi', description }],
+		});
+		expect(parsed.credentials?.[0].description).toBe(expected);
+	});
+
+	it('rejects a credential description above the storage limit', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				credentials: [{ type: 'slackApi', description: '🔑'.repeat(257) }],
+			}),
+		).toThrow();
+	});
+
 	it('accepts a minimal valid fixture', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.executionScenarios).toHaveLength(1);
@@ -476,6 +498,29 @@ describe('EvalTestCaseSchema', () => {
 		expect(parsed.conversation?.[0].attach).toEqual({ workflow: 'wf12345678' });
 	});
 
+	it('accepts an Agent attach on the opening turn naming a seeded Agent', () => {
+		const parsed = EvalTestCaseSchema.parse({
+			...validFixture(),
+			conversation: [
+				{ role: 'user', text: 'why is this Agent failing?', attach: { agent: 'agent12345678' } },
+			],
+			seed: {
+				mode: 'inline',
+				agents: [
+					{
+						id: 'agent12345678',
+						config: {
+							name: 'Notion research',
+							model: 'anthropic/claude-sonnet-4-5',
+							instructions: 'Research company notes.',
+						},
+					},
+				],
+			},
+		});
+		expect(parsed.conversation?.[0].attach).toEqual({ agent: 'agent12345678' });
+	});
+
 	// An attachment models the user opening the assistant with a workflow already in
 	// front of them, so the turn it rides has to BE the user's. An assistant-first
 	// opener carrying one would be graded against a transcript that never happened.
@@ -526,6 +571,28 @@ describe('EvalTestCaseSchema', () => {
 				},
 			}),
 		).toThrow(/must be the id of a workflow the inline seed declares/);
+	});
+
+	it('rejects an Agent attach naming an Agent the seed does not declare', () => {
+		expect(() =>
+			EvalTestCaseSchema.parse({
+				...validFixture(),
+				conversation: [{ role: 'user', text: 'why?', attach: { agent: 'not-in-the-seed' } }],
+				seed: {
+					mode: 'inline',
+					agents: [
+						{
+							id: 'agent12345678',
+							config: {
+								name: 'Notion research',
+								model: 'anthropic/claude-sonnet-4-5',
+								instructions: 'Research company notes.',
+							},
+						},
+					],
+				},
+			}),
+		).toThrow(/must be the id of an Agent the inline seed declares/);
 	});
 
 	it('rejects an empty opening turn that carries no attach', () => {

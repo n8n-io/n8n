@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import type {
 	DataTable,
 	DataTableColumnCreatePayload,
@@ -9,7 +9,6 @@ import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
@@ -28,8 +27,9 @@ import { useDataTableColumnFilters } from '@/features/core/dataTable/composables
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
 import { useDebounce } from '@n8n/composables/useDebounce';
+import DataTableLoadingIndicator from './DataTableLoadingIndicator.vue';
 
-import { N8nPagination } from '@n8n/design-system';
+import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
 registerAgGridModulesOnce();
 
 type Props = {
@@ -42,6 +42,8 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	toggleSave: [value: boolean];
+	ready: [];
+	loadError: [];
 }>();
 
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
@@ -50,6 +52,7 @@ const i18n = useI18n();
 const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
+let isGridReady = false;
 
 const defaultColDef = computed(() => ({
 	...GRID_FILTER_CONFIG.defaultColDef,
@@ -108,7 +111,7 @@ const dataTableOperations = useDataTableOperations({
 	setTotalItems,
 	ensureItemOnPage,
 	focusFirstEditableCell: agGrid.focusFirstEditableCell,
-	toggleSave: emit.bind(null, 'toggleSave'),
+	toggleSave: (value) => emit('toggleSave', value),
 	currentPage,
 	pageSize,
 	currentSortBy: agGrid.currentSortBy,
@@ -118,6 +121,7 @@ const dataTableOperations = useDataTableOperations({
 	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
 	searchQuery: computed(() => props.search),
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -142,12 +146,39 @@ async function fetchDataTableRowsFunction() {
 
 const initialize = async (params: GridReadyEvent) => {
 	agGrid.onGridReady(params);
+	isGridReady = true;
 	dataTableColumns.loadColumns(props.dataTable.columns);
 	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
-	await dataTableOperations.fetchDataTableRows();
+	const loaded = await dataTableOperations.fetchDataTableRows();
+	if (!loaded) {
+		emit('loadError');
+		return;
+	}
+
+	// Empty tables do not emit AG Grid's first-data-rendered event.
+	if (!hasRecords.value) {
+		await nextTick();
+		emit('ready');
+	}
 };
 
 const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-center" data-test-id="data-table-no-rows-overlay">${i18n.baseText('dataTable.noRows')}</div>`;
+
+// Keep the loading state to suppress "No rows", without showing a loading pill.
+const customLoadingOverlay = '<span aria-hidden="true"></span>';
+
+watch(
+	() => props.readOnly,
+	(readOnly) => {
+		if (!isGridReady) return;
+		if (readOnly) {
+			agGrid.gridApi.value.stopEditing(true);
+			selection.handleClearSelection();
+		}
+		// Checkbox renderers cache whether their cells are editable.
+		agGrid.gridApi.value.refreshCells({ force: true });
+	},
+);
 
 watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 	await setCurrentPage(1);
@@ -181,6 +212,7 @@ defineExpose({
 		<div
 			ref="gridContainerRef"
 			:class="[$style['grid-container'], { [$style['has-records']]: hasRecords }]"
+			:aria-busy="dataTableOperations.contentLoading.value"
 			data-test-id="data-table-grid"
 		>
 			<AgGridVue
@@ -191,14 +223,17 @@ defineExpose({
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
+				:suppress-movable-columns="props.readOnly"
 				:loading="dataTableOperations.contentLoading.value"
-				:row-selection="selection.rowSelection"
+				:row-selection="selection.rowSelection.value"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
 				:suppress-multi-sort="true"
+				:overlay-loading-template="customLoadingOverlay"
 				:overlay-no-rows-template="customNoRowsOverlay"
 				@grid-ready="initialize"
+				@first-data-rendered="emit('ready')"
 				@cell-value-changed="dataTableOperations.onCellValueChanged"
 				@column-moved="dataTableOperations.onColumnMoved"
 				@cell-clicked="agGrid.onCellClicked"
@@ -212,6 +247,7 @@ defineExpose({
 				@cell-key-down="dataTableOperations.onCellKeyDown"
 				@filter-changed="onFilterChanged"
 			/>
+			<DataTableLoadingIndicator v-if="dataTableOperations.contentLoading.value" />
 			<div :class="$style.footer">
 				<N8nPagination
 					:page="currentPage"
@@ -224,7 +260,7 @@ defineExpose({
 				/>
 			</div>
 		</div>
-		<SelectedItemsInfo
+		<N8nSelectedItemsInfo
 			:selected-count="selection.selectedCount.value"
 			@delete-selected="dataTableOperations.handleDeleteSelected"
 			@clear-selection="selection.handleClearSelection"

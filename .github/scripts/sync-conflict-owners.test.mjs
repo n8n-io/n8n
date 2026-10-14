@@ -210,12 +210,12 @@ test('buildOutputs lists mechanically pre-resolved files apart from the code con
 		syncBranch: 'sync/master-to-3x',
 		files: ['packages/cli/x.ts'],
 		owners: ['alice'],
-		preResolved: ['pnpm-lock.yaml'],
+		preResolved: ['packages/frontend/editor-ui/data/node-popularity.json'],
 	});
 	assert.match(out.body, /### Conflicted files\n- `packages\/cli\/x\.ts`/);
 	assert.match(out.body, /### Auto-resolved for you/);
 	assert.match(out.body, /resolved mechanically — no action needed/);
-	assert.ok(out.body.indexOf('pnpm-lock.yaml') > out.body.indexOf('Auto-resolved'));
+	assert.ok(out.body.indexOf('node-popularity.json') > out.body.indexOf('Auto-resolved'));
 });
 
 test('buildOutputs carries the regen instruction when the lockfile was deferred', () => {

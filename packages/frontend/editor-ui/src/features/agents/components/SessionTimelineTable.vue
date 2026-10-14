@@ -36,6 +36,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -406,7 +408,7 @@ watch(
 	   mirroring the .idleFill treatment on the chart. */
 	background-color: var(--color--background);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
 	text-transform: lowercase;
 	letter-spacing: 0.02em;

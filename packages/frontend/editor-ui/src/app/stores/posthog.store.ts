@@ -6,7 +6,14 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FeatureFlagPayloads, FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
+} from '@/app/constants';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
+// EOF Experiment cleanup
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -159,6 +166,16 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		// Experiment cleanup (119_surface_assistant_on_workflow_error)
+		if (
+			CLOUD_ONLY &&
+			name === SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name &&
+			!settingsStore.isCloudDeployment
+		) {
+			return;
+		}
+		// EOF Experiment cleanup
+
 		const variant = featFlags[name];
 		if (!variant || trackedDemoExp.value[name] === variant) {
 			return;
@@ -332,3 +349,23 @@ export const usePostHog = defineStore('posthog', () => {
 		overrides,
 	};
 });
+
+/**
+ * Waits for a pending client-side flag evaluation, capped at `timeoutMs` so a
+ * route guard that depends on it never hangs a deep link. Takes the store
+ * instance (rather than calling `usePostHog()` itself) so callers that pass
+ * the same instance they hold elsewhere keep a single source of truth.
+ */
+export async function waitForFeatureFlagsWithTimeout(
+	posthogStore: ReturnType<typeof usePostHog>,
+	timeoutMs: number,
+): Promise<void> {
+	let timeoutId: number | undefined;
+	await Promise.race([
+		posthogStore.waitForFeatureFlags(),
+		new Promise<void>((resolve) => {
+			timeoutId = window.setTimeout(resolve, timeoutMs);
+		}),
+	]);
+	if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+}

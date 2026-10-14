@@ -4,7 +4,7 @@ import type { BuiltGuardrail } from './guardrail';
 import type { CheckpointStore } from './memory';
 import type { ReasoningLevel } from './reasoning';
 import type { BuiltProviderTool, BuiltTool } from './tool';
-import type { VolatileInstructionsProvider } from '../../runtime/loop/agent-runtime';
+import type { VolatileInstructionsProvider } from '../runtime/agent-runtime';
 import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
 import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
 

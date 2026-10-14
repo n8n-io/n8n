@@ -92,6 +92,8 @@ describe('user execution during a conversation', () => {
 			undefined,
 			'progressive',
 			'progressive@1',
+			undefined,
+			undefined,
 		);
 	});
 

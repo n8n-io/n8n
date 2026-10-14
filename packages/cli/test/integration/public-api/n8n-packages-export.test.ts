@@ -1,9 +1,10 @@
+import { ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import { createFolder } from '@test-integration/db/folders';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
@@ -35,27 +36,30 @@ afterEach(async () => {
 });
 
 describe('POST /n8n-packages/export', () => {
-	test('rejects requests that provide both workflowIds and projectIds', async () => {
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+	test.each(['workflowIds', 'folderIds', 'agentIds'] as const)(
+		'rejects projects mixed with %s',
+		async (field) => {
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
-		const response = await authOwnerAgent.post('/n8n-packages/export').send({
-			workflowIds: ['wf-1'],
-			projectIds: ['project-1'],
-		});
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body).toEqual({
-			message: 'Provide either workflowIds/folderIds or projectIds, not both',
-		});
-		expect(emitSpy).toHaveBeenCalledWith(
-			'n8n-package-export-failed',
-			expect.objectContaining({
-				reason: 'validation',
-				workflowIds: ['wf-1'],
+			const response = await authOwnerAgent.post('/n8n-packages/export').send({
+				[field]: ['selected-id'],
 				projectIds: ['project-1'],
-			}),
-		);
-	});
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body).toEqual({
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
+			});
+			expect(emitSpy).toHaveBeenCalledWith(
+				'n8n-package-export-failed',
+				expect.objectContaining({
+					reason: 'validation',
+					[field]: ['selected-id'],
+					projectIds: ['project-1'],
+				}),
+			);
+		},
+	);
 
 	test('rejects export when the API key lacks workflow:export scope', async () => {
 		const limitedOwner = await createOwnerWithApiKey({ scopes: ['project:export'] });
@@ -159,16 +163,27 @@ describe('POST /n8n-packages/export', () => {
 		);
 	});
 
-	test('rejects requests that provide both folderIds and projectIds', async () => {
-		const response = await authOwnerAgent.post('/n8n-packages/export').send({
-			folderIds: ['fld-1'],
-			projectIds: ['project-1'],
-		});
-
+	test('rejects Agent selection when its module is disabled', async () => {
+		expect(Container.get(ModuleRegistry).isActive('agents')).toBe(false);
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.send({ agentIds: ['agent-1'] });
 		expect(response.statusCode).toBe(400);
-		expect(response.body).toEqual({
-			message: 'Provide either workflowIds/folderIds or projectIds, not both',
-		});
+		expect(response.body.message).toContain('agents module is disabled');
+	});
+
+	test.each([
+		{ versionPolicy: 'published' },
+		{ dependencyPolicy: 'skip' },
+		{ agentIds: [] },
+		{ includeAgents: false },
+	])('rejects invalid or internal export options: %j', async (options) => {
+		const project = await createTeamProject('Export project', owner);
+		const folder = await createFolder(project, { name: 'Selected' });
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.send({ folderIds: [folder.id], ...options });
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('streams a gzipped package when exporting a folder', async () => {
@@ -177,16 +192,31 @@ describe('POST /n8n-packages/export', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/export')
+			.buffer(true)
+			// supertest buffers only text and JSON bodies by default
+			.parse((res, callback) => {
+				const chunks: Buffer[] = [];
+				res.on('data', (chunk: Buffer) => chunks.push(chunk));
+				res.on('end', () => callback(null, Buffer.concat(chunks)));
+			})
 			.send({ folderIds: [folder.id] });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['content-type']).toContain('application/gzip');
 		expect(response.headers['content-disposition']).toContain('export.n8np');
+
+		const counts = JSON.parse(response.headers['x-n8n-export-counts']);
+		expect(typeof counts.workflows).toBe('number');
+		expect(typeof counts.folders).toBe('number');
+		expect(response.headers['access-control-expose-headers']).toBe('X-N8n-Export-Counts');
+
+		// Gzip magic number
+		const body: Buffer = response.body;
+		expect([body[0], body[1]]).toEqual([0x1f, 0x8b]);
 	});
 
-	// The OpenAPI request schema has `additionalProperties: false`, so acceptance
-	// proves `includeTags` is declared in exportPackageRequest.yml.
-	test('accepts includeTags=false through the OpenAPI request validator', async () => {
+	// The request DTO is strict, so acceptance proves `includeTags` is a declared field.
+	test('accepts includeTags=false through the request DTO', async () => {
 		const project = await createTeamProject('Export project', owner);
 		const folder = await createFolder(project, { name: 'to_production' });
 
@@ -197,8 +227,8 @@ describe('POST /n8n-packages/export', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	// Acceptance proves `credentialExportPolicy` is declared in exportPackageRequest.yml.
-	test('accepts credentialExportPolicy=no-values through the OpenAPI request validator', async () => {
+	// Acceptance proves `credentialExportPolicy` is a declared field of the request DTO.
+	test('accepts credentialExportPolicy=no-values through the request DTO', async () => {
 		const project = await createTeamProject('Export project', owner);
 		const folder = await createFolder(project, { name: 'to_production' });
 
@@ -218,5 +248,45 @@ describe('POST /n8n-packages/export', () => {
 			.send({ folderIds: [folder.id], credentialExportPolicy: 'all-values' });
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('rejects an unauthenticated request with 401', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.post('/n8n-packages/export')
+			.send({ workflowIds: ['wf-1'] });
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('rejects a key with neither project:export nor workflow:export with 403, before the handler runs', async () => {
+		const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const response = await testServer
+			.publicApiAgentFor(readOnlyOwner)
+			.post('/n8n-packages/export')
+			.send({ workflowIds: ['wf-1'] });
+
+		expect(response.statusCode).toBe(403);
+		expect(emitSpy).not.toHaveBeenCalledWith('n8n-package-export-failed', expect.anything());
+	});
+
+	test('rejects a non-JSON Content-Type with 415', async () => {
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.set('Content-Type', 'text/plain')
+			.send('workflowIds');
+
+		expect(response.statusCode).toBe(415);
+	});
+
+	test('rejects an unknown body field with 400', async () => {
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.send({ workflowIds: ['wf-1'], evil: 'x' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('evil');
 	});
 });

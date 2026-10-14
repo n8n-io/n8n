@@ -36,59 +36,7 @@ responses:
     content:
       application/json:
         schema:
-          type: object
-          properties:
-            connectionId:
-              type: string
-              minLength: 1
-              maxLength: 36
-            configId:
-              type: string
-              minLength: 1
-              maxLength: 36
-            counts:
-              type: object
-              properties:
-                workflows:
-                  type: integer
-                  minimum: 0
-                folders:
-                  type: integer
-                  minimum: 0
-                credentials:
-                  type: integer
-                  minimum: 0
-                dataTables:
-                  type: integer
-                  minimum: 0
-                variables:
-                  type: integer
-                  minimum: 0
-                tags:
-                  type: integer
-                  minimum: 0
-              required:
-                - workflows
-                - folders
-                - credentials
-                - dataTables
-                - variables
-                - tags
-            git:
-              type: object
-              properties:
-                commitSha:
-                  type: string
-                branchName:
-                  type: string
-              required:
-                - commitSha
-                - branchName
-          required:
-            - connectionId
-            - configId
-            - counts
-            - git
+          $ref: ../../../../shared/spec/schemas/promotePackageResultDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':

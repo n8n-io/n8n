@@ -21,7 +21,7 @@ function makeScopedJwt(
 	opts: { actSub?: string; expired?: boolean } = {},
 ): string {
 	const now = Math.floor(Date.now() / 1000);
-	return jwtService.sign({
+	return jwtService.sign('tokenExchange', {
 		iss: TOKEN_EXCHANGE_ISSUER,
 		sub,
 		...(opts.actSub && { act: { sub: opts.actSub } }),
@@ -166,10 +166,9 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 		// the JWT verify step (with the expected audience) must still reject a token signed
 		// with a different aud claim.
 		const owner = await createOwner();
-		const jwt = jwtService.sign({
+		const jwt = jwtService.sign('publicApiKey', {
 			sub: owner.id,
 			iss: 'n8n',
-			aud: 'public-api',
 			jti: 'tampered',
 		});
 

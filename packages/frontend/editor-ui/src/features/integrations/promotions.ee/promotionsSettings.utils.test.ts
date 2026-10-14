@@ -58,6 +58,7 @@ const applyConfig = (branchName = 'main', name = 'Apply') => ({
 	id: 'config-apply',
 	name,
 	settings: { schemaVersion: 1 as const, branchName },
+	checkout: { hasCheckout: false, matchesConfig: false },
 	createdAt: '2026-09-01T00:00:00.000Z',
 	updatedAt: '2026-09-01T00:00:00.000Z',
 });
@@ -70,6 +71,7 @@ const promoteConfig = (
 	id: 'config-promote',
 	name,
 	settings: { schemaVersion: 1 as const, baseBranchName, createBranchOnPromotion },
+	checkout: { hasCheckout: false, matchesConfig: false },
 	createdAt: '2026-09-01T00:00:00.000Z',
 	updatedAt: '2026-09-01T00:00:00.000Z',
 });

@@ -26,8 +26,10 @@
  * test/fixture/exports-subpath package.json) — only relevant for image scans.
  *
  * Usage: node enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>]
- *                             [--lenient-config] [--drop-phantom-npm]
+ *                             [--overrides=<path>] [--lenient-config]
+ *                             [--drop-phantom-npm]
  *        output-path defaults to <sbom-path> (in-place).
+ *        --overrides defaults to license-overrides.json next to this script.
  */
 
 import { readFile, writeFile, readdir } from 'node:fs/promises';
@@ -48,9 +50,9 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.turbo', 'coverage']
 export const FIRST_PARTY_LICENSE_REF = 'LicenseRef-n8n-sustainable-use';
 export const ELECTED_PROPERTY = 'cdx:license:elected';
 
-export async function loadLicenseConfig() {
+export async function loadLicenseConfig(overridesPath = OVERRIDES_PATH) {
 	try {
-		const raw = await readFile(OVERRIDES_PATH, 'utf-8');
+		const raw = await readFile(overridesPath, 'utf-8');
 		const parsed = JSON.parse(raw);
 		return {
 			overrides: parsed.overrides ?? {},
@@ -290,6 +292,9 @@ async function main() {
 	const args = process.argv.slice(2);
 	const positional = args.filter((a) => !a.startsWith('--'));
 	const licenseFileArg = args.find((a) => a.startsWith('--license-file='));
+	// Lets a test drive the chain against a frozen fixture config instead of the
+	// shipped one, so a dependency change can't break a behaviour test.
+	const overridesArg = args.find((a) => a.startsWith('--overrides='));
 	// A per-image scan contains only the npm subset present in that image, so most
 	// overrides/elections won't match — that's expected, not a stale pin. Lenient
 	// mode warns instead of failing. The full release-closure run stays strict.
@@ -302,7 +307,7 @@ async function main() {
 	const sbomPath = positional[0];
 	if (!sbomPath) {
 		console.error(
-			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--lenient-config] [--drop-phantom-npm]',
+			'Usage: enrich-sbom.mjs <sbom-path> [output-path] [--license-file=<path>] [--overrides=<path>] [--lenient-config] [--drop-phantom-npm]',
 		);
 		process.exit(1);
 	}
@@ -310,9 +315,12 @@ async function main() {
 	const licenseFile = licenseFileArg
 		? licenseFileArg.slice('--license-file='.length)
 		: DEFAULT_LICENSE_FILE;
+	const overridesPath = overridesArg
+		? overridesArg.slice('--overrides='.length)
+		: OVERRIDES_PATH;
 
 	const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
-	const { overrides, byName, elections } = await loadLicenseConfig();
+	const { overrides, byName, elections } = await loadLicenseConfig(overridesPath);
 	const validIds = await loadSpdxIds();
 	const firstPartyOsi = await buildFirstPartyOsiMap(DEFAULT_PACKAGES_DIR, validIds);
 

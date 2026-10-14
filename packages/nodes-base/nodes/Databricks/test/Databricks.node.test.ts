@@ -1,6 +1,6 @@
 import { sleep } from '@n8n/utils/sleep';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -13,8 +13,9 @@ import nock from 'nock';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
-import { makePermissionErrorLegible } from '../actions/helpers';
+import { makePermissionErrorLegible, permissionHintFor } from '../actions/helpers';
 import { execute as runJob } from '../actions/job/run.operation';
+import { Databricks } from '../Databricks.node';
 import { getCatalogs, getJobs, getRuns, getSchemas } from '../methods/listSearch';
 import { jobParameters } from '../resources/job/parameters';
 
@@ -179,11 +180,15 @@ describe('Databricks', () => {
 				.post('/api/2.0/genie/spaces/space123/start-conversation', {
 					content: 'Show me sales data for Q1 2024',
 				})
-				.reply(200, {
-					conversation_id: 'conv-456',
-					message_id: 'msg-789',
-					space_id: 'space123',
-				});
+				.reply(
+					200,
+					{
+						conversation_id: 'conv-456',
+						message_id: 'msg-789',
+						space_id: 'space123',
+					},
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 
 			databricksNock
 				.post('/api/2.0/genie/spaces/space123/conversations/conv-456/messages', {
@@ -198,18 +203,46 @@ describe('Databricks', () => {
 
 			databricksNock
 				.get('/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789')
-				.reply(200, {
-					id: 'msg-789',
-					conversation_id: 'conv-456',
-					content: 'Show me sales data for Q1 2024',
-					status: 'COMPLETED',
-				});
+				.reply(
+					200,
+					{
+						id: 'msg-789',
+						conversation_id: 'conv-456',
+						content: 'Show me sales data for Q1 2024',
+						status: 'COMPLETED',
+					},
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 
-			databricksNock.get('/api/2.0/genie/spaces/space123').reply(200, {
-				id: 'space123',
-				display_name: 'Sales Analytics',
-				description: 'AI-powered sales data assistant',
-			});
+			databricksNock.get('/api/2.0/genie/spaces/space123').reply(
+				200,
+				{
+					id: 'space123',
+					display_name: 'Sales Analytics',
+					description: 'AI-powered sales data assistant',
+				},
+				{ 'x-databricks-org-id': '1234567890' },
+			);
+
+			databricksNock
+				.get(
+					'/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789/attachments/att-001/query-result',
+				)
+				.reply(
+					200,
+					{ statement_response: { status: { state: 'SUCCEEDED' } } },
+					{ 'x-databricks-org-id': '1234567890' },
+				);
+
+			databricksNock
+				.post(
+					'/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789/attachments/att-001/execute-query',
+				)
+				.reply(
+					200,
+					{ statement_response: { status: { state: 'PENDING' } } },
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 		});
 
 		afterAll(() => nock.cleanAll());
@@ -218,6 +251,29 @@ describe('Databricks', () => {
 			credentials,
 			workflowFiles: ['genie.workflow.json'],
 		});
+	});
+
+	describe('Genie -> toolAttribution', () => {
+		it.each([
+			['genie', 'getSpace', 'Powered by Databricks Genie'],
+			['job', 'run', undefined],
+		])(
+			'should resolve toolAttribution only for the genie resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
+
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource, operation },
+					true,
+					false,
+					node,
+					description,
+				);
+
+				expect(result?.toolAttribution).toBe(expected);
+			},
+		);
 	});
 
 	describe('Model Serving -> Query Endpoint', () => {
@@ -638,6 +694,38 @@ describe('Databricks', () => {
 		});
 	});
 
+	describe('Job -> Get Run', () => {
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.2/jobs/runs/get')
+				.query({ run_id: '41847992357943' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					run_id: 41847992357943,
+					run_name: 'Nightly ETL',
+					run_page_url: `${HOST}/?o=123#job/281874479417551/run/41847992357943`,
+					start_time: 1789430400000,
+					end_time: 1789430460000,
+					status: {
+						state: 'TERMINATED',
+						termination_details: {
+							code: 'SUCCESS',
+							type: 'SUCCESS',
+							message: 'The run was completed successfully.',
+						},
+					},
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get-run.workflow.json'],
+		});
+	});
+
 	describe('Job -> Get Run Output', () => {
 		beforeAll(() => {
 			const databricksNock = nock(HOST);
@@ -764,6 +852,32 @@ describe('makePermissionErrorLegible', () => {
 		);
 	});
 
+	it('should use the hint it is given', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: 'User does not have Can View on job 281874479417551.',
+		});
+
+		makePermissionErrorLegible(error, permissionHintFor('job', 'getRun'));
+
+		expect(error.description).toBe(
+			'Grant at least Can View on the job to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
+	it('should fall back to the generic hint for a resource without one', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: PERMISSION_MESSAGE,
+		});
+
+		makePermissionErrorLegible(error, permissionHintFor('unityCatalog', 'getCatalog'));
+
+		expect(error.description).toBe(
+			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
 	it('should strip control characters and truncate the promoted message to 500 characters', () => {
 		const error = apiErrorFromBody(403, {
 			error_code: 'PERMISSION_DENIED',
@@ -819,6 +933,31 @@ describe('makePermissionErrorLegible', () => {
 		makePermissionErrorLegible(error);
 
 		expect(error.message).toBe(messageBefore);
+	});
+});
+
+describe('permissionHintFor', () => {
+	// Starting a run needs Can Manage Run, so the read hint would leave the user
+	// stuck in the same error after granting only Can View
+	it.each([
+		['run', 'Can Manage Run on the job'],
+		['getRun', 'Can View on the job'],
+		['getRunOutput', 'Can View on the job'],
+	])('should name the grant the job %s operation needs', (operation, grant) => {
+		expect(permissionHintFor('job', operation)).toBe(
+			`Grant at least ${grant} to the signed-in user or service principal in Databricks, then retry.`,
+		);
+	});
+
+	it('should hint the read grant for a job dropdown, which has no operation', () => {
+		expect(permissionHintFor('job')).toBe(permissionHintFor('job', 'getRun'));
+	});
+
+	it.each([
+		['a resource without hints', 'unityCatalog', 'getCatalog'],
+		['an object prototype member', 'constructor', 'toString'],
+	])('should return no hint for %s', (_label, resource, operation) => {
+		expect(permissionHintFor(resource, operation)).toBeUndefined();
 	});
 });
 

@@ -84,7 +84,13 @@ describe('ExecuteCommand cancellation', () => {
 			await Promise.resolve();
 
 			controller.abort();
-			expect(mockedSpawn).toHaveBeenCalledWith('taskkill', ['/pid', String(CHILD_PID), '/T', '/F']);
+			expect(mockedSpawn).toHaveBeenCalledWith(
+				'taskkill',
+				['/pid', String(CHILD_PID), '/T', '/F'],
+				{
+					windowsHide: true,
+				},
+			);
 			expect(killSpy).not.toHaveBeenCalled();
 
 			await expect(promise).rejects.toBeInstanceOf(ManualExecutionCancelledError);

@@ -18,6 +18,7 @@ import {
 	type BridgeResumeExecutionContext,
 	type PlatformAgentContext,
 	type PlatformContextQueryParams,
+	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
@@ -35,6 +36,7 @@ import {
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
+	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
@@ -179,6 +181,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		thread: BridgeMessageContextParams['thread'];
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
+		slackThreadContext?: SlackThreadContext;
 	}): Promise<BridgeResumeExecutionContext> {
 		return await createSlackResumeExecutionContext(params);
 	}
@@ -209,7 +212,10 @@ export class SlackIntegration extends AgentChatIntegration {
 	 * bot token + signing secret in n8n. Slack's docs:
 	 * https://api.slack.com/events/url_verification
 	 */
-	handleUnauthenticatedWebhook(body: unknown): UnauthenticatedWebhookResponse | undefined {
+	handleUnauthenticatedWebhook(
+		context: UnauthenticatedWebhookContext,
+	): UnauthenticatedWebhookResponse | undefined {
+		const { body } = context;
 		if (!body || typeof body !== 'object') return undefined;
 		const evt = body as { type?: unknown; challenge?: unknown };
 		if (evt.type === 'url_verification' && typeof evt.challenge === 'string') {

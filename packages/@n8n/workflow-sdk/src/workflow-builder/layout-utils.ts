@@ -8,13 +8,20 @@
  */
 
 import dagre from '@dagrejs/dagre';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeHelpers,
+	Workflow,
+	type INodeParameters,
+	type INodeTypes,
+} from 'n8n-workflow';
 
 import {
 	GRID_SIZE,
 	DEFAULT_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	CONFIGURATION_NODE_RADIUS,
-	CONFIGURABLE_NODE_SIZE,
 	AGENT_NODE_SIZE,
 	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_X_SPACING,
@@ -33,8 +40,21 @@ import {
 	STICKY_HEADER_HEIGHT,
 	MAX_STICKY_SEPARATION_STEPS,
 } from './constants';
+import {
+	collapseNodeGroups,
+	placeGroupMembers,
+	type BoundingBox,
+	type CollapsedGroup,
+} from './group-layout-utils';
 import { parseVersion } from './string-utils';
-import { isAnchoredStickyNote, type GraphNode } from '../types/base';
+import { parseWorkflowJSON } from './workflow-import';
+import {
+	isAnchoredStickyNote,
+	type GraphNode,
+	type NodePorts,
+	type WorkflowJSON,
+} from '../types/base';
+import type { ResolvedNodeGroup } from './plugins/types';
 
 // ===========================================================================
 // BFS Layout (default)
@@ -114,17 +134,6 @@ export function calculateNodePositions(
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface BoundingBox {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
-
-// ---------------------------------------------------------------------------
 // Helpers: AI node detection
 // ---------------------------------------------------------------------------
 
@@ -163,7 +172,7 @@ function getAiConfigNames(nodes: ReadonlyMap<string, GraphNode>): Set<string> {
 function getAllConnectedAiConfigNodes(
 	graph: dagre.graphlib.Graph,
 	rootId: string,
-	aiConfigNames: Set<string>,
+	aiConfigNames: ReadonlySet<string>,
 ): string[] {
 	const predecessors = (graph.predecessors(rootId) as unknown as string[]) ?? [];
 	return predecessors
@@ -199,9 +208,119 @@ function getMainInputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNod
 	return Math.max(1, maxIndex);
 }
 
-function calculateNodeHeight(mainInputCount: number, mainOutputCount: number): number {
-	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
-	return DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+/** Mirrors `calculateNodeSize` in editor-ui `nodeViewUtils.ts`. */
+function canvasNodeSize(ports: NodePorts): { width: number; height: number } {
+	const maxVerticalHandles = Math.max(ports.mainInputs, ports.mainOutputs, 1);
+	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+	if (ports.configurable) {
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, ports.nonMainInputs);
+		return {
+			// A configuration node gets one more grid step, so that its centred output aligns to the grid
+			width:
+				CONFIGURATION_NODE_RADIUS * 2 +
+				GRID_SIZE * ((ports.configuration ? 1 : 0) + (portCount - 1) * 3),
+			height: ports.configuration ? CONFIGURATION_NODE_SIZE[1] : height,
+		};
+	}
+	if (ports.configuration) {
+		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
+	}
+	return { width: DEFAULT_NODE_SIZE[0], height };
+}
+
+/** Ports read from the wires, for a node whose type is not known. A port without a wire is not seen. */
+function wiredPorts(
+	nodeName: string,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): NodePorts {
+	const aiInputTypes = new Set<string>();
+	if (aiParentNames.has(nodeName)) {
+		for (const graphNode of nodes.values()) {
+			for (const [connType, outputMap] of graphNode.connections) {
+				if (!isAiConnectionType(connType)) continue;
+				for (const targets of outputMap.values()) {
+					for (const target of targets) {
+						if (target.node === nodeName) {
+							aiInputTypes.add(connType);
+						}
+					}
+				}
+			}
+		}
+	}
+	return {
+		mainInputs: getMainInputCount(nodeName, nodes),
+		mainOutputs: getMainOutputCount(nodeName, nodes),
+		nonMainInputs: aiInputTypes.size,
+		configuration: aiConfigNames.has(nodeName),
+		configurable: aiParentNames.has(nodeName),
+	};
+}
+
+/**
+ * Each node's ports, read from its node type as the canvas reads them. Some node types
+ * declare their ports as an expression over the node parameters, so this evaluates the
+ * expression with the parameter defaults filled in. A node of an unknown type is left out.
+ * Pass the result to `toJSON({ nodePorts })` and `getWorkflowNodeDimensions`.
+ */
+export async function resolveNodePorts(
+	json: WorkflowJSON,
+	nodeTypes: INodeTypes,
+): Promise<Map<string, NodePorts>> {
+	const descriptionOf = (node: { type: string; typeVersion: number }) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion)?.description;
+		} catch {
+			// The server's node types throw on an unknown type.
+			return undefined;
+		}
+	};
+	// The workflow fills in the parameter defaults that the port expressions read.
+	const workflow = new Workflow({
+		nodes: json.nodes.flatMap(({ id, name, type, typeVersion, parameters, onError }) =>
+			name !== undefined && descriptionOf({ type, typeVersion })
+				? [
+						{
+							id,
+							name,
+							type,
+							typeVersion,
+							position: [0, 0] satisfies [number, number],
+							parameters: jsonParse<INodeParameters>(JSON.stringify(parameters ?? {})),
+							onError,
+						},
+					]
+				: [],
+		),
+		connections: {},
+		active: false,
+		nodeTypes,
+	});
+	// The VM expression engine evaluates an expression only while the workflow holds an isolate.
+	return await workflow.expression.withIsolate(async () => {
+		const ports = new Map<string, NodePorts>();
+		for (const node of Object.values(workflow.nodes)) {
+			const description = descriptionOf(node);
+			if (!description) continue;
+			const inputs = NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeInputs(workflow, node, description),
+			);
+			const outputs = NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeOutputs(workflow, node, description),
+			);
+			const nonMainInputs = inputs.filter((type) => type !== NodeConnectionTypes.Main).length;
+			ports.set(node.name, {
+				mainInputs: inputs.length - nonMainInputs,
+				mainOutputs: outputs.filter((type) => type === NodeConnectionTypes.Main).length,
+				nonMainInputs,
+				configuration: outputs.some((type) => type !== NodeConnectionTypes.Main),
+				configurable: nonMainInputs > 0,
+			});
+		}
+		return ports;
+	});
 }
 
 /** Whether a sticky carries its own width, rather than relying on the default. */
@@ -230,9 +349,10 @@ function declaredStickySize(graphNode: GraphNode): { width: number; height: numb
 
 export function getNodeDimensions(
 	nodeName: string,
-	aiParentNames: Set<string>,
-	aiConfigNames: Set<string>,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
 	nodes: ReadonlyMap<string, GraphNode>,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): { width: number; height: number } {
 	const graphNode = nodes.get(nodeName);
 	if (graphNode?.instance.type === STICKY_NODE_TYPE) {
@@ -246,35 +366,29 @@ export function getNodeDimensions(
 		return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
 	}
 
-	if (aiConfigNames.has(nodeName)) {
-		return { width: CONFIGURATION_NODE_SIZE[0], height: CONFIGURATION_NODE_SIZE[1] };
-	}
+	return canvasNodeSize(
+		knownPorts?.get(nodeName) ?? wiredPorts(nodeName, aiParentNames, aiConfigNames, nodes),
+	);
+}
 
-	if (aiParentNames.has(nodeName)) {
-		const aiInputTypes = new Set<string>();
-		for (const graphNode of nodes.values()) {
-			for (const [connType, outputMap] of graphNode.connections) {
-				if (!isAiConnectionType(connType)) continue;
-				for (const targets of outputMap.values()) {
-					for (const target of targets) {
-						if (target.node === nodeName) {
-							aiInputTypes.add(connType);
-						}
-					}
-				}
-			}
-		}
-		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, aiInputTypes.size);
-		const width = CONFIGURATION_NODE_RADIUS * 2 + GRID_SIZE * (portCount - 1) * 3;
-		return { width, height: CONFIGURABLE_NODE_SIZE[1] };
-	}
-
-	const mainInputCount = getMainInputCount(nodeName, nodes);
-	const mainOutputCount = getMainOutputCount(nodeName, nodes);
-	return {
-		width: DEFAULT_NODE_SIZE[0],
-		height: calculateNodeHeight(mainInputCount, mainOutputCount),
-	};
+/**
+ * The canvas size of each node in a workflow JSON, by node name. Give the ports from
+ * `resolveNodePorts` to size each node by its declared ports, as the canvas does; without
+ * them, the size comes from the wired ports only.
+ */
+export function getWorkflowNodeDimensions(
+	json: WorkflowJSON,
+	knownPorts?: ReadonlyMap<string, NodePorts>,
+): Map<string, { width: number; height: number }> {
+	const { nodes } = parseWorkflowJSON(json);
+	const aiParentNames = getAiParentNames(nodes);
+	const aiConfigNames = getAiConfigNames(nodes);
+	return new Map(
+		[...nodes.keys()].map((name) => [
+			name,
+			getNodeDimensions(name, aiParentNames, aiConfigNames, nodes, knownPorts),
+		]),
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -349,6 +463,56 @@ function centerHorizontally(container: BoundingBox, target: BoundingBox): number
 // Dagre graph builders
 // ---------------------------------------------------------------------------
 
+function createParentGraph(
+	nonStickyNames: readonly string[],
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	knownPorts: ReadonlyMap<string, NodePorts> | undefined,
+): dagre.graphlib.Graph {
+	const parentGraph = new dagre.graphlib.Graph();
+	parentGraph.setGraph({});
+	parentGraph.setDefaultEdgeLabel(() => ({}));
+
+	for (const name of nonStickyNames) {
+		const { width, height } = getNodeDimensions(
+			name,
+			aiParentNames,
+			aiConfigNames,
+			nodes,
+			knownPorts,
+		);
+		const explicitPosition = nodes.get(name)?.instance.config?.position;
+		parentGraph.setNode(name, {
+			width,
+			height,
+			...(explicitPosition ? { x: explicitPosition[0], y: explicitPosition[1] } : {}),
+		});
+	}
+
+	return parentGraph;
+}
+
+function addConnectionEdges(
+	parentGraph: dagre.graphlib.Graph,
+	nonStickyNames: readonly string[],
+	nodes: ReadonlyMap<string, GraphNode>,
+): void {
+	const nonStickySet = new Set(nonStickyNames);
+	for (const name of nonStickyNames) {
+		const graphNode = nodes.get(name)!;
+		for (const [, outputMap] of graphNode.connections) {
+			for (const targets of outputMap.values()) {
+				for (const target of targets) {
+					if (nonStickySet.has(target.node)) {
+						parentGraph.setEdge(name, target.node);
+					}
+				}
+			}
+		}
+	}
+}
+
 function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.graphlib.Graph {
 	const subGraph = new dagre.graphlib.Graph();
 	subGraph.setGraph({
@@ -363,7 +527,9 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 	parent
 		.nodes()
 		.filter((id) => nodeIdSet.has(id))
-		.forEach((id) => subGraph.setNode(id, parent.node(id)));
+		// Dagre mutates node labels during layout. Copy them so a subgraph layout
+		// cannot change the graph that will be laid out later.
+		.forEach((id) => subGraph.setNode(id, { ...parent.node(id) }));
 
 	parent
 		.edges()
@@ -371,6 +537,88 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 		.forEach((edge) => subGraph.setEdge(edge.v, edge.w, parent.edge(edge)));
 
 	return subGraph;
+}
+
+/** Check that a group contains every node in each AI subtree it touches. */
+function hasCompleteAiSubtree(
+	nodeIds: readonly string[],
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+): boolean {
+	const memberIds = new Set(nodeIds);
+	const aiParents = [...aiParentNames].filter((parentId) => {
+		if (memberIds.has(parentId)) return true;
+
+		return getAllConnectedAiConfigNodes(parentGraph, parentId, aiConfigNames).some((id) =>
+			memberIds.has(id),
+		);
+	});
+
+	for (const aiParentId of aiParents) {
+		const aiSubtree = new Set([
+			aiParentId,
+			...getAllConnectedAiConfigNodes(parentGraph, aiParentId, aiConfigNames),
+		]);
+		if ([...aiSubtree].some((id) => !memberIds.has(id))) return false;
+	}
+
+	return nodeIds.every(
+		(id) =>
+			!aiConfigNames.has(id) ||
+			aiParents.some((parentId) => {
+				const aiSubtree = new Set([
+					parentId,
+					...getAllConnectedAiConfigNodes(parentGraph, parentId, aiConfigNames),
+				]);
+				return aiSubtree.has(id);
+			}),
+	);
+}
+
+/** Layout group members with the existing AI interior layout when needed. */
+function layoutGroupMembers(
+	nodeIds: string[],
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): dagre.graphlib.Graph {
+	const subgraph = createSubGraph(nodeIds, parentGraph);
+	const containsAiNode = nodeIds.some((id) => aiParentNames.has(id) || aiConfigNames.has(id));
+	if (!containsAiNode) {
+		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
+		return subgraph;
+	}
+
+	const subgraphs = layoutSubgraphs(subgraph, aiParentNames, aiConfigNames);
+	const boxes = boxesFromSubgraphs(
+		subgraphs,
+		arrangeSubgraphs(subgraphs),
+		new Map<string, CollapsedGroup>(),
+		nodes,
+		new Map<string, string>(),
+	);
+	alignAiSubgraphs(subgraphs, boxes);
+
+	const laidOut = new dagre.graphlib.Graph();
+	laidOut.setGraph(subgraph.graph());
+	laidOut.setDefaultEdgeLabel(() => ({}));
+	for (const nodeId of nodeIds) {
+		const box = boxes[nodeId];
+		if (!box) continue;
+		laidOut.setNode(nodeId, {
+			x: box.x + box.width / 2,
+			y: box.y + box.height / 2,
+			width: box.width,
+			height: box.height,
+		});
+	}
+	for (const edge of subgraph.edges()) {
+		laidOut.setEdge(edge.v, edge.w, subgraph.edge(edge));
+	}
+
+	return laidOut;
 }
 
 function createVerticalGraph(items: Array<{ id: string; box: BoundingBox }>): dagre.graphlib.Graph {
@@ -420,6 +668,180 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 		.forEach((edge) => graph.setEdge(edge.w, edge.v));
 
 	return graph;
+}
+
+interface AiGraphLayout {
+	graph: dagre.graphlib.Graph;
+	boundingBox: BoundingBox;
+	aiParentId: string;
+}
+
+interface LayoutSubgraph {
+	graph: dagre.graphlib.Graph;
+	aiGraphs: AiGraphLayout[];
+	boundingBox: BoundingBox;
+}
+
+/** Lay out each connected component after folding groups and AI subgraphs. */
+function layoutSubgraphs(
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+): LayoutSubgraph[] {
+	return dagre.graphlib.alg.components(parentGraph).map((nodeIds) => {
+		const subgraph = createSubGraph(nodeIds, parentGraph);
+		const aiParentsInSubgraph = subgraph.nodes().filter((id) => aiParentNames.has(id));
+
+		const aiGraphs = aiParentsInSubgraph.map((aiParentId): AiGraphLayout => {
+			const configNodeIds = getAllConnectedAiConfigNodes(subgraph, aiParentId, aiConfigNames);
+			const allAiNodeIds = configNodeIds.concat(aiParentId);
+			const aiGraph = createAiSubGraph(subgraph, allAiNodeIds);
+
+			// Capture edges connecting the AI parent to non-AI nodes BEFORE removing config nodes
+			const configNodeIdSet = new Set(configNodeIds);
+			const rootEdges = subgraph
+				.edges()
+				.filter(
+					(edge) =>
+						(edge.v === aiParentId || edge.w === aiParentId) &&
+						!configNodeIdSet.has(edge.v) &&
+						!configNodeIdSet.has(edge.w),
+				);
+
+			// Remove config nodes from main subgraph (keep parent)
+			configNodeIds.forEach((id) => subgraph.removeNode(id));
+
+			dagre.layout(aiGraph, { disableOptimalOrderHeuristic: true });
+			const aiBoundingBox = boundingBoxFromGraph(aiGraph);
+
+			// Replace parent node with bounding box of entire AI subtree
+			subgraph.setNode(aiParentId, {
+				width: aiBoundingBox.width,
+				height: aiBoundingBox.height,
+			});
+			rootEdges.forEach((edge) => subgraph.setEdge(edge));
+
+			return { graph: aiGraph, boundingBox: aiBoundingBox, aiParentId };
+		});
+
+		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
+
+		return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
+	});
+}
+
+/** Arrange disconnected components vertically, matching the existing tidy-up order. */
+function arrangeSubgraphs(subgraphs: readonly LayoutSubgraph[]): dagre.graphlib.Graph | undefined {
+	if (subgraphs.length <= 1) return undefined;
+
+	const compositeGraph = createVerticalGraph(
+		subgraphs.map(({ boundingBox }, index) => ({
+			box: boundingBox,
+			id: index.toString(),
+		})),
+	);
+	dagre.layout(compositeGraph);
+	return compositeGraph;
+}
+
+/** Convert component and AI graph coordinates into boxes keyed by runtime node key. */
+function boxesFromSubgraphs(
+	subgraphs: readonly LayoutSubgraph[],
+	compositeGraph: dagre.graphlib.Graph | undefined,
+	groupByGraphId: ReadonlyMap<string, CollapsedGroup>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
+): Record<string, BoundingBox> {
+	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
+
+	subgraphs.forEach(({ graph, aiGraphs }, index) => {
+		let offset = { x: 0, y: 0 };
+		if (compositeGraph) {
+			const subgraphPosition = compositeGraph.node(index.toString());
+			offset = {
+				x: 0,
+				y: subgraphPosition.y - subgraphPosition.height / 2,
+			};
+		}
+		const aiParentIds = new Set(aiGraphs.map(({ aiParentId }) => aiParentId));
+
+		for (const nodeId of graph.nodes()) {
+			const { x, y, width, height } = graph.node(nodeId);
+			const box: BoundingBox = {
+				x: x + offset.x - width / 2,
+				y: y + offset.y - height / 2,
+				width,
+				height,
+			};
+
+			const group = groupByGraphId.get(nodeId);
+			if (group) {
+				placeGroupMembers(group, box, boundingBoxByNodeId, {
+					boundingBoxFromGraph,
+					compositeBoundingBox,
+					keyByNodeId,
+					nodes,
+					snapToGrid,
+					wrappingBoxFor,
+				});
+				continue;
+			}
+
+			if (!aiParentIds.has(nodeId)) {
+				boundingBoxByNodeId[nodeId] = box;
+				continue;
+			}
+
+			const aiGraphInfo = aiGraphs.find(({ aiParentId }) => aiParentId === nodeId);
+			if (!aiGraphInfo) continue;
+
+			for (const aiNodeId of aiGraphInfo.graph.nodes()) {
+				const aiNode = aiGraphInfo.graph.node(aiNodeId);
+				boundingBoxByNodeId[aiNodeId] = {
+					x: aiNode.x + box.x - aiNode.width / 2,
+					y: aiNode.y + box.y - aiNode.height / 2,
+					width: aiNode.width,
+					height: aiNode.height,
+				};
+			}
+		}
+	});
+
+	return boundingBoxByNodeId;
+}
+
+/** Top-align AI subtrees when their corrected bounds do not collide with others. */
+function alignAiSubgraphs(
+	subgraphs: readonly LayoutSubgraph[],
+	boundingBoxByNodeId: Record<string, BoundingBox>,
+): void {
+	subgraphs
+		.flatMap(({ aiGraphs }) => aiGraphs)
+		.forEach(({ graph }) => {
+			const aiNodes = graph.nodes();
+			const boxes = aiNodes
+				.map((id) => boundingBoxByNodeId[id])
+				.filter((b): b is BoundingBox => b !== undefined);
+			if (boxes.length === 0) return;
+
+			const aiGraphBoundingBox = compositeBoundingBox(boxes);
+			const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - DEFAULT_NODE_SIZE[0] / 2;
+			aiGraphBoundingBox.y += aiNodeVerticalCorrection;
+
+			const hasConflictingNodes = Object.entries(boundingBoxByNodeId)
+				.filter(([id]) => !graph.hasNode(id))
+				.some(([, nodeBoundingBox]) =>
+					intersects(aiGraphBoundingBox, nodeBoundingBox, NODE_Y_SPACING),
+				);
+
+			if (!hasConflictingNodes) {
+				for (const aiNode of aiNodes) {
+					if (boundingBoxByNodeId[aiNode]) {
+						boundingBoxByNodeId[aiNode].y += aiNodeVerticalCorrection;
+					}
+				}
+			}
+		});
 }
 
 // ---------------------------------------------------------------------------
@@ -610,6 +1032,10 @@ export function resolveStickyGeometry(
 }
 
 // ---------------------------------------------------------------------------
+// Helpers: Node groups
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
 // Dagre layout function
 // ---------------------------------------------------------------------------
 
@@ -617,10 +1043,20 @@ export function resolveStickyGeometry(
  * Calculate positions for nodes using Dagre hierarchical layout.
  * Mirrors the frontend's useCanvasLayout algorithm.
  *
+ * Pass `nodeGroups` so a group gets the space the canvas draws for it. The canvas
+ * shows a group collapsed by default: one fixed-size chip standing in for every
+ * member. Laying the members out individually instead leaves the chip off the row
+ * its neighbours sit on, and sized wrong.
+ *
  * Only sets positions for nodes without explicit config.position.
+ *
+ * Give the ports from `resolveNodePorts` to size each node by its declared ports, as the
+ * canvas does.
  */
 export function calculateNodePositionsDagre(
 	nodes: ReadonlyMap<string, GraphNode>,
+	nodeGroups?: readonly ResolvedNodeGroup[],
+	knownPorts?: ReadonlyMap<string, NodePorts>,
 ): Map<string, [number, number]> {
 	const positions = new Map<string, [number, number]>();
 
@@ -651,166 +1087,57 @@ export function calculateNodePositionsDagre(
 
 	if (!needsLayout) return positions;
 
-	// Build parent dagre graph with all non-sticky nodes
-	const parentGraph = new dagre.graphlib.Graph();
-	parentGraph.setGraph({});
-	parentGraph.setDefaultEdgeLabel(() => ({}));
+	const sizeOf = (name: string) =>
+		getNodeDimensions(name, aiParentNames, aiConfigNames, nodes, knownPorts);
+	const parentGraph = createParentGraph(
+		nonStickyNames,
+		aiParentNames,
+		aiConfigNames,
+		nodes,
+		knownPorts,
+	);
+	addConnectionEdges(parentGraph, nonStickyNames, nodes);
 
-	for (const name of nonStickyNames) {
-		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
-		const explicitPosition = nodes.get(name)?.instance.config?.position;
-		parentGraph.setNode(name, {
-			width,
-			height,
-			...(explicitPosition ? { x: explicitPosition[0], y: explicitPosition[1] } : {}),
-		});
+	// Fold groups away before splitting into components, so a group that bridges
+	// two otherwise-separate clusters keeps them in one component.
+	const keyByNodeId = new Map<string, string>();
+	for (const [key, graphNode] of nodes) {
+		const id = graphNode.instance.id;
+		if (id !== undefined) keyByNodeId.set(id, key);
 	}
 
-	// Add edges from connections
-	const nonStickySet = new Set(nonStickyNames);
-	for (const name of nonStickyNames) {
-		const graphNode = nodes.get(name)!;
-		for (const [, outputMap] of graphNode.connections) {
-			for (const targets of outputMap.values()) {
-				for (const target of targets) {
-					if (nonStickySet.has(target.node)) {
-						parentGraph.setEdge(name, target.node);
-					}
-				}
-			}
-		}
+	// Members the layout is not free to move: stickies get placed relative to their
+	// anchors, and an explicit position is the author's to keep. Complete AI
+	// subtrees are handled as a group interior; partial subtrees are rejected below.
+	const ungroupableKeys = new Set(stickyNames);
+	for (const [key, graphNode] of nodes) {
+		if (graphNode.instance.config?.position) ungroupableKeys.add(key);
 	}
 
-	// Divide into disconnected subgraphs
-	const components = dagre.graphlib.alg.components(parentGraph);
+	const collapsedGroups = nodeGroups?.length
+		? collapseNodeGroups(parentGraph, nodeGroups, nodes, keyByNodeId, ungroupableKeys, {
+				createSubGraph,
+				canCollapseMembers: (memberKeys, graph) =>
+					hasCompleteAiSubtree(memberKeys, graph, aiParentNames, aiConfigNames),
+				layoutSubGraph: (memberKeys, graph) =>
+					layoutGroupMembers(memberKeys, graph, aiParentNames, aiConfigNames, nodes),
+			})
+		: [];
+	const groupByGraphId = new Map(collapsedGroups.map((group) => [group.graphId, group]));
 
-	const subgraphs = components.map((nodeIds) => {
-		const subgraph = createSubGraph(nodeIds, parentGraph);
+	const subgraphs = layoutSubgraphs(parentGraph, aiParentNames, aiConfigNames);
 
-		// Find AI parent nodes in this subgraph
-		const aiParentsInSubgraph = subgraph.nodes().filter((id) => aiParentNames.has(id));
+	const compositeGraph = arrangeSubgraphs(subgraphs);
 
-		// Process each AI parent: create TB sub-layout, replace with bounding box
-		const aiGraphs = aiParentsInSubgraph.map((aiParentId) => {
-			const configNodeIds = getAllConnectedAiConfigNodes(subgraph, aiParentId, aiConfigNames);
-			const allAiNodeIds = configNodeIds.concat(aiParentId);
-			const aiGraph = createAiSubGraph(subgraph, allAiNodeIds);
+	const boundingBoxByNodeId = boxesFromSubgraphs(
+		subgraphs,
+		compositeGraph,
+		groupByGraphId,
+		nodes,
+		keyByNodeId,
+	);
 
-			// Capture edges connecting the AI parent to non-AI nodes BEFORE removing config nodes
-			const configNodeIdSet = new Set(configNodeIds);
-			const rootEdges = subgraph
-				.edges()
-				.filter(
-					(edge) =>
-						(edge.v === aiParentId || edge.w === aiParentId) &&
-						!configNodeIdSet.has(edge.v) &&
-						!configNodeIdSet.has(edge.w),
-				);
-
-			// Remove config nodes from main subgraph (keep parent)
-			configNodeIds.forEach((id) => subgraph.removeNode(id));
-
-			dagre.layout(aiGraph, { disableOptimalOrderHeuristic: true });
-			const aiBoundingBox = boundingBoxFromGraph(aiGraph);
-
-			// Replace parent node with bounding box of entire AI subtree
-			subgraph.setNode(aiParentId, {
-				width: aiBoundingBox.width,
-				height: aiBoundingBox.height,
-			});
-			rootEdges.forEach((edge) => subgraph.setEdge(edge));
-
-			return { graph: aiGraph, boundingBox: aiBoundingBox, aiParentId };
-		});
-
-		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
-
-		return { graph: subgraph, aiGraphs, boundingBox: boundingBoxFromGraph(subgraph) };
-	});
-
-	// Arrange subgraphs vertically (skip composite layout for single subgraph)
-	let compositeGraph: dagre.graphlib.Graph | undefined;
-	if (subgraphs.length > 1) {
-		compositeGraph = createVerticalGraph(
-			subgraphs.map(({ boundingBox }, index) => ({
-				box: boundingBox,
-				id: index.toString(),
-			})),
-		);
-		dagre.layout(compositeGraph);
-	}
-
-	// Compute final positions
-	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
-
-	subgraphs.forEach(({ graph, aiGraphs }, index) => {
-		let offset = { x: 0, y: 0 };
-		if (compositeGraph) {
-			const subgraphPosition = compositeGraph.node(index.toString());
-			offset = {
-				x: 0,
-				y: subgraphPosition.y - subgraphPosition.height / 2,
-			};
-		}
-		const aiParentIds = new Set(aiGraphs.map(({ aiParentId }) => aiParentId));
-
-		for (const nodeId of graph.nodes()) {
-			const { x, y, width, height } = graph.node(nodeId);
-			const box: BoundingBox = {
-				x: x + offset.x - width / 2,
-				y: y + offset.y - height / 2,
-				width,
-				height,
-			};
-
-			if (aiParentIds.has(nodeId)) {
-				const aiGraphInfo = aiGraphs.find(({ aiParentId }) => aiParentId === nodeId);
-				if (!aiGraphInfo) continue;
-
-				const parentOffset = { x: box.x, y: box.y };
-				for (const aiNodeId of aiGraphInfo.graph.nodes()) {
-					const aiNode = aiGraphInfo.graph.node(aiNodeId);
-					boundingBoxByNodeId[aiNodeId] = {
-						x: aiNode.x + parentOffset.x - aiNode.width / 2,
-						y: aiNode.y + parentOffset.y - aiNode.height / 2,
-						width: aiNode.width,
-						height: aiNode.height,
-					};
-				}
-			} else {
-				boundingBoxByNodeId[nodeId] = box;
-			}
-		}
-	});
-
-	// Post-process: top-align AI subtrees when no conflicts
-	subgraphs
-		.flatMap(({ aiGraphs }) => aiGraphs)
-		.forEach(({ graph }) => {
-			const aiNodes = graph.nodes();
-			const boxes = aiNodes
-				.map((id) => boundingBoxByNodeId[id])
-				.filter((b): b is BoundingBox => b !== undefined);
-			if (boxes.length === 0) return;
-
-			const aiGraphBoundingBox = compositeBoundingBox(boxes);
-			const aiNodeVerticalCorrection = aiGraphBoundingBox.height / 2 - DEFAULT_NODE_SIZE[0] / 2;
-			aiGraphBoundingBox.y += aiNodeVerticalCorrection;
-
-			const hasConflictingNodes = Object.entries(boundingBoxByNodeId)
-				.filter(([id]) => !graph.hasNode(id))
-				.some(([, nodeBoundingBox]) =>
-					intersects(aiGraphBoundingBox, nodeBoundingBox, NODE_Y_SPACING),
-				);
-
-			if (!hasConflictingNodes) {
-				for (const aiNode of aiNodes) {
-					if (boundingBoxByNodeId[aiNode]) {
-						boundingBoxByNodeId[aiNode].y += aiNodeVerticalCorrection;
-					}
-				}
-			}
-		});
+	alignAiSubgraphs(subgraphs, boundingBoxByNodeId);
 
 	// Snap to grid and build result (skip nodes with explicit positions)
 	for (const [name, box] of Object.entries(boundingBoxByNodeId)) {
@@ -825,7 +1152,7 @@ export function calculateNodePositionsDagre(
 		const positionsBefore = new Map<string, BoundingBox>();
 		for (const [name, graphNode] of nodes) {
 			const pos = graphNode.instance.config?.position;
-			const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+			const { width, height } = sizeOf(name);
 			positionsBefore.set(name, {
 				x: pos ? pos[0] : 0,
 				y: pos ? pos[1] : 0,
@@ -838,7 +1165,7 @@ export function calculateNodePositionsDagre(
 		for (const [name, graphNode] of nodes) {
 			const explicitPosition = graphNode.instance.config?.position;
 			if (explicitPosition) {
-				const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+				const { width, height } = sizeOf(name);
 				positionsAfter.set(name, {
 					x: explicitPosition[0],
 					y: explicitPosition[1],

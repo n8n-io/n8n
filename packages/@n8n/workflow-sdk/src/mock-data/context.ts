@@ -1,6 +1,7 @@
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import { findEnvelopeKey } from './ai-root-shapes';
+import { readDataTableReadParameters } from './data-table-read';
 import type {
 	DataTableColumnInfo,
 	DeclaredFieldContract,
@@ -44,6 +45,7 @@ export function buildSchemaContexts(
 			resource,
 			operation,
 			hasOutputParser: node.name ? outputParserTargets?.has(node.name) === true : false,
+			parameters: params,
 		});
 
 		const nodeName = node.name ?? node.type;
@@ -58,6 +60,7 @@ export function buildSchemaContexts(
 			schema,
 			outputParser,
 			dataTableColumns: columns,
+			dataTableRead: readDataTableReadParameters(node),
 			declaredFields: buildDeclaredFieldContract(node.type, schema, outputParser, columns),
 		};
 	});

@@ -7,26 +7,12 @@
 		"rule id when one exists but we still do not enable it. `replacement` records",
 		"the intended migration path for each gap."
 	],
-	"no-restricted-syntax": {
-		"layer": "base",
-		"native": null,
-		"reason": "oxlint 1.78 has no AST-selector rule and no equivalent. It is an ESLint core rule, so a jsPlugin cannot host it either: `Rule 'no-restricted-syntax' not found in plugin 'eslint'`. base uses it for the raw-enum ban; editor-ui uses it for store-migration ratchets, and editor-ui keeps ESLint.",
-		"impact": "The const-enum ban is unenforced in migrated packages.",
-		"replacement": "Add a native selector rule, or replace each selector use with a purpose-built syntactic rule."
-	},
 	"no-octal": {
 		"layer": "base",
 		"native": null,
 		"reason": "No oxlint rule. Largely covered incidentally: the oxc parser rejects legacy `0`-prefixed octal literals in strict-mode and module code, which is all of our source.",
 		"impact": "Near zero.",
 		"replacement": "No action unless non-module source becomes supported."
-	},
-	"import-x/no-extraneous-dependencies": {
-		"layer": "base",
-		"native": null,
-		"reason": "`import-x` is a reserved plugin name in oxlint, so `eslint-plugin-import-x` cannot load as a jsPlugin under its own name (`Plugin name 'import-x' is reserved`). An alias would permanently change the rule ids, and these rules are the slowest in ESLint and unvalidated through the alpha bridge.",
-		"impact": "A package can import a dependency it does not declare. Left out of the spike deliberately.",
-		"replacement": "Validate eslint-plugin-import-x with an alias, or replace the dependency check with a native package-manifest rule."
 	},
 	"typescript/prefer-optional-chain": {
 		"layer": "base",
@@ -50,33 +36,12 @@
 		"replacement": "Wait for the upstream emitDecoratorMetadata option, or use an approved shim that suppresses decorated files.",
 		"upstream": "https://github.com/oxc-project/oxc/issues/13609"
 	},
-	"n8n-local-rules/no-unsealed-workflow-entity-write": {
-		"layer": "base",
+	"frontend/no-restricted-syntax": {
+		"layer": "frontend",
 		"native": null,
-		"reason": "Needs type information. oxlint gives jsPlugin rules a frozen empty `parserServices`, so `ESLintUtils.getParserServices` throws and the rule reports `Error running JS plugin` on any file that calls a checked method. It is in `localRulesPlugin.configs.recommended`, so this is a base-layer gap, not a backend-only one.",
-		"impact": "The WorkflowEntity node-write seal is unenforced in migrated packages. None of the three spike packages depends on @n8n/db, but this blocks any package that does.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
-	"n8n-local-rules/no-legacy-cipher-methods": {
-		"layer": "backend",
-		"native": null,
-		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve a Cipher receiver.",
-		"impact": "The deprecated Cipher.encrypt and Cipher.decrypt APIs are not guarded by an Oxlint-only package.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
-	"n8n-local-rules/no-misplaced-cipher-primitives": {
-		"layer": "backend",
-		"native": null,
-		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot resolve the imported cipher primitive.",
-		"impact": "Raw cipher primitive placement is not guarded by an Oxlint-only package.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
-	},
-	"n8n-local-rules/no-deployment-key-delete": {
-		"layer": "backend",
-		"native": null,
-		"reason": "Needs type information. Oxlint gives jsPlugin rules an empty parserServices object, so the rule cannot identify DeploymentKey repository receivers.",
-		"impact": "Deployment-key deletion is not guarded by an Oxlint-only package.",
-		"replacement": "Move this type-aware functional guardrail to @n8n/code-health in the follow-up PR."
+		"reason": "editor-ui uses package-specific AST selectors for workflow-store and modal-migration ratchets. The frontend keeps ESLint for these selectors.",
+		"impact": "None for the backend migration.",
+		"replacement": "Replace each selector with a focused rule before an Oxlint-only frontend migration."
 	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",

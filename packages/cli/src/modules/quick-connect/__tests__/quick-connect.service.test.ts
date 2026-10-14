@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { IQuickConnectHandler } from '../handlers/handler.interface';
 import { QuickConnectConfig } from '../quick-connect.config';

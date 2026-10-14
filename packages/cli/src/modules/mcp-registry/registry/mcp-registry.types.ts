@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
 
-type McpRegistryServerUpsertRow = Pick<
+export type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
 	'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
 >;
@@ -103,12 +103,20 @@ const mcpRegistryServerBaseSchema = z.object({
 		z.object({
 			name: z.string(),
 			title: optionalField(z.string()),
-			annotations: optionalField(z.object({ readOnlyHint: optionalField(z.boolean()) })),
+			annotations: optionalField(
+				z.object({
+					readOnlyHint: optionalField(z.boolean()),
+					destructiveHint: optionalField(z.boolean()),
+					idempotentHint: optionalField(z.boolean()),
+					openWorldHint: optionalField(z.boolean()),
+				}),
+			),
 		}),
 	),
 	isOfficial: z.boolean(),
 	origin: z.literal('registry'),
 	status: z.enum(serverStatuses),
+	requiredCapabilities: optionalField(z.array(z.string())),
 	// The API returns either a bare array or a `{ data }` envelope, and omits
 	// `data` entirely when there are no tags. Anything stricter drops the whole
 	// server over optional metadata.

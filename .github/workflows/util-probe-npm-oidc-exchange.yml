@@ -35,7 +35,7 @@ jobs:
       PACKAGE_NAME: ${{ inputs.package-name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -70,8 +70,8 @@ jobs:
       - name: Verify pnpm version for publishing
         shell: bash
         run: |
-          if [ "$(pnpm --version)" != '12.3.4' ]; then
-            echo '::error::Expected pnpm 12.3.4 for publishing.'
+          if [ "$(pnpm --version)" != '12.4.2' ]; then
+            echo '::error::Expected pnpm 12.4.2 for publishing.'
             exit 1
           fi
 

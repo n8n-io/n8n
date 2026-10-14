@@ -113,7 +113,6 @@ describe('UpdatePromotionConnectionDto', () => {
 });
 
 describe('PromotionConnectionPublicDto', () => {
-	// Detail and list share this shape, so a full provider would put the key in every row.
 	it('embeds the provider without its public key', () => {
 		const result = PromotionConnectionPublicDto.safeParse({
 			id: 'conn-1',
@@ -128,6 +127,7 @@ describe('PromotionConnectionPublicDto', () => {
 					name: 'Apply',
 					createdAt: timestamp,
 					updatedAt: timestamp,
+					checkout: { hasCheckout: false, matchesConfig: false },
 				},
 			},
 			createdAt: timestamp,

@@ -135,7 +135,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.thread.mockReturnValue(sentThread as never);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -150,7 +150,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			awaitResponse: false,
 		});
 
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledWith('agent-1', {
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', {
 			type: 'slack',
 			credentialId: 'cred-a',
 		});
@@ -188,7 +188,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -233,7 +233,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(undefined);
 		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
@@ -284,7 +284,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.openDM.mockResolvedValue(dmThread as never);
 		chat.thread.mockReturnValue(sentThread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -320,7 +320,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.channel.mockReturnValue(channel as never);
 		chat.thread.mockReturnValue(sentThread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -358,7 +358,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		Container.set(ChatIntegrationRegistry, registry);
 		const executor = new ChatIntegrationActionExecutor(
@@ -424,7 +424,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const shortenCallback = vi.fn(async (_actionId: string, _value: string, _label?: string) => ({
 			id: 'short1234',
 			value: '',
@@ -499,7 +499,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ editMessage });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		const executor = new ChatIntegrationActionExecutor(
@@ -544,7 +544,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ editMessage });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		const executor = new ChatIntegrationActionExecutor(
@@ -584,7 +584,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({});
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		const executor = new ChatIntegrationActionExecutor(
@@ -627,7 +627,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ editMessage });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
 			id: 'short1234',
 			value: '',
@@ -705,7 +705,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -760,7 +760,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -810,7 +810,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ addReaction });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -880,7 +880,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ addReaction });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -943,7 +943,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -970,7 +970,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('returns a structured error when the selected connection is unavailable', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(undefined);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -1026,7 +1026,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -1130,7 +1130,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -1201,7 +1201,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -1284,7 +1284,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			const chat = mock<ChatInstance>();
 			chat.thread.mockReturnValue(thread as never);
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			chatIntegrationService.getChatInstance.mockReturnValue(chat);
+			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 			const registry = buildRegistry();
 			Container.set(ChatIntegrationRegistry, registry);
 			const executor = new ChatIntegrationActionExecutor(
@@ -1406,7 +1406,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				silent: true,
 				note: expect.stringContaining('No reply will be sent'),
 			});
-			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 		});
 
 		it('rejects when the reply expectation is required', async () => {
@@ -1430,7 +1430,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				ok: false,
 				error: { code: 'REPLY_REQUIRED', message: expect.stringContaining('reply is expected') },
 			});
-			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 		});
 
 		it('rejects when the reply expectation is unset or the message context is missing', async () => {
@@ -1456,7 +1456,7 @@ describe('ChatIntegrationActionExecutor', () => {
 					error: { code: 'REPLY_REQUIRED', message: expect.any(String) },
 				});
 			}
-			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 		});
 	});
 });
@@ -1475,7 +1475,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const guard = new ChannelRateLimitGuard();
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
@@ -1521,7 +1521,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const guard = new ChannelRateLimitGuard();
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,
@@ -1563,7 +1563,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 		});
 
 		expect(slackAdapter.addReaction).toHaveBeenCalledTimes(1);
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledTimes(1);
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledTimes(1);
 		expect(result2).toEqual({
 			ok: false,
 			error: {
@@ -1580,7 +1580,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const guard = new ChannelRateLimitGuard();
 		const executor = new ChatIntegrationActionExecutor(
 			chatIntegrationService,

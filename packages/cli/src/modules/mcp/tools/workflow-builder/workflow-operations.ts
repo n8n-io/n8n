@@ -51,7 +51,7 @@ export const workflowSettingsObjectSchema = z.object({
 	errorWorkflow: z
 		.string()
 		.describe(
-			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
+			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. Must be a plain ID — this setting is never evaluated, so an expression would be stored as a literal ID and the handler would never run. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
 		)
 		.optional(),
 	timezone: z
@@ -105,7 +105,7 @@ export const workflowSettingsObjectSchema = z.object({
 	callerPolicy: z
 		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z
@@ -1234,16 +1234,13 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
  *
  * The function never mutates the input.
  *
- * With `{ canvasGroupsEnabled: true }`, a failing operation of a type in
- * `NON_FATAL_OPERATION_TYPES` does not abort the batch — it is skipped and recorded
- * in the result's `skippedOperations` instead, and the remaining operations still
- * apply. With the flag off (or omitted), every operation is fatal, matching the
- * historical behavior exactly.
+ * A failing operation of a type in `NON_FATAL_OPERATION_TYPES` does not abort
+ * the batch — it is skipped and recorded in the result's `skippedOperations`
+ * instead, and the remaining operations still apply.
  */
 export function applyOperations(
 	input: WorkflowSlice,
 	operations: PartialUpdateOperation[],
-	options: { canvasGroupsEnabled?: boolean } = {},
 ): ApplyOperationsResult {
 	const skippedOperations: SkippedOperation[] = [];
 
@@ -1268,7 +1265,7 @@ export function applyOperations(
 
 		const error = handler(op, ctx, i);
 		if (error) {
-			if (options.canvasGroupsEnabled && NON_FATAL_OPERATION_TYPES.has(op.type)) {
+			if (NON_FATAL_OPERATION_TYPES.has(op.type)) {
 				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
 				continue;
 			}

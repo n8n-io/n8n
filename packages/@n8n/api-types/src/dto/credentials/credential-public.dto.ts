@@ -2,7 +2,9 @@ import '../../openapi-extend';
 
 import { z } from 'zod';
 
+import { credentialDescriptionSchema } from '../../schemas/credential-description.schema';
 import { publicApiCredentialResponseSchema } from '../../schemas/credential-response.schema';
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 
@@ -15,6 +17,10 @@ export const credentialSharedPublicSchema = z.object({
 });
 
 export const credentialPublicSchema = publicApiCredentialResponseSchema.extend({
+	description: z.string().nullable().optional().openapi({
+		example: 'Read-only key for the reporting database',
+		description: 'Present only when credential descriptions are enabled.',
+	}),
 	resolverId: z.string().nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),
@@ -38,8 +44,21 @@ export class CredentialListPublicDto extends Z.class({
 }) {}
 
 export class CreateCredentialPublicDto extends Z.class({
-	id: readOnlyPublicSchema({ type: 'string', readOnly: true, example: 'R2DjclaysHbqn778' }),
+	id: n8nIdSchema
+		.max(16)
+		.regex(/^[a-zA-Z0-9_-]+$/, 'Use only letters, digits, underscores, and hyphens for the ID')
+		.optional()
+		.openapi({
+			example: 'R2DjclaysHbqn778',
+			description:
+				'An unused credential ID of 1–16 letters, digits, underscores, or hyphens. The supplied ID is preserved exactly. Omit to generate an ID.',
+		}),
 	name: z.string().openapi({ example: "Joe's Github Credentials" }),
+	description: credentialDescriptionSchema.optional().openapi({
+		example: 'Read-only key for the reporting database',
+		description:
+			'Plain text, up to 512 characters. A blank value is saved as null. Ignored when credential descriptions are disabled.',
+	}),
 	type: z.string().openapi({ example: 'githubApi' }),
 	data: z.record(z.string(), z.unknown()).openapi({
 		writeOnly: true,
@@ -71,6 +90,11 @@ export class UpdateCredentialPublicDto extends Z.class({
 	name: z.string().optional().openapi({
 		example: 'Updated Credential Name',
 		description: 'The name of the credential',
+	}),
+	description: credentialDescriptionSchema.optional().openapi({
+		example: 'Read-only key for the reporting database',
+		description:
+			'Plain text, up to 512 characters. Send null or a blank value to clear it. Omit it to keep the stored value. Ignored when credential descriptions are disabled.',
 	}),
 	type: z.string().optional().openapi({
 		example: 'githubApi',
@@ -110,3 +134,27 @@ export class TransferCredentialPublicDto extends Z.class({
 		example: 'VmwOO9HeTEj20kxM',
 	}),
 }) {}
+
+export class CredentialTestPublicDto extends Z.class({
+	status: z.enum(['OK', 'Error']).openapi({ example: 'OK' }),
+	message: z.string().openapi({ example: 'Connection successful!' }),
+}) {}
+
+export class CredentialSchemaPublicDto extends Z.class(
+	{
+		additionalProperties: z.literal(false),
+		type: z.literal('object'),
+		properties: z.record(z.string(), z.unknown()).openapi({
+			description:
+				"JSON Schema fragment for each of the credential type's fields, keyed by field name.",
+			example: { apiKey: { type: 'string' }, domain: { type: 'string' } },
+		}),
+		required: z.array(z.string()).openapi({
+			description:
+				'Names of the fields that a request must include. A field with a default value is not listed.',
+			example: ['apiKey', 'domain'],
+		}),
+		allOf: z.array(z.unknown()).optional(),
+	},
+	{ strict: true },
+) {}

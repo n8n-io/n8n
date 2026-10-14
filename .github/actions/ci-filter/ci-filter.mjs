@@ -143,8 +143,8 @@ export function getAddedFiles(baseRef, headRef = 'HEAD') {
 }
 
 /**
- * Deepen the shallow clone until the merge base between the fetched base ref
- * (FETCH_HEAD) and headRef is reliably reachable.
+ * Fetch the base ref, then deepen only if its merge base with headRef is not
+ * reliably reachable from the checkout.
  *
  * A single fixed deepen is not enough for stale PRs whose divergence point is
  * older than the shallow boundary. We fetch with an exponentially growing
@@ -159,7 +159,12 @@ export function getAddedFiles(baseRef, headRef = 'HEAD') {
 function fetchUntilMergeBase(baseRef, headRef) {
 	let step = Number(process.env.CI_FILTER_DEEPEN_STEP) || 200;
 	const maxDeepen = Number(process.env.CI_FILTER_MAX_DEEPEN) || 20_000;
-	deepenFetch(baseRef, step, maxDeepen);
+	// A PR merge checkout already has the base commit as its first parent.
+	const hasBaseCommit = headRef === 'HEAD^2' && hasCommit('HEAD^1');
+	const depth = isShallow() && !hasBaseCommit ? `--depth=${step} ` : '';
+	execSync(`git fetch --no-tags --prune --filter=blob:none ${depth}origin ${baseRef}`, {
+		stdio: 'pipe',
+	});
 
 	while (!hasReliableMergeBase(headRef)) {
 		if (!isShallow()) {
@@ -167,8 +172,17 @@ function fetchUntilMergeBase(baseRef, headRef) {
 				`No merge base between FETCH_HEAD and ${headRef} after fetching the full history of "${baseRef}" (unrelated histories).`,
 			);
 		}
-		step *= 2;
 		deepenFetch(baseRef, step, maxDeepen);
+		step *= 2;
+	}
+}
+
+function hasCommit(ref) {
+	try {
+		execSync(`git cat-file -e ${ref}^{commit}`, { stdio: 'pipe' });
+		return true;
+	} catch {
+		return false;
 	}
 }
 

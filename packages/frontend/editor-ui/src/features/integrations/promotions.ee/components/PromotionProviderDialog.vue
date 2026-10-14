@@ -27,7 +27,7 @@ import {
 	fetchPromotionConnections,
 	fetchPromotionProvider,
 	updatePromotionProvider,
-	type PromotionConnection,
+	type PromotionConnectionSummary,
 	type PromotionProvider,
 } from '../promotionsSettings.api';
 import {
@@ -58,7 +58,7 @@ const form = reactive<ProviderFormState>(emptyProviderForm());
 
 const step = ref<'form' | 'key'>('form');
 const current = ref<PromotionProvider | null>(null);
-const usedBy = ref<PromotionConnection[]>([]);
+const usedBy = ref<PromotionConnectionSummary[]>([]);
 const generatedPublicKey = ref<string | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);

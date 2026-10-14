@@ -4,7 +4,7 @@ import { Time } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';

@@ -3,11 +3,11 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
 import type { TabOptions } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';
-import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
@@ -125,8 +125,8 @@ const scrollRight = () => scroll(50);
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewTag v-if="option.preview" />
-							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+							<PreviewBadge v-if="option.preview" :class="$style.badge" />
+							<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 						</div>
 					</a>
 					<RouterLink
@@ -139,8 +139,8 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewTag v-if="option.preview" />
-						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+						<PreviewBadge v-if="option.preview" :class="$style.badge" />
+						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</RouterLink>
 					<div
 						v-else
@@ -175,8 +175,8 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewTag v-if="option.preview" />
-						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
+						<PreviewBadge v-if="option.preview" :class="$style.badge" />
+						<N8nBadge v-if="option.tag" :class="$style.badge">{{ option.tag }}</N8nBadge>
 					</div>
 				</N8nTooltip>
 			</div>
@@ -198,7 +198,7 @@ const scrollRight = () => scroll(50);
 }
 
 .tabs {
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--medium);
 	display: flex;
 	align-items: center;
@@ -231,7 +231,7 @@ const scrollRight = () => scroll(50);
 
 	cursor: pointer;
 	white-space: nowrap;
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 	&:hover {
 		color: var(--color--primary);
 	}
@@ -250,7 +250,7 @@ const scrollRight = () => scroll(50);
 	.modern & {
 		padding-bottom: calc(var(--spacing--xs) + var(--tabs--tab--border-width--active));
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	.small & {
@@ -262,12 +262,16 @@ const scrollRight = () => scroll(50);
 	}
 
 	/**
-	 * A tag is taller than the label's line box, so it would sit flush against the
+	 * A badge is taller than the label's line box, so it would sit flush against the
 	 * tab's top edge and collide with the inset focus ring.
 	 */
-	.tabs:has(:global(.n8n-tag)) & {
+	.tabs:has(.badge) & {
 		padding-top: var(--spacing--4xs);
 	}
+}
+
+.badge {
+	flex-shrink: 0;
 }
 
 .activeTab {
@@ -315,7 +319,7 @@ const scrollRight = () => scroll(50);
 
 .link {
 	cursor: pointer;
-	color: var(--color--text);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		color: var(--color--primary);
@@ -355,11 +359,11 @@ const scrollRight = () => scroll(50);
 }
 
 .disabledTab {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--disabled);
 	cursor: not-allowed;
 
 	&:hover {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--disabled);
 	}
 }
 
@@ -371,7 +375,7 @@ const scrollRight = () => scroll(50);
 	width: 10px;
 	display: flex;
 	align-items: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .notificationContainer {

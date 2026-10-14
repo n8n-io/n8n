@@ -33,6 +33,9 @@ const loadingMore = ref(false);
 const workflow = ref<IWorkflowDb | undefined>();
 
 const workflowId = useInjectWorkflowId();
+const filtersKey = computed(() => `workflow:${workflowId.value}`);
+// Restore before the filter component is set up, so it shows the same filters.
+executionsStore.restoreFilters(filtersKey.value);
 
 const executionId = computed(() => {
 	const id = route.params.executionId;
@@ -197,6 +200,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
+	executionsStore.saveFilters(filtersKey.value);
 	await executionsStore.initialize(workflowId.value);
 }
 

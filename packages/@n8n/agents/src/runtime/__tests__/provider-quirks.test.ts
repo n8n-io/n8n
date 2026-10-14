@@ -232,8 +232,16 @@ describe('resolveDefaultMaxOutputTokens', () => {
 		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
 	});
 
+	it.each(['minimax/MiniMax-M3', 'MiniMax/MiniMax-M2.7'] as const)(
+		'raises the output cap for a direct MiniMax model: %s',
+		(modelId) => {
+			expect(resolveDefaultMaxOutputTokens(modelId)).toBe(HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS);
+		},
+	);
+
 	it('leaves unrelated models unset', () => {
 		expect(resolveDefaultMaxOutputTokens('custom/deepseek-ai/DeepSeek-V4-Pro')).toBeUndefined();
 		expect(resolveDefaultMaxOutputTokens('anthropic/claude-sonnet-4-5')).toBeUndefined();
+		expect(resolveDefaultMaxOutputTokens('openrouter/minimax/minimax-m3')).toBeUndefined();
 	});
 });

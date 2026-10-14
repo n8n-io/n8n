@@ -80,6 +80,9 @@ export { SUB_AGENT_PROTOCOL };
 
 export function buildSubAgentPrompt(role: string, instructions: string, timeZone?: string): string {
 	return `${SUB_AGENT_PROTOCOL}
+
+## Current Date and Time
+
 ${getDateTimeSection(timeZone)}
 
 You are a sub-agent with the role: ${role}.

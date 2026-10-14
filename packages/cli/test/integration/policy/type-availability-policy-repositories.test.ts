@@ -74,6 +74,31 @@ describe('type availability policy repositories', () => {
 		return scope;
 	}
 
+	/** The instance scope plus two project scopes, all carrying the one policy. */
+	async function attachToThreeScopes(policyId: string) {
+		const scopes = [
+			await createInstanceScope(),
+			await createProjectScope((await createTeamProject()).id),
+			await createProjectScope((await createTeamProject()).id),
+		];
+
+		for (const scope of scopes) {
+			await attachmentRepo.replaceAttachmentsForScope(
+				scope.id,
+				[{ policyId, priority: 0, isFloor: false }],
+				ROOT,
+			);
+		}
+
+		return scopes;
+	}
+
+	async function versionsOf(scopes: Array<{ id: string }>) {
+		return await Promise.all(
+			scopes.map(async (scope) => (await scopeRepo.findScopeById(scope.id, ROOT))?.version),
+		);
+	}
+
 	describe('TypeAvailabilityPolicyRepository', () => {
 		it('creates a policy with a generated id at version 1', async () => {
 			const policy = await createPolicy();
@@ -622,6 +647,37 @@ describe('type availability policy repositories', () => {
 
 			expect(await attachmentRepo.listAttachmentsForScope(scope.id, ROOT)).toHaveLength(0);
 			expect((await scopeRepo.findScopeById(scope.id, ROOT))?.version).toBe(1);
+		});
+
+		it('commits the version bumps of every scope a policy is attached to together', async () => {
+			const policy = await createPolicy();
+			const scopes = await attachToThreeScopes(policy.id);
+
+			await transactionRunner.run({}, async (ctx) => {
+				await scopeRepo.bumpVersions(
+					scopes.map((scope) => scope.id),
+					ctx,
+				);
+			});
+
+			expect(await versionsOf(scopes)).toEqual([2, 2, 2]);
+		});
+
+		it('rolls back every version bump when the fan-out fails part-way', async () => {
+			const policy = await createPolicy();
+			const scopes = await attachToThreeScopes(policy.id);
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await scopeRepo.bumpVersions(
+						scopes.map((scope) => scope.id),
+						ctx,
+					);
+					throw new Error('fan-out failed');
+				}),
+			).rejects.toThrow('fan-out failed');
+
+			expect(await versionsOf(scopes)).toEqual([1, 1, 1]);
 		});
 	});
 });

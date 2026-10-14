@@ -54,6 +54,12 @@ const meta = {
 			control: 'boolean',
 			description: 'Shows a clear button when a value is selected. Hidden when disabled or empty.',
 		},
+		align: {
+			control: 'select',
+			options: ['start', 'center', 'end'],
+			description:
+				'Alignment of the dropdown against the trigger. Use end to line a wider menu up with the trigger end edge.',
+		},
 	},
 } satisfies SelectMeta;
 export default meta;
@@ -760,6 +766,46 @@ export const MixedItemLengths = {
 			{
 				label: 'Failed to refresh OAuth token for the connected CRM workspace',
 				value: 'long-2',
+			},
+			{ label: 'Archive', value: 'archive' },
+		],
+		modelValue: undefined,
+		placeholder: 'Pick one',
+	},
+} satisfies Story;
+
+export const Align = {
+	render: (args) => ({
+		components: { Select, N8nText },
+		setup() {
+			const startValue = ref(args.modelValue);
+			const centerValue = ref(args.modelValue);
+			const endValue = ref(args.modelValue);
+			return { args, startValue, centerValue, endValue };
+		},
+		template: `
+		<div style="padding: 40px; display: flex; justify-content: space-between; align-items: flex-start;">
+			<div style="width: 180px;">
+				<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--2xs);">Start</N8nText>
+				<Select v-bind="args" v-model="startValue" align="start" />
+			</div>
+			<div style="width: 180px;">
+				<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--2xs);">Center</N8nText>
+				<Select v-bind="args" v-model="centerValue" align="center" />
+			</div>
+			<div style="width: 180px;">
+				<N8nText size="small" color="text-light" tag="p" style="margin: 0 0 var(--spacing--2xs);">End</N8nText>
+				<Select v-bind="args" v-model="endValue" align="end" />
+			</div>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{ label: 'OK', value: 'ok' },
+			{
+				label: 'Quarterly automation rollout for customer onboarding',
+				value: 'long-1',
 			},
 			{ label: 'Archive', value: 'archive' },
 		],

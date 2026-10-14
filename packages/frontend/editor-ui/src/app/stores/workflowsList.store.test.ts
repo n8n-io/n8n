@@ -4,12 +4,14 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb, WorkflowListResource, WorkflowResource } from '@/Interface';
 import * as apiUtils from '@n8n/rest-api-client';
 import { createTestWorkflow } from '@/__tests__/mocks';
+import { DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflows: vi.fn(),
 	getWorkflow: vi.fn(),
 	getWorkflowsAndFolders: vi.fn(),
+	getCallableSubworkflows: vi.fn(),
 	getWorkflowsWithNodesIncluded: vi.fn(),
 	getActiveWorkflows: vi.fn(),
 	workflowExists: vi.fn(),
@@ -328,6 +330,44 @@ describe('useWorkflowsListStore', () => {
 		});
 	});
 
+	describe('fetchCallableSubworkflowsPage', () => {
+		it('should request the page and keep the rows out of the workflows cache', async () => {
+			const response = {
+				count: 1,
+				data: [{ id: 'sub-1', name: 'Sub', active: false, isArchived: false }],
+			};
+			vi.mocked(workflowsApi).getCallableSubworkflows.mockResolvedValue(response);
+
+			const result = await workflowsListStore.fetchCallableSubworkflowsPage(
+				'parent-id',
+				2,
+				10,
+				'sub',
+			);
+
+			expect(workflowsApi.getCallableSubworkflows).toHaveBeenCalledWith(
+				expect.anything(),
+				'parent-id',
+				{ query: 'sub', skip: 10, take: 10 },
+			);
+			expect(result).toEqual(response);
+			expect(workflowsListStore.workflowsById).toEqual({});
+			expect(workflowsListStore.totalWorkflowCount).toBe(0);
+		});
+
+		it('should request the first page with the default page size and no query', async () => {
+			vi.mocked(workflowsApi).getCallableSubworkflows.mockResolvedValue({ count: 0, data: [] });
+
+			await workflowsListStore.fetchCallableSubworkflowsPage('parent-id');
+
+			expect(workflowsApi.getCallableSubworkflows).toHaveBeenCalledWith(
+				expect.anything(),
+				'parent-id',
+				{ query: undefined, skip: 0, take: DEFAULT_WORKFLOW_PAGE_SIZE },
+			);
+		});
+	});
+
 	describe('searchWorkflows', () => {
 		it('should search workflows with filters', async () => {
 			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
@@ -377,6 +417,55 @@ describe('useWorkflowsListStore', () => {
 				undefined,
 				['id', 'name'],
 			);
+		});
+
+		it('should pass workflow ids and list options', async () => {
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: [],
+			});
+
+			await workflowsListStore.searchWorkflows({
+				projectId: 'project-1',
+				ids: ['workflow-1', 'workflow-2'],
+				isArchived: false,
+				options: {
+					take: 10,
+					skip: 0,
+					sortBy: 'updatedAt:desc',
+					includeScopes: false,
+				},
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{
+					projectId: 'project-1',
+					ids: ['workflow-1', 'workflow-2'],
+					query: undefined,
+					nodeTypes: undefined,
+					tags: undefined,
+					isArchived: false,
+					triggerNodeTypes: undefined,
+				},
+				{
+					take: 10,
+					skip: 0,
+					sortBy: 'updatedAt:desc',
+					includeScopes: false,
+				},
+				undefined,
+			);
+		});
+
+		it('should return no workflows without a request when ids is empty', async () => {
+			const result = await workflowsListStore.searchWorkflows({
+				projectId: 'project-1',
+				ids: [],
+			});
+
+			expect(result).toEqual([]);
+			expect(workflowsApi.getWorkflows).not.toHaveBeenCalled();
 		});
 	});
 

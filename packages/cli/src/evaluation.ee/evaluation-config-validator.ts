@@ -14,7 +14,7 @@ import {
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import { LlmJudgeProviderRegistry } from './llm-judge-provider-registry';

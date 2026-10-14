@@ -10,7 +10,7 @@ export interface ReapResult {
 	reclaimed: number;
 	/** Tasks failed terminally (no attempts left). */
 	deadLettered: number;
-	/** Occurrences retired as `missed`: past their deadline, never claimed. */
+	/** Tasks retired as `missed`: past their deadline, never claimed. */
 	missed: number;
 }
 
@@ -23,11 +23,30 @@ export interface ExpiredLeaseRef {
 /**
  * One expired-lease row the sweep decides on. It carries the full claimed-task
  * shape plus `dispatchedAt`, the effect-boundary marker: `null` means the owner
- * was lost before dispatch, so the occurrence's effect never happened. The storage
+ * was lost before dispatch, so the task's effect never happened. The storage
  * layer's full task row has these and more, so it fits without adapting.
  */
 export interface ExpiredLeaseRow extends ClaimedTask {
 	dispatchedAt: Date | null;
+}
+
+/** A task that the reaper set to `missed`. */
+export interface RetiredTask {
+	id: string;
+	jobId: number;
+	taskType: string;
+}
+
+/** Result of the reaper's retire step. */
+export interface RetireMissedResult {
+	/** Number of tasks set to `missed`. */
+	retired: number;
+	/**
+	 * The retired tasks whose job had at least its concurrency limit of runs in
+	 * progress at the task's deadline. This is an estimate. It uses the job's current
+	 * limit, and it does not count a claimed task that has not started yet.
+	 */
+	heldByConcurrencyLimit: RetiredTask[];
 }
 
 /**
@@ -45,10 +64,10 @@ export interface ReaperTaskStore {
 	 */
 	completeExpired(ref: ExpiredLeaseRef): Promise<number>;
 	/**
-	 * Retire up to `limit` `pending` occurrences past their `missedAfter` as `missed`.
+	 * Retire up to `limit` `pending` tasks past their `missedAfter` as `missed`.
 	 * One statement rather than a row at a time: there is no per-row decision to make.
 	 */
-	retireMissedPending(limit: number): Promise<number>;
+	retireMissedPending(limit: number): Promise<RetireMissedResult>;
 }
 
 /** Knobs of one reaper sweep. */
@@ -67,6 +86,11 @@ export interface ReaperHooks {
 	onRowError?: (taskId: string, error: unknown) => void;
 	/** Notified when retiring stale `pending` rows fails; the rest of the sweep still runs. */
 	onRetireError?: (error: unknown) => void;
+	/**
+	 * Called once per reaper run with {@link RetireMissedResult.heldByConcurrencyLimit}.
+	 * Not called when that list is empty.
+	 */
+	onHeldByConcurrencyLimit?: (tasks: RetiredTask[]) => void;
 	/** Notified when a task is failed terminally: the lease of its last attempt expired. */
 	onDeadLetter?: (task: { taskId: string; attempts: number; maxAttempts: number }) => void;
 	/**
@@ -89,7 +113,15 @@ async function retireStale(
 ): Promise<number> {
 	if (signal?.aborted === true) return 0;
 	try {
-		return await store.retireMissedPending(options.batchSize);
+		const { retired, heldByConcurrencyLimit } = await store.retireMissedPending(options.batchSize);
+		if (heldByConcurrencyLimit.length > 0) {
+			try {
+				hooks.onHeldByConcurrencyLimit?.(heldByConcurrencyLimit);
+			} catch {
+				// A host-supplied reporter must not break the sweep it observes.
+			}
+		}
+		return retired;
 	} catch (error) {
 		try {
 			hooks.onRetireError?.(error);
@@ -118,7 +150,7 @@ async function retireStale(
  * reapers on every main are safe. A row that throws is skipped (reported via
  * `hooks.onRowError`), not allowed to abort the rest of the pass.
  *
- * A pass also retires up to `batchSize` `pending` occurrences past their
+ * A pass also retires up to `batchSize` `pending` tasks past their
  * `missedAfter`, so they reach a terminal status and fall to retention.
  *
  * One pass resolves up to `batchSize` expired-lease tasks, splitting first on the
@@ -180,7 +212,7 @@ export async function reap(
 				// remain, so record the terminal failure. Guarded and epoch-fenced, and fenced
 				// on `dispatchedAt` still being null: a marker that landed during the sweep
 				// turns this into a benign no-op (the next sweep then completes the row) instead
-				// of failing a dispatched occurrence. A lost race (0 rows) likewise means
+				// of failing a dispatched task. A lost race (0 rows) likewise means
 				// another actor already resolved it.
 				const affected = await store.deadLetterExpired(ref, LEASE_EXPIRED_MESSAGE);
 				deadLettered += affected;

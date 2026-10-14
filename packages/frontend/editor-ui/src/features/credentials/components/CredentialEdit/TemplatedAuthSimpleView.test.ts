@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import TemplatedAuthSimpleView from './TemplatedAuthSimpleView.vue';
@@ -36,6 +36,15 @@ const credentialData = (overrides: Record<string, string> = {}) => ({
 });
 
 describe('TemplatedAuthSimpleView', () => {
+	it('shows missing compact recipe values only after submission', async () => {
+		const view = renderComponent({
+			props: { compact: true, credentialData: credentialData({ placeholderValues: '{}' }) },
+		});
+		await fireEvent.blur(view.getByLabelText('fal.ai API key'));
+		expect(view.queryByRole('alert')).toBeNull();
+		await view.rerender({ showValidationWarnings: true });
+		expect(view.getAllByRole('alert')).not.toHaveLength(0);
+	});
 	it('renders one input per template marker, labeled from the defs', () => {
 		const { getAllByTestId, getByText } = renderComponent({
 			props: { credentialData: credentialData() },

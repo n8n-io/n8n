@@ -338,6 +338,29 @@ describe('workflows tool', () => {
 	});
 
 	describe('version actions', () => {
+		it('reports a restored workflow as changed, and a failed restore as not changed', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { restoreWorkflowVersion: 'always_allow' },
+			});
+			context.workflowService.restoreVersion = vi
+				.fn()
+				.mockResolvedValueOnce({ versionId: 'v1', activeVersionId: null })
+				.mockRejectedValueOnce(new Error('Version not found'));
+			const tool = createWorkflowsTool(context, 'full');
+			const input = { action: 'restore-version', workflowId: 'wf1', versionId: 'v1' } as never;
+
+			await executeTool(tool, input, {} as never);
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'workflow', id: 'wf1' });
+
+			onArtifactChanged.mockClear();
+			await expect(executeTool(tool, input, {} as never)).resolves.toMatchObject({
+				success: false,
+			});
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
 			const versions = [{ id: 'v1', versionId: 1 }];
@@ -2292,6 +2315,172 @@ describe('workflows tool', () => {
 	});
 
 	describe('setup action', () => {
+		describe('trigger-test save state', () => {
+			const savedState = {
+				publishState: {
+					live: 'stale' as const,
+					savedVersionId: 'v-test',
+					activeVersionId: 'v-live',
+				},
+				publishStateNote: 'This save is a draft.',
+			};
+			const failures = [{ nodeName: 'Missing', error: 'Node not found' }];
+			const input = { action: 'setup', workflowId: 'wf1' };
+			const resumeData = { approved: true, action: 'test-trigger', testTriggerNode: 'Slack' };
+
+			it('preserves the saved revision when a trigger-test apply only partially succeeds', async () => {
+				vi.mocked(applyNodeChanges).mockResolvedValueOnce({
+					applied: ['Slack'],
+					failed: failures,
+					...savedState,
+				});
+				const context = createMockContext();
+				const result = await executeTool(createWorkflowsTool(context), input, { resumeData });
+
+				expect(result).toMatchObject({ success: false, failedNodes: failures, ...savedState });
+				expect(context.executionService.run).not.toHaveBeenCalled();
+			});
+
+			it('does not report a revision when saving before a trigger test fails', async () => {
+				vi.mocked(applyNodeChanges).mockResolvedValueOnce({ applied: [], failed: failures });
+				const result = await executeTool(createWorkflowsTool(createMockContext()), input, {
+					resumeData,
+				});
+
+				expect(result.success).toBe(false);
+				expect(result.publishState).toBeUndefined();
+				expect(result.publishStateNote).toBeUndefined();
+			});
+
+			it('preserves the saved revision when refreshed credential hints are invalid', async () => {
+				const fixture = templatedSetupFixture({ testUrl: 'https://status.example.net/me' });
+				vi.mocked(analyzeWorkflow).mockResolvedValueOnce([fixture.request] as never);
+				vi.mocked(applyNodeChanges).mockResolvedValueOnce({
+					applied: ['Fetch account'],
+					failed: [],
+					...savedState,
+				});
+				const context = createMockContext();
+				vi.mocked(context.executionService.run).mockResolvedValue({ status: 'success' } as never);
+				const result = await executeTool(createWorkflowsTool(context, 'full'), fixture.input, {
+					resumeData: { ...resumeData, testTriggerNode: 'Fetch account' },
+				});
+
+				expect(result).toMatchObject({ error: 'invalid_credential_hints', ...savedState });
+			});
+
+			it.each(['apply', 'cancel', 'rollback-failure'])(
+				'reports the final save outcome after a trigger test followed by %s',
+				async (ending) => {
+					const context = createMockContext();
+					vi.mocked(context.executionService.run).mockResolvedValue({ status: 'success' } as never);
+					vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+					vi.mocked(applyNodeChanges).mockResolvedValueOnce({
+						applied: ['Slack'],
+						failed: [],
+						...savedState,
+					});
+					const tool = createWorkflowsTool(context);
+					const suspend = vi.fn();
+					await executeTool(tool, input, { resumeData, suspend });
+					expect(suspend).toHaveBeenCalledTimes(1);
+
+					const finalState = {
+						publishState: {
+							live: 'stale' as const,
+							savedVersionId: 'v-final',
+							activeVersionId: 'v-live',
+						},
+					};
+					if (ending === 'apply') {
+						vi.mocked(applyNodeChanges).mockResolvedValueOnce({
+							applied: ['Slack'],
+							failed: [],
+							...finalState,
+						});
+					} else if (ending === 'cancel') {
+						vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+							id: 'wf1',
+							versionId: 'v-final',
+							activeVersionId: 'v-live',
+							checksum: 'final-checksum',
+						} as never);
+					} else {
+						vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
+							new Error('Rollback failed'),
+						);
+						await expect(
+							executeTool(tool, input, { resumeData: { approved: false } }),
+						).rejects.toThrow('Rollback failed');
+						return;
+					}
+
+					const result = await executeTool(tool, input, {
+						resumeData: { approved: ending === 'apply' },
+					});
+					expect(result).toMatchObject({ success: true, ...finalState });
+					expect(result.deferred === true).toBe(ending === 'cancel');
+					expect(context.workflowService.get).not.toHaveBeenCalled();
+				},
+			);
+
+			it('does not report a saved revision when setup is declined without a trigger test', async () => {
+				const context = createMockContext();
+				vi.mocked(analyzeWorkflow).mockResolvedValueOnce([]);
+				const result = await executeTool(createWorkflowsTool(context), input, {
+					resumeData: { approved: false },
+				});
+
+				expect(result).toMatchObject({ success: true, deferred: true });
+				expect(result).not.toHaveProperty('publishState');
+				expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			});
+		});
+
+		it.each([false, true])(
+			'returns the saved publication state when partial=%s',
+			async (partial) => {
+				const context = createMockContext();
+				const publishState = {
+					live: 'stale' as const,
+					savedVersionId: 'v-saved',
+					activeVersionId: 'v-live',
+				};
+				vi.mocked(applyNodeChanges).mockResolvedValueOnce({
+					applied: ['Slack'],
+					failed: [],
+					publishState,
+					publishStateNote: 'This save is a draft.',
+				});
+				vi.mocked(analyzeWorkflow).mockResolvedValueOnce(
+					partial
+						? [
+								{
+									node: { name: 'Pending', type: 'n8n-nodes-base.slack', parameters: {} },
+									credentialType: 'slackApi',
+									needsAction: true,
+								} as never,
+							]
+						: [],
+				);
+
+				const result = await executeTool(
+					createWorkflowsTool(context),
+					{ action: 'setup', workflowId: 'wf1' },
+					{
+						resumeData: { approved: true, credentials: { Slack: { slackApi: 'cred-1' } } },
+					},
+				);
+
+				expect(result).toMatchObject({
+					success: true,
+					publishState,
+					publishStateNote: 'This save is a draft.',
+				});
+				expect(result.partial === true).toBe(partial);
+			},
+		);
+
 		it('should block setup when updateWorkflow permission is blocked', async () => {
 			const context = createMockContext({
 				permissions: { updateWorkflow: 'blocked' },
@@ -2886,6 +3075,28 @@ describe('workflows tool', () => {
 				{ 'HTTP Request': { url: 'https://example.com/api' } },
 				['HTTP Request'],
 			);
+		});
+
+		it('returns a failed result when the save fails so nothing counts as applied', async () => {
+			// The save is where a credential the workflow's project cannot use is
+			// rejected. Reporting it as a partial success would hide the reason.
+			(applyNodeChanges as Mock).mockResolvedValue({
+				applied: [],
+				failed: [{ nodeName: 'HTTP Request', error: 'Failed to save workflow: no access' }],
+				saveError: 'Failed to save workflow: no access',
+			});
+
+			const tool = createWorkflowsTool(createMockContext());
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				resumeData: {
+					approved: true,
+					action: 'apply',
+					credentials: { 'HTTP Request': { httpHeaderAuth: 'cred-1' } },
+				},
+			} as never);
+
+			expect(result).toEqual({ success: false, error: 'Failed to save workflow: no access' });
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('reports a just-applied credential whose test failed as a failed node', async () => {
@@ -3738,7 +3949,14 @@ describe('workflows(action="setup") — setup panel', () => {
 	});
 
 	it('keeps explicit credential replacement in the selection card', async () => {
-		const replacement = { ...openSlack, preferNewCredential: true };
+		const replacement = {
+			...openSlack,
+			node: {
+				...openSlack.node,
+				credentials: { slackApi: { id: 'old-account', name: 'Old account' } },
+			},
+			preferNewCredential: true,
+		};
 		(analyzeWorkflow as Mock).mockResolvedValue([replacement, boundGmail]);
 		const { context, emitter, markWorkflowSetupHandled } = panelContext();
 		const suspend = vi.fn();
@@ -3752,6 +3970,73 @@ describe('workflows(action="setup") — setup panel', () => {
 		expect(suspend).toHaveBeenCalledWith(expect.objectContaining({ setupRequests: [replacement] }));
 		expect(emitter.announce).not.toHaveBeenCalled();
 		expect(markWorkflowSetupHandled).not.toHaveBeenCalled();
+	});
+
+	it('announces unbound new-account requirements without opening a setup card', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([
+			{ ...openSlack, preferNewCredential: true },
+			boundGmail,
+			sheetParams,
+		]);
+		const { context, emitter, markWorkflowSetupHandled } = panelContext();
+		const suspend = vi.fn();
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+		expect(result).toMatchObject({ success: true, announced: true });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitter.announce).toHaveBeenCalledWith(
+			'wf1',
+			expect.arrayContaining([
+				expect.objectContaining({ credentialType: 'slackApi', preferNew: true }),
+				expect.objectContaining({ credentialType: 'gmailOAuth2' }),
+				expect.objectContaining({ parameterNames: ['documentId'] }),
+			]),
+		);
+		expect(markWorkflowSetupHandled).toHaveBeenCalledWith('wf1');
+	});
+
+	it('does not reopen an account selected during the current build', async () => {
+		(analyzeWorkflow as Mock).mockResolvedValue([boundGmail]);
+		const { context } = panelContext({
+			runId: 'run-early',
+			threadId: 'thread-early',
+			threadMemory: {
+				getThread: vi.fn().mockResolvedValue({
+					id: 'thread-early',
+					resourceId: 'user-1',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					metadata: {
+						instanceAiWorkflowSourceFiles: {
+							'src/workflows/main.ts': {
+								filePath: 'src/workflows/main.ts',
+								workflowId: 'wf1',
+								setupPreferences: {
+									runId: 'run-early',
+									satisfiedCredentialTypes: ['gmailOAuth2'],
+									preferNewCredentialTypes: [],
+								},
+							},
+						},
+					},
+				}),
+				saveThread: vi.fn().mockResolvedValue(undefined),
+			},
+		});
+		const suspend = vi.fn();
+		const result = await executeTool(
+			createWorkflowsTool(context, 'full'),
+			{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['gmailOAuth2'] },
+			{ suspend, resumeData: undefined } as never,
+		);
+		expect(result).toMatchObject({ success: true, announced: true, open: [] });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
+			includeSettled: true,
+		});
 	});
 
 	it('keeps failed connection checks in the announcement', async () => {

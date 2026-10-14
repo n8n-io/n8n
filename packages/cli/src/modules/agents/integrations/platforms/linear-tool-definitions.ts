@@ -284,18 +284,21 @@ export const LINEAR_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'create_issue',
 		inputSchema: createIssueActionInputSchema,
+		sensitive: true,
 		description:
 			'create_issue: input.teamId and input.title are required. For Linear, optional input.description, input.assigneeId, input.projectId, input.labelIds, input.priority, input.stateId, and input.parentId configure the issue.',
 	},
 	{
 		name: 'update_issue',
 		inputSchema: updateIssueActionInputSchema,
+		sensitive: true,
 		description:
 			'update_issue: input.issueId and at least one field are required. For Linear, optional input.title, input.description, input.teamId, input.assigneeId, input.projectId, input.labelIds, input.priority, input.stateId, and input.parentId update the issue. Some fields accept null to clear them.',
 	},
 	{
 		name: 'create_comment',
 		inputSchema: createCommentActionInputSchema,
+		sensitive: true,
 		description:
 			'create_comment: input.issueId and input.body are required. For Linear, optional input.parentCommentId creates a threaded reply.',
 	},

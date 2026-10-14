@@ -17,6 +17,8 @@ const AUTO_REFRESH_INTERVAL_MS = 5_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const threads = ref<AgentExecutionThread[]>([]);
+	const previewThreads = ref<AgentExecutionThread[]>([]);
+	const previewLoading = ref(false);
 	const nextCursor = ref<string | null>(null);
 	const loading = ref(false);
 	const autoRefresh = ref(true);
@@ -27,6 +29,8 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	let currentAgentId: string | null = null;
 	let autoRefreshActive = false;
 	let latestRefreshId = 0;
+	let latestPreviewRequestId = 0;
+	let previewTarget: string | null = null;
 
 	// Tracks the most recently requested project, agent, and filter set. Concurrent
 	// `fetchThreads` calls — typically when the user switches agents quickly —
@@ -41,6 +45,36 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		projectId: string,
 		agentId: string,
 		options: { filters?: AgentSessionFilters } = {},
+	) {
+		await Promise.all([
+			fetchHistoryThreads(projectId, agentId, options),
+			fetchPreviewThreads(projectId, agentId),
+		]);
+	}
+
+	async function fetchPreviewThreads(projectId: string, agentId: string) {
+		const target = `${projectId}:${agentId}`;
+		if (previewTarget !== target) previewThreads.value = [];
+		previewTarget = target;
+		const requestId = ++latestPreviewRequestId;
+		previewLoading.value = true;
+		try {
+			const rootStore = useRootStore();
+			const page = await listThreads(rootStore.restApiContext, projectId, agentId, {
+				limit: ITEMS_PER_PAGE,
+				previewOnly: true,
+			});
+			if (requestId !== latestPreviewRequestId) return;
+			previewThreads.value = page.threads;
+		} finally {
+			if (requestId === latestPreviewRequestId) previewLoading.value = false;
+		}
+	}
+
+	async function fetchHistoryThreads(
+		projectId: string,
+		agentId: string,
+		options: { filters?: AgentSessionFilters },
 	) {
 		currentProjectId = projectId;
 		currentAgentId = agentId;
@@ -71,6 +105,16 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	 *     without collapsing the list back to its first page.
 	 */
 	async function refreshThreads(projectId: string, agentId: string) {
+		if (currentProjectId !== projectId || currentAgentId !== agentId) return;
+		await Promise.all([
+			refreshHistoryThreads(projectId, agentId),
+			fetchPreviewThreads(projectId, agentId).catch(() => {
+				// The next refresh retries failed Preview requests.
+			}),
+		]);
+	}
+
+	async function refreshHistoryThreads(projectId: string, agentId: string) {
 		const requestedFilters = filters.value;
 		const key = keyFor(projectId, agentId, requestedFilters);
 		if (latestKey !== null && latestKey !== key) return;
@@ -148,15 +192,22 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		const index = threads.value.findIndex(({ id }) => id === thread.id);
 		if (index === -1) {
 			threads.value.push(thread);
-			return;
+		} else {
+			threads.value.splice(index, 1, thread);
 		}
-		threads.value.splice(index, 1, thread);
+		previewThreads.value = previewThreads.value.filter(({ id }) => id !== thread.id);
+		if (thread.canContinueInPreview) {
+			previewThreads.value.push(thread);
+			previewThreads.value.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+		}
 	}
 
 	async function deleteThread(projectId: string, agentId: string, threadId: string) {
 		const rootStore = useRootStore();
 		await deleteThreadApi(rootStore.restApiContext, projectId, agentId, threadId);
+		if (currentProjectId !== projectId || currentAgentId !== agentId) return;
 		threads.value = threads.value.filter((t) => t.id !== threadId);
+		previewThreads.value = previewThreads.value.filter((t) => t.id !== threadId);
 	}
 
 	async function exportThreadToLangSmith(projectId: string, agentId: string, threadId: string) {
@@ -201,6 +252,10 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	function reset() {
 		stopAutoRefresh();
 		threads.value = [];
+		previewThreads.value = [];
+		previewLoading.value = false;
+		previewTarget = null;
+		latestPreviewRequestId++;
 		nextCursor.value = null;
 		loading.value = false;
 		currentProjectId = null;
@@ -211,6 +266,8 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 
 	return {
 		threads,
+		previewThreads,
+		previewLoading,
 		nextCursor,
 		loading,
 		autoRefresh,

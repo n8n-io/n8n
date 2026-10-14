@@ -6,13 +6,13 @@
  * committed baseline — new code stays clean, the backlog burns down over time.
  *
  * Mirrors the incremental-cleanup approach already used by the Playwright
- * janitor (`.janitor-baseline.json`). Baseline is updated manually after real
- * fixes, never automatically.
+ * janitor (`.janitor-baseline.json`). The nightly workflow
+ * `util-update-boundaries-baseline.yml` lowers the baseline when master has
+ * fewer issues. Nothing raises it automatically: a count above the baseline
+ * fails the nightly instead.
  *
- * The baseline is the POST-BUILD count: CI's lint job builds dependencies before
- * this check runs, and built dist trees surface ~8 extra issues that a cold
- * checkout doesn't. Run `pnpm build` before `pnpm boundaries:baseline`, or CI
- * will read a higher count than you saw locally.
+ * Turbo 2.11 skips gitignored files, so built dist trees no longer change the
+ * count. It also checks dynamic `import()` calls, which 2.9 did not.
  *
  * ponytail: parses turbo's "N issues found" line — the ratchet is a single
  * number, not a per-issue snapshot, so it can't tell a fixed issue from a new

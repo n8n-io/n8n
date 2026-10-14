@@ -63,7 +63,6 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
 		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
@@ -78,10 +77,6 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			input: { query: 'Michael Drury' },
 		});
 
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledWith('agent-1', {
-			type: 'slack',
-			credentialId: 'cred-a',
-		});
 		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
 		expect(chat.getAdapter).toHaveBeenCalledWith('slack');
 		expect(usersList).toHaveBeenCalledWith({ limit: 10, token: 'xoxb-token' });
@@ -134,7 +129,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue(slackAdapter);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -190,7 +185,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -204,7 +199,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 			input: { userId: 'user-1' },
 		});
 
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledWith('agent-1', {
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', {
 			type: 'linear',
 			credentialId: 'cred-b',
 		});
@@ -250,7 +245,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -317,7 +312,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -414,7 +409,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -562,7 +557,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -638,7 +633,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -697,7 +692,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -742,7 +737,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -778,7 +773,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -816,7 +811,7 @@ describe('ChatIntegrationContextQueryExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const executor = new ChatIntegrationContextQueryExecutor(
 			chatIntegrationService,
 			buildRegistry(),
@@ -856,7 +851,6 @@ describe('ChatIntegrationContextQueryExecutor — rate-limit handling', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
 		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const guard = new ChannelRateLimitGuard();
 		const executor = new ChatIntegrationContextQueryExecutor(
@@ -893,7 +887,6 @@ describe('ChatIntegrationContextQueryExecutor — rate-limit handling', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
 		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const guard = new ChannelRateLimitGuard();
 		const executor = new ChatIntegrationContextQueryExecutor(

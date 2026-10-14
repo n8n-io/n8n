@@ -1,0 +1,79 @@
+operationId: createDataTable
+tags:
+  - DataTable
+summary: Create a new data table
+description: Create a new data table in your personal project or a team project you have access to.
+x-required-scope: dataTable:create
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+            description: Name of the data table
+            example: customers
+          columns:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 63
+                  pattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+                  description: Column name
+                type:
+                  type: string
+                  enum:
+                    - string
+                    - number
+                    - boolean
+                    - date
+                  description: Column data type
+                csvColumnName:
+                  type: string
+                  description: Name of the CSV column to read the values from. If you do not set it, n8n maps the CSV columns by position.
+                  example: Email Address
+              required:
+                - name
+                - type
+            description: Column definitions for the table
+          projectId:
+            type: string
+            description: ID of the project to create the table in. When omitted, the table is created in the user's personal project.
+            example: a1b2c3d4
+          fileId:
+            type: string
+            description: ID of a CSV file that you uploaded in the n8n editor. If you set it, n8n fills the new table with the rows from that file. Only a session-authenticated caller can upload a file, so an API-key caller cannot use this field.
+          hasHeaders:
+            type: boolean
+            description: Set to true if the first row of the CSV file holds the column names. Applies only when you set `fileId`. The default is true.
+        required:
+          - name
+          - columns
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/dataTablePublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

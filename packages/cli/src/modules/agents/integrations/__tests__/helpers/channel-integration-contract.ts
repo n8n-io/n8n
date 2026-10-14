@@ -2,6 +2,7 @@ import type { AgentMessageAuthor } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
 import type { ChatIntegrationActionExecutor } from '../../integration-action-executor';
+import { encodeIntegrationMessageContext } from '../../integration-message-context';
 import { createIntegrationContextTool } from '../../integration-tools';
 import type {
 	IntegrationMessageContext,
@@ -77,7 +78,7 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 			);
 		});
 
-		it('persists current message context for the integration context tool', async () => {
+		it('captures current message context for the integration context tool', async () => {
 			ctx = await scenario.createContext();
 
 			await ctx.sendWebhook(scenario.fixtures.mention);
@@ -91,12 +92,17 @@ export function runSharedChannelIntegrationContract(scenario: ChannelIntegration
 				queryExecutor: {
 					execute: vi.fn(),
 				},
-				messageContextStore: ctx.messageContextStore,
 			}).build();
 
 			const result = await contextTool.handler!(
 				{ query: 'get_current_message_context', input: {} },
-				{ persistence: { threadId, resourceId: scenario.expected.resourceId } },
+				{
+					persistence: {
+						threadId,
+						resourceId: scenario.expected.resourceId,
+						hostMetadata: encodeIntegrationMessageContext(context ?? null),
+					},
+				},
 			);
 
 			expect(result).toEqual({ ok: true, context });

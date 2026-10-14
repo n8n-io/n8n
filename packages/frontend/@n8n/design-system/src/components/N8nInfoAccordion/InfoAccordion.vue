@@ -122,7 +122,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 	padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
 
 	b {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 </style>

@@ -34,7 +34,8 @@ export class AiPreferenceController {
 		_res: Response,
 		@Body payload: AiPreferenceRequestDto,
 	) {
-		return await this.aiPreferenceService.create(req.user, payload);
+		// This controller is the settings area. The assistant and MCP pass their own source.
+		return await this.aiPreferenceService.create(req.user, payload, 'ui');
 	}
 
 	@Patch('/:id')

@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DefaultDetailBody from './DefaultDetailBody.vue';
-import McpDetailBody from './McpDetailBody.vue';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import { resolveToolItemIcon } from './toolItemIcon';
 import type { ToolConnectionItem } from './types';
@@ -95,8 +94,7 @@ const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 		</header>
 
 		<slot name="body" :item="item">
-			<McpDetailBody v-if="item.kind === 'mcp-server'" :item="item" />
-			<DefaultDetailBody v-else :item="item" />
+			<DefaultDetailBody :item="item" />
 		</slot>
 	</div>
 </template>

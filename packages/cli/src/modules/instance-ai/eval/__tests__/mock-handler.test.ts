@@ -86,8 +86,6 @@ vi.mock('@n8n/agents/tool', () => ({
 	}),
 }));
 
-vi.mock('../api-docs', () => ({ fetchApiDocs: vi.fn().mockResolvedValue('') }));
-
 vi.mock('../node-config', () => ({
 	extractNodeConfig: vi.fn().mockReturnValue('{}'),
 }));
@@ -114,7 +112,6 @@ import { fileTypeFromBuffer } from 'file-type';
 import FormData from 'form-data';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { fetchApiDocs } from '../api-docs';
 import {
 	buildDateAnchors,
 	createLlmMockHandler,
@@ -128,7 +125,6 @@ import { extractNodeConfig } from '../node-config';
 // matter for tests to pass. Keep in sync with the factory bodies above.
 function reapplyMockImplementations() {
 	vi.mocked(Container.get).mockReturnValue(mockLogger);
-	vi.mocked(fetchApiDocs).mockResolvedValue('');
 	vi.mocked(extractNodeConfig).mockReturnValue('{}');
 	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
 	vi.mocked(Tool).mockImplementation(function (name: string) {
@@ -268,6 +264,23 @@ describe('createLlmMockHandler', () => {
 		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
 		expect(sniffed?.mime).toBe('application/pdf');
 		expect(sniffed?.ext).toBe('pdf');
+	});
+
+	it('should write textBody into a binary PDF response', async () => {
+		llmSubmits({
+			type: 'binary',
+			contentType: 'application/pdf',
+			filename: 'invoice.pdf',
+			textBody: 'Invoice Number: INV-2026-0042',
+		});
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		const sniffed = await fileTypeFromBuffer(result.body as Buffer);
+		expect(sniffed?.mime).toBe('application/pdf');
+		expect((result.body as Buffer).toString('latin1')).toContain(
+			'(Invoice Number: INV-2026-0042) Tj',
+		);
 	});
 
 	it('should populate content-disposition and content-length headers for binary responses', async () => {
@@ -519,6 +532,31 @@ describe('createLlmMockHandler', () => {
 		// … but the first caller's mutation must not leak into it.
 		expect(second.body).toEqual({ items: [{ id: 1 }] });
 		expect(second.body).not.toBe(first.body);
+	});
+
+	it('lets timers run before it serves a cached repeat, like a real request', async () => {
+		llmSubmits({ type: 'json', body: { records: [] } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const order: string[] = [];
+		setTimeout(() => order.push('timer'), 0);
+		await callHandler(handler).then(() => order.push('cached reply'));
+
+		// A loop of instant repeats would starve the timer that ends the run's budget.
+		expect(order).toEqual(['timer', 'cached reply']);
+	});
+
+	it('fails every request once the run is aborted, like a cancelled request', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const abort = new AbortController();
+		const handler = createLlmMockHandler({ signal: abort.signal });
+		await callHandler(handler);
+
+		abort.abort();
+
+		await expect(handler(baseRequest, baseNode)).rejects.toThrow(/cancelled/);
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
 	});
 
 	it('evicts a soft-fallback response so the next identical request regenerates', async () => {
@@ -989,6 +1027,19 @@ describe('get_endpoint_quirks tool', () => {
 		expect(quirksCapture.handler).toBeDefined();
 		const result = await quirksCapture.handler!();
 		expect(result).toContain('No specific quirks');
+		expect(result).not.toMatch(/API docs/i);
+	});
+
+	it('points the model at its own API knowledge, never at attached docs', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		const { instructions } = vi.mocked(createEvalAgent).mock.calls.at(-1)![1] as {
+			instructions: string;
+		};
+		expect(instructions).not.toMatch(/\bdocs\b|documentation/i);
 	});
 });
 
