@@ -11,7 +11,7 @@ import {
 	UpdateMigrationFindingStatusesRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { EventService, WorkflowSharingService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Body,
@@ -54,7 +54,6 @@ export class BreakingChangesController {
 		private readonly queryService: MigrationFindingQueryService,
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly triageService: MigrationFindingTriageService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly ownerAssignmentService: MigrationOwnerAssignmentService,
 		private readonly notificationService: MigrationFindingNotificationService,
@@ -67,16 +66,14 @@ export class BreakingChangesController {
 	 */
 	private async scopeFor(user: User): Promise<ReportScope> {
 		if (hasGlobalScope(user, 'workflow:update')) return { kind: 'instance' };
-		const workflowIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(user, [
+		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(user, [
 			'workflow:update',
 		]);
-		// A workflow shared into two of the user's projects comes back twice.
-		return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
+		return { kind: 'workflows', workflowIds };
 	}
 
 	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */
 	private async editableWorkflowIds(user: User, workflowIds: string[]): Promise<string[]> {
-		// Not `scopeFor`: it gives every workflow to a user with global read access.
 		const editable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
 			workflowIds,
 			user,

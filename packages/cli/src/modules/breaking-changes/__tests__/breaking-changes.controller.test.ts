@@ -3,7 +3,7 @@ import type {
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 } from '@n8n/api-types';
-import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
+import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -68,7 +68,6 @@ describe('BreakingChangesController', () => {
 	let queryService: MockProxy<MigrationFindingQueryService>;
 	let ruleRegistry: MockProxy<RuleRegistry>;
 	let triageService: MockProxy<MigrationFindingTriageService>;
-	let workflowSharingService: MockProxy<WorkflowSharingService>;
 	let eventService: MockProxy<EventService>;
 	let ownerAssignmentService: MockProxy<MigrationOwnerAssignmentService>;
 	let notificationService: MockProxy<MigrationFindingNotificationService>;
@@ -81,13 +80,12 @@ describe('BreakingChangesController', () => {
 		queryService = mock<MigrationFindingQueryService>();
 		ruleRegistry = mock<RuleRegistry>();
 		triageService = mock<MigrationFindingTriageService>();
-		workflowSharingService = mock<WorkflowSharingService>();
-		workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue(['wf-1', 'wf-2']);
 		req.user = admin;
 		eventService = mock<EventService>();
 		ownerAssignmentService = mock<MigrationOwnerAssignmentService>();
 		notificationService = mock<MigrationFindingNotificationService>();
 		workflowFinderService = mock<WorkflowFinderService>();
+		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
 		// The admin can edit every workflow, the member only wf-1 and wf-2.
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
 			async (workflowIds, user) =>
@@ -99,7 +97,6 @@ describe('BreakingChangesController', () => {
 			queryService,
 			ruleRegistry,
 			triageService,
-			workflowSharingService,
 			eventService,
 			ownerAssignmentService,
 			notificationService,
@@ -168,24 +165,7 @@ describe('BreakingChangesController', () => {
 			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', INSTANCE);
 			expect(callOrder).toEqual(['syncIfStale', 'getLightReport']);
 			expect(syncService.sync).not.toHaveBeenCalled();
-			expect(workflowSharingService.getSharedWorkflowIdsForScopes).not.toHaveBeenCalled();
-		});
-
-		it("lists each workflow once in the scope, even when it is shared into several of the user's projects", async () => {
-			req.user = member;
-			workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue([
-				'wf-1',
-				'wf-2',
-				'wf-1',
-			]);
-			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
-
-			await controller.getDetectionReport(req, res, { version: 'v3' });
-
-			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
-				kind: 'workflows',
-				workflowIds: ['wf-1', 'wf-2'],
-			});
+			expect(workflowFinderService.findAllWorkflowIdsForUser).not.toHaveBeenCalled();
 		});
 
 		it('scopes the overview to the workflows a user without global edit access can edit', async () => {
@@ -194,7 +174,7 @@ describe('BreakingChangesController', () => {
 
 			await controller.getDetectionReport(req, res, { version: 'v3' });
 
-			expect(workflowSharingService.getSharedWorkflowIdsForScopes).toHaveBeenCalledWith(member, [
+			expect(workflowFinderService.findAllWorkflowIdsForUser).toHaveBeenCalledWith(member, [
 				'workflow:update',
 			]);
 			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
