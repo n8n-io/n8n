@@ -450,9 +450,18 @@ async function sendResponseNodeResponse(
 			applySandboxCSP(res);
 			try {
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				res.once('close', () => stream.destroy());
+				// The client can disconnect before the stream exists. Then 'close' does not fire again.
+				if (res.destroyed) stream.destroy();
+				else res.once('close', () => stream.destroy());
 				stream.pipe(res, { end: false });
-				await finished(stream);
+				try {
+					await finished(stream);
+				} catch (error) {
+					if (!res.destroyed) throw error;
+					// The client disconnected. This is not an error, and the response is gone.
+					responder.respondWithNoResponse();
+					return;
+				}
 			} finally {
 				void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
 					workflowId: workflow.id,

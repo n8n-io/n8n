@@ -6,7 +6,7 @@ import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EndedMessage, ExecutionResponse } from '@n8n/engine';
-import type express from 'express';
+import express from 'express';
 import {
 	BinaryDataService,
 	ErrorReporter,
@@ -59,7 +59,13 @@ import {
 	UnexpectedError,
 	UserError,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { once } from 'node:events';
+import { mkdtemp, open, rm, writeFile, type FileHandle } from 'node:fs/promises';
+import http, { type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
@@ -314,6 +320,7 @@ describe('setupResponseNodePromise', () => {
 
 		res.header.mockReturnValue(res);
 		res.end.mockReturnValue(res);
+		res.destroyed = false;
 	});
 
 	test('should handle regular response object', async () => {
@@ -628,6 +635,207 @@ describe('setupResponseNodePromise', () => {
 
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(responseCallback).not.toHaveBeenCalled();
+	});
+
+	describe('binary data responses over a real connection', () => {
+		const fileSize = 8 * 1024 * 1024;
+		const binaryDataResponse = {
+			body: { binaryData: { id: 'binary-123' } },
+			headers: {},
+			statusCode: 200,
+		} as unknown as IN8nHttpFullResponse;
+
+		let tempDir: string;
+		let filePath: string;
+		let server: Server;
+		let url: string;
+		let onRequest: (res: express.Response) => void;
+		let sourceStreams: Readable[];
+
+		const openSourceFile = async () => {
+			const handle = await open(filePath);
+			const stream = handle.createReadStream();
+			sourceStreams.push(stream);
+			return { handle, stream };
+		};
+
+		const respondWithBinaryData = (res: express.Response) => {
+			const deferred = createDeferredPromise<IN8nHttpFullResponse>();
+			setupResponseNodePromise(
+				deferred,
+				res,
+				new WebhookResponder(responseCallback),
+				workflowStartNode,
+				executionId,
+				workflow,
+			);
+			deferred.resolve(binaryDataResponse);
+		};
+
+		const waitUntilClosed = async (handle: FileHandle) =>
+			await vi.waitFor(() => expect(handle.fd).toBe(-1), { timeout: 2000 });
+
+		const readWholeBody = async () =>
+			await new Promise<Buffer>((resolve, reject) => {
+				http
+					.get(url, (response) => {
+						const chunks: Buffer[] = [];
+						response.on('data', (chunk: Buffer) => chunks.push(chunk));
+						response.on('end', () => resolve(Buffer.concat(chunks)));
+						response.on('error', reject);
+					})
+					.on('error', reject);
+			});
+
+		const readFirstChunkAndDisconnect = async () =>
+			await new Promise<void>((resolve, reject) => {
+				const request = http.get(url, (response) => {
+					response.on('error', () => {});
+					response.once('data', () => {
+						request.destroy();
+						resolve();
+					});
+				});
+				request.on('error', reject);
+			});
+
+		const expectDisconnectHandledQuietly = async () => {
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+			expect(responseCallback).toHaveBeenCalledTimes(1);
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+			expect(webhookResponseRelay.deleteOffloadedBody).toHaveBeenCalledWith(binaryDataResponse, {
+				workflowId,
+				executionId,
+			});
+		};
+
+		beforeAll(async () => {
+			tempDir = await mkdtemp(join(tmpdir(), 'n8n-respond-node-'));
+			filePath = join(tempDir, 'binary.bin');
+			await writeFile(filePath, Buffer.alloc(fileSize, 'a'));
+
+			const app = express();
+			app.get('/', (_req, res) => onRequest(res));
+			server = app.listen(0, '127.0.0.1');
+			await once(server, 'listening');
+			url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+		});
+
+		afterAll(async () => {
+			server.closeAllConnections();
+			await new Promise((resolve) => server.close(resolve));
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		beforeEach(async () => {
+			sourceStreams = [];
+			const actual = await vi.importActual<typeof import('stream/promises')>('stream/promises');
+			vi.mocked(finished).mockImplementation(actual.finished);
+		});
+
+		afterEach(() => {
+			for (const stream of sourceStreams) stream.destroy();
+		});
+
+		test('should send the whole file and close the source file', async () => {
+			const { handle, stream } = await openSourceFile();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			onRequest = respondWithBinaryData;
+
+			const body = await readWholeBody();
+
+			expect(body.length).toBe(fileSize);
+			await waitUntilClosed(handle);
+			expect(responseCallback).toHaveBeenCalledTimes(1);
+			expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		test('should close the source file without an error when the client disconnects mid-download', async () => {
+			const { handle, stream } = await openSourceFile();
+			binaryDataService.getAsStream.mockResolvedValue(stream);
+			onRequest = respondWithBinaryData;
+
+			await readFirstChunkAndDisconnect();
+
+			await waitUntilClosed(handle);
+			await expectDisconnectHandledQuietly();
+		});
+
+		test('should close the source file without an error when the client disconnects before the stream opens', async () => {
+			const { handle, stream } = await openSourceFile();
+			const streamRequested = createDeferredPromise();
+			const releaseStream = createDeferredPromise();
+			binaryDataService.getAsStream.mockImplementation(async () => {
+				streamRequested.resolve();
+				await releaseStream.promise;
+				return stream;
+			});
+			const serverResponseClosed = createDeferredPromise();
+			onRequest = (res) => {
+				res.once('close', () => serverResponseClosed.resolve());
+				respondWithBinaryData(res);
+			};
+
+			const request = http.get(url);
+			request.on('error', () => {});
+			await streamRequested.promise;
+			request.destroy();
+			await serverResponseClosed.promise;
+			releaseStream.resolve();
+
+			await waitUntilClosed(handle);
+			await expectDisconnectHandledQuietly();
+		});
+
+		test('should report a failure to open the stream while the client is connected', async () => {
+			binaryDataService.getAsStream.mockRejectedValue(new Error('store is down'));
+			onRequest = (res) => {
+				responseCallback.mockImplementation((error: Error | null) => {
+					if (error) res.status(500).end();
+				});
+				respondWithBinaryData(res);
+			};
+
+			const response = await new Promise<http.IncomingMessage>((resolve, reject) => {
+				http.get(url, resolve).on('error', reject);
+			});
+			response.resume();
+
+			expect(response.statusCode).toBe(500);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'store is down' }),
+			);
+			expect(responseCallback).toHaveBeenCalledWith(expect.any(Error), {});
+		});
+
+		test('should report a stream failure while the client is connected', async () => {
+			const failingStream = new Readable({
+				read() {
+					this.destroy(new Error('read failed'));
+				},
+			});
+			binaryDataService.getAsStream.mockResolvedValue(failingStream);
+			onRequest = (res) => {
+				responseCallback.mockImplementation((error: Error | null) => {
+					if (error) res.status(500).end();
+				});
+				respondWithBinaryData(res);
+			};
+
+			const response = await new Promise<http.IncomingMessage>((resolve, reject) => {
+				http.get(url, resolve).on('error', reject);
+			});
+			response.resume();
+
+			expect(response.statusCode).toBe(500);
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'read failed' }),
+			);
+			expect(responseCallback).toHaveBeenCalledWith(expect.any(Error), {});
+		});
 	});
 });
 
