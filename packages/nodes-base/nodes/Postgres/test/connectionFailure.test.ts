@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeTypeBaseDescription,
+} from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -7,7 +12,7 @@ import { PostgresV1 } from '../v1/PostgresV1.node';
 import { PostgresV2 } from '../v2/PostgresV2.node';
 import type { PgpDatabase, PostgresNodeCredentials } from '../v2/helpers/interfaces';
 
-const baseDescription = {
+const baseDescription: INodeTypeBaseDescription = {
 	displayName: 'Postgres',
 	name: 'postgres',
 	group: ['input'],
