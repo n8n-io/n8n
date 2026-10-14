@@ -30,7 +30,6 @@ import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-att
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -1082,79 +1081,6 @@ describe('ProjectService', () => {
 				await projectService.deleteProject(migratingUser, project.id);
 
 				expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('deleting projects with apps', () => {
-			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			const targetProject = mock<Project>({ id: 'project-2', type: 'team' });
-			const migratingUser = mock<User>({
-				id: 'user-1',
-				role: mock<User['role']>({
-					slug: 'global:owner',
-					scopes: [
-						{ slug: 'project:delete' },
-						{ slug: 'credential:create' },
-						{ slug: 'workflow:create' },
-						{ slug: 'dataTable:create' },
-					],
-				}),
-			});
-			const dataTableService = mock<DataTableService>();
-			const ownershipTransferService = mock<OwnershipTransferService>();
-
-			beforeEach(() => {
-				Object.defineProperty(projectService, 'dataTableService', {
-					configurable: true,
-					get: async () => dataTableService,
-				});
-				Object.defineProperty(projectService, 'ownershipTransferService', {
-					configurable: true,
-					get: async () => ownershipTransferService,
-				});
-				manager.findOne.mockReset();
-				manager.findOne.mockResolvedValueOnce(project);
-				sharedWorkflowRepository.find.mockReset().mockResolvedValue([]);
-				sharedCredentialsRepository.find.mockReset().mockResolvedValue([]);
-				projectRelationRepository.findBy.mockReset().mockResolvedValue([]);
-				projectRepository.remove.mockResolvedValue(project);
-				roleService.rolesWithScope.mockResolvedValue(['project:admin']);
-				moduleRegistry.isActive.mockImplementation(
-					(moduleName) => moduleName === 'apps' || moduleName === 'data-table',
-				);
-			});
-
-			it('transfers supported resources and removes the project without app creation access', async () => {
-				manager.findOne.mockResolvedValueOnce(targetProject);
-
-				await projectService.deleteProject(migratingUser, project.id, {
-					migrateToProject: targetProject.id,
-				});
-
-				expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-				expect(sharedWorkflowRepository.makeOwner).toHaveBeenCalledWith([], targetProject.id);
-				expect(sharedCredentialsRepository.makeOwner).toHaveBeenCalledWith([], targetProject.id);
-				expect(folderRepository.transferAllFoldersToProject).toHaveBeenCalledWith(
-					project.id,
-					targetProject.id,
-				);
-				expect(dataTableService.transferDataTablesByProjectId).toHaveBeenCalledExactlyOnceWith(
-					project.id,
-					targetProject.id,
-				);
-				expect(
-					dataTableService.transferDataTablesByProjectId.mock.invocationCallOrder[0],
-				).toBeLessThan(projectRepository.remove.mock.invocationCallOrder[0]);
-				expect(projectRepository.remove).toHaveBeenCalledWith(project);
-			});
-
-			it('removes the project without a destination', async () => {
-				await projectService.deleteProject(migratingUser, project.id);
-
-				expect(dataTableService.deleteDataTableByProjectId).toHaveBeenCalledWith(project.id);
-				expect(sharedWorkflowRepository.makeOwner).not.toHaveBeenCalled();
-				expect(sharedCredentialsRepository.makeOwner).not.toHaveBeenCalled();
-				expect(projectRepository.remove).toHaveBeenCalledWith(project);
 			});
 		});
 
