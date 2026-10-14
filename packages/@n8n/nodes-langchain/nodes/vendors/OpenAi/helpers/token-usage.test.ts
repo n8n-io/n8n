@@ -76,10 +76,21 @@ describe('accumulateImageTokenUsage', () => {
 		['null counts', { input_tokens: null, output_tokens: null }],
 		['NaN counts', { input_tokens: NaN, output_tokens: NaN }],
 		['infinite counts', { input_tokens: Infinity, output_tokens: -Infinity }],
+		['negative counts', { input_tokens: -350, output_tokens: -4160 }],
+		['fractional counts', { input_tokens: 350.5, output_tokens: 4160.5 }],
+		['counts beyond the safe integer range', { input_tokens: 2 ** 53, output_tokens: 2 ** 53 }],
 	])('should ignore %s', (_label, usage) => {
 		const { context, setMetadata } = makeContext();
 
 		accumulateImageTokenUsage(context, usage as never);
+
+		expect(setMetadata).not.toHaveBeenCalled();
+	});
+
+	it('should never reduce a total already accumulated', () => {
+		const { context, setMetadata } = makeContext({ inputTokens: 100, outputTokens: 200 });
+
+		accumulateImageTokenUsage(context, { input_tokens: -350, output_tokens: -4160 } as never);
 
 		expect(setMetadata).not.toHaveBeenCalled();
 	});
@@ -93,6 +104,8 @@ describe('accumulateImageTokenUsage', () => {
 			{ input_tokens: null, output_tokens: null },
 			{ input_tokens: NaN, output_tokens: NaN },
 			{ input_tokens: '350', output_tokens: '4160' },
+			{ input_tokens: -350, output_tokens: -4160 },
+			{ input_tokens: 350.5, output_tokens: 4160.5 },
 			{ input_tokens: 350 },
 			{ output_tokens: 4160 },
 		];
@@ -107,6 +120,8 @@ describe('accumulateImageTokenUsage', () => {
 			const { inputTokens, outputTokens } = storedUsage(setMetadata);
 			expect(Number.isFinite(inputTokens)).toBe(true);
 			expect(Number.isFinite(outputTokens)).toBe(true);
+			expect(inputTokens).toBeGreaterThanOrEqual(100);
+			expect(outputTokens).toBeGreaterThanOrEqual(200);
 		}
 	});
 });

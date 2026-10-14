@@ -12,11 +12,13 @@ type ImageTokenUsage = {
 };
 
 /**
- * `Number.isFinite` does not coerce, so `null`, `undefined`, numeric strings, `NaN` and
- * the infinities are all rejected and only a real, finite number is accepted.
+ * Accepts only what a token count can actually be: a non-negative integer. Nothing is
+ * coerced, so `null`, `undefined`, numeric strings, `NaN` and the infinities are all
+ * rejected — as are negative counts, which would otherwise *subtract* from the running
+ * total, and fractional ones, which are not a possible number of tokens.
  */
 const asTokenCount = (value: unknown): number | undefined =>
-	Number.isFinite(value) ? (value as number) : undefined;
+	typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 
 /**
  * Reports token usage for an image operation, ignoring any count the API did not
