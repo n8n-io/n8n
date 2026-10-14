@@ -240,6 +240,44 @@ describe('TeamsSetupService', () => {
 		});
 	});
 
+	describe('whether Teams holds an older version', () => {
+		const scope = { projectId: PROJECT_ID, agentId: AGENT_ID };
+		const recorded = (teamsAppFingerprint: string) =>
+			credentialsService.decrypt.mockResolvedValue({
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				teamsAppFingerprint,
+			});
+
+		it('says nothing without a record of what n8n handed over', async () => {
+			connectTeamsCredential();
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
+		});
+
+		it('matches the app n8n last handed over', async () => {
+			connectTeamsCredential();
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
+		});
+
+		it('flags an agent renamed since then', async () => {
+			connectTeamsCredential();
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				Object.assign(agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }]), {
+					name: 'Helpdesk',
+					updatedAt: new Date('2026-09-16T10:00:00.000Z'),
+				}),
+			);
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(true);
+		});
+	});
+
 	describe('a credential another agent already uses', () => {
 		const claimedByOtherAgent = () => {
 			agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([
@@ -385,7 +423,7 @@ describe('TeamsSetupService', () => {
 
 			await expect(
 				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
-			).resolves.toBeInstanceOf(Buffer);
+			).resolves.toMatchObject({ archive: expect.any(Buffer), credentialId: CREDENTIAL_ID });
 		});
 
 		it('builds a package once a credential is connected', async () => {
@@ -393,7 +431,7 @@ describe('TeamsSetupService', () => {
 
 			await expect(
 				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }),
-			).resolves.toBeInstanceOf(Buffer);
+			).resolves.toMatchObject({ archive: expect.any(Buffer), credentialId: CREDENTIAL_ID });
 		});
 
 		it('refuses a client ID that is not a GUID, which Teams rejects at upload', async () => {
@@ -411,7 +449,7 @@ describe('TeamsSetupService', () => {
 			).rejects.toThrow(/not a GUID/);
 		});
 
-		const manifestOf = (archive: Buffer) =>
+		const manifestOf = ({ archive }: { archive: Buffer }) =>
 			JSON.parse(Buffer.from(unzipSync(new Uint8Array(archive))['manifest.json']).toString());
 
 		it('builds from the settings it is given, which are not stored during setup', async () => {

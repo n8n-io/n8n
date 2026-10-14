@@ -30,6 +30,8 @@ interface BotIdentity {
 	provisionedForAgentId?: string;
 	azureBotName?: string;
 	azureSubscriptionId?: string;
+	/** The manifest n8n last handed over, as `TeamsManifestService.fingerprint` reads it. */
+	teamsAppFingerprint?: string;
 }
 
 @Service()
@@ -75,6 +77,7 @@ export class TeamsSetupService {
 			provisionedByN8n,
 			fileAccessConsentUrl: provisionedByN8n ? this.fileAccessConsentUrl(scope, identity) : null,
 			azureBot: provisionedByN8n ? this.azureBot(identity) : null,
+			appOutdated: this.appOutdated(agent, identity),
 			...this.defaultIdentity(agent.name),
 		};
 	}
@@ -89,7 +92,7 @@ export class TeamsSetupService {
 		scope: AgentScope,
 		selectedCredentialId?: string,
 		selectedSettings?: AgentTeamsIntegrationSettings,
-	): Promise<Buffer> {
+	): Promise<{ archive: Buffer; fingerprint: string; credentialId: string }> {
 		const agent = await this.getAgent(scope);
 		const credentialId = selectedCredentialId ?? this.connectedCredentialId(agent);
 		const identity = credentialId
@@ -116,7 +119,7 @@ export class TeamsSetupService {
 			);
 		}
 
-		return await this.manifestService.buildPackage({
+		const options = {
 			agentName: agent.name,
 			agentId: agent.id,
 			botId: identity.clientId,
@@ -129,7 +132,12 @@ export class TeamsSetupService {
 			// The open form wins over what is stored: during setup nothing is stored
 			// yet, and in the settings view the fields sit above this button.
 			settings: selectedSettings ?? this.teamsSettingsOf(agent),
-		});
+		};
+		return {
+			archive: await this.manifestService.buildPackage(options),
+			fingerprint: this.manifestService.fingerprint(this.manifestService.buildManifest(options)),
+			credentialId,
+		};
 	}
 
 	/**
@@ -284,8 +292,26 @@ export class TeamsSetupService {
 					provisionedForAgentId,
 					azureBotName: stringProperty(data, 'azureBotName'),
 					azureSubscriptionId: stringProperty(data, 'azureSubscriptionId'),
+					teamsAppFingerprint: stringProperty(data, 'teamsAppFingerprint'),
 				}
 			: null;
+	}
+
+	/**
+	 * Whether the saved channel would build a different app than the one n8n last
+	 * handed over, for example after the agent was renamed. n8n sees the download
+	 * or the publish, not the upload in Teams, so this is as close as it gets.
+	 */
+	private appOutdated(agent: Agent, identity: BotIdentity | null): boolean {
+		if (!identity?.teamsAppFingerprint) return false;
+		const current = this.manifestService.buildManifest({
+			agentName: agent.name,
+			agentId: agent.id,
+			botId: identity.clientId,
+			versionAt: agent.updatedAt,
+			settings: this.teamsSettingsOf(agent),
+		});
+		return this.manifestService.fingerprint(current) !== identity.teamsAppFingerprint;
 	}
 
 	private azureBot(identity: BotIdentity | null): TeamsAgentSetupState['azureBot'] {

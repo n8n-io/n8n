@@ -136,6 +136,7 @@ describe('AgentChannelTeamsEditView', () => {
 			provisionedByN8n: true,
 			fileAccessConsentUrl: null,
 			azureBot: null,
+			appOutdated: false,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'Chat with Support Bot, an agent powered by n8n.',
 		});
@@ -391,6 +392,25 @@ describe('AgentChannelTeamsEditView', () => {
 			await fireEvent.click(getByTestId('teams-scope-groups'));
 		};
 
+		it('flags an app the agent has moved on from since it was handed over, until it is again', async () => {
+			const state = await getTeamsSetupState({} as never, 'p', 'a');
+			vi.mocked(getTeamsSetupState).mockResolvedValueOnce({ ...state, appOutdated: true });
+			vi.mocked(getTeamsSetupState).mockResolvedValue({ ...state, appOutdated: false });
+
+			const { getByTestId, findByTestId, queryByTestId } = renderView({
+				props: { ...viewProps, runtime: managedRuntime() },
+				pinia: createTestingPinia(),
+			});
+
+			expect(await findByTestId('teams-managed-app-outdated')).toBeVisible();
+
+			await fireEvent.click(getByTestId('teams-settings-download'));
+
+			await waitFor(() =>
+				expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument(),
+			);
+		});
+
 		it('shows no notice on a managed channel, and flags the older version once changed', async () => {
 			const { getByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, runtime: managedRuntime() },
@@ -429,6 +449,7 @@ describe('AgentChannelTeamsEditView', () => {
 				provisionedByN8n: false,
 				fileAccessConsentUrl: null,
 				azureBot: null,
+				appOutdated: false,
 				defaultDisplayName: 'Support Bot',
 				defaultDescription: 'An agent built with n8n.',
 			});
@@ -460,6 +481,7 @@ describe('AgentChannelTeamsEditView', () => {
 			credentialClaimedBy: null,
 			provisionedByN8n: false,
 			azureBot: null,
+			appOutdated: false,
 			fileAccessConsentUrl: null,
 			defaultDisplayName: 'Support Bot',
 			defaultDescription: 'An agent built with n8n.',

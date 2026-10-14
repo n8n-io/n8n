@@ -228,6 +228,12 @@ const manifestChanged = computed(() => {
 });
 
 /**
+ * Teams holds an older version: the form holds a change, or the saved channel
+ * already differs from what n8n last handed over, for example after a rename.
+ */
+const appOutdated = computed(() => manifestChanged.value || Boolean(setupState.value?.appOutdated));
+
+/**
  * Saving is gated on the credential actually reaching Microsoft. Without this
  * the channel connects on a wrong secret and fails on the first message, long
  * after the setup said it succeeded.
@@ -553,7 +559,9 @@ function showDownloaded() {
 // The package matches what n8n has saved, not the unsaved form, so an
 // installed app never runs on settings that were never saved.
 async function downloadSaved() {
-	if (await downloadPackage(props.savedSettings, savedCredentialId.value)) showDownloaded();
+	if (!(await downloadPackage(props.savedSettings, savedCredentialId.value))) return;
+	showDownloaded();
+	await loadSetupState();
 }
 
 /**
@@ -923,6 +931,8 @@ defineExpose({
 				:unsaved-changes="manifestChanged"
 				:persist-channel="persistChannel"
 				:azure-bot="setupState?.azureBot ?? null"
+				:outdated="appOutdated"
+				@installed="loadSetupState"
 			/>
 			<template v-else>
 				<div :class="$style.field" data-testid="teams-identity-field">
@@ -940,8 +950,17 @@ defineExpose({
 						"
 						:ready="canDownloadPackage"
 						:loading="downloading"
+						:outdated="appOutdated"
 						@download="downloadSaved"
 					/>
+					<N8nText
+						v-if="appOutdated"
+						size="small"
+						:class="$style.outdated"
+						data-testid="teams-app-outdated"
+					>
+						{{ i18n.baseText('agents.channels.teams.settings.outdated') }}
+					</N8nText>
 					<N8nText
 						v-if="downloadError"
 						size="small"
@@ -1026,6 +1045,10 @@ defineExpose({
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
+}
+
+.outdated {
+	color: var(--text-color--warning);
 }
 
 .azureLink {

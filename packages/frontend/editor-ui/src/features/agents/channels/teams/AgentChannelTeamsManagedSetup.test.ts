@@ -649,6 +649,7 @@ describe('AgentChannelTeamsManagedSetup', () => {
 						credentialClaimedBy: null,
 						provisionedByN8n: true,
 						azureBot: null,
+						appOutdated: false,
 						fileAccessConsentUrl: null,
 						defaultDisplayName: 'Support Bot',
 						defaultDescription: 'An agent',

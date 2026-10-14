@@ -1,5 +1,4 @@
 import type { TeamsAzureSubscription, TeamsProvisionedBotSummary } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -9,12 +8,10 @@ import { withTeamsFailure } from './teams-setup-telemetry.service';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError } from '@n8n/errors';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-
 import { armNextLinkPath, type ArmResponse, TeamsArmService } from './teams-arm.service';
 import { graphErrorCode } from './teams-graph.service';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
-import { BOT_CREDENTIAL_TYPE } from './teams-entra-provisioning.service';
+import { TeamsCredentialNotesService } from './teams-credential-notes.service';
 import { TEAMS_MANAGER_CREDENTIAL_TYPE } from './teams-managed-setup.service';
 import { AZURE_RESOURCE, TeamsManagerTokenService } from './teams-manager-token.service';
 import { stringProperty } from '../../integration-helpers';
@@ -80,8 +77,7 @@ export class TeamsBotProvisioningService {
 		private readonly tokens: TeamsManagerTokenService,
 		private readonly armTemplateService: TeamsArmTemplateService,
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly credentialsService: CredentialsService,
-		private readonly logger: Logger,
+		private readonly notes: TeamsCredentialNotesService,
 	) {}
 
 	/**
@@ -205,59 +201,13 @@ export class TeamsBotProvisioningService {
 			);
 		}
 
-		await this.rememberBot(options, botName);
+		// Azure has no read of a bot by the app it signs for without the
+		// subscription, so the channel credential keeps both for the settings link.
+		await this.notes.write(options.user, options.credentialId, {
+			azureBotName: botName,
+			azureSubscriptionId: options.subscriptionId,
+		});
 		return { botName, resourceGroup: RESOURCE_GROUP, subscriptionId: options.subscriptionId };
-	}
-
-	/**
-	 * Azure has no read of a bot by the app it signs for without the
-	 * subscription, so the channel credential keeps both for the settings link.
-	 */
-	private async rememberBot(options: ProvisionBotOptions, botName: string): Promise<void> {
-		try {
-			const credential = await this.credentialsFinderService.findCredentialForUser(
-				options.credentialId,
-				options.user,
-				['credential:update'],
-			);
-			if (credential?.type !== BOT_CREDENTIAL_TYPE) return;
-			// Raw: a redacted read written back would store the blanking sentinel.
-			const current = (await this.credentialsService.decrypt(credential, true)) as Record<
-				string,
-				unknown
-			>;
-			// Decrypt answers `{}` when it fails, and writing that back would erase the secret.
-			if (!stringProperty(current, 'clientId')) return;
-			if (
-				current.azureBotName === botName &&
-				current.azureSubscriptionId === options.subscriptionId
-			) {
-				return;
-			}
-			const updated = {
-				...current,
-				azureBotName: botName,
-				azureSubscriptionId: options.subscriptionId,
-			};
-			const encrypted = await this.credentialsService.createEncryptedData({
-				id: credential.id,
-				name: credential.name,
-				type: credential.type,
-				data: updated,
-			});
-			await this.credentialsService.update(
-				credential.id,
-				encrypted,
-				{ kind: 'user', user: options.user },
-				updated,
-			);
-		} catch (error) {
-			// The bot works either way; only the settings link is lost.
-			this.logger.warn('[TeamsBotProvisioning] Could not record the bot', {
-				agentId: options.agentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 
 	/**

@@ -10,6 +10,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ArmResponse, TeamsArmService } from '../teams-arm.service';
 import type { TeamsArmTemplateService } from '../teams-arm-template.service';
 import { TeamsBotProvisioningService } from '../teams-bot-provisioning.service';
+import { TeamsCredentialNotesService } from '../teams-credential-notes.service';
 import type { TeamsManagerTokenService } from '../teams-manager-token.service';
 
 const user = mock<User>({ id: 'user-1' });
@@ -68,8 +69,7 @@ describe('TeamsBotProvisioningService', () => {
 			tokens,
 			armTemplateService,
 			credentialsFinderService,
-			credentialsService,
-			mock<Logger>(),
+			new TeamsCredentialNotesService(credentialsFinderService, credentialsService, mock<Logger>()),
 		);
 
 		tokens.acquire.mockResolvedValue('azure-token');

@@ -8,6 +8,7 @@ import { BadRequestError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { TeamsCatalogService } from '../teams-catalog.service';
+import { TeamsCredentialNotesService } from '../teams-credential-notes.service';
 import type { GraphResponse, TeamsGraphService } from '../teams-graph.service';
 import type { TeamsManagerTokenService } from '../teams-manager-token.service';
 import type { TeamsManifestService } from '../teams-manifest.service';
@@ -102,10 +103,15 @@ describe('TeamsCatalogService', () => {
 			credentialsFinderService,
 			credentialsService,
 			mock<Logger>(),
+			new TeamsCredentialNotesService(credentialsFinderService, credentialsService, mock<Logger>()),
 		);
 
 		tokens.acquire.mockResolvedValue('graph-token');
-		setupService.buildPackage.mockResolvedValue(ARCHIVE);
+		setupService.buildPackage.mockResolvedValue({
+			archive: ARCHIVE,
+			fingerprint: 'fingerprint-1',
+			credentialId: 'bot-cred-1',
+		});
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(
 			mock<CredentialsEntity>({
 				id: 'manager-1',
@@ -520,6 +526,7 @@ describe('TeamsCatalogService', () => {
 					publishedTeamsAppId: TEAMS_APP_ID,
 					publishedTeamsAppState: 'published',
 					publishedTeamsAppAt: expect.any(String),
+					teamsAppFingerprint: 'fingerprint-1',
 				}),
 			);
 		});

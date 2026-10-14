@@ -57,6 +57,13 @@ const props = defineProps<{
 	persistChannel?: () => Promise<boolean>;
 	/** The bot the setup made. Null before n8n kept it, which falls back to the bot list. */
 	azureBot?: TeamsAgentSetupState['azureBot'];
+	/** Teams holds an older version than the agent and the form describe. */
+	outdated?: boolean;
+}>();
+
+const emit = defineEmits<{
+	/** n8n handed Teams a new version, so what it holds is worth reading again. */
+	installed: [];
 }>();
 
 type Busy = 'publish' | 'download';
@@ -133,6 +140,7 @@ const publish = async () =>
 		// False when the sign-in or agent changed under it, so the catalogue was not read back.
 		if (!(await props.runtime.publishApp(publishing))) return;
 		const status = catalogState.value?.status;
+		emit('installed');
 		if (status === 'published') {
 			toast.showMessage({
 				type: 'success',
@@ -169,6 +177,7 @@ const downloadPackage = async () =>
 			props.settings,
 		);
 		saveAs(blob, TEAMS_PACKAGE_FILENAME);
+		emit('installed');
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
@@ -212,7 +221,7 @@ watch(
 			:name="name"
 			:description="description"
 			ready
-			:outdated="unsavedChanges"
+			:outdated="outdated"
 		>
 			<template #action>
 				<N8nSpinner v-if="busy" size="medium" data-testid="teams-settings-install-spinner" />
@@ -234,7 +243,7 @@ watch(
 		</AgentChannelTeamsIdentityCard>
 
 		<N8nText
-			v-if="unsavedChanges"
+			v-if="outdated"
 			size="small"
 			:class="$style.outdated"
 			data-testid="teams-managed-app-outdated"

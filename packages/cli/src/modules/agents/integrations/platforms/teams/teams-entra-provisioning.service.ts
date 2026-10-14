@@ -519,6 +519,7 @@ export class TeamsEntraProvisioningService {
 			// The bot signs for the app it was made with, so it does not move either.
 			delete existingData.azureBotName;
 			delete existingData.azureSubscriptionId;
+			delete existingData.teamsAppFingerprint;
 		}
 
 		const data = {

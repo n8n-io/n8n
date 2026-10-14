@@ -325,8 +325,10 @@ describe('AgentChannelTeamsManagedApp', () => {
 	});
 
 	it('confirms a download in a toast', async () => {
-		const { getByTestId } = render();
+		const { getByTestId, emitted } = render();
 		await fireEvent.click(getByTestId('teams-settings-download'));
+
+		await waitFor(() => expect(emitted()).toHaveProperty('installed'));
 
 		await waitFor(() =>
 			expect(showMessage).toHaveBeenCalledWith(
@@ -352,11 +354,11 @@ describe('AgentChannelTeamsManagedApp', () => {
 		);
 	});
 
-	it('says Teams holds an older version while a manifest change is open', async () => {
-		const { getByTestId, queryByTestId, rerender } = render({ unsavedChanges: false });
+	it('says when Teams holds an older version', async () => {
+		const { getByTestId, queryByTestId, rerender } = render({ outdated: false });
 		expect(queryByTestId('teams-managed-app-outdated')).not.toBeInTheDocument();
 
-		await rerender({ unsavedChanges: true });
+		await rerender({ outdated: true });
 
 		expect(getByTestId('teams-managed-app-outdated')).toBeVisible();
 	});
