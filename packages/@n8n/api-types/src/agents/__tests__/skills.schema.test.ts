@@ -50,6 +50,15 @@ describe('CreateSkillDto', () => {
 		expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
 	});
 
+	it('rejects allowed tools, which hub skills ignore', () => {
+		expect(
+			CreateSkillDto.safeParse({
+				scope: 'instance',
+				skill: { ...skill, allowedTools: ['search'] },
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects a skill without instructions', () => {
 		expect(
 			CreateSkillDto.safeParse({ scope: 'instance', skill: { ...skill, instructions: '' } })

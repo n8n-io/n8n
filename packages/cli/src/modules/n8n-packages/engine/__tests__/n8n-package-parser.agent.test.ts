@@ -88,7 +88,7 @@ describe('N8nPackageParser.getAgents', () => {
 			const expected = input.files[`${target}/agent.json`] as SerializedAgent;
 			expect(parsed.config).toMatchObject({
 				model: '',
-				skills: [{ id: 'shared-skill', enabled: false }],
+				skills: [{ id: 'shared-skill' }],
 				tools: [{ id: 'shared_tool', enabled: false, requireApproval: true }],
 				tasks: [{ id: `${parsed.sourceAgentId}_task`, enabled: false }],
 				mcpServers: [{ name: 'Reference', url: '' }],
