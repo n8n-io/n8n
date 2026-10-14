@@ -123,9 +123,11 @@ function toPublicFolder(folder: Folder) {
 	};
 }
 
-/** Read endpoints return only the folder id. */
-function toPublicParentFolderRef(folder: Folder | null | undefined) {
-	return folder ? { id: folder.id } : null;
+/** List rows carry the folder's name and parent, but not its timestamps. */
+function toPublicFolderSummary(folder: Folder | null | undefined) {
+	return folder
+		? { id: folder.id, name: folder.name, parentFolderId: folder.parentFolderId }
+		: null;
 }
 
 function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
@@ -302,7 +304,7 @@ export class WorkflowsPublicController {
 				...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
 				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
 				shared: workflow.shared.map(toPublicListSharedWorkflow),
-				parentFolder: toPublicParentFolderRef(workflow.parentFolder),
+				parentFolder: toPublicFolderSummary(workflow.parentFolder),
 				activeVersion: workflow.activeVersion
 					? toPublicActiveVersionWithoutHistory(workflow.activeVersion)
 					: null,
@@ -381,7 +383,7 @@ export class WorkflowsPublicController {
 
 		return {
 			...this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData }),
-			parentFolder: toPublicParentFolderRef(workflow.parentFolder),
+			parentFolder: workflow.parentFolder ? toPublicFolder(workflow.parentFolder) : null,
 		};
 	}
 

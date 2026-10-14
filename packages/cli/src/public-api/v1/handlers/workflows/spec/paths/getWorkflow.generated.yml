@@ -633,8 +633,23 @@ responses:
               properties:
                 id:
                   type: string
+                name:
+                  type: string
+                parentFolderId:
+                  type: string
+                  nullable: true
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
               required:
                 - id
+                - name
+                - parentFolderId
+                - createdAt
+                - updatedAt
               description: Folder that contains the workflow, or null at the project root
           required:
             - id

@@ -843,7 +843,11 @@ describe('GET /workflows', () => {
 		const rootItem = response.body.data.find((w: { id: string }) => w.id === rootWorkflow.id);
 		const folderItem = response.body.data.find((w: { id: string }) => w.id === folderWorkflow.id);
 		expect(rootItem.parentFolder).toBeNull();
-		expect(folderItem.parentFolder).toEqual({ id: folder.id });
+		expect(folderItem.parentFolder).toEqual({
+			id: folder.id,
+			name: 'List Folder',
+			parentFolderId: null,
+		});
 	});
 
 	test('should return activeVersion when filtering by active=true', async () => {
@@ -1096,14 +1100,27 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.parentFolder).toBeNull();
 	});
 
-	test('should return only the parent folder id for a workflow in a folder', async () => {
+	test('should return the parent folder of a workflow in a folder', async () => {
 		const folder = await createFolder(memberPersonalProject, { name: 'Read Folder' });
 		const workflow = await createWorkflowWithHistory({ parentFolder: folder }, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.parentFolder).toEqual({ id: folder.id });
+		expect(Object.keys(response.body.parentFolder).sort()).toEqual([
+			'createdAt',
+			'id',
+			'name',
+			'parentFolderId',
+			'updatedAt',
+		]);
+		expect(response.body.parentFolder).toEqual({
+			id: folder.id,
+			name: 'Read Folder',
+			parentFolderId: null,
+			createdAt: folder.createdAt.toISOString(),
+			updatedAt: folder.updatedAt.toISOString(),
+		});
 	});
 
 	test('should return the immediate parent folder for a workflow in a subfolder', async () => {
@@ -1117,7 +1134,11 @@ describe('GET /workflows/:id', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.parentFolder).toEqual({ id: innerFolder.id });
+		expect(response.body.parentFolder).toMatchObject({
+			id: innerFolder.id,
+			name: 'Inner Folder',
+			parentFolderId: outerFolder.id,
+		});
 	});
 });
 
