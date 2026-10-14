@@ -6,6 +6,7 @@ import {
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -90,6 +91,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
@@ -198,11 +200,11 @@ function getCredentialTypeDisplayName(credentialType: string): string {
 function getCredentialsForProvider(provider: AgentModelProvider) {
 	const credentialsById = new Map<
 		string,
-		ReturnType<typeof credentialsStore.getCredentialsByType>[number]
+		ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
 	>();
 
 	for (const credentialType of getProviderCredentialTypes(provider)) {
-		for (const credential of credentialsStore.getCredentialsByType(credentialType)) {
+		for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
 			if (!credentialsById.has(credential.id)) {
 				credentialsById.set(credential.id, credential);
 			}
@@ -637,7 +639,21 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 			undefined,
 			{
 				hideAskAssistant: true,
-				onCredentialCreated: function selectCreatedCredential(credential) {
+				onCredentialCreated: async function selectCreatedCredential(credential) {
+					// The picker reads the scoped usable list, which only a fetch writes.
+					// Refetch so the new credential is in the list before it is selected,
+					// else the picker treats the selection as invalid and falls back.
+					const scopeProjectId = createCredentialProjectId.value;
+					try {
+						await (scopeProjectId
+							? credentialsStore.fetchUsableCredentials({
+									projectId: scopeProjectId,
+									forAgent: true,
+								})
+							: credentialsStore.refreshUsableCredentials());
+					} catch (error) {
+						toast.showError(error, i18n.baseText('agents.builder.credentials.refreshError'));
+					}
 					selectCredentialAndResolveDefaultModel(provider, credential.id);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),

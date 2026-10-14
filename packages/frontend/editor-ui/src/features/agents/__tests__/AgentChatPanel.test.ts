@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { flushPromises, mount } from '@vue/test-utils';
-import { computed, defineComponent, h, ref, nextTick } from 'vue';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
 import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
@@ -22,6 +22,17 @@ import {
 import type { AgentJsonConfig } from '../types';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
 import { planMessage, planView } from './fixtures/agent-plan';
+import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
+import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import {
+	TEST_EXTENSION_KEY,
+	testInteractionExtension,
+	testInteractionExtensions,
+	type TestCardInput,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
+
+// A live panel from an earlier test retries its queued message when the shared mocks change.
+enableAutoUnmount(afterEach);
 
 type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
 const isMacOsMock = ref(false);
@@ -37,6 +48,7 @@ const refreshMock = vi.fn();
 const resumeMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const focusInputMock = vi.fn();
+const openFilePickerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 // Mirrors the real composable: clearing drops the codes from the live
 // messages (and, untestable here, the pending-restore bucket).
@@ -80,6 +92,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 let onAgentUnavailable: (() => void) | undefined;
+let streamInteractionExtensions: readonly AgentsChatInteractionExtension[] | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
@@ -215,7 +228,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 		default: defineComponent({
 			name: 'ChatInputBase',
 			template:
-				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="above" /><textarea ref="input" /><slot name="footer-start" /></form>',
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="above" /><slot name="attachments" /><textarea ref="input" :value="modelValue" /><slot name="footer-start" /><slot name="right-actions" /></form>',
 			props: [
 				'modelValue',
 				'placeholder',
@@ -236,6 +249,8 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 						focusInputMock(options);
 						input.value?.focus(options);
 					},
+					openFilePicker: openFilePickerMock,
+					getInputElement: () => input.value,
 				});
 				return { input };
 			},
@@ -247,30 +262,49 @@ vi.mock('../components/AgentChatEmptyState.vue', () => ({
 	default: { template: '<div data-testid="empty-state-stub" />' },
 }));
 
-vi.mock('../components/AgentChatMessageList.vue', () => ({
-	default: {
-		name: 'AgentChatMessageList',
-		template: '<div data-testid="message-list-stub" />',
-		props: [
-			'messages',
-			'messagingState',
-			'canIncreaseBudget',
-			'budgetIncreasePending',
-			'retryMessageId',
-			'retryDisabled',
-		],
-		emits: ['send-to-assistant', 'increase-budget', 'retry'],
-	},
-}));
+vi.mock('../components/AgentChatMessageList.vue', async () => {
+	const { computed: vueComputed, inject } = await import('vue');
+	const { AGENTS_CHAT_INTERACTION_EXTENSIONS } = await import(
+		'@/features/ai/shared/agentsChat/interactionRegistry'
+	);
+	return {
+		default: {
+			name: 'AgentChatMessageList',
+			// Renders the message-actions slot once, as the real list does for a finished reply.
+			template:
+				'<div data-testid="message-list-stub" :data-extension-keys="extensionKeys"><slot name="message-actions" :message="{ id: \'reply-1\' }" execution-id="exec-1" /></div>',
+			props: [
+				'messages',
+				'messagingState',
+				'canIncreaseBudget',
+				'budgetIncreasePending',
+				'retryMessageId',
+				'retryDisabled',
+			],
+			emits: ['send-to-assistant', 'increase-budget', 'retry'],
+			setup() {
+				// The real list renders cards through InteractiveCard, which injects these.
+				const extensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
+				return {
+					extensionKeys: vueComputed(
+						() => extensions?.value.map((extension) => extension.key).join(',') ?? '',
+					),
+				};
+			},
+		},
+	};
+});
 
 vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: {
 		channel?: { value: 'chat' | 'n8n-chat' };
 		onHistoryLoaded: (count: number) => void;
 		onAgentUnavailable?: () => void;
+		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		onAgentUnavailable = options.onAgentUnavailable;
+		streamInteractionExtensions = options.interactionExtensions;
 		return {
 			capabilities: computed(() => {
 				// Mirrors the composable: every capability is off on the n8n Chat channel.
@@ -350,6 +384,7 @@ describe('AgentChatPanel', () => {
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
 		onAgentUnavailable = undefined;
+		streamInteractionExtensions = undefined;
 	});
 
 	function mountPanel(
@@ -368,8 +403,12 @@ describe('AgentChatPanel', () => {
 			centerEmptyState: boolean;
 			newSession: boolean;
 			clientContext: () => Record<string, unknown> | undefined;
+			placeholder: string;
+			showAttachButton: boolean;
+			interactionExtensions: readonly AgentsChatInteractionExtension[];
 		}> = {},
 		attachTo?: HTMLElement,
+		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
 	) {
 		const router = createRouter({
 			history: createMemoryHistory(),
@@ -384,6 +423,7 @@ describe('AgentChatPanel', () => {
 		});
 		return mount(AgentChatPanel, {
 			attachTo,
+			slots,
 			global: { plugins: [router] },
 			props: {
 				projectId: 'p1',
@@ -588,6 +628,171 @@ describe('AgentChatPanel', () => {
 
 		expect(wrapper.emitted('first-user-message')?.at(-1)).toEqual(['Review my draft']);
 		wrapper.unmount();
+	});
+
+	describe('interactionExtensions', () => {
+		beforeEach(() => {
+			messagesMock.value = [{ id: 'm1', role: 'assistant', content: 'Hi' } as ChatMessage];
+		});
+
+		it('passes the extensions to the stream and to the cards of the message list', () => {
+			const wrapper = mountPanel({ interactionExtensions: testInteractionExtensions });
+
+			expect(streamInteractionExtensions).toEqual(testInteractionExtensions);
+			expect(
+				wrapper.get('[data-testid="message-list-stub"]').attributes('data-extension-keys'),
+			).toBe(TEST_EXTENSION_KEY);
+			wrapper.unmount();
+		});
+
+		it('uses no extensions by default', () => {
+			const wrapper = mountPanel();
+
+			expect(streamInteractionExtensions).toEqual([]);
+			expect(
+				wrapper.get('[data-testid="message-list-stub"]').attributes('data-extension-keys'),
+			).toBe('');
+			wrapper.unmount();
+		});
+
+		describe('composerResumeData', () => {
+			const composer = (wrapper: ReturnType<typeof mountPanel>) =>
+				wrapper.findComponent({ name: 'ChatInputBase' });
+
+			function openExtensionMessage(): ChatMessage {
+				return {
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: INTERACTION_EXTENSION_TOOL_NAME,
+						extensionKey: TEST_EXTENSION_KEY,
+						toolCallId: 'tc-ext',
+						runId: 'run-ext',
+						input: { question: 'Continue?', tool: 'ask_host' },
+					},
+				};
+			}
+
+			function withComposerResumeData(
+				composerResumeData: (input: TestCardInput, text: string) => unknown,
+			): readonly AgentsChatInteractionExtension[] {
+				return [{ ...testInteractionExtension, composerResumeData }];
+			}
+
+			it('answers the open extension card with the resume data of its extension', async () => {
+				messagesMock.value = [openExtensionMessage()];
+				resumeMock.mockResolvedValueOnce('sent');
+				const composerResumeData = vi.fn((_input: TestCardInput, text: string) => ({
+					approved: false,
+					feedback: text,
+				}));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'use Teams instead');
+				input.vm.$emit('submit');
+				await flushPromises();
+
+				expect(composerResumeData).toHaveBeenCalledWith(
+					{ question: 'Continue?', tool: 'ask_host' },
+					'use Teams instead',
+				);
+				expect(resumeMock).toHaveBeenCalledWith(
+					{
+						runId: 'run-ext',
+						toolCallId: 'tc-ext',
+						resumeData: { approved: false, feedback: 'use Teams instead' },
+					},
+					expect.any(Function),
+				);
+				expect(cancelAndSteerMock).not.toHaveBeenCalled();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+
+				resumeMock.mock.lastCall?.[1]?.();
+				await nextTick();
+				expect(input.props('modelValue')).toBe('');
+				wrapper.unmount();
+			});
+
+			it('keeps cancel-and-steer when composerResumeData returns undefined', async () => {
+				messagesMock.value = [openExtensionMessage()];
+				const composerResumeData = vi.fn(() => undefined);
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('go another direction');
+				await flushPromises();
+
+				expect(composerResumeData).toHaveBeenCalledOnce();
+				expect(resumeMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).toHaveBeenCalledWith(
+					'go another direction',
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			});
+
+			it('keeps cancel-and-steer for a built-in question card', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const composerResumeData = vi.fn(() => ({ approved: false }));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('go another direction');
+				await flushPromises();
+
+				expect(composerResumeData).not.toHaveBeenCalled();
+				expect(resumeMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).toHaveBeenCalledWith(
+					'go another direction',
+					expect.any(Function),
+				);
+				wrapper.unmount();
+			});
+
+			it('does not answer a waiting card', async () => {
+				messagesMock.value = [openWaitMessage()];
+				sendMessageMock.mockResolvedValueOnce('sent');
+				const composerResumeData = vi.fn(() => ({ approved: false }));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('still there?');
+				await flushPromises();
+
+				expect(composerResumeData).not.toHaveBeenCalled();
+				expect(resumeMock).not.toHaveBeenCalled();
+				expect(sendMessageMock).toHaveBeenCalledOnce();
+				wrapper.unmount();
+			});
+
+			it('keeps a busy card answer as a draft and does not retry it', async () => {
+				messagesMock.value = [openExtensionMessage()];
+				isCancellingMock.value = true;
+				resumeMock.mockResolvedValueOnce('busy');
+				const composerResumeData = vi.fn(() => ({ approved: false }));
+				const wrapper = mountPanel({
+					interactionExtensions: withComposerResumeData(composerResumeData),
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('use Teams');
+				await flushPromises();
+
+				isCancellingMock.value = false;
+				await flushPromises();
+
+				expect(resumeMock).toHaveBeenCalledOnce();
+				expect(composer(wrapper).props('modelValue')).toBe('use Teams');
+				wrapper.unmount();
+			});
+		});
 	});
 
 	describe('centerEmptyState', () => {
@@ -3210,6 +3415,441 @@ describe('AgentChatPanel', () => {
 		onAgentUnavailable?.();
 
 		expect(wrapper.emitted('agent-unavailable')).toHaveLength(1);
+	});
+
+	describe('host extension API', () => {
+		type HostPanelVm = {
+			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			isDirty: () => boolean;
+			setDraft: (text: string) => void;
+			openFilePicker: () => void;
+			messages: ChatMessage[];
+			isStreaming: boolean;
+			isLoadingHistory: boolean;
+		};
+		const hostVm = (wrapper: ReturnType<typeof mountPanel>) => wrapper.vm as unknown as HostPanelVm;
+		const composer = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper.findComponent({ name: 'ChatInputBase' });
+
+		it('keeps the current composer behavior when the host sets no props', () => {
+			const wrapper = mountPanel();
+			const input = composer(wrapper);
+
+			expect(input.props('placeholder')).toBe('Message Agent…');
+			expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+			expect(input.props('showAttach')).toBe(true);
+			expect(input.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+		});
+
+		describe('slots', () => {
+			it('replaces the default empty state with the empty-state slot', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'empty-state': '<div data-testid="host-empty" />',
+				});
+
+				expect(wrapper.find('[data-testid="host-empty"]').exists()).toBe(true);
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+			});
+
+			it('renders the inline-offers slot between the transcript and the composer', () => {
+				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+				const wrapper = mountPanel({}, undefined, {
+					'inline-offers': '<div data-testid="host-offer" />',
+				});
+
+				const html = wrapper.html();
+				expect(wrapper.find('[data-testid="host-offer"]').exists()).toBe(true);
+				expect(html.indexOf('message-list-stub')).toBeLessThan(html.indexOf('host-offer'));
+				expect(html.indexOf('host-offer')).toBeLessThan(html.indexOf('data-testid="chat-input"'));
+			});
+
+			it('renders the above-input slot before the composer', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'above-input': '<div data-testid="host-checklist" />',
+				});
+
+				const html = wrapper.html();
+				expect(wrapper.find('[data-testid="host-checklist"]').exists()).toBe(true);
+				expect(html.indexOf('host-checklist')).toBeLessThan(
+					html.indexOf('data-testid="chat-input"'),
+				);
+			});
+
+			it('renders the composer-attachments slot without staged files', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'composer-attachments': '<span data-testid="host-chip" />',
+				});
+
+				expect(wrapper.find('[data-testid="chat-input"] [data-testid="host-chip"]').exists()).toBe(
+					true,
+				);
+			});
+
+			it('renders the footer-start and input-footer slots', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'footer-start': '<button data-testid="host-menu" />',
+					'input-footer': '<div data-testid="host-footer" />',
+				});
+
+				expect(wrapper.find('[data-testid="chat-input"] [data-testid="host-menu"]').exists()).toBe(
+					true,
+				);
+				expect(wrapper.find('[data-testid="host-footer"]').exists()).toBe(true);
+			});
+		});
+
+		describe('props', () => {
+			it('uses the host placeholder for the default composer state', () => {
+				expect(composer(mountPanel({ placeholder: 'Ask anything' })).props('placeholder')).toBe(
+					'Ask anything',
+				);
+			});
+
+			it('keeps the answer-question placeholder over the host placeholder', () => {
+				messagesMock.value = [openInteractiveMessage()];
+
+				expect(composer(mountPanel({ placeholder: 'Ask anything' })).props('placeholder')).toBe(
+					'agents.chat.answerQuestionPlaceholder',
+				);
+			});
+
+			it('hides the attach button when the host turns it off', () => {
+				const wrapper = mountPanel({ showAttachButton: false });
+
+				expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
+			});
+		});
+
+		describe('message-accepted', () => {
+			it('emits the text and files once the server accepts a new message', async () => {
+				const file = new File(['img'], 'photo.png', { type: 'image/png' });
+				sendMessageMock.mockImplementationOnce(
+					async (_text: string, _files: File[] | undefined, onAccepted: (id?: string) => void) => {
+						onAccepted('queue-1');
+						return 'sent';
+					},
+				);
+				const wrapper = mountPanel();
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'hello');
+				input.vm.$emit('files-selected', [file]);
+				input.vm.$emit('submit');
+				await flushPromises();
+
+				expect(wrapper.emitted('message-accepted')).toEqual([[{ text: 'hello', files: [file] }]]);
+			});
+
+			it('does not emit when the server does not accept the message', async () => {
+				sendMessageMock.mockResolvedValueOnce('busy');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('hello');
+				await flushPromises();
+
+				expect(wrapper.emitted('message-accepted')).toBeUndefined();
+			});
+		});
+
+		describe('exposed API', () => {
+			it('sets the draft without sending it and reports it as dirty', async () => {
+				const wrapper = mountPanel();
+				expect(hostVm(wrapper).isDirty()).toBe(false);
+
+				hostVm(wrapper).setDraft('draft text');
+				await nextTick();
+
+				expect(composer(wrapper).props('modelValue')).toBe('draft text');
+				expect(hostVm(wrapper).isDirty()).toBe(true);
+				expect(sendMessageMock).not.toHaveBeenCalled();
+			});
+
+			it('opens the composer file picker', () => {
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).openFilePicker();
+
+				expect(openFilePickerMock).toHaveBeenCalledOnce();
+			});
+
+			it('exposes the messages and the stream state', async () => {
+				const message = { id: 'm1', role: 'user', content: 'hi' } as ChatMessage;
+				const wrapper = mountPanel();
+				expect(hostVm(wrapper).messages).toEqual([]);
+				expect(hostVm(wrapper).isStreaming).toBe(false);
+				expect(hostVm(wrapper).isLoadingHistory).toBe(false);
+
+				messagesMock.value = [message];
+				isStreamingMock.value = true;
+				isLoadingHistoryMock.value = true;
+				await nextTick();
+
+				expect(hostVm(wrapper).messages).toEqual([message]);
+				expect(isReadonly(hostVm(wrapper).messages)).toBe(true);
+				expect(isReadonly(hostVm(wrapper).messages[0])).toBe(true);
+				expect(hostVm(wrapper).isStreaming).toBe(true);
+				expect(hostVm(wrapper).isLoadingHistory).toBe(true);
+				// The next describe block does not reset these mocks.
+				isStreamingMock.value = false;
+				isLoadingHistoryMock.value = false;
+			});
+		});
+	});
+
+	describe('composer and message extensions', () => {
+		type ComposerVm = {
+			setDraft: (text: string) => void;
+			isDirty: () => boolean;
+			getInputElement: () => HTMLTextAreaElement | undefined;
+			insertText: (text: string) => Promise<void>;
+			addComposerAttachment: (
+				chip: { id: string; label: string; icon?: string },
+				clientContextPatch?: Record<string, unknown>,
+			) => void;
+			removeComposerAttachment: (id: string) => void;
+			sendMessageFromOutside: (message: string, files?: File[]) => void;
+		};
+		const composerVm = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper.vm as unknown as ComposerVm;
+		const composer = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper.findComponent({ name: 'ChatInputBase' });
+		const acceptOnSend = () =>
+			sendMessageMock.mockImplementationOnce(
+				async (_text: string, _files: File[] | undefined, onAccepted: (id?: string) => void) => {
+					onAccepted('queue-1');
+					return 'sent';
+				},
+			);
+
+		it('renders no composer chips or extension content by default', () => {
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="chat-input"]').html()).not.toContain('host-');
+		});
+
+		it('renders the composer-actions slot in the composer', () => {
+			const wrapper = mountPanel({}, undefined, {
+				'composer-actions': '<button data-testid="host-mention-button" />',
+			});
+
+			expect(
+				wrapper.find('[data-testid="chat-input"] [data-testid="host-mention-button"]').exists(),
+			).toBe(true);
+		});
+
+		it('passes the reply and its execution id to the message-actions slot', () => {
+			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+			const slot = vi.fn((props: Record<string, unknown>) =>
+				h('button', { 'data-testid': 'host-thumbs', 'data-execution-id': props.executionId }),
+			);
+			const wrapper = mountPanel({}, undefined, { 'message-actions': slot });
+
+			expect(slot).toHaveBeenCalledWith(
+				expect.objectContaining({ message: { id: 'reply-1' }, executionId: 'exec-1' }),
+			);
+			expect(wrapper.find('[data-testid="host-thumbs"]').attributes('data-execution-id')).toBe(
+				'exec-1',
+			);
+		});
+
+		it('exposes the composer input element', () => {
+			const wrapper = mountPanel();
+
+			expect(composerVm(wrapper).getInputElement()).toBeInstanceOf(HTMLTextAreaElement);
+		});
+
+		it('inserts text at the caret and moves the caret after it', async () => {
+			const wrapper = mountPanel({}, document.body);
+			composerVm(wrapper).setDraft('Build a flow');
+			await nextTick();
+			const element = composerVm(wrapper).getInputElement();
+			element?.setSelectionRange(6, 6);
+
+			await composerVm(wrapper).insertText('@Slack ');
+
+			expect(composer(wrapper).props('modelValue')).toBe('Build @Slack a flow');
+			expect(element?.selectionStart).toBe(13);
+			expect(sendMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('replaces the selected text when it inserts text', async () => {
+			const wrapper = mountPanel({}, document.body);
+			composerVm(wrapper).setDraft('Use @wf now');
+			await nextTick();
+			composerVm(wrapper).getInputElement()?.setSelectionRange(4, 7);
+
+			await composerVm(wrapper).insertText('@Invoices');
+
+			expect(composer(wrapper).props('modelValue')).toBe('Use @Invoices now');
+		});
+
+		it('renders a staged chip and removes it from its remove button', async () => {
+			const wrapper = mountPanel();
+
+			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			await nextTick();
+
+			const chip = wrapper.find(
+				'[data-testid="chat-input"] [data-test-id="agent-chat-composer-chip"]',
+			);
+			expect(chip.text()).toContain('Invoices');
+
+			await wrapper.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+		});
+
+		it('passes the chips to a host composer-attachments slot instead of the default chips', async () => {
+			const slot = vi.fn((props: Record<string, unknown>) =>
+				h('span', { 'data-testid': 'host-chips' }, JSON.stringify(props.chips)),
+			);
+			const wrapper = mountPanel({}, undefined, { 'composer-attachments': slot });
+
+			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="host-chips"]').text()).toContain('Invoices');
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+			expect(slot).toHaveBeenLastCalledWith(
+				expect.objectContaining({ removeChip: expect.any(Function) }),
+			);
+		});
+
+		it('sends the merged clientContext patches with the next message and then clears the chips', async () => {
+			acceptOnSend();
+			const wrapper = mountPanel();
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment(
+				{ id: 'wf-1', label: 'Invoices' },
+				{ attachments: [{ type: 'workflow', id: 'wf-1' }] },
+			);
+			vm.addComposerAttachment(
+				{ id: 'cred-1', label: 'Slack' },
+				{ attachments: [{ type: 'credential', id: 'cred-1' }] },
+			);
+
+			vm.sendMessageFromOutside('use these');
+			await flushPromises();
+			await flushPromises();
+
+			const clientContext = {
+				attachments: [
+					{ type: 'workflow', id: 'wf-1' },
+					{ type: 'credential', id: 'cred-1' },
+				],
+			};
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'use these',
+				undefined,
+				expect.any(Function),
+				clientContext,
+			);
+			expect(wrapper.emitted('message-accepted')).toEqual([
+				[{ text: 'use these', files: [], clientContext }],
+			]);
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
+
+			sendMessageMock.mockResolvedValueOnce('sent');
+			vm.sendMessageFromOutside('next message');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenLastCalledWith(
+				'next message',
+				undefined,
+				expect.any(Function),
+				undefined,
+			);
+		});
+
+		it('merges the clientContext prop first and then the chip patches', async () => {
+			acceptOnSend();
+			const wrapper = mountPanel({
+				clientContext: () => ({
+					timeZone: 'Europe/Helsinki',
+					mode: 'prop',
+					attachments: [{ type: 'workflow', id: 'open-wf' }],
+				}),
+			});
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment(
+				{ id: 'wf-1', label: 'Invoices' },
+				{ attachments: [{ type: 'workflow', id: 'wf-1' }], mode: 'chip' },
+			);
+			vm.addComposerAttachment(
+				{ id: 'cred-1', label: 'Slack' },
+				{ attachments: [{ type: 'credential', id: 'cred-1' }] },
+			);
+
+			vm.sendMessageFromOutside('use these');
+			await flushPromises();
+			await flushPromises();
+
+			const clientContext = {
+				timeZone: 'Europe/Helsinki',
+				mode: 'chip',
+				attachments: [
+					{ type: 'workflow', id: 'open-wf' },
+					{ type: 'workflow', id: 'wf-1' },
+					{ type: 'credential', id: 'cred-1' },
+				],
+			};
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'use these',
+				undefined,
+				expect.any(Function),
+				clientContext,
+			);
+			expect(wrapper.emitted('message-accepted')).toEqual([
+				[{ text: 'use these', files: [], clientContext }],
+			]);
+		});
+
+		it('replaces a chip with the same id and drops a removed chip from the next send', async () => {
+			acceptOnSend();
+			const wrapper = mountPanel();
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Old' }, { workflowId: 'old' });
+			vm.addComposerAttachment({ id: 'wf-1', label: 'New' }, { workflowId: 'new' });
+			vm.addComposerAttachment({ id: 'wf-2', label: 'Gone' }, { extra: true });
+			vm.removeComposerAttachment('wf-2');
+			await nextTick();
+
+			expect(wrapper.findAll('[data-test-id="agent-chat-composer-chip"]')).toHaveLength(1);
+
+			vm.sendMessageFromOutside('go');
+			await flushPromises();
+			await flushPromises();
+
+			expect(sendMessageMock).toHaveBeenCalledWith('go', undefined, expect.any(Function), {
+				workflowId: 'new',
+			});
+		});
+
+		it('keeps the chips when the server does not accept the message', async () => {
+			sendMessageMock.mockResolvedValueOnce('busy');
+			const wrapper = mountPanel();
+			const vm = composerVm(wrapper);
+			vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { workflowId: 'wf-1' });
+
+			vm.sendMessageFromOutside('try');
+			await flushPromises();
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(true);
+		});
+
+		it('reports chips alone as dirty but does not enable send for them', async () => {
+			const wrapper = mountPanel();
+
+			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { a: 1 });
+			await nextTick();
+
+			expect(composer(wrapper).props('canSubmit')).toBe(false);
+			expect(composerVm(wrapper).isDirty()).toBe(true);
+
+			composerVm(wrapper).removeComposerAttachment('wf-1');
+			expect(composerVm(wrapper).isDirty()).toBe(false);
+		});
 	});
 });
 

@@ -20,10 +20,7 @@ import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import {
-	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
-	INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT,
-} from '@/app/constants/experiments';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
@@ -2487,12 +2484,7 @@ describe('InstanceAiThreadView', () => {
 			reasoning: 'It answered the question.',
 		};
 
-		function seedPreviewVariant(verdict: AgentEvalVerdict = PASS_VERDICT) {
-			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
-				flag === INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name
-					? INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.variant
-					: undefined,
-			);
+		function seedPreviewRun(verdict: AgentEvalVerdict = PASS_VERDICT) {
 			const evalsStore = mockedStore(useAgentEvalsStore);
 			evalsStore.previewRun.mockResolvedValueOnce({
 				status: 'completed',
@@ -2505,9 +2497,9 @@ describe('InstanceAiThreadView', () => {
 			return evalsStore;
 		}
 
-		it('renders the preview panel instead of the generic offer when the experiment is on', async () => {
+		it('renders the preview panel instead of the generic offer when the main eval flag is on', async () => {
 			seedReadyAgent();
-			seedPreviewVariant();
+			seedPreviewRun();
 
 			const { queryByTestId, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2519,7 +2511,7 @@ describe('InstanceAiThreadView', () => {
 		// cannot be reported as a first check. The panel runs and judges its own.
 		it("does not reuse the builder's own test call, since it has no rule or verdict", async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			thread.messages.push({
 				id: 'msg-builder',
 				role: 'assistant',
@@ -2570,7 +2562,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('persists the dismissal on "Later" without requesting the evals focus', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2584,7 +2576,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('persists the dismissal on "Looks good" without requesting the evals focus yet', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			evalsStore.generateDraftCases.mockResolvedValueOnce({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
@@ -2603,7 +2595,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('drops the preview panel if the dataset cache populates from elsewhere before the user commits', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 
 			// `isLoaded`/`getDatasets` are automocked vi.fn()s, so a plain
 			// `mockReturnValue` change is invisible to Vue's reactivity system —
@@ -2638,17 +2630,21 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			const panel = await findByTestId('instance-ai-test-agent-panel');
-			expect(panel).toHaveTextContent('Test your agent');
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('stays hidden while the flag is off', () => {
+		it.each([false, true])('stays hidden while the main flag is off, with force=%s', (force) => {
 			seedReadyAgent();
 			testAgentOfferState.evalsFlagEnabled = false;
+			useSettingsStore().settings.evaluation = {
+				...useSettingsStore().settings.evaluation,
+				forceAgentWorthTesting: force,
+			};
 
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden until the builder has persisted an agent', () => {
@@ -2658,6 +2654,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden while the agent is still being built', () => {
@@ -2667,6 +2664,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('stays hidden once the agent already has test cases', () => {
@@ -2678,6 +2676,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('still suggests when the dataset list has loaded and is empty', async () => {
@@ -2688,7 +2687,7 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
 		it('stays hidden for an agent with no tools or skills', () => {
@@ -2702,6 +2701,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('offers the suggestion when forced, even for an agent with no tools or skills', async () => {
@@ -2718,13 +2718,12 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			// forceAgentWorthTesting also forces the preview experiment on — one
-			// flag gets a local/QA environment the full preview flow without a
-			// separate PostHog override.
+			// The main eval flag enables the preview. The force setting bypasses
+			// the capability check for this agent with no tools or skills.
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('offers the preview variant when forced, with no PostHog override at all', async () => {
+		it('offers the preview when forced, with no PostHog override at all', async () => {
 			seedReadyAgent();
 			const evalsStore = mockedStore(useAgentEvalsStore);
 			evalsStore.previewRun.mockResolvedValueOnce({
@@ -2756,6 +2755,7 @@ describe('InstanceAiThreadView', () => {
 			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument();
 		});
 
 		it('still suggests when a different agent was dismissed', async () => {
@@ -2767,21 +2767,19 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
-		it('requests the evals surface with generation and dismisses on the CTA', async () => {
+		it('runs the initial preview without automatically starting saved checks', async () => {
 			seedReadyAgent();
-			const user = userEvent.setup();
-			const evalsStore = mockedStore(useAgentEvalsStore);
+			const evalsStore = seedPreviewRun();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-generate'));
+			await findByTestId('instance-ai-test-agent-preview-example');
 
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', true);
-			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
-				dismissedContextKeys: ['test-agent:agent-1'],
-			});
+			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
+			expect(evalsStore.startRun).not.toHaveBeenCalled();
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
 		it('still suggests when a finished run left a confirmation unresolved', async () => {
@@ -2792,7 +2790,7 @@ describe('InstanceAiThreadView', () => {
 
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 		});
 
 		it('drops an unclaimed focus request when the thread is left', () => {
@@ -2816,13 +2814,13 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.clearEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal without requesting generation on "Maybe later"', async () => {
+		it('persists the dismissal without requesting generation on "Later"', async () => {
 			seedReadyAgent();
 			const user = userEvent.setup();
-			const evalsStore = mockedStore(useAgentEvalsStore);
+			const evalsStore = seedPreviewRun();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-dismiss'));
+			await user.click(await findByTestId('instance-ai-test-agent-preview-later'));
 
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
@@ -2913,7 +2911,7 @@ describe('InstanceAiThreadView', () => {
 
 		it('clears the latch and opens the evals surface from "Open evals", without requesting generation', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },
@@ -2959,7 +2957,7 @@ describe('InstanceAiThreadView', () => {
 		});
 		it('opens the evals surface on one case without clearing the latch', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },
@@ -3022,7 +3020,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('drops the card when the agent starts working again before the user commits', async () => {
 				seedReadyAgent();
-				seedPreviewVariant();
+				seedPreviewRun();
 				const { findByTestId, queryByTestId } = renderWithStub();
 				await findByTestId('preview-stub');
 
@@ -3033,7 +3031,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('keeps the card once the user has committed, even though the live offer is gone', async () => {
 				seedReadyAgent();
-				seedPreviewVariant();
+				seedPreviewRun();
 				const user = userEvent.setup();
 				const { findByTestId, queryByTestId } = renderWithStub();
 				await user.click(await findByTestId('preview-stub-confirm'));
@@ -3046,7 +3044,7 @@ describe('InstanceAiThreadView', () => {
 
 			it('retargets to another agent built in the same thread, instead of staying on the first', async () => {
 				seedReadyAgent();
-				seedPreviewVariant();
+				seedPreviewRun();
 				const metadata = ref<Record<string, unknown>>({
 					instanceAiAgentBuilderTarget: AGENT_TARGET,
 				});
@@ -3067,22 +3065,22 @@ describe('InstanceAiThreadView', () => {
 				);
 			});
 
-			it('shows the generic offer only while the live offer exists', async () => {
+			it('shows the unclaimed preview only while the live offer exists', async () => {
 				seedReadyAgent();
 				const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
-				expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+				expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 
 				thread.isStreaming = true;
 
 				await vi.waitFor(() =>
-					expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument(),
+					expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument(),
 				);
 			});
 		});
 
 		it('opens the offered agent’s chat preview from "Try agent yourself", keeping the panel and not touching evals', async () => {
 			seedReadyAgent();
-			const evalsStore = seedPreviewVariant();
+			const evalsStore = seedPreviewRun();
 			const user = userEvent.setup();
 			const { findByTestId, queryByTestId } = renderView({
 				props: { threadId: 'thread-1' },

@@ -3,6 +3,7 @@ import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
 import {
 	buildDisplayGroups,
+	DISPLAY_GROUP_KIND,
 	type DisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -147,8 +148,8 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 	}
 
 	return buildDisplayGroups(messages).flatMap((group): DisplayGroup[] => {
-		if (group.kind === 'backgroundJobSignal') return [group];
-		if (group.kind === 'message') {
+		if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return [group];
+		if (group.kind === DISPLAY_GROUP_KIND.MESSAGE) {
 			return [
 				{
 					...group,

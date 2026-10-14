@@ -1,4 +1,6 @@
-import { findEnvelopeKey } from './ai-root-shapes';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { findEnvelopeKey, TEXT_CLASSIFIER_NODE_TYPE } from './ai-root-shapes';
 import { readDataTableReadParameters } from './data-table-read';
 import type {
 	DeclaredFieldContract,
@@ -39,6 +41,7 @@ export function buildSchemaContexts(
 			resource,
 			operation,
 			hasOutputParser: node.name ? outputParserTargets?.has(node.name) === true : false,
+			parameters: params,
 		});
 
 		return {
@@ -51,8 +54,17 @@ export function buildSchemaContexts(
 			outputParser,
 			dataTableRead: readDataTableReadParameters(node),
 			declaredFields: buildDeclaredFieldContract(node.type, schema, outputParser),
+			classifierReportsConfidence: classifierReportsConfidence(node.type, params),
 		};
 	});
+}
+
+function classifierReportsConfidence(
+	nodeType: string,
+	params: Record<string, unknown> | undefined,
+): boolean {
+	if (nodeType !== TEXT_CLASSIFIER_NODE_TYPE) return false;
+	return isRecord(params?.options) && params.options.includeConfidenceScores === true;
 }
 
 /**

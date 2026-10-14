@@ -650,11 +650,13 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
+		// Files first: a failed file delete leaves the rows, so the next run retries them.
 		await Promise.all([
-			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
 			this.jsonStore.delete(this.toBlobRefs(targets)),
 		]);
+
+		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {

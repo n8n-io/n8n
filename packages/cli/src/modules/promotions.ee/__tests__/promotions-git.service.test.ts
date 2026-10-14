@@ -462,16 +462,19 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 
 		it('restores HEAD and the index when the push fails', async () => {
-			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+			mockGit.raw.mockResolvedValueOnce('before\n');
 			mockGit.push.mockRejectedValueOnce(new Error('push rejected'));
 
 			await expect(call({ rollbackOnFailure: true })).rejects.toThrow(BadRequestError);
 
-			expect(mockGit.revparse.mock.invocationCallOrder[0]).toBeLessThan(
+			expect(mockGit.raw.mock.calls).toEqual([
+				[['for-each-ref', '--format=%(objectname)', 'refs/heads/main']],
+				[['reset', '--mixed', 'before']],
+			]);
+			expect(mockGit.raw.mock.invocationCallOrder[0]).toBeLessThan(
 				mockGit.add.mock.invocationCallOrder[0],
 			);
-			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith(['reset', '--mixed', 'before']);
-			expect(mockGit.raw.mock.invocationCallOrder[0]).toBeGreaterThan(
+			expect(mockGit.raw.mock.invocationCallOrder[1]).toBeGreaterThan(
 				mockGit.push.mock.invocationCallOrder[0],
 			);
 		});
@@ -479,7 +482,9 @@ describe('PromotionsGitService (git operations)', () => {
 		it('keeps the push error when rollback fails', async () => {
 			const pushError = new ServiceUnavailableError('Push timed out');
 			mockGit.push.mockRejectedValueOnce(pushError);
-			mockGit.raw.mockRejectedValueOnce(new Error('reset failed'));
+			mockGit.raw
+				.mockResolvedValueOnce('before\n')
+				.mockRejectedValueOnce(new Error('reset failed'));
 
 			await expect(call({ rollbackOnFailure: true })).rejects.toBe(pushError);
 
@@ -490,12 +495,17 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 
 		it('keeps the new commit when the push succeeds', async () => {
-			mockGit.revparse.mockResolvedValueOnce('before\n').mockResolvedValueOnce('after\n');
+			mockGit.raw.mockResolvedValueOnce('before\n');
+			mockGit.revparse.mockResolvedValueOnce('after\n');
 
 			await expect(call({ rollbackOnFailure: true })).resolves.toEqual({ commitSha: 'after' });
 
 			expect(mockGit.push).toHaveBeenCalledExactlyOnceWith('origin', 'main');
-			expect(mockGit.raw).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith([
+				'for-each-ref',
+				'--format=%(objectname)',
+				'refs/heads/main',
+			]);
 		});
 
 		it('redacts a push failure and keeps raw git output out of the log', async () => {
