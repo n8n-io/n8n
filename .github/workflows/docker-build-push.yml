@@ -204,11 +204,20 @@ jobs:
           RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
         run: |
           echo "Platforms: $PLATFORMS"
+          # The remote builders do not keep layers between runs, so keep them in
+          # the registry. mode=max also stores the native module build stages.
+          CACHE=()
+          for TARGET in n8n n8n-pc runners runners-distroless; do
+            REF="${NSC_CONTAINER_REGISTRY}/n8n-publish-poc/buildcache:${TARGET}"
+            CACHE+=(--set "${TARGET}.cache-from=type=registry,ref=${REF}")
+            CACHE+=(--set "${TARGET}.cache-to=type=registry,ref=${REF},mode=max,image-manifest=true,oci-mediatypes=true")
+          done
           # oci-mediatypes keeps the index an OCI image index (#31997).
           docker buildx bake -f docker/docker-bake.hcl release \
             --provenance=false \
             --sbom=false \
             --set '*.output=type=image,oci-mediatypes=true,push=true' \
+            "${CACHE[@]}" \
             --metadata-file /tmp/bake-metadata.json
 
       - name: Assert pushed images are OCI image indexes
