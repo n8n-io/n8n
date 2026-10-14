@@ -7,6 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import ToolRow from '../ToolRow.vue';
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	type AgentConnectionItem,
 	type McpServerConnectionItem,
 	type NodeConnectionItem,
 	type ServiceConnectionItem,
@@ -17,6 +18,7 @@ const renderRow = createComponentRenderer(ToolRow);
 
 function render(
 	item:
+		| AgentConnectionItem
 		| McpServerConnectionItem
 		| NodeConnectionItem
 		| ServiceConnectionItem
@@ -239,6 +241,26 @@ describe('ToolRow', () => {
 		const { container } = render(item);
 		const img = container.querySelector('img');
 		expect(img).toBeNull();
+	});
+
+	it('renders the personalisation tile when an agent row carries an avatar iconSource', () => {
+		const item: AgentConnectionItem = {
+			id: 'agent-1',
+			kind: 'agent',
+			agentId: 'agent-1',
+			title: 'Researcher',
+			status: 'none',
+			iconSource: {
+				type: 'avatar',
+				personalisation: {
+					icon: 'rocket',
+					gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+				},
+			},
+		};
+		const { getByTestId } = render(item);
+
+		expect(getByTestId('agent-personalisation-icon-tile')).toBeTruthy();
 	});
 
 	it('renders the placeholder icon when iconSource is absent', () => {

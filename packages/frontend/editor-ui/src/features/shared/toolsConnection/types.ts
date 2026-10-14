@@ -1,6 +1,9 @@
-import type { NodeTypeAvailability } from '@n8n/api-types';
+import type {
+	AgentPersonalisation,
+	McpToolPermissions,
+	NodeTypeAvailability,
+} from '@n8n/api-types';
 import type { InjectionKey, Ref } from 'vue';
-import type { McpToolPermissions } from '@n8n/api-types';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -12,7 +15,8 @@ export type ConnectionItemKind =
 
 export type ToolIconSource =
 	| { type: 'file'; src: string }
-	| { type: 'icon'; name: string; color?: string };
+	| { type: 'icon'; name: string; color?: string }
+	| { type: 'avatar'; personalisation: AgentPersonalisation };
 
 export interface ToolCredentialRef {
 	authType: string;

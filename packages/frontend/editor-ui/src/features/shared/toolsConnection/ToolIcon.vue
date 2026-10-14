@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nIcon, N8nNodeIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
+import AgentPersonalisationIcon from '@/features/agents/components/AgentPersonalisationIcon.vue';
 import type { ToolIconSource } from './types';
 
 withDefaults(
@@ -12,10 +13,16 @@ withDefaults(
 );
 
 const INNER_SIZE = 20;
+const AVATAR_SIZE = 40;
 </script>
 
 <template>
-	<span :class="$style.wrapper" aria-hidden="true">
+	<AgentPersonalisationIcon
+		v-if="source?.type === 'avatar'"
+		:personalisation="source.personalisation"
+		:size="AVATAR_SIZE"
+	/>
+	<span v-else :class="$style.wrapper" aria-hidden="true">
 		<N8nNodeIcon
 			v-if="source"
 			:type="source.type"
