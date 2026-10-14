@@ -5,10 +5,12 @@ import {
 	type InstanceAiCredits,
 	type ProxyContext,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
@@ -41,6 +43,7 @@ export class InstanceAiModelService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly logger: Logger,
 	) {}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
@@ -62,7 +65,11 @@ export class InstanceAiModelService {
 	 * `proxyContext` is forwarded as `x-n8n-run-id` / `x-n8n-thread-id` on every
 	 * proxied model call when set (run-less callers like verification omit it).
 	 */
-	async resolveAgentModelConfig(user: User, proxyContext?: ProxyContext): Promise<ModelConfig> {
+	async resolveAgentModelConfig(
+		user: User,
+		proxyContext?: ProxyContext,
+		modelName?: string,
+	): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
@@ -72,11 +79,57 @@ export class InstanceAiModelService {
 					{ userMessageId: nanoid() },
 				);
 			});
-			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext);
+			return await this.resolveProxyModel(
+				user,
+				proxyBaseUrl,
+				tokenManager,
+				proxyContext,
+				modelName,
+			);
 		}
-		const httpProxyModel = await this.resolveHttpProxyModel(user);
+		const httpProxyModel = await this.resolveHttpProxyModel(user, modelName);
 		if (httpProxyModel) return httpProxyModel;
-		return await this.settingsService.resolveModelConfig(user);
+		const config = await this.settingsService.resolveModelConfig(user);
+		if (!modelName) return config;
+		const renamed = withModelName(config, modelName);
+		if (!renamed) {
+			this.logger.warn('Instance AI model cannot switch model names, using the main model', {
+				modelName,
+			});
+		}
+		return renamed ?? config;
+	}
+
+	/**
+	 * Model for the Observer and Reflector memory tasks. It runs the configured
+	 * memory model name on the main model's provider and credentials, through
+	 * the same resolver chain. Returns `undefined` when no memory model is set,
+	 * so the caller uses the main model.
+	 */
+	async resolveMemoryModelConfig(
+		user: User,
+		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
+	): Promise<ModelConfig | undefined> {
+		const modelName = this.settingsService.getConfiguredMemoryModelName();
+		if (!modelName) return undefined;
+		try {
+			return run.proxyBaseUrl && run.tokenManager
+				? await this.resolveProxyModel(
+						user,
+						run.proxyBaseUrl,
+						run.tokenManager,
+						run.proxyContext,
+						modelName,
+					)
+				: await this.resolveAgentModelConfig(user, run.proxyContext, modelName);
+		} catch (error) {
+			// A memory model must never fail the user's run; the main model still works.
+			this.logger.warn('Failed to resolve the Instance AI memory model, using the main model', {
+				modelName,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
@@ -92,10 +145,12 @@ export class InstanceAiModelService {
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
 		proxyContext?: ProxyContext,
+		modelName?: string,
 	): Promise<ModelConfig> {
 		const configuredModelId = this.settingsService.getConfiguredModelId();
 		const isExactKimi = isMoonshotaiKimiK3ModelId(configuredModelId);
-		const modelId = isExactKimi ? configuredModelId : this.settingsService.resolveModelName(user);
+		const modelId =
+			modelName ?? (isExactKimi ? configuredModelId : this.settingsService.resolveModelName(user));
 		return await createProxyLanguageModel({
 			proxyBaseUrl,
 			modelId,
@@ -112,7 +167,10 @@ export class InstanceAiModelService {
 	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
-	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
+	private async resolveHttpProxyModel(
+		user: User,
+		modelNameOverride?: string,
+	): Promise<ModelConfig | undefined> {
 		// Only take over model construction when a proxy is configured; otherwise
 		// the regular model resolution path applies. Node's global `fetch` does
 		// not honour HTTP(S)_PROXY, hence the proxy-aware transport below.
@@ -133,7 +191,7 @@ export class InstanceAiModelService {
 			apiKey,
 			baseURL: baseURL || undefined,
 			fetch: createAiProxyFetch(this.outboundHttp),
-		})(modelName);
+		})(modelNameOverride ?? modelName);
 	}
 
 	/** Get current Instance AI credit usage from the AI service proxy. */
@@ -147,4 +205,20 @@ export class InstanceAiModelService {
 			async () => await client.getInstanceAiCredits({ id: user.id }),
 		);
 	}
+}
+
+/**
+ * Replaces the model name in a `provider/model` config and keeps the provider
+ * and credentials. Returns `undefined` for a config without such an id, for
+ * example a pre-built language model.
+ */
+function withModelName(config: ModelConfig, modelName: string): ModelConfig | undefined {
+	const provider = (id: string) => (id.includes('/') ? id.slice(0, id.indexOf('/')) : undefined);
+	if (typeof config === 'string') {
+		const prefix = provider(config);
+		return prefix ? `${prefix}/${modelName}` : undefined;
+	}
+	if ('project' in config) return { ...config, id: `google-vertex-anthropic/${modelName}` };
+	if ('url' in config) return { ...config, id: `${provider(config.id) ?? 'custom'}/${modelName}` };
+	return undefined;
 }

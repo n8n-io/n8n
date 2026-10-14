@@ -1348,6 +1348,11 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
+	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
+	getConfiguredMemoryModelName(): string {
+		return this.config.memoryModel.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);

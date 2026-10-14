@@ -368,6 +368,7 @@ describe('GlobalConfig', () => {
 			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
+			memoryModel: '',
 			reflectorObservationTokens: 40_000,
 			midRunObservation: false,
 			sandboxEnabled: false,

@@ -41,6 +41,8 @@ vi.mock('@n8n/agents', () => ({
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
+	createObservationLogObserveFn: vi.fn((model: unknown) => ({ task: 'observe', model })),
+	createObservationLogReflectFn: vi.fn((model: unknown) => ({ task: 'reflect', model })),
 }));
 
 const mockBuiltTool = (name: string, marker?: string) => ({
@@ -915,6 +917,68 @@ describe('createInstanceAgent', () => {
 			reflectorThresholdTokens: 40_000,
 		});
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
+	});
+
+	it('runs the Observer and Reflector on the memory model when one is set', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-5-5',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					model: 'anthropic/claude-haiku-4-5',
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+			observe: { task: 'observe', model: 'anthropic/claude-haiku-4-5' },
+			reflect: { task: 'reflect', model: 'anthropic/claude-haiku-4-5' },
+		});
+	});
+
+	it('runs the Observer and Reflector on the agent model when only usage reporting is set', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-5-5',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					onTaskUsage: vi.fn(),
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith(
+			expect.objectContaining({
+				observe: { task: 'observe', model: 'anthropic/claude-opus-5-5' },
+				reflect: { task: 'reflect', model: 'anthropic/claude-opus-5-5' },
+			}),
+		);
 	});
 
 	it('forwards midRunObservation to the Memory builder when provided', async () => {

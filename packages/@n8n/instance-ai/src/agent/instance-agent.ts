@@ -271,16 +271,22 @@ export async function createInstanceAgent(
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens, midRunObservation, onTaskUsage } =
-				memoryConfig.observationalMemory;
+			const {
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+				midRunObservation,
+				onTaskUsage,
+				model: memoryModel,
+			} = memoryConfig.observationalMemory;
+			const taskModel = memoryModel ?? modelId;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				...(midRunObservation !== undefined ? { midRunObservation } : {}),
-				...(onTaskUsage
+				...(onTaskUsage || memoryModel
 					? {
-							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
-							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+							observe: createObservationLogObserveFn(taskModel, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(taskModel, { onUsage: onTaskUsage }),
 						}
 					: {}),
 			});
