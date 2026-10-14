@@ -52,13 +52,12 @@ import { toWorkflowJSON } from '../workflow-json';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingCandidateService } from './self-healing-candidate.service';
 import { compileCandidateWorkflow, type CandidateWorkflowResult } from './candidate-workflow';
-import type { SelfHealingEvidence } from './self-healing-evidence.service';
 
 export type SelfHealingRunInput = {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
 	executionId: string;
-	evidence: SelfHealingEvidence;
+	message: string;
 };
 
 export type SelfHealingRunResult = {
@@ -149,7 +148,7 @@ export class SelfHealingAgentService {
 		this.assertEnabled();
 		input = { ...input, baseline: structuredClone(input.baseline) };
 		const user = await this.validateInput(input);
-		const { baseline, executionId, evidence } = input;
+		const { baseline, executionId, message } = input;
 		const { threadId, runId, signal } = options;
 		const startedAt = Date.now();
 		const metadata: SelfHealingThreadMetadata = {
@@ -202,7 +201,7 @@ export class SelfHealingAgentService {
 				messageGroupId: options.messageGroupId,
 				userId: user.id,
 				modelId,
-				input: { message: evidence.message },
+				input: { message },
 				metadata,
 				proxyConfig: proxy.tracingProxyConfig,
 				n8nVersion: N8N_VERSION,
@@ -301,16 +300,16 @@ export class SelfHealingAgentService {
 		return result;
 	}
 
-	private async validateInput({ user, baseline, executionId, evidence }: SelfHealingRunInput) {
+	private async validateInput({ user, baseline, executionId, message }: SelfHealingRunInput) {
 		if (user.disabled || user.id !== baseline.backgroundUserId) {
 			throw new ForbiddenError('The self-healing actor must match the workflow baseline.');
 		}
-		if (!evidence.message.trim()) throw new BadRequestError('A failure message is required.');
+		if (!message.trim()) throw new BadRequestError('A failure message is required.');
 		const actor = await this.suggestions.requireCurrentBaseline(baseline);
-		if (evidence.execution.executionId !== executionId) {
-			throw new BadRequestError('The evidence does not belong to the failed execution.');
+		const execution = await this.executions.getReference(actor, baseline.workflowId, executionId);
+		if (execution.status !== 'available') {
+			throw new BadRequestError('The failed execution is unavailable for this workflow.');
 		}
-		await this.executions.validateReference(actor, baseline.workflowId, executionId);
 		return actor;
 	}
 
@@ -421,53 +420,6 @@ export class SelfHealingAgentService {
 		};
 	}
 
-	private bindExecutionReads(context: InstanceAiContext, input: SelfHealingRunInput): void {
-		const { evidence, baseline, executionId } = input;
-		const executionService = context.executionService;
-		const readEvidence = async (requestedId: string) => {
-			if (requestedId !== executionId) {
-				throw new ForbiddenError('Read the failed execution assigned to this investigation.');
-			}
-			const user = await this.suggestions.requireEditor(input.user.id, baseline.workflowId);
-			await this.executions.validateReference(user, baseline.workflowId, executionId);
-			return structuredClone(evidence.execution);
-		};
-		const requireDetailedEvidence = async (requestedId: string) => {
-			await readEvidence(requestedId);
-			if (!evidence.allowExecutionData) {
-				throw new BadRequestError(
-					'Detailed execution data is unavailable. Use the supplied investigation evidence.',
-				);
-			}
-		};
-		context.executionService = {
-			...executionService,
-			list: async (options) => {
-				if (options?.workflowId && options.workflowId !== baseline.workflowId) {
-					throw new ForbiddenError(
-						'Read executions for the workflow assigned to this investigation.',
-					);
-				}
-				await readEvidence(executionId);
-				return await executionService.list({ ...options, workflowId: baseline.workflowId });
-			},
-			getStatus: readEvidence,
-			getResult: readEvidence,
-			getDebugInfo: readEvidence,
-			getNodeOutput: async (requestedId, nodeName, options) => {
-				await requireDetailedEvidence(requestedId);
-				return await executionService.getNodeOutput(requestedId, nodeName, options);
-			},
-			getResolvedNodeParameters: async (requestedId, nodeName, options) => {
-				await requireDetailedEvidence(requestedId);
-				if (!executionService.getResolvedNodeParameters) {
-					throw new BadRequestError('Resolved execution parameters are unavailable.');
-				}
-				return await executionService.getResolvedNodeParameters(requestedId, nodeName, options);
-			},
-		};
-	}
-
 	private async runAgent({
 		input,
 		options,
@@ -481,17 +433,14 @@ export class SelfHealingAgentService {
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
 	}) {
-		const { user, baseline, executionId, evidence } = input;
+		const { user, baseline, executionId, message } = input;
 		const { runId, threadId, signal } = options;
 		const { tracing } = context;
 		const resourceId = getSelfHealingResourceId(user.id);
-		// Verification keeps its own execution reads for temporary workflows.
-		const agentContext = { ...context };
-		this.bindExecutionReads(agentContext, input);
 		let verification: SelfHealingRunResult['verification'];
 		const agent = await createSelfHealingAgent({
 			modelId,
-			context: agentContext,
+			context,
 			memory: this.memory,
 			checkpointStore: this.checkpoints,
 			thinkingEnabled: this.config.instanceAi.thinkingEnabled,
@@ -514,7 +463,7 @@ export class SelfHealingAgentService {
 		const consume = async () =>
 			await streamAgentRun(
 				agent,
-				`${evidence.message}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
+				`${message}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
 				{
 					maxIterations: MAX_STEPS.ORCHESTRATOR,
 					abortSignal: signal,

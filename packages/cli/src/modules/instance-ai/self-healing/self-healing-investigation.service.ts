@@ -9,7 +9,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { selfHealingOutputSchema } from '@n8n/instance-ai';
 import { randomUUID } from 'node:crypto';
 
 import { DurableEventLog } from '../event-bus/durable-event-log';
@@ -24,11 +23,7 @@ import type {
 } from './database/self-healing-investigation.entity';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from './self-healing-agent.service';
-import {
-	SelfHealingEvidenceService,
-	type SelfHealingEvidence,
-	type SelfHealingFailureEvidence,
-} from './self-healing-evidence.service';
+import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingResultService } from './self-healing-result.service';
 
 type StartInvestigation = {
@@ -36,7 +31,6 @@ type StartInvestigation = {
 	projectId: string;
 	backgroundUserId: string;
 	executionId: string;
-	retainedEvidence?: SelfHealingFailureEvidence;
 };
 
 type ExistingWork =
@@ -59,7 +53,7 @@ export class SelfHealingInvestigationService {
 		private readonly suggestions: WorkflowSuggestionService,
 		private readonly suggestionRepository: WorkflowSuggestionRepository,
 		private readonly ownership: SharedWorkflowRepository,
-		private readonly evidence: SelfHealingEvidenceService,
+		private readonly executions: SelfHealingExecutionReferenceService,
 		private readonly runtime: InstanceAiService,
 		private readonly events: InstanceAiEventLogRepository,
 		private readonly eventLog: DurableEventLog,
@@ -84,16 +78,11 @@ export class SelfHealingInvestigationService {
 		if (baseline.projectId !== input.projectId) {
 			throw new NotFoundError('Workflow not found in this project.');
 		}
-		const evidence = await this.evidence.read(
-			actor,
-			baseline,
-			input.executionId,
-			input.retainedEvidence,
-		);
+		await this.executions.validateFailure(actor, baseline, input.executionId);
 		const claimed = await this.claim(input, baseline);
 		if ('kind' in claimed) return claimed;
 
-		void this.run(claimed, evidence).catch((error: unknown) => {
+		void this.run(claimed, actor).catch((error: unknown) => {
 			this.logger.error('Self-healing investigation failed.', {
 				investigationId: claimed.id,
 				error,
@@ -132,15 +121,14 @@ export class SelfHealingInvestigationService {
 		});
 	}
 
-	private async run(investigation: SelfHealingInvestigation, evidence: SelfHealingEvidence) {
+	private async run(investigation: SelfHealingInvestigation, user: User) {
 		try {
-			const user = await this.suggestions.requireCurrentBaseline(investigation.baseline);
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
 					baseline: investigation.baseline,
 					executionId: investigation.executionId,
-					evidence,
+					message: 'Investigate the failed execution using the execution tools.',
 				},
 				{
 					threadId: investigation.threadId,
@@ -160,12 +148,11 @@ export class SelfHealingInvestigationService {
 		run: SelfHealingRunResult,
 		signal: AbortSignal,
 	) {
-		const parsed = selfHealingOutputSchema.safeParse(run.output);
-		if (run.status !== 'completed' || run.finishReason !== 'stop' || !parsed.success) {
+		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
 			await this.investigations.finishWithoutResult(investigation.id);
 			return;
 		}
-		const output = parsed.data;
+		const output = run.output;
 		const accepted: AcceptedSelfHealingOutput = {
 			output,
 			usage: run.usage,
@@ -179,7 +166,6 @@ export class SelfHealingInvestigationService {
 			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
 			accepted.candidate = {
 				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
-				checksum: candidate.candidateChecksum,
 				...(run.verification &&
 				'candidateChecksum' in run.verification &&
 				run.verification.candidateChecksum === candidate.candidateChecksum

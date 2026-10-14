@@ -14,7 +14,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
@@ -100,13 +99,6 @@ export class SelfHealingResultService {
 			(output.outcome === 'could_not_fix' && candidate)
 		) {
 			throw new BadRequestError('The suggestion does not match the result outcome.');
-		}
-		if (
-			candidate &&
-			(await calculateWorkflowChecksum({ ...baseline.original, ...candidate.graph })) !==
-				candidate.checksum
-		) {
-			throw new ConflictError('The accepted workflow candidate has changed.');
 		}
 		const suggestion = candidate
 			? await this.suggestions.prepareSuggestion(baseline, {

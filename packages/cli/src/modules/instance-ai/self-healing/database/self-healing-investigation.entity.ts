@@ -22,7 +22,6 @@ export type AcceptedSelfHealingOutput = {
 	usage: SelfHealingResultUsage;
 	candidate?: {
 		graph: WorkflowSuggestionGraph;
-		checksum: string;
 		verification?: Awaited<ReturnType<SelfHealingCandidateService['verify']>>;
 	};
 	completedAt: string;

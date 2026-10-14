@@ -1551,11 +1551,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			projectId: 'project-1',
 		}),
 		executionId: 'execution-1',
-		evidence: {
-			message: 'The execution failed.',
-			allowExecutionData: false,
-			execution: { executionId: 'execution-1', status: 'error', nodeTrace: [] },
-		},
+		message: 'The execution failed.',
 	};
 	const lifecycle = {
 		threadId: 'persisted-thread',

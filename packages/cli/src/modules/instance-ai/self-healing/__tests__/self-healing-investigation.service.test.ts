@@ -17,10 +17,7 @@ import type { SelfHealingInvestigation } from '../database/self-healing-investig
 import type { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
 import type { SelfHealingResult } from '../database/self-healing-result.entity';
 import type { SelfHealingRunResult } from '../self-healing-agent.service';
-import type {
-	SelfHealingEvidence,
-	SelfHealingEvidenceService,
-} from '../self-healing-evidence.service';
+import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
 import type { SelfHealingResultService } from '../self-healing-result.service';
 
@@ -32,11 +29,6 @@ const input = {
 	executionId: '123',
 };
 const baseline = mock<WorkflowSuggestionBaseline>({ ...input });
-const evidence: SelfHealingEvidence = {
-	message: 'The execution failed.',
-	execution: { executionId: input.executionId, status: 'error', error: 'Failed', nodeTrace: [] },
-	allowExecutionData: true,
-};
 
 describe('SelfHealingInvestigationService', () => {
 	const investigations = mock<SelfHealingInvestigationRepository>();
@@ -44,7 +36,7 @@ describe('SelfHealingInvestigationService', () => {
 	const suggestions = mock<WorkflowSuggestionService>();
 	const suggestionRepository = mock<WorkflowSuggestionRepository>();
 	const ownership = mock<SharedWorkflowRepository>();
-	const evidenceService = mock<SelfHealingEvidenceService>();
+	const executions = mock<SelfHealingExecutionReferenceService>();
 	const runtime = mock<InstanceAiService>();
 	const events = mock<InstanceAiEventLogRepository>();
 	const eventLog = mock<DurableEventLog>();
@@ -58,7 +50,7 @@ describe('SelfHealingInvestigationService', () => {
 		suggestions,
 		suggestionRepository,
 		ownership,
-		evidenceService,
+		executions,
 		runtime,
 		events,
 		eventLog,
@@ -104,7 +96,6 @@ describe('SelfHealingInvestigationService', () => {
 		suggestions.requireCurrentBaseline.mockResolvedValue(user);
 		suggestions.captureBaseline.mockResolvedValue(baseline);
 		ownership.getWorkflowOwningProject.mockResolvedValue(mock<Project>({ id: input.projectId }));
-		evidenceService.read.mockResolvedValue(evidence);
 		investigations.getForExecution.mockResolvedValue(null);
 		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
 		investigations.createInvestigation.mockResolvedValue(investigation);
@@ -140,7 +131,12 @@ describe('SelfHealingInvestigationService', () => {
 			investigationId: investigation.id,
 		});
 		expect(runtime.startSelfHealingRun).toHaveBeenCalledWith(
-			expect.objectContaining({ user, baseline, evidence, executionId: input.executionId }),
+			{
+				user,
+				baseline,
+				executionId: input.executionId,
+				message: 'Investigate the failed execution using the execution tools.',
+			},
 			expect.objectContaining({ threadId: investigation.threadId, runId: investigation.runId }),
 		);
 		expect(investigations.storeAcceptedOutput).toHaveBeenCalledWith(
@@ -179,7 +175,6 @@ describe('SelfHealingInvestigationService', () => {
 			await startAndFinish();
 			expect(investigation.acceptedOutput?.candidate).toEqual({
 				graph: { nodes: [], connections: {} },
-				checksum: 'checked',
 				verification: run.verification,
 			});
 		},
@@ -254,7 +249,7 @@ describe('SelfHealingInvestigationService', () => {
 			investigationId: investigation.id,
 		});
 		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
-		expect(evidenceService.read).not.toHaveBeenCalled();
+		expect(executions.validateFailure).not.toHaveBeenCalled();
 	});
 
 	it('returns a pending suggestion instead of starting another investigation', async () => {
@@ -269,7 +264,6 @@ describe('SelfHealingInvestigationService', () => {
 		const checking = createDeferredPromise();
 		const checked = createDeferredPromise();
 		suggestions.requireCurrentBaseline
-			.mockResolvedValueOnce(user)
 			.mockResolvedValueOnce(user)
 			.mockImplementationOnce(async () => {
 				checking.resolve();

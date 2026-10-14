@@ -11,13 +11,13 @@ Supply `backgroundUserId`, `projectId`, `workflowId`, and the original failed `e
 The caller supplies the user who enabled self-healing. The producer checks their current access.
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
 The workflow must be fully published. The failure must belong to its current published version.
-Manual, evaluation, and temporary verification executions are ineligible.
+Manual and evaluation executions are ineligible.
 Credential and network failures can still need investigation.
 
-The producer reads bounded evidence through the existing execution and redaction services.
-An internal caller can supply `retainedEvidence` when normal execution data is unavailable.
-The same reference, version, access, and redaction checks apply to that snapshot.
-Evidence capture and expiry belong to the automatic failure producer.
+The producer checks execution metadata without loading execution data.
+It passes the execution ID to the agent. The agent reads details through the existing execution tools.
+The execution must remain saved and readable. M3 will define how to retain only the triggering
+execution when saving is disabled or pruning runs. Investigation inputs contain no execution payload.
 
 The call returns an investigation ID or an existing pending suggestion ID.
 A workflow can have one unfinished investigation or pending suggestion.
@@ -90,7 +90,7 @@ No suggestion row is created by verification.
 
 ## Store a result
 
-The producer validates final output and compiles the named workspace file.
+The runtime validates final output. The producer compiles the named workspace file.
 It stores the accepted output, runtime usage, and compiled graph on the investigation.
 Verification findings are retained only when their checksum matches the final candidate.
 A credit-claim failure leaves unknown credits and does not discard valid output.

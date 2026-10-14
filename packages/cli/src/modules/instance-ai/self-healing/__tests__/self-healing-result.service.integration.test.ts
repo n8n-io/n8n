@@ -23,7 +23,6 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { randomUUID } from 'node:crypto';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
@@ -46,7 +45,6 @@ import { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-s
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
 import { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
 import type { SelfHealingRunResult } from '../self-healing-agent.service';
-import { SelfHealingEvidenceService } from '../self-healing-evidence.service';
 import { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
 import { SelfHealingResultService } from '../self-healing-result.service';
@@ -55,7 +53,6 @@ mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
 const validation = mockInstance(WorkflowValidationService);
 const runtime = mockInstance(InstanceAiService);
-const evidence = mockInstance(SelfHealingEvidenceService);
 
 const testServer = setupTestServer({
 	modules: ['instance-ai'],
@@ -89,7 +86,6 @@ beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
 	Container.get(GlobalConfig).instanceAi.selfHealingEnabled = true;
 	runtime.startSelfHealingRun.mockReset();
-	evidence.read.mockReset();
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
 	validation.validateForActivation.mockResolvedValue({ isValid: true });
 	validation.validateDynamicCredentials.mockResolvedValue({ isValid: true });
@@ -123,7 +119,10 @@ async function prepareFixture(outcome: Outcome = 'needs_you') {
 		},
 	]);
 	const original = await workflows.findOneByOrFail({ id: workflow.id });
-	const execution = await createExecution({ status: 'error' }, original);
+	const execution = await createExecution(
+		{ status: 'error', mode: 'trigger', workflowVersionId: original.versionId },
+		original,
+	);
 	const graph = {
 		nodes: original.nodes.map((node) => ({ ...node, position: [100, 100] as [number, number] })),
 		connections: original.connections,
@@ -178,14 +177,7 @@ async function prepareInvestigation(
 		},
 		usage: input.usage,
 		completedAt: new Date().toISOString(),
-		...(withSuggestion
-			? {
-					candidate: {
-						graph,
-						checksum: await calculateWorkflowChecksum({ ...baseline.original, ...graph }),
-					},
-				}
-			: {}),
+		...(withSuggestion ? { candidate: { graph } } : {}),
 	});
 	return { ...fixture, input, investigation };
 }
@@ -197,22 +189,25 @@ it.each(['same', 'different'] as const)(
 		const executionId =
 			failure === 'same'
 				? input.executionId
-				: (await createExecution({ status: 'error' }, original)).id;
+				: (
+						await createExecution(
+							{ status: 'error', mode: 'trigger', workflowVersionId: original.versionId },
+							original,
+						)
+					).id;
 		const producer = Container.get(SelfHealingInvestigationService);
-		const evidenceReady = createDeferredPromise();
+		const validationReady = createDeferredPromise();
 		const stopRun = createDeferredPromise();
 		const runFinished = createDeferredPromise();
-		let evidenceReads = 0;
-		evidence.read.mockImplementation(async (_actor, _baseline, failedExecutionId) => {
-			evidenceReads += 1;
-			if (evidenceReads === 2) evidenceReady.resolve();
+		const references = Container.get(SelfHealingExecutionReferenceService);
+		const validateFailure = references.validateFailure.bind(references);
+		let validated = 0;
+		vi.spyOn(references, 'validateFailure').mockImplementation(async (...args) => {
+			await validateFailure(...args);
+			validated += 1;
+			if (validated === 2) validationReady.resolve();
 			// Both callers must pass the initial lookup before either can claim the workflow.
-			await evidenceReady.promise;
-			return {
-				message: 'The execution failed.',
-				allowExecutionData: true,
-				execution: { executionId: failedExecutionId, status: 'error', nodeTrace: [] },
-			};
+			await validationReady.promise;
 		});
 		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
 			await stopRun.promise;
