@@ -238,7 +238,7 @@ const sortedInstanceResults = computed(() => {
 					</N8nText>
 					<N8nButton
 						v-if="canManageReport"
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.refreshButton')"
 						icon="refresh-cw"
 						:loading="isLoading"

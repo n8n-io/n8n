@@ -163,7 +163,7 @@ function toToolPermissions(approval: AgentApproval | undefined): McpToolPermissi
 				:content="i18n.baseText('agents.toolConfig.mcpApproval.refresh.hint')"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					icon-only
 					:disabled="props.disabled"

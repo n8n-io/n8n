@@ -38,7 +38,7 @@ export const ManagedBySchema = z.enum(['system', 'admin']);
 export type ManagedBy = z.infer<typeof ManagedBySchema>;
 
 // An admin-supplied endpoint is fetched server-side, so it must be https.
-const HttpsUrl = z
+export const HttpsUrl = z
 	.string()
 	.url()
 	.refine((url) => url.startsWith('https://'), { message: 'must be an https URL' });

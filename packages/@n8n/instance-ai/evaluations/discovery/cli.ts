@@ -25,7 +25,6 @@ import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } fr
 import { createSeededThread } from './seeded-turn';
 import type { DiscoveryTestCase } from './types';
 import { buildResumeData, toConfirmationData } from '../../src/runtime/confirmation-payload';
-import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
 import {
 	loadRoutingCases,
@@ -393,11 +392,6 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 	if (cases.length === 0) {
 		console.log(`No routing cases found in ${casesDir}.`);
 		return;
-	}
-	if (!isAgentFeatureEnabled()) {
-		console.warn(
-			'Warning: the Agents module is off, so the Assistant cannot build an Agent and agent cases fail. Set N8N_ENABLED_MODULES=agents,instance-ai.',
-		);
 	}
 
 	console.log(

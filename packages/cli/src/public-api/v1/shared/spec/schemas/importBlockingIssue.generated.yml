@@ -652,6 +652,10 @@ oneOf:
               type: string
             matchedRuleId:
               type: string
+            projectId:
+              type: string
+            optInAvailable:
+              type: boolean
           required:
             - kind
             - checkId
@@ -699,6 +703,10 @@ oneOf:
               type: string
             matchedRuleId:
               type: string
+            projectId:
+              type: string
+            optInAvailable:
+              type: boolean
           required:
             - kind
             - checkId

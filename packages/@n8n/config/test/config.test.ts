@@ -401,8 +401,6 @@ describe('GlobalConfig', () => {
 			promptVersion: '',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
-			activationCapped: false,
-			activationLockMessageThreshold: 1,
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
