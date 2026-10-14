@@ -12,15 +12,18 @@ Benefits of modularity:
 
 ## File structure
 
-To set up a backend module, run this command at monorepo root:
+To set up a packaged backend module, run this command at the monorepo root:
 
 ```sh
-pnpm setup-backend-module
+pnpm n8n-module-sdk create my-feature --stack=backend
 ```
 
-The setup command creates a module at `packages/cli/src/modules/my-feature`. Rename `my-feature` in the directory name and file names. Use kebab-case.
+The command creates a built workspace package at `packages/modules/my-feature/backend`. It also
+adds the package to the backend runtime manifest.
 
-A decoupled module can instead use a built workspace package at `packages/modules/my-feature/backend`. The package name uses the `@n8n/backend-module-<name>` pattern. Add a lazy package import to `packages/cli/src/modules/modules.manifest.ts`. Add the package as a runtime dependency of `n8n`.
+Use `pnpm setup-backend-module` only when the module must stay in
+`packages/cli/src/modules/my-feature`. Rename `my-feature` in the generated directory and file
+names. Use kebab-case.
 
 A module’s file structure is as follows:
 

@@ -8,14 +8,9 @@
 import { computed, ref } from 'vue';
 import { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch2 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { OFFER_READ_PERMISSIONS } from './constants';
+import type { TeamsAvailability } from './constants';
 
-export interface TeamsAvailability {
-	teamChannels: boolean;
-	groupChats: boolean;
-	readAllChannelMessages: boolean;
-	readAllGroupMessages: boolean;
-}
+export type { TeamsAvailability } from './constants';
 
 const value = defineModel<TeamsAvailability>({ required: true });
 
@@ -73,9 +68,9 @@ const READ_GROUPS: Row = {
 // A read permission is offered only while its surface is on, since it depends on it.
 const rows = computed(() => [
 	TEAM_CHANNELS,
-	...(OFFER_READ_PERMISSIONS && value.value.teamChannels ? [READ_CHANNELS] : []),
+	...(value.value.teamChannels ? [READ_CHANNELS] : []),
 	GROUP_CHATS,
-	...(OFFER_READ_PERMISSIONS && value.value.groupChats ? [READ_GROUPS] : []),
+	...(value.value.groupChats ? [READ_GROUPS] : []),
 ]);
 
 /** A collapsed panel still has to say what it is set to. */
@@ -83,13 +78,11 @@ const summary = computed(() => {
 	const { teamChannels, readAllChannelMessages, groupChats, readAllGroupMessages } = value.value;
 	const on = [
 		teamChannels && 'agents.channels.teams.setup.availability.teamChannels',
-		OFFER_READ_PERMISSIONS &&
-			teamChannels &&
+		teamChannels &&
 			readAllChannelMessages &&
 			'agents.channels.teams.setup.availability.readsChannels',
 		groupChats && 'agents.channels.teams.setup.availability.groupChats',
-		OFFER_READ_PERMISSIONS &&
-			groupChats &&
+		groupChats &&
 			readAllGroupMessages &&
 			'agents.channels.teams.setup.availability.readsGroupChats',
 	].filter((key): key is BaseTextKey => Boolean(key));

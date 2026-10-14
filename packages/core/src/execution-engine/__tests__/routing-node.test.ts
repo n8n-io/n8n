@@ -1,5 +1,11 @@
+import { AxiosError, AxiosHeaders } from 'axios';
 import get from 'lodash/get';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	Workflow,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
 import type {
 	DeclarativeRestApiSettings,
 	ICredentialDataDecryptedObject,
@@ -2428,9 +2434,11 @@ describe('RoutingNode', () => {
 		const createRoutingNode = ({
 			continueOnFail,
 			requestErrorUrl,
+			requestError = new Error('Request failed'),
 		}: {
 			continueOnFail: boolean;
 			requestErrorUrl?: string;
+			requestError?: Error;
 		}) => {
 			const items: INodeExecutionData[] = [
 				{ json: { id: 'first' } },
@@ -2483,7 +2491,7 @@ describe('RoutingNode', () => {
 				context.helpers.httpRequest = vi.fn(async (requestOptions: IHttpRequestOptions) => {
 					requestUrls.push(requestOptions.url);
 					if (requestOptions.url === requestErrorUrl) {
-						throw new Error('Request failed');
+						throw requestError;
 					}
 					return { body: { url: requestOptions.url } };
 				});
@@ -2540,6 +2548,41 @@ describe('RoutingNode', () => {
 			expect(result?.[0]?.[0]?.json).toEqual({ url: '/items/first' });
 			expect(result?.[0]?.[1]?.error).toMatchObject({ message: 'Request failed' });
 			expect(result?.[0]?.[2]?.json).toEqual({ url: '/items/third' });
+		});
+
+		test('returns a request error without request headers when continue on fail is enabled', async () => {
+			const requestError = new AxiosError(
+				'Request failed with status code 500',
+				'ERR_BAD_RESPONSE',
+				{ headers: new AxiosHeaders({ Authorization: 'Bearer secret-token' }) },
+			);
+			const { run } = createRoutingNode({
+				continueOnFail: true,
+				requestErrorUrl: '/items/second',
+				requestError,
+			});
+
+			const result = await run;
+			const error = result?.[0]?.[1]?.error;
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error).toMatchObject({ context: { itemIndex: 1, runIndex: 0 } });
+			expect(JSON.stringify(error)).not.toContain('secret-token');
+		});
+
+		test('keeps a node operation error when continue on fail is enabled', async () => {
+			const requestError = new NodeOperationError(mock<INode>(), 'Post-receive action failed');
+			const { run } = createRoutingNode({
+				continueOnFail: true,
+				requestErrorUrl: '/items/second',
+				requestError,
+			});
+
+			const result = await run;
+			const error = result?.[0]?.[1]?.error;
+
+			expect(error).toBe(requestError);
+			expect(error).toMatchObject({ context: { itemIndex: 1, runIndex: 0 } });
 		});
 	});
 

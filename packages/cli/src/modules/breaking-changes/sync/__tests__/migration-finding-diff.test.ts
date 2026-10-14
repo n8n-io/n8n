@@ -85,15 +85,58 @@ describe('diffMigrationFindings', () => {
 		expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
 	});
 
+	it('keeps a wont_fix row as it is while the hit remains', () => {
+		const diff = diffMigrationFindings({
+			targetVersion: TARGET_VERSION,
+			workflowIds: ['wf-1'],
+			hits: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			existing: [existingRow(4, 'rule-a', 'wf-1', 'wont_fix')],
+		});
+
+		expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
+	});
+
+	it('marks a wont_fix row fixed when the hit is gone', () => {
+		const diff = diffMigrationFindings({
+			targetVersion: TARGET_VERSION,
+			workflowIds: ['wf-1'],
+			hits: [],
+			existing: [existingRow(4, 'rule-a', 'wf-1', 'wont_fix')],
+		});
+
+		expect(diff).toEqual({ toInsert: [], toMarkFixed: [4], toReopen: [] });
+	});
+
+	it('keeps a notified row as it is while the hit remains', () => {
+		const diff = diffMigrationFindings({
+			targetVersion: TARGET_VERSION,
+			workflowIds: ['wf-1'],
+			hits: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			existing: [existingRow(5, 'rule-a', 'wf-1', 'notified')],
+		});
+
+		expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
+	});
+
+	it('marks a notified row fixed when the hit is gone', () => {
+		const diff = diffMigrationFindings({
+			targetVersion: TARGET_VERSION,
+			workflowIds: ['wf-1'],
+			hits: [],
+			existing: [existingRow(5, 'rule-a', 'wf-1', 'notified')],
+		});
+
+		expect(diff).toEqual({ toInsert: [], toMarkFixed: [5], toReopen: [] });
+	});
+
 	it('leaves rows in other statuses unchanged', () => {
 		const diff = diffMigrationFindings({
 			targetVersion: TARGET_VERSION,
-			workflowIds: ['wf-1', 'wf-2', 'wf-3'],
+			workflowIds: ['wf-1', 'wf-2'],
 			hits: [{ ruleId: 'rule-a', workflowId: 'wf-2' }],
 			existing: [
-				existingRow(1, 'rule-a', 'wf-1', 'notified'),
-				existingRow(2, 'rule-a', 'wf-2', 'wont_fix'),
-				existingRow(3, 'rule-a', 'wf-3', 'fixed_unpublished'),
+				existingRow(1, 'rule-a', 'wf-1', 'fixed_unpublished'),
+				existingRow(2, 'rule-a', 'wf-2', 'fixed_unpublished'),
 			],
 		});
 
@@ -139,6 +182,18 @@ describe('diffMigrationFindings', () => {
 				workflowIds: ['wf-1'],
 				hits: [],
 				existing: [existingRow(1, 'rule-a', 'wf-1', 'open')],
+				unknown: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			});
+
+			expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
+		});
+
+		it('keeps a wont_fix row as it is when the check is unknown', () => {
+			const diff = diffMigrationFindings({
+				targetVersion: TARGET_VERSION,
+				workflowIds: ['wf-1'],
+				hits: [],
+				existing: [existingRow(1, 'rule-a', 'wf-1', 'wont_fix')],
 				unknown: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
 			});
 

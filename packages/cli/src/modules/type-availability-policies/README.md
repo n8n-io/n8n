@@ -105,7 +105,7 @@ It implements all eight points:
 
 | Point                    | What it reads                                         |
 | ------------------------ | ----------------------------------------------------- |
-| the five workflow points | the keys of every node's `credentials` map            |
+| the five workflow points | the keys of every node's `credentials` map, the type HTTP Request names by parameter, and `extendsCredential` |
 | `credentialSave`         | the type of the credential being written              |
 | `credentialTransfer`     | the credential's type, against the **target** project |
 | `credentialDecrypt`      | `credentialType` — the credential's own type          |
@@ -128,6 +128,25 @@ Workflow-point grandfathering works the same way, one level down: the save diff 
 credential **types**, so swapping which `slackApi` credential a node uses, or copying the node,
 adds nothing to police.
 
+### Credential-only nodes
+
+The VirusTotal, Sysdig and Zabbix nodes, and every other node the editor generates from a
+credential type with `httpRequestNode`, are HTTP Request with one credential type attached. The
+editor names them `n8n-creds-base.<credentialType>` and stores them as
+`n8n-nodes-base.httpRequest` with `extendsCredential: '<credentialType>'`. No package registers
+the generated name, so the backend never sees it.
+
+Both kinds agree on such a node: it is available when `n8n-nodes-base.httpRequest` is available
+under the node kind **and** its credential type is available under the credential kind. The node
+check judges the stored `httpRequest` node; this check judges `extendsCredential` (and the
+parameter and `credentials` sources, which name the same type once configured). The frontend
+module composes the same two verdicts for the nodes panel, so a credential type rule on
+`virusTotalApi` hides the VirusTotal node and leaves HTTP Request and Sysdig in place.
+
+A node type rule on `n8n-creds-base.*` would match nothing, so the service refuses it at every
+write and names the credential type rule to write instead. Blocking HTTP Request itself still
+hides every credential-only node, as before.
+
 ### What the second kind costs
 
 The cache is keyed per kind, so the two kinds share nothing. A cold decision on a project with
@@ -147,12 +166,23 @@ One violation per blocked type, deduplicated, in the order the types first appea
 	"subject": "n8n-nodes-base.slack",
 	"subjectType": "nodeType",
 	"scope": "instance",
-	"matchedRuleId": "rule-7"
+	"matchedRuleId": "rule-7",
+	"projectId": "project-1",
+	"optInAvailable": false
 }
 ```
 
 `matchedRuleId` is absent when the scope's default action decided and no rule matched. `scope`
 names the scope whose verdict decided, which is what a user needs to know who to ask.
+
+`projectId` names the project whose policy was evaluated, also for an instance denial. A
+sub-workflow is checked against its own project, so its refusal names that project, not the
+caller's. It is absent when no project applied. A project denial's message says "a project
+policy" and never names the project: the client resolves the name, and only for a project the
+user can see.
+
+`optInAvailable` is `true` when the instance delegated the type, so the project can lift the
+block with its own allow rule. It is always `false` when no project applied.
 
 The violations reach the caller as HTTP 403 with `meta.violations`, and a blocked run stores
 them on the execution's error. Today that error is the whole story a user gets: the builder
@@ -169,7 +199,8 @@ A policy lives in three tables:
 - **attachments**, which bind a document to a scope with a priority and a floor flag.
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
-reports version `0`, so a first write sends `expectedVersion: 0`.
+reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
+version by exactly one, whatever it changed.
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
@@ -185,6 +216,14 @@ overlap; a variant rule placed after its base rule can never match, and the writ
 lint warns about it. The verdict names the variant the user placed and the rule that decided.
 Grandfathering compares literal type names, so adding `gmailTool` to a workflow that already
 stores `gmail` is a new type and is judged.
+
+A credential type policy has a third selector, `extends`. It matches the named type and every
+type built on it through the credential's `extends` list, at any depth: `extends oAuth2Api`
+covers `googleOAuth2Api` and `googleSheetsOAuth2Api`. A `name` rule stays exact, so
+`name oAuth2Api` blocks only the generic OAuth2 credential. Rule order decides as usual: an
+`allow name googleSheetsOAuth2Api` placed before `deny extends oAuth2Api` keeps Sheets usable,
+and placed after it, the shadow lint warns that it can never match. A write rejects an `extends`
+rule in a node type policy, and one that names a credential type that is not installed.
 
 ### Reading it on the execution path
 

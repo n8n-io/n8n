@@ -194,6 +194,85 @@ describe('node type availability policy instance controller admin happy path', (
 		);
 	});
 
+	test('each accepted PUT /instance moves the version by exactly one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const rule = (id: string, value: string) => ({
+			id,
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value },
+		});
+
+		const unwritten = await agent.get('/node-type-policies/instance');
+		expect(unwritten.body.data.version).toBe(0);
+
+		// Each write sends the version the previous response reported. A client that tracks the
+		// version this way must never see a gap, or its next write looks stale to it.
+		const created = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [rule('r1', 'a.b')], defaultAction: 'allow', version: 0 });
+		expect(created.statusCode).toBe(200);
+		expect(created.body.data.version).toBe(1);
+
+		const rulesOnly = await agent.put('/node-type-policies/instance').send({
+			rules: [rule('r2', 'c.d')],
+			defaultAction: 'allow',
+			version: created.body.data.version,
+		});
+		expect(rulesOnly.statusCode).toBe(200);
+		expect(rulesOnly.body.data.version).toBe(2);
+
+		const actionOnly = await agent.put('/node-type-policies/instance').send({
+			rules: [rule('r2', 'c.d')],
+			defaultAction: 'deny',
+			version: rulesOnly.body.data.version,
+		});
+		expect(actionOnly.statusCode).toBe(200);
+		expect(actionOnly.body.data.version).toBe(3);
+
+		const persisted = await agent.get('/node-type-policies/instance');
+		expect(persisted.body.data.version).toBe(3);
+		expect(persisted.body.data.defaultAction).toBe('deny');
+		expect(persisted.body.data.rules).toEqual([rule('r2', 'c.d')]);
+	});
+
+	test('a PUT /instance that changes the rules and the default action together moves the version by one', async () => {
+		const agent = testServer.authAgentFor(owner);
+
+		const first = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [], defaultAction: 'allow', version: 0 });
+		expect(first.statusCode).toBe(200);
+
+		const both = await agent.put('/node-type-policies/instance').send({
+			rules: [{ id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } }],
+			defaultAction: 'deny',
+			version: first.body.data.version,
+		});
+
+		expect(both.statusCode).toBe(200);
+		expect(both.body.data.version).toBe(first.body.data.version + 1);
+	});
+
+	test('a PUT /instance that changes nothing still moves the version by one', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const body = {
+			rules: [
+				{ id: 'r1', action: 'deny' as const, selector: { kind: 'name' as const, value: 'a.b' } },
+			],
+			defaultAction: 'allow' as const,
+		};
+
+		const first = await agent.put('/node-type-policies/instance').send({ ...body, version: 0 });
+		expect(first.statusCode).toBe(200);
+
+		const repeat = await agent
+			.put('/node-type-policies/instance')
+			.send({ ...body, version: first.body.data.version });
+
+		expect(repeat.statusCode).toBe(200);
+		expect(repeat.body.data.version).toBe(first.body.data.version + 1);
+	});
+
 	test('PUT /instance with a stale version returns 409', async () => {
 		const first = await testServer
 			.authAgentFor(owner)

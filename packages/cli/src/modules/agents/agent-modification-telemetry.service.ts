@@ -11,6 +11,7 @@ import { Telemetry } from '@/telemetry';
 
 import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import type { Agent } from './entities/agent.entity';
+import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { isUnconfiguredAgent } from './utils/agent-capabilities';
 
 export { isUnconfiguredAgent };
@@ -85,6 +86,8 @@ export function diffAgentConfigParts(
 export interface AgentModificationEvent {
 	/** Post-save entity, so the reported profile is the one that landed. */
 	agent: Agent;
+	/** Post-save JSON document of the draft, with the skill refs. */
+	config: AgentJsonConfig | null;
 	projectId: string;
 	user: User;
 	by: AgentActor;
@@ -98,8 +101,8 @@ export interface AgentModificationEvent {
 	wasUnconfigured: boolean;
 }
 
-export function captureAgentMutation(agent: Agent) {
-	const schema = agent.schema ?? null;
+export function captureAgentMutation(agent: Agent, skillRefs: AgentSkillRefs) {
+	const schema = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	const integrations = agent.integrations ?? [];
 	return { schema, integrations, wasUnconfigured: isUnconfiguredAgent(schema, integrations) };
 }
@@ -110,19 +113,22 @@ export type AgentSidecarChanges = Partial<Record<'tools' | 'skills' | 'tasks', b
 
 export function buildAgentMutationEvent(
 	agent: Agent,
+	skillRefs: AgentSkillRefs,
 	projectId: string,
 	context: AgentMutationTelemetryContext,
 	previous: AgentMutationSnapshot,
 	sidecarChanges: AgentSidecarChanges,
 ): AgentModificationEvent {
+	const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
 	return {
 		agent,
+		config,
 		projectId,
 		user: context.user,
 		by: context.modifiedBy,
 		changedParts: diffAgentConfigParts(
 			previous.schema,
-			agent.schema,
+			config,
 			previous.integrations,
 			agent.integrations ?? [],
 			sidecarChanges,
@@ -131,13 +137,19 @@ export function buildAgentMutationEvent(
 	};
 }
 
-function modificationProperties({ agent, projectId, user, changedParts }: AgentModificationEvent) {
+function modificationProperties({
+	agent,
+	config,
+	projectId,
+	user,
+	changedParts,
+}: AgentModificationEvent) {
 	return {
 		agent_id: agent.id,
 		project_id: projectId,
 		user_id: user.id,
 		changed_parts: changedParts,
-		...buildAgentCapabilityTelemetryProperties(agent.schema, agent.integrations),
+		...buildAgentCapabilityTelemetryProperties(config, agent.integrations),
 		has_published_version: Boolean(agent.activeVersionId),
 	} as const;
 }
@@ -160,8 +172,8 @@ export class AgentModificationTelemetryService {
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
-			const { agent, by, wasUnconfigured } = event;
-			if (wasUnconfigured && isUnconfiguredAgent(agent.schema, agent.integrations)) return;
+			const { agent, config, by, wasUnconfigured } = event;
+			if (wasUnconfigured && isUnconfiguredAgent(config, agent.integrations)) return;
 
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 			if (by === 'builder') {

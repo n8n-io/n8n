@@ -27,6 +27,11 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentTaskJobRegistrar } from '../scheduling/agent-task-job-registrar';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
+import {
+	composeStoredJsonConfig,
+	createAgentSkillRefsService,
+} from './test-utils/stored-agent-config';
 
 const AGENT_ID = 'agent-1';
 const PROJECT_ID = 'project-1';
@@ -165,6 +170,7 @@ describe('AgentTaskService', () => {
 			),
 			settingsService,
 			transactionRunner,
+			createAgentSkillRefsService(),
 		);
 	}
 
@@ -346,7 +352,7 @@ describe('AgentTaskService', () => {
 			} as Partial<Agent>);
 			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
 
-			const dtos = await service.createTasks(
+			const { tasks: dtos, configHash } = await service.createTasks(
 				AGENT_ID,
 				PROJECT_ID,
 				[taskOneDto, taskTwoDto],
@@ -373,6 +379,7 @@ describe('AgentTaskService', () => {
 				ctx,
 			);
 			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
+			expect(configHash).toBe(getAgentConfigHash(composeStoredJsonConfig(agent)));
 		});
 
 		it('rejects an empty batch before loading or writing anything', async () => {

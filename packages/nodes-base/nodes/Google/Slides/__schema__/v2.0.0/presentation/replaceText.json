@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "commentUpdateState": {
+            "type": "string"
+        },
         "presentationId": {
             "type": "string"
         },
@@ -29,5 +32,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

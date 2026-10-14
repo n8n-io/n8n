@@ -13,6 +13,7 @@ import type {
 	InstanceAiFileAttachment,
 	InstanceAiThreadSource,
 } from '@n8n/api-types';
+import { acceptedMimeTypesFromCapabilities } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -83,6 +84,7 @@ import {
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import DitherTrailGrid from './components/DitherTrailGrid.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -155,7 +157,7 @@ const canSelectProject = computed(
 	() => projectsStore.isTeamProjectFeatureEnabled && projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { showCreditWarning, quotaLocked } = storeToRefs(store);
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -165,7 +167,11 @@ const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 // this view mounts on every entry to the empty route, the parent layout doesn't.
 useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
+const outOfCreditsMessage = computed(() => {
+	if (!isOutOfCredits.value) return undefined;
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
+});
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
@@ -544,6 +550,13 @@ const isComposerAvailable = computed(
 );
 // Mentions only make sense against the Assistant, so they're off while an agent is selected.
 const inputMentionsEnabled = computed(() => mentionsEnabled.value && !selectedChatAgent.value);
+// An agent can't use connectors or computer/browser use, so the composer offers only the file
+// types its model accepts; n8n Assistant keeps the full "+" menu.
+const composerAttachOnlyMimeTypes = computed(() =>
+	selectedChatAgent.value
+		? acceptedMimeTypesFromCapabilities(selectedChatAgent.value.attachments)
+		: undefined,
+);
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
@@ -677,6 +690,9 @@ async function handleSubmit(
 
 	const threadId = uuidv4();
 	isStartingThread.value = true;
+	// The composer clears on submit, but this view stays up until the send is
+	// accepted. Put the prompt back so the user sees what they sent meanwhile.
+	void nextTick(restoreDraft);
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
@@ -772,10 +788,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</div>
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
-						v-if="creditBanner.visible.value"
+						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
-						:amounts-hidden="quotaLocked"
+						:message="outOfCreditsMessage"
+						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -784,6 +801,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:mentions-enabled="mentionsEnabled"
 						:mention-project-id="selectedProject"
@@ -816,10 +834,11 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				<template #input>
 					<div :class="$style.centeredInput">
 						<CreditWarningBanner
-							v-if="creditBanner.visible.value"
+							v-if="isOutOfCredits || creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
-							:amounts-hidden="quotaLocked"
+							:message="outOfCreditsMessage"
+							:dismissible="!isOutOfCredits"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -828,6 +847,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						<InstanceAiInput
 							ref="chatInputRef"
 							:is-submitting="isStartingThread"
+							:is-out-of-credits="isOutOfCredits"
 							:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 							:mentions-enabled="mentionsEnabled"
 							:mention-project-id="selectedProject"
@@ -864,15 +884,17 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiFreeNudge
 						:eligible="
 							store.creditsQuota !== undefined &&
+							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
 						"
 					/>
 					<CreditWarningBanner
-						v-if="creditBanner.visible.value"
+						v-if="isOutOfCredits || creditBanner.visible.value"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
-						:amounts-hidden="quotaLocked"
+						:message="outOfCreditsMessage"
+						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -881,10 +903,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
+						:is-out-of-credits="isOutOfCredits"
 						:is-workflow-builder-available="isComposerAvailable"
 						:mentions-enabled="inputMentionsEnabled"
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
+						:attach-only-mime-types="composerAttachOnlyMimeTypes"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -917,6 +941,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</Transition>
 			</div>
 		</div>
+
+		<DitherTrailGrid :height="640" />
 	</div>
 </template>
 
@@ -931,6 +957,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	border-bottom-left-radius: var(--radius--xl);
 	border-bottom-right-radius: var(--radius--xl);
+	border: var(--border);
 	display: flex;
 	flex-direction: row;
 }
@@ -946,10 +973,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 }
 
 .contentArea {
+	position: relative;
 	display: flex;
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	z-index: 1;
 }
 
 .emptyLayout {

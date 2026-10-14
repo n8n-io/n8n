@@ -1,4 +1,4 @@
-import { CreateAgentSkillDto, UpdateAgentSkillDto } from '@n8n/api-types';
+import { CreateAgentSkillDto, UpdateAttachedAgentSkillDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -58,11 +58,18 @@ export class AgentsSkillsController {
 			agentId,
 			'create skill for',
 		);
-		return await this.agentSkillsService.createAndAttachSkill(agentId, projectId, payload, {
-			user: req.user,
-			modifiedBy: 'user',
-			pushRef: req.headers?.['push-ref'],
-		});
+		const { availableTo, ...skill } = payload;
+		return await this.agentSkillsService.createAndAttachSkill(
+			agentId,
+			projectId,
+			skill,
+			{
+				user: req.user,
+				modifiedBy: 'user',
+				pushRef: req.headers?.['push-ref'],
+			},
+			availableTo,
+		);
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -72,10 +79,10 @@ export class AgentsSkillsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('skillId') skillId: string,
-		@Body payload: UpdateAgentSkillDto,
+		@Body payload: UpdateAttachedAgentSkillDto,
 	) {
 		const { projectId } = req.params;
-		const { baseSkillHash, ...updates } = payload;
+		const { baseSkillHash, availableTo, ...updates } = payload;
 		const clientId = req.headers?.['push-ref'];
 		await this.collaborationService.validateAgentWriteLock(
 			req.user.id,
@@ -95,6 +102,8 @@ export class AgentsSkillsController {
 				pushRef: req.headers?.['push-ref'],
 			},
 			baseSkillHash,
+			undefined,
+			availableTo,
 		);
 	}
 

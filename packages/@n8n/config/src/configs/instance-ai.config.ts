@@ -124,7 +124,8 @@ export class InstanceAiConfig {
 	/**
 	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
 	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
-	 * instance an eval pointed at a real workflow must leave its history alone.
+	 * instance an eval pointed at a real workflow must leave its history alone. An eval
+	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
 	 */
 	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
 	evalInstance: boolean = false;
@@ -246,19 +247,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
 	folderExplorationEnabled: boolean = false;
-
-	/**
-	 * Activation-capped trial variant for n8n cloud experiment.
-	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
-	activationCapped: boolean = false;
-
-	/**
-	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
-	activationLockMessageThreshold: number = 1;
 
 	/**
 	 * Max orchestrator runs executing concurrently on this process. A new user turn over

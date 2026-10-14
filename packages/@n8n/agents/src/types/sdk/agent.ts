@@ -280,8 +280,6 @@ export interface ExecutionOptions {
 	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
-	/** @deprecated Use `onStepEnd` instead. */
-	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**
 	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
 	 * checkpoint at every step boundary (after a tool batch settles, before the

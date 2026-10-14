@@ -438,6 +438,15 @@ export interface ICredentialType {
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
+	methods?: {
+		loadOptions?: {
+			[method: string]: (
+				credentials: ICredentialDataDecryptedObject,
+				filter?: string,
+				paginationToken?: string,
+			) => Promise<INodeListSearchResult>;
+		};
+	};
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
@@ -614,6 +623,8 @@ export interface IHttpRequestOptions {
 		protocol?: string;
 	};
 	timeout?: number;
+	/** Maximum decoded body size in bytes for buffered responses. Unset keeps the response unlimited. */
+	maxResponseBodyBytes?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
 	/**
@@ -2850,6 +2861,19 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
+	 * Marks the node, or one version of it, as deprecated. When `N8N_DEPRECATED_NODES_BLOCK` is enabled, workflows cannot add or
+	 * change a deprecated node, and workflow definitions that run without being
+	 * saved, such as inline sub-workflows, cannot contain one. Saved workflows that
+	 * already contain it keep running. Set this only for nodes that pose an active
+	 * risk, such as legacy nodes with insecure sandboxing; use `hidden` for nodes
+	 * that are only superseded.
+	 *
+	 * For versioned nodes, set this on the per-version description to mark only
+	 * that version as deprecated.
+	 */
+	deprecated?: true;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
@@ -3789,6 +3813,22 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
+	 * What, if anything, on the main that started this run awaits its outcome
+	 * and would act on a paused segment as if it were the result. A worker must
+	 * not park such a run at shutdown.
+	 * The values differ in what clears them, not in when:
+	 * - `'response'`: a webhook caller is owed a response. Cleared when the worker
+	 *   relays one: at the Respond to Webhook node for `responseNode`, at the end
+	 *   of the run for `lastNode`.
+	 * - `'completion'`: a trigger node's done promise (Kafka, RabbitMQ, MQTT), an
+	 *   Instance AI run, a retry or an MCP Trigger run awaits the end of the run.
+	 *   Never cleared.
+	 * - `'none'`: nothing waits, the run may be parked. A webhook in the default
+	 *   `onReceived` mode is answered at enqueue and starts here.
+	 * Absent (older main): treated as `'completion'`, the strictest reading.
+	 */
+	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
+	/**
 	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
 	 * minted it before the run starts: to subscribe to the run's answer, or because
 	 * the trigger node already stored files under it. Without it, the dispatcher
@@ -4435,7 +4475,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2 | 3;
+	version: 1 | 2 | 3 | 4;
 };
 
 export type FilterValue = {

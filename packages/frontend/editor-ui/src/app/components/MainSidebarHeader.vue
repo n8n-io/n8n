@@ -166,7 +166,7 @@ const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCre
 						size="xsmall"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-else
 						:size="'mini'"
 						:class="$style.upgradeButton"
@@ -220,6 +220,8 @@ const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCre
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus' as focus;
+
 .header {
 	display: flex;
 	align-items: center;
@@ -242,6 +244,11 @@ const { claudeMenu, claudeAppendSlotName, selectItem, trackOpen } = useClaudeCre
 
 .logo {
 	margin-right: auto;
+	padding-inline-start: var(--spacing--3xs);
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .readOnlyEnvironmentIcon {

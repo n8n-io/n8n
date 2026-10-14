@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import MigrationRules from './MigrationRules.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeLightReportResult } from '@n8n/api-types';
@@ -15,6 +16,7 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowIssue = {
@@ -31,6 +33,7 @@ const mockWorkflowIssue = {
 	],
 	migratable: false,
 	nbAffectedWorkflows: 5,
+	nbWontFixWorkflows: 0,
 };
 
 const mockInstanceIssue = {
@@ -99,6 +102,9 @@ describe('MigrationRules', () => {
 			baseUrl: 'http://localhost:5678',
 			pushRef: 'test-push-ref',
 		};
+		// By default the user can edit every workflow, so the page shows the whole instance.
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(true);
 
 		vi.mocked(breakingChangesApi.getReport).mockResolvedValue(mockReport);
 		vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(mockReport);
@@ -198,7 +204,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Impact tag
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -207,6 +213,12 @@ describe('MigrationRules', () => {
 				const workflowLink = screen.getByText('5 Workflows');
 				expect(workflowLink.closest('a')).toBeInTheDocument();
 			});
+
+			// The title links to the detail page too
+			expect(screen.getByText('Test Rule 1').closest('a')).toHaveAttribute(
+				'data-test-id',
+				'migration-rule-title-link',
+			);
 		});
 
 		it('should show empty state when no workflow issues', async () => {
@@ -276,7 +288,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
 				expect(screen.getByText('Capability removed')).toBeInTheDocument();
@@ -288,6 +300,109 @@ describe('MigrationRules', () => {
 				.getAllByRole('heading', { level: 3 })
 				.map((heading) => heading.textContent?.trim());
 			expect(titles).toEqual(['Test Rule 3', 'Test Rule 1', 'Test Rule 2', 'Test Rule 4']);
+		});
+	});
+
+	describe('finding counts', () => {
+		it("shows the open and won't fix counts of each rule, and leaves out a zero count", async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [
+							{ ...mockWorkflowIssue, nbAffectedWorkflows: 9, nbWontFixWorkflows: 1 },
+							{
+								...mockWorkflowIssue,
+								ruleId: 'rule-open-only',
+								ruleTitle: 'Open Only Rule',
+								nbAffectedWorkflows: 3,
+								nbWontFixWorkflows: 0,
+							},
+							{
+								...mockWorkflowIssue,
+								ruleId: 'rule-wont-fix-only',
+								ruleTitle: "Won't Fix Only Rule",
+								nbAffectedWorkflows: 0,
+								nbWontFixWorkflows: 2,
+							},
+						],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getAllByTestId('migration-rule-finding-counts')).toHaveLength(3);
+			});
+			const counts = screen
+				.getAllByTestId('migration-rule-finding-counts')
+				.map((element) => element.textContent?.replace(/\s+/g, ' ').trim());
+			expect(counts).toEqual(["9 open 1 won't fix", '3 open', "2 won't fix"]);
+		});
+	});
+
+	describe('resolved workflow rules', () => {
+		const resolvedRule = {
+			...mockWorkflowIssue,
+			ruleId: 'rule-resolved',
+			ruleTitle: 'Resolved Rule',
+			ruleImpact: 'upgradeBlocked' as const,
+			nbAffectedWorkflows: 0,
+			nbWontFixWorkflows: 2,
+		};
+
+		it('lists a rule without open findings last, as resolved, with a link to its detail page', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [resolvedRule, mockWorkflowIssue],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('Resolved')).toBeInTheDocument();
+			});
+			expect(screen.getByText('Resolved').closest('a')).toBeInTheDocument();
+			expect(screen.queryByText('0 Workflows')).not.toBeInTheDocument();
+			const titles = screen
+				.getAllByRole('heading', { level: 3 })
+				.map((heading) => heading.textContent?.trim());
+			expect(titles).toEqual(['Test Rule 1', 'Resolved Rule']);
+			// The tab counts only the rule with open findings.
+			expect(screen.getByText('Workflow issues').parentElement).toHaveTextContent('1');
+		});
+
+		it('shows the empty state and keeps the resolved rules listed when no rule has open findings', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [resolvedRule],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('No workflow issues detected')).toBeInTheDocument();
+			});
+			expect(screen.getByText('Resolved Rule')).toBeInTheDocument();
+			expect(screen.getByText('Workflow issues').parentElement).not.toHaveTextContent(/\d/);
 		});
 	});
 
@@ -395,6 +510,25 @@ describe('MigrationRules', () => {
 		});
 	});
 
+	describe('as a user who cannot edit every workflow', () => {
+		beforeEach(() => {
+			rbacStore.hasScope.mockReturnValue(false);
+		});
+
+		it('shows the workflow issues with a scope note, and neither Refresh nor the instance tab', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			expect(screen.getByTestId('migration-report-scope-note')).toBeInTheDocument();
+			expect(screen.queryByText('Refresh')).not.toBeInTheDocument();
+			expect(screen.queryByText('Instance issues')).not.toBeInTheDocument();
+			expect(screen.getByText('Workflow issues')).toBeInTheDocument();
+		});
+	});
+
 	describe('refresh functionality', () => {
 		it.each([true, false])(
 			'should always show the Refresh button (shouldCache: %s)',
@@ -411,7 +545,7 @@ describe('MigrationRules', () => {
 			},
 		);
 
-		it('should show when the report was last synced, from generatedAt', async () => {
+		it('should show when the report was last updated, from generatedAt', async () => {
 			// One year in the past, so the relative label is stable whatever the test date.
 			const generatedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -429,12 +563,26 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				const lastSynced = screen.getByTestId('migration-report-last-synced');
-				expect(lastSynced).toHaveTextContent(/Last synced\s+1 year ago/);
+				const lastUpdated = screen.getByTestId('migration-report-last-updated');
+				expect(lastUpdated).toHaveTextContent(/Last updated\s+1 year ago/);
 			});
 		});
 
-		it('should update the last synced time after Refresh', async () => {
+		it('should show "Never updated" when the report has no generatedAt', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: undefined } }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
+					'Never updated',
+				);
+			});
+		});
+
+		it('should update the last updated time after Refresh', async () => {
 			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			const newDate = new Date(Date.now() - 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -447,13 +595,13 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(/1 year ago/);
 			});
 
 			await userEvent.click(screen.getByText('Refresh'));
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
 					/1 minute ago/,
 				);
 			});
@@ -632,7 +780,7 @@ describe('MigrationRules', () => {
 			},
 			{
 				impact: 'executionsFail',
-				label: 'Executions fail',
+				label: 'Executions will fail',
 				tooltipText: 'will fail',
 			},
 			{

@@ -1,3 +1,4 @@
+import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -1284,16 +1285,6 @@ export class InstanceAiSettingsService {
 		return this.config.browserUseEnabled;
 	}
 
-	/** Whether this instance is in the activation-capped trial cohort. */
-	isActivationCapped(): boolean {
-		return this.config.activationCapped;
-	}
-
-	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
-	getActivationLockMessageThreshold(): number {
-		return this.config.activationLockMessageThreshold;
-	}
-
 	/** Whether workflow building can use the required sandbox workspace. */
 	getSandboxStatus(): InstanceAiSandboxStatus {
 		const provider = this.sandboxSettingsService.getProvider();
@@ -1478,8 +1469,8 @@ export class InstanceAiSettingsService {
 		data: Record<string, unknown>,
 		modelName: string,
 	): ModelConfig | null {
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
-		if (!provider) {
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (!credentialProvider) {
 			return null;
 		}
 
@@ -1487,10 +1478,22 @@ export class InstanceAiSettingsService {
 		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
+		// The UI saves its self-hosted option as an OpenAI credential with a custom URL.
+		// These servers speak /chat/completions, so build them like an env `custom/` model.
+		const provider =
+			credentialType === 'openAiApi' && baseUrl && isOpenAiCustomEndpoint(baseUrl)
+				? 'custom'
+				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
-		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+		return {
+			id,
+			url: baseUrl,
+			...(apiKey ? { apiKey } : {}),
+			...(headers ? { headers } : {}),
+			...this.customModelOptionsFor(id),
+		};
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────

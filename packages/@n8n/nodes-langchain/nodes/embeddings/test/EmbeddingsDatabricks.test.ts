@@ -113,6 +113,7 @@ describe('EmbeddingsDatabricks', () => {
 			expect(MockedOpenAIEmbeddings).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'databricks-oauth',
+					encodingFormat: 'float',
 					model: 'system.ai.gte-large-en',
 					timeout: 360000,
 					maxRetries: 2,

@@ -23,3 +23,10 @@ export const TOOL_CALL_STATE = {
 	ERROR: 'error',
 } as const;
 export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STATE];
+
+/**
+ * Placeholder `toolName` of a card that a host extension parsed. It is not a
+ * real agent tool: the extension's `parse` accepts any tool call, and the
+ * payload's `extensionKey` names the extension that renders it.
+ */
+export const INTERACTION_EXTENSION_TOOL_NAME = 'interaction_extension';

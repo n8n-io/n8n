@@ -193,6 +193,25 @@ describe('SlackInteractionWebhooks', () => {
 		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
 	});
 
+	it('responds 409 when the execution was parked at a node boundary', async () => {
+		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const req = createRequest(reference);
+		const { res, status } = createResponse();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { waitReason: 'suspended', resultData: { error: undefined } },
+			}),
+		);
+
+		const result = await slackInteractionWebhooks.executeWebhook(req, res);
+
+		expect(status).toHaveBeenCalledWith(409);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
+	});
+
 	it('responds 409 when the execution has already finished', async () => {
 		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);

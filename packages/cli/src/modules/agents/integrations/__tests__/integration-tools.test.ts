@@ -979,6 +979,29 @@ describe('integration tools', () => {
 		);
 	});
 
+	it.each([
+		['a silent result', { ok: true, silent: true }, true],
+		[
+			'a batch with a silent result',
+			{ results: [{ action: 'do_not_respond', result: { ok: true, silent: true } }] },
+			true,
+		],
+		['a normal result', { ok: true }, false],
+		[
+			'a batch with a refused silence',
+			{ results: [{ action: 'do_not_respond', result: { ok: false } }] },
+			false,
+		],
+	])('ends the turn after %s: %s', (_label, output, expected) => {
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore: mock<IntegrationMessageContextStore>(),
+			actionExecutor: mock<IntegrationActionExecutor>(),
+		}).build();
+
+		expect(tool.endsTurn?.(output)).toBe(expected);
+	});
+
 	it('action tool schema accepts Slack emoji reaction actions', () => {
 		const tool = createIntegrationActionTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1', () => ({

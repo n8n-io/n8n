@@ -256,6 +256,7 @@ describe.runIf(runBenchmarks)('durable scheduler benchmarks', () => {
 				scheduledFor: when,
 				runAt: when,
 				maxAttempts: 1,
+				timeoutSeconds: 300,
 			};
 		});
 		for (let i = 0; i < occurrences.length; i += SEED_TX_CHUNK) {

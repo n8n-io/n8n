@@ -1,17 +1,19 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
-	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
-
 	async init() {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
+
+		// Read the skills hub flag once, before anything reads or writes agent skills.
+		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
+		await Container.get(SkillsHubRollout).init();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -23,6 +25,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
+		await import('./skills.controller.js');
 		await import('./agent-knowledge.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
@@ -143,19 +146,11 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
-			const sweep = () => {
-				void Container.get(AgentInterruptedExecutionSweeper)
-					.sweep()
-					.catch((error: unknown) => {
-						logger.error('[Agents] Interrupted execution sweep failed', { error });
-					});
-			};
-			sweep();
-			this.interruptedExecutionSweepTimer = setInterval(
-				sweep,
-				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
-			);
-			this.interruptedExecutionSweepTimer.unref();
+			void Container.get(AgentInterruptedExecutionSweeper)
+				.sweep()
+				.catch((error: unknown) => {
+					logger.error('[Agents] Interrupted execution sweep failed', { error });
+				});
 		}
 
 		// Workers never receive inbound platform events: no webhook route, no polling
@@ -212,14 +207,10 @@ export class AgentsModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
-		return [AgentCheckpointPruningTask];
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		if (this.interruptedExecutionSweepTimer) {
-			clearInterval(this.interruptedExecutionSweepTimer);
-		}
+		const { AgentInterruptedExecutionSweepTask } = await import(
+			'./agent-interrupted-execution-sweep.task.js'
+		);
+		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
 	}
 
 	async settings() {
@@ -227,6 +218,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const { SkillsHubRollout } = await import('./skills/skills-hub-rollout.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
@@ -234,6 +226,7 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
+			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 
@@ -288,6 +281,13 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
 		);
+		const { Skill } = await import('./entities/skill.entity.js');
+		const { SkillVersion } = await import('./entities/skill-version.entity.js');
+		const { SkillFile } = await import('./entities/skill-file.entity.js');
+		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
+		const { AgentVersionSkillDependency } = await import(
+			'./entities/agent-version-skill-dependency.entity.js'
+		);
 
 		return [
 			Agent,
@@ -322,6 +322,11 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
+			Skill,
+			SkillVersion,
+			SkillFile,
+			AgentSkillDependency,
+			AgentVersionSkillDependency,
 		];
 	}
 

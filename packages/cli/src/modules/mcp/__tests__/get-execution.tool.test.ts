@@ -57,6 +57,74 @@ describe('get-execution MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
+		describe('access checks', () => {
+			test.each([true, false])(
+				'requires workflow:read and execution:read on the workflow (includeData: %s)',
+				async (includeData) => {
+					const tool = createGetExecutionTool(
+						user,
+						executionRepository,
+						workflowFinderService,
+						telemetry,
+						executionRedactionServiceProxy,
+					);
+
+					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+					(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(null);
+					(executionRepository.findIfAccessible as Mock).mockResolvedValue(null);
+
+					await tool.handler(
+						{
+							workflowId: 'workflow-1',
+							executionId: 'execution-1',
+							includeData,
+							nodeNames: undefined,
+							truncateData: undefined,
+						},
+						{} as never,
+					);
+
+					expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+						'workflow-1',
+						user,
+						['workflow:read', 'execution:read'],
+						{},
+					);
+				},
+			);
+
+			test.each([true, false])(
+				'does not load the execution when the workflow lookup fails (includeData: %s)',
+				async (includeData) => {
+					const tool = createGetExecutionTool(
+						user,
+						executionRepository,
+						workflowFinderService,
+						telemetry,
+						executionRedactionServiceProxy,
+					);
+
+					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
+
+					const result = await tool.handler(
+						{
+							workflowId: 'workflow-1',
+							executionId: 'execution-1',
+							includeData,
+							nodeNames: undefined,
+							truncateData: undefined,
+						},
+						{} as never,
+					);
+
+					expect(executionPersistence.findWithUnflattenedData).not.toHaveBeenCalled();
+					expect(executionRepository.findIfAccessible).not.toHaveBeenCalled();
+					expect(result.structuredContent).toMatchObject({ execution: null });
+					expect(result.structuredContent).not.toHaveProperty('data');
+				},
+			);
+		});
+
 		describe('execution retrieval', () => {
 			test('returns generic error when execution is not found for workflow', async () => {
 				const tool = createGetExecutionTool(

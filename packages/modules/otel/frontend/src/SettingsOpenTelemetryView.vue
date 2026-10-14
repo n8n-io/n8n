@@ -556,7 +556,7 @@ watch(
 								</div>
 								<N8nButton
 									icon="plus"
-									variant="subtle"
+									variant="outline"
 									size="small"
 									native-type="button"
 									:disabled="isEnvManaged('exporterHeaders')"
@@ -699,6 +699,38 @@ watch(
 								:disabled="isEnvManaged('includeNodeSpans')"
 								data-test-id="otel-include-node-spans"
 								@update:model-value="otelStore.settings.includeNodeSpans = Boolean($event)"
+							/>
+						</template>
+					</OtelSettingsRow>
+
+					<OtelSettingsRow
+						:title="i18n.baseText('settings.opentelemetry.emitWorkflowStartSpan.label')"
+						:description="i18n.baseText('settings.opentelemetry.emitWorkflowStartSpan.description')"
+						:env-tooltip="envTooltip('emitWorkflowStartSpan')"
+					>
+						<template #action>
+							<N8nCheckbox
+								:model-value="otelStore.settings.emitWorkflowStartSpan"
+								:disabled="isEnvManaged('emitWorkflowStartSpan')"
+								data-test-id="otel-emit-workflow-start-span"
+								@update:model-value="otelStore.settings.emitWorkflowStartSpan = Boolean($event)"
+							/>
+						</template>
+					</OtelSettingsRow>
+
+					<OtelSettingsRow
+						:title="i18n.baseText('settings.opentelemetry.emitNodeStartSpan.label')"
+						:description="i18n.baseText('settings.opentelemetry.emitNodeStartSpan.description')"
+						:env-tooltip="envTooltip('emitNodeStartSpan')"
+					>
+						<template #action>
+							<N8nCheckbox
+								:model-value="otelStore.settings.emitNodeStartSpan"
+								:disabled="
+									isEnvManaged('emitNodeStartSpan') || !otelStore.settings.includeNodeSpans
+								"
+								data-test-id="otel-emit-node-start-span"
+								@update:model-value="otelStore.settings.emitNodeStartSpan = Boolean($event)"
 							/>
 						</template>
 					</OtelSettingsRow>
