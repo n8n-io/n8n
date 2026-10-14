@@ -6,7 +6,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiThreadInfo,
 } from '@n8n/api-types';
-import { request, type APIRequestContext } from '@playwright/test';
+import { request, type APIRequestContext, type Page } from '@playwright/test';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
 import type { UserCredentials } from '../config/test-users';
@@ -66,19 +66,6 @@ export interface InstanceAiThreadStatus {
 }
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
-export type TestState = 'fresh' | 'reset' | 'signin-only';
-
-const AUTH_TAGS = {
-	ADMIN: '@auth:admin',
-	OWNER: '@auth:owner',
-	MEMBER: '@auth:member',
-	CHAT: '@auth:chat',
-	NONE: '@auth:none',
-} as const;
-
-const DB_TAGS = {
-	RESET: '@db:reset',
-} as const;
 
 export class ApiHelpers {
 	request: APIRequestContext;
@@ -138,76 +125,13 @@ export class ApiHelpers {
 		this.publicApi = new PublicApiHelper(this);
 	}
 
-	// ===== MAIN SETUP METHODS =====
-
 	/**
-	 * Setup test environment based on test tags
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
-	 * @param memberIndex - Which member to use (if auth role is 'member')
-	 *
-	 * Examples:
-	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
-	 * - ['@auth:admin'] = signin as admin (no reset)
-	 * - ['@auth:none'] = no signin (unauthenticated)
+	 * An API client that shares the page's cookies, so API sign-in and UI sign-in
+	 * affect the same session. The dev server proxies backend routes, so the
+	 * editor URL reaches the API in every mode.
 	 */
-	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
-		const shouldReset = this.shouldResetDatabase(tags);
-		const role = this.getRoleFromTags(tags);
-
-		if (shouldReset && role) {
-			// Reset + signin
-			await this.resetDatabase();
-			return await this.signin(role, memberIndex);
-		} else if (shouldReset) {
-			// Reset only, manual signin required
-			await this.resetDatabase();
-			return null;
-		} else if (role) {
-			// Signin only
-			return await this.signin(role, memberIndex);
-		}
-
-		// No setup required
-		return null;
-	}
-
-	/**
-	 * Check if database should be reset based on tags
-	 */
-	private shouldResetDatabase(tags: string[]): boolean {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
-	}
-
-	/**
-	 * Setup test environment based on desired state (programmatic approach)
-	 * @param state - 'fresh': new container, 'reset': reset DB + signin, 'signin-only': just signin
-	 * @param role - User role to sign in as
-	 * @param memberIndex - Which member to use (if role is 'member')
-	 */
-	async setupTest(
-		state: TestState,
-		role: UserRole = 'owner',
-		memberIndex: number = 0,
-	): Promise<LoginResponseData | null> {
-		switch (state) {
-			case 'fresh':
-				// For fresh docker container - just reset, no signin needed yet
-				await this.resetDatabase();
-				return null;
-
-			case 'reset':
-				// Reset database then sign in
-				await this.resetDatabase();
-				return await this.signin(role, memberIndex);
-
-			case 'signin-only':
-				// Just sign in without reset
-				return await this.signin(role, memberIndex);
-
-			default:
-				throw new TestError('Unknown test state');
-		}
+	static forPage(page: Page, options: ApiHelpersOptions): ApiHelpers {
+		return new ApiHelpers(page.context().request, options);
 	}
 
 	// ===== CORE METHODS =====
@@ -244,18 +168,21 @@ export class ApiHelpers {
 	async setFeature(feature: string, enabled: boolean): Promise<void> {
 		await this.request.patch('/rest/e2e/feature', {
 			data: { feature: `feat:${feature}`, enabled },
+			failOnStatusCode: true,
 		});
 	}
 
 	async setQuota(quotaName: string, value: number | string): Promise<void> {
 		await this.request.patch('/rest/e2e/quota', {
 			data: { feature: `quota:${quotaName}`, value },
+			failOnStatusCode: true,
 		});
 	}
 
 	async setQueueMode(enabled: boolean): Promise<void> {
 		await this.request.patch('/rest/e2e/queue-mode', {
 			data: { enabled },
+			failOnStatusCode: true,
 		});
 	}
 
@@ -344,6 +271,7 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
 			data: { flags },
+			failOnStatusCode: true,
 		});
 		return await response.json();
 	}
@@ -357,6 +285,7 @@ export class ApiHelpers {
 	}> {
 		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
 			data: { flags: {} },
+			failOnStatusCode: true,
 		});
 		return await response.json();
 	}
@@ -364,7 +293,9 @@ export class ApiHelpers {
 	async getEnvFeatureFlags(): Promise<{
 		data: Record<string, string>;
 	}> {
-		const response = await this.request.get('/rest/e2e/env-feature-flags');
+		const response = await this.request.get('/rest/e2e/env-feature-flags', {
+			failOnStatusCode: true,
+		});
 		return await response.json();
 	}
 
@@ -409,16 +340,19 @@ export class ApiHelpers {
 		await this.setFeature(feature, true);
 	}
 
-	/**
-	 * Enable all project features (sharing, folders, advancedPermissions, projectRoles)
-	 * Use this in API-only tests - the n8n fixture enables these via withProjectFeatures()
-	 */
+	/** Enable all project features (sharing, folders, advancedPermissions, projectRoles). */
 	async enableProjectFeatures(): Promise<void> {
 		await this.enableFeature('sharing');
 		await this.enableFeature('folders');
 		await this.enableFeature('advancedPermissions');
 		await this.enableFeature('projectRole:admin');
 		await this.enableFeature('projectRole:editor');
+	}
+
+	/** The license state every test starts with. The session fixture applies it before each test. */
+	async applyDefaultFeatures(): Promise<void> {
+		await this.enableProjectFeatures();
+		await this.setMaxTeamProjectsQuota(-1);
 	}
 
 	async disableFeature(feature: string): Promise<void> {
@@ -857,23 +791,5 @@ export class ApiHelpers {
 			default:
 				throw new TestError(`Unknown role: ${role as string}`);
 		}
-	}
-
-	// ===== TAG PARSING METHODS =====
-
-	/**
-	 * Get the role from the tags
-	 * @param tags - Array of test tags (e.g., ['@auth:owner'])
-	 * @returns The role from the tags, or 'owner' if no role is found
-	 */
-	getRoleFromTags(tags: string[]): UserRole | null {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-
-		if (lowerTags.includes(AUTH_TAGS.ADMIN.toLowerCase())) return 'admin';
-		if (lowerTags.includes(AUTH_TAGS.OWNER.toLowerCase())) return 'owner';
-		if (lowerTags.includes(AUTH_TAGS.MEMBER.toLowerCase())) return 'member';
-		if (lowerTags.includes(AUTH_TAGS.CHAT.toLowerCase())) return 'chat';
-		if (lowerTags.includes(AUTH_TAGS.NONE.toLowerCase())) return null;
-		return 'owner';
 	}
 }

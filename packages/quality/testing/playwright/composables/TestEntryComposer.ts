@@ -102,7 +102,7 @@ export class TestEntryComposer {
 		await action();
 		const newPage = await newPagePromise;
 		await newPage.waitForLoadState('domcontentloaded');
-		return this.wrapPage(newPage);
+		return this.forPage(newPage);
 	}
 
 	/**
@@ -113,33 +113,27 @@ export class TestEntryComposer {
 	 */
 	async newTab(): Promise<n8nPage> {
 		const newPage = await this.n8n.page.context().newPage();
-		return this.wrapPage(newPage);
+		return this.forPage(newPage);
 	}
 
 	/**
-	 * Wraps a page in a new n8nPage that keeps this instance's API options, so a
-	 * workflow created from the new page lands on the same engine.
+	 * An n8nPage for another page, such as a popup or tab. Its API client shares
+	 * that page's cookies and keeps this instance's API options, so a workflow
+	 * created from the new page lands on the same engine.
 	 * Uses the constructor from the current instance to avoid a circular import.
 	 */
-	private wrapPage(page: Page): n8nPage {
+	forPage(page: Page): n8nPage {
 		const n8nPageConstructor = this.n8n.constructor as new (page: Page, api: ApiHelpers) => n8nPage;
-		return new n8nPageConstructor(
-			page,
-			new ApiHelpers(page.context().request, this.n8n.api.options),
-		);
+		return new n8nPageConstructor(page, ApiHelpers.forPage(page, this.n8n.api.options));
 	}
 
 	/**
 	 * Enable project feature set
-	 * Allow project creation, sharing, and folder creation
+	 * Allow project creation, sharing, and folder creation.
+	 * The session fixture applies these before every test.
 	 */
 	async withProjectFeatures() {
-		await this.n8n.api.enableFeature('sharing');
-		await this.n8n.api.enableFeature('folders');
-		await this.n8n.api.enableFeature('advancedPermissions');
-		await this.n8n.api.enableFeature('projectRole:admin');
-		await this.n8n.api.enableFeature('projectRole:editor');
-		await this.n8n.api.setMaxTeamProjectsQuota(-1);
+		await this.n8n.api.applyDefaultFeatures();
 	}
 
 	/**
@@ -154,7 +148,7 @@ export class TestEntryComposer {
 		const context = await browser.newContext();
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
-		const newN8n = this.wrapPage(page);
+		const newN8n = this.forPage(page);
 		await newN8n.api.login({ email: user.email, password: user.password });
 		return newN8n;
 	}

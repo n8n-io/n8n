@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { BACKEND_BY_SPEC_DIR, COVERAGE_ENABLED, slugify, specId } from '../coverage-options';
 
 type BackendCoverageTestFixtures = { backendCoverage: undefined; mainUrls: string[] };
-type BackendCoverageWorkerFixtures = { n8nUrl: string };
+type BackendCoverageWorkerFixtures = { backendUrl: string };
 
 let warnedMultiMain = false;
 let warnedHookError = false;
@@ -46,10 +46,10 @@ export const backendV8CoverageFixtures: Fixtures<
 	//   - the main path between `/coverage/start` (setup) and `/coverage/take`
 	//     (teardown that writes the raw V8 file).
 	backendCoverage: [
-		async ({ n8nUrl, mainUrls }, use, testInfo) => {
-			// Target the main directly via n8nUrl (always set for a container run);
+		async ({ backendUrl, mainUrls }, use, testInfo) => {
+			// Target the main directly via backendUrl (always set for a container run);
 			// mainUrls is only populated for multi-main and is used here just to warn.
-			if (!COVERAGE_ENABLED || !n8nUrl) {
+			if (!COVERAGE_ENABLED || !backendUrl) {
 				await use(undefined);
 				return;
 			}
@@ -61,7 +61,7 @@ export const backendV8CoverageFixtures: Fixtures<
 				);
 			}
 
-			const ctx = await request.newContext({ baseURL: n8nUrl });
+			const ctx = await request.newContext({ baseURL: backendUrl });
 			try {
 				await ctx.post('/rest/e2e/coverage/start');
 			} catch {

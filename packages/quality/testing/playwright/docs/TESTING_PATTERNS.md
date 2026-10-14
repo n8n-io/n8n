@@ -46,7 +46,7 @@ const requirements: TestRequirements = {
 test.use({ requirements });
 ```
 
-The `n8n` fixture enables project features. For an API-only test, call `api.enableProjectFeatures()` when required. See the [test requirements type](../Types.ts) for other overrides.
+The `session` fixture enables the default project features for UI and API-only tests. Use `n8n.start.withProjectFeatures()` to re-apply them after a test changes them. See the [test requirements type](../Types.ts) for other overrides.
 
 ## Verify an existing journey after a refactor
 

@@ -30,10 +30,10 @@ export const test = base.extend<
 	Pick<Fixtures, 'publishedPackages'>
 >({
 	publishedPackages: [
-		async ({ n8nContainer }, use) => {
-			if (n8nContainer) {
+		async ({ sut: { stack } }, use) => {
+			if (stack) {
 				for (const pkg of PUBLISHED_PACKAGES) {
-					await n8nContainer.services.npmRegistry.publishDirectory(pkg.directory);
+					await stack.services.npmRegistry.publishDirectory(pkg.directory);
 				}
 			}
 			await use(PUBLISHED_PACKAGES);
