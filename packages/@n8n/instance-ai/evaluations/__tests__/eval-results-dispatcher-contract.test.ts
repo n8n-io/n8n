@@ -7,7 +7,8 @@ import { join } from 'path';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { AGENT_ARTIFACT_CASE_CAP_BYTES } from '../harness/artifacts/agent-artifact';
 import type { RoutingCase } from '../routing/cases';
-import { writeRoutingEvalResults } from '../routing/eval-results';
+import { writeRoutingEvalResults, type RoutingTrial } from '../routing/eval-results';
+import { casePasses } from '../routing/grade';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -568,5 +569,23 @@ describe('eval-results.json — dispatcher contract (routing)', () => {
 			incomplete: true,
 			attribution: 'verification_gap',
 		});
+	});
+
+	it('gives LangTracer the counts for the verdict that the CLI prints', () => {
+		const graded = (passed: boolean): RoutingTrial => ({
+			resolution: { route: passed ? 'agent' : 'workflow', evidence: 'build call' },
+			passed,
+			turn: { streamStatus: 'stopped-on-route' },
+		});
+		const trials = [true, true, true, false, false].map(graded);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const jsonPath = writeRoutingEvalResults(dir, [{ routingCase, trials }], 5, 1234);
+		const [counts] = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8')).testCases[0]
+			.buildExpectations;
+
+		// The dispatcher's `foldBuildExpectations` passes an expectation on a strict majority of evaluated runs.
+		expect(counts).toMatchObject({ passCount: 3, evaluatedCount: 5 });
+		expect(counts.passCount * 2 > counts.evaluatedCount).toBe(true);
+		expect(casePasses(trials)).toBe(true);
 	});
 });

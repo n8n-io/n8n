@@ -431,13 +431,21 @@ describe('afterQuestion', () => {
 });
 
 describe('casePasses', () => {
+	const trial = (outcome: 'pass' | 'fail' | 'none') => ({
+		resolution: { route: outcome === 'none' ? 'none' : 'agent', evidence: 'test' } as const,
+		passed: outcome === 'pass',
+	});
+
 	it.each([
-		[2, 3, true],
-		[1, 3, false],
-		[4, 6, true],
-		[3, 6, false],
-		[0, 0, false],
-	])('%i of %i trials: %s', (passed, total, expected) => {
-		expect(casePasses(passed, total)).toBe(expected);
+		[['pass', 'pass', 'fail'], true],
+		[['pass', 'fail', 'fail'], false],
+		[['pass', 'pass', 'pass', 'fail', 'fail'], true],
+		[['pass', 'pass', 'fail', 'fail'], false],
+		[['pass', 'none', 'none'], true],
+		[['pass', 'fail', 'none'], false],
+		[['none', 'none', 'none'], false],
+		[[], false],
+	] as const)('%j: %s', (outcomes, expected) => {
+		expect(casePasses(outcomes.map(trial))).toBe(expected);
 	});
 });

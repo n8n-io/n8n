@@ -431,7 +431,7 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 			return trial.resolution.route === 'none' ? await runRoutingTrial(args, routingCase) : trial;
 		});
 
-		const passed = casePasses(trials.filter((t) => t.passed).length, trials.length);
+		const passed = casePasses(trials);
 		const after = routingCase.direction ? `; after a reply ${routingCase.after.join(' | ')}` : '';
 		console.log(
 			`${passed ? '✓' : '✗'} ${trials.map((t) => routeLabel(t.resolution)).join(', ')} (accepts ${routingCase.accepts.join(' | ')}${after})`,
@@ -451,7 +451,9 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 		results.push({ routingCase, trials, passed });
 	}
 
-	console.log('\n=== Routing summary (a case passes when 2/3 of its trials pass) ===');
+	console.log(
+		'\n=== Routing summary (a case passes when more than half of its graded trials pass) ===',
+	);
 	const summaryLine = (name: string, rows: typeof results) =>
 		console.log(`  ${name.padEnd(8)} ${percent(rows.filter((r) => r.passed).length, rows.length)}`);
 	for (const name of ROUTING_BUCKETS) {

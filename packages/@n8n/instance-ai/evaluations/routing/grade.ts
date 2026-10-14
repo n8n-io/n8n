@@ -254,7 +254,13 @@ export function trialPasses(routingCase: RoutingCase, resolution: RouteResolutio
 	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }
 
-/** A case passes when at least 2 of 3 trials pass; other trial counts keep the ratio. */
-export function casePasses(passedTrials: number, totalTrials: number): boolean {
-	return totalTrials > 0 && passedTrials * 3 >= totalTrials * 2;
+/**
+ * A case passes when more than half of its graded trials pass. A trial with no route is not graded.
+ * LangTracer applies the same rule to the counts in `eval-results.json`, so the two verdicts agree.
+ */
+export function casePasses(
+	trials: Array<{ resolution: RouteResolution; passed: boolean }>,
+): boolean {
+	const graded = trials.filter((trial) => trial.resolution.route !== 'none');
+	return graded.filter((trial) => trial.passed).length * 2 > graded.length;
 }
