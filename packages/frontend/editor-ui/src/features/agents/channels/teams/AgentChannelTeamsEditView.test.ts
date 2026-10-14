@@ -162,6 +162,48 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(queryByTestId('teams-file-access-approved')).toBeNull();
 		});
 
+		it('never shows the request for an approved app while the settings load', async () => {
+			vi.mocked(checkTeamsFileAccess).mockResolvedValue({ status: 'approved' });
+			const state = await getTeamsSetupState({} as never, 'p', 'a');
+			let resolveSetup = () => {};
+			vi.mocked(getTeamsSetupState).mockReturnValue(
+				new Promise((resolve) => (resolveSetup = () => resolve(state))),
+			);
+			const seen: boolean[] = [];
+			const { queryByTestId, rerender } = renderView({
+				props: { ...viewProps, modelValue: '', savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			seen.push(Boolean(queryByTestId('teams-file-access')));
+			// The modal hands the credential over after mount.
+			await rerender({ ...viewProps, modelValue: 'cred-1', savedSettings: { teamChannels: true } });
+			await flushPromises();
+			seen.push(Boolean(queryByTestId('teams-file-access')));
+			resolveSetup();
+			await flushPromises();
+			seen.push(Boolean(queryByTestId('teams-file-access')));
+
+			expect(seen).toEqual([false, false, false]);
+		});
+
+		it('asks once the check says the approval is missing, not before the setup loads', async () => {
+			const state = await getTeamsSetupState({} as never, 'p', 'a');
+			let resolveSetup = () => {};
+			vi.mocked(getTeamsSetupState).mockReturnValue(
+				new Promise((resolve) => (resolveSetup = () => resolve(state))),
+			);
+			const { queryByTestId, findByTestId } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			await flushPromises();
+			expect(queryByTestId('teams-file-access')).toBeNull();
+
+			resolveSetup();
+
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+		});
+
 		it('asks while the approval is missing', async () => {
 			const { findByTestId, queryByTestId } = renderView({
 				props: { ...viewProps, savedSettings: { teamChannels: true } },

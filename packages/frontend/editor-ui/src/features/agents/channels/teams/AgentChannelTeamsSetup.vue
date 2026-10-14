@@ -424,7 +424,10 @@ async function refreshForCredential() {
 
 watch(credentialId, refreshForCredential, { immediate: true });
 
-const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(null);
+// The settings say nothing until the check answers, so an approved app never flashes the request.
+const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | 'checking' | null>(
+	props.mode === 'edit' ? 'checking' : null,
+);
 const readsSharedConversations = computed(() => readsShared(availability.value));
 /**
  * Microsoft confirms an approval only on the redirect back here, and applying
@@ -437,7 +440,7 @@ const fileAccessApprovedNow = ref(false);
  * link to an administrator. A failed check leaves the request on show.
  */
 async function loadFileAccess() {
-	fileAccessStatus.value = null;
+	fileAccessStatus.value = props.mode === 'edit' ? 'checking' : null;
 	const id = credentialId.value;
 	// Consumed only by a check that runs: the saved settings can arrive after the first call.
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
@@ -446,7 +449,6 @@ async function loadFileAccess() {
 		fileAccessApprovedNow.value = true;
 	}
 	if (fileAccessApprovedNow.value) return;
-	fileAccessStatus.value = 'checking';
 	try {
 		const { status } = await checkTeamsFileAccess(
 			rootStore.restApiContext,
@@ -457,7 +459,7 @@ async function loadFileAccess() {
 		if (credentialId.value === id) fileAccessStatus.value = status;
 	} catch {
 		// Unchecked reads the same as not approved.
-		if (credentialId.value === id) fileAccessStatus.value = null;
+		if (credentialId.value === id) fileAccessStatus.value = 'unknown';
 	}
 }
 
@@ -875,7 +877,7 @@ defineExpose({
 					start-collapsed
 					:app-id="setupState?.botId"
 					:file-access-consent-url="setupState?.fileAccessConsentUrl"
-					:file-access-status="fileAccessStatus"
+					:file-access-status="setupState || setupLoadFailed ? fileAccessStatus : 'checking'"
 					:file-access-just-approved="fileAccessApprovedNow"
 					:organization="organization"
 					open-consent-in-place
