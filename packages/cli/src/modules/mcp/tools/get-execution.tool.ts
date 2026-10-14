@@ -147,7 +147,9 @@ export const createGetExecutionTool = (
 
 			let filteredData: IRunExecutionData | null | undefined;
 			if (executionData) {
-				filteredData = executionData;
+				filteredData = { ...executionData };
+				// Internal engine state can contain data from nodes outside the filter.
+				delete filteredData.executionData;
 				if (nodeNames !== undefined || truncateData) {
 					filteredData = filterExecutionData(filteredData, nodeNames, truncateData);
 				}
@@ -169,9 +171,7 @@ export const createGetExecutionTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			// `structuredContent` is JSON-serialized by the MCP SDK transport, so
-			// cycles in `output` (e.g. the HTTP socket loop in
-			// `executionData.contextData`) hang the call unless replaced here.
+			// Replace cycles in node output before the MCP SDK serializes it.
 			const safeOutput = replaceCircularReferences(output);
 
 			return {
