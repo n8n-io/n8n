@@ -13,6 +13,7 @@ import {
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
+	type AgentConfigValidationWarning,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
 	type AgentJsonConfig,
@@ -50,6 +51,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
+import { findNameClashGroups } from './skills/skill-names';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -206,10 +208,11 @@ export class AgentValidationService {
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
+		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
 		return await this.validateDefinition(
 			agent.id,
 			projectId,
-			{ ...getAgentDefinitionContent(agent, skillRefs), tasks },
+			{ ...getAgentDefinitionContent(agent, skillRefs, skills), tasks },
 			agent.integrations ?? [],
 			credentialProvider,
 			scope,
@@ -272,7 +275,27 @@ export class AgentValidationService {
 		}
 
 		const issues = await this.collectIssues({ ...ctx, config: ctx.config }, scope);
-		return { status: issues.length === 0 ? 'valid' : 'invalid', issues };
+		const warnings = this.collectSkillNameWarnings(ctx.config, ctx.skills);
+		return {
+			status: issues.length === 0 ? 'valid' : 'invalid',
+			issues,
+			...(warnings.length > 0 ? { warnings } : {}),
+		};
+	}
+
+	/** Skill names that are hard to tell apart confuse the model, but do not block a run. */
+	private collectSkillNameWarnings(
+		config: AgentJsonConfig,
+		skills: Record<string, AgentSkill>,
+	): AgentConfigValidationWarning[] {
+		const names = (config.skills ?? []).flatMap((ref) =>
+			Object.hasOwn(skills, ref.id) ? [skills[ref.id].name] : [],
+		);
+		return findNameClashGroups(names).map((group) => ({
+			code: 'similar_skill_names',
+			capability: { kind: 'skill' },
+			names: group,
+		}));
 	}
 
 	private missingConfigIssues(): AgentConfigValidationIssue[] {

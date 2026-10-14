@@ -30,6 +30,7 @@ export const SCOPE_TYPES: ProjectResource[] = [
 	'dataTable',
 	'projectVariable',
 	'projectAiPreference',
+	'projectSkill',
 	'sourceControl',
 ];
 

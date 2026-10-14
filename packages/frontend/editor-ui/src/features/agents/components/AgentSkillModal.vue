@@ -13,7 +13,7 @@ import type { AgentSkill } from '../types';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
 import AgentSkillUpload from './AgentSkillUpload.vue';
-import AgentSkillViewer, { type AgentSkillAllowedToolOption } from './AgentSkillViewer.vue';
+import AgentSkillViewer from './AgentSkillViewer.vue';
 import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
@@ -23,7 +23,6 @@ export type AgentSkillModalData = {
 	agentId: string;
 	skill?: AgentSkill;
 	skillId?: string;
-	availableTools?: AgentSkillAllowedToolOption[];
 	/**
 	 * Names of the agent's other skills, so a duplicate name blocks save while
 	 * the modal is still open — skill names must be unique per agent.
@@ -60,7 +59,6 @@ const skill = ref<AgentSkill>(
 		name: props.data.skill?.name ?? getDefaultSkillName(),
 		description: props.data.skill?.description ?? '',
 		instructions: props.data.skill?.instructions ?? '',
-		...(props.data.skill?.allowedTools ? { allowedTools: props.data.skill.allowedTools } : {}),
 		...(props.data.skill?.references ? { references: props.data.skill.references } : {}),
 	}),
 );
@@ -157,10 +155,7 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 }
 
 function normalizeSkill(skill: AgentSkill): AgentSkill {
-	return normalizeAgentSkillForSave(
-		skill,
-		props.data.availableTools?.map((tool) => tool.name),
-	);
+	return normalizeAgentSkillForSave(skill);
 }
 
 function onAddReference() {
@@ -223,7 +218,6 @@ function onSave() {
 		name: skill.value.name.trim(),
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
-		...(skill.value.allowedTools ? { allowedTools: skill.value.allowedTools } : {}),
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
@@ -283,7 +277,6 @@ function onRemove() {
 				/>
 				<AgentSkillViewer
 					:skill="skill"
-					:available-tools="props.data.availableTools ?? []"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:show-validation-warnings="submitted || openedWithMissingContent"

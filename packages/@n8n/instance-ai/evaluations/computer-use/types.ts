@@ -199,9 +199,9 @@ export interface LlmTaskCompletedGrader {
 	 * pause-for-user containing locations for both Client ID and Client Secret").
 	 */
 	criteria?: string;
-	/** Defaults to a small/cheap judge. */
+	/** Defaults to the judge model (`N8N_INSTANCE_AI_EVAL_JUDGE_MODEL`). */
 	model?: string;
-	/** Override timeout (default 30_000 ms). */
+	/** Override timeout (default 60_000 ms). */
 	timeoutMs?: number;
 }
 

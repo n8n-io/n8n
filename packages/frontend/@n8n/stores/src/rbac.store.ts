@@ -18,6 +18,8 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		aiAssistant: {},
 		aiPreference: {},
 		projectAiPreference: {},
+		skill: {},
+		projectSkill: {},
 		workflow: {},
 		tag: {},
 		annotationTag: {},
@@ -66,6 +68,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		roleMappingRule: {},
 		otel: {},
 		scim: {},
+		trustedSource: {},
 	});
 
 	function addGlobalRole(role: Role) {

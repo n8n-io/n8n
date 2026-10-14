@@ -173,6 +173,10 @@ responses:
                               type: string
                             matchedRuleId:
                               type: string
+                            projectId:
+                              type: string
+                            optInAvailable:
+                              type: boolean
                           required:
                             - kind
                             - checkId
@@ -337,6 +341,10 @@ responses:
                               type: string
                             matchedRuleId:
                               type: string
+                            projectId:
+                              type: string
+                            optInAvailable:
+                              type: boolean
                           required:
                             - kind
                             - checkId

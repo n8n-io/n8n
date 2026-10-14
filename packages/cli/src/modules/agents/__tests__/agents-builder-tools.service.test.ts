@@ -1742,7 +1742,6 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.systemInstruction).toContain('vague or placeholder skill');
 			expect(tool.systemInstruction).toContain('ask the user clarifying');
 			expect(tool.systemInstruction).toContain('Gotchas');
-			expect(tool.systemInstruction).toContain('exact target-agent tool names');
 			expect(tool.systemInstruction).toContain('references are not automatically loaded');
 			expect(tool.systemInstruction).toContain(
 				'instructions must say exactly when to load each one',
@@ -2032,7 +2031,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('uses null to remove optional list fields and rejects ambiguous empty arrays', async () => {
+		it('uses null to remove the references and rejects an ambiguous empty array', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.updateSkill.mockResolvedValue({
 				id: 'skill_create_tickets',
@@ -2055,7 +2054,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					skillId: 'skill_create_tickets',
 					baseSkillHash: 'skill-hash-0',
-					updates: { allowedTools: null, references: null },
+					updates: { references: null },
 				},
 				ctx,
 			);
@@ -2064,7 +2063,7 @@ describe('AgentsBuilderToolsService', () => {
 				agentId,
 				projectId,
 				'skill_create_tickets',
-				{ allowedTools: undefined, references: undefined },
+				{ references: undefined },
 				{ user, modifiedBy: 'builder' },
 				'skill-hash-0',
 				undefined,
@@ -2074,9 +2073,13 @@ describe('AgentsBuilderToolsService', () => {
 				safeParse: (input: unknown) => { success: boolean };
 			};
 			const baseInput = { skillId: 'skill_create_tickets', baseSkillHash: 'skill-hash-0' };
-			expect(inputSchema.safeParse({ ...baseInput, updates: { allowedTools: [] } }).success).toBe(
+			expect(inputSchema.safeParse({ ...baseInput, updates: { references: [] } }).success).toBe(
 				false,
 			);
+			// Skills do not take allowed tools.
+			expect(
+				inputSchema.safeParse({ ...baseInput, updates: { allowedTools: ['search'] } }).success,
+			).toBe(false);
 			expect(inputSchema.safeParse({ ...baseInput, updates: {} }).success).toBe(false);
 			expect(
 				inputSchema.safeParse({

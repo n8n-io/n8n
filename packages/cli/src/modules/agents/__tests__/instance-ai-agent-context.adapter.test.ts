@@ -17,7 +17,7 @@ import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { Agent } from '../entities/agent.entity';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
-import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -30,6 +30,7 @@ function makeService() {
 	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentsToolsService = mock<AgentsToolsService>();
+	const agentSkillRefs = createAgentSkillRefsService();
 	const service = new InstanceAiAgentContextAdapterService(
 		agentsService,
 		agentSkillsService,
@@ -39,7 +40,7 @@ function makeService() {
 		attachableWorkflowsService,
 		mcpRegistryService,
 		agentsToolsService,
-		createAgentSkillRefsService(),
+		agentSkillRefs,
 	);
 	return {
 		service,
@@ -51,6 +52,7 @@ function makeService() {
 		attachableWorkflowsService,
 		mcpRegistryService,
 		agentsToolsService,
+		agentSkillRefs,
 	};
 }
 
@@ -75,7 +77,7 @@ describe('InstanceAiAgentContextAdapterService', () => {
 	});
 
 	it('labels config as the current draft and includes publication state', async () => {
-		const { service, agentsService } = makeService();
+		const { service, agentsService, agentSkillRefs } = makeService();
 		agentsService.findById.mockResolvedValue(agent);
 
 		const result = await service.createReader(user, 'project-1').lookup({
@@ -84,6 +86,8 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		});
 
 		expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+		// The config needs the skill refs, not the skill bodies.
+		expect(agentSkillRefs.skillsForRefs).not.toHaveBeenCalled();
 		expect(result).toMatchObject({
 			configState: 'current-draft',
 			config: { name: 'Support Agent', model: '', instructions: 'Help users.' },
@@ -231,6 +235,33 @@ describe('InstanceAiAgentContextAdapterService', () => {
 		});
 		await expect(lookup).rejects.toBeInstanceOf(UserError);
 		await expect(lookup).rejects.toThrow(error.message);
+	});
+
+	it('lists the hub skills attached to the agent', async () => {
+		const { service, agentsService, agentSkillRefs } = makeService();
+		agentSkillRefs.bodies.notes = {
+			name: 'Notes',
+			description: 'Take notes',
+			instructions: 'Write notes.',
+		};
+		agentsService.findById.mockResolvedValue({
+			...agent,
+			schema: storedAgentConfig({
+				name: 'Support Agent',
+				model: '',
+				instructions: 'Help users.',
+				skills: [{ type: 'skill', id: 'notes' }],
+			}),
+		} as Agent);
+
+		const result = await service.createReader(user, 'project-1').lookup({
+			type: 'skills',
+			agentId: 'agent-1',
+		});
+
+		expect(result).toEqual({
+			skills: [{ id: 'notes', name: 'Notes', description: 'Take notes', attached: true }],
+		});
 	});
 
 	it('reads task enabled state from the current Agent config', async () => {

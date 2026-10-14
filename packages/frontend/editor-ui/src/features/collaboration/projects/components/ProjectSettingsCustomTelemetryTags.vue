@@ -142,7 +142,7 @@ defineExpose({ resetTouched });
 		</div>
 		<N8nButton
 			icon="plus"
-			variant="subtle"
+			variant="outline"
 			native-type="button"
 			class="mt-2xs"
 			data-test-id="project-telemetry-tag-add"

@@ -74,6 +74,9 @@ Use \`patch_config\` with:
 - To attach an existing, unattached skill: if \`skills\` exists, append to
   \`/skills/-\`; if \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<skill-id>" }\`.
+- A ref with \`versionId\` pins that saved version of the skill. To use the latest
+  version, remove \`versionId\` from the ref with \`patch_config\`. Do not remove
+  the skill and add it again.
 
 #### Remove An Existing Chat Integration
 
