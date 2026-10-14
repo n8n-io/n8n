@@ -1626,6 +1626,7 @@ onBeforeUnmount(() => {
 				<ChatInputBase
 					ref="chatInput"
 					v-model="inputText"
+					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
 					:is-streaming="false"
 					:show-stop-button="showStop"
@@ -1922,7 +1923,7 @@ onBeforeUnmount(() => {
 }
 
 .errorBannerTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .errorBannerDetail {
@@ -1944,7 +1945,7 @@ onBeforeUnmount(() => {
 }
 
 .warningBannerTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .warningBannerDetail {

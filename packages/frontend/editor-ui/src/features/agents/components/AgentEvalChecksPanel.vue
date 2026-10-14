@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * The checks-have-run view behind `useTestAgentPreviewExperiment`: status
+ * The checks-have-run view behind `useTestAgentPreviewFlag`: status
  * filter pills plus "Add a check" and "Run all checks" buttons up top, then each case as an
  * `AgentEvalTryRow` — replaces `AgentEvalResultsPanel`'s vote/comment review
- * model with the simpler row the rest of the experiment already uses.
+ * model with the simpler row the rest of the preview flow already uses.
  *
  * Rows have no scenario tag here — a run's result only ever carries
  * `input`/`output`/`status` (the Data Table has no column for it), so this

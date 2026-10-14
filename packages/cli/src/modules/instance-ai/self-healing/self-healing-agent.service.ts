@@ -306,7 +306,6 @@ export class SelfHealingAgentService {
 		const { user } = input;
 		const { signal, runId, threadId } = options;
 
-		await this.credits.ensureQuotaLockApplied(user);
 		await options.assertCreditsAvailable();
 		signal.throwIfAborted();
 

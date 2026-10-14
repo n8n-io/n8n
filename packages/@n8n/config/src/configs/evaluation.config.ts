@@ -59,6 +59,7 @@ export class EvaluationConfig {
 	 *
 	 * Useful for local development and QA environments that need to exercise
 	 * the offer without building out a fully-equipped agent first.
+	 * The agent-evals feature gate still applies.
 	 */
 	@Env('N8N_FORCE_AGENT_WORTH_TESTING')
 	forceAgentWorthTesting: boolean = false;

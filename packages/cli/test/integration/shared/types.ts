@@ -60,6 +60,7 @@ type EndpointGroup =
 	| 'third-party-licenses'
 	| 'mcp'
 	| 'workflowDependencies'
+	| 'trusted-sources'
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'

@@ -27,14 +27,11 @@ export const UNLIMITED_CREDITS = -1;
  * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
- * `creditsQuota` is {@link UNLIMITED_CREDITS} when credits are not metered — either the proxy is
- * disabled, or the amounts are deliberately withheld from a cohort that must not see a balance.
+ * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.
  */
 export type InstanceAiCredits = {
 	creditsQuota: number;
 	creditsClaimed: number;
-	/** Whether the pool has been locked by the activation cap. */
-	quotaLocked?: boolean;
 };
 
 /**
@@ -3040,6 +3037,18 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * behaviour, so every existing case is unaffected.
 	 */
 	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
+}) {}
+
+/**
+ * Aims the thread's connection tests for one credential type at a provider
+ * stand-in, so the eval checks the captured secret without the real provider.
+ */
+export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
+	threadId: z.string().uuid(),
+	credentialType: z.string().min(1),
+	baseUrl: z.string().url(),
+	/** Credential field the stand-in URL is written into. */
+	urlField: z.string().min(1),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

@@ -27,9 +27,11 @@ describe('InstanceAiCheckpointPruningTask', () => {
 	it('should declare the configured prune cadence', () => {
 		expect(task.name).toBe('instance-ai-checkpoint-pruning');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true, runOnTakeover: true });
-		expect(task.retryDelaySeconds).toBe(30);
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true, timeoutSeconds: 1200 },
+			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
+		});
 	});
 
 	it('should declare a fractional prune interval as is', () => {
@@ -61,7 +63,7 @@ describe('InstanceAiCheckpointPruningTask', () => {
 					instanceAiService,
 					temporaryWorkflows,
 					investigations,
-				).timeoutSeconds,
+				).target.scheduler.timeoutSeconds,
 			).toBe(timeoutSeconds);
 		},
 	);
