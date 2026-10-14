@@ -10,7 +10,8 @@ import type {
 } from 'n8n-workflow';
 
 import { EditImage } from '../EditImage.node';
-import { calculateResizeDimensions, toCanvasColor } from '../v2/EditImageV2';
+import { calculateResizeDimensions } from '../v2/actions/resize.operation';
+import { toCanvasColor } from '../v2/helpers';
 
 const node: INode = {
 	id: 'edit-image-v2',
@@ -533,7 +534,38 @@ describe('Edit Image v2', () => {
 
 		const result = await new EditImage().execute.call(executeFunctions);
 
-		expect(result[0][0].json).toMatchObject({ width: 20, height: 10, format: 'png' });
+		expect(result[0][0].json).toEqual({
+			size: { width: 20, height: 10 },
+			format: 'png',
+			colorType: 'rgba',
+			bitDepth: 8,
+			channels: 4,
+			hasAlpha: true,
+			fileSize: input.length,
+		});
+	});
+
+	it('returns a readable color type for images without alpha', async () => {
+		const input = await jpegImageBuffer('#ff0000');
+		const executeFunctions = createExecuteFunctions({
+			parameters: { operation: 'information', dataPropertyName: 'data' },
+			input: {
+				json: {},
+				binary: { data: { data: input.toString('base64'), mimeType: 'image/jpeg' } },
+			},
+			binaryBuffers: { data: input },
+		});
+
+		const result = await new EditImage().execute.call(executeFunctions);
+
+		expect(result[0][0].json).toMatchObject({
+			size: { width: 1, height: 1 },
+			format: 'jpeg',
+			colorType: 'rgb',
+			bitDepth: 8,
+			channels: 3,
+			hasAlpha: false,
+		});
 	});
 
 	it('renders text with a selected system font', async () => {

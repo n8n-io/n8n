@@ -17,7 +17,7 @@ import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow'
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
 
-import { executeV2 } from './v2/EditImageV2';
+import { router } from './v2/actions/router';
 
 type EditImageNodeOptions = {
 	destinationKey?: string;
@@ -1145,7 +1145,7 @@ export class EditImage implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		if (this.getNode().typeVersion >= 2) {
-			return await executeV2.call(this);
+			return await router.call(this);
 		}
 
 		const items = this.getInputData();
