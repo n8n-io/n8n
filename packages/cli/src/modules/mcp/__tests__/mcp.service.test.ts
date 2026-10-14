@@ -1,6 +1,5 @@
-// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore `type McpServer`; keep createMcpHandler.
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
-// EOF Experiment cleanup
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -869,6 +868,23 @@ describe('McpService', () => {
 				expect(result.serverInfo).toMatchObject({ name: 'n8n MCP Server' });
 			});
 		});
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it.each([
+			{ authType: 'oauth', clientId: 'claude-client' },
+			{ authType: 'api_key', apiKeyId: 'claude-key' },
+			undefined,
+		] satisfies (McpAuthContext['caller'] | undefined)[])(
+			'emits discovery connection identity for %j',
+			(caller) => {
+				mcpService.recordDiscoveryConnection('user-1', 'Claude Code', caller);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					'experiment-mcp-client-connected',
+					{ userId: 'user-1', clientName: 'Claude Code', caller },
+				);
+			},
+		);
+		// EOF Experiment cleanup
 
 		const mcpUser = () =>
 			Object.assign(new User(), {

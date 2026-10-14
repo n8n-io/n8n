@@ -112,10 +112,29 @@ it('records a connection before the next write and does not block another user',
 		status: 'success',
 		workflowId: 'workflow',
 	});
+	events.emit('experiment-mcp-workflow-write-completed', {
+		userId: 'another-user',
+		toolName: 'create_workflow_from_code',
+		status: 'success',
+		workflowId: 'another-workflow',
+	});
 	await listener.flush('another-user');
-	expect(activity.recordMcpToolResult).not.toHaveBeenCalled();
+	expect(activity.recordMcpToolResult).toHaveBeenCalledExactlyOnceWith(
+		'another-user',
+		'create_workflow_from_code',
+		'success',
+		'another-workflow',
+		undefined,
+	);
 	connection.resolve(undefined);
 	await listener.flush('owner');
-	expect(activity.recordMcpToolResult).toHaveBeenCalledOnce();
+	expect(activity.recordMcpToolResult).toHaveBeenCalledTimes(2);
+	expect(activity.recordMcpToolResult).toHaveBeenLastCalledWith(
+		'owner',
+		'update_workflow',
+		'success',
+		'workflow',
+		undefined,
+	);
 });
 // EOF Experiment cleanup
