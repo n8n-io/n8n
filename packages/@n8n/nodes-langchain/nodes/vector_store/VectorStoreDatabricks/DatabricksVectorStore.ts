@@ -402,7 +402,7 @@ export class DatabricksVectorStore extends VectorStore {
 		body: Record<string, unknown>,
 		filter?: Record<string, unknown>,
 	): Promise<Array<[Document, number]>> {
-		const { primaryKey, name } = this.index;
+		const { primaryKey, name, endpointName, endpointType } = this.index;
 		const columns = [...new Set([primaryKey, this.contentColumn, ...this.metadataColumns])];
 		const effectiveFilter = filter ?? this.defaultFilter;
 		const filtersJson =
@@ -410,14 +410,21 @@ export class DatabricksVectorStore extends VectorStore {
 				? JSON.stringify(effectiveFilter)
 				: undefined;
 
-		// Databricks takes filters_json on STANDARD endpoints only; STORAGE_OPTIMIZED wants filter_string.
-		// An unknown type fails closed: a filter must never reach an endpoint that may ignore it
-		if (filtersJson && this.index.endpointType !== 'STANDARD') {
-			const { endpointName, endpointType } = this.index;
+		// Databricks accepts filters_json on STANDARD endpoints only; STORAGE_OPTIMIZED takes filter_string.
+		// An unknown type also refuses, so a filter never reaches an endpoint that can ignore it
+		if (filtersJson && endpointType !== 'STANDARD') {
+			const endpoint = sanitizeMessage(endpointName ?? '(unknown)');
+			if (!endpointType) {
+				throw new UserError(
+					`Could not read the type of the endpoint that serves index ${name}. The Metadata Filter works on STANDARD endpoints only. Check that you can read endpoint ${endpoint}`,
+				);
+			}
+			const hint =
+				endpointType === 'STORAGE_OPTIMIZED'
+					? ' A STORAGE_OPTIMIZED endpoint needs a SQL filter string (filter_string), which this node does not support yet.'
+					: '';
 			throw new UserError(
-				endpointType
-					? `Index ${name} runs on endpoint ${sanitizeMessage(endpointName ?? '(unknown)')} of type ${sanitizeMessage(endpointType)}. The Metadata Filter works on STANDARD endpoints only.${endpointType === 'STORAGE_OPTIMIZED' ? ' A STORAGE_OPTIMIZED endpoint needs a SQL filter string (filter_string), which this node does not support yet.' : ''} See https://docs.databricks.com/aws/en/ai-search/filtering-guide`
-					: `Could not read the type of the endpoint that serves index ${name}; the Metadata Filter works on STANDARD endpoints only. Check that you can read endpoint ${sanitizeMessage(endpointName ?? '(unknown)')}`,
+				`Index ${name} runs on endpoint ${endpoint} of type ${sanitizeMessage(endpointType)}. The Metadata Filter works on STANDARD endpoints only.${hint} See https://docs.databricks.com/aws/en/ai-search/filtering-guide`,
 			);
 		}
 

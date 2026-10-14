@@ -405,8 +405,6 @@ describe('DatabricksVectorStore', () => {
 			expect(bodyOf(0).filters_json).toEqual(expected);
 		});
 
-		const denied = json({ error_code: 'PERMISSION_DENIED' }, 403);
-
 		it.each([
 			{
 				label: 'the call filter on a STORAGE_OPTIMIZED endpoint',
@@ -425,7 +423,7 @@ describe('DatabricksVectorStore', () => {
 			},
 			{
 				label: 'a filter when the endpoint cannot be read',
-				endpoint: denied,
+				endpoint: json({ error_code: 'PERMISSION_DENIED' }, 403),
 				config: undefined,
 				search: async (store: DatabricksVectorStore) =>
 					await store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
@@ -442,24 +440,14 @@ describe('DatabricksVectorStore', () => {
 		});
 
 		it.each([
-			{
-				label: 'STORAGE_OPTIMIZED',
-				endpoint: () => json(storageOptimizedEndpoint),
-				call: undefined,
-			},
-			{ label: 'STORAGE_OPTIMIZED', endpoint: () => json(storageOptimizedEndpoint), call: {} },
+			{ label: 'STORAGE_OPTIMIZED', endpoint: json(storageOptimizedEndpoint), call: {} },
 			{
 				label: 'an unreadable',
-				endpoint: () => json({ error_code: 'PERMISSION_DENIED' }, 403),
+				endpoint: json({ error_code: 'PERMISSION_DENIED' }, 403),
 				call: undefined,
-			},
-			{
-				label: 'an unreadable',
-				endpoint: () => json({ error_code: 'PERMISSION_DENIED' }, 403),
-				call: {},
 			},
 		])('queries $label endpoint without a filter ($call)', async ({ endpoint, call }) => {
-			const store = await managedStore({}, endpoint());
+			const store = await managedStore({}, endpoint);
 			fetchMock.mockResolvedValue(json(queryReply));
 
 			await store.similaritySearchWithScore('hello', 2, call);

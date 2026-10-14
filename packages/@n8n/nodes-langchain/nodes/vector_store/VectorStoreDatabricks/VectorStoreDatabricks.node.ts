@@ -114,7 +114,7 @@ const sharedFields: INodeProperties[] = [
 				default: '{}',
 				validateType: 'object',
 				description:
-					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json. Standard endpoints only.',
+					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json. Works on STANDARD endpoints only.',
 			},
 		],
 	},
