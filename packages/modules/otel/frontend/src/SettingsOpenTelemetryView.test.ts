@@ -175,13 +175,11 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 	});
 
-	it('commits pending form edits when enabling', async () => {
+	it('saves only the status when enabling and keeps pending form edits unsaved', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-		updateOtelSettingsMock.mockResolvedValue(
-			makeSettings({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
-		);
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 
-		const { getByTestId, queryByTestId } = render();
+		const { getByTestId, store } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
@@ -192,10 +190,12 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => {
 			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
+				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318' }),
 			);
-			expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+			expect(store.savedSettings.enabled).toBe(true);
 		});
+		expect(store.settings.exporterEndpoint).toBe('http://localhost:4318x');
+		expect(getByTestId('settings-save-bar')).toBeInTheDocument();
 	});
 
 	it('rolls the status back when enabling fails', async () => {

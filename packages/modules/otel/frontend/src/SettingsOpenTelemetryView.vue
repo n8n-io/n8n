@@ -196,18 +196,31 @@ const statusSaving = ref(false);
 
 /*
  * Enabling/disabling is a live status change, not a form draft: it applies
- * immediately by committing the current on-screen draft with the flag set.
- * Saving only the flag would silently enable with stale, previously-saved
- * config while the screen shows unsaved edits.
+ * immediately with the saved config. Unsaved field edits stay in the save bar.
  */
 async function onToggleEnabled(enabled: boolean) {
-	otelStore.settings.enabled = enabled;
 	statusSaving.value = true;
 	try {
-		const saved = await save();
-		if (!saved) {
-			otelStore.settings.enabled = !enabled;
+		await otelStore.saveEnabled(enabled);
+
+		if (enabled) {
+			telemetry.track('Activated otel via UI', {
+				protocol: otelStore.savedSettings.exporterProtocol,
+				includeNodeSpans: otelStore.savedSettings.includeNodeSpans,
+				productionExecutionsOnly: otelStore.savedSettings.productionExecutionsOnly,
+				tracesSampleRate: otelStore.savedSettings.tracesSampleRate,
+				injectOutbound: otelStore.savedSettings.injectOutbound,
+			});
+		} else {
+			telemetry.track('Disabled otel via UI');
 		}
+
+		toast.showMessage({
+			title: i18n.baseText('settings.opentelemetry.savedSuccess'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.opentelemetry.savedError'));
 	} finally {
 		statusSaving.value = false;
 	}
