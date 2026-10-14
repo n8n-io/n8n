@@ -422,6 +422,23 @@ describe('Expression - fast native evaluation parity', () => {
 	});
 
 	describe('structural guards', () => {
+		test('a whole-value read of shared, cyclic or long sparse data hands off to the engine', () => {
+			const shared: Record<string, unknown> = { leaf: 1 };
+			let fanOut = shared;
+			for (let level = 0; level < 30; level++) fanOut = { a: fanOut, b: fanOut };
+			const cyclic: Record<string, unknown> = {};
+			cyclic.a = cyclic;
+			cyclic.b = cyclic;
+			const sparse: unknown[] = [];
+			sparse[MAX_RESULT_LENGTH] = 1;
+
+			for (const item of [fanOut, cyclic, sparse]) {
+				expect(evaluateNatively('{{ $json.item }}', { $json: { item } } as never)).toEqual({
+					handled: false,
+				});
+			}
+		});
+
 		// Direct calls: the data shapes here cannot come out of a node, so the
 		// engines have nothing to agree with.
 		const nativeOn = (expr: string, data: Record<string, unknown>) => {
@@ -509,9 +526,10 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOn('{{ $json.rows.flat() }}', { $json: { rows: [big, big] } })).toEqual({
 				handled: false,
 			});
-			expect(nativeOn('{{ $json.rows.flat(0) }}', { $json: { rows: [big, big] } }).handled).toBe(
-				true,
-			);
+			expect(nativeOn('{{ $json.rows.flat(0).length }}', { $json: { rows: [big, big] } })).toEqual({
+				handled: true,
+				value: 2,
+			});
 		});
 
 		// A single replacement with context tokens can expand to many times the

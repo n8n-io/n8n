@@ -163,31 +163,46 @@ export function evaluateNatively(
 // get trap resolves nested expressions), a non-plain object (Date, DateTime),
 // a non-JSON leaf, data deeper than MAX_DEPTH, and an own `__proto__` key,
 // which the vm and quickjs serialiser drops and legacy keeps.
-function copyResult(value: unknown, depth = 0): unknown {
-	const nonJsonLeaf =
-		typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
-	if (nonJsonLeaf) throw new EngineFallbackError();
-	if (!isObj(value)) return value;
-	if (depth > MAX_DEPTH || value.isProxy === true) throw new EngineFallbackError();
+function copyResult(value: unknown): unknown {
+	// A shared object is copied once per reference, so shared or cyclic data
+	// and long sparse arrays are bounded by the slots visited, not by depth.
+	let visits = 0;
 
-	if (isArray(value)) {
-		// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
-		const copy = new Array<unknown>(value.length);
-		for (let i = 0; i < value.length; i++) {
-			if (hasOwn(value, i)) copy[i] = copyResult(value[i], depth + 1);
+	const copy = (value: unknown, depth: number): unknown => {
+		const nonJsonLeaf =
+			typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
+		if (nonJsonLeaf) throw new EngineFallbackError();
+		if (!isObj(value)) return value;
+		if (depth > MAX_DEPTH || value.isProxy === true) throw new EngineFallbackError();
+
+		if (isArray(value)) {
+			visits += value.length;
+			if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+			// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
+			const result = new Array<unknown>(value.length);
+			for (let i = 0; i < value.length; i++) {
+				if (hasOwn(value, i)) result[i] = copy(value[i], depth + 1);
+			}
+			return result;
 		}
-		return copy;
-	}
 
-	const proto: unknown = getPrototypeOf(value);
-	if (proto !== Object.prototype && proto !== null) throw new EngineFallbackError();
+		const proto: unknown = getPrototypeOf(value);
+		if (proto !== Object.prototype && proto !== null) throw new EngineFallbackError();
 
-	const copy: Record<string, unknown> = {};
-	for (const key of keys(value)) {
-		if (key === '__proto__') throw new EngineFallbackError();
-		copy[key] = copyResult(value[key], depth + 1);
-	}
-	return copy;
+		const ownKeys = keys(value);
+		visits += ownKeys.length;
+		if (visits > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+		const result: Record<string, unknown> = {};
+		for (const key of ownKeys) {
+			if (key === '__proto__') throw new EngineFallbackError();
+			result[key] = copy(value[key], depth + 1);
+		}
+		return result;
+	};
+
+	return copy(value, 0);
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
