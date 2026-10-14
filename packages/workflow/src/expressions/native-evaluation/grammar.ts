@@ -108,7 +108,6 @@ export const { isArray } = Array;
 export const { hasOwn } = Object;
 export const toStr = String;
 export const toNum = Number;
-export const clone = structuredClone;
 
 export type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
 

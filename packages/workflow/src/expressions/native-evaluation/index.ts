@@ -3,9 +3,11 @@ import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
 import { EngineFallbackError, Env, bounded, evalChunk } from './evaluator';
-import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
+import { MAX_DEPTH, MAX_RESULT_LENGTH, isArray, isObj, type SimpleNode } from './grammar';
 import { parseSimple, usesPolyfilledChain } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
+
+const { getPrototypeOf, keys } = Object;
 
 export {
 	CALLABLE_METHODS,
@@ -156,16 +158,36 @@ export function evaluateNatively(
 
 // The engines hand back a copy of any object they return; a whole-value read
 // like `{{ $json.body }}` here would hand back the live execution data, which
-// callers then mutate in place (cleanupParameterData). Match the engines.
-// The `$parameter` root is a Proxy and cannot be cloned: the engine owns it.
-function copyResult(value: unknown): unknown {
+// callers then mutate in place (cleanupParameterData). Match the engines with
+// a JSON copy. Everything else is the engine's: a data proxy (the `$parameter`
+// get trap resolves nested expressions), a non-plain object (Date, DateTime),
+// a non-JSON leaf, data deeper than MAX_DEPTH, and an own `__proto__` key,
+// which the vm and quickjs serialiser drops and legacy keeps.
+function copyResult(value: unknown, depth = 0): unknown {
+	const nonJsonLeaf =
+		typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint';
+	if (nonJsonLeaf) throw new EngineFallbackError();
 	if (!isObj(value)) return value;
+	if (depth > MAX_DEPTH || value.isProxy === true) throw new EngineFallbackError();
 
-	try {
-		return clone(value);
-	} catch {
-		throw new EngineFallbackError();
+	if (isArray(value)) {
+		// Holes stay holes: the corpus pins an engine divergence on sparse arrays.
+		const copy = new Array<unknown>(value.length);
+		for (let i = 0; i < value.length; i++) {
+			if (i in value) copy[i] = copyResult(value[i], depth + 1);
+		}
+		return copy;
 	}
+
+	const proto: unknown = getPrototypeOf(value);
+	if (proto !== Object.prototype && proto !== null) throw new EngineFallbackError();
+
+	const copy: Record<string, unknown> = {};
+	for (const key of keys(value)) {
+		if (key === '__proto__') throw new EngineFallbackError();
+		copy[key] = copyResult(value[key], depth + 1);
+	}
+	return copy;
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {

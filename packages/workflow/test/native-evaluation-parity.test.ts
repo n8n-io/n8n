@@ -357,8 +357,7 @@ describe('Expression - fast native evaluation parity', () => {
 
 	// Values no node should produce (the engine does not enforce that yet) and
 	// inherited members on the root. Native either matches the configured
-	// engine or hands the expression to it; the one remaining divergence is
-	// the DateTime copy under legacy, pinned so a change is visible.
+	// engine or hands the expression to it.
 	describe('non-JSON values and inherited members', () => {
 		const exotic = {
 			json: {
@@ -395,18 +394,26 @@ describe('Expression - fast native evaluation parity', () => {
 			}
 		});
 
-		test('a whole-value DateTime read is a copy natively; legacy returns the instance', () => {
-			const legacy = isLegacy();
+		test('a whole-value DateTime read hands off to the engine', () => {
+			expect(nativeOutcome('={{ $json.item.my_object }}').handled).toBe(true);
 			const native = evaluateExotic('={{ $json.item.dt }}', true);
-			const viaEngine = evaluateExotic('={{ $json.item.dt }}', false);
-			expect(native).not.toBeInstanceOf(DateTime);
-			expect(viaEngine instanceof DateTime).toBe(legacy);
-			// Both copies carry the instant; their cloned Luxon internals (locale
-			// and zone caches) depend on the host environment, so compare only
-			// what the expression author can observe.
-			expect((native as { ts: number }).ts).toBe((viaEngine as { ts: number }).ts);
-			// Member reads keep working on both paths.
+			expect(native instanceof DateTime).toBe(isLegacy());
+			expect((native as { ts: number }).ts).toBe(
+				(evaluateExotic('={{ $json.item.dt }}', false) as { ts: number }).ts,
+			);
+			// Member reads stay native.
 			expect(evaluateExotic('={{ $json.item.dt.year }}', true)).toBe(2026);
+		});
+
+		// The vm and quickjs serialiser drops an own `__proto__` key; legacy
+		// keeps it. Native hands the copy to the engine, whichever it is.
+		test('an own __proto__ key on a whole-value read hands off to the engine', () => {
+			const payload = { json: { item: JSON.parse('{"__proto__":1,"safe":2}') as object } };
+			const data = runDataFor([payload as never]);
+			const run = (native: boolean) =>
+				evaluate('={{ $json.item }}', native, data, [payload as never]) as object;
+			expect(run(true)).toStrictEqual(run(false));
+			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
 		});
 	});
 
