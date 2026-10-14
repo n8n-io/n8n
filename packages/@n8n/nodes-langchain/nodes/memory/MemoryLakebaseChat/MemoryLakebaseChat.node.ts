@@ -6,7 +6,6 @@ import {
 	mapStoredMessagesToChatMessages,
 } from '@langchain/core/messages';
 import { getConnectionHintNoticeField, logWrapper } from '@n8n/ai-utilities';
-import { isRecord } from '@n8n/utils/is-record';
 import { resolveLakebaseTableUrl } from 'n8n-nodes-base/dist/nodes/Databricks/actions/lakebase/helpers';
 import {
 	LAKEBASE_MAX_PAGES,
@@ -20,7 +19,10 @@ import {
 	getLakebaseSchemas,
 } from 'n8n-nodes-base/dist/nodes/Databricks/methods/listSearch';
 import { lakebaseLocators } from 'n8n-nodes-base/dist/nodes/Databricks/resources/lakebase/parameters';
-import { lakebaseApiRequest } from 'n8n-nodes-base/dist/nodes/Databricks/transport';
+import {
+	lakebaseApiRequest,
+	lakebaseErrorBody,
+} from 'n8n-nodes-base/dist/nodes/Databricks/transport';
 import type {
 	IHttpRequestOptions,
 	INodeType,
@@ -28,7 +30,7 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
 import { escapeSqlIdentifier } from '@utils/sqlIdentifier';
@@ -95,8 +97,7 @@ export class LakebaseChatMessageHistory extends BaseListChatMessageHistory {
 		} catch (error) {
 			// The transport already retried PGRST205 once, so here it means the table is missing.
 			// 42P01 is the Postgres code when the Data API schema cache still lists a dropped table
-			const data =
-				error instanceof NodeApiError && isRecord(error.context.data) ? error.context.data : {};
+			const data = lakebaseErrorBody(error) ?? {};
 			const { schema, table } = this.target;
 			if (data.code === 'PGRST205' || data.code === '42P01') {
 				throw new NodeOperationError(

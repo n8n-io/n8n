@@ -17,7 +17,8 @@ vi.mock('@langchain/classic/memory', () => ({
 	},
 }));
 
-vi.mock('n8n-nodes-base/dist/nodes/Databricks/transport', () => ({
+vi.mock('n8n-nodes-base/dist/nodes/Databricks/transport', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	lakebaseApiRequest: vi.fn(),
 }));
 
