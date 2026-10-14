@@ -150,6 +150,7 @@ jobs:
               packages/quality/efficiency/memory/idle/**
               packages/quality/efficiency/playwright.config.ts
               packages/quality/efficiency/package.json
+              packages/quality/testing/playwright/package.json
               packages/quality/testing/playwright/quality-*.ts
               packages/quality/testing/playwright/fixtures/**
               packages/quality/testing/playwright/tests/performance/**

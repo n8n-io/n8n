@@ -1,4 +1,4 @@
-import { runMemoryBaseline } from './memory-baseline';
+import { runMemoryBaseline } from './memory-baseline.test.utils';
 import { test } from 'n8n-playwright/containers';
 
 test.use({

@@ -1,4 +1,4 @@
-import { runMemoryBaseline } from './memory-baseline';
+import { runMemoryBaseline } from './memory-baseline.test.utils';
 import { test } from 'n8n-playwright/containers';
 
 // Emits `memory-*-baseline` series consumed by .github/workflows/ci-pull-requests.yml — do not rename without updating that workflow.

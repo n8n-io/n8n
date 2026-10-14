@@ -13,12 +13,10 @@
 	"peerDependencies": {
 		"zod": "catalog:"
 	},
-	"dependencies": {
-		"n8n-playwright": "workspace:*"
-	},
 	"devDependencies": {
 		"@n8n/oxlint-config": "workspace:*",
 		"@playwright/test": "catalog:e2e",
+		"n8n-playwright": "workspace:*",
 		"oxlint": "catalog:",
 		"oxlint-tsgolint": "catalog:",
 		"typescript": "catalog:typescript",
