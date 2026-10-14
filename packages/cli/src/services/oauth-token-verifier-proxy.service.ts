@@ -32,7 +32,8 @@ export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
  */
 export type McpCallerAuth =
 	| { authType: 'oauth'; clientId: string }
-	| { authType: 'api_key'; clientId?: never };
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only apiKeyId from the API-key branch; keep McpCallerAuth.
+	| { authType: 'api_key'; clientId?: never; apiKeyId?: string };
 
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;

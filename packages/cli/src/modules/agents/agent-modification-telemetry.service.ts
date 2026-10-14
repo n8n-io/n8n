@@ -1,3 +1,6 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { AgentActor, AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -159,13 +162,28 @@ function modificationProperties({
  */
 @Service()
 export class AgentModificationTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(
+		private readonly telemetry: Telemetry,
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		private readonly eventService: EventService,
+		// EOF Experiment cleanup
+	) {}
 
 	record(event: AgentModificationEvent): void {
 		if (event.changedParts.length === 0) return;
 		try {
 			const { agent, config, by, wasUnconfigured } = event;
 			if (wasUnconfigured && isUnconfiguredAgent(config, agent.integrations)) return;
+
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			if (by === 'builder') {
+				this.eventService.emit('experiment-assistant-change-saved', {
+					userId: event.user.id,
+					at: Date.now(),
+				});
+			}
+
+			// EOF Experiment cleanup
 
 			const properties = modificationProperties(event);
 			if (wasUnconfigured) {

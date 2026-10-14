@@ -1,4 +1,5 @@
-import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore `type McpServer`; keep createMcpHandler.
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -868,6 +869,23 @@ describe('McpService', () => {
 			});
 		});
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it.each([
+			{ authType: 'oauth', clientId: 'claude-client' },
+			{ authType: 'api_key', apiKeyId: 'claude-key' },
+			undefined,
+		] satisfies (McpAuthContext['caller'] | undefined)[])(
+			'emits discovery connection identity for %j',
+			(caller) => {
+				mcpService.recordDiscoveryConnection('user-1', 'Claude Code', caller);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					'experiment-mcp-client-connected',
+					{ userId: 'user-1', clientName: 'Claude Code', caller },
+				);
+			},
+		);
+		// EOF Experiment cleanup
+
 		const mcpUser = () =>
 			Object.assign(new User(), {
 				id: 'user-1',
@@ -896,6 +914,89 @@ describe('McpService', () => {
 			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
 			return await invokeTool(args, {});
 		};
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it.each(['search_workflows', 'get_workflow_history', 'execute_workflow'])(
+			'skips discovery bookkeeping for %s',
+			async (toolName) => {
+				const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+				const result = { content: [], structuredContent: { workflowId: 'wf-42' } };
+				await expect(
+					registerAndInvoke(
+						server,
+						toolName,
+						async () => result,
+						{},
+						{
+							clientInfo: { name: 'Claude' },
+						},
+					),
+				).resolves.toEqual(result);
+				expect(eventService.emit).not.toHaveBeenCalledWith(
+					'experiment-mcp-workflow-write-completed',
+					expect.anything(),
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'mcp-tool-called',
+					expect.objectContaining({ toolName, status: 'success' }),
+				);
+			},
+		);
+		// EOF Experiment cleanup
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it('records successful Claude workflow results through the production registrar', async () => {
+			const user = mcpUser();
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			const caller = { authType: 'oauth' as const, clientId: 'claude-client' };
+			await registerAndInvoke(
+				server,
+				'update_workflow',
+				async () => ({
+					content: [],
+					structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
+				}),
+				{},
+				{ clientInfo: { name: 'Claude' }, auth: { grantedScopes: undefined, caller } },
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
+				userId: user.id,
+				clientName: 'Claude',
+				toolName: 'update_workflow',
+				status: 'success',
+				workflowId: 'wf-42',
+				structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
+				caller,
+			});
+		});
+		// EOF Experiment cleanup
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it('passes credentials to discovery when a legacy tool call has no client name', async () => {
+			const user = mcpUser();
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			const caller = { authType: 'api_key', apiKeyId: 'claude-key' } as const;
+			await registerAndInvoke(
+				server,
+				'create_workflow_from_code',
+				async () => ({
+					content: [],
+					structuredContent: { workflowId: 'wf-42' },
+				}),
+				{},
+				{ auth: { grantedScopes: undefined, caller } },
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
+				userId: user.id,
+				clientName: undefined,
+				toolName: 'create_workflow_from_code',
+				status: 'success',
+				workflowId: 'wf-42',
+				structuredContent: { workflowId: 'wf-42' },
+				caller,
+			});
+		});
+		// EOF Experiment cleanup
 
 		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
 			const user = mcpUser();

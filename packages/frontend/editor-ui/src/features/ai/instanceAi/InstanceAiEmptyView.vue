@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
@@ -812,6 +815,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
+				<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+				<ClaudeEntryPoint placement="footer" />
+				<!-- EOF Experiment cleanup -->
 			</div>
 			<InstanceAiSplitEmptyState
 				v-else-if="isSplitLayoutActive"
@@ -860,6 +866,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 								</div>
 							</template>
 						</InstanceAiInput>
+						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+						<ClaudeEntryPoint placement="footer" />
+						<!-- EOF Experiment cleanup -->
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
@@ -911,6 +920,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 							</div>
 						</template>
 					</InstanceAiInput>
+					<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+					<ClaudeEntryPoint placement="footer" />
+					<!-- EOF Experiment cleanup -->
 				</div>
 				<!-- Variant A shows the agent picker here instead of the workflow preview;
 				variant B drops the preview canvas entirely (hover preview stays off). -->

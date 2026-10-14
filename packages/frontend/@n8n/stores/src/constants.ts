@@ -57,6 +57,9 @@ export const STORES = {
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
 	EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS: 'surfaceMcpToNewCloudUsers',
 	EXPERIMENT_EXPOSE_ALL_WORKFLOWS_TO_MCP: 'exposeAllWorkflowsToMcp',
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	EXPERIMENT_MCP_DISCOVERY: 'surfaceMcpToClaudeTrialUsers',
+	// EOF Experiment cleanup
 	EXPERIMENT_TRIAL_INTRO_MODAL: 'trialIntroModal',
 	EXPERIMENT_INSTANCE_AI_FREE_NUDGE: 'instanceAiFreeNudge',
 	EXPERIMENT_OPEN_WORKFLOW_IN_ASSISTANT: 'openWorkflowInAssistant',
