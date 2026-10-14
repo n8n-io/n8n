@@ -340,8 +340,11 @@ export class OAuthController {
 	private async buildProtectedResourceMetadata(
 		resource: ProtectedResource,
 	): Promise<Record<string, unknown>> {
+		// A trigger narrows its surface to the source its node selected, so it advertises that
+		// source's issuer only. Resources that take no part in the pipeline keep this instance.
+		const acceptedSourceIds = resource.getAcceptedSourceIds?.();
 		const authorizationServers =
-			resource.surface === 'public-api'
+			resource.surface === 'public-api' || acceptedSourceIds !== undefined
 				? (
 						await this.authenticationService.advertise({
 							surface: resource.surface,
@@ -349,6 +352,7 @@ export class OAuthController {
 								url: resource.getResourceUrl(),
 								acceptedAudiences: resource.getAudiences(),
 							},
+							...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
 						})
 					).authorizationServers
 				: [this.urlService.getInstanceBaseUrl()];

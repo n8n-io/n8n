@@ -1,5 +1,9 @@
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
+import {
+	DEFAULT_TRUSTED_SOURCE_ID,
+	listBearerTrustedSources,
+} from 'n8n-nodes-base/dist/utils/trusted-source';
 import type {
 	CredentialCheckResult,
 	IDataObject,
@@ -167,6 +171,16 @@ export class McpTrigger extends Node {
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
 			},
 			{
+				displayName: 'Trusted Source Name or ID',
+				name: 'trustedSource',
+				type: 'options',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+				default: DEFAULT_TRUSTED_SOURCE_ID,
+				displayOptions: { show: { authentication: ['n8nOAuth2'] } }, // n8nOAuth2 is v2+ only
+				description:
+					'The identity provider whose access tokens can call this MCP server. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
 				displayName: 'Include User in Output',
 				name: 'includeUserInOutput',
 				type: 'boolean',
@@ -231,6 +245,12 @@ export class McpTrigger extends Node {
 				ndvHideUrl: true,
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			listTrustedSources: listBearerTrustedSources,
+		},
 	};
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
