@@ -16,6 +16,10 @@ import { PublicApiProtectedResource } from '@/modules/inbound-auth-core/public-a
 import { TrustedSourceDiscoveryService } from '@/modules/inbound-auth-core/trusted-source-discovery.service';
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import {
+	sessionCookieFor,
+	TEST_FLOW_ID,
+} from '@/modules/oauth-server/__tests__/oauth-flow-test-utils';
 import type { OAuthSessionPayload } from '@/modules/oauth-server/oauth-session.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -105,8 +109,8 @@ async function consentAndExchange(user: User, scopes: string[], requestedScopes?
 	const approval = await testServer
 		.authAgentFor(user)
 		.post('/consent/approve')
-		.set('Cookie', `n8n-oauth-session=${session}`)
-		.send({ approved: true, scopes });
+		.set('Cookie', sessionCookieFor(TEST_FLOW_ID, session))
+		.send({ approved: true, scopes, flow: TEST_FLOW_ID });
 	if (approval.statusCode !== 200) return { approval, token: undefined };
 
 	const code = new URL(approval.body.data.redirectUrl as string).searchParams.get('code');

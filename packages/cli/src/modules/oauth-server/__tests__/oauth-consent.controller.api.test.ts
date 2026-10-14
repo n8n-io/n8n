@@ -319,8 +319,8 @@ describe('POST /rest/consent/approve', () => {
 		const response = await testServer
 			.authAgentFor(owner)
 			.post('/consent/approve')
-			.set('Cookie', `n8n-oauth-session=${sessionToken}`)
-			.send({ approved: true, scopes: ['workflow:read', 'workflow:read'] });
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken))
+			.send({ approved: true, scopes: ['workflow:read', 'workflow:read'], flow: TEST_FLOW_ID });
 
 		expect(response.statusCode).toBe(400);
 	});
