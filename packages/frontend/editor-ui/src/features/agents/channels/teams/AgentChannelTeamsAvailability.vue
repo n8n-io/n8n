@@ -208,9 +208,7 @@ const summary = computed(() => {
 			</N8nSettingsRow>
 			<div v-if="fileAccess || fileAccessApproved" :class="$style.fileAccess">
 				<N8nCallout v-if="fileAccess" theme="warning" data-testid="teams-file-access">
-					<strong :class="$style.lead">
-						{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessNeeded') }}
-					</strong>
+					{{ i18n.baseText('agents.channels.teams.setup.availability.fileAccessNeeded') }}
 					{{ i18n.baseText(fileAccess.hint) }}
 					<template #trailingContent>
 						<N8nActionDropdown
