@@ -322,6 +322,11 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 ];
 
 export const DECLINED_CORPUS: string[] = [
+	// Excluded extensions: superlinear in the receiver, or a per-call regex
+	// budget that an iterator multiplies.
+	'={{ $json.item.name.isDomain() }}',
+	"={{ $json.item.name.quote('\"') }}",
+	'={{ $json.item.names.map(n => n.quote($json.item.name)) }}',
 	// A root is a proxy the engines hand to extend() in their own way, and a
 	// logical or conditional receiver can still yield one.
 	'={{ $vars.toJsonString() }}',

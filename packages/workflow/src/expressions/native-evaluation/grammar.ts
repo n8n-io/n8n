@@ -270,7 +270,11 @@ const EXCLUDED_EXTENSIONS = new Set([
 	'removeMarkdown',
 	'toSentenceCase',
 	'isUrl',
+	'isDomain',
 	'merge',
+	// Builds a regex from its argument: the safe-regex budget is per call,
+	// and an iterator repeats the call per element.
+	'quote',
 	// Spread into Math.min/max: the engines overflow at sizes under the cap.
 	'min',
 	'max',
