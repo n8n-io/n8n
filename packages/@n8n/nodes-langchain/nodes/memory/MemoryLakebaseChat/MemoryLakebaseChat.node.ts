@@ -192,6 +192,13 @@ export class MemoryLakebaseChat implements INodeType {
 						}
 					: p,
 			),
+			{
+				displayName:
+					'This node cannot create the table. Create it in the Lakebase SQL editor before the first run. A run against a missing table shows the SQL to copy.',
+				name: 'createTableNotice',
+				type: 'notice',
+				default: '',
+			},
 			sessionIdOption,
 			expressionSessionKeyProperty(1),
 			scopedSessionHint(1),
