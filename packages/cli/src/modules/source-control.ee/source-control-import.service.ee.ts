@@ -1,16 +1,11 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type {
-	FindOptionsWhere,
-	Project,
-	TagEntity,
-	User,
-	Variables,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
 import {
 	CredentialsRepository,
+	Folder,
 	FolderRepository,
+	Project,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
@@ -61,6 +56,7 @@ import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
@@ -173,6 +169,7 @@ export class SourceControlImportService {
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -783,7 +780,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived'],
+			fields: ['id', 'name', 'versionId', 'active', 'activeVersionId', 'isArchived', 'nodes'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -856,6 +853,19 @@ export class SourceControlImportService {
 			return;
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		// Apply the same deprecated-node enforcement as the REST/public API
+		// endpoints. A re-sync that leaves the deprecated nodes untouched is
+		// allowed; introducing or in-place editing them through git is not.
+		if (existingWorkflow) {
+			this.deprecatedNodesValidationService.validateOnUpdate(
+				nodes,
+				existingWorkflow.nodes ?? [],
+				id,
+			);
+		} else {
+			this.deprecatedNodesValidationService.validateOnCreate(nodes, id);
+		}
 
 		await this.redactionEnforcementService.assertPolicyChangeAllowed(
 			existingWorkflow?.settings?.redactionPolicy,
@@ -1898,8 +1908,8 @@ export class SourceControlImportService {
 				workflows.map((workflow) => workflow.id),
 			);
 
-			await this.folderRepository.delete({
-				id: In(candidateIds),
+			await this.deleteWithCallerAllowlistPurge(async (trx) => {
+				await trx.delete(Folder, { id: In(candidateIds) });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
@@ -1927,8 +1937,8 @@ export class SourceControlImportService {
 				ownedWorkflows.map((sw) => sw.workflowId),
 			);
 
-			await this.projectRepository.delete({
-				id: In(candidateIds),
+			await this.deleteWithCallerAllowlistPurge(async (trx) => {
+				await trx.delete(Project, { id: In(candidateIds) });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);
@@ -2038,6 +2048,19 @@ export class SourceControlImportService {
 	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
 		if (cascadedWorkflowIds.length === 0) return;
 		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
+	}
+
+	/**
+	 * Run a folder/project row delete and drop every id left without a row from the `callerIds`
+	 * allowlists, in one transaction, so no new workflow can take a freed id first.
+	 */
+	private async deleteWithCallerAllowlistPurge(deleteRows: (trx: EntityManager) => Promise<void>) {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+			await deleteRows(trx);
+			// Purge by what is gone rather than by the ids collected before the delete: the cascade
+			// also removes a workflow moved into a deleted folder since.
+			await this.workflowRepository.removeMissingFromCallerAllowlists(ctx);
+		});
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */

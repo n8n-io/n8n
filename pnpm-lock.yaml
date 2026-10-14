@@ -1068,12 +1068,7 @@ patchedDependencies:
   '@types/express-serve-static-core@5.0.6': d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
   '@types/ws@8.18.1': 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
   assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
-<<<<<<< HEAD
-  axios: 149e256a2a7b632497650b32816716ced972ab02a5ab00fbd8a5158a51722c49
   bull@4.16.4: a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42
-=======
-  bull@4.16.4: d4e8ad35f0bac2488cf42e41e5253450ed7e0ec41033b588b543f9c49ed635b0
->>>>>>> 1e919c7c (chore: Update npm dependencies (#40597))
   element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   imapflow@1.7.1: 9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025
@@ -2881,6 +2876,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@typescript-eslint/typescript-estree':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1)
@@ -4584,6 +4582,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.18
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -4597,6 +4598,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
@@ -22256,8 +22260,8 @@ packages:
     resolution: {integrity: sha512-yjavECdqeZ3GLXNgRXgeQEdz9fvDDkNKyHnbHRFtOr7/LcfgBcmct7t/ET+HaCTqfh06OzoAxrkN/IfjJBVe+g==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  readable-stream@4.7.0:
-    resolution: {integrity: sha512-oIGGmcpTLwPga8Bn6/Z75SVaH1z5dUut2ibSyAMVhmUggWpmDn2dapB0n7f8nwaSiRtepAsfJyfXIO5DCVAODg==}
+  readable-stream@4.8.0:
+    resolution: {integrity: sha512-2jhTTU3Eilp/2DMT71gbcoqC35eQHasMJH0RHkYxwlxIv3+FR6Y5xAFZIwEGLxKkjZYEFlsiMNIdwUqjK2lLHQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   readdir-glob@1.1.3:
@@ -40270,7 +40274,7 @@ snapshots:
       lru-cache: 10.4.3
       minimist: 1.2.8
       mqtt-packet: 9.0.2(supports-color@8.1.1)
-      readable-stream: 4.7.0
+      readable-stream: 4.8.0
       rfdc: 1.4.1
       socks: 2.8.9
       split2: 4.2.0
@@ -41946,7 +41950,7 @@ snapshots:
       process: 0.11.10
       string_decoder: 1.3.0
 
-  readable-stream@4.7.0:
+  readable-stream@4.8.0:
     dependencies:
       abort-controller: 3.0.0
       buffer: 6.0.3

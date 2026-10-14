@@ -4,6 +4,7 @@ import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import {
 	type Variables,
 	type VariablesRepository,
+	Folder,
 	type FolderRepository,
 	type CredentialsRepository,
 	type SharedCredentialsRepository,
@@ -36,6 +37,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
@@ -44,6 +46,7 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -86,6 +89,7 @@ describe('SourceControlImportService', () => {
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
 	const redactionEnforcementService = mock<RedactionEnforcementService>();
+	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	policyEnforcementService.hasChecksFor.mockReturnValue(true);
 	policyEnforcementService.enforceContentImport.mockResolvedValue(mock());
@@ -95,6 +99,7 @@ describe('SourceControlImportService', () => {
 	const executionPersistence = mock<ExecutionPersistence>();
 	const credentialsService = mock<CredentialsService>();
 	const transactionManager = mock<EntityManager>();
+	const cascadeManager = mock<EntityManager>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
@@ -140,6 +145,7 @@ describe('SourceControlImportService', () => {
 		workflowPublishGuard,
 		workflowMutationHooks,
 		workflowFinderService,
+		deprecatedNodesValidationService,
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
@@ -158,6 +164,14 @@ describe('SourceControlImportService', () => {
 		);
 		transactionManager.delete.mockImplementation(
 			async (_entity, criteria) => await sharedCredentialsRepository.delete(criteria as never),
+		);
+		cascadeManager.delete.mockImplementation(async (entity, criteria) =>
+			entity === Folder
+				? await folderRepository.delete(criteria as never)
+				: await projectRepository.delete(criteria as never),
+		);
+		workflowRepository.runInTransaction.mockImplementation(
+			async (ctx, fn) => await fn(cascadeManager, ctx),
 		);
 		credentialsRepositoryManager.transaction.mockImplementation(async (...args) => {
 			const callback = args.find((arg) => typeof arg === 'function');
@@ -1614,6 +1628,82 @@ describe('SourceControlImportService', () => {
 
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
+				expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
+			});
+		});
+
+		describe('deprecated node enforcement', () => {
+			const mockUserId = 'user-id-123';
+			const deprecatedNode = {
+				id: 'node-1',
+				name: 'Function',
+				type: 'n8n-nodes-base.function',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { functionCode: 'return items;' },
+			};
+			const workflowFile = (id: string) =>
+				JSON.stringify({
+					id,
+					name: `Workflow ${id}`,
+					active: false,
+					nodes: [deprecatedNode],
+					connections: {},
+					versionId: 'v1',
+					parentFolderId: null,
+				});
+
+			beforeEach(() => {
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					Object.assign(new Project(), {
+						id: 'personal-project-id-123',
+						name: 'Personal Project',
+						type: 'personal',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}),
+				);
+				folderRepository.find.mockResolvedValue([]);
+				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+				workflowRepository.upsertImportedContent.mockResolvedValue('1');
+			});
+
+			it('rejects a new workflow that fails the deprecated-node check', async () => {
+				workflowRepository.findByIds.mockResolvedValue([]);
+				fsReadFile.mockResolvedValueOnce(workflowFile('2'));
+				deprecatedNodesValidationService.validateOnCreate.mockImplementationOnce(() => {
+					throw new DeprecatedNodesError('blocked', { violations: [] });
+				});
+
+				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow2.json', id: '2' })];
+
+				await expect(service.importWorkflowFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+					DeprecatedNodesError,
+				);
+
+				expect(deprecatedNodesValidationService.validateOnCreate).toHaveBeenCalledWith(
+					[deprecatedNode],
+					'2',
+				);
+				expect(workflowRepository.upsertImportedContent).not.toHaveBeenCalled();
+			});
+
+			it('checks an existing workflow against its stored nodes', async () => {
+				workflowRepository.findByIds.mockResolvedValue([
+					Object.assign(new WorkflowEntity(), { id: '1', nodes: [deprecatedNode] }),
+				]);
+				fsReadFile.mockResolvedValueOnce(workflowFile('1'));
+
+				const candidates = [mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: '1' })];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(deprecatedNodesValidationService.validateOnUpdate).toHaveBeenCalledWith(
+					[deprecatedNode],
+					[deprecatedNode],
+					'1',
+				);
+				expect(deprecatedNodesValidationService.validateOnCreate).not.toHaveBeenCalled();
 				expect(workflowRepository.upsertImportedContent).toHaveBeenCalled();
 			});
 		});
@@ -3349,6 +3439,48 @@ describe('SourceControlImportService', () => {
 				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
 			});
 
+			it('should purge caller allowlists in the folder delete transaction', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				const straggler = Object.assign(new WorkflowEntity(), {
+					id: 'wf-1',
+					activeVersionId: null,
+				});
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
+				workflowRepository.find.mockResolvedValueOnce([straggler]);
+				workflowRepository.findOne.mockResolvedValueOnce(straggler);
+
+				await service.deleteFoldersNotInWorkfolder(candidates);
+
+				expect(workflowRepository.runInTransaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepository.removeMissingFromCallerAllowlists).toHaveBeenCalledWith({});
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
+				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
+				).toBeLessThan(workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0]);
+			});
+
+			it('should fail the folder deletion when the caller allowlist purge fails', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				const straggler = Object.assign(new WorkflowEntity(), {
+					id: 'wf-1',
+					activeVersionId: null,
+				});
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
+				workflowRepository.find.mockResolvedValueOnce([straggler]);
+				workflowRepository.findOne.mockResolvedValueOnce(straggler);
+				workflowRepository.removeMissingFromCallerAllowlists.mockRejectedValueOnce(
+					new Error('statement timeout'),
+				);
+
+				await expect(service.deleteFoldersNotInWorkfolder(candidates)).rejects.toThrow(
+					'statement timeout',
+				);
+
+				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
+			});
+
 			it('should not fire the sweep when the deleted folders contained no workflows', async () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
 				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
@@ -3976,6 +4108,32 @@ describe('SourceControlImportService', () => {
 				]);
 				expect(
 					workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0],
+				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
+			});
+
+			it('should purge caller allowlists in the project delete transaction', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					{ workflowId: 'wf-in-folder' },
+					{ workflowId: 'wf-at-project-root' },
+				] as SharedWorkflow[]);
+				workflowRepository.findOne
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-in-folder', activeVersionId: null }),
+					)
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), {
+							id: 'wf-at-project-root',
+							activeVersionId: null,
+						}),
+					);
+
+				await service.deleteTeamProjectsNotInWorkfolder(candidates);
+
+				expect(workflowRepository.runInTransaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepository.removeMissingFromCallerAllowlists).toHaveBeenCalledWith({});
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
 				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
 			});
 

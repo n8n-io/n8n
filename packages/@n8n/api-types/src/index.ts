@@ -95,6 +95,7 @@ export {
 	ChatHubUpdateToolRequest,
 	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
 	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	isChatHubToolTypeAllowed,
 	chatHubVectorStoreProviderSchema,
 	type ChatHubVectorStoreProvider,
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
@@ -926,3 +927,4 @@ export type {
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
 
 export type * from './workflow-suggestions';
+export * from './model-priority';

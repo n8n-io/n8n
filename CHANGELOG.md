@@ -1,3 +1,43 @@
+## [2.43.5](https://github.com/n8n-io/n8n/compare/n8n@2.43.4...n8n@2.43.5) (2026-10-14)
+
+
+### Bug Fixes
+
+* **core:** Validate the size argument of the chunk() expression extension ([#40911](https://github.com/n8n-io/n8n/issues/40911)) ([4bf0ece](https://github.com/n8n-io/n8n/commit/4bf0ece7ae665034b3bd6409d0ec0beef4384a57))
+
+
+### Features
+
+* Show Gemini models by name and list prioritized models first in model pickers ([#41016](https://github.com/n8n-io/n8n/issues/41016)) ([66cece2](https://github.com/n8n-io/n8n/commit/66cece279da3feaab86d773fa0fcefbd9e8b141d))
+
+
+## [2.43.4](https://github.com/n8n-io/n8n/compare/n8n@2.43.3...n8n@2.43.4) (2026-10-12)
+
+
+### Bug Fixes
+
+* **core:** Handle each Chat Hub segment once in queue mode ([#40816](https://github.com/n8n-io/n8n/issues/40816)) ([dc77062](https://github.com/n8n-io/n8n/commit/dc770620e5e3830e7e41b5b840028f937dedad8d))
+* **core:** Resume tool calls for deferred tools that a skill loaded ([#40746](https://github.com/n8n-io/n8n/issues/40746)) ([ea448c6](https://github.com/n8n-io/n8n/commit/ea448c6f61fb7cae06cfbeccbd32713a70d112ca))
+
+
+## [2.43.3](https://github.com/n8n-io/n8n/compare/n8n@2.43.2...n8n@2.43.3) (2026-10-09)
+
+
+### Features
+
+* **core:** Block create/update of workflows with deprecated nodes ([#40706](https://github.com/n8n-io/n8n/issues/40706)) ([3c4f6e3](https://github.com/n8n-io/n8n/commit/3c4f6e33934adf29d2c76e7723256fa5b69b9ab9))
+* **Google Gemini Node:** Show Nano Banana 2.1 and 2 Lite in the image model list ([#40655](https://github.com/n8n-io/n8n/issues/40655)) ([1830ccf](https://github.com/n8n-io/n8n/commit/1830ccfcda55fc948197fbb88ac7438211a39940))
+
+
+## [2.43.2](https://github.com/n8n-io/n8n/compare/n8n@2.43.1...n8n@2.43.2) (2026-10-08)
+
+
+### Bug Fixes
+
+* **core:** Fix Kimi K3 and other OpenAI-compatible Assistant model providers on self-hosted Assistant ([#40552](https://github.com/n8n-io/n8n/issues/40552)) ([509a3f3](https://github.com/n8n-io/n8n/commit/509a3f36a8443e544714e3874dc55ba14f2c9463))
+* **editor:** Show the Agent artifact while the builder creates it ([#40550](https://github.com/n8n-io/n8n/issues/40550)) ([204e2dd](https://github.com/n8n-io/n8n/commit/204e2ddf1745095f940659d827b6f8ca000ead49))
+
+
 ## [2.43.1](https://github.com/n8n-io/n8n/compare/n8n@2.43.0...n8n@2.43.1) (2026-10-07)
 
 

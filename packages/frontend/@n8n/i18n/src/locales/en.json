@@ -659,6 +659,7 @@
 	"chatHub.toolsManager.add": "Add",
 	"chatHub.toolsManager.addTool": "Add tool",
 	"chatHub.toolsManager.remove": "Remove",
+	"chatHub.toolsManager.roleBlocked": "Your role cannot use this tool. Remove it, or ask an admin for a different role.",
 	"chatHub.toolsManager.configure": "Configure",
 	"chatHub.toolsManager.manageTools": "Manage tools",
 	"chatHub.toolsManager.enableTool": "Enable tool",

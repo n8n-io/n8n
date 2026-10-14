@@ -70,6 +70,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			getManyAndCountWithSharingSubquery: Mock;
 			getWorkflowsAndFoldersWithCountWithSharingSubquery: Mock;
+			findCallableSubworkflows: Mock;
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
@@ -90,8 +91,6 @@ describe('WorkflowService', () => {
 			webhookServiceMock = mock<WebhookService>();
 
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
-			// By default the requester can read the supplied parent workflow.
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
@@ -138,6 +137,7 @@ describe('WorkflowService', () => {
 				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -156,7 +156,6 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
@@ -176,7 +175,6 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
@@ -196,7 +194,6 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
@@ -216,110 +213,82 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
-		describe('callableForParentWorkflowId', () => {
-			test('should pass parentWorkflowId when includeCallableSubworkflows is true', async () => {
+		describe('getCallableSubworkflows', () => {
+			test('should query with read roles and the Execute Workflow Trigger node type', async () => {
 				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-						parentWorkflowId: 'parent-wf-id',
-					},
-				};
+				workflowRepositoryMock.findCallableSubworkflows.mockResolvedValue({
+					workflows: [],
+					count: 0,
+				});
 
-				await workflowService.getMany(user, options);
+				await workflowService.getCallableSubworkflows(user, 'parent-wf-id', {
+					query: 'search',
+					skip: 10,
+					take: 5,
+				});
 
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:read']);
+				expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
+				expect(workflowRepositoryMock.findCallableSubworkflows).toHaveBeenCalledWith(
 					user,
-					expect.any(Object),
-					options,
+					{
+						scopes: ['workflow:read'],
+						projectRoles: ['project:viewer'],
+						workflowRoles: ['project:viewer'],
+					},
 					'parent-wf-id',
+					{
+						query: 'search',
+						triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+						skip: 10,
+						take: 5,
+					},
 				);
 			});
 
-			test('should pass undefined when includeCallableSubworkflows is false', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: false,
-						parentWorkflowId: 'parent-wf-id',
-					},
-				};
+			test('should return minimal rows with the project name for team projects only', async () => {
+				workflowRepositoryMock.findCallableSubworkflows.mockResolvedValue({
+					count: 2,
+					workflows: [
+						{
+							id: 'team-wf',
+							name: 'Team',
+							activeVersionId: 'version-1',
+							isArchived: false,
+							nodes: [{ type: 'n8n-nodes-base.code' }],
+							shared: [{ project: { type: 'team', name: 'Team Project' } }],
+						},
+						{
+							id: 'personal-wf',
+							name: 'Personal',
+							activeVersionId: null,
+							isArchived: true,
+							shared: [{ project: { type: 'personal', name: 'Jane <jane@example.com>' } }],
+						},
+					],
+				});
 
-				await workflowService.getMany(user, options);
+				const result = await workflowService.getCallableSubworkflows(mock<User>(), 'parent-wf-id', {
+					skip: 0,
+					take: 10,
+				});
 
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
-			});
-
-			test('should pass undefined when includeCallableSubworkflows is true but parentWorkflowId is missing', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-					},
-				};
-
-				await workflowService.getMany(user, options);
-
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
-			});
-
-			test('should pass undefined when includeCallableSubworkflows is true but parentWorkflowId is not a string', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-						parentWorkflowId: 123, // invalid type
-					},
-				};
-
-				await workflowService.getMany(user, options);
-
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
-			});
-
-			test('should pass undefined when the requester cannot read the parent workflow', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-						parentWorkflowId: 'parent-wf-id',
-					},
-				};
-				// Requester has no read access to the supplied parent workflow.
-				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
-
-				await workflowService.getMany(user, options);
-
-				expect(workflowFinderServiceMock.findWorkflowForUser).toHaveBeenCalledWith(
-					'parent-wf-id',
-					user,
-					['workflow:read'],
-				);
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
+				expect(result).toEqual({
+					count: 2,
+					data: [
+						{
+							id: 'team-wf',
+							name: 'Team',
+							active: true,
+							isArchived: false,
+							projectName: 'Team Project',
+						},
+						{ id: 'personal-wf', name: 'Personal', active: false, isArchived: true },
+					],
+				});
 			});
 		});
 
@@ -513,6 +482,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 
 			vi.clearAllMocks();
@@ -1358,6 +1328,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 
 			// Bypass validation internals
@@ -2119,6 +2090,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2261,6 +2233,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2568,6 +2541,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2739,6 +2713,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -2927,6 +2902,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -3031,6 +3007,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
+				mock(),
 			);
 		});
 
@@ -3134,6 +3111,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationStatusService
 				mock(), // nodeGroupRulesFlagGate
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
+				mock(),
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
