@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { SkillListItem } from '@n8n/api-types';
-import { N8nActionToggle, N8nDataTableServer, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nDataTableServer, N8nText, N8nUserInfo } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import SkillAgentsCell from './SkillAgentsCell.vue';
 import SkillScopeBadge from './SkillScopeBadge.vue';
-import { skillCreatorLabel } from '../skills.utils';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 
 type SkillAction = 'edit' | 'delete';
@@ -40,6 +40,7 @@ const emit = defineEmits<{
 const tableOptions = defineModel<TableOptions>('tableOptions', { default: () => ({}) });
 
 const i18n = useI18n();
+const usersStore = useUsersStore();
 
 /** The backend refuses to delete a skill that an agent uses, so the action is off before the user tries. */
 function canDeleteNow(skill: SkillListItem) {
@@ -91,7 +92,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
-		width: 340,
+		width: 300,
 		disableSort: true,
 		resize: false,
 	},
@@ -112,7 +113,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.createdBy'),
 		key: 'createdBy',
-		width: 180,
+		width: 220,
 		disableSort: true,
 		resize: false,
 	},
@@ -173,8 +174,17 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`item.createdBy`]="{ item }">
-				<N8nText size="small" color="text-light" data-test-id="skill-created-by">
-					{{ skillCreatorLabel(i18n, item) }}
+				<!-- The same person cell as the users table. -->
+				<div v-if="item.createdBy" :class="$style.creator" data-test-id="skill-created-by">
+					<N8nUserInfo
+						:first-name="item.createdBy.firstName"
+						:last-name="item.createdBy.lastName"
+						:email="item.createdBy.email"
+						:is-current-user="item.createdBy.id === usersStore.currentUserId"
+					/>
+				</div>
+				<N8nText v-else size="small" color="text-light" data-test-id="skill-created-by-none">
+					—
 				</N8nText>
 			</template>
 
@@ -203,6 +213,11 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.creator {
+	padding-block: var(--spacing--2xs);
 	min-width: 0;
 }
 
