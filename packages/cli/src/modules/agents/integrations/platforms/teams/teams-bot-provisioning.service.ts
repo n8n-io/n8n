@@ -226,6 +226,8 @@ export class TeamsBotProvisioningService {
 				string,
 				unknown
 			>;
+			// Decrypt answers `{}` when it fails, and writing that back would erase the secret.
+			if (!stringProperty(current, 'clientId')) return;
 			if (
 				current.azureBotName === botName &&
 				current.azureSubscriptionId === options.subscriptionId

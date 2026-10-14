@@ -220,6 +220,8 @@ export class TeamsCatalogService {
 				string,
 				unknown
 			>;
+			// Decrypt answers `{}` when it fails, and writing that back would erase the secret.
+			if (!stringProperty(current, 'clientId')) return;
 			// Rewritten even when it says the same thing: the timestamp is what
 			// bounds it, so a re-publish has to push the window out.
 

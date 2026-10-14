@@ -2,6 +2,7 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
@@ -35,9 +36,11 @@ const i18n = useI18n();
 				{{ i18n.baseText('agents.channels.teams.remove.title') }}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
-		<N8nText size="medium" :class="$style.content">
-			{{ i18n.baseText('agents.channels.teams.remove.description') }}
-		</N8nText>
+		<N8nDialogDescription as-child>
+			<N8nText size="medium" :class="$style.content">
+				{{ i18n.baseText('agents.channels.teams.remove.description') }}
+			</N8nText>
+		</N8nDialogDescription>
 		<N8nDialogFooter>
 			<div :class="$style.actions">
 				<N8nButton variant="outline" :disabled="loading" @click="emit('cancel')">

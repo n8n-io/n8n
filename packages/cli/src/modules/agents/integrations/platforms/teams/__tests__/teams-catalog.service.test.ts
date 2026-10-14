@@ -524,6 +524,15 @@ describe('TeamsCatalogService', () => {
 			);
 		});
 
+		it('leaves a credential it could not decrypt untouched', async () => {
+			withBotCredential({});
+			graph.postZip.mockResolvedValue(ok({ id: TEAMS_APP_ID }));
+
+			await service.publish({ ...publishOptions, settings: undefined });
+
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
 		/** Microsoft has the app either way, so losing the note must not undo it. */
 		it('still reports the publish when the note cannot be written', async () => {
 			withBotCredential({ clientId: 'app-1' });

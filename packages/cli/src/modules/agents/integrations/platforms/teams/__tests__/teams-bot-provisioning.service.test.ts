@@ -212,15 +212,34 @@ describe('TeamsBotProvisioningService', () => {
 		it('keeps the bot name and subscription on the channel credential', async () => {
 			withChannelCredential();
 			credentialsService.decrypt.mockResolvedValue({ clientId: 'app-1' } as never);
+			const encrypted = { data: 'encrypted' };
+			credentialsService.createEncryptedData.mockResolvedValue(encrypted as never);
+			const updated = {
+				clientId: 'app-1',
+				azureBotName: BOT_NAME,
+				azureSubscriptionId: SUBSCRIPTION_ID,
+			};
 
 			await service.provisionBot(provisionOptions);
 
+			expect(credentialsService.createEncryptedData).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'channel-1', data: updated }),
+			);
 			expect(credentialsService.update).toHaveBeenCalledWith(
 				'channel-1',
-				undefined,
+				encrypted,
 				{ kind: 'user', user },
-				{ clientId: 'app-1', azureBotName: BOT_NAME, azureSubscriptionId: SUBSCRIPTION_ID },
+				updated,
 			);
+		});
+
+		it('leaves a credential it could not decrypt untouched', async () => {
+			withChannelCredential();
+			credentialsService.decrypt.mockResolvedValue({} as never);
+
+			await service.provisionBot(provisionOptions);
+
+			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
 		it('leaves the credential alone when it already names this bot', async () => {

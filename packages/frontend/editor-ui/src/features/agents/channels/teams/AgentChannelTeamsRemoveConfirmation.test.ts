@@ -20,6 +20,7 @@ function mountConfirmation(loading = false) {
 				},
 				DialogHeader: { template: '<header><slot /></header>' },
 				DialogTitle: { template: '<h2><slot /></h2>' },
+				DialogDescription: { template: '<p><slot /></p>' },
 				DialogFooter: { template: '<footer><slot /></footer>' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nButton: {
@@ -37,7 +38,7 @@ describe('AgentChannelTeamsRemoveConfirmation', () => {
 
 		await wrapper.get('[data-testid="teams-remove-confirm"]').trigger('click');
 
-		expect(wrapper.emitted('confirm')).toHaveLength(1);
+		expect(wrapper.emitted('confirm')).toEqual([[false]]);
 	});
 
 	it('cancels on close, but not while the removal runs', async () => {

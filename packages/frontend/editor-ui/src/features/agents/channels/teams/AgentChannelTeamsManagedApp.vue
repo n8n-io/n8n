@@ -132,20 +132,26 @@ const publish = async () =>
 		if (props.unsavedChanges && !(await props.persistChannel?.())) return;
 		// False when the sign-in or agent changed under it, so the catalogue was not read back.
 		if (!(await props.runtime.publishApp(publishing))) return;
-		const submitted = catalogState.value?.status === 'submitted';
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText(
-				submitted
-					? 'agents.channels.teams.managed.install.submittedToast'
-					: 'agents.channels.teams.managed.install.publishedToast',
-			),
-			message: i18n.baseText(
-				submitted
-					? 'agents.channels.teams.managed.install.submitted'
-					: 'agents.channels.teams.managed.install.publishedToastHint',
-			),
-		});
+		const status = catalogState.value?.status;
+		if (status === 'published') {
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('agents.channels.teams.managed.install.publishedToast'),
+				message: i18n.baseText('agents.channels.teams.managed.install.publishedToastHint'),
+			});
+		} else if (status === 'submitted') {
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('agents.channels.teams.managed.install.submittedToast'),
+				message: i18n.baseText('agents.channels.teams.managed.install.submitted'),
+			});
+		} else {
+			// Microsoft took the upload but has not listed the app yet.
+			toast.showMessage({
+				type: 'info',
+				title: i18n.baseText('agents.channels.teams.managed.install.unknown'),
+			});
+		}
 	});
 
 /**

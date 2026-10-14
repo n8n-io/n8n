@@ -432,8 +432,10 @@ const readsSharedConversations = computed(() => readsShared(availability.value))
 /**
  * Microsoft confirms an approval only on the redirect back here, and applying
  * it can take an hour, so the approval is announced once, from the redirect.
+ * It belongs to the app of the credential picked then, not to the next one.
  */
-const fileAccessApprovedNow = ref(false);
+const fileAccessApprovedFor = ref<string | null>(null);
+const fileAccessApprovedNow = computed(() => fileAccessApprovedFor.value === credentialId.value);
 
 /**
  * Only in the settings: that is where people return after sending the approval
@@ -446,7 +448,7 @@ async function loadFileAccess() {
 	if (props.mode !== 'edit' || !id || !readsSharedConversations.value) return;
 	if (fileAccessJustApproved.value) {
 		fileAccessJustApproved.value = false;
-		fileAccessApprovedNow.value = true;
+		fileAccessApprovedFor.value = id;
 	}
 	if (fileAccessApprovedNow.value) return;
 	try {

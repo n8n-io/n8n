@@ -237,6 +237,23 @@ describe('AgentChannelTeamsEditView', () => {
 			expect(fileAccessJustApproved.value).toBe(false);
 		});
 
+		it('checks a credential picked after the approval', async () => {
+			fileAccessJustApproved.value = true;
+
+			const { findByTestId, queryByTestId, rerender } = renderView({
+				props: { ...viewProps, savedSettings: { teamChannels: true } },
+				pinia: createTestingPinia(),
+			});
+			expect(await findByTestId('teams-file-access-approved')).toBeVisible();
+
+			await rerender({ ...viewProps, modelValue: 'cred-2', savedSettings: { teamChannels: true } });
+			await flushPromises();
+
+			expect(checkTeamsFileAccess).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-2');
+			expect(queryByTestId('teams-file-access-approved')).toBeNull();
+			expect(await findByTestId('teams-file-access')).toBeVisible();
+		});
+
 		it('keeps the approval for when the saved settings arrive late', async () => {
 			fileAccessJustApproved.value = true;
 

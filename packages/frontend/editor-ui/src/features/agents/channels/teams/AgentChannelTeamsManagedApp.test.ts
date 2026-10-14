@@ -302,6 +302,28 @@ describe('AgentChannelTeamsManagedApp', () => {
 		expect(showMessage).not.toHaveBeenCalled();
 	});
 
+	it('does not claim a publish that Microsoft has not listed yet', async () => {
+		const runtime = buildRuntime({
+			catalogState: ref<TeamsCatalogState | null>(null),
+		});
+		runtime.publishApp = vi.fn(async () => {
+			runtime.catalogState.value = { status: 'unknown', teamsAppId: null };
+			return true;
+		});
+
+		const { getByTestId } = render({ runtime });
+		await fireEvent.click(getByTestId('teams-settings-publish'));
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'info',
+					title: 'agents.channels.teams.managed.install.unknown',
+				}),
+			),
+		);
+	});
+
 	it('confirms a download in a toast', async () => {
 		const { getByTestId } = render();
 		await fireEvent.click(getByTestId('teams-settings-download'));
