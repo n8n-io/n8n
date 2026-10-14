@@ -127,10 +127,6 @@ export class ProjectService {
 		);
 	}
 
-	private get appsService() {
-		return import('@n8n/backend-module-apps').then(({ AppsService }) => Container.get(AppsService));
-	}
-
 	private get secretsProvidersConnectionsService() {
 		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
@@ -186,9 +182,11 @@ export class ProjectService {
 
 		let targetProject: Project | null = null;
 		if (migrateToProject) {
-			const scopes: Scope[] = ['credential:create', 'workflow:create', 'dataTable:create'];
-			if (this.moduleRegistry.isActive('apps')) scopes.push('app:create');
-			targetProject = await this.getProjectWithScope(user, migrateToProject, scopes);
+			targetProject = await this.getProjectWithScope(user, migrateToProject, [
+				'credential:create',
+				'workflow:create',
+				'dataTable:create',
+			]);
 
 			if (!targetProject) {
 				throw new NotFoundError(
@@ -280,19 +278,13 @@ export class ProjectService {
 			}
 		}
 
-		// 7. migrate associated apps
-		if (this.moduleRegistry.isActive('apps') && targetProject) {
-			const appsService = await this.appsService;
-			await appsService.transferApps(project.id, targetProject.id);
-		}
-
-		// 8. delete secrets providers connections that are owned by this project
+		// 7. delete secrets providers connections that are owned by this project
 		if (this.moduleRegistry.isActive('external-secrets')) {
 			const secretsProvidersConnectionsService = await this.secretsProvidersConnectionsService;
 			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
 		}
 
-		// 9. delete agent knowledge files before project removal cascades delete agent_files rows.
+		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
 			const [agentRepository, agentKnowledgeService, agentExecutionService, agentChatAttachments] =
 				await Promise.all([
@@ -335,13 +327,13 @@ export class ProjectService {
 		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
-		// 10. delete project
+		// 9. delete project
 		await this.projectRepository.remove(project);
 
-		// 11. delete project relations
+		// 10. delete project relations
 		// Cascading deletes take care of this.
 
-		// 12. delete orphaned per-user credential entries for former members
+		// 11. delete orphaned per-user credential entries for former members
 		if (memberUserIds.length > 0) {
 			const proxy = await this.connectionStatusProxy;
 			await proxy.cleanupOrphanedEntriesForUsers(memberUserIds);

@@ -99,16 +99,4 @@ describe('AppsService', () => {
 		}
 		expect(appRepository.delete).toHaveBeenCalledWith({ id: appId, projectId: 'project-1' });
 	});
-
-	it('transfers apps between projects validated by the caller', async () => {
-		const { service, appRepository } = createService();
-
-		await service.transferApps('source', 'target');
-
-		expect(appRepository.update).toHaveBeenCalledWith(
-			{ projectId: 'source' },
-			{ projectId: 'target' },
-		);
-		expect(appRepository.projectExists).not.toHaveBeenCalled();
-	});
 });
