@@ -13,6 +13,11 @@ interface ExecutionListResponse extends ExecutionSummary {
 }
 
 import type { ApiHelpers } from './api-helper';
+import {
+	isEngineV2ExecutionId,
+	legacyEngineRunMessage,
+	ROUTED_MODES,
+} from '../fixtures/engine-parity';
 import { TestError } from '../Types';
 import { resolveFromRoot } from '../utils/path-helper';
 
@@ -25,8 +30,6 @@ type WorkflowImportResult = {
 };
 
 /** Engine v2 mints uuidv7 execution ids; the legacy engine mints numbers. */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
@@ -166,26 +169,19 @@ export class WorkflowApiHelper {
 
 	/**
 	 * Fails a run that the stack meant for engine v2 but the control plane kept.
-	 * A v1 id is numeric and a v2 id is a uuid, which the engine validates on the
-	 * wire (`packages/cli/src/executions/execution-id.ts`), so the shape says
-	 * which plane ran it. Without this a workflow that missed `engineType` runs
-	 * on v1 and the spec still passes, which is parity evidence that proves
-	 * nothing.
+	 * Without this a workflow that missed `engineType` runs on v1 and the spec
+	 * still passes, which is parity evidence that proves nothing.
 	 *
-	 * Only {@link runManually} checks on the way in. A spec that starts a run
-	 * elsewhere, such as from the canvas or through a webhook, calls
-	 * {@link assertLatestExecutionRoutedToEngine} after the run.
+	 * {@link runManually} and {@link runRaw} check on the way in. A webhook or
+	 * trigger run returns no execution id, so {@link waitForExecution} and
+	 * {@link waitForExecutionById} check the execution they hand back. A spec
+	 * that reads no execution calls {@link assertLatestExecutionRoutedToEngine}.
 	 */
 	private assertRoutedToEngine(executionId: string): void {
 		if (this.api.options.workflowSettings?.engineType !== 'v2') return;
-		if (UUID.test(executionId)) return;
+		if (isEngineV2ExecutionId(executionId)) return;
 
-		throw new TestError(
-			`Expected an engine v2 execution id, got "${executionId}", so the run stayed on the ` +
-				'legacy engine. Either the workflow missed `settings.engineType`, which ' +
-				'`api.workflows` applies from the stack, or this main does not run the `engine-v2` ' +
-				'module.',
-		);
+		throw new TestError(legacyEngineRunMessage(executionId));
 	}
 
 	/**
@@ -212,12 +208,21 @@ export class WorkflowApiHelper {
 		workflowId: string,
 		options: { workflowData?: Partial<IWorkflowBase>; triggerNodeName: string },
 	): Promise<APIResponse> {
-		return await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
 			data: {
 				...(options.workflowData ? { workflowData: options.workflowData } : {}),
 				triggerToStartFrom: { name: options.triggerNodeName },
 			},
 		});
+
+		// Playwright keeps the body until the response is disposed, so the caller can read it again.
+		if (response.ok()) {
+			const result = await response.json();
+			const run = (result.data ?? result) as { executionId?: string };
+			if (run.executionId !== undefined) this.assertRoutedToEngine(run.executionId);
+		}
+
+		return response;
 	}
 
 	/**
@@ -508,7 +513,8 @@ export class WorkflowApiHelper {
 	): Promise<ExecutionListResponse> {
 		const deadline = Date.now() + timeoutMs;
 
-		let execution = await this.getExecution(executionId);
+		// The mode says whether the id has to be an engine v2 one, so read the row first.
+		let execution = this.routedExecution(await this.getExecution(executionId));
 		while (!isTerminalExecutionStatus(execution.status)) {
 			// Stryker disable next-line EqualityOperator: `>` differs only on the exact
 			// deadline millisecond, which costs fake timers to reach and proves nothing.
@@ -570,7 +576,7 @@ export class WorkflowApiHelper {
 					const isCorrectWorkflow = execution.workflowId === workflowId;
 					const isCorrectMode = execution.mode === mode;
 					if (isCompleted && isCorrectWorkflow && isCorrectMode) {
-						return execution;
+						return this.routedExecution(execution);
 					}
 				}
 			}
@@ -584,7 +590,7 @@ export class WorkflowApiHelper {
 						execution.startedAt ?? execution.createdAt ?? Date.now(),
 					).getTime();
 					if (executionTime >= startTime - 5000) {
-						return execution;
+						return this.routedExecution(execution);
 					}
 				}
 			}
@@ -593,6 +599,15 @@ export class WorkflowApiHelper {
 		}
 
 		throw new TestError(`Execution did not complete within ${timeoutMs}ms`);
+	}
+
+	/**
+	 * Only a run the dispatcher routes has to carry an engine v2 id. A
+	 * sub-workflow runs in `integrated` mode, which stays on the legacy engine.
+	 */
+	private routedExecution(execution: ExecutionListResponse): ExecutionListResponse {
+		if (ROUTED_MODES.has(execution.mode)) this.assertRoutedToEngine(execution.id);
+		return execution;
 	}
 
 	/** Waits for a workflow execution to reach a specific status. */

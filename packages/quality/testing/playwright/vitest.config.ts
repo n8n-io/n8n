@@ -6,6 +6,7 @@ export default defineConfig({
 	test: {
 		include: [
 			'scripts/**/*.test.{ts,mjs}',
+			'config/**/*.test.ts',
 			'fixtures/**/*.test.ts',
 			'reporters/**/*.test.ts',
 			'services/**/*.test.ts',
