@@ -530,9 +530,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...(toolConfig && { toolConfig }),
 	};
 
-	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
+	const requestedModel = model.replace(/^models\//, '');
+	const generateContent = async () => {
+		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
+			body,
+		})) as GenerateContentResponse;
+		if (
+			requestedModel.startsWith('gemma-') &&
+			response.modelVersion &&
+			response.modelVersion.replace(/^models\//, '') !== requestedModel
+		) {
+			throw new NodeOperationError(this.getNode(), 'Google returned a different model', {
+				itemIndex: i,
+				description: `Requested "${model}", but Google returned "${response.modelVersion}". Check that the selected model is available for your API key.`,
+			});
+		}
+		return response;
+	};
+
+	let response = await generateContent();
 
 	const captureUsage = () => {
 		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
@@ -590,9 +606,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
+		response = await generateContent();
 		captureUsage();
 		toolCalls = getToolCalls(response);
 		currentIteration++;

@@ -68,4 +68,40 @@ describe('Google Gemini message model identity', () => {
 
 		await expect(execute.call(executeFunctionsMock, 0)).rejects.toThrow(NodeOperationError);
 	});
+
+	it.each([
+		{ requestedModel: model, modelVersion: model },
+		{ requestedModel: model, modelVersion: undefined },
+		{ requestedModel: 'models/gemini-2.0-flash', modelVersion: 'gemini-2.0-flash-001' },
+		{ requestedModel: 'models/gemini-flash-latest', modelVersion: 'gemini-3-flash-preview' },
+	])('should accept $requestedModel with response model $modelVersion', async (testCase) => {
+		executeFunctionsMock.getNodeParameter.mockReturnValueOnce(testCase.requestedModel);
+		executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({
+			...response,
+			modelVersion: testCase.modelVersion,
+		});
+
+		await expect(execute.call(executeFunctionsMock, 0)).resolves.toEqual([
+			{ json: response.candidates[0], pairedItem: { item: 0 } },
+		]);
+	});
+
+	it('should reject a different model in a tool follow-up response', async () => {
+		executeFunctionsMock.helpers.httpRequestWithAuthentication
+			.mockResolvedValueOnce({
+				...response,
+				candidates: [
+					{
+						content: {
+							parts: [{ functionCall: { name: 'lookup', args: {} } }],
+							role: 'model',
+						},
+					},
+				],
+			})
+			.mockResolvedValueOnce({ ...response, modelVersion: 'gemini-3-flash-preview' });
+
+		await expect(execute.call(executeFunctionsMock, 0)).rejects.toThrow(NodeOperationError);
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
 });
