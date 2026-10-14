@@ -479,6 +479,10 @@ export class GoogleSheetsTrigger implements INodeType {
 					} else {
 						pageToken = undefined;
 
+						if (!revisions?.length) {
+							return null;
+						}
+
 						const lastRevision = +revisions[revisions.length - 1].id;
 						if (lastRevision <= previousRevision) {
 							return null;
