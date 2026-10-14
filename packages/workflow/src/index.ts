@@ -83,6 +83,7 @@ export {
 	isUsableObjectKey,
 	setSafeObjectProperty,
 	isCommunityPackageName,
+	splitNodeTypeName,
 	dedupe,
 	sanitizeFilename,
 	sanitizeXmlName,

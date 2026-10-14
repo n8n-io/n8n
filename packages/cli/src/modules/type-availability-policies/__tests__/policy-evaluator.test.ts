@@ -1,6 +1,7 @@
 import {
 	evaluateComposedType,
 	evaluateType,
+	nodeTypePackageResolver,
 	partitionTypesByAction,
 	type PolicedType,
 	type ScopePolicy,
@@ -188,6 +189,40 @@ describe('evaluateType', () => {
 		});
 	});
 
+	describe('package selector', () => {
+		it.each([
+			['n8n-nodes-base', 'n8n-nodes-base.slack'],
+			['@n8n/n8n-nodes-langchain', '@n8n/n8n-nodes-langchain.agent'],
+			['n8n-nodes-foo', 'n8n-nodes-foo.bar'],
+			['@seven.io/n8n-nodes-seven', '@seven.io/n8n-nodes-seven.seven'],
+			['@seven.io/n8n-nodes-seven', '@seven.io/n8n-nodes-seven.sevenTool'],
+		])('matches package %s for type %s', (packageName, typeName) => {
+			const attachments = [
+				attachment({
+					rules: [{ id: 'r1', action: 'deny', selector: { kind: 'package', value: packageName } }],
+				}),
+			];
+
+			expect(evaluateType(attachments, 'allow', type(typeName))).toEqual({
+				action: 'deny',
+				matchedRuleId: 'r1',
+			});
+		});
+
+		it('does not match only the part of a dotted scope before its dot', () => {
+			const attachments = [
+				attachment({
+					rules: [{ id: 'r1', action: 'deny', selector: { kind: 'package', value: '@seven' } }],
+				}),
+			];
+
+			expect(evaluateType(attachments, 'allow', type('@seven.io/n8n-nodes-seven.seven'))).toEqual({
+				action: 'allow',
+				matchedRuleId: null,
+			});
+		});
+	});
+
 	describe('name selector', () => {
 		it('requires an exact match, not a prefix', () => {
 			const attachments = [
@@ -362,6 +397,16 @@ describe('extends selector', () => {
 			matchedRuleId: 'allow-family',
 			optInAvailable: false,
 		});
+	});
+});
+
+describe('nodeTypePackageResolver', () => {
+	it.each([
+		['n8n-nodes-base.httpRequest', 'n8n-nodes-base'],
+		['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain'],
+		['@seven.io/n8n-nodes-seven.seven', '@seven.io/n8n-nodes-seven'],
+	])('resolves %s to %s', (typeName, packageName) => {
+		expect(nodeTypePackageResolver(typeName)).toBe(packageName);
 	});
 });
 
