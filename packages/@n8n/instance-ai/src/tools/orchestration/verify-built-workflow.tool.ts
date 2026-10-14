@@ -343,6 +343,19 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				chatModelRelatedNodeNames,
 				chatModelRecovery,
 				verificationScope,
+			}).catch(async (error: unknown) => {
+				if (context.abortSignal?.aborted) {
+					await workflowTaskService.updateBuildOutcome(resolvedInput.workItemId, {
+						verification: {
+							attempted: true,
+							success: false,
+							status: 'error',
+							evidence: { errorMessage: 'Verification was canceled.' },
+							verifiedAt: new Date().toISOString(),
+						},
+					});
+				}
+				throw error;
 			});
 
 			// The repair target from an earlier verdict counts even when the model
