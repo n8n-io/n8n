@@ -61,7 +61,10 @@ function matchesPathTemplate(template: string, path: string): boolean {
 	);
 	return (
 		templateSegments.length === pathSegments.length &&
-		templateSegments.every((segment, i) => segment.startsWith(':') || segment === pathSegments[i])
+		templateSegments.every(
+			(segment, i) =>
+				segment.startsWith(':') || segment.toLowerCase() === pathSegments[i].toLowerCase(),
+		)
 	);
 }
 

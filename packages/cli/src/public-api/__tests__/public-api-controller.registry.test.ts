@@ -168,6 +168,7 @@ describe('PublicApiControllerRegistry', () => {
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
 		await request(activate()).head('/api/v1/widgets').expect(405).expect('Allow', 'GET');
+		await request(activate()).head('/api/v1/WIDGETS').expect(405).expect('Allow', 'GET');
 		expect(handler).not.toHaveBeenCalled();
 	});
 
