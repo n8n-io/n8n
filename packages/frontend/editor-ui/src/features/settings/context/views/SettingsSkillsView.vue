@@ -1,0 +1,481 @@
+<script lang="ts" setup>
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { useDebounceFn } from '@vueuse/core';
+import type { AgentSkill, CreateSkillDto, SkillListItem, SkillScope } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nText,
+} from '@n8n/design-system';
+import type { DropdownMenuItemProps, TableOptions } from '@n8n/design-system';
+
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useMessage } from '@/app/composables/useMessage';
+import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { AGENT_SKILL_MODAL_KEY } from '@/features/agents/constants';
+import type {
+	AgentSkillModalData,
+	AgentSkillModalScopeOption,
+} from '@/features/agents/components/AgentSkillModal.vue';
+
+import SkillsTable from '../components/SkillsTable.vue';
+import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
+import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
+import type { SkillListQuery } from '../skills.api';
+import { useSkillsStore } from '../skills.store';
+
+const INSTANCE_SCOPE = 'instance';
+const PROJECT_SCOPE_PREFIX = 'project:';
+const ALL_SCOPES = 'all';
+
+type ScopeFilter = SkillScope | typeof ALL_SCOPES;
+
+const i18n = useI18n();
+const router = useRouter();
+const route = useRoute();
+const documentTitle = useDocumentTitle();
+const message = useMessage();
+const uiStore = useUIStore();
+const projectsStore = useProjectsStore();
+const skillsStore = useSkillsStore();
+const { showError, showMessage } = useToast();
+
+const tableOptions = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: PREFERENCES_DEFAULT_PAGE_SIZE,
+	sortBy: [],
+});
+const selection = ref<string[]>([]);
+const search = ref('');
+const scopeFilter = ref<ScopeFilter>(ALL_SCOPES);
+const loadFailed = ref(false);
+
+// Paging, search and the scope filter run on the server: the count and the page both
+// describe the matching skills, and the page is the only slice the browser holds.
+const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== ALL_SCOPES);
+// A failed load also reports zero rows, so the empty state must not stand in for it. A
+// filter that matches nothing shows an empty table, not "No skills yet".
+const showEmptyState = computed(
+	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
+);
+const selectedCount = computed(() => selection.value.length);
+
+const scopeFilterItems = computed<Array<DropdownMenuItemProps<ScopeFilter>>>(() =>
+	(
+		[
+			[ALL_SCOPES, 'settings.context.skills.filter.all'],
+			['instance', 'settings.context.skills.filter.instance'],
+			['project', 'settings.context.skills.filter.project'],
+			['agent', 'settings.context.skills.filter.agent'],
+		] as const
+	).map(([id, key]) => ({
+		id,
+		label: i18n.baseText(key),
+		checked: scopeFilter.value === id,
+	})),
+);
+
+function listQuery(page: number, itemsPerPage: number): SkillListQuery {
+	const term = search.value.trim();
+	return {
+		skip: page * itemsPerPage,
+		take: itemsPerPage,
+		...(term ? { search: term } : {}),
+		...(scopeFilter.value !== ALL_SCOPES ? { scope: scopeFilter.value } : {}),
+	};
+}
+
+/**
+ * Where a new skill can live: the instance, the personal project and the team projects
+ * that the user may write to. An agent skill is made from inside its agent, not here.
+ */
+const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
+	const options: AgentSkillModalScopeOption[] = [];
+	if (canWriteInstanceSkillScope()) {
+		options.push({
+			value: INSTANCE_SCOPE,
+			label: i18n.baseText('settings.context.skills.scope.instance'),
+		});
+	}
+	const personalProject = projectsStore.personalProject;
+	if (personalProject && canWriteProjectSkillScope(personalProject.id)) {
+		options.push({
+			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
+			label: i18n.baseText('settings.context.skills.scope.personalProject'),
+		});
+	}
+	for (const project of projectsStore.myProjects) {
+		if (project.type !== 'team' || !canWriteProjectSkillScope(project.id)) continue;
+		options.push({
+			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
+			label: project.name ?? project.id,
+		});
+	}
+	return options;
+});
+
+function parseScope(value: string): Pick<CreateSkillDto, 'scope' | 'projectId'> {
+	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
+		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
+	}
+	return { scope: 'instance' };
+}
+
+async function load() {
+	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	try {
+		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
+		loadFailed.value = false;
+		// Deleting the last rows of a page can leave the page past the end.
+		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
+		if (page > lastPage) {
+			tableOptions.value = { ...tableOptions.value, page: lastPage };
+			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
+		}
+		// A selected row can leave the page, or stop being deletable.
+		const deletable = new Set(
+			skillsStore.skills
+				.filter((skill) => skill.canDelete && skill.usedByAgents === 0)
+				.map((skill) => skill.id),
+		);
+		selection.value = selection.value.filter((id) => deletable.has(id));
+	} catch (error) {
+		loadFailed.value = true;
+		showError(error, i18n.baseText('settings.context.skills.error.load'));
+	}
+}
+
+async function onOptionsUpdate(options: TableOptions) {
+	tableOptions.value = options;
+	await load();
+}
+
+/** A new filter starts at the first page. */
+async function resetPage() {
+	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await load();
+}
+
+const onSearch = useDebounceFn(resetPage, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+async function onScopeFilter(value: ScopeFilter) {
+	scopeFilter.value = value;
+	await resetPage();
+}
+
+function openModal(data: AgentSkillModalData) {
+	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
+}
+
+/** Starts at the SKILL.md upload step, which also offers "Add manually". */
+function openCreateModal() {
+	const options = scopeOptions.value;
+	if (options.length === 0) return;
+	openModal({
+		scopeOptions: options,
+		initialScope: options[0].value,
+		existingSkillNames: [],
+		onConfirm: async ({ skill, scope }) => await onCreate(skill, scope ?? options[0].value),
+	});
+}
+
+async function onCreate(skill: AgentSkill, scopeValue: string) {
+	try {
+		await skillsStore.createSkill({ ...parseScope(scopeValue), skill });
+		showMessage({
+			title: i18n.baseText('settings.context.skills.create.success'),
+			type: 'success',
+		});
+		await load();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.save'));
+	}
+}
+
+async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+	try {
+		const detail = await skillsStore.fetchSkill(item.id);
+		openModal({
+			skill: detail.skill,
+			skillId: detail.id,
+			readOnly: !detail.canEdit,
+			existingSkillNames: [],
+			onConfirm: async ({ skill }) => await onSave(detail.id, skill, detail.skillHash),
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.loadOne'));
+	}
+}
+
+/** Saves the next version. There are no drafts: what the modal shows is what gets saved. */
+async function onSave(id: string, skill: AgentSkill, baseSkillHash: string) {
+	try {
+		const saved = await skillsStore.saveSkill(id, {
+			name: skill.name,
+			description: skill.description,
+			instructions: skill.instructions,
+			// An empty list clears the references, where an absent one would keep them.
+			references: skill.references ?? [],
+			baseSkillHash,
+		});
+		showMessage({
+			title: i18n.baseText(
+				saved.created
+					? 'settings.context.skills.save.success'
+					: 'settings.context.skills.save.noChanges',
+			),
+			type: saved.created ? 'success' : 'info',
+		});
+		if (saved.created) await load();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.error.save'));
+	}
+}
+
+async function confirmDelete(count: number): Promise<boolean> {
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.context.skills.delete.confirm.message'),
+		i18n.baseText('settings.context.skills.delete.confirm.title', {
+			interpolate: { count },
+			adjustToNumber: count,
+		}),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('settings.context.skills.delete.confirm.button'),
+			cancelButtonText: i18n.baseText('settings.context.skills.delete.cancel'),
+		},
+	);
+	return confirmed === MODAL_CONFIRM;
+}
+
+async function onDelete(skill: SkillListItem) {
+	if (!(await confirmDelete(1))) return;
+	try {
+		await skillsStore.deleteSkill(skill.id);
+		showMessage({
+			title: i18n.baseText('settings.context.skills.delete.success', { adjustToNumber: 1 }),
+			type: 'success',
+		});
+	} catch (error) {
+		// An agent may have attached the skill since the list loaded: that answers 409.
+		showError(error, i18n.baseText('settings.context.skills.error.delete', { adjustToNumber: 1 }));
+	}
+	await load();
+}
+
+async function onDeleteSelected() {
+	const ids = [...selection.value];
+	if (ids.length === 0 || !(await confirmDelete(ids.length))) return;
+	const results = await Promise.allSettled(
+		ids.map(async (id) => await skillsStore.deleteSkill(id)),
+	);
+	const deleted = results.filter((result) => result.status === 'fulfilled').length;
+	const failures = results.filter((result) => result.status === 'rejected');
+	if (deleted > 0) {
+		showMessage({
+			title: i18n.baseText('settings.context.skills.delete.success', {
+				interpolate: { count: deleted },
+				adjustToNumber: deleted,
+			}),
+			type: 'success',
+		});
+	}
+	if (failures.length > 0) {
+		showError(
+			failures[0].reason,
+			i18n.baseText('settings.context.skills.error.delete', {
+				interpolate: { count: failures.length },
+				adjustToNumber: failures.length,
+			}),
+		);
+	}
+	selection.value = [];
+	await load();
+}
+
+async function goBack() {
+	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
+}
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.context.skills.title'));
+	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	// Deep links: one skill to open, or a new one to start. The skill may be on another
+	// page, so it is read by id rather than from the list.
+	const { skillId, create } = route.query;
+	if (typeof skillId === 'string') {
+		await openEditModal({ id: skillId });
+	} else if (create === 'true') {
+		openCreateModal();
+	}
+});
+</script>
+
+<template>
+	<N8nSettingsLayout
+		:class="$style.layout"
+		full-width
+		show-back
+		:back-label="i18n.baseText('settings.context.skills.back')"
+		data-test-id="settings-skills-view"
+		@back="goBack"
+	>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.context.skills.title')"
+			:description="i18n.baseText('settings.context.skills.description')"
+			:show-docs-link="false"
+		/>
+
+		<div :class="$style.toolbar">
+			<N8nInput
+				v-model="search"
+				:class="$style.search"
+				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
+				clearable
+				data-test-id="skills-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+			<N8nDropdownMenu
+				:items="scopeFilterItems"
+				placement="bottom-start"
+				content-test-id="skills-scope-filter-menu"
+				@select="onScopeFilter"
+			>
+				<template #trigger>
+					<span :class="$style.filterTrigger">
+						<N8nIconButton
+							variant="outline"
+							icon="funnel"
+							:aria-label="i18n.baseText('settings.context.skills.filter.label')"
+							data-test-id="skills-scope-filter"
+						/>
+						<span
+							v-if="scopeFilter !== 'all'"
+							:class="$style.filterDot"
+							data-test-id="skills-scope-filter-active"
+						/>
+					</span>
+				</template>
+			</N8nDropdownMenu>
+			<span :class="$style.spacer" />
+			<N8nText v-if="selectedCount > 0" color="text-light" size="small">
+				{{
+					i18n.baseText('settings.context.skills.selected', {
+						interpolate: { count: selectedCount },
+						adjustToNumber: selectedCount,
+					})
+				}}
+			</N8nText>
+			<N8nButton
+				v-if="selectedCount > 0"
+				variant="outline"
+				:label="i18n.baseText('settings.context.skills.actions.deleteSelected')"
+				data-test-id="skills-delete-selected-button"
+				@click="onDeleteSelected"
+			/>
+			<N8nButton
+				v-if="scopeOptions.length > 0"
+				:label="i18n.baseText('settings.context.skills.actions.create')"
+				data-test-id="skills-create-button"
+				@click="openCreateModal"
+			/>
+		</div>
+
+		<SkillsTable
+			v-model:table-options="tableOptions"
+			v-model:selection="selection"
+			:skills="skillsStore.skills"
+			:items-length="skillsStore.count"
+			:loading="skillsStore.loading"
+			:show-empty="showEmptyState"
+			@open="openEditModal"
+			@delete="onDelete"
+			@update:options="onOptionsUpdate"
+		>
+			<template #empty>
+				<div :class="$style.empty" data-test-id="skills-empty-state">
+					<N8nHeading tag="h2" size="medium" bold>
+						{{ i18n.baseText('settings.context.skills.empty.title') }}
+					</N8nHeading>
+					<N8nText color="text-light">
+						{{ i18n.baseText('settings.context.skills.empty.description') }}
+					</N8nText>
+					<N8nButton
+						v-if="scopeOptions.length > 0"
+						:label="i18n.baseText('settings.context.skills.actions.create')"
+						data-test-id="skills-empty-create-button"
+						@click="openCreateModal"
+					/>
+				</div>
+			</template>
+		</SkillsTable>
+	</N8nSettingsLayout>
+</template>
+
+<style lang="scss" module>
+/* The settings shell insets the page; the header is pulled to the table's left edge. */
+.layout {
+	padding: 0;
+
+	header {
+		margin-inline: 0 auto;
+	}
+}
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	width: 100%;
+}
+
+.spacer {
+	flex: 1;
+}
+
+.search {
+	max-width: 20rem;
+}
+
+.filterTrigger {
+	position: relative;
+	display: inline-flex;
+}
+
+/* Marks an active scope filter, since the button itself has no label. */
+.filterDot {
+	position: absolute;
+	top: calc(-1 * var(--spacing--5xs));
+	right: calc(-1 * var(--spacing--5xs));
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--primary);
+	pointer-events: none;
+}
+
+.empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xl) var(--spacing--md);
+	text-align: center;
+}
+</style>

@@ -9,7 +9,7 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
 
-import AgentSkillModal from '../components/AgentSkillModal.vue';
+import AgentSkillModal, { type AgentSkillModalData } from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
@@ -46,11 +46,14 @@ function renderModal({
 	skill,
 	skillId,
 	existingSkillNames,
+	settings,
 }: {
-	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
+	onConfirm?: (payload: { id?: string; skill: AgentSkill; scope?: string }) => void;
 	skill?: AgentSkill;
 	skillId?: string;
 	existingSkillNames?: string[];
+	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
+	settings?: Pick<AgentSkillModalData, 'readOnly' | 'scopeOptions' | 'initialScope'>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -76,8 +79,7 @@ function renderModal({
 		props: {
 			modalName: MODAL_NAME,
 			data: {
-				projectId: 'p1',
-				agentId: 'a1',
+				...(settings ?? { projectId: 'p1', agentId: 'a1' }),
 				skill,
 				skillId,
 				existingSkillNames,
@@ -86,6 +88,12 @@ function renderModal({
 		},
 	});
 }
+
+const SAVED_SKILL: AgentSkill = {
+	name: 'brand-voice',
+	description: 'Write clear customer-facing copy.',
+	instructions: 'Keep it short.',
+};
 
 describe('AgentSkillModal', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
@@ -379,6 +387,72 @@ describe('AgentSkillModal', () => {
 			},
 		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+});
+
+describe('AgentSkillModal from Settings', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		createTestingPinia({ stubActions: false });
+		const uiStore = mockedStore(useUIStore);
+		uiStore.openModal(MODAL_NAME);
+		uiStore.closeModal = vi.fn();
+	});
+
+	it('shows a read-only skill without edit controls', () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: { readOnly: true },
+		});
+
+		expect(getByTestId('agent-skill-read-only-callout')).toHaveTextContent(
+			'settings.context.skills.readOnly',
+		);
+		expect(queryByTestId('agent-modal-title-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
+	});
+
+	it('returns the chosen scope with a new skill', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderModal({
+			onConfirm,
+			settings: {
+				scopeOptions: [
+					{ value: 'project:personal-1', label: 'Personal project' },
+					{ value: 'project:team-1', label: 'Marketing' },
+				],
+				initialScope: 'project:team-1',
+			},
+		});
+		await fireEvent.change(getByTestId('agent-skill-skill-md-file-input'), {
+			target: {
+				files: [new File(['---\nname: Research\ndescription: Use it\n---\nBody'], 'SKILL.md')],
+			},
+		});
+		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+
+		expect(getByTestId('agent-skill-scope')).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			id: undefined,
+			skill: { name: 'Research', description: 'Use it', instructions: 'Body' },
+			scope: 'project:team-1',
+		});
+		// Settings has no agent, so the builder's import event is not sent.
+		expect(trackImportedSkill).not.toHaveBeenCalled();
+	});
+
+	it('does not offer a scope when an existing skill is edited', () => {
+		const { queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: { scopeOptions: [{ value: 'instance', label: 'Global' }] },
+		});
+
+		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
 	});
 });
 
