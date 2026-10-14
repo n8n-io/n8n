@@ -30,6 +30,7 @@ export type JsonToBinaryOptions = {
 	addBOM?: boolean;
 	mimeType?: string;
 	dataIsBase64?: boolean;
+	strictBase64?: boolean;
 	itemIndex?: number;
 	format?: boolean;
 };
@@ -120,8 +121,6 @@ export async function createBinaryFromJson(
 		buffer = iconv.encode(valueAsString, options.encoding || 'utf8', {
 			addBOM: options.addBOM,
 		});
-	} else if (Buffer.isBuffer(value)) {
-		buffer = value;
 	} else {
 		const invalidBase64 = () =>
 			new NodeOperationError(
@@ -133,32 +132,50 @@ export async function createBinaryFromJson(
 				},
 			);
 
-		if (typeof value !== 'string') {
-			throw invalidBase64();
-		}
-
-		let encoded = value.trim();
-		if (/^data:/i.test(encoded)) {
-			const dataUri = /^data:([^;,]*)(?:;[^;,]*)*;base64,([\s\S]*)$/i.exec(encoded);
-			if (!dataUri) {
+		if (Buffer.isBuffer(value)) {
+			buffer = value;
+		} else if (Array.isArray(value)) {
+			buffer = Buffer.from(value);
+		} else if (
+			typeof value === 'object' &&
+			value !== null &&
+			'type' in value &&
+			value.type === 'Buffer' &&
+			'data' in value &&
+			Array.isArray(value.data)
+		) {
+			buffer = Buffer.from(value.data);
+		} else {
+			if (typeof value !== 'string') {
 				throw invalidBase64();
 			}
-			mimeType ||= dataUri[1] || undefined;
-			encoded = dataUri[2];
-		}
 
-		encoded = encoded.replace(/\s/g, '');
-		const match = /^([A-Za-z0-9+/_-]*)(={0,2})$/.exec(encoded);
-		// Preserve unpadded and URL-safe input, but reject incomplete groups and misplaced padding.
-		if (
-			!match ||
-			match[1].length % 4 === 1 ||
-			(match[2].length > 0 && (encoded.length % 4 !== 0 || match[1].length % 4 === 0))
-		) {
-			throw invalidBase64();
-		}
+			let encoded = value.trim();
+			if (/^data:/i.test(encoded)) {
+				const dataUri = /^data:([^;,]*)(?:;[^;,]*)*;base64,([\s\S]*)$/i.exec(encoded);
+				if (dataUri) {
+					mimeType ||= dataUri[1] || undefined;
+					encoded = dataUri[2];
+				} else if (options.strictBase64) {
+					throw invalidBase64();
+				}
+			}
 
-		buffer = Buffer.from(encoded, BINARY_ENCODING);
+			if (options.strictBase64) {
+				encoded = encoded.replace(/\s/g, '');
+				const match = /^([A-Za-z0-9+/_-]*)(={0,2})$/.exec(encoded);
+				// Preserve unpadded and URL-safe input, but reject incomplete groups and misplaced padding.
+				if (
+					!match ||
+					match[1].length % 4 === 1 ||
+					(match[2].length > 0 && (encoded.length % 4 !== 0 || match[1].length % 4 === 0))
+				) {
+					throw invalidBase64();
+				}
+			}
+
+			buffer = Buffer.from(encoded, BINARY_ENCODING);
+		}
 	}
 
 	const binaryData = await this.helpers.prepareBinaryData(buffer, options.fileName, mimeType);

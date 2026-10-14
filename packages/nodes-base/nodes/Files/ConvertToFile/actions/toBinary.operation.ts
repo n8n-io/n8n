@@ -123,6 +123,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				fileName: options.fileName as string,
 				mimeType: options.mimeType as string,
 				dataIsBase64,
+				strictBase64: nodeVersion >= 1.2,
 				encoding: options.encoding as string,
 				addBOM: options.addBOM as boolean,
 				itemIndex: i,

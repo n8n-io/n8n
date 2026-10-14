@@ -373,7 +373,7 @@ describe('createBinaryFromJson base64 decoding', () => {
 		await createBinaryFromJson.call(
 			context,
 			{ payload },
-			{ sourceKey: 'payload', dataIsBase64: true },
+			{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
 		);
 		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(expected, 'latin1'));
 	});
@@ -409,11 +409,38 @@ describe('createBinaryFromJson base64 decoding', () => {
 					{
 						sourceKey: 'payload',
 						dataIsBase64: true,
+						strictBase64: true,
 						itemIndex: 2,
 					},
 				),
 			).rejects.toBeInstanceOf(NodeOperationError);
 			expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['"aGVsbG8="', 'aGVsbG8=.', 'aGk=='])(
+		'preserves permissive decoding for existing workflows with input %j',
+		async (payload) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(
+				Buffer.from(payload, BINARY_ENCODING),
+			);
+		},
+	);
+
+	it.each([Buffer.from('hi'), [104, 105], { type: 'Buffer', data: [104, 105] }])(
+		'preserves buffer-shaped input %#',
+		async (payload) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hi'));
 		},
 	);
 
@@ -431,15 +458,6 @@ describe('createBinaryFromJson base64 decoding', () => {
 		const output = helpers.prepareBinaryData.mock.calls[0][0];
 		expect(output).toEqual(Buffer.from(payload, 'base64'));
 		expect(output).toHaveLength(70);
-	});
-
-	it('preserves existing Buffer input', async () => {
-		await createBinaryFromJson.call(
-			context,
-			{ payload: Buffer.from('hello') },
-			{ sourceKey: 'payload', dataIsBase64: true },
-		);
-		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hello'));
 	});
 
 	it('preserves text conversion', async () => {
