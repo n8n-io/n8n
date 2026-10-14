@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_bf4e1392c01b66::t_0db8dec8d0b382 10-11,573-590
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_bf4e1392c01b66::t_9f8cc08c50500d 434,454-456
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_bf4e1392c01b66::t_9ff27c058fdf56 434-438,440-449
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_bf4e1392c01b66::t_78a88803e6783d 257-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a50b7954eeaeb1c968066ad88f24f6b4ccdb32ed",
+  "prompts": {},
+  "sessions": {
+    "s_bf4e1392c01b66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33912259-f6f6-49c4-8fb3-ce60e7ba0c28",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
