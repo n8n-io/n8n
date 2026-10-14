@@ -48,9 +48,10 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "cache-manager": "catalog:",
-    "express-openapi-validator": "5.5.3",
     "ioredis": "5.3.2",
     "jose": "^6.2.9",
+    "jsonwebtoken": "catalog:",
+    "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "peerDependencies": {
@@ -62,6 +63,7 @@
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",

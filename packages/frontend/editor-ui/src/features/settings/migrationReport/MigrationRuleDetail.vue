@@ -1109,7 +1109,7 @@ const sortedWorkflows = computed(() => {
 					/>
 					<template v-if="canNotify">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							:label="i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners')"
 							:disabled="bulkNotifyTargets.length === 0"
 							:loading="isBulkNotifying"

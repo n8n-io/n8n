@@ -15,8 +15,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import {
 	type OAuthTokenVerifier,
 	type UserWithContext,
