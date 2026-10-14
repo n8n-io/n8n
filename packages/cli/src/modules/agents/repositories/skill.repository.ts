@@ -217,13 +217,17 @@ export class SkillRepository extends BaseRepository<Skill> {
 		return new Map(rows.map((row) => [row.version.id, row]));
 	}
 
-	/** The pinned version of each skill of one published agent version, keyed by skill id. */
+	/**
+	 * The pinned version of each skill of one published agent version, keyed by skill id,
+	 * in the order of the draft refs at publish.
+	 */
 	async findPinned(
 		agentVersionId: string,
 		ctx: OperationContext = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
 		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
 			where: { agentVersionId },
+			order: { createdAt: 'ASC' },
 		});
 		const versions = await this.findVersionsByIds(
 			pins.map((pin) => pin.skillVersionId),
@@ -235,6 +239,19 @@ export class SkillRepository extends BaseRepository<Skill> {
 			if (row) result.set(pin.skillId, row);
 		}
 		return result;
+	}
+
+	/**
+	 * The skill ids one published agent version pins, in the order of the draft refs at
+	 * publish. Reads no version or file rows.
+	 */
+	async findPinnedSkillIds(agentVersionId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const pins = await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+			select: ['skillId'],
+			where: { agentVersionId },
+			order: { createdAt: 'ASC' },
+		});
+		return pins.map((pin) => pin.skillId);
 	}
 
 	/** The next version number of a skill: the highest version plus one, or 1. */
@@ -280,12 +297,20 @@ export class SkillRepository extends BaseRepository<Skill> {
 		});
 	}
 
+	/**
+	 * Inserts the pins of one publish in the given order. `createdAt` orders the skills of
+	 * a published version, so each pin gets its own timestamp, like `replaceDependencies`.
+	 */
 	async insertPins(
 		pins: Array<{ agentVersionId: string; skillId: string; skillVersionId: string }>,
 		ctx: OperationContext = {},
 	): Promise<void> {
 		if (pins.length === 0) return;
-		await this.managerFor(ctx).insert(AgentVersionSkillDependency, pins);
+		const first = Date.now();
+		await this.managerFor(ctx).insert(
+			AgentVersionSkillDependency,
+			pins.map((pin, index) => ({ ...pin, createdAt: new Date(first + index) })),
+		);
 	}
 
 	/**
@@ -441,6 +466,32 @@ export class SkillRepository extends BaseRepository<Skill> {
 			})),
 			hiddenAgents: hidden.size,
 		};
+	}
+
+	/** The agents that use the skill: a draft ref or a published pin. */
+	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const manager = this.managerFor(ctx);
+		const drafts = await manager.find(AgentSkillDependency, {
+			select: ['agentId'],
+			where: { skillId },
+		});
+		const pins = await manager
+			.createQueryBuilder(AgentVersionSkillDependency, 'pin')
+			.innerJoin(AgentHistory, 'history', 'history.versionId = pin.agentVersionId')
+			.where('pin.skillId = :skillId', { skillId })
+			.select('history.agentId', 'agentId')
+			.distinct(true)
+			.getRawMany<{ agentId: string }>();
+		return unique([...drafts, ...pins].map((row) => row.agentId));
+	}
+
+	/** Moves a skill to a project, one agent or the instance. */
+	async updateTarget(skillId: string, target: SkillTarget, ctx: OperationContext = {}) {
+		await this.managerFor(ctx).update(
+			Skill,
+			{ id: skillId },
+			{ projectId: target.projectId, agentId: target.agentId, updatedAt: new Date() },
+		);
 	}
 
 	/** Distinct agents per skill, drafts and pins together. Skills nobody uses are left out. */

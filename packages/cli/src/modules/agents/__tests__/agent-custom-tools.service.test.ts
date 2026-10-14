@@ -71,7 +71,7 @@ function makeService() {
 			agentUpdateBroadcaster,
 			modificationTelemetry,
 		),
-		createAgentSkillRefsService(agentRepository),
+		createAgentSkillRefsService(),
 	);
 
 	return {

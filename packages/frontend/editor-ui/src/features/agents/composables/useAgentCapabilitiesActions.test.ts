@@ -116,23 +116,10 @@ describe('useAgentCapabilitiesActions', () => {
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools });
 	});
 
-	it('changes only the selected skill activation flag through autosave', () => {
-		const { actions, scheduleConfigUpdate, scheduleSkillSave } = makeActions({
-			skills: [
-				{ type: 'skill', id: 'skill-1' },
-				{ type: 'skill', id: 'skill-2', enabled: true },
-			],
-		});
+	it('offers no skill activation toggle', () => {
+		const { actions } = makeActions({ skills: [{ type: 'skill', id: 'skill-1' }] });
 
-		actions.onToggleSkill({ id: 'skill-1', enabled: false });
-
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
-			skills: [
-				{ type: 'skill', id: 'skill-1', enabled: false },
-				{ type: 'skill', id: 'skill-2', enabled: true },
-			],
-		});
-		expect(scheduleSkillSave).not.toHaveBeenCalled();
+		expect(actions).not.toHaveProperty('onToggleSkill');
 	});
 
 	it('opens the MCP-server modal for a numeric target past the tools array', () => {

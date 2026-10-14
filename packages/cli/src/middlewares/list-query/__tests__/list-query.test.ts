@@ -23,7 +23,7 @@ describe('List query middleware', () => {
 		vi.clearAllMocks();
 
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
-		mockRes = { status: () => ({ json: vi.fn() }) } as unknown as Response;
+		mockRes = { status: () => ({ json: vi.fn() }), setHeader: vi.fn() } as unknown as Response;
 		args = [mockReq, mockRes, nextFn];
 
 		sendErrorResponse = vi.spyOn(ResponseHelper, 'sendErrorResponse');

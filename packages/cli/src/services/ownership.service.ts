@@ -34,6 +34,23 @@ export class OwnershipService {
 		private settingsRepository: SettingsRepository,
 	) {}
 
+	// To make use of the cache service we should store POJOs, these
+	// methods should be used to create copies of the entities
+	// converting them into plain JavaScript objects
+	// Ideally our data entities wouldn't be classes, but plain
+	// interfaces and therefore pojos adhering to these interfaces
+	copyProject(project: Project): Partial<Project> {
+		return {
+			...project,
+		};
+	}
+
+	reconstructProject(project: Partial<Project>): Project | undefined {
+		if (typeof project?.id !== 'string') {
+			return undefined;
+		}
+		return Object.assign(new Project(), project);
+	}
 	copyUser(user: User): Partial<User> {
 		return {
 			...user,
