@@ -6,11 +6,7 @@ import { createHash, type KeyObject } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings, type DeploymentStateRepo } from 'n8n-core';
 
-import {
-	LEGACY_UNBOUND_PURPOSES,
-	TOKEN_PURPOSES,
-	type TokenPurpose,
-} from '@/services/token-purposes';
+import { LEGACY_UNBOUND_PURPOSES, TOKEN_PURPOSES, type TokenPurpose } from './token-purposes';
 
 /**
  * `audience` is omitted on purpose: it is derived from the token's purpose, so
