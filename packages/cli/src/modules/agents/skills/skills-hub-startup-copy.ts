@@ -37,10 +37,14 @@ type AgentWork = {
 
 type HubVersion = { id: string; skillId: string };
 
-/** What one agent's copy knows: hub versions by content hash, and the hub skill of each ref. */
+/**
+ * What one agent's copy knows: hub versions by content hash, the hub skill of each ref,
+ * and the ref that claimed each skill, so two refs with the same body keep two skills.
+ */
 type AgentCopyState = {
-	byHash: Map<string, HubVersion>;
+	byHash: Map<string, HubVersion[]>;
 	skillByRef: Map<string, string>;
+	refBySkill: Map<string, string>;
 	latest: Map<string, { versionId: string; hash: string; version: number }>;
 };
 
@@ -199,11 +203,14 @@ export class SkillsHubStartupCopy {
 	}
 
 	private async loadState(agentId: string, ctx: OperationContext): Promise<AgentCopyState> {
-		const state: AgentCopyState = { byHash: new Map(), skillByRef: new Map(), latest: new Map() };
+		const state: AgentCopyState = {
+			byHash: new Map(),
+			skillByRef: new Map(),
+			refBySkill: new Map(),
+			latest: new Map(),
+		};
 		for (const row of await this.skillRepository.findAgentSkillVersions(agentId, ctx)) {
-			if (!state.byHash.has(row.contentHash)) {
-				state.byHash.set(row.contentHash, { id: row.id, skillId: row.skillId });
-			}
+			addByHash(state, row.contentHash, { id: row.id, skillId: row.skillId });
 			const current = state.latest.get(row.skillId);
 			if (!current || row.version > current.version) {
 				state.latest.set(row.skillId, {
@@ -217,10 +224,11 @@ export class SkillsHubStartupCopy {
 	}
 
 	/**
-	 * The hub version that holds this inline body. Reuses a version with the same content,
-	 * else adds a version to the skill already made for this ref, else creates an agent
-	 * skill. With `mustBeLatest`, a match that is not the newest version of its skill gets
-	 * the body again as the newest one.
+	 * The hub version that holds this inline body. A ref seen before uses its own skill: a
+	 * version with the same content, else a new version. A new ref reuses a skill with the
+	 * same content that no other ref claimed, else creates an agent skill. With
+	 * `mustBeLatest`, a match that is not the newest version of its skill gets the body
+	 * again as the newest one.
 	 */
 	private async versionFor(
 		agent: Pick<Agent, 'id'>,
@@ -233,13 +241,16 @@ export class SkillsHubStartupCopy {
 	): Promise<HubVersion> {
 		const content = toSkillContent(body);
 		const hash = skillContentHash(content);
-		const match = state.byHash.get(hash);
-		if (match && (!mustBeLatest || state.latest.get(match.skillId)?.hash === hash)) {
-			state.skillByRef.set(refId, match.skillId);
-			return match;
+		const matches = state.byHash.get(hash) ?? [];
+		const skillId =
+			state.skillByRef.get(refId) ??
+			matches.find((version) => !state.refBySkill.has(version.skillId))?.skillId;
+		if (skillId) {
+			claim(state, refId, skillId);
+			const match = matches.find((version) => version.skillId === skillId);
+			if (match && (!mustBeLatest || state.latest.get(skillId)?.hash === hash)) return match;
+			return await this.addVersion(skillId, content, hash, state, counts, ctx);
 		}
-		const skillId = state.skillByRef.get(refId) ?? match?.skillId;
-		if (skillId) return await this.addVersion(skillId, content, hash, state, counts, ctx);
 
 		const id = await this.newSkillId(refId, ctx);
 		const versionId = await this.skillRepository.createSkill(
@@ -248,8 +259,8 @@ export class SkillsHubStartupCopy {
 			ctx,
 		);
 		const version = { id: versionId, skillId: id };
-		state.byHash.set(hash, version);
-		state.skillByRef.set(refId, id);
+		addByHash(state, hash, version);
+		claim(state, refId, id);
 		state.latest.set(id, { versionId, hash, version: 1 });
 		counts.skills++;
 		counts.versions++;
@@ -267,7 +278,7 @@ export class SkillsHubStartupCopy {
 		const next = (state.latest.get(skillId)?.version ?? 0) + 1;
 		const id = await this.skillRepository.insertSavedVersion(skillId, next, content, null, ctx);
 		const version = { id, skillId };
-		state.byHash.set(hash, version);
+		addByHash(state, hash, version);
 		state.latest.set(skillId, { versionId: id, hash, version: next });
 		counts.versions++;
 		return version;
@@ -283,6 +294,18 @@ export class SkillsHubStartupCopy {
 		}
 		return `skill_${generateNanoId()}`;
 	}
+}
+
+/** Keeps one version of each skill for each content: the first one seen, which is the oldest. */
+function addByHash(state: AgentCopyState, hash: string, version: HubVersion): void {
+	const versions = state.byHash.get(hash) ?? [];
+	if (!versions.some((known) => known.skillId === version.skillId)) versions.push(version);
+	state.byHash.set(hash, versions);
+}
+
+function claim(state: AgentCopyState, refId: string, skillId: string): void {
+	state.skillByRef.set(refId, skillId);
+	state.refBySkill.set(skillId, refId);
 }
 
 /**
