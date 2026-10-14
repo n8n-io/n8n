@@ -58,13 +58,20 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 			searchCredentialId: null,
 			modelCredentialId: null,
 			modelName: null,
+			memoryModelName: null,
 			modelEnvConfigured: false,
 			sandboxEnvConfigured: false,
 			searchEnvConfigured: false,
 			searchDisabled: false,
 			n8nSandboxServiceUrl: null,
 			envManaged: {
-				model: { provider: false, apiKey: false, baseUrl: false, model: false },
+				model: {
+					provider: false,
+					apiKey: false,
+					baseUrl: false,
+					model: false,
+					memoryModel: false,
+				},
 				sandbox: { provider: false, serviceUrl: false, apiKey: false },
 				search: { provider: false, apiKey: false, url: false },
 			},
@@ -88,9 +95,10 @@ describe('InstanceAiOnboardingWizard', () => {
 	it('does not auto-focus or auto-open the model dropdown when the wizard opens', async () => {
 		const { pinia } = setupStore({
 			modelName: 'claude-opus-5-5',
+			memoryModelName: null,
 			modelEnvConfigured: true,
 			envManaged: {
-				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				model: { provider: true, apiKey: true, baseUrl: false, model: false, memoryModel: false },
 				sandbox: { provider: false, serviceUrl: false, apiKey: false },
 				search: { provider: false, apiKey: false, url: false },
 			},
@@ -253,10 +261,11 @@ describe('InstanceAiOnboardingWizard', () => {
 	it('verifies an environment-managed model without sending a connection', async () => {
 		const { pinia, store } = setupStore({
 			modelName: 'claude-opus-5-5',
+			memoryModelName: null,
 			modelEnvConfigured: true,
 			sandboxEnvConfigured: true,
 			envManaged: {
-				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				model: { provider: true, apiKey: true, baseUrl: false, model: false, memoryModel: false },
 				sandbox: { provider: true, serviceUrl: true, apiKey: true },
 				search: { provider: false, apiKey: false, url: false },
 			},
@@ -278,9 +287,10 @@ describe('InstanceAiOnboardingWizard', () => {
 	it('offers models from every provider when the environment-managed provider is masked', async () => {
 		const { pinia, store } = setupStore({
 			modelName: 'saved-env-model',
+			memoryModelName: null,
 			modelEnvConfigured: true,
 			envManaged: {
-				model: { provider: true, apiKey: true, baseUrl: false, model: false },
+				model: { provider: true, apiKey: true, baseUrl: false, model: false, memoryModel: false },
 				sandbox: { provider: false, serviceUrl: false, apiKey: false },
 				search: { provider: false, apiKey: false, url: false },
 			},
@@ -669,6 +679,132 @@ describe('InstanceAiOnboardingWizard', () => {
 
 		expect(await findByTestId('wizard-primary')).toBeVisible();
 		expect(queryByTestId('wizard-progress')).toBeNull();
+	});
+
+	describe('memory model', () => {
+		const settingsProps = { step: 'model', editMode: true, surface: 'settings' } as const;
+
+		it('does not show the memory model during onboarding', async () => {
+			const { pinia } = setupStore();
+			const { findByTestId, queryByTestId } = renderWizard({ pinia });
+
+			await findByTestId('assistant-model-name');
+
+			expect(queryByTestId('n8n-agent-model-memory-model-select')).toBeNull();
+			expect(queryByTestId('n8n-agent-model-memory-model-input')).toBeNull();
+		});
+
+		it('verifies and saves a selected memory model in settings', async () => {
+			const { pinia, store } = setupStore();
+			store.$patch({
+				modelCatalog: {
+					anthropic: [{ id: 'claude-haiku-5', name: 'Claude Haiku 5' }],
+					openai: [],
+					openrouter: [],
+				},
+			});
+			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true, latencyMs: 10 });
+			const { findAllByText, findByTestId, getByTestId } = renderWizard({
+				pinia,
+				props: settingsProps,
+			});
+
+			await fireEvent.update(
+				inputFor(await findByTestId('n8n-agent-model-api-key-input')),
+				'model-key',
+			);
+			await fireEvent.click(inputFor(getByTestId('n8n-agent-model-memory-model-select')));
+			// Both model selects render this option; the memory select opened last.
+			const haikuOptions = await findAllByText('Claude Haiku 5');
+			await fireEvent.click(haikuOptions[haikuOptions.length - 1]);
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			const connection = { type: 'anthropicApi', data: { apiKey: 'model-key' } };
+			await waitFor(() =>
+				expect(store.verifyModel).toHaveBeenCalledWith({ connection, modelName: 'claude-haiku-5' }),
+			);
+			expect(store.verifyModel).toHaveBeenCalledWith({ connection, modelName: 'claude-opus-5-5' });
+			expect(store.setField).toHaveBeenCalledWith('memoryModelName', 'claude-haiku-5');
+			expect(store.save).toHaveBeenCalledWith(false);
+		});
+
+		it('saves the main model for memory tasks when no memory model is chosen', async () => {
+			const { pinia, store } = setupStore({
+				modelName: 'claude-opus-5-5',
+				modelEnvConfigured: true,
+				envManaged: {
+					model: {
+						provider: true,
+						apiKey: true,
+						baseUrl: false,
+						model: false,
+						memoryModel: false,
+					},
+					sandbox: { provider: false, serviceUrl: false, apiKey: false },
+					search: { provider: false, apiKey: false, url: false },
+				},
+			});
+			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true, latencyMs: 10 });
+			const { findByTestId } = renderWizard({ pinia, props: settingsProps });
+
+			await fireEvent.click(await findByTestId('n8n-agent-model-dialog-save'));
+
+			await waitFor(() => expect(store.save).toHaveBeenCalledWith(false));
+			expect(store.verifyModel).toHaveBeenCalledTimes(1);
+			expect(store.setField).toHaveBeenCalledWith('memoryModelName', null);
+		});
+
+		it('does not save when the saved memory model fails verification', async () => {
+			const { pinia, store } = setupStore({
+				modelName: 'claude-opus-5-5',
+				memoryModelName: 'claude-retired-1',
+				modelEnvConfigured: true,
+				envManaged: {
+					model: {
+						provider: true,
+						apiKey: true,
+						baseUrl: false,
+						model: false,
+						memoryModel: false,
+					},
+					sandbox: { provider: false, serviceUrl: false, apiKey: false },
+					search: { provider: false, apiKey: false, url: false },
+				},
+			});
+			vi.mocked(store.verifyModel)
+				.mockResolvedValueOnce({ ok: true, latencyMs: 10 })
+				.mockResolvedValueOnce({ ok: false, failure: 'provider_error', error: 'Unknown model' });
+			const { findByTestId, getByTestId } = renderWizard({ pinia, props: settingsProps });
+
+			await fireEvent.click(await findByTestId('n8n-agent-model-dialog-save'));
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-model-credential-test-error')).toBeVisible(),
+			);
+			expect(store.verifyModel).toHaveBeenLastCalledWith({ modelName: 'claude-retired-1' });
+			expect(store.save).not.toHaveBeenCalled();
+		});
+
+		it('hides the memory model when the server environment sets it', async () => {
+			const { pinia } = setupStore({
+				envManaged: {
+					model: {
+						provider: false,
+						apiKey: false,
+						baseUrl: false,
+						model: false,
+						memoryModel: true,
+					},
+					sandbox: { provider: false, serviceUrl: false, apiKey: false },
+					search: { provider: false, apiKey: false, url: false },
+				},
+			});
+			const { findByTestId, queryByTestId } = renderWizard({ pinia, props: settingsProps });
+
+			await findByTestId('n8n-agent-model-name-input');
+
+			expect(queryByTestId('n8n-agent-model-memory-model-select')).toBeNull();
+		});
 	});
 
 	it('uses cancel and save without progress controls in direct edit mode', async () => {

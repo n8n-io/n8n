@@ -212,6 +212,7 @@ describe('InstanceAiSetupTelemetryService', () => {
 			searchCredentialId: null,
 			modelCredentialId: null,
 			modelName: null,
+			memoryModelName: null,
 			modelEnvConfigured: true,
 			sandboxEnvConfigured: true,
 			searchEnvConfigured: true,

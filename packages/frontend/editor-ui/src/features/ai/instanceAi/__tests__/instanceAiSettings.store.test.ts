@@ -372,6 +372,7 @@ describe('useInstanceAiSettingsStore', () => {
 			searchCredentialId: null,
 			modelCredentialId: null,
 			modelName: null,
+			memoryModelName: null,
 			modelEnvConfigured: false,
 			sandboxEnvConfigured: false,
 			searchEnvConfigured: false,
