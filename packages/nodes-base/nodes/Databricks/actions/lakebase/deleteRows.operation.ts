@@ -30,6 +30,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		headers: { Accept: 'application/json', Prefer: 'return=representation' },
 	});
 
+	// `return=representation` echoes the removed rows. An empty answer cannot tell
+	// "nothing matched" from "the project ignores the header and rows went", so report
+	// success as Insert does rather than return nothing and stop the branch.
 	const deleted = Array.isArray(response) ? (response as IDataObject[]) : [];
+	if (deleted.length === 0) return [{ json: { success: true }, pairedItem: { item: i } }];
+
 	return deleted.map((row) => ({ json: row, pairedItem: { item: i } }));
 }

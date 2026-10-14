@@ -127,10 +127,10 @@ describe('Lakebase -> Delete', () => {
 		['nothing matched', []],
 		['the project does not echo rows', undefined],
 		['the response is not an array', { ok: true }],
-	])('returns no items when %s', async (_name, response) => {
+	])('reports success when %s', async (_name, response) => {
 		const { result } = run(response);
 
-		expect(await result).toEqual([]);
+		expect(await result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 	});
 
 	it('pairs each removed row to the item it came from', async () => {
