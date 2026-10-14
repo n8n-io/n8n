@@ -26,6 +26,15 @@ type CopyCounts = {
 	failed: number;
 };
 
+/** What one agent's copy wrote. */
+type AgentCounts = Pick<CopyCounts, 'skills' | 'versions' | 'pins'>;
+
+type AgentWork = {
+	agent: Pick<Agent, 'id' | 'schema' | 'skills'>;
+	versions: Array<Pick<AgentHistory, 'versionId' | 'schema' | 'skills'>>;
+	copyDraft: boolean;
+};
+
 type HubVersion = { id: string; skillId: string };
 
 /** What one agent's copy knows: hub versions by content hash, and the hub skill of each ref. */
@@ -76,10 +85,16 @@ export class SkillsHubStartupCopy {
 		const counts: CopyCounts = { agents: 0, skills: 0, versions: 0, pins: 0, failed: 0 };
 		let after: Pick<Agent, 'createdAt' | 'id'> | null = null;
 		for (;;) {
-			const agents = await this.agentRepository.findPageWithInlineSkills(after, BATCH_SIZE);
+			const agents = await this.agentRepository.findPageForSkillCopy(after, BATCH_SIZE);
 			for (const agent of agents) {
 				try {
-					if (await this.copyAgentWithRetry(agent, counts)) counts.agents++;
+					const copied = await this.copyAgentWithRetry(agent.id);
+					if (copied) {
+						counts.agents++;
+						counts.skills += copied.skills;
+						counts.versions += copied.versions;
+						counts.pins += copied.pins;
+					}
 				} catch (error) {
 					// One broken agent must not stop the others. Its copy rolls back, so the
 					// next start tries it again.
@@ -112,33 +127,47 @@ export class SkillsHubStartupCopy {
 
 	/**
 	 * Two mains can pick the same free inline id for two different agents at the same
-	 * time, so one of them fails on the primary key. A second try picks another id.
+	 * time, so one of them fails on the primary key. A second try picks another id. A
+	 * failed try rolls back, so only the counts of the try that commits are kept.
 	 */
-	private async copyAgentWithRetry(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
-		counts: CopyCounts,
-	): Promise<boolean> {
+	private async copyAgentWithRetry(agentId: string): Promise<AgentCounts | null> {
+		// Most agents have nothing left to copy after the first start. Check that without
+		// a transaction and a row lock, and check again under the lock.
+		if (!(await this.findWork(agentId, {}))) return null;
 		try {
-			return await this.copyAgent(agent, counts);
+			return await this.copyAgent(agentId);
 		} catch {
-			return await this.copyAgent(agent, counts);
+			return await this.copyAgent(agentId);
 		}
 	}
 
-	/** Copies one agent in one transaction. Returns whether it wrote anything. */
-	private async copyAgent(
-		agent: Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills'>,
-		counts: CopyCounts,
-	): Promise<boolean> {
+	/**
+	 * What one agent still needs: the published versions that pin nothing and have inline
+	 * skills, and its draft while it has no hub rows. Null when nothing is left.
+	 */
+	private async findWork(agentId: string, ctx: OperationContext): Promise<AgentWork | null> {
+		const agent = await this.agentRepository.findForSkillCopy(agentId, ctx);
+		if (!agent) return null;
+		const versions = (await this.skillRepository.findUnpinnedVersions(agentId, ctx)).filter(
+			(version) => inlineSkills(version).length > 0,
+		);
+		const copyDraft =
+			inlineSkills(agent).length > 0 && !(await this.skillRepository.hasHubState(agentId, ctx));
+		if (versions.length === 0 && !copyDraft) return null;
+		return { agent, versions, copyDraft };
+	}
+
+	/** Copies one agent in one transaction. Returns null when it wrote nothing. */
+	private async copyAgent(agentId: string): Promise<AgentCounts | null> {
 		return await this.txRunner.run({}, async (ctx) => {
-			// A draft write to this agent waits until the copy commits. The hub-row check
-			// below runs under the lock, so the copy never replaces refs written meanwhile.
-			await this.agentRepository.lockForSkillCopy(agent.id, ctx);
-			const versions = await this.skillRepository.findUnpinnedVersions(agent.id, ctx);
-			const copyDraft = !(await this.skillRepository.hasHubState(agent.id, ctx));
-			const hasInline = (source: Pick<AgentHistory, 'schema' | 'skills'>) =>
-				inlineSkills(source).length > 0;
-			if (!versions.some(hasInline) && !(copyDraft && hasInline(agent))) return false;
+			// A draft write to this agent waits until the copy commits. The agent row and the
+			// hub-row check are read under the lock, so the copy never uses stale inline
+			// content or replaces refs written meanwhile.
+			await this.agentRepository.lockForSkillCopy(agentId, ctx);
+			const work = await this.findWork(agentId, ctx);
+			if (!work) return null;
+			const { agent, versions, copyDraft } = work;
+			const counts: AgentCounts = { skills: 0, versions: 0, pins: 0 };
 
 			const state = await this.loadState(agent.id, ctx);
 			for (const version of versions) {
@@ -165,7 +194,7 @@ export class SkillsHubStartupCopy {
 				}
 				await this.skillRepository.replaceDependencies(agent.id, refs, ctx);
 			}
-			return true;
+			return counts;
 		});
 	}
 
@@ -199,7 +228,7 @@ export class SkillsHubStartupCopy {
 		body: AgentSkill,
 		mustBeLatest: boolean,
 		state: AgentCopyState,
-		counts: CopyCounts,
+		counts: AgentCounts,
 		ctx: OperationContext,
 	): Promise<HubVersion> {
 		const content = toSkillContent(body);
@@ -232,7 +261,7 @@ export class SkillsHubStartupCopy {
 		content: SkillContent,
 		hash: string,
 		state: AgentCopyState,
-		counts: CopyCounts,
+		counts: AgentCounts,
 		ctx: OperationContext,
 	): Promise<HubVersion> {
 		const next = (state.latest.get(skillId)?.version ?? 0) + 1;

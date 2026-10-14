@@ -672,18 +672,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
-	 * One page of agents with their inline skill columns, oldest first, for the startup
-	 * skill copy. Pages by the last row seen, so an agent deleted meanwhile cannot shift
-	 * later agents past the next page.
+	 * One page of agent keys, oldest first, for the startup skill copy. Pages by the last
+	 * row seen, so an agent deleted meanwhile cannot shift later agents past the next page.
 	 */
-	async findPageWithInlineSkills(
+	async findPageForSkillCopy(
 		after: Pick<Agent, 'createdAt' | 'id'> | null,
 		take: number,
 		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'schema' | 'skills' | 'createdAt'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'createdAt'>>> {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(Agent, 'agent')
-			.select(['agent.id', 'agent.projectId', 'agent.schema', 'agent.skills', 'agent.createdAt'])
+			.select(['agent.id', 'agent.createdAt'])
 			.orderBy('agent.createdAt', 'ASC')
 			.addOrderBy('agent.id', 'ASC')
 			.limit(take);
@@ -697,6 +696,17 @@ export class AgentRepository extends BaseRepository<Agent> {
 			);
 		}
 		return await query.getMany();
+	}
+
+	/** The inline skill columns of one agent, for the startup skill copy. */
+	async findForSkillCopy(
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<Pick<Agent, 'id' | 'schema' | 'skills'> | null> {
+		return await this.managerFor(ctx).findOne(Agent, {
+			select: ['id', 'schema', 'skills'],
+			where: { id: agentId },
+		});
 	}
 
 	/**
