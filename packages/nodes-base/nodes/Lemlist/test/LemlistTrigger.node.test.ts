@@ -1,13 +1,29 @@
-import type { ILoadOptionsFunctions, IRequestOptions } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodeTypeBaseDescription,
+	IRequestOptions,
+} from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { LemlistTrigger } from '../LemlistTrigger.node';
+import { LemlistV1 } from '../v1/LemlistV1.node';
+import { LemlistV2 } from '../v2/LemlistV2.node';
 
-describe('Lemlist Trigger', () => {
+const baseDescription: INodeTypeBaseDescription = {
+	displayName: 'Lemlist',
+	name: 'lemlist',
+	group: ['transform'],
+	description: 'Consume the Lemlist API',
+};
+
+describe.each([
+	['Lemlist Trigger', new LemlistTrigger()],
+	['Lemlist v1', new LemlistV1(baseDescription)],
+	['Lemlist v2', new LemlistV2(baseDescription)],
+])('%s', (_name, node) => {
 	describe('loadOptions.getCampaigns', () => {
 		// NODE-6143: Campaigns after the first 100 must also appear in the dropdown.
 		it.each([2, 101])('should load all %i campaigns into the dropdown', async (count) => {
-			const node = new LemlistTrigger();
 			const context = mockDeep<ILoadOptionsFunctions>();
 			const campaigns = Array.from({ length: count }, (_, index) => ({
 				_id: `cam_${index + 1}`,
