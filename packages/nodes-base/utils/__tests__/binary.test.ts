@@ -432,21 +432,22 @@ describe('createBinaryFromJson base64 decoding', () => {
 		},
 	);
 
-	it.each([Buffer.from('hi'), [104, 105], { type: 'Buffer', data: [104, 105] }])(
-		'preserves buffer-shaped input %#',
-		async (payload) => {
-			await createBinaryFromJson.call(
-				context,
-				{ payload },
-				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
-			);
-			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hi'));
-		},
-	);
+	it.each([
+		{ payload: Buffer.from('hi') },
+		{ payload: [104, 105] },
+		{ payload: { type: 'Buffer', data: [104, 105] } },
+	])('preserves buffer-shaped input %#', async ({ payload }) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload },
+			{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hi'));
+	});
 
-	it.each([[0, 255], { type: 'Buffer', data: [0, 255] }])(
+	it.each([{ payload: [0, 255] }, { payload: { type: 'Buffer', data: [0, 255] } }])(
 		'accepts byte-array boundaries in strict mode for input %#',
-		async (payload) => {
+		async ({ payload }) => {
 			await createBinaryFromJson.call(
 				context,
 				{ payload },
@@ -457,13 +458,15 @@ describe('createBinaryFromJson base64 decoding', () => {
 	);
 
 	it.each([
-		['aGk='],
-		[300, -1],
-		[1.5],
-		{ type: 'Buffer', data: ['aGk='] },
-		{ type: 'Buffer', data: [300, -1] },
-		{ type: 'Buffer', data: [1.5] },
-	])('rejects invalid byte-array input %# in strict mode', async (payload) => {
+		{ payload: ['aGk='] },
+		{ payload: [300, -1] },
+		{ payload: [1.5] },
+		{ payload: new Array(1) },
+		{ payload: { type: 'Buffer', data: ['aGk='] } },
+		{ payload: { type: 'Buffer', data: [300, -1] } },
+		{ payload: { type: 'Buffer', data: [1.5] } },
+		{ payload: { type: 'Buffer', data: new Array(1) } },
+	])('rejects invalid byte-array input %# in strict mode', async ({ payload }) => {
 		await expect(
 			createBinaryFromJson.call(
 				context,

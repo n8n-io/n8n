@@ -36,7 +36,7 @@ export type JsonToBinaryOptions = {
 };
 
 function isByteArray(value: unknown[]): value is number[] {
-	return value.every(
+	return Array.from(value).every(
 		(byte) => typeof byte === 'number' && Number.isInteger(byte) && byte >= 0 && byte <= 255,
 	);
 }
