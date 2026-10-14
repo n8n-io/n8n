@@ -393,17 +393,52 @@ describe('AgentChannelWhatsAppSetup', () => {
 			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
 		});
 
-		it('says so and still polls when the reset fails', async () => {
+		it('retries a failed reset without polling, and says so once', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 			const error = new Error('cache down');
-			vi.mocked(resetWhatsAppWebhookStatus).mockRejectedValueOnce(error);
-			renderComponent({ props: props() });
+			vi.mocked(resetWhatsAppWebhookStatus)
+				.mockRejectedValueOnce(error)
+				.mockRejectedValueOnce(error)
+				.mockResolvedValue({ verified: false });
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: true });
+			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
 			await flushPromises();
 
 			expect(showError).toHaveBeenCalledExactlyOnceWith(
 				error,
 				'agents.channels.whatsapp.setup.verify.resetError',
 			);
+			expect(getWhatsAppWebhookStatus).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(POLL_MS);
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
+			expect(getWhatsAppWebhookStatus).not.toHaveBeenCalled();
+			expect(queryByTestId('whatsapp-webhook-verified')).toBeNull();
+
+			await vi.advanceTimersByTimeAsync(POLL_MS);
+			await flushPromises();
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(3);
 			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+			expect(showError).toHaveBeenCalledTimes(1);
+		});
+
+		it('says nothing and stops when a reset fails after the view is gone', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			let rejectReset!: (error: Error) => void;
+			vi.mocked(resetWhatsAppWebhookStatus).mockReturnValueOnce(
+				new Promise((_resolve, reject) => (rejectReset = reject)),
+			);
+			const { unmount } = renderComponent({ props: props() });
+			await flushPromises();
+
+			unmount();
+			rejectReset(new Error('cache down'));
+			await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+
+			expect(showError).not.toHaveBeenCalled();
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+			expect(getWhatsAppWebhookStatus).not.toHaveBeenCalled();
 		});
 
 		it('polls every 3 seconds until Meta verifies the webhook, then stops', async () => {
