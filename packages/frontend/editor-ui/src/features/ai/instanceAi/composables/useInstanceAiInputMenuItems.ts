@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
-import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
+import type { NodeIconSource, ToolConnectionStatus } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
@@ -20,7 +20,7 @@ import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
 	status?: ToolConnectionStatus;
-	toolIcon?: ToolIconSource;
+	toolIcon?: NodeIconSource;
 	action?: () => void | Promise<void>;
 };
 

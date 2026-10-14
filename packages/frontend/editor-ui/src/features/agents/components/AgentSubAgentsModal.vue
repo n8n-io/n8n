@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
@@ -14,11 +14,13 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import { TOOL_ICON_AVATAR_RENDERER_KEY } from '@/features/shared/toolsConnection/types';
 import type {
 	AgentConnectionItem,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
+import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 
 export type AgentSubAgentOption = {
 	id: string;
@@ -60,6 +62,9 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+
+// Avatar rows render through the shared tools connection modal
+provide(TOOL_ICON_AVATAR_RENDERER_KEY, AgentPersonalisationIcon);
 
 const availableAgents = computed(() => ('agents' in props.data ? props.data.agents : []));
 const pickerItems = computed<AgentConnectionItem[]>(() =>

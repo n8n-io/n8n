@@ -1,5 +1,5 @@
 import type { McpRegistryServerIconResponse } from '@n8n/api-types';
-import type { ToolIconSource } from '@/features/shared/toolsConnection/types';
+import type { NodeIconSource } from '@/features/shared/toolsConnection/types';
 
 function pickIconForTheme(
 	icons: McpRegistryServerIconResponse[],
@@ -15,7 +15,7 @@ function pickIconForTheme(
 export function iconForTool(
 	icons: McpRegistryServerIconResponse[],
 	appliedTheme: 'light' | 'dark',
-): ToolIconSource {
+): NodeIconSource {
 	const src = pickIconForTheme(icons, appliedTheme);
 	return src ? { type: 'file', src } : { type: 'icon', name: 'mcp' };
 }
