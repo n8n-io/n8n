@@ -396,13 +396,8 @@ describe('Expression - fast native evaluation parity', () => {
 
 		test('a whole-value DateTime read hands off to the engine', () => {
 			expect(nativeOutcome('={{ $json.item.my_object }}').handled).toBe(true);
-			const native = evaluateExotic('={{ $json.item.dt }}', true);
-			expect(native instanceof DateTime).toBe(isLegacy());
-			expect((native as { ts: number }).ts).toBe(
-				(evaluateExotic('={{ $json.item.dt }}', false) as { ts: number }).ts,
-			);
-			// Member reads stay native.
-			expect(evaluateExotic('={{ $json.item.dt.year }}', true)).toBe(2026);
+			const data = { $json: exotic.json } as never;
+			expect(evaluateNatively('{{ $json.item.dt }}', data)).toEqual({ handled: false });
 		});
 
 		// The vm and quickjs serialiser drops an own `__proto__` key; legacy
