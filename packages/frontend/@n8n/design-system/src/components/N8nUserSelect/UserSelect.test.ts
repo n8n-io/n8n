@@ -15,7 +15,8 @@ const getRenderedOptions = async () => {
 
 const filterInput = async (filterText: string) => {
 	const input = screen.getByRole('combobox');
-	await userEvent.type(input, filterText);
+	// Avoid a timer wait for each character on busy CI workers.
+	await userEvent.type(input, filterText, { delay: null });
 };
 
 const sampleUsers: IUser[] = [
