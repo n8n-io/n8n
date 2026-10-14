@@ -1,4 +1,8 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import {
+	resolveWhatsAppSettings,
+	type AgentIntegrationConfig,
+	type RichCardComponentType,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -15,6 +19,8 @@ import {
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
 	type UnauthenticatedWebhookContext,
 	type UnauthenticatedWebhookResponse,
 } from '../agent-chat-integration';
@@ -30,6 +36,7 @@ import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
 import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../integration-tool-factory';
+import { startTypingIndicator } from './typing-indicator';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 
@@ -53,6 +60,13 @@ const WHATSAPP_DEFAULT_SESSION_IDLE_TIMEOUT_MINUTES = 30;
 
 /** WhatsApp Cloud API's own limit on interactive reply buttons per message. */
 const WHATSAPP_MAX_REPLY_BUTTONS = 3;
+
+/**
+ * WhatsApp's typing indicator ends after about 25 seconds or when a reply is
+ * sent, whichever comes first, so refresh it inside that window.
+ * @see https://developers.facebook.com/docs/whatsapp/cloud-api/typing-indicators
+ */
+const WHATSAPP_TYPING_REFRESH_MS = 20 * 1000;
 
 const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
 
@@ -211,6 +225,31 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			return { status: 403, body: 'Forbidden', raw: true };
 		}
 		return { status: 200, body: challenge, raw: true };
+	}
+
+	/**
+	 * Starts the typing indicator when a queued message is picked up, which is
+	 * when the agent actually starts working on it.
+	 */
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+		integration?: AgentIntegrationConfig;
+	}): Promise<BridgeResumeExecutionContext> {
+		if (!whatsAppSettings(params.integration).typingIndicator) return {};
+		return await Promise.resolve({
+			statusHandle: startTypingIndicator(params.thread, {
+				logger: params.logger,
+				agentId: params.agentId,
+				platform: 'WhatsApp',
+				refreshMs: WHATSAPP_TYPING_REFRESH_MS,
+			}),
+		});
+	}
+
+	shouldDownloadAttachments(integration: AgentIntegrationConfig): boolean {
+		return whatsAppSettings(integration).downloadMedia;
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -410,6 +449,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (typeof value === 'string' && value.trim()) return value.trim();
 		throw new UserError(message);
 	}
+}
+
+/** The channel's settings, with the defaults for any that were never saved. */
+function whatsAppSettings(integration?: AgentIntegrationConfig) {
+	return resolveWhatsAppSettings(
+		integration?.type === 'whatsapp' ? integration.settings : undefined,
+	);
 }
 
 /**
