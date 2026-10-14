@@ -246,6 +246,18 @@ describe('Agent skills in the skills hub', () => {
 		).rejects.toThrow('This agent uses an older version of this skill.');
 	});
 
+	it('refuses a skill from the agent builder whose name another skill has', async () => {
+		await createSkill(body('Triage'), { projectId: null });
+		const agent = await createAgent([]);
+
+		await expect(
+			agentSkillsService.createAndAttachSkill(agent.id, project.id, body('TRIAGE'), {
+				user: editor,
+				modifiedBy: 'builder',
+			}),
+		).rejects.toThrow('That name is taken, choose another');
+	});
+
 	it('creates, updates and detaches a skill from the agent builder', async () => {
 		const agent = await createAgent([]);
 		const context = { user: editor, modifiedBy: 'builder' as const };

@@ -359,6 +359,7 @@ export class AgentSkillRefsService {
 						skill,
 						source: 'agent',
 						createdById: creatorId,
+						checkNameTaken: true,
 					},
 					ctx,
 				),

@@ -399,6 +399,34 @@ describe('SkillsController', () => {
 		});
 	});
 
+	describe('unique names', () => {
+		it('refuses a name like one that another skill in the instance has', async () => {
+			await create(editor, { scope: 'project', projectId: project.id, skill: body });
+
+			// Another scope does not matter: the name is taken for the whole instance.
+			const response = await owner
+				.post('/skills')
+				.send({ scope: 'instance', skill: { ...body, name: 'brand-voice' } })
+				.expect(409);
+
+			expect(response.body.message).toBe('That name is taken, choose another');
+		});
+
+		it('refuses a rename to a taken name and allows a save that keeps the name', async () => {
+			await create(owner, { scope: 'instance', skill: { ...body, name: 'Code review' } });
+			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ name: 'Code Review', baseSkillHash: skillHash })
+				.expect(409);
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+		});
+	});
+
 	describe('change scope', () => {
 		it('moves an unused skill and saves its content in the same request', async () => {
 			const { id, skillHash } = await create(editor, {

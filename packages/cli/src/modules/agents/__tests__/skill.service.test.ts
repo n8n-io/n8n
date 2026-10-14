@@ -100,6 +100,7 @@ describe('SkillService', () => {
 		vi.resetAllMocks();
 		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		skills.findLatestSaved.mockResolvedValue(new Map());
+		skills.findAllLatestNames.mockResolvedValue([]);
 		skills.findVersionsByIds.mockResolvedValue(new Map());
 		skills.findDependencies.mockResolvedValue(new Map());
 		skills.findByIds.mockResolvedValue([]);
@@ -231,6 +232,38 @@ describe('SkillService', () => {
 			).rejects.toThrow(UserError);
 			expect(skills.createSkill).not.toHaveBeenCalled();
 		});
+
+		it.each(['Brand voice', 'brand-voice', '  BRAND_voice '])(
+			'refuses "%s" when another skill in the instance has a name like it',
+			async (name) => {
+				skills.findAllLatestNames.mockResolvedValue([{ skillId: 'skill_x', name: 'Brand voice' }]);
+
+				await expect(
+					service.create({
+						target: { projectId: PROJECT, agentId: null },
+						skill: { name, description: 'd', instructions: 'i' },
+						source: 'ui',
+						createdById: user.id,
+						checkNameTaken: true,
+					}),
+				).rejects.toThrow('That name is taken, choose another');
+				expect(skills.createSkill).not.toHaveBeenCalled();
+			},
+		);
+
+		it('lets a copy keep the name of the skill it copies', async () => {
+			skills.findAllLatestNames.mockResolvedValue([{ skillId: 'skill_x', name: 'Brand voice' }]);
+
+			await service.create({
+				target: { projectId: null, agentId: 'agent-2' },
+				skill: { name: 'Brand voice', description: 'd', instructions: 'i' },
+				source: 'agent',
+				createdById: user.id,
+			});
+
+			expect(skills.findAllLatestNames).not.toHaveBeenCalled();
+			expect(skills.createSkill).toHaveBeenCalled();
+		});
 	});
 
 	describe('save', () => {
@@ -289,6 +322,27 @@ describe('SkillService', () => {
 				user.id,
 				TX_CTX,
 			);
+		});
+
+		it('refuses a rename to a name that another skill has', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+			skills.findAllLatestNames.mockResolvedValue([
+				{ skillId: 'skill_a', name: 'Brand voice' },
+				{ skillId: 'skill_x', name: 'Code review' },
+			]);
+
+			await expect(
+				service.save('skill_a', { baseSkillHash, name: 'code-review' }, user.id),
+			).rejects.toThrow('That name is taken, choose another');
+			expect(skills.insertSavedVersion).not.toHaveBeenCalled();
+		});
+
+		it('does not check the name when the save keeps it', async () => {
+			const baseSkillHash = givenLatest(versionRow(skill, 2));
+
+			await service.save('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+
+			expect(skills.findAllLatestNames).not.toHaveBeenCalled();
 		});
 
 		it('removes references set to an empty list', async () => {

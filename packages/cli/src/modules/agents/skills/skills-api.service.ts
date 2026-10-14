@@ -70,6 +70,7 @@ export class SkillsApiService {
 	async create(user: User, payload: CreateSkillDto): Promise<SkillDetail> {
 		const target = await this.targetForCreate(user, payload);
 		const id = await this.skillService.create({
+			checkNameTaken: true,
 			target,
 			skill: payload.skill,
 			source: 'ui',

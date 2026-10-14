@@ -20,7 +20,10 @@ import {
 } from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
-import { findIntroducedNameClashes, renameIntroducesClash } from './skill-names';
+import { findIntroducedNameClashes, renameIntroducesClash, skillNameKey } from './skill-names';
+
+/** Skill names are unique across the instance, by the same rule as inside one agent. */
+export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -161,11 +164,22 @@ export class SkillService {
 	// ---------------------------------------------------------------- writes
 
 	/** Creates a skill with its v1. Returns the new id. */
+	/**
+	 * `checkNameTaken` is for a name that a user or the builder chose. A copy of an agent
+	 * skill for a new agent keeps the name of the skill it copies, so it skips the check.
+	 */
 	async create(
-		input: { target: SkillTarget; skill: AgentSkill; source: SkillSource; createdById: string },
+		input: {
+			target: SkillTarget;
+			skill: AgentSkill;
+			source: SkillSource;
+			createdById: string;
+			checkNameTaken?: boolean;
+		},
 		ctx: OperationContext = {},
 	): Promise<string> {
 		assertHasInstructions(input.skill);
+		if (input.checkNameTaken) await this.assertNameFree(input.skill.name, undefined, ctx);
 		const id = `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
 			{ id, target: input.target, source: input.source, createdById: input.createdById },
@@ -214,6 +228,7 @@ export class SkillService {
 				return { saved: result, following: [] };
 			}
 			if (skill.name !== latest.version.name) {
+				await this.assertNameFree(skill.name, skillId, txCtx);
 				await this.assertRenameKeepsNamesApart(skillId, latest.version.name, skill.name, txCtx);
 			}
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
@@ -254,6 +269,21 @@ export class SkillService {
 				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
 				excludePushRef,
 			);
+		}
+	}
+
+	/** Refuses a name that is hard to tell apart from the name of another skill. */
+	private async assertNameFree(
+		name: string,
+		exceptSkillId: string | undefined,
+		ctx: OperationContext,
+	): Promise<void> {
+		const key = skillNameKey(name);
+		const names = await this.skillRepository.findAllLatestNames(ctx);
+		if (
+			names.some((other) => other.skillId !== exceptSkillId && skillNameKey(other.name) === key)
+		) {
+			throw new ConflictError(SKILL_NAME_TAKEN_MESSAGE);
 		}
 	}
 
