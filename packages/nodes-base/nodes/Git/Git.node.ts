@@ -1099,7 +1099,7 @@ export class Git implements INodeType {
 					continue;
 				}
 
-				throw error;
+				throw new NodeOperationError(this.getNode(), error, { itemIndex });
 			}
 		}
 

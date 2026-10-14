@@ -4,6 +4,7 @@ import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import {
 	type Variables,
 	type VariablesRepository,
+	Folder,
 	type FolderRepository,
 	CredentialsEntity,
 	type CredentialsRepository,
@@ -99,6 +100,7 @@ describe('SourceControlImportService', () => {
 	const executionPersistence = mock<ExecutionPersistence>();
 	const credentialsService = mock<CredentialsService>();
 	const transactionManager = mock<EntityManager>();
+	const cascadeManager = mock<EntityManager>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
@@ -165,6 +167,14 @@ describe('SourceControlImportService', () => {
 		);
 		transactionManager.delete.mockImplementation(
 			async (_entity, criteria) => await sharedCredentialsRepository.delete(criteria as never),
+		);
+		cascadeManager.delete.mockImplementation(async (entity, criteria) =>
+			entity === Folder
+				? await folderRepository.delete(criteria as never)
+				: await projectRepository.delete(criteria as never),
+		);
+		workflowRepository.runInTransaction.mockImplementation(
+			async (ctx, fn) => await fn(cascadeManager, ctx),
 		);
 		credentialsRepositoryManager.transaction.mockImplementation(async (...args) => {
 			const callback = args.find((arg) => typeof arg === 'function');
@@ -3463,6 +3473,48 @@ describe('SourceControlImportService', () => {
 				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
 			});
 
+			it('should purge caller allowlists in the folder delete transaction', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				const straggler = Object.assign(new WorkflowEntity(), {
+					id: 'wf-1',
+					activeVersionId: null,
+				});
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
+				workflowRepository.find.mockResolvedValueOnce([straggler]);
+				workflowRepository.findOne.mockResolvedValueOnce(straggler);
+
+				await service.deleteFoldersNotInWorkfolder(candidates);
+
+				expect(workflowRepository.runInTransaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepository.removeMissingFromCallerAllowlists).toHaveBeenCalledWith({});
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
+				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
+				).toBeLessThan(workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0]);
+			});
+
+			it('should fail the folder deletion when the caller allowlist purge fails', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
+				const straggler = Object.assign(new WorkflowEntity(), {
+					id: 'wf-1',
+					activeVersionId: null,
+				});
+				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
+				workflowRepository.find.mockResolvedValueOnce([straggler]);
+				workflowRepository.findOne.mockResolvedValueOnce(straggler);
+				workflowRepository.removeMissingFromCallerAllowlists.mockRejectedValueOnce(
+					new Error('statement timeout'),
+				);
+
+				await expect(service.deleteFoldersNotInWorkfolder(candidates)).rejects.toThrow(
+					'statement timeout',
+				);
+
+				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
+			});
+
 			it('should not fire the sweep when the deleted folders contained no workflows', async () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
 				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
@@ -4129,6 +4181,32 @@ describe('SourceControlImportService', () => {
 				]);
 				expect(
 					workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0],
+				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
+			});
+
+			it('should purge caller allowlists in the project delete transaction', async () => {
+				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
+				sharedWorkflowRepository.find.mockResolvedValueOnce([
+					{ workflowId: 'wf-in-folder' },
+					{ workflowId: 'wf-at-project-root' },
+				] as SharedWorkflow[]);
+				workflowRepository.findOne
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), { id: 'wf-in-folder', activeVersionId: null }),
+					)
+					.mockResolvedValueOnce(
+						Object.assign(new WorkflowEntity(), {
+							id: 'wf-at-project-root',
+							activeVersionId: null,
+						}),
+					);
+
+				await service.deleteTeamProjectsNotInWorkfolder(user, candidates, []);
+
+				expect(workflowRepository.runInTransaction).toHaveBeenCalledTimes(1);
+				expect(workflowRepository.removeMissingFromCallerAllowlists).toHaveBeenCalledWith({});
+				expect(
+					workflowRepository.removeMissingFromCallerAllowlists.mock.invocationCallOrder[0],
 				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
 			});
 

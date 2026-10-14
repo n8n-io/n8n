@@ -226,7 +226,7 @@ export class MigrationFindingSyncService {
 		workflowIds: string[],
 	): Promise<void> {
 		try {
-			const affectedIds = await this.findingRepository.listWorkflowIdsWithOpenFindings(
+			const affectedIds = await this.findingRepository.listWorkflowIdsWithUnresolvedFindings(
 				targetVersion,
 				workflowIds,
 				{},

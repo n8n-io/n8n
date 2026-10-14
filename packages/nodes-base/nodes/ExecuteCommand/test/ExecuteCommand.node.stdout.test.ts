@@ -64,4 +64,21 @@ describe('ExecuteCommand stdout on Windows', () => {
 			Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
 		}
 	});
+
+	it('hides the console window of the spawned command on Windows', async () => {
+		const originalPlatform = process.platform;
+		Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+		try {
+			const promise = node.execute.call(createContext());
+			await Promise.resolve();
+
+			child.emit('close', 0);
+			await promise;
+
+			const spawnOptions = mockedSpawn.mock.calls[0][1] as { windowsHide?: boolean };
+			expect(spawnOptions.windowsHide).toBe(true);
+		} finally {
+			Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+		}
+	});
 });

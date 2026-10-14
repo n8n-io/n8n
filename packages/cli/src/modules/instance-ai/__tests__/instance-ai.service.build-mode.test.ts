@@ -72,12 +72,12 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 
 describe('InstanceAiService build mode recovery', () => {
 	it.each([
-		{ toolName: 'build-agent', hasBuilderCheckpoint: true, resumeAgentBuild: true },
-		{ toolName: 'build-agent', hasBuilderCheckpoint: false, resumeAgentBuild: false },
-		{ toolName: 'workflows', hasBuilderCheckpoint: true, resumeAgentBuild: false },
+		{ toolName: 'build-agent', hasBuilderCheckpoint: true },
+		{ toolName: 'build-agent', hasBuilderCheckpoint: false },
+		{ toolName: 'workflows', hasBuilderCheckpoint: true },
 	])(
 		'restores $toolName with a builder checkpoint $hasBuilderCheckpoint',
-		async ({ toolName, hasBuilderCheckpoint, resumeAgentBuild }) => {
+		async ({ toolName, hasBuilderCheckpoint }) => {
 			const suspendPayload = {
 				requestId: orphan.requestId,
 				message: 'Confirm the next step',
@@ -121,8 +121,6 @@ describe('InstanceAiService build mode recovery', () => {
 				undefined,
 				undefined,
 				undefined,
-				undefined,
-				resumeAgentBuild,
 			);
 		},
 	);

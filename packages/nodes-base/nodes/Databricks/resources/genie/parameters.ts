@@ -2,12 +2,13 @@ import type { INodeProperties } from 'n8n-workflow';
 
 export const genieParameters: INodeProperties[] = [
 	{
-		displayName: 'Space ID',
+		displayName: 'Agent ID',
 		name: 'spaceId',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the Genie space',
+		description:
+			"The Agent ID shown on the Genie agent's About page in Databricks (the space ID in the URL)",
 		displayOptions: {
 			show: {
 				resource: ['genie'],
@@ -73,7 +74,7 @@ export const genieParameters: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'The message to be sent to Genie Space',
+		description: 'The message to send to the Genie agent',
 		displayOptions: {
 			show: {
 				resource: ['genie'],
@@ -97,5 +98,13 @@ export const genieParameters: INodeProperties[] = [
 				operation: ['startConversation'],
 			},
 		},
+	},
+	// The agent appends this to its reply when the node runs as a tool (ENT-527)
+	{
+		displayName: 'Tool Attribution',
+		name: 'toolAttribution',
+		type: 'hidden',
+		default: 'Powered by Databricks Genie',
+		displayOptions: { show: { resource: ['genie'] } },
 	},
 ];

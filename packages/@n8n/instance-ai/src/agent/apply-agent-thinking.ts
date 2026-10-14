@@ -1,4 +1,4 @@
-import type { Agent, ModelConfig } from '@n8n/agents';
+import type { Agent, AnthropicThinkingEffort, ModelConfig } from '@n8n/agents';
 import { PROVIDER_CAPABILITIES } from '@n8n/api-types';
 
 import { resolveModelIdString, resolveModelProvider } from './model-config-identity';
@@ -28,7 +28,12 @@ function resolveAnthropicEffort(): AnthropicEffort {
 	return ANTHROPIC_EFFORTS.find((supported) => supported === effort) ?? 'medium';
 }
 
-export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
+/** An explicit effort wins over the env override. */
+export function applyAgentThinking(
+	agent: Agent,
+	modelId: ModelConfig,
+	anthropicEffort?: AnthropicThinkingEffort,
+): void {
 	const provider = resolveModelProvider(modelId);
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
@@ -61,7 +66,10 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
-		agent.thinking(provider, { mode: 'adaptive', effort: resolveAnthropicEffort() });
+		agent.thinking(provider, {
+			mode: 'adaptive',
+			effort: anthropicEffort ?? resolveAnthropicEffort(),
+		});
 		return;
 	}
 

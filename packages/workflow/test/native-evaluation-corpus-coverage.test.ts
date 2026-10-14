@@ -258,6 +258,18 @@ const CANDIDATES = [
 	'={{ $json.item.names?.map(n => n) }}',
 	'={{ $json.item.names.map(n => $json.item.count) }}',
 	'={{ $json.item.names.map(n => n.missing?.deep ?? "d") }}',
+	// time roots, by getter and zero-argument method
+	'={{ $now.toMillis() }}',
+	'={{ $now.toSeconds() }}',
+	'={{ $now.toUnixInteger() }}',
+	'={{ $now.toISO() }}',
+	'={{ $now.toISODate() }}',
+	'={{ $now.toISOTime() }}',
+	'={{ $now.toString() }}',
+	'={{ $now?.toMillis() }}',
+	'={{ $now.year }}',
+	'={{ $now?.year }}',
+	'={{ $today.toISODate() }}',
 	// compound shapes
 	'={{ $json.item.name.trim().toUpperCase() }}',
 	'={{ $json.item.name.toUpperCase().length }}',

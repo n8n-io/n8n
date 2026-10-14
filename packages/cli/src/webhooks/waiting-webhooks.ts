@@ -304,6 +304,12 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
 
+		// A run parked at a node boundary is not waiting for this webhook: resuming
+		// it here would hand the webhook payload to a node that never asked for it.
+		if (execution.data?.waitReason === 'suspended') {
+			throw new ConflictError(`The execution "${executionId}" is about to resume.`);
+		}
+
 		if (execution.data?.resultData?.error) {
 			const message = `The execution "${executionId}" has finished with error.`;
 			this.logger.debug(message, { error: execution.data.resultData.error });

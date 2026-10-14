@@ -7,7 +7,7 @@ import { Container } from '@n8n/di';
  * per-case results, and serves the REST surface the editor consumes.
  *
  * Main-process only — the reused tool-mock substrate can't cross a queue
- * boundary. Opt-in module, and dark until `101_agent_evals` is on for the user.
+ * boundary. Loaded by default; `101_agent_evals` gates access for each user.
  */
 @BackendModule({ name: 'agent-evals', instanceTypes: ['main'] })
 export class AgentEvalsModule implements ModuleInterface {

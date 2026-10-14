@@ -128,5 +128,6 @@ describe('ScopedJwtStrategy (integration)', () => {
 		expect(req.user.id).toBe(actor.id);
 		expect(req.tokenGrant?.subject.id).toBe(subject.id);
 		expect(req.tokenGrant?.actor?.id).toBe(actor.id);
+		expect(req.tokenGrant?.apiKeyId).toBeUndefined();
 	});
 });

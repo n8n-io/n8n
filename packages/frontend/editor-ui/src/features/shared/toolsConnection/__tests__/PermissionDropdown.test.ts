@@ -26,6 +26,21 @@ describe('PermissionDropdown', () => {
 		expect(queryByRole('menuitem', { name: 'Custom' })).not.toBeInTheDocument();
 	});
 
+	it('hides the excluded permission', async () => {
+		const { getByRole, queryByRole } = renderComponent({
+			props: {
+				modelValue: 'always_allow',
+				excludePermissions: ['require_approval', 'blocked'],
+			},
+		});
+
+		await fireEvent.click(getByRole('button', { name: 'Allow' }));
+
+		expect(getByRole('menuitem', { name: 'Allow' })).toBeInTheDocument();
+		expect(queryByRole('menuitem', { name: 'Ask first' })).not.toBeInTheDocument();
+		expect(queryByRole('menuitem', { name: 'Block' })).not.toBeInTheDocument();
+	});
+
 	it('disables the trigger', () => {
 		const { getByRole } = renderComponent({
 			props: { modelValue: 'blocked', disabled: true },
