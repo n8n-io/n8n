@@ -1,8 +1,8 @@
 import type { FieldType, ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
 
+import { resolveSelectedLakebaseSchema } from '../actions/lakebase/helpers';
 import { isOpenApiUnavailable, OPENAPI_DISABLED_NOTICE } from '../actions/lakebase/openApiDocument';
 import { fetchLakebaseColumns, type LakebaseColumn } from '../actions/lakebase/schema';
-import { resolveLakebaseRestBase } from '../transport';
 
 const DATE_FORMATS = new Set([
 	'date',
@@ -30,36 +30,18 @@ function fieldTypeOf(column: LakebaseColumn): FieldType {
 	}
 }
 
-/**
- * Lists a table's columns for the Columns form.
- *
- * Load options run before the node has an item, so this resolves the URL itself
- * rather than using the helpers in `actions/lakebase/helpers.ts`, which take an
- * item index.
- */
+/** Lists a table's columns for the Columns form. */
 export async function getLakebaseMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const read = (name: string) => {
-		const value = this.getNodeParameter(name, undefined, { extractValue: true });
-		return typeof value === 'string' ? value : '';
-	};
-
-	const project = read('lakebaseProject');
-	const branch = read('lakebaseBranch');
-	const database = read('lakebaseDatabase');
-	const schema = read('lakebaseSchema');
-	const table = read('lakebaseTable');
-	if (!project || !branch || !database || !schema || !table) return { fields: [] };
-
-	const base = await resolveLakebaseRestBase(this, project, branch);
-	const schemaUrl = `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}`;
+	const target = await resolveSelectedLakebaseSchema(this);
+	if (!target) return { fields: [] };
 
 	let columns: LakebaseColumn[];
 	try {
-		columns = await fetchLakebaseColumns(this, schemaUrl, table);
+		columns = await fetchLakebaseColumns(this, target.schemaUrl, target.table);
 	} catch (error) {
-		if (!isOpenApiUnavailable(error, `${schemaUrl}/openapi.json`)) throw error;
+		if (!isOpenApiUnavailable(error, `${target.schemaUrl}/openapi.json`)) throw error;
 		return { fields: [], emptyFieldsNotice: OPENAPI_DISABLED_NOTICE };
 	}
 

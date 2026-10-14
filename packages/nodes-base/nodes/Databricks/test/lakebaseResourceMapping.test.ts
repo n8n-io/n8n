@@ -1,4 +1,9 @@
-import type { ILoadOptionsFunctions, INode, JsonObject } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -51,7 +56,10 @@ describe('Lakebase -> column mapping', () => {
 		};
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNode.mockReturnValue(node);
-		context.getNodeParameter.mockImplementation((name) => values[name]);
+		context.getNodeParameter.mockReturnValue('oAuth2');
+		context.getCurrentNodeParameter.mockImplementation(
+			(name: string) => values[name] as unknown as NodeParameterValueType,
+		);
 		context.getCredentials.mockResolvedValue({ host: 'https://host.example' });
 		return context;
 	};
