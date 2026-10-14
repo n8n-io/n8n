@@ -379,7 +379,7 @@ function applyCustomComposite(
 						baseData.data[targetIndex + channel] = clampChannel(target * luminance);
 					} else if (operator === 'Divide') {
 						baseData.data[targetIndex + channel] =
-							source === 0 ? 255 : clampChannel((target * 255) / source);
+							target === 0 ? 255 : clampChannel((source * 255) / target);
 					}
 				}
 				if (

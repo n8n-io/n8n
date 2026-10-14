@@ -411,6 +411,7 @@ describe('Edit Image v2', () => {
 		['Add', [44, 4, 170, 255]],
 		['Minus', [100, 40, 0, 255]],
 		['Subtract', [100, 40, 186, 255]],
+		['Divide', [255, 255, 106, 255]],
 	])('matches GraphicsMagick channel arithmetic for %s', async (operator, expected) => {
 		const input = await imageBuffer('#646e78', 1, 1);
 		const overlay = await imageBuffer('#c89632', 1, 1);
