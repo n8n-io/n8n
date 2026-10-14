@@ -1612,6 +1612,90 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	describe('setup scope across rebuilds', () => {
+		const pendingWebhook = {
+			node: {
+				id: 'webhook-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				parameters: {},
+				position: [0, 0],
+			},
+			parameterIssues: { path: ['Missing webhook path'] },
+			isTrigger: true,
+			needsAction: true,
+		} as SetupRequest;
+
+		// The first build creates the workflow, so every node is in scope. The rebuild
+		// leaves the pending node untouched.
+		async function rebuildUnchanged({
+			workItemId,
+			nextWorkItemId = workItemId,
+			nextRunId,
+			failInBetween = false,
+		}: {
+			workItemId?: string;
+			nextWorkItemId?: string;
+			nextRunId?: string;
+			failInBetween?: boolean;
+		} = {}) {
+			vi.mocked(analyzeWorkflow).mockResolvedValue([pendingWebhook]);
+			const { context, filePath } = makeContext({ source: 'workflow source' });
+			const tool = createBuildWorkflowTool(context);
+			await executeTool<BuildToolOutput>(tool, { filePath, workItemId, name: 'Webhook flow' });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				...structuredClone(generatedWorkflow),
+				name: 'Webhook flow',
+			});
+			if (failInBetween) {
+				vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+					success: false,
+					reason: 'workflow_json_invalid',
+					editable: true,
+					errors: ['Workflow JSON must include name, nodes, and connections.'],
+					summary: 'Workflow JSON source is missing required workflow fields.',
+				});
+				expect(await executeTool<BuildToolOutput>(tool, { filePath })).toMatchObject({
+					success: false,
+				});
+			}
+			if (nextRunId) context.runId = nextRunId;
+			return await executeTool<BuildToolOutput>(tool, { filePath, workItemId: nextWorkItemId });
+		}
+
+		it.each([false, true])(
+			'keeps pending setup for a node an earlier build in the same run created (failed rebuild in between: %s)',
+			async (failInBetween) => {
+				expect(await rebuildUnchanged({ failInBetween })).toMatchObject({
+					success: true,
+					setupRequirement: { status: 'required' },
+				});
+			},
+		);
+
+		it.each([
+			['a later run of the same work item', 'required', { workItemId: 'wi-1', nextRunId: 'run-2' }],
+			[
+				'another work item in the same run',
+				'required',
+				{ workItemId: 'wi-1', nextWorkItemId: 'wi-2' },
+			],
+			[
+				'another work item in a later run',
+				'not_required',
+				{ workItemId: 'wi-1', nextWorkItemId: 'wi-2', nextRunId: 'run-2' },
+			],
+			// Without a work item id, the file path stands in for it on every build.
+			['a later run without a work item id', 'not_required', { nextRunId: 'run-2' }],
+		])('rebuild in %s: setup %s', async (_label, status, options) => {
+			expect(await rebuildUnchanged(options)).toMatchObject({
+				success: true,
+				setupRequirement: { status },
+			});
+		});
+	});
+
 	it('updates the workflow bound to the source file and remembers the binding', async () => {
 		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
