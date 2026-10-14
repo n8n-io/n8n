@@ -357,6 +357,50 @@ describe('GoogleSheetsTrigger', () => {
 			return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
 		};
 
+		// NODE-5842: A poll must preserve its saved revision when Drive returns no revisions.
+		it.each([
+			{ name: 'an empty revisions list', body: { revisions: [] } },
+			{ name: 'no revisions field', body: {} },
+		])('should return no data and preserve the saved revision for $name', async ({ body }) => {
+			const sheetsScope = nock(baseUrl)
+				.get('/v4/spreadsheets/testDocumentId')
+				.query({ fields: 'sheets.properties' })
+				.reply(200, {
+					sheets: [{ properties: { sheetId: 1, title: 'testSheetName' } }],
+				});
+			const driveScope = nock(driveBaseUrl)
+				.get('/drive/v3/files/testDocumentId/revisions')
+				.query({ fields: 'revisions(id, exportLinks), nextPageToken', pageSize: 1000 })
+				.reply(200, body);
+			const workflowStaticData = {
+				documentId: 'testDocumentId',
+				sheetId: 1,
+				lastRevision: 1,
+				lastRevisionLink: previousExportUrl,
+			};
+			const previousState = { ...workflowStaticData };
+
+			const { response } = await testPollingTriggerNode(GoogleSheetsTrigger, {
+				credential: mockDeep(),
+				mode: 'trigger',
+				workflowStaticData,
+				node: {
+					parameters: {
+						authentication: 'triggerOAuth2',
+						documentId: 'testDocumentId',
+						sheetName: 1,
+						event: 'anyUpdate',
+						options: { dataLocationOnSheet: null },
+					},
+				},
+			});
+
+			sheetsScope.done();
+			driveScope.done();
+			expect(response).toBeNull();
+			expect(workflowStaticData).toEqual(previousState);
+		});
+
 		it('should diff revisions via service account authentication and forward per-call scopes', async () => {
 			const sheetsScope = nock(baseUrl);
 			// Spreadsheet metadata lookup (spreadsheetGetSheet) - sheetV2 scope
