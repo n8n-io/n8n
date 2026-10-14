@@ -15,7 +15,7 @@ import {
 } from '@n8n/permissions';
 
 import type { AuthStrategy } from '@/services/auth-strategy.types';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { PublicApiProtectedResource } from './public-api-protected-resource';
 
