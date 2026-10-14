@@ -1,5 +1,3 @@
-import { UserError } from 'n8n-workflow';
-
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const nodeIdColumns = [
@@ -55,7 +53,7 @@ export class ExpandNodeIdColumns1791903158491 implements ReversibleMigration {
 		}
 
 		if (tooLong.length > 0) {
-			throw new UserError(
+			throw new Error(
 				`Cannot narrow node id columns to 36 characters, because these columns hold longer ids: ${tooLong.join(', ')}. Delete or shorten these rows, then revert again.`,
 			);
 		}
