@@ -444,6 +444,49 @@ describe('createBinaryFromJson base64 decoding', () => {
 		},
 	);
 
+	it.each([[0, 255], { type: 'Buffer', data: [0, 255] }])(
+		'accepts byte-array boundaries in strict mode for input %#',
+		async (payload) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from([0, 255]));
+		},
+	);
+
+	it.each([
+		['aGk='],
+		[300, -1],
+		[1.5],
+		{ type: 'Buffer', data: ['aGk='] },
+		{ type: 'Buffer', data: [300, -1] },
+		{ type: 'Buffer', data: [1.5] },
+	])('rejects invalid byte-array input %# in strict mode', async (payload) => {
+		await expect(
+			createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			),
+		).rejects.toBeInstanceOf(NodeOperationError);
+		expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ payload: ['aGk='], expected: [0] },
+		{ payload: [300, -1], expected: [44, 255] },
+		{ payload: { type: 'Buffer', data: [300, -1] }, expected: [44, 255] },
+	])('preserves permissive byte-array conversion for existing workflows %#', async (testCase) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: testCase.payload },
+			{ sourceKey: 'payload', dataIsBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(testCase.expected));
+	});
+
 	it('decodes the reported PNG data URI to the original 70 bytes', async () => {
 		const payload =
 			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';

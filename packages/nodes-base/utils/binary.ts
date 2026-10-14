@@ -35,6 +35,12 @@ export type JsonToBinaryOptions = {
 	format?: boolean;
 };
 
+function isByteArray(value: unknown[]): value is number[] {
+	return value.every(
+		(byte) => typeof byte === 'number' && Number.isInteger(byte) && byte >= 0 && byte <= 255,
+	);
+}
+
 export async function convertJsonToSpreadsheetBinary(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
@@ -135,6 +141,7 @@ export async function createBinaryFromJson(
 		if (Buffer.isBuffer(value)) {
 			buffer = value;
 		} else if (Array.isArray(value)) {
+			if (options.strictBase64 && !isByteArray(value)) throw invalidBase64();
 			buffer = Buffer.from(value);
 		} else if (
 			typeof value === 'object' &&
@@ -144,6 +151,7 @@ export async function createBinaryFromJson(
 			'data' in value &&
 			Array.isArray(value.data)
 		) {
+			if (options.strictBase64 && !isByteArray(value.data)) throw invalidBase64();
 			buffer = Buffer.from(value.data);
 		} else {
 			if (typeof value !== 'string') {
