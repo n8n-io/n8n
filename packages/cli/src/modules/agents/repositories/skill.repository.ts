@@ -204,6 +204,26 @@ export class SkillRepository extends BaseRepository<Skill> {
 		);
 	}
 
+	/** The name of the latest version of every skill, for the instance-wide name check. */
+	async findAllLatestNames(
+		ctx: OperationContext = {},
+	): Promise<Array<{ skillId: string; name: string }>> {
+		const versions = await this.managerFor(ctx)
+			.createQueryBuilder(SkillVersion, 'version')
+			.select(['version.skillId', 'version.name'])
+			.where((qb) => {
+				const highest = qb
+					.subQuery()
+					.select('MAX(later.version)')
+					.from(SkillVersion, 'later')
+					.where('later.skillId = version.skillId')
+					.getQuery();
+				return `version.version = ${highest}`;
+			})
+			.getMany();
+		return versions.map(({ skillId, name }) => ({ skillId, name }));
+	}
+
 	/** Version rows by id, keyed by version id. A pinned ref reads them. */
 	async findVersionsByIds(
 		versionIds: string[],

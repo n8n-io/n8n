@@ -177,6 +177,24 @@ describe('SkillRepository', () => {
 		});
 	});
 
+	describe('findAllLatestNames', () => {
+		it('returns the name of the latest version of every skill', async () => {
+			const renamed = await createSkill({}, content({ name: 'Old name' }));
+			await skills.insertSavedVersion(renamed, 2, content({ name: 'New name' }), null);
+			const other = await createSkill({}, content({ name: 'Other' }));
+
+			const names = await skills.findAllLatestNames();
+
+			expect(names).toEqual(
+				expect.arrayContaining([
+					{ skillId: renamed, name: 'New name' },
+					{ skillId: other, name: 'Other' },
+				]),
+			);
+			expect(names.find((row) => row.name === 'Old name')).toBeUndefined();
+		});
+	});
+
 	describe('findVisiblePage', () => {
 		const firstPage = { skip: 0 };
 		const ids = (page: { skills: Array<{ id: string }> }) => page.skills.map((skill) => skill.id);

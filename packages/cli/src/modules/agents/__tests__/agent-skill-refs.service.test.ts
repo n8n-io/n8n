@@ -463,7 +463,7 @@ describe('AgentSkillRefsService', () => {
 				service.createSkills(agent, [body], 'user-1', availableTo, ctx),
 			).resolves.toEqual(['skill_created']);
 			expect(skillService.create).toHaveBeenCalledWith(
-				{ target, skill: body, source: 'agent', createdById: 'user-1' },
+				{ target, skill: body, source: 'agent', createdById: 'user-1', checkNameTaken: true },
 				ctx,
 			);
 		});

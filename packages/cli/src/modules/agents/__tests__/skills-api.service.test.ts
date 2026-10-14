@@ -380,6 +380,7 @@ describe('SkillsApiService', () => {
 				projectId: 'project-1',
 			});
 			expect(skillService.create).toHaveBeenCalledWith({
+				checkNameTaken: true,
 				target: { projectId: null, agentId: 'agent-1' },
 				skill: body,
 				source: 'ui',
