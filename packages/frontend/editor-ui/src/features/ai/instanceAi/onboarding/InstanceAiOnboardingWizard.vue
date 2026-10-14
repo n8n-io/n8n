@@ -134,10 +134,21 @@ const showMemoryModel = computed(
 		props.step === 'model' &&
 		store.settings?.envManaged?.model?.memoryModel !== true,
 );
+// The memory model reuses the main model's credential, so list only that provider's models.
+// An env-configured connection reports its provider; without a known catalog, use free text.
+const memoryModelProvider = computed<InstanceAiModelProvider | null>(() => {
+	if (!modelConnectionLocked.value) return modelProvider.value;
+	const envProvider = store.settings?.modelEnvProvider;
+	return INSTANCE_AI_MODEL_PROVIDERS.find(({ id }) => id === envProvider)?.id ?? null;
+});
 const memoryModelOptions = computed(() =>
-	modelConnectionLocked.value
-		? getAllInstanceAiModelOptions(store.modelCatalog, memoryModelName.value)
-		: getInstanceAiModelOptions(modelProvider.value, store.modelCatalog, memoryModelName.value),
+	memoryModelProvider.value
+		? getInstanceAiModelOptions(
+				memoryModelProvider.value,
+				store.modelCatalog,
+				memoryModelName.value,
+			)
+		: [],
 );
 const sandboxEnvManaged = computed(() => store.settings?.sandboxEnvConfigured === true);
 const searchEnvManaged = computed(() => store.settings?.searchEnvConfigured === true);

@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -59,6 +59,7 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 			modelCredentialId: null,
 			modelName: null,
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: false,
 			sandboxEnvConfigured: false,
 			searchEnvConfigured: false,
@@ -96,6 +97,7 @@ describe('InstanceAiOnboardingWizard', () => {
 		const { pinia } = setupStore({
 			modelName: 'claude-opus-5-5',
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			envManaged: {
 				model: { provider: true, apiKey: true, baseUrl: false, model: false, memoryModel: false },
@@ -262,6 +264,7 @@ describe('InstanceAiOnboardingWizard', () => {
 		const { pinia, store } = setupStore({
 			modelName: 'claude-opus-5-5',
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			sandboxEnvConfigured: true,
 			envManaged: {
@@ -288,6 +291,7 @@ describe('InstanceAiOnboardingWizard', () => {
 		const { pinia, store } = setupStore({
 			modelName: 'saved-env-model',
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			envManaged: {
 				model: { provider: true, apiKey: true, baseUrl: false, model: false, memoryModel: false },
@@ -783,6 +787,70 @@ describe('InstanceAiOnboardingWizard', () => {
 			);
 			expect(store.verifyModel).toHaveBeenLastCalledWith({ modelName: 'claude-retired-1' });
 			expect(store.save).not.toHaveBeenCalled();
+		});
+
+		it('offers only models from the env-configured provider', async () => {
+			const { pinia, store } = setupStore({
+				modelName: 'claude-opus-5-5',
+				modelEnvConfigured: true,
+				modelEnvProvider: 'anthropic',
+				envManaged: {
+					model: {
+						provider: true,
+						apiKey: true,
+						baseUrl: false,
+						model: false,
+						memoryModel: false,
+					},
+					sandbox: { provider: false, serviceUrl: false, apiKey: false },
+					search: { provider: false, apiKey: false, url: false },
+				},
+			});
+			store.$patch({
+				modelCatalog: {
+					anthropic: [{ id: 'claude-haiku-5', name: 'Claude Haiku 5' }],
+					openai: [{ id: 'gpt-6-mini', name: 'GPT-6 mini' }],
+					openrouter: [{ id: 'anthropic/claude-haiku-5', name: 'OpenRouter Claude Haiku 5' }],
+				},
+			});
+			const { findByTestId } = renderWizard({ pinia, props: settingsProps });
+
+			const memoryInput = inputFor(await findByTestId('n8n-agent-model-memory-model-select'));
+			await fireEvent.click(memoryInput);
+			// The main model select lists every provider here, so read only the memory listbox.
+			const listboxId = memoryInput.getAttribute('aria-controls');
+			const listbox = await waitFor(() => {
+				const element = listboxId ? document.getElementById(listboxId) : null;
+				if (!element) throw new Error('Expected the memory model listbox');
+				return element;
+			});
+
+			expect(within(listbox).getByText('Claude Haiku 5')).toBeInTheDocument();
+			expect(within(listbox).queryByText('OpenRouter Claude Haiku 5')).toBeNull();
+			expect(within(listbox).queryByText('GPT-6 mini')).toBeNull();
+		});
+
+		it('uses free text when the env-configured provider has no model catalog', async () => {
+			const { pinia } = setupStore({
+				modelName: 'claude-opus-5-5',
+				modelEnvConfigured: true,
+				modelEnvProvider: 'google-vertex-anthropic',
+				envManaged: {
+					model: {
+						provider: true,
+						apiKey: true,
+						baseUrl: false,
+						model: false,
+						memoryModel: false,
+					},
+					sandbox: { provider: false, serviceUrl: false, apiKey: false },
+					search: { provider: false, apiKey: false, url: false },
+				},
+			});
+			const { findByTestId, queryByTestId } = renderWizard({ pinia, props: settingsProps });
+
+			expect(await findByTestId('n8n-agent-model-memory-model-input')).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-memory-model-select')).toBeNull();
 		});
 
 		it('hides the memory model when the server environment sets it', async () => {

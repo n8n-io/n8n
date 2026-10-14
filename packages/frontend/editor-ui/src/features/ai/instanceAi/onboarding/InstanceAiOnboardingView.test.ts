@@ -119,6 +119,7 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 			modelCredentialId: null,
 			modelName: null,
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: false,
 			sandboxEnvConfigured: false,
 			searchEnvConfigured: false,
@@ -211,6 +212,7 @@ describe('InstanceAiOnboardingView', () => {
 	it('requires the sandbox step when server configuration is present but disabled', async () => {
 		const { pinia } = setupStore({
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			sandboxEnabled: false,
 			sandboxEnvConfigured: true,
@@ -266,6 +268,7 @@ describe('InstanceAiOnboardingView', () => {
 
 		const complete = setupStore({
 			memoryModelName: null,
+			modelEnvProvider: null,
 			modelEnvConfigured: true,
 			sandboxEnabled: true,
 			sandboxEnvConfigured: true,

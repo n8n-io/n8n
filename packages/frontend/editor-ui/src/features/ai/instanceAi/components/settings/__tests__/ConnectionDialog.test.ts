@@ -58,6 +58,7 @@ describe('ConnectionDialog', () => {
 				modelCredentialId: null,
 				modelName: null,
 				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,

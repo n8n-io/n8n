@@ -178,6 +178,7 @@ describe('SettingsInstanceAiView', () => {
 				modelCredentialId: null,
 				modelName: null,
 				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: false,
 				sandboxEnvConfigured: false,
 				searchEnvConfigured: false,
@@ -309,6 +310,7 @@ describe('SettingsInstanceAiView', () => {
 					...store.settings!,
 					modelCredentialId: 'openai-id',
 					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
@@ -326,6 +328,7 @@ describe('SettingsInstanceAiView', () => {
 					...store.settings!,
 					modelCredentialId: 'openai-id',
 					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					sandboxEnabled: true,
 					sandboxEnvConfigured: true,
@@ -453,6 +456,7 @@ describe('SettingsInstanceAiView', () => {
 				settings: {
 					...store.settings!,
 					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					modelName: 'gpt-4o',
 					envManaged: {
@@ -499,6 +503,7 @@ describe('SettingsInstanceAiView', () => {
 				settings: {
 					...store.settings!,
 					memoryModelName: null,
+					modelEnvProvider: null,
 					modelEnvConfigured: true,
 					sandboxEnabled: true,
 					sandboxEnvConfigured: true,

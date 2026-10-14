@@ -1842,6 +1842,17 @@ describe('InstanceAiSettingsService', () => {
 			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(true);
 		});
 
+		it('reports the env model provider only when the connection is env-configured', async () => {
+			expect((await service.getAdminSettings()).modelEnvProvider).toBeNull();
+
+			globalConfig.instanceAi.model = 'anthropic/claude-opus-5-5';
+			vi.stubEnv('ANTHROPIC_API_KEY', 'provider-key');
+			expect((await service.getAdminSettings()).modelEnvProvider).toBe('anthropic');
+
+			aiService.isProxyEnabled.mockReturnValue(true);
+			expect((await service.getAdminSettings()).modelEnvProvider).toBeNull();
+		});
+
 		it('reports Vertex as env-configured only when a project id is resolvable', async () => {
 			globalConfig.instanceAi.model = 'google-vertex-anthropic/claude-opus-4-8';
 			expect((await service.getAdminSettings()).modelEnvConfigured).toBe(false);

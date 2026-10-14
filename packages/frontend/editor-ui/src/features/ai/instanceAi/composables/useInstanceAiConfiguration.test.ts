@@ -17,6 +17,7 @@ function createSettings(
 		modelCredentialId: null,
 		modelName: null,
 		memoryModelName: null,
+		modelEnvProvider: null,
 		modelEnvConfigured: false,
 		sandboxEnvConfigured: false,
 		searchEnvConfigured: false,
@@ -55,6 +56,7 @@ describe('deriveInstanceAiConfiguration', () => {
 		const configuration = deriveInstanceAiConfiguration(
 			createSettings({
 				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: true,
 				sandboxEnabled: true,
 				sandboxEnvConfigured: true,

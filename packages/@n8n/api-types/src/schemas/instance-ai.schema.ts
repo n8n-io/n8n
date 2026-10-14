@@ -2493,6 +2493,8 @@ export interface InstanceAiAdminSettingsResponse {
 	/** Model for background memory tasks; `null` means the main model is used. */
 	memoryModelName: string | null;
 	modelEnvConfigured: boolean;
+	/** Provider id (for example `anthropic`) of an env-configured model connection; otherwise `null`. */
+	modelEnvProvider: string | null;
 	sandboxEnvConfigured: boolean;
 	searchEnvConfigured: boolean;
 	searchDisabled: boolean;

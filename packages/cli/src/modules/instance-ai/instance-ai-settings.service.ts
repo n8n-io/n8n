@@ -459,6 +459,8 @@ export class InstanceAiSettingsService {
 			memoryModelName:
 				isManaged || this.hasEnvironmentMemoryModel() ? null : this.adminMemoryModelName,
 			modelEnvConfigured: modelConnectionEnvConfigured,
+			modelEnvProvider:
+				!isManaged && modelConnectionEnvConfigured && c.model.includes('/') ? modelProvider : null,
 			sandboxEnvConfigured,
 			searchEnvConfigured,
 			searchDisabled: directEnvironmentConfig && searchEnvConfigured ? false : this.searchDisabled,

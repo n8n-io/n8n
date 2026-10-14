@@ -12,6 +12,7 @@ const baseSettings = {
 	modelCredentialId: null,
 	modelName: null,
 	memoryModelName: null,
+	modelEnvProvider: null,
 	modelEnvConfigured: false,
 	sandboxEnvConfigured: false,
 	searchEnvConfigured: false,
@@ -62,6 +63,7 @@ describe('buildSetupSnapshot', () => {
 			{
 				...baseSettings,
 				memoryModelName: null,
+				modelEnvProvider: null,
 				modelEnvConfigured: true,
 				modelName: 'gpt-4',
 				sandboxEnabled: true,
