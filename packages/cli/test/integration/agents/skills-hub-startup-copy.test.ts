@@ -42,7 +42,7 @@ describe('SkillsHubStartupCopy', () => {
 		skills = Container.get(SkillRepository);
 		skillRefs = Container.get(AgentSkillRefsService);
 		copy = Container.get(SkillsHubStartupCopy);
-		// The copy runs on the leader only.
+		// Every main copies. Only the leader logs the flag-off warning.
 		Container.get(InstanceSettings).markAsLeader();
 	});
 
@@ -624,6 +624,20 @@ describe('SkillsHubStartupCopy', () => {
 			expect(counts).toMatchObject({ agents: 105, skills: 105, failed: 0 });
 			const last = created[created.length - 1];
 			expect(await skillRefs.refsForDraft(last, {})).toEqual([{ type: 'skill', id: 'skill_104' }]);
+		});
+
+		it('copies on a main that is not the leader', async () => {
+			const settings = Container.get(InstanceSettings);
+			settings.markAsFollower();
+			try {
+				const agent = await legacyAgent([{ type: 'skill', id: 'tone' }], { tone: body('Tone') });
+
+				await copy.runOnStartup();
+
+				expect(await skillRefs.refsForDraft(agent, {})).toEqual([{ type: 'skill', id: 'tone' }]);
+			} finally {
+				settings.markAsLeader();
+			}
 		});
 
 		it('does not copy on a worker', async () => {
