@@ -1,5 +1,6 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { InstanceWriteAccessService, WorkflowProjectService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
@@ -26,10 +27,7 @@ import {
 } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { OwnershipService } from '@/services/ownership.service';
-
+import { DataTableAccessService } from './data-table-access.service';
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
@@ -52,7 +50,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
-		private readonly ownershipService: OwnershipService,
+		private readonly workflowProjectService: WorkflowProjectService,
+		private readonly dataTableAccessService: DataTableAccessService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {
@@ -74,7 +73,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async getProjectId(workflow: Workflow) {
-		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+		const homeProject = await this.workflowProjectService.getWorkflowProjectCached(workflow.id);
 		return homeProject.id;
 	}
 
@@ -84,9 +83,9 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId?: string,
 	): Promise<IDataTableProjectAggregateService> {
 		this.validateRequest(node);
-		projectId = projectId ?? (await this.getProjectId(workflow));
+		const resolvedProjectId = projectId ?? (await this.getProjectId(workflow));
 
-		return this.makeAggregateOperations(projectId);
+		return this.makeAggregateOperations(resolvedProjectId);
 	}
 
 	async getDataTableProxy(
@@ -96,10 +95,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId?: string,
 	): Promise<IDataTableProjectService> {
 		this.validateRequest(node);
-		projectId = projectId ?? (await this.getProjectId(workflow));
+		const resolvedProjectId = projectId ?? (await this.getProjectId(workflow));
 
 		try {
-			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
+			await this.dataTableService.validateDataTableExists(dataTableId, resolvedProjectId);
 		} catch (error) {
 			if (error instanceof DataTableNotFoundError) {
 				throw new NodeOperationError(
@@ -114,12 +113,11 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			throw error;
 		}
 
-		return this.makeDataTableOperations(projectId, dataTableId);
+		return this.makeDataTableOperations(resolvedProjectId, dataTableId);
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], false, { projectId });
-		if (!hasScope) {
+		if (!(await this.dataTableAccessService.hasProjectAccess(user, projectId, [scope]))) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}
 	}
