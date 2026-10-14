@@ -74,11 +74,9 @@ export class BreakingChangesController {
 
 	/** The given workflows that the user can edit. Editing a workflow allows triaging its findings. */
 	private async editableWorkflowIds(user: User, workflowIds: string[]): Promise<string[]> {
-		const editable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-			workflowIds,
-			user,
-			['workflow:update'],
-		);
+		const scope = await this.scopeFor(user);
+		if (scope.kind === 'instance') return workflowIds;
+		const editable = new Set(scope.workflowIds);
 		return workflowIds.filter((workflowId) => editable.has(workflowId));
 	}
 

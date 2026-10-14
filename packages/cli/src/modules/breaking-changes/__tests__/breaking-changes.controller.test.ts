@@ -86,11 +86,6 @@ describe('BreakingChangesController', () => {
 		notificationService = mock<MigrationFindingNotificationService>();
 		workflowFinderService = mock<WorkflowFinderService>();
 		workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1', 'wf-2']);
-		// The admin can edit every workflow, the member only wf-1 and wf-2.
-		workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
-			async (workflowIds, user) =>
-				new Set(workflowIds.filter((id) => user === admin || ['wf-1', 'wf-2'].includes(id))),
-		);
 		controller = new BreakingChangesController(
 			migrationService,
 			syncService,
@@ -370,11 +365,6 @@ describe('BreakingChangesController', () => {
 				'removed-nodes-v3',
 				['wf-1'],
 				'wont_fix',
-			);
-			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
-				['wf-1', 'wf-3'],
-				member,
-				['workflow:update'],
 			);
 		});
 
