@@ -70,6 +70,7 @@
     "boundaries:baseline": "node scripts/check-boundaries.mjs --write",
     "sync:skill-links": "node scripts/sync-agent-skill-links.mjs",
     "check:skill-links": "node scripts/sync-agent-skill-links.mjs --check",
+    "lint:env-var-docs": "node scripts/lint-env-var-docs.mjs",
     "check:workspace-private-deps": "node scripts/check-workspace-private-deps.mjs",
     "check:cubic-config": "pnpm install-workflow-scripts && node .github/scripts/quality/check-cubic-config.mjs",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
