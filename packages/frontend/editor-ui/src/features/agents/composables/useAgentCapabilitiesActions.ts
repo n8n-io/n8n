@@ -1,17 +1,34 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type {
+	AgentConfigValidationIssue,
+	AgentSkillAvailability,
+	SkillListItem,
+} from '@n8n/api-types';
+import { findIntroducedNameClashes } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { VIEWS } from '@/app/constants';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	canWriteInstanceSkillScope,
+	canWriteProjectSkillScope,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
+import { getSkill } from '@/features/settings/context/skills.api';
+import type { AgentSkillModalScopeOption } from '../components/AgentSkillModal.vue';
+import type { AgentSkillPickerModalData } from '../components/AgentSkillPickerModal.vue';
 import { createAgentSkill } from './useAgentApi';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
+	AGENT_SKILL_PICKER_MODAL_KEY,
 } from '../constants';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
@@ -127,7 +144,15 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const router = useRouter();
 	const { showError, showMessage } = useToast();
+
+	/**
+	 * The skills hub flow (picker, attach, scope choice) runs only with the
+	 * `125_context_skills` flag on. The agent node's NDV keeps its inline skills
+	 * (`localSkills`), so it stays on the add-skill flow from before the hub.
+	 */
+	const usesSkillsHub = () => !localSkills && isContextSkillsEnabled();
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
@@ -314,6 +339,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 		telemetry?.trackOpenedSkillFromList?.(id);
 
+		if (!usesSkillsHub()) {
+			openSkillEditor(id, skill, false);
+			return;
+		}
+		// A hub skill can be shared, and the user may use it without the right to change it.
+		void getSkill(rootStore.restApiContext, id)
+			.then((detail) => openSkillEditor(id, skill, !detail.canEdit))
+			.catch(() => openSkillEditor(id, skill, false));
+	}
+
+	function openSkillEditor(id: string, skill: AgentSkill, readOnly: boolean) {
 		// Self-address the modal to the agent it was opened for (like the add
 		// modals above): a confirm or remove landing after an agent switch must
 		// not write onto the newly active agent.
@@ -326,6 +362,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: targetAgentId,
 				skill,
 				skillId: id,
+				readOnly,
 				existingSkillNames: appliedSkillNames(id),
 				onRemove: (skillId: string) => {
 					if (agentId.value !== targetAgentId) return;
@@ -413,7 +450,122 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
+		if (usesSkillsHub()) {
+			void openSkillPicker();
+			return;
+		}
+		openCreateSkillModal();
+	}
 
+	/** The name of the agent's project, for the picker tab and the scope choice. */
+	function agentProjectLabel(): { label: string; personal: boolean } {
+		// Read on use: the store is needed only on the skills hub path.
+		const projectsStore = useProjectsStore();
+		const project =
+			projectsStore.myProjects.find((candidate) => candidate.id === projectId.value) ??
+			(projectsStore.currentProject?.id === projectId.value
+				? projectsStore.currentProject
+				: undefined);
+		if (project?.type === 'personal') {
+			return {
+				label: locale.baseText('settings.context.skills.scope.personalProject'),
+				personal: true,
+			};
+		}
+		return {
+			label: project?.name ?? locale.baseText('settings.context.skills.scope.project'),
+			personal: false,
+		};
+	}
+
+	/** Where a skill created from the builder can be added. This agent comes first. */
+	function hubScopeOptions(): AgentSkillModalScopeOption[] {
+		const options: AgentSkillModalScopeOption[] = [
+			{ value: 'agent', label: locale.baseText('agents.builder.skills.scope.agent'), icon: 'bot' },
+		];
+		if (canWriteProjectSkillScope(projectId.value)) {
+			const project = agentProjectLabel();
+			options.push({
+				value: 'project',
+				label: project.label,
+				icon: project.personal ? 'user' : 'layers',
+			});
+		}
+		if (canWriteInstanceSkillScope()) {
+			options.push({
+				value: 'instance',
+				label: locale.baseText('settings.context.skills.scope.instance'),
+				icon: 'globe',
+			});
+		}
+		return options;
+	}
+
+	async function openSkillPicker() {
+		// The picker lists what this agent may attach, so the agent must exist first.
+		try {
+			await ensureAgentPersisted?.();
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.picker.loadError'));
+			return;
+		}
+		const data: AgentSkillPickerModalData = {
+			agentId: agentId.value,
+			projectLabel: agentProjectLabel().label,
+			attachedIds: () => appliedSkills.value.map(({ id }) => id),
+			onAttach: attachHubSkill,
+			onDetach: onRemoveSkill,
+			onCreate: () => openCreateSkillModal(hubScopeOptions()),
+			onManage: () => {
+				void router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+			},
+		};
+		uiStore.openModalWithData({ name: AGENT_SKILL_PICKER_MODAL_KEY, data });
+	}
+
+	/**
+	 * Attaches a hub skill: a ref in the agent config, never a copy. The body is read
+	 * first so the chip and the editor show the skill before the next agent fetch.
+	 */
+	async function attachHubSkill(item: SkillListItem): Promise<boolean> {
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		// The same rule the backend applies, so the user gets the reason before the save.
+		if (findIntroducedNameClashes(appliedSkillNames(), [item.name]).length > 0) {
+			showMessage({
+				type: 'error',
+				title: locale.baseText('agents.builder.skills.picker.attachError'),
+				message: locale.baseText('agents.builder.skills.picker.nameClash', {
+					interpolate: { name: item.name },
+				}),
+			});
+			return false;
+		}
+		let detail: Awaited<ReturnType<typeof getSkill>>;
+		try {
+			detail = await getSkill(rootStore.restApiContext, item.id);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.picker.attachError'));
+			return false;
+		}
+		if (projectId.value !== targetProjectId || agentId.value !== targetAgentId) return false;
+		if (!agent.value || !localConfig.value) return false;
+		agent.value = {
+			...agent.value,
+			skillHashes: { ...(agent.value.skillHashes ?? {}), [item.id]: detail.skillHash },
+			skills: { ...(agent.value.skills ?? {}), [item.id]: detail.skill },
+		};
+		scheduleConfigUpdate({
+			skills: [
+				...(localConfig.value.skills ?? []).filter((ref) => ref.id !== item.id),
+				{ type: 'skill', id: item.id },
+			],
+		});
+		return true;
+	}
+
+	/** `scopeOptions` is set for the skills hub: the user picks where the new skill can be added. */
+	function openCreateSkillModal(scopeOptions?: AgentSkillModalScopeOption[]) {
 		// Capture the target at open time: the modal can outlive an agent/node
 		// switch, and a late confirm must create the skill on the agent the
 		// modal was opened for — and only mutate local state if that agent is
@@ -429,7 +581,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: targetProjectId,
 				agentId: targetAgentId,
 				existingSkillNames: appliedSkillNames(),
-				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
+				...(scopeOptions ? { scopeOptions, initialScope: scopeOptions[0]?.value } : {}),
+				onConfirm: ({ skill, scope }: { id?: string; skill: AgentSkill; scope?: string }) => {
 					if (localSkills) {
 						if (!isCurrentTarget()) return;
 						const sanitizedSkill = normalizeAgentSkillForSave(skill);
@@ -465,6 +618,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								targetProjectId,
 								targetAgentId,
 								sanitizedSkill,
+								scopeOptions ? toAvailability(scope) : undefined,
 							);
 							skillId = result.id;
 							created = result.skill;
@@ -508,6 +662,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				},
 			},
 		});
+	}
+
+	function toAvailability(scope: string | undefined): AgentSkillAvailability | undefined {
+		return scope === 'agent' || scope === 'project' || scope === 'instance' ? scope : undefined;
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {

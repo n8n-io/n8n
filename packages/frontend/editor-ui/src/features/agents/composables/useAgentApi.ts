@@ -25,6 +25,7 @@ import type {
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
 	AgentsSettingsDto,
+	AgentSkillAvailability,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
@@ -703,12 +704,14 @@ export const createAgentSkill = async (
 	projectId: string,
 	agentId: string,
 	skill: AgentSkill,
+	/** Skills hub only: where the new skill can be added. The backend defaults to this agent. */
+	availableTo?: AgentSkillAvailability,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		skill,
+		{ ...skill, ...(availableTo ? { availableTo } : {}) },
 	);
 };
 

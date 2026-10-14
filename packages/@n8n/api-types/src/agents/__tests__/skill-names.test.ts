@@ -3,7 +3,7 @@ import {
 	findNameClashGroups,
 	renameIntroducesClash,
 	skillNameKey,
-} from '../skills/skill-names';
+} from '../skill-names';
 
 describe('skillNameKey', () => {
 	it.each([

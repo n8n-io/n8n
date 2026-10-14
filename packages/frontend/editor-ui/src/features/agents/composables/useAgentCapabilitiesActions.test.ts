@@ -14,6 +14,25 @@ import type {
 } from '../types';
 
 const { openModalWithData } = vi.hoisted(() => ({ openModalWithData: vi.fn() }));
+const { hub, getSkill, showMessage } = vi.hoisted(() => ({
+	hub: { enabled: false, canWriteProject: false, canWriteInstance: false },
+	getSkill: vi.fn(),
+	showMessage: vi.fn(),
+}));
+
+vi.mock('@/features/settings/context/context.utils', () => ({
+	isContextSkillsEnabled: () => hub.enabled,
+	canWriteProjectSkillScope: () => hub.canWriteProject,
+	canWriteInstanceSkillScope: () => hub.canWriteInstance,
+}));
+vi.mock('@/features/settings/context/skills.api', () => ({ getSkill }));
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({
+		myProjects: [{ id: 'proj-1', name: 'Darwin', type: 'team' }],
+		currentProject: null,
+	}),
+}));
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openModalWithData }),
@@ -24,7 +43,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	}),
 }));
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: () => ({ showError: vi.fn(), showMessage }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '', pushRef: '' } }),
@@ -69,6 +88,119 @@ function makeActions(
 describe('useAgentCapabilitiesActions', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		hub.enabled = false;
+		hub.canWriteProject = false;
+		hub.canWriteInstance = false;
+	});
+
+	describe('skills hub', () => {
+		const lastModal = () =>
+			openModalWithData.mock.calls.at(-1)?.[0] as { name: string; data: Record<string, unknown> };
+
+		it('keeps the add-skill modal from before the hub while the flag is off', () => {
+			const { actions } = makeActions();
+
+			actions.onOpenAddSkillModal();
+
+			expect(lastModal().name).toBe('agentSkillModal');
+			expect(lastModal().data).not.toHaveProperty('scopeOptions');
+		});
+
+		it('opens the skill picker while the flag is on', async () => {
+			hub.enabled = true;
+			const { actions } = makeActions();
+
+			actions.onOpenAddSkillModal();
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+
+			expect(lastModal().name).toBe('agentSkillPickerModal');
+			expect(lastModal().data).toMatchObject({ agentId: 'agent-1', projectLabel: 'Darwin' });
+		});
+
+		it('attaches a skill as a ref and shows its body before the next fetch', async () => {
+			hub.enabled = true;
+			const body: AgentSkill = { name: 'brand-voice', description: 'd', instructions: 'Be brief.' };
+			getSkill.mockResolvedValue({ skill: body, skillHash: 'hash-1' });
+			const { actions, agent, scheduleConfigUpdate } = makeActions({
+				skills: [{ type: 'skill', id: 's1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = { id: 'agent-1', skills: {} } as unknown as AgentResource;
+			actions.onOpenAddSkillModal();
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+			const onAttach = lastModal().data.onAttach as (skill: {
+				id: string;
+				name: string;
+			}) => Promise<boolean>;
+
+			const attached = await onAttach({ id: 's2', name: 'brand-voice' });
+
+			expect(attached).toBe(true);
+			expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+				skills: [
+					{ type: 'skill', id: 's1' },
+					{ type: 'skill', id: 's2' },
+				],
+			});
+			expect(agent.value?.skills?.s2).toEqual(body);
+		});
+
+		it('refuses a skill whose name is hard to tell apart from an attached one', async () => {
+			hub.enabled = true;
+			const { actions, agent, scheduleConfigUpdate } = makeActions({
+				skills: [{ type: 'skill', id: 's1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = {
+				id: 'agent-1',
+				skills: { s1: { name: 'Brand voice', description: '', instructions: 'x' } },
+			} as unknown as AgentResource;
+			actions.onOpenAddSkillModal();
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+			const onAttach = lastModal().data.onAttach as (skill: {
+				id: string;
+				name: string;
+			}) => Promise<boolean>;
+
+			const attached = await onAttach({ id: 's2', name: 'brand_voice' });
+
+			expect(attached).toBe(false);
+			expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+			expect(getSkill).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'agents.builder.skills.picker.nameClash' }),
+			);
+		});
+
+		it('offers this agent first, then the project and Global the user may write to', async () => {
+			hub.enabled = true;
+			hub.canWriteProject = true;
+			const { actions } = makeActions();
+			actions.onOpenAddSkillModal();
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+
+			(lastModal().data.onCreate as () => void)();
+
+			expect(lastModal().name).toBe('agentSkillModal');
+			expect(lastModal().data.scopeOptions).toEqual([
+				{ value: 'agent', label: 'agents.builder.skills.scope.agent', icon: 'bot' },
+				{ value: 'project', label: 'Darwin', icon: 'layers' },
+			]);
+			expect(lastModal().data.initialScope).toBe('agent');
+		});
+
+		it('opens an attached skill read-only when the user cannot change it', async () => {
+			hub.enabled = true;
+			getSkill.mockResolvedValue({ canEdit: false });
+			const skill: AgentSkill = { name: 'brand-voice', description: '', instructions: 'x' };
+			const { actions, agent } = makeActions({
+				skills: [{ type: 'skill', id: 's1' }],
+			} as Partial<AgentJsonConfig>);
+			agent.value = { id: 'agent-1', skills: { s1: skill } } as unknown as AgentResource;
+
+			actions.onOpenSkillFromList('s1');
+			await vi.waitFor(() => expect(openModalWithData).toHaveBeenCalled());
+
+			expect(lastModal().data.readOnly).toBe(true);
+		});
 	});
 
 	it('forwards the selected picker mode to the tools modal', () => {

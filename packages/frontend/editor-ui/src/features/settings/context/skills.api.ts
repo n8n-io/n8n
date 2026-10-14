@@ -17,6 +17,8 @@ export type SkillListQuery = {
 	search?: string;
 	scope?: CreateSkillDto['scope'];
 	projectId?: string;
+	/** An agent id: the skills that agent may attach. Not combined with `scope` or `projectId`. */
+	attachableTo?: string;
 };
 
 export async function getSkills(
