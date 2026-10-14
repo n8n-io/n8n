@@ -1080,10 +1080,9 @@ describe('WorkflowExecutionService', () => {
 				);
 
 				expect(defaultTestWebhooks.needsWebhook).not.toHaveBeenCalled();
-				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-				const [runData] = workflowRunner.run.mock.calls[0];
-				expect([webhookNode.name, secondWebhookNode.name]).toContain(
-					runData.triggerToStartFrom?.name,
+				// `selectPinnedTrigger` orders the pinned webhooks so the last one comes first.
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({ triggerToStartFrom: { name: secondWebhookNode.name } }),
 				);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
 			});
