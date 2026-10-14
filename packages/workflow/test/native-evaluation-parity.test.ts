@@ -345,6 +345,21 @@ describe('Expression - fast native evaluation parity', () => {
 		});
 	});
 
+	// The quickjs bridge turns a nested -0 into 0 (a top-level -0 survives).
+	// Native keeps it, as vm and legacy do. Pinned so a change is visible.
+	test('nested -0 survives natively; the quickjs bridge turns it into 0', () => {
+		const zeros = { json: { item: { obj: { x: -0 }, arr: [-0], top: -0 } } };
+		const data = runDataFor([zeros as never]);
+		const run = (expr: string, native: boolean) => evaluate(expr, native, data, [zeros as never]);
+		const quickjs = Expression.getActiveImplementation() === 'quickjs';
+
+		expect(run('={{ $json.item.obj }}', true)).toStrictEqual({ x: -0 });
+		expect(run('={{ $json.item.arr }}', true)).toStrictEqual([-0]);
+		expect(run('={{ $json.item.obj }}', false)).toStrictEqual({ x: quickjs ? 0 : -0 });
+		expect(run('={{ $json.item.arr }}', false)).toStrictEqual([quickjs ? 0 : -0]);
+		expect(Object.is(run('={{ $json.item.top }}', false), -0)).toBe(true);
+	});
+
 	test('object results are copies, never the live execution data', () => {
 		const fresh = makeItem();
 		const result = evaluate('={{ $json.item.my_object }}', true, runDataFor([fresh]), [fresh]);
