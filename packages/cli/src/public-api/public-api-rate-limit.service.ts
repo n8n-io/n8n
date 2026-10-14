@@ -15,8 +15,8 @@ type AccessRequestLimits = { perEndpoint: RequestLimit; allEndpoints: RequestLim
 
 const READ_METHODS: ReadonlySet<Method> = new Set(['get', 'head']);
 
-/** Reads and writes have separate limits. */
-const accessFor = (
+/** `@RateLimitAccess` wins. Without it, `GET` and `HEAD` are reads and all other methods are writes. */
+const resolveAccess = (
 	method: Method,
 	accessFromDecorator?: RateLimitAccessName,
 ): RateLimitAccessName => accessFromDecorator ?? (READ_METHODS.has(method) ? 'read' : 'write');
@@ -27,7 +27,7 @@ const accessFor = (
  */
 @Service()
 export class PublicApiRateLimitService {
-	private readonly allEndpointsLimiters = new Map<
+	private readonly allEndpointsLimiterCache = new Map<
 		RateLimitAccessName,
 		RequestHandler | undefined
 	>();
@@ -42,28 +42,31 @@ export class PublicApiRateLimitService {
 	createRouteLimiters(method: Method, accessFromDecorator?: RateLimitAccessName): RequestHandler[] {
 		if (!this.config.enabled) return [];
 
-		const access = accessFor(method, accessFromDecorator);
+		const access = resolveAccess(method, accessFromDecorator);
 
 		// The per-endpoint limiter runs first, so a request it blocks does not count toward the
 		// all-endpoints limit, and the all-endpoints headers are the ones a client sees when both pass.
-		return [
-			createLimiter(this.requestLimitsFor(access).perEndpoint),
-			this.allEndpointsLimiterFor(access),
-		].filter((limiter) => limiter !== undefined);
+		return [this.createPerEndpointLimiter(access), this.getAllEndpointsLimiter(access)].filter(
+			(limiter) => limiter !== undefined,
+		);
 	}
 
-	/** All read routes share one all-endpoints limiter, and all write routes share another. */
-	private allEndpointsLimiterFor(access: RateLimitAccessName) {
-		if (!this.allEndpointsLimiters.has(access)) {
-			this.allEndpointsLimiters.set(
+	private createPerEndpointLimiter(access: RateLimitAccessName) {
+		return createRateLimiter(this.getLimitsFromConfig(access).perEndpoint);
+	}
+
+	/** All routes with the same access share one limiter, so it is created once and cached. */
+	private getAllEndpointsLimiter(access: RateLimitAccessName) {
+		if (!this.allEndpointsLimiterCache.has(access)) {
+			this.allEndpointsLimiterCache.set(
 				access,
-				createLimiter(this.requestLimitsFor(access).allEndpoints),
+				createRateLimiter(this.getLimitsFromConfig(access).allEndpoints),
 			);
 		}
-		return this.allEndpointsLimiters.get(access);
+		return this.allEndpointsLimiterCache.get(access);
 	}
 
-	private requestLimitsFor(access: RateLimitAccessName): AccessRequestLimits {
+	private getLimitsFromConfig(access: RateLimitAccessName): AccessRequestLimits {
 		const { config } = this;
 		const limits: Record<RateLimitAccessName, AccessRequestLimits> = {
 			read: {
@@ -92,7 +95,10 @@ export class PublicApiRateLimitService {
 }
 
 /** A limit of 0 turns off that layer. */
-function createLimiter({ maxRequests, windowSeconds }: RequestLimit): RequestHandler | undefined {
+function createRateLimiter({
+	maxRequests,
+	windowSeconds,
+}: RequestLimit): RequestHandler | undefined {
 	if (maxRequests === 0) return undefined;
 
 	return rateLimit({
