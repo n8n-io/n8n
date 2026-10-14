@@ -530,11 +530,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...(toolConfig && { toolConfig }),
 	};
 
+	const captureUsage = (response: GenerateContentResponse) => {
+		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
+			| { promptTokenCount: number; candidatesTokenCount: number }
+			| undefined;
+		if (usageMetadata) {
+			accumulateTokenUsage(
+				this,
+				usageMetadata.promptTokenCount,
+				usageMetadata.candidatesTokenCount,
+			);
+		}
+	};
+
 	const requestedModel = model.replace(/^models\//, '');
 	const generateContent = async () => {
 		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 			body,
 		})) as GenerateContentResponse;
+		captureUsage(response);
 		if (
 			requestedModel.startsWith('gemma-') &&
 			response.modelVersion &&
@@ -549,21 +563,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	let response = await generateContent();
-
-	const captureUsage = () => {
-		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
-			| { promptTokenCount: number; candidatesTokenCount: number }
-			| undefined;
-		if (usageMetadata) {
-			accumulateTokenUsage(
-				this,
-				usageMetadata.promptTokenCount,
-				usageMetadata.candidatesTokenCount,
-			);
-		}
-	};
-
-	captureUsage();
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -607,7 +606,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 
 		response = await generateContent();
-		captureUsage();
 		toolCalls = getToolCalls(response);
 		currentIteration++;
 	}

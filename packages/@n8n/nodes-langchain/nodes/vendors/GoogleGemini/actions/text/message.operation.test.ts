@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteData, IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mock, mockDeep, mockReset } from 'vitest-mock-extended';
 
@@ -18,10 +18,16 @@ describe('Google Gemini message model identity', () => {
 			},
 		],
 		modelVersion: 'gemma-4-26b-a4b-it',
+		usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
 	};
 
 	beforeEach(() => {
 		mockReset(executeFunctionsMock);
+		const executeData = mock<IExecuteData>({ metadata: {} });
+		executeFunctionsMock.getExecuteData.mockReturnValue(executeData);
+		executeFunctionsMock.setMetadata.mockImplementation((metadata) => {
+			executeData.metadata = metadata;
+		});
 		executeFunctionsMock.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.2 }));
 		executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
 		executeFunctionsMock.getCredentials.mockResolvedValue({});
@@ -57,6 +63,9 @@ describe('Google Gemini message model identity', () => {
 			}),
 		);
 		expect(result).toEqual([{ json: response.candidates[0], pairedItem: { item: 0 } }]);
+		expect(executeFunctionsMock.setMetadata).toHaveBeenCalledExactlyOnceWith({
+			tokenUsage: { inputTokens: 10, outputTokens: 5 },
+		});
 	});
 
 	it('should reject a successful Gemini 3 Flash response when a Gemma model is configured', async () => {
@@ -67,6 +76,9 @@ describe('Google Gemini message model identity', () => {
 		});
 
 		await expect(execute.call(executeFunctionsMock, 0)).rejects.toThrow(NodeOperationError);
+		expect(executeFunctionsMock.setMetadata).toHaveBeenCalledExactlyOnceWith({
+			tokenUsage: { inputTokens: 10, outputTokens: 5 },
+		});
 	});
 
 	it.each([
@@ -90,6 +102,7 @@ describe('Google Gemini message model identity', () => {
 		executeFunctionsMock.helpers.httpRequestWithAuthentication
 			.mockResolvedValueOnce({
 				...response,
+				usageMetadata: { promptTokenCount: 20, candidatesTokenCount: 3 },
 				candidates: [
 					{
 						content: {
@@ -103,5 +116,12 @@ describe('Google Gemini message model identity', () => {
 
 		await expect(execute.call(executeFunctionsMock, 0)).rejects.toThrow(NodeOperationError);
 		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+		expect(executeFunctionsMock.setMetadata).toHaveBeenCalledTimes(2);
+		expect(executeFunctionsMock.setMetadata).toHaveBeenNthCalledWith(1, {
+			tokenUsage: { inputTokens: 20, outputTokens: 3 },
+		});
+		expect(executeFunctionsMock.setMetadata).toHaveBeenNthCalledWith(2, {
+			tokenUsage: { inputTokens: 30, outputTokens: 8 },
+		});
 	});
 });
