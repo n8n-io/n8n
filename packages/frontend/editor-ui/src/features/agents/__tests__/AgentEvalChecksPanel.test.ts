@@ -387,26 +387,28 @@ describe('AgentEvalChecksPanel', () => {
 	});
 
 	describe('pill visibility', () => {
-		// Each pill is dynamic on its own count — a run that's all passing still
-		// shows "Pass" and "All", it just has nothing to show under "Needs work".
-		it('hides the needs-work pill but shows pass and all when everything passes', () => {
+		// When every check has the same status, a status option and "All" would
+		// list the same rows, so only one summary option shows.
+		it('shows one summary option when everything passes', () => {
 			const { queryByTestId, getByTestId } = render({
 				results: [result('pass-1', 'success'), result('pass-2', 'success')],
 			});
 
 			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument();
-			expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('2');
-			expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('2');
+			expect(queryByTestId('agent-eval-checks-filter-all')).not.toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('All 2 passed');
 		});
 
-		it('hides the pass pill but shows needs-work and all when everything needs work', () => {
+		it('shows one summary option when everything needs work', () => {
 			const { queryByTestId, getByTestId } = render({
 				results: [result('fail-1', 'error'), result('fail-2', 'error')],
 			});
 
 			expect(queryByTestId('agent-eval-checks-filter-pass')).not.toBeInTheDocument();
-			expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent('2');
-			expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('2');
+			expect(queryByTestId('agent-eval-checks-filter-all')).not.toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent(
+				'All 2 need work',
+			);
 		});
 
 		it('shows all three pills once both statuses are present', () => {
