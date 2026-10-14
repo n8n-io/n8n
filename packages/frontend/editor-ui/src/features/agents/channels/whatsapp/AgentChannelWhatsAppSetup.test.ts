@@ -11,7 +11,11 @@ import type { WhatsAppCredentialCheck } from '@n8n/api-types';
 
 import AgentChannelWhatsAppSetup from './AgentChannelWhatsAppSetup.vue';
 import { ResponseError } from '@n8n/rest-api-client';
-import { checkWhatsAppCredential, getWhatsAppWebhookStatus } from './api';
+import {
+	checkWhatsAppCredential,
+	getWhatsAppWebhookStatus,
+	resetWhatsAppWebhookStatus,
+} from './api';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -43,6 +47,7 @@ vi.mock('../../composables/useAgentApi', () => ({ getWhatsAppVerifyToken }));
 vi.mock('./api', () => ({
 	checkWhatsAppCredential: vi.fn(),
 	getWhatsAppWebhookStatus: vi.fn(),
+	resetWhatsAppWebhookStatus: vi.fn(),
 }));
 
 vi.mock('../../components/AgentIntegrationCredentialConnection.vue', () => ({
@@ -99,6 +104,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 		getWhatsAppVerifyToken.mockResolvedValue({ verifyToken: 'verify-token-123' });
 		vi.mocked(checkWhatsAppCredential).mockResolvedValue({ status: 'ok', profile: PROFILE });
 		vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: false });
+		vi.mocked(resetWhatsAppWebhookStatus).mockResolvedValue({ verified: false });
 	});
 
 	afterEach(() => vi.useRealTimers());
@@ -241,6 +247,20 @@ describe('AgentChannelWhatsAppSetup', () => {
 			);
 		});
 
+		it('explains a credential the caller cannot use instead of calling Meta unreachable', async () => {
+			vi.mocked(checkWhatsAppCredential).mockRejectedValue(
+				new ResponseError('Credential not found', { httpStatusCode: 404 }),
+			);
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() =>
+				expect(getByTestId('whatsapp-credential-problem')).toHaveTextContent(
+					'agents.channels.whatsapp.setup.credential.failed.notFound',
+				),
+			);
+			expect(getByTestId('whatsapp-credential-recheck')).toBeVisible();
+		});
+
 		it('checks again on Check again', async () => {
 			vi.mocked(checkWhatsAppCredential).mockResolvedValue({
 				status: 'failed',
@@ -322,6 +342,70 @@ describe('AgentChannelWhatsAppSetup', () => {
 	});
 
 	describe('webhook verification polling', () => {
+		it('clears an earlier handshake before the first poll', async () => {
+			renderComponent({ props: props() });
+			await flushPromises();
+
+			expect(resetWhatsAppWebhookStatus).toHaveBeenCalledExactlyOnceWith(
+				expect.anything(),
+				'p',
+				'a',
+			);
+			expect(vi.mocked(resetWhatsAppWebhookStatus).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(getWhatsAppWebhookStatus).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not show an earlier handshake as verified while the reset is pending', async () => {
+			const reset = deferred<{ verified: boolean }>();
+			vi.mocked(resetWhatsAppWebhookStatus).mockReturnValueOnce(reset.promise);
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: true });
+			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
+			await flushPromises();
+
+			expect(getWhatsAppWebhookStatus).not.toHaveBeenCalled();
+			expect(queryByTestId('whatsapp-webhook-verified')).toBeNull();
+
+			reset.resolve({ verified: false });
+			await waitFor(() => expect(getByTestId('whatsapp-webhook-verified')).toBeVisible());
+		});
+
+		it('waits for the agent when the reset finds no saved agent', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			vi.mocked(resetWhatsAppWebhookStatus).mockRejectedValueOnce(
+				new ResponseError('Agent not found', { httpStatusCode: 404 }),
+			);
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: true });
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+			const { getByTestId, rerender } = renderComponent({
+				props: props({ ensureAgentPersisted }),
+			});
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+
+			expect(getWhatsAppWebhookStatus).not.toHaveBeenCalled();
+			expect(showError).not.toHaveBeenCalled();
+
+			await rerender(props({ modelValue: 'cred-1', ensureAgentPersisted }));
+			await flushPromises();
+
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+			expect(getByTestId('whatsapp-webhook-verified')).toBeVisible();
+		});
+
+		it('says so and still polls when the reset fails', async () => {
+			const error = new Error('cache down');
+			vi.mocked(resetWhatsAppWebhookStatus).mockRejectedValueOnce(error);
+			renderComponent({ props: props() });
+			await flushPromises();
+
+			expect(showError).toHaveBeenCalledExactlyOnceWith(
+				error,
+				'agents.channels.whatsapp.setup.verify.resetError',
+			);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
+		});
+
 		it('polls every 3 seconds until Meta verifies the webhook, then stops', async () => {
 			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 			vi.mocked(getWhatsAppWebhookStatus)
@@ -435,6 +519,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 			await vi.advanceTimersByTimeAsync(POLL_MS * 3);
 
 			expect(getWhatsAppWebhookStatus).not.toHaveBeenCalled();
+			expect(resetWhatsAppWebhookStatus).not.toHaveBeenCalled();
 		});
 	});
 
