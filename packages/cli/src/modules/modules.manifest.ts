@@ -6,5 +6,6 @@ import type { PackagedModules } from '@n8n/backend-common';
  */
 export const packagedModules: PackagedModules = {
 	insights: async () => await import('@n8n/backend-module-insights/module'),
+	'quick-connect': async () => await import('@n8n/backend-module-quick-connect/module'),
 	apps: async () => await import('@n8n/backend-module-apps/module'),
 };

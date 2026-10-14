@@ -294,11 +294,16 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The configuration, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
 `preflight` object lists each missing project, missing binding, access
 requirement, and conflict. Existing variable values on this instance are kept.
+
+Apply makes the team projects on this instance match the package. It deletes
+each team project that the package does not hold, with all its workflows,
+credentials, and data tables. Preflight reports each such project as a
+`project-deletion` conflict.
 
 Clone the `apply` direction first. This command works on the `instance`
 connection only. The API key needs `gitConnection:pull`.
@@ -320,10 +325,16 @@ for `apply`: `blocked` again means that something still blocks, and
 so run the command again when it exits `4`.
 
 Add `--confirm-destructive-changes` to also apply destructive data table
-changes: removed or retyped columns. The values in those columns are removed.
-Rows and other columns are kept. The flag applies all such changes when the
-command runs. This includes changes that the blocked Apply did not report.
-Without the flag, a destructive change blocks the command, and it exits `4`.
+changes and delete projects:
+
+- Removed or retyped columns. The values in those columns are removed. Rows and
+  other columns are kept.
+- Team projects that the package does not hold. Each project is deleted with
+  everything in it. You can't undo this.
+
+The flag applies all such changes when the command runs. This includes changes
+and projects that the blocked Apply did not report. Without the flag, a
+destructive change or a project deletion blocks the command, and it exits `4`.
 
 ## Apply a reviewed commit
 
