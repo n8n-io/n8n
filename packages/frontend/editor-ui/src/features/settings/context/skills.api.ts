@@ -3,6 +3,7 @@ import type {
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
+	SkillNewNameResponse,
 	SkillSaveResponse,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -24,6 +25,25 @@ export async function getSkills(
 	query: SkillListQuery = {},
 ): Promise<SkillListResponse> {
 	return await makeRestApiRequest<SkillListResponse>(context, 'GET', ENDPOINT, { ...query });
+}
+
+/** A name that no skill in the scope has yet: the requested name, or the name with a number. */
+export async function getNewSkillName(
+	context: IRestApiContext,
+	query: {
+		scope: CreateSkillDto['scope'];
+		projectId?: string;
+		agentId?: string;
+		name: string;
+	},
+): Promise<string> {
+	const response = await makeRestApiRequest<SkillNewNameResponse>(
+		context,
+		'GET',
+		`${ENDPOINT}/new-name`,
+		{ ...query },
+	);
+	return response.name;
 }
 
 export async function getSkill(context: IRestApiContext, id: string): Promise<SkillDetail> {

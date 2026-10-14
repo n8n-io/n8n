@@ -184,6 +184,11 @@ function openCreateModal() {
 		scopeOptions: options,
 		initialScope: options[0].value,
 		existingSkillNames: [],
+		getDefaultName: async (scopeValue) =>
+			await skillsStore.fetchNewSkillName({
+				...parseScope(scopeValue),
+				name: i18n.baseText('agents.builder.skills.defaultName'),
+			}),
 		onConfirm: async ({ skill, scope }) => await onCreate(skill, scope ?? options[0].value),
 	});
 }

@@ -275,6 +275,35 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('freeName', () => {
+		const target = { projectId: PROJECT, agentId: null };
+
+		it('keeps a name that the scope does not hold', async () => {
+			expect(await service.freeName('New skill', target)).toBe('New skill');
+			expect(skills.findLatestNamesInTarget).toHaveBeenCalledWith(target, {});
+		});
+
+		it('adds the first free number, by the same rule as the name check', async () => {
+			skills.findLatestNamesInTarget.mockResolvedValue([
+				{ skillId: 'a', name: 'new-skill' },
+				{ skillId: 'b', name: 'New skill 2' },
+				{ skillId: 'c', name: 'New skill 4' },
+			]);
+
+			expect(await service.freeName('New skill', target)).toBe('New skill 3');
+		});
+
+		it('shortens a long name so the number fits the length limit', async () => {
+			const long = 'x'.repeat(128);
+			skills.findLatestNamesInTarget.mockResolvedValue([{ skillId: 'a', name: long }]);
+
+			const name = await service.freeName(long, target);
+
+			expect(name).toHaveLength(128);
+			expect(name.endsWith(' 2')).toBe(true);
+		});
+	});
+
 	describe('save', () => {
 		const skill = skillRow('skill_a', { projectId: PROJECT });
 

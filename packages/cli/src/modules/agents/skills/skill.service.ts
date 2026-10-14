@@ -1,4 +1,4 @@
-import type { AgentSkill } from '@n8n/api-types';
+import { AGENT_SKILL_NAME_MAX_LENGTH, type AgentSkill } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
@@ -269,6 +269,28 @@ export class SkillService {
 				{ projectId: agent.projectId, agentId: agent.id, source: 'user' },
 				excludePushRef,
 			);
+		}
+	}
+
+	/**
+	 * The requested name if its scope has no name like it, else the name with the first
+	 * free number after it ("New skill 2"), as workflow names get.
+	 */
+	async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
+		const taken = new Set(
+			(
+				await this.skillRepository.findLatestNamesInTarget(
+					{ projectId: target.projectId, agentId: target.agentId },
+					ctx,
+				)
+			).map(({ name }) => skillNameKey(name)),
+		);
+		const base = requested.trim();
+		if (!taken.has(skillNameKey(base))) return base;
+		for (let n = 2; ; n++) {
+			const suffix = ` ${n}`;
+			const candidate = `${base.slice(0, AGENT_SKILL_NAME_MAX_LENGTH - suffix.length)}${suffix}`;
+			if (!taken.has(skillNameKey(candidate))) return candidate;
 		}
 	}
 

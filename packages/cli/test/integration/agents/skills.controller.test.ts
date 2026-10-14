@@ -466,6 +466,51 @@ describe('SkillsController', () => {
 		});
 	});
 
+	describe('new name', () => {
+		const newName = async (agent: SuperAgentTest, query: Record<string, string>, status = 200) =>
+			(await agent.get('/skills/new-name').query(query).expect(status)).body.data as {
+				name: string;
+			};
+
+		it('numbers a default name that its scope already holds', async () => {
+			await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'New skill' },
+			});
+			await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'New skill 2' },
+			});
+
+			const free = await newName(editor, {
+				scope: 'project',
+				projectId: project.id,
+				name: 'New skill',
+			});
+
+			expect(free).toEqual({ name: 'New skill 3' });
+		});
+
+		it('looks at the requested scope only', async () => {
+			await create(owner, { scope: 'instance', skill: { ...body, name: 'New skill' } });
+
+			const free = await newName(editor, {
+				scope: 'project',
+				projectId: project.id,
+				name: 'New skill',
+			});
+
+			expect(free).toEqual({ name: 'New skill' });
+		});
+
+		it('needs the create permission in that scope', async () => {
+			await newName(viewer, { scope: 'project', projectId: project.id, name: 'New skill' }, 403);
+			await newName(member, { scope: 'instance', name: 'New skill' }, 403);
+		});
+	});
+
 	describe('change scope', () => {
 		it('moves an unused skill and saves its content in the same request', async () => {
 			const { id, skillHash } = await create(editor, {

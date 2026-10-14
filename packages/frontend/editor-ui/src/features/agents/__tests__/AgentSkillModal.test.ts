@@ -56,7 +56,7 @@ function renderModal({
 	/** Opens the modal as Settings > Context > Skills does: no agent, plus these fields. */
 	settings?: Pick<
 		AgentSkillModalData,
-		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason'
+		'readOnly' | 'scopeOptions' | 'initialScope' | 'scopeLockedReason' | 'getDefaultName'
 	>;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
@@ -471,6 +471,43 @@ describe('AgentSkillModal from Settings', () => {
 
 		expect(getByTestId('agent-skill-scope')).toBeInTheDocument();
 		expect(getByTestId('agent-skill-scope-select').querySelector('input')).toBeDisabled();
+	});
+
+	it('asks the server for a free default name when a skill is started by hand', async () => {
+		const getDefaultName = vi.fn().mockResolvedValue('New skill 3');
+		const { getByTestId } = renderModal({
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+				getDefaultName,
+			},
+		});
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+
+		expect(getDefaultName).toHaveBeenCalledWith('instance');
+		await waitFor(() => expect(getTitleInput(document.body)).toHaveValue('New skill 3'));
+	});
+
+	it('keeps the local default name when the server does not answer', async () => {
+		const { getByTestId } = renderModal({
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				getDefaultName: vi.fn().mockRejectedValue(new Error('offline')),
+			},
+		});
+
+		await fireEvent.click(getByTestId('agent-skill-add-manually'));
+		await new Promise(process.nextTick);
+
+		expect(getTitleInput(document.body)).toHaveValue('New skill');
+	});
+
+	it('does not ask for a default name when an existing skill is edited', () => {
+		const getDefaultName = vi.fn();
+		renderModal({ skillId: 's1', skill: SAVED_SKILL, settings: { getDefaultName } });
+
+		expect(getDefaultName).not.toHaveBeenCalled();
 	});
 
 	it('keeps the scope field out of the agent builder', () => {
