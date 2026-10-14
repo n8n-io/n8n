@@ -540,12 +540,16 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(getByTestId(BUTTON)).toBeDisabled();
 		});
 
-		it('is hidden while the run is still going', () => {
-			const { queryByTestId } = renderComponent({
+		it('applies settled suggestions and offers the checks view while another check is running', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({
 				props: { caseRuns: [failed(1), failed(2), failed(3, { status: 'waiting' as const })] },
 			});
 
-			expect(queryByTestId(BUTTON)).not.toBeInTheDocument();
+			await user.click(getByTestId(BUTTON));
+			expect(emitted('apply-suggestions')).toEqual([[['result-1', 'result-2']]]);
+			await user.click(getByTestId('instance-ai-test-agent-examples-manage-checks'));
+			expect(emitted('open-case')).toEqual([[null]]);
 		});
 	});
 

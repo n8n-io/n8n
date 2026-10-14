@@ -22,14 +22,16 @@ const props = defineProps<{
 	caseSource: AgentEvalCaseSource | null;
 	/** No `agent:update` — nothing can be added. */
 	disabled?: boolean;
-	/** The checks are starting or running, so another add would start a second run. */
+	/** A replacement run is starting, so its dataset is not ready for another write. */
 	busy?: boolean;
+	/** Save new cases for the next run while this run keeps its original cases. */
+	deferRun?: boolean;
 }>();
 
 const emit = defineEmits<{
 	close: [];
 	/** A case was written to the dataset. */
-	added: [];
+	added: [deferRun: boolean];
 }>();
 
 const i18n = useI18n();
@@ -85,8 +87,11 @@ onBeforeUnmount(() => {
 	isMounted = false;
 });
 
-/** Writes the case to the dataset, then tells the parent to run the checks again. */
-async function writeCase(value: { input: string; whatToCheck: string }): Promise<boolean> {
+/** Reports the saved case and whether it must wait for the next run. */
+async function writeCase(
+	value: { input: string; whatToCheck: string },
+	deferRun: boolean,
+): Promise<boolean> {
 	const source = props.caseSource;
 	if (!source) return false;
 	try {
@@ -97,7 +102,7 @@ async function writeCase(value: { input: string; whatToCheck: string }): Promise
 		if (isMounted) toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.addError'));
 		return false;
 	}
-	emit('added');
+	emit('added', deferRun || Boolean(props.deferRun));
 	return true;
 }
 
@@ -105,6 +110,7 @@ async function onAddRule() {
 	const rule = ruleInput.value.trim();
 	if (!rule || !canAdd.value) return;
 
+	const deferRun = Boolean(props.deferRun);
 	adding.value = 'rule';
 	try {
 		let input: string;
@@ -124,7 +130,7 @@ async function onAddRule() {
 		}
 		if (!isMounted) return;
 
-		if (await writeCase({ input, whatToCheck: rule })) ruleInput.value = '';
+		if (await writeCase({ input, whatToCheck: rule }, deferRun)) ruleInput.value = '';
 	} finally {
 		if (isMounted) adding.value = null;
 	}
@@ -133,9 +139,10 @@ async function onAddRule() {
 async function onAddPrepared(row: PreparedCase) {
 	if (!canAdd.value) return;
 
+	const deferRun = Boolean(props.deferRun);
 	adding.value = row.key;
 	try {
-		const written = await writeCase({ input: row.input, whatToCheck: row.whatToCheck });
+		const written = await writeCase({ input: row.input, whatToCheck: row.whatToCheck }, deferRun);
 		if (written && isMounted) {
 			prepared.value = prepared.value.filter((candidate) => candidate.key !== row.key);
 		}

@@ -28,7 +28,12 @@ const draft = (index: number): AgentEvalDraftCase => ({
 	scenario: `Scenario ${index}`,
 });
 
-type Props = { disabled?: boolean; busy?: boolean; caseSource?: typeof caseSource | null };
+type Props = {
+	deferRun?: boolean;
+	disabled?: boolean;
+	busy?: boolean;
+	caseSource?: typeof caseSource | null;
+};
 
 const renderPanel = (
 	props: Props = {},
@@ -63,6 +68,7 @@ const renderPanel = (
 			caseSource: 'caseSource' in props ? props.caseSource : caseSource,
 			disabled: props.disabled,
 			busy: props.busy,
+			deferRun: props.deferRun,
 		},
 	})({ pinia });
 
@@ -73,6 +79,27 @@ describe('AgentEvalAddCheckPanel', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each([true, false])(
+		'defers additions if a run is active at either end of the save (initial: %s)',
+		async (initiallyRunning) => {
+			const user = userEvent.setup();
+			const { store, findAllByTestId, rerender, emitted } = renderPanel({
+				deferRun: initiallyRunning,
+			});
+			let save!: () => void;
+			vi.mocked(store.createCase).mockImplementation(async () => {
+				await new Promise<void>((resolve) => {
+					save = resolve;
+				});
+				return { rowId: 9, input: 'new message', whatToCheck: 'new rule' };
+			});
+			await user.click((await findAllByTestId('agent-eval-add-check-prepared-add'))[0]);
+			await rerender({ deferRun: !initiallyRunning });
+			save();
+			await waitFor(() => expect(emitted('added')).toEqual([[true]]));
+		},
+	);
 
 	describe('the prepared cases', () => {
 		it('drafts a batch of ten without saving anything when it opens', async () => {

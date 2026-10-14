@@ -10,7 +10,7 @@
  * never passes `label` to `AgentEvalTryRow`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -209,7 +209,18 @@ watch(
 	{ immediate: true },
 );
 
+function canChangeResult(resultId: string) {
+	return (
+		!props.disabled &&
+		!props.rerunning &&
+		!showingPreviousRun.value &&
+		!isApplyingSuggestions.value &&
+		rows.value.some((row) => row.id === resultId && row.status !== 'waiting')
+	);
+}
+
 async function onActuallyFine(resultId: string) {
+	if (!canChangeResult(resultId)) return;
 	try {
 		await store.acceptResult(props.projectId, props.agentId, resultId);
 	} catch (error) {
@@ -218,6 +229,7 @@ async function onActuallyFine(resultId: string) {
 }
 
 async function onRerunCheck(resultId: string) {
+	if (!canChangeResult(resultId)) return;
 	try {
 		await store.rerunResult(props.projectId, props.agentId, resultId);
 	} catch (error) {
@@ -243,10 +255,13 @@ const applicableSuggestionIds = computed(() =>
 const isApplyingSuggestions = computed(() => applyingSuggestionIds.value.length > 0);
 
 async function onApplySuggestion(resultId: string) {
+	if (!canChangeResult(resultId)) return;
 	await applySuggestions([resultId]);
 }
 
 async function onApplyAllSuggestions() {
+	if (props.disabled || props.rerunning || showingPreviousRun.value || isApplyingSuggestions.value)
+		return;
 	applyingAll.value = true;
 	try {
 		await applySuggestions(applicableSuggestionIds.value);
@@ -260,6 +275,7 @@ async function onApplyAllSuggestions() {
 // this result's snapshot. A result with no row to write to (an older run, or a dataset
 // with no rule column) keeps the snapshot-only edit.
 async function onSaveWhatToCheck(resultId: string, whatToCheck: string) {
+	if (!canChangeResult(resultId)) return;
 	// `Number(null)` is 0, which would aim the write at a row that is not this check's.
 	const sourceRowId = rows.value.find((row) => row.id === resultId)?.sourceRowId;
 	const rowId = sourceRowId ? Number(sourceRowId) : Number.NaN;
@@ -299,6 +315,21 @@ const addCheckSource = computed(() => {
 });
 
 const addCheckOpen = ref(false);
+const savedForNextRunCount = ref(0);
+watch(
+	() => props.runId,
+	() => {
+		savedForNextRunCount.value = 0;
+	},
+);
+
+function onCheckAdded(deferRun = false) {
+	if (deferRun || inFlight.value || props.rerunning) {
+		savedForNextRunCount.value++;
+		return;
+	}
+	emit('rerun');
+}
 // Mounted on first open and kept after that, so closing and reopening the panel,
 // or a rerun that briefly empties the review, doesn't draft a new batch of
 // prepared cases.
@@ -310,6 +341,7 @@ function toggleAddCheck() {
 }
 
 async function onDeleteCheck(row: CheckRow) {
+	if (!canChangeResult(row.id)) return;
 	const source = resolveCaseSource();
 	if (!source || !row.sourceRowId) {
 		toast.showError(
@@ -474,7 +506,7 @@ onBeforeUnmount(store.stopPollingRun);
 					v-if="applicableSuggestionIds.length > 0 && !showingPreviousRun"
 					variant="solid"
 					size="small"
-					:disabled="disabled || rerunning || inFlight || isApplyingSuggestions"
+					:disabled="disabled || rerunning || isApplyingSuggestions"
 					:loading="applyingAll"
 					data-testid="agent-eval-checks-apply-all-suggestions"
 					@click="onApplyAllSuggestions"
@@ -484,7 +516,7 @@ onBeforeUnmount(store.stopPollingRun);
 				<N8nButton
 					variant="subtle"
 					size="small"
-					:disabled="disabled || rerunning"
+					:disabled="disabled || rerunning || isApplyingSuggestions"
 					:loading="rerunning || inFlight"
 					data-testid="agent-eval-checks-run-all"
 					@click="emit('rerun')"
@@ -508,7 +540,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:what-to-check="row.whatToCheck"
 				:fix-suggestion="row.fixSuggestion"
 				:applying-suggestion="applyingSuggestionIds.includes(row.id)"
-				:disabled="disabled || showingPreviousRun || isApplyingSuggestions"
+				:disabled="disabled || rerunning || showingPreviousRun || isApplyingSuggestions"
 				:running-check="row.status === 'waiting'"
 				hide-revise
 				view="complete"
@@ -522,6 +554,20 @@ onBeforeUnmount(store.stopPollingRun);
 			/>
 		</div>
 
+		<N8nText
+			v-if="savedForNextRunCount > 0"
+			size="small"
+			role="status"
+			data-testid="agent-eval-checks-saved-next-run"
+		>
+			{{
+				i18n.baseText('agents.builder.agentEvals.checks.savedForNextRun', {
+					adjustToNumber: savedForNextRunCount,
+					interpolate: { count: String(savedForNextRunCount) },
+				})
+			}}
+		</N8nText>
+
 		<!-- Not tied to `addCheckSource`: a new run's review is empty until it loads, so the
 		     source is briefly null after an add. Unmounting here would draft the prepared
 		     cases again. The panel disables adding while its source is null. -->
@@ -532,9 +578,10 @@ onBeforeUnmount(store.stopPollingRun);
 			:agent-id="agentId"
 			:case-source="addCheckSource"
 			:disabled="disabled || showingPreviousRun"
-			:busy="rerunning || inFlight"
+			:busy="Boolean(rerunning)"
+			:defer-run="inFlight"
 			@close="addCheckOpen = false"
-			@added="emit('rerun')"
+			@added="onCheckAdded"
 		/>
 
 		<!-- Gives way to the panel while it is open, and comes back when it is closed. -->
@@ -570,6 +617,7 @@ onBeforeUnmount(store.stopPollingRun);
 
 .header {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);

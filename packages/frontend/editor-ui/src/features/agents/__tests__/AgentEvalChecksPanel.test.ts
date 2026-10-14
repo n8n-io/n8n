@@ -105,6 +105,7 @@ vi.mock('../components/AgentEvalAddCheckPanel.vue', () => ({
 		>
 			<button @click="$emit('close')">close panel</button>
 			<button @click="$emit('added')">added a check</button>
+			<button @click="$emit('added', true)">added after run finished</button>
 		</div>`,
 	},
 }));
@@ -722,6 +723,29 @@ describe('AgentEvalChecksPanel', () => {
 			expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1', 'c3']);
 		});
 
+		it('applies settled suggestions during a batch and leaves running checks out', async () => {
+			const user = userEvent.setup();
+			const order: string[] = [];
+			const { getByTestId, store } = render(
+				{
+					results: [
+						failedWith('c1', 'Be brief'),
+						{ ...failedWith('c2', 'Wait'), status: 'running' },
+					],
+				},
+				true,
+				builderWrite(order),
+			);
+			vi.mocked(store.applySuggestions).mockImplementation(async () => {
+				order.push('apply');
+				return { configHash: 'h', results: [] };
+			});
+			expect(getByTestId(BUTTON)).toBeEnabled();
+			await user.click(getByTestId(BUTTON));
+			await vi.waitFor(() => expect(order).toEqual(['lock', 'apply', 'unlock']));
+			expect(store.applySuggestions).toHaveBeenCalledWith('project-1', 'agent-1', ['c1']);
+		});
+
 		it('sends a long list as successive requests of at most one request’s worth', async () => {
 			const user = userEvent.setup();
 			const many = Array.from({ length: MAX_APPLY_SUGGESTIONS + 2 }, (_, i) =>
@@ -957,6 +981,30 @@ describe('AgentEvalChecksPanel', () => {
 			expect(addCheckPanelMounts.count).toBe(1);
 		});
 
+		it('saves additions for the next run while keeping the active batch visible', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText, emitted } = renderWithDataset({ inFlight: true });
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-busy', 'false');
+			await user.click(getByText('added a check'));
+			expect(emitted('rerun')).toBeUndefined();
+			expect(getByTestId('agent-eval-check-c1')).toBeVisible();
+			expect(getByTestId('agent-eval-checks-saved-next-run')).toHaveTextContent(
+				'1 added check is saved for the next run.',
+			);
+			await user.click(getByText('close panel'));
+			expect(getByTestId('agent-eval-checks-saved-next-run')).toBeVisible();
+		});
+
+		it('keeps an addition deferred after the original run finishes', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText, emitted } = renderWithDataset();
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+			await user.click(getByText('added after run finished'));
+			expect(emitted('rerun')).toBeUndefined();
+			expect(getByTestId('agent-eval-checks-saved-next-run')).toBeVisible();
+		});
+
 		it('runs the checks again once a check was added, since a run only holds the cases it started with', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, getByText, emitted } = renderWithDataset();
@@ -1028,17 +1076,17 @@ describe('AgentEvalChecksPanel', () => {
 			});
 		});
 
-		it.each([
-			['a rerun is starting', { rerunning: true }],
-			['a run is in flight', { inFlight: true }],
-		])('tells the panel it is busy while %s', async (_label, options) => {
-			const user = userEvent.setup();
-			const { getByTestId } = renderWithDataset(options);
+		it.each([['a rerun is starting', { rerunning: true }]])(
+			'tells the panel it is busy while %s',
+			async (_label, options) => {
+				const user = userEvent.setup();
+				const { getByTestId } = renderWithDataset(options);
 
-			await user.click(getByTestId('agent-eval-checks-add-check'));
+				await user.click(getByTestId('agent-eval-checks-add-check'));
 
-			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-busy', 'true');
-		});
+				expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-busy', 'true');
+			},
+		);
 
 		it('disables the button and the panel for a read-only viewer', async () => {
 			const { getByTestId } = renderWithDataset({ disabled: true });

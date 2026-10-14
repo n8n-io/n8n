@@ -9172,6 +9172,8 @@
 	"agents.builder.agentEvals.checks.status.passes": "Passes",
 	"agents.builder.agentEvals.checks.mockedRequestRunning": "Mocked request sent; tool still running | Mocked requests sent; tool still running",
 	"agents.builder.agentEvals.checks.mockedRequests": "Mocked requests",
+	"agents.builder.agentEvals.checks.manageChecks": "Manage checks",
+	"agents.builder.agentEvals.checks.savedForNextRun": "{count} added check is saved for the next run. | {count} added check is saved for the next run. | {count} added checks are saved for the next run.",
 	"agents.builder.agentEvals.checks.waitingForResponse": "Waiting for the agent’s response…",
 	"agents.builder.agentEvals.checks.status.running": "Running",
 	"agents.builder.agentEvals.checks.status.neverRan": "Never ran",
