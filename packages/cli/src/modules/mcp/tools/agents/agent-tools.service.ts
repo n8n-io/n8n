@@ -713,7 +713,8 @@ export class McpAgentToolsService {
 									ok: false,
 									code: 'skill_name_taken',
 									agentId: input.agentId,
-									configHash,
+									// The agent may have changed meanwhile, so send the hash the next call needs.
+									configHash: await this.fetchConfigHash(projectId, input.agentId),
 									message: skillNameTakenToolMessage(error.skillName),
 								};
 							}
