@@ -615,8 +615,18 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			run: { status: 'running' } as never,
 			results: [
 				{ sourceRowId: '1', status: 'success', input: {}, output: { finalText: 'ok' } } as never,
+				{
+					id: 'running-result',
+					sourceRowId: '2',
+					status: 'running',
+					input: {},
+					output: null,
+					toolCalls: {
+						calls: [{ tool: 'wait_for_reply', toolCallId: 'call-1', status: 'running' }],
+					},
+				} as never,
 			],
-			resultsCount: 1,
+			resultsCount: 2,
 			ratingsByResultId: {},
 			pendingByResultId: {},
 			draftsByResultId: {},
@@ -626,7 +636,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 
 		const user = userEvent.setup();
-		const { getByTestId, findByTestId, queryByTestId, findByText } = renderComponent();
+		const { getByTestId, findByTestId, queryByTestId, findByText, emitted } = renderComponent();
 		await waitFor(() =>
 			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
@@ -637,6 +647,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		// One of the two cases has settled — one is still left.
 		expect(await findByText('Checking, 1 left')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-examples-try')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+		expect(emitted('open-evals')).toContainEqual(['running-result']);
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-stop'));
 

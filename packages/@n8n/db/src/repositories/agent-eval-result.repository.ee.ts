@@ -84,7 +84,14 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	/** Starts an attempt. Clears whatever a previous attempt left behind, so a
 	 *  rerun can't settle with an old error next to a new answer (or the reverse). */
 	async markAsRunning(id: string) {
-		return await this.update(id, startedAttempt());
+		const attempt = startedAttempt();
+		await this.update(id, attempt);
+		return attempt.runAt;
+	}
+
+	/** Progress belongs to one running attempt, identified by its start timestamp. */
+	async updateRunningToolCalls(id: string, runAt: Date, toolCalls: JsonObject) {
+		return await this.update({ id, status: 'running', runAt }, { toolCalls });
 	}
 
 	/**

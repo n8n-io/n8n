@@ -9170,6 +9170,7 @@
 	"agents.builder.agentEvals.checks.addCheckMore": "+{count} more",
 	"agents.builder.agentEvals.checks.addCheckFewer": "Show fewer",
 	"agents.builder.agentEvals.checks.status.passes": "Passes",
+	"agents.builder.agentEvals.checks.waitingForResponse": "Waiting for the agent’s response…",
 	"agents.builder.agentEvals.checks.status.running": "Running",
 	"agents.builder.agentEvals.checks.status.neverRan": "Never ran",
 	"agents.builder.agentEvals.checks.status.needsWork": "Needs work",

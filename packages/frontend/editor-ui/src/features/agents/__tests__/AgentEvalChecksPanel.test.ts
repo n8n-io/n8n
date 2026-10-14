@@ -38,6 +38,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			status: {},
 			input: {},
 			output: {},
+			toolCalls: {},
 			label: {},
 			testId: {},
 			disabled: { type: Boolean },
@@ -61,6 +62,8 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 		template: `<div
 			:data-testid="testId"
 			:data-status="status"
+			:data-tool-status="toolCalls?.[0]?.state"
+			:data-tool-id="toolCalls?.[0]?.toolCallId"
 			:data-disabled="disabled"
 			:data-hide-revise="hideRevise"
 			:data-focused="focused"
@@ -1139,6 +1142,27 @@ describe('AgentEvalChecksPanel', () => {
 			expect(showError).toHaveBeenCalledTimes(1);
 			expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't remove the test case");
 		});
+	});
+
+	it('passes current tool progress to a running check without an answer', () => {
+		const { getByTestId } = render(
+			{
+				results: [
+					{
+						...result('c1', 'running'),
+						output: null,
+						toolCalls: {
+							calls: [{ tool: 'wait_for_reply', toolCallId: 'call-1', status: 'running' }],
+						},
+					},
+				],
+			},
+			true,
+		);
+		const row = getByTestId('agent-eval-check-c1');
+		expect(row).toHaveAttribute('data-status', 'waiting');
+		expect(row).toHaveAttribute('data-tool-status', 'running');
+		expect(row).toHaveAttribute('data-tool-id', 'call-1');
 	});
 
 	it('disables "Run all checks" while a run is already in flight', () => {

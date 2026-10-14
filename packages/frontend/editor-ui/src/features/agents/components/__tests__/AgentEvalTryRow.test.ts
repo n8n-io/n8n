@@ -53,13 +53,23 @@ describe('AgentEvalTryRow', () => {
 		expect(await findByText('It is a P1.')).toBeInTheDocument();
 	});
 
-	it('hides the toggle and never renders a sample when output is null and nothing needs correcting', () => {
-		const { queryByTestId } = renderComponent({
-			props: { status: 'waiting', input: 'x', output: null, testId: 'row-1' },
+	it('expands a running check before it has output and keeps run controls disabled', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				status: 'waiting',
+				input: 'Send a message and wait for a reply',
+				output: null,
+				whatToCheck: 'Wait for a reply',
+				testId: 'row-1',
+			},
 		});
-
-		expect(queryByTestId('row-1-toggle')).not.toBeInTheDocument();
-		expect(queryByTestId('row-1-placeholder')).not.toBeInTheDocument();
+		await user.click(getByTestId('row-1-toggle'));
+		expect(getByTestId('row-1-placeholder')).toBeInTheDocument();
+		expect(getByText('Wait for a reply')).toBeInTheDocument();
+		expect(getByTestId('row-1-run-check')).toBeDisabled();
+		expect(getByTestId('row-1-edit-rule')).toBeDisabled();
+		expect(getByTestId('row-1-delete-check')).toBeDisabled();
 	});
 
 	it.each(['work', 'fail'] as const)(

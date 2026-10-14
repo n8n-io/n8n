@@ -1,4 +1,4 @@
-import type { GenerateResult } from '@n8n/agents';
+import { AgentEvent, type AgentEventHandler, type GenerateResult } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
@@ -159,6 +159,179 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	});
 
 	const request = { projectId: 'proj-1' };
+
+	it('reports tool progress before generation finishes and flushes writes before returning', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		let finish: (value: GenerateResult) => void = () => {};
+		const generate = vi.fn(async () => {
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'send-1',
+				toolName: 'Slack_Tool',
+				args: { text: 'hello' },
+			});
+			handlers.get(AgentEvent.ToolExecutionEnd)?.({
+				type: AgentEvent.ToolExecutionEnd,
+				toolCallId: 'send-1',
+				toolName: 'Slack_Tool',
+				result: { sent: true },
+				isError: false,
+			});
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'wait-1',
+				toolName: 'wait_for_reply',
+				args: {},
+			});
+			return await new Promise<GenerateResult>((resolve) => {
+				finish = resolve;
+			});
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate,
+				close: vi.fn(),
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+			toolRegistry: {},
+		});
+		let settled = false;
+		const running = buildService()
+			.executeWithLlmMock('agent-1', user, request, 'Send a message', { onProgress })
+			.then((value) => {
+				settled = true;
+				return value;
+			});
+		await vi.waitFor(() => expect(onProgress).toHaveBeenCalledTimes(3));
+		expect(settled).toBe(false);
+		expect(onProgress.mock.calls[2][0]).toEqual([
+			expect.objectContaining({
+				toolCallId: 'send-1',
+				status: 'completed',
+				output: { sent: true },
+			}),
+			expect.objectContaining({ toolCallId: 'wait-1', status: 'running' }),
+		]);
+		finish(makeGenerateResult());
+		await running;
+	});
+
+	it('serializes progress writes and waits for the last write without failing the run', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		let releaseWrite: () => void = () => {};
+		const onProgress = vi
+			.fn()
+			.mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						releaseWrite = resolve;
+					}),
+			)
+			.mockRejectedValueOnce(new Error('progress unavailable'))
+			.mockResolvedValue(undefined);
+		const generate = vi.fn(async () => {
+			handlers.get(AgentEvent.ToolExecutionStart)?.({
+				type: AgentEvent.ToolExecutionStart,
+				toolCallId: 'call-1',
+				toolName: 'Slack_Tool',
+				args: {},
+			});
+			handlers.get(AgentEvent.ToolExecutionEnd)?.({
+				type: AgentEvent.ToolExecutionEnd,
+				toolCallId: 'call-1',
+				toolName: 'Slack_Tool',
+				result: { sent: true },
+				isError: false,
+			});
+			return makeGenerateResult();
+		});
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate,
+				close: vi.fn(),
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+			toolRegistry: {},
+		});
+		let settled = false;
+		const running = buildService()
+			.executeWithLlmMock('agent-1', user, request, 'Send a message', { onProgress })
+			.then((value) => {
+				settled = true;
+				return value;
+			});
+		await vi.waitFor(() => expect(onProgress).toHaveBeenCalledOnce());
+		expect(settled).toBe(false);
+		releaseWrite();
+		expect((await running).success).toBe(true);
+		expect(onProgress).toHaveBeenCalledTimes(3);
+		handlers.get(AgentEvent.ToolExecutionStart)?.({
+			type: AgentEvent.ToolExecutionStart,
+			toolCallId: 'late',
+			toolName: 'Slack_Tool',
+			args: {},
+		});
+		await Promise.resolve();
+		expect(onProgress).toHaveBeenCalledTimes(3);
+	});
+
+	it('flushes failed and interrupted tool progress before returning a generation error', async () => {
+		const handlers = new Map<AgentEvent, AgentEventHandler>();
+		const onProgress = vi.fn().mockResolvedValue(undefined);
+		const close = vi.fn();
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: {
+				generate: vi.fn(async () => {
+					for (const toolCallId of ['failed', 'interrupted']) {
+						handlers.get(AgentEvent.ToolExecutionStart)?.({
+							type: AgentEvent.ToolExecutionStart,
+							toolCallId,
+							toolName: 'Slack_Tool',
+							args: {},
+						});
+					}
+					handlers.get(AgentEvent.ToolExecutionEnd)?.({
+						type: AgentEvent.ToolExecutionEnd,
+						toolCallId: 'failed',
+						toolName: 'Slack_Tool',
+						result: 'Tool failed',
+						isError: true,
+					});
+					throw new Error('Generation stopped');
+				}),
+				close,
+				on: (event: AgentEvent, handler: AgentEventHandler) => handlers.set(event, handler),
+			},
+			toolRegistry: {},
+		});
+		const result = await buildService().executeWithLlmMock(
+			'agent-1',
+			user,
+			request,
+			'Send a message',
+			{ onProgress },
+		);
+		expect(result.success).toBe(false);
+		expect(result.errors).toContain('Agent run failed: Generation stopped');
+		expect(onProgress).toHaveBeenLastCalledWith([
+			expect.objectContaining({
+				toolCallId: 'failed',
+				status: 'error',
+				error: 'tool_execution_failed',
+				output: 'Tool failed',
+			}),
+			expect.objectContaining({
+				toolCallId: 'interrupted',
+				status: 'error',
+				error: 'execution_stopped',
+			}),
+		]);
+		expect(close).toHaveBeenCalledOnce();
+		expect(onProgress.mock.invocationCallOrder.at(-1)).toBeLessThan(
+			close.mock.invocationCallOrder[0],
+		);
+	});
 
 	it('refuses queue mode upfront', async () => {
 		const result = await buildService({ queueMode: true }).executeWithLlmMock(

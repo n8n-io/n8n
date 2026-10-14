@@ -1,4 +1,5 @@
 import {
+	AgentEvent,
 	sanitizeToolName as sanitizeMcpToolName,
 	type Agent as RuntimeAgent,
 	type GenerateResult,
@@ -166,6 +167,7 @@ export class EvalAgentExecutionService {
 		// per-tool hints keep the tool mocks coherent), but the message the agent
 		// receives is this input verbatim — how a fixed eval case is executed.
 		caseInput?: string,
+		hooks?: { onProgress?: (calls: InstanceAiEvalAgentToolCallRecord[]) => Promise<void> },
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		// Workflow-tool sub-executions carry a configureAdditionalData closure
 		// that doesn't survive queue serialization — refuse upfront so tool
@@ -408,6 +410,53 @@ export class EvalAgentExecutionService {
 			return this.errorResult(`Failed to build agent runtime: ${message}`, seed, skippedFeatures);
 		}
 
+		// Event handlers cannot await writes. Serialize snapshots and drain them before
+		// returning, so progress cannot overwrite completion or a later attempt.
+		const progressCalls = new Map<string, InstanceAiEvalAgentToolCallRecord>();
+		let progressWrites = Promise.resolve();
+		let progressClosed = false;
+		const publishProgress = () => {
+			if (progressClosed || !hooks?.onProgress) return;
+			const calls = [...progressCalls.values()].map((call) => ({ ...call }));
+			progressWrites = progressWrites
+				.then(async () => await hooks.onProgress?.(calls))
+				.catch((error: unknown) => {
+					this.logger.warn('[EvalAgentMock] Could not record tool progress', { error });
+				});
+		};
+		if (hooks?.onProgress) {
+			agent.on(AgentEvent.ToolExecutionStart, (event) => {
+				if (progressClosed || event.type !== AgentEvent.ToolExecutionStart) return;
+				progressCalls.set(event.toolCallId, {
+					toolCallId: event.toolCallId,
+					tool: event.toolName,
+					kind: toolSummaries.find((tool) => tool.name === event.toolName)?.kind ?? 'other',
+					input: truncateRecordedValue(event.args),
+					status: 'running',
+					mocked: false,
+					interceptedRequests: [],
+				});
+				publishProgress();
+			});
+			agent.on(AgentEvent.ToolExecutionEnd, (event) => {
+				if (progressClosed || event.type !== AgentEvent.ToolExecutionEnd) return;
+				const previous = progressCalls.get(event.toolCallId);
+				const interceptedRequests = toolLedger.get(event.toolName) ?? [];
+				progressCalls.set(event.toolCallId, {
+					...previous,
+					toolCallId: event.toolCallId,
+					tool: event.toolName,
+					kind: previous?.kind ?? 'other',
+					output: truncateRecordedValue(event.result),
+					status: event.isError ? 'error' : 'completed',
+					...(event.isError ? { error: 'tool_execution_failed' } : {}),
+					mocked: interceptedRequests.length > 0,
+					interceptedRequests: [...interceptedRequests],
+				});
+				publishProgress();
+			});
+		}
+
 		const errors: string[] = [];
 		// GenerateResult.toolCalls carry no toolCallId — approvals are attributed
 		// by tool name, enough to flag auto-approval for the judge.
@@ -479,6 +528,13 @@ export class EvalAgentExecutionService {
 				credentialHelpers,
 			});
 		} finally {
+			for (const [id, call] of progressCalls) {
+				if (call.status === 'running')
+					progressCalls.set(id, { ...call, status: 'error', error: 'execution_stopped' });
+			}
+			if (progressCalls.size > 0) publishProgress();
+			progressClosed = true;
+			await progressWrites;
 			await recorder.flush();
 			try {
 				await agent.close();

@@ -610,13 +610,22 @@ export class AgentEvalRunnerService {
 		ctx: { agentId: string; projectId: string; user: User; timeoutMs?: number },
 	): Promise<CaseUsage | undefined> {
 		try {
-			await this.resultRepository.markAsRunning(resultRow.id);
+			const runAt = await this.resultRepository.markAsRunning(resultRow.id);
 
 			const execResult = await this.evalAgentExecutionService.executeWithLlmMock(
 				ctx.agentId,
 				ctx.user,
 				{ projectId: ctx.projectId, ...(ctx.timeoutMs ? { timeoutMs: ctx.timeoutMs } : {}) },
 				resolvedCase.input,
+				{
+					onProgress: async (calls) => {
+						await this.resultRepository.updateRunningToolCalls(
+							resultRow.id,
+							runAt,
+							toJsonObject({ calls }),
+						);
+					},
+				},
 			);
 
 			const usage = normalizeUsage(execResult.usage);

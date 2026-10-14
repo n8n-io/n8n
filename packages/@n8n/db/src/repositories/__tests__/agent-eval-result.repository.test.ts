@@ -57,6 +57,18 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	it('updates progress only while the attempt is running', async () => {
+		const calls = { calls: [{ tool: 'Slack_Tool', status: 'running' }] };
+		const runAt = new Date();
+		await repo.updateRunningToolCalls('res-1', runAt, calls);
+		expect(entityManager.update.mock.calls[0]?.[1]).toEqual({
+			id: 'res-1',
+			status: 'running',
+			runAt,
+		});
+		expect(entityManager.update.mock.calls[0]?.[2]).toEqual({ toolCalls: calls });
+	});
+
 	describe('markAsCompleted', () => {
 		it('stores the agent output and defaults toolCalls/metrics to null', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });

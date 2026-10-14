@@ -92,3 +92,17 @@ describe('toDisplayToolCalls', () => {
 		});
 	});
 });
+
+it('preserves live call identity and running state', () => {
+	const calls = toDisplayToolCalls({
+		calls: [
+			{
+				tool: 'wait_for_reply',
+				toolCallId: 'call-1',
+				status: 'running',
+				input: { channel: 'support' },
+			},
+		],
+	});
+	expect(calls[0]).toMatchObject({ toolCallId: 'call-1', state: 'running' });
+});
