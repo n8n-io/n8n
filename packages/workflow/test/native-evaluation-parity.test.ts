@@ -435,6 +435,28 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 
+		// Few elements, much content: an element count would charge almost
+		// nothing for work that compares or stringifies every character.
+		test('element-comparing methods are charged by element content', () => {
+			const big = 'x'.repeat(MAX_RESULT_LENGTH);
+			const fits = MAX_WORK / MAX_RESULT_LENGTH - 1;
+			const list = (count: number) => ({ $json: { list: new Array<string>(count).fill(big) } });
+			for (const method of ['includes', 'indexOf', 'lastIndexOf']) {
+				const expr = `{{ $json.list.${method}("y") }}`;
+				expect(nativeOn(expr, list(fits + 2))).toEqual({ handled: false });
+				expect(nativeOn(expr, list(fits)).handled).toBe(true);
+			}
+			// Twice the content times log2 of the count: 3 elements cost 12
+			// receivers, 2 cost 8.
+			expect(nativeOn('{{ $json.list.toSorted().length }}', list(3))).toEqual({
+				handled: false,
+			});
+			expect(nativeOn('{{ $json.list.toSorted().length }}', list(2))).toEqual({
+				handled: true,
+				value: 2,
+			});
+		});
+
 		// concat can reference one payload string many times; the clone of the
 		// result and every downstream method then pay for each reference, so it
 		// is bounded by content size, not element count.
