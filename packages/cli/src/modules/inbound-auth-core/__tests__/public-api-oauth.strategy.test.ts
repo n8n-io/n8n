@@ -1,3 +1,4 @@
+import { JwtService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import type { AuthenticationPipeline, AuthenticationService } from '@n8n/inbound-auth';
 import { getApiKeyScopesForRole, type Scope, type SecurityContext } from '@n8n/permissions';
@@ -5,8 +6,6 @@ import type { Response } from 'express';
 import { sign } from 'jsonwebtoken';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import { JwtService } from '@/services/jwt.service';
 
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import type { PublicApiProtectedResource } from '../public-api-protected-resource';

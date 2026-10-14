@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService, type OAuthDiscoveryClient, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	JwtService,
+	type OAuthDiscoveryClient,
+	UrlService,
+} from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { TagRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -12,7 +17,6 @@ import { TrustedSourceDiscoveryService } from '@/modules/inbound-auth-core/trust
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
 import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
 import type { OAuthSessionPayload } from '@/modules/oauth-server/oauth-session.service';
-import { JwtService } from '@/services/jwt.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
