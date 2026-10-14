@@ -37,6 +37,8 @@ test('extracts name, jsdoc, type, default, schema and deprecation from @Env prop
 			classDescription: 'Runner settings.',
 			property: 'port',
 			file: 'x.ts',
+			line: 6,
+			docStart: 5,
 		},
 		{
 			name: 'N8N_RUNNERS_MODE',
@@ -49,6 +51,8 @@ test('extracts name, jsdoc, type, default, schema and deprecation from @Env prop
 			classDescription: 'Runner settings.',
 			property: 'mode',
 			file: 'x.ts',
+			line: 13,
+			docStart: 9,
 		},
 	]);
 });

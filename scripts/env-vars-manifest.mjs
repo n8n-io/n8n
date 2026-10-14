@@ -62,6 +62,7 @@ function resolveConstantName(expr, dir) {
 /** Every `@Env('NAME', schema?)` property in one TypeScript source string. */
 export function extractEnvVars(source, file, dir) {
 	const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+	const lineOf = (pos) => sf.getLineAndCharacterOfPosition(pos).line + 1;
 	const vars = [];
 	const visit = (node) => {
 		if (ts.isClassDeclaration(node) && node.name) {
@@ -92,6 +93,8 @@ export function extractEnvVars(source, file, dir) {
 					classDescription: classDoc,
 					property: member.name.getText(sf),
 					file,
+					line: lineOf(member.getStart(sf)),
+					docStart: member.jsDoc?.length ? lineOf(member.jsDoc[0].getStart(sf)) : undefined,
 				});
 			}
 		}
