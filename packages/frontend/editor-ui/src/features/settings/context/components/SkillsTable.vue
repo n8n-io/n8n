@@ -91,14 +91,14 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
-		width: 380,
+		width: 340,
 		disableSort: true,
 		resize: false,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
-		width: 240,
+		width: 220,
 		disableSort: true,
 		resize: false,
 	},
@@ -119,7 +119,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
-		width: 160,
+		width: 130,
 		disableSort: true,
 		resize: false,
 	},

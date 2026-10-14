@@ -417,6 +417,23 @@ describe('SkillsController', () => {
 			await create(owner, { scope: 'instance', skill: { ...body, name: 'brand-voice' } });
 		});
 
+		it('renames and moves a skill to a name that only the old scope holds', async () => {
+			await create(owner, { scope: 'project', projectId: project.id, skill: body });
+			const { id, skillHash } = await create(owner, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'Code review' },
+			});
+
+			await owner
+				.patch(`/skills/${id}`)
+				.send({ name: 'brand-voice', scope: 'instance', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(read.body.data).toMatchObject({ name: 'brand-voice', scope: 'instance' });
+		});
+
 		it('refuses to move a skill into a scope that holds a name like it', async () => {
 			await create(owner, { scope: 'instance', skill: body });
 			const { id, skillHash } = await create(owner, {

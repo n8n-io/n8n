@@ -188,11 +188,27 @@ function openCreateModal() {
 	});
 }
 
+/**
+ * The row is the feedback for a create or a save, as on the preferences page. The list
+ * keeps the search and the scope filter, so a skill they hide gets a message instead.
+ */
+function confirmIfHidden(skillId: string, key: 'created' | 'saved') {
+	if (skillsStore.skills.some((item) => item.id === skillId)) return;
+	showMessage({
+		title: i18n.baseText(
+			key === 'created'
+				? 'settings.context.skills.create.hidden'
+				: 'settings.context.skills.save.hidden',
+		),
+		type: 'success',
+	});
+}
+
 async function onCreate(skill: AgentSkill, scopeValue: string) {
 	try {
-		// No toast: the modal closes and the new row shows, as on the preferences page.
-		await skillsStore.createSkill({ ...parseScope(scopeValue), skill });
+		const created = await skillsStore.createSkill({ ...parseScope(scopeValue), skill });
 		await load();
+		confirmIfHidden(created.id, 'created');
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.save'));
 	}
@@ -261,6 +277,7 @@ async function onSave(id: string, skill: AgentSkill, baseSkillHash: string, newS
 		// gets a message: a real change shows in the table.
 		if (saved.created || newScope !== undefined) {
 			await load();
+			confirmIfHidden(id, 'saved');
 		} else {
 			showMessage({ title: i18n.baseText('settings.context.skills.save.noChanges'), type: 'info' });
 		}

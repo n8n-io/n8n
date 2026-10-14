@@ -215,6 +215,13 @@ describe('SettingsSkillsView', () => {
 		});
 
 		it('creates the skill in the chosen scope', async () => {
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			// The reloaded list holds the new skill.
+			skillsStore.fetchSkills.mockImplementation(async () => {
+				skillsStore.skills = [skill({ id: 's-new' })];
+				skillsStore.count = 1;
+				return { count: 1, data: skillsStore.skills };
+			});
 			const { getByTestId } = renderView();
 			await new Promise(process.nextTick);
 			await userEvent.click(getByTestId('skills-create-button'));
@@ -234,6 +241,24 @@ describe('SettingsSkillsView', () => {
 			});
 			// The new row is the feedback, as on the preferences page.
 			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('says so when the search or the filter hides the new skill', async () => {
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('skills-create-button'));
+
+			lastModalData().onConfirm({
+				skill: { name: 'brand-voice', description: 'd', instructions: 'i' },
+				scope: 'project:personal-1',
+			});
+			await new Promise(process.nextTick);
+
+			expect(showMessageMock).toHaveBeenCalledWith({
+				title: 'Skill created. Your search or filter hides it.',
+				type: 'success',
+			});
 		});
 	});
 

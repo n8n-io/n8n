@@ -518,6 +518,7 @@ describe('SkillsApiService', () => {
 				{ projectId: 'project-1', agentId: null },
 				undefined,
 				TX_CTX,
+				undefined,
 			);
 			expect(skillService.save).toHaveBeenCalledWith(
 				'skill_a',
@@ -526,9 +527,9 @@ describe('SkillsApiService', () => {
 				TX_CTX,
 			);
 			expect(skillService.refreshFollowingAgents).toHaveBeenCalledWith(['agent-1']);
-			// The rename is checked in the old scope before the move checks the new scope.
-			expect(skillService.save.mock.invocationCallOrder[0]).toBeLessThan(
-				skillService.changeTarget.mock.invocationCallOrder[0],
+			// The move runs first, so the save checks a rename in the new scope.
+			expect(skillService.changeTarget.mock.invocationCallOrder[0]).toBeLessThan(
+				skillService.save.mock.invocationCallOrder[0],
 			);
 		});
 

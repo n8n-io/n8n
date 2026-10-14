@@ -3469,6 +3469,8 @@
 	"settings.context.skills.delete.cancel": "Cancel",
 	"settings.context.skills.delete.success": "Skill deleted",
 	"settings.context.skills.save.noChanges": "Nothing to save",
+	"settings.context.skills.create.hidden": "Skill created. Your search or filter hides it.",
+	"settings.context.skills.save.hidden": "Skill saved. Your search or filter hides it.",
 	"settings.context.skills.error.load": "Could not load skills",
 	"settings.context.skills.error.loadOne": "Could not load the skill",
 	"settings.context.skills.error.agents": "Could not load the agents",

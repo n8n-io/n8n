@@ -100,13 +100,12 @@ export class SkillsApiService {
 			return { id: skillId, ...saved, skillHash: getAgentSkillHash(saved.skill) };
 		}
 
-		// One transaction, so a refused move does not leave the content saved. The save runs
-		// first: a rename is checked in the old scope, and the move checks the new name in the
-		// new scope.
+		// One transaction, so a refused save does not leave the skill moved. The move runs
+		// first and checks the final name in the new scope only: a name that only the old
+		// scope holds does not block it. The save then checks a rename in the new scope too.
 		const { followingAgentIds, ...saved } = await this.txRunner.run({}, async (ctx) => {
-			const result = await this.skillService.save(skillId, update, user.id, ctx);
-			await this.skillService.changeTarget(skillId, target, undefined, ctx);
-			return result;
+			await this.skillService.changeTarget(skillId, target, undefined, ctx, update.name);
+			return await this.skillService.save(skillId, update, user.id, ctx);
 		});
 		// `save` leaves the refresh to the caller when it joins a transaction.
 		await this.skillService.refreshFollowingAgents(followingAgentIds);
