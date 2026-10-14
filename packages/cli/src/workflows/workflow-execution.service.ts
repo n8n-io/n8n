@@ -1,3 +1,4 @@
+import type { ManualRunResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -350,7 +351,7 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 		n8nAuthCookie?: string,
-	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+	): Promise<ManualRunResponse> {
 		this.assertManualExecutionAllowed();
 
 		// Check whether this workflow is active.
@@ -394,9 +395,8 @@ export class WorkflowExecutionService {
 		if (isFullExecutionFromKnownTrigger(payload)) {
 			// We must always register the webhook - even when the Chat Trigger has
 			// pinned data – because the chat SDK will POST the message to it.
-			if (
-				(payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) &&
-				(await this.testWebhooks.needsWebhook({
+			if (payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) {
+				const registeredTriggerNodes = await this.testWebhooks.needsWebhook({
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -409,9 +409,11 @@ export class WorkflowExecutionService {
 					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
 					n8nAuthCookie,
-				}))
-			) {
-				return { waitingForWebhook: true };
+				});
+
+				if (registeredTriggerNodes.length > 0) {
+					return { waitingForWebhook: true, registeredTriggerNodes };
+				}
 			}
 
 			data = {
@@ -434,9 +436,8 @@ export class WorkflowExecutionService {
 				workflowData.pinData ?? {},
 			);
 
-			if (
-				pinnedTrigger === undefined &&
-				(await this.testWebhooks.needsWebhook({
+			if (pinnedTrigger === undefined) {
+				const registeredTriggerNodes = await this.testWebhooks.needsWebhook({
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -447,9 +448,11 @@ export class WorkflowExecutionService {
 					destinationNode: payload.destinationNode,
 					workflowIsActive,
 					n8nAuthCookie,
-				}))
-			) {
-				return { waitingForWebhook: true };
+				});
+
+				if (registeredTriggerNodes.length > 0) {
+					return { waitingForWebhook: true, registeredTriggerNodes };
+				}
 			}
 
 			data = {

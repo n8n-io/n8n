@@ -91,19 +91,86 @@ describe('TestWebhooks', () => {
 			additionalData: mock<IWorkflowExecuteAdditionalData>(),
 		};
 
-		test('if webhook is needed, should register then create webhook and return true', async () => {
+		test('if webhook is needed, should register then create webhook and return the node name', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			const namedWebhook = mock<IWebhookData>({
+				node: 'Webhook',
+				httpMethod,
+				path,
+				workflowId: workflowEntity.id,
+				userId,
+			});
 
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([namedWebhook]);
 
-			const needsWebhook = await testWebhooks.needsWebhook(args);
+			const registeredNodes = await testWebhooks.needsWebhook(args);
 
 			const [registerOrder] = registrations.register.mock.invocationCallOrder;
 			const [createOrder] = webhookService.createWebhookIfNotExists.mock.invocationCallOrder;
 
 			expect(registerOrder).toBeLessThan(createOrder);
-			expect(needsWebhook).toBe(true);
+			expect(registeredNodes).toEqual(['Webhook']);
+		});
+
+		test('returns each registered node name once, in registration order', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			const toWebhook = (node: string, webhookPath: string, method: IHttpRequestMethods) =>
+				mock<IWebhookData>({
+					node,
+					httpMethod: method,
+					path: webhookPath,
+					workflowId: workflowEntity.id,
+					userId,
+				});
+
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				toWebhook('Form Trigger', 'form-path', 'GET'),
+				toWebhook('Form Trigger', 'form-path', 'POST'),
+				toWebhook('Webhook', 'webhook-path', 'POST'),
+			]);
+
+			const registeredNodes = await testWebhooks.needsWebhook(args);
+
+			expect(registrations.register).toHaveBeenCalledTimes(6);
+			expect(registeredNodes).toEqual(['Form Trigger', 'Webhook']);
+		});
+
+		test('returns an empty list if the workflow has no webhooks', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([]);
+
+			const registeredNodes = await testWebhooks.needsWebhook(args);
+
+			expect(registeredNodes).toEqual([]);
+			expect(registrations.register).not.toHaveBeenCalled();
+		});
+
+		test('returns an empty list if run data already exists for a webhook node', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			const toWebhook = (node: string, webhookPath: string) =>
+				mock<IWebhookData>({
+					node,
+					httpMethod,
+					path: webhookPath,
+					workflowId: workflowEntity.id,
+					userId,
+				});
+
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				toWebhook('Webhook', 'webhook-path'),
+				toWebhook('Form Trigger', 'form-path'),
+			]);
+
+			const registeredNodes = await testWebhooks.needsWebhook({
+				...args,
+				runData: { 'Form Trigger': [mock<ITaskData>()] },
+			});
+
+			expect(registeredNodes).toEqual([]);
 		});
 
 		test('registers with a TTL that covers the listener window plus the buffer', async () => {
@@ -164,16 +231,16 @@ describe('TestWebhooks', () => {
 			await expect(needsWebhook).rejects.toThrowError(msg);
 		});
 
-		test('if no webhook is found to start workflow, should return false', async () => {
+		test('if no webhook is found to start workflow, should return an empty list', async () => {
 			webhook.webhookDescription.restartWebhook = true;
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const result = await testWebhooks.needsWebhook(args);
 
-			expect(result).toBe(false);
+			expect(result).toEqual([]);
 		});
 
-		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
+		test('returns an empty list if a triggerToStartFrom with triggerData is given', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
 			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
@@ -186,10 +253,11 @@ describe('TestWebhooks', () => {
 				},
 			});
 
-			expect(needsWebhook).toBe(false);
+			expect(needsWebhook).toEqual([]);
+			expect(registrations.register).not.toHaveBeenCalled();
 		});
 
-		test('returns true, registers and then creates webhook if triggerToStartFrom is given with no triggerData', async () => {
+		test('returns only the start trigger, registers and then creates webhook if triggerToStartFrom is given with no triggerData', async () => {
 			// ARRANGE
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 			const webhook2 = mock<IWebhookData>({
@@ -215,7 +283,7 @@ describe('TestWebhooks', () => {
 			expect(registerOrder).toBeLessThan(createOrder);
 			expect(registrations.register.mock.calls[0][0].webhook.node).toBe(webhook2.node);
 			expect(webhookService.createWebhookIfNotExists.mock.calls[0][1].node).toBe(webhook2.node);
-			expect(needsWebhook).toBe(true);
+			expect(needsWebhook).toEqual(['trigger']);
 		});
 
 		test('should use sessionId-based path for ChatTrigger nodes when chatSessionId is provided', async () => {
@@ -567,7 +635,7 @@ describe('TestWebhooks', () => {
 						workflowIsActive,
 					});
 
-					expect(needsWebhook).toBe(true);
+					expect(needsWebhook).toEqual(['Webhook', 'Telegram Trigger']);
 				}
 			},
 		);

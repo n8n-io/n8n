@@ -297,7 +297,10 @@ describe('chat trigger test run with end-user credentials', () => {
 		const vendorScope = mockVendorCall();
 
 		const listening = await startListening(workflow, chatSessionId);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			registeredTriggerNodes: ['When chat message received'],
+		});
 
 		const response = await sendChatMessage(workflow, chatSessionId);
 
