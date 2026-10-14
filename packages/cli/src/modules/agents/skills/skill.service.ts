@@ -20,13 +20,8 @@ import {
 } from '../repositories/skill.repository';
 import { getAgentSkillHash } from '../utils/agent-config-hash';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
+import { SkillNameTakenError } from './skill-name-taken.error';
 import { findIntroducedNameClashes, renameIntroducesClash, skillNameKey } from './skill-names';
-
-/**
- * Skill names are unique in each scope (one agent, one project, the instance), by the
- * same rule as inside one agent.
- */
-export const SKILL_NAME_TAKEN_MESSAGE = 'That name is taken, choose another';
 
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 export type SkillRef = { id: string; versionId?: string };
@@ -277,7 +272,10 @@ export class SkillService {
 		}
 	}
 
-	/** Refuses a name that is hard to tell apart from another skill's name in the same scope. */
+	/**
+	 * Refuses a name that is hard to tell apart from another skill's name in the same
+	 * scope: one agent, one project or the instance, by the same rule as inside one agent.
+	 */
 	private async assertNameFree(
 		name: string,
 		target: SkillTarget,
@@ -292,7 +290,7 @@ export class SkillService {
 		if (
 			names.some((other) => other.skillId !== exceptSkillId && skillNameKey(other.name) === key)
 		) {
-			throw new ConflictError(SKILL_NAME_TAKEN_MESSAGE);
+			throw new SkillNameTakenError(name);
 		}
 	}
 

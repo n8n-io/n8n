@@ -30,6 +30,8 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+
+import { SkillNameTakenError } from '@/modules/agents/skills/skill-name-taken.error';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -722,6 +724,22 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({
 				ok: true,
 				resource: { type: 'skill', id: 'skill-1' },
+			});
+		});
+
+		it('names a taken skill name instead of reporting a stale config', async () => {
+			agentSkillsService.createAndAttachSkill.mockRejectedValue(new SkillNameTakenError('Skill'));
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({ type: 'skill.upsert', skill: { name: 'Skill', body: 'do it' } }),
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				code: 'skill_name_taken',
+				agentId: 'agent-1',
+				message: expect.stringContaining('The skill name "Skill" is taken'),
 			});
 		});
 
