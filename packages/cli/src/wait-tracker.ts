@@ -166,11 +166,14 @@ export class WaitTracker {
 
 		// Wait for the old segment to settle before replacement on the same main.
 		// JobOutcomeTracker keys separate completion reports across mains.
-		if (
-			fullExecutionData.data.waitReason === 'suspended' &&
-			this.activeExecutions.has(executionId)
-		) {
-			await this.activeExecutions.getPostExecutePromise(executionId);
+		if (fullExecutionData.data.waitReason === 'suspended') {
+			// A running row is another attempt's live segment, not this suspension.
+			if (fullExecutionData.status !== 'waiting') {
+				throw new ExecutionAlreadyResumingError(executionId);
+			}
+			if (this.activeExecutions.has(executionId)) {
+				await this.activeExecutions.getPostExecutePromise(executionId);
+			}
 		}
 
 		const workflowId = fullExecutionData.workflowData.id;

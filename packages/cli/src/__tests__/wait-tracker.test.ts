@@ -243,6 +243,7 @@ describe('WaitTracker', () => {
 			const oldCompletion = createDeferredPromise<IRun | undefined>();
 			const suspended = {
 				...execution,
+				status: 'waiting' as const,
 				data: { ...execution.data, waitReason: 'suspended' as const },
 			};
 			executionPersistence.findSingleExecution
@@ -258,6 +259,22 @@ describe('WaitTracker', () => {
 			oldCompletion.resolve(undefined);
 			await resuming;
 			expect(workflowRunner.run).toHaveBeenCalledOnce();
+		});
+
+		it('skips a suspended resume when the row is already running', async () => {
+			const claimed = {
+				...execution,
+				status: 'running' as const,
+				data: { ...execution.data, waitReason: 'suspended' as const },
+			};
+			executionPersistence.findSingleExecution.calledWith(execution.id).mockResolvedValue(claimed);
+			activeExecutions.has.mockReturnValueOnce(true);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				ExecutionAlreadyResumingError,
+			);
+			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('should reject when another process is already resuming the execution', async () => {
