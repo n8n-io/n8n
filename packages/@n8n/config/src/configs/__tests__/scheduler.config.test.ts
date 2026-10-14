@@ -12,11 +12,11 @@ describe('SchedulerConfig', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('flag off (defaults)', () => {
-		it('should be disabled by default', () => {
+	describe('defaults', () => {
+		it('should be enabled by default', () => {
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.enabled).toBe(false);
+			expect(scheduler.enabled).toBe(true);
 		});
 
 		it('should use default tunables', () => {
@@ -39,8 +39,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.reaperTimeoutSeconds).toBe(60);
 			expect(scheduler.retentionTimeoutSeconds).toBe(5 * 60);
 			expect(scheduler.maxConcurrentPasses).toBe(10);
-			expect(scheduler.triggerNodeMode).toBe('legacy');
-			expect(scheduler.allowSkipDurableScheduler).toBe(false);
+			expect(scheduler.triggerNodeMode).toBe('new');
 			expect(scheduler.maxAttempts).toBe(5);
 			expect(scheduler.taskTimeoutSeconds).toBe(300);
 			expect(scheduler.enabledForPollTriggers).toBe(false);
@@ -49,13 +48,21 @@ describe('SchedulerConfig', () => {
 		});
 	});
 
-	describe('flag on (env overrides)', () => {
-		it('should enable via env', () => {
-			vi.stubEnv('N8N_SCHEDULER_ENABLED', 'true');
+	describe('env overrides', () => {
+		it('should disable via env', () => {
+			vi.stubEnv('N8N_SCHEDULER_ENABLED', 'false');
 
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.enabled).toBe(true);
+			expect(scheduler.enabled).toBe(false);
+		});
+
+		it('should allow the legacy trigger node mode via env', () => {
+			vi.stubEnv('N8N_SCHEDULER_TRIGGER_NODE_MODE', 'legacy');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.triggerNodeMode).toBe('legacy');
 		});
 
 		it('should override each tunable from env', () => {
@@ -102,14 +109,6 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.enabledForPollTriggers).toBe(true);
 			expect(scheduler.pollTimeoutSeconds).toBe(30);
 			expect(scheduler.enabledForSystemTasks).toBe(true);
-		});
-
-		it('should expose the durable-scheduler skip escape hatch via env', () => {
-			vi.stubEnv('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER', 'true');
-
-			const { scheduler } = Container.get(GlobalConfig);
-
-			expect(scheduler.allowSkipDurableScheduler).toBe(true);
 		});
 
 		it('should fall back to the default poll timeout when the value exceeds one day', () => {

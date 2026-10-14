@@ -31,7 +31,6 @@ import {
 	apiKeyScopesSatisfy,
 	resolvePublicApiRoutes,
 	resolveRouteArgs,
-	scopeRequirementFromString,
 	scopeRequirementToString,
 	scopesInRequirement,
 } from '../public-api-route-resolver';
@@ -212,29 +211,6 @@ describe('public-api-route-resolver', () => {
 		it('never satisfies a requirement when no scopes are granted', () => {
 			expect(apiKeyScopesSatisfy(undefined, 'tag:list')).toBe(false);
 			expect(apiKeyScopesSatisfy([], { anyOf: ['tag:list'] })).toBe(false);
-		});
-	});
-
-	describe('scopeRequirementFromString', () => {
-		it('returns a plain scope for a single entry', () => {
-			expect(scopeRequirementFromString('tag:list')).toBe('tag:list');
-		});
-
-		it('reads a comma-joined eov scope string as anyOf', () => {
-			expect(scopeRequirementFromString('project:export,workflow:export')).toEqual({
-				anyOf: ['project:export', 'workflow:export'],
-			});
-		});
-
-		it('tolerates surrounding whitespace', () => {
-			expect(scopeRequirementFromString('project:export, workflow:export')).toEqual({
-				anyOf: ['project:export', 'workflow:export'],
-			});
-		});
-
-		it('round-trips through scopeRequirementToString', () => {
-			const serialized = 'project:export,workflow:export';
-			expect(scopeRequirementToString(scopeRequirementFromString(serialized))).toBe(serialized);
 		});
 	});
 

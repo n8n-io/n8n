@@ -38,6 +38,7 @@ import {
 	calculateWorkflowChecksum,
 	type INode,
 } from 'n8n-workflow';
+import { ExecuteWorkflow } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -103,7 +104,11 @@ beforeAll(async () => {
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
-	await utils.initNodeTypes();
+	// Use the real node description to test parameter defaults and visibility.
+	await utils.initNodeTypes({
+		...utils.buildDefaultNodes(),
+		'n8n-nodes-base.executeWorkflow': { type: new ExecuteWorkflow(), sourcePath: '' },
+	});
 });
 
 beforeEach(async () => {
@@ -1359,6 +1364,131 @@ describe('PATCH /workflows/:workflowId', () => {
 			},
 		);
 
+		describe('sub-workflow loaded from a URL or file', () => {
+			const UNINSPECTABLE_SOURCE_MESSAGE =
+				'The \'Sub\' node loads its sub-workflow from a source that is resolved only when the workflow runs, so its credential access cannot be checked on save. Use the "Database" or "Define Below" source instead.';
+
+			const remoteSubworkflowNode = (workflowUrl = 'https://example.com/workflow.json') => ({
+				id: 'uuid-sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.1,
+				position: [0, 0] as [number, number],
+				parameters: { source: 'url', workflowUrl },
+			});
+
+			it('rejects a member adding such a node to a shared workflow', async () => {
+				const workflow = await createWorkflow({}, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [remoteSubworkflowNode()],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member creating a workflow with such a node', async () => {
+				const response = await authMemberAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [remoteSubworkflowNode()],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member adding the HITL tool variant of such a node', async () => {
+				const workflow = await createWorkflow({}, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [{ ...remoteSubworkflowNode(), type: 'n8n-nodes-base.executeWorkflowHitlTool' }],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('rejects a member changing an execution setting of an existing node', async () => {
+				const workflow = await createWorkflow({ nodes: [remoteSubworkflowNode()] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [{ ...remoteSubworkflowNode(), retryOnFail: true }],
+				});
+
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+			});
+
+			it('preserves a renamed URL node when the editor omits default and hidden parameters', async () => {
+				// The editor omits the default mode and the old database workflow ID.
+				const stored = {
+					...remoteSubworkflowNode(),
+					parameters: {
+						...remoteSubworkflowNode().parameters,
+						mode: 'once',
+						workflowId: { __rl: true, value: 'old-workflow', mode: 'id' },
+					},
+				};
+				const workflow = await createWorkflow({ nodes: [stored] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [{ ...remoteSubworkflowNode(), name: 'Renamed' }],
+				});
+
+				expect(response.statusCode).toBe(200);
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual([{ ...stored, name: 'Renamed' }]);
+			});
+
+			it('rejects a member changing a stored URL and leaves the node unchanged', async () => {
+				const workflow = await createWorkflow({ nodes: [remoteSubworkflowNode()] }, owner);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const changed = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [remoteSubworkflowNode('https://example.com/other.json')],
+				});
+
+				expect(changed.statusCode).toBe(400);
+				expect(changed.body.message).toBe(UNINSPECTABLE_SOURCE_MESSAGE);
+
+				const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(saved.nodes).toEqual([remoteSubworkflowNode()]);
+			});
+
+			it('lets the owner create and change such a node', async () => {
+				const createResponse = await authOwnerAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [remoteSubworkflowNode()],
+				});
+				expect(createResponse.statusCode).toBe(200);
+				const { id, versionId } = createResponse.body.data;
+
+				const response = await authOwnerAgent.patch(`/workflows/${id}`).send({
+					versionId,
+					nodes: [remoteSubworkflowNode('https://example.com/other.json')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.workflowUrl).toBe(
+					'https://example.com/other.json',
+				);
+			});
+		});
+
 		describe('restoring a history version', () => {
 			const nodeWith = (credential: { id: string; name: string }, url = 'https://v1.test') => ({
 				id: 'uuid-restore-1',
@@ -1465,6 +1595,60 @@ describe('PATCH /workflows/:workflowId', () => {
 				expect(response.body.message).toBe(
 					"The version to restore is not in this workflow's history.",
 				);
+			});
+		});
+
+		describe('sub-workflow with an inspectable source', () => {
+			const databaseSubworkflowNode = (workflowId: string) => ({
+				id: 'uuid-sub-db',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0] as [number, number],
+				parameters: {
+					source: 'database',
+					workflowId: { __rl: true, value: workflowId, mode: 'id' },
+				},
+			});
+
+			it('lets a member change a stored node that loads its sub-workflow from the database', async () => {
+				const workflow = await createWorkflow(
+					{ nodes: [databaseSubworkflowNode('wf-old')] },
+					owner,
+				);
+				await shareWorkflowWithUsers(workflow, [member]);
+
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [databaseSubworkflowNode('wf-new')],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.workflowId.value).toBe('wf-new');
+			});
+
+			it('lets a member create a workflow with a node that defines its sub-workflow inline', async () => {
+				const response = await authMemberAgent.post('/workflows').send({
+					name: 'test',
+					active: false,
+					connections: {},
+					nodes: [
+						{
+							id: 'uuid-sub-inline',
+							name: 'Sub',
+							type: 'n8n-nodes-base.executeWorkflow',
+							typeVersion: 1.2,
+							position: [0, 0],
+							parameters: {
+								source: 'parameter',
+								workflowJson: JSON.stringify({ nodes: [], connections: {} }),
+							},
+						},
+					],
+				});
+
+				expect(response.statusCode).toBe(200);
+				expect(response.body.data.nodes[0].parameters.source).toBe('parameter');
 			});
 		});
 

@@ -68,7 +68,7 @@ function makeService({
 		reconstructionService,
 		credentialsService,
 		sandboxRuntimeService,
-		createAgentSkillRefsService(agentRepository),
+		createAgentSkillRefsService(),
 	);
 
 	return { service, agentRepository, publisher, reconstructionService };
@@ -592,7 +592,6 @@ describe('AgentRuntimeCacheService', () => {
 				skills: [],
 			},
 			tools: { tool: { name: 'Tool' } },
-			skills: { skill: { name: 'Skill' } },
 			publishedById: 'publisher-1',
 		};
 		const runtime = makeRuntime();
@@ -614,9 +613,9 @@ describe('AgentRuntimeCacheService', () => {
 				agent: expect.objectContaining({
 					schema: activeVersion.schema,
 					tools: activeVersion.tools,
-					skills: activeVersion.skills,
 				}),
 				skillRefs: activeVersion.schema.skills,
+				skills: {},
 			},
 			expect.anything(),
 			'production',
@@ -644,7 +643,6 @@ describe('AgentRuntimeCacheService', () => {
 					instructions: 'Published instructions',
 				},
 				tools: {},
-				skills: {},
 			} as Agent['activeVersion'],
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);

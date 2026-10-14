@@ -2,11 +2,10 @@ import { EventService } from '@n8n/backend-services';
 import { mockLogger, createWorkflow, testDb, createWorkflowHistory } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import repeat from 'lodash/repeat';
-import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -14,8 +13,6 @@ import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-hi
 
 describe('compacting cycle', () => {
 	let compactionService: WorkflowHistoryCompactionService;
-	const instanceSettings = Container.get(InstanceSettings);
-	instanceSettings.markAsLeader();
 
 	const now = Date.now();
 	// before minimum compacting age
@@ -64,8 +61,6 @@ describe('compacting cycle', () => {
 			Container.get(GlobalConfig).workflowHistoryCompaction,
 			Container.get(GlobalConfig),
 			mockLogger(),
-			instanceSettings,
-			Container.get(DbConnection),
 			Container.get(WorkflowHistoryRepository),
 			Container.get(EventService),
 		);
@@ -199,8 +194,6 @@ describe('compacting cycle', () => {
 			},
 			Container.get(GlobalConfig),
 			mockLogger(),
-			instanceSettings,
-			Container.get(DbConnection),
 			Container.get(WorkflowHistoryRepository),
 			Container.get(EventService),
 		);

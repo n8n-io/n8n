@@ -1,6 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { defineComponent, h, onMounted } from 'vue';
-import { nextTick } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -169,27 +168,8 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 	});
 
-	it('updates allowed tools from the picker and chips', async () => {
+	it('shows no allowed tools field', () => {
 		const wrapper = mountViewer({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-			},
-			availableTools: [{ name: 'load_workflow', label: 'Load workflow', icon: 'workflow' }],
-		});
-
-		await wrapper.find('[data-testid="agent-skill-add-allowed-tool"]').trigger('click');
-		await flushPromises();
-		await nextTick();
-
-		const option = document.querySelector('[data-testid="agent-skill-allowed-tool-option"]');
-		expect(option).toBeInTheDocument();
-		await (option as HTMLElement).click();
-		await nextTick();
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: ['load_workflow'] }]);
-		await wrapper.setProps({
 			skill: {
 				name: 'Research',
 				description: 'Use for research',
@@ -198,13 +178,7 @@ describe('AgentSkillViewer', () => {
 			},
 		});
 
-		expect(wrapper.find('[data-testid="agent-skill-allowed-tool-chip"]').text()).toContain(
-			'Load workflow',
-		);
-
-		await wrapper.find('[data-testid="agent-skill-allowed-tool-remove"]').trigger('click');
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: undefined }]);
+		expect(wrapper.find('[data-testid="agent-skill-allowed-tools"]').exists()).toBe(false);
 	});
 });
 

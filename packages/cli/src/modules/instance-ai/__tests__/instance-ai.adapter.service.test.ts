@@ -1970,7 +1970,7 @@ describe('executeNodeService adapter', () => {
 		mockedUserHasScopes.mockReset();
 	});
 
-	it('runs the node in the bound project after asserting execute scope there', async () => {
+	it('runs the node in the bound project after asserting create and execute scopes there', async () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 		const executeNodeService = {
 			run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
@@ -1980,16 +1980,19 @@ describe('executeNodeService adapter', () => {
 		const context = service.createContext(mockUser, { projectId: 'team-project-1' });
 		await context.executeNodeService?.execute(executeRequest);
 
-		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['workflow:execute'], false, {
-			projectId: 'team-project-1',
-		});
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(
+			mockUser,
+			['workflow:create', 'workflow:execute'],
+			false,
+			{ projectId: 'team-project-1' },
+		);
 		expect(executeNodeService.run).toHaveBeenCalledWith(
 			mockUser,
 			expect.objectContaining({ projectId: 'team-project-1' }),
 		);
 	});
 
-	it('does not run when the user lacks execute scope in the bound project', async () => {
+	it('does not run when the user lacks the required scopes in the bound project', async () => {
 		mockedUserHasScopes.mockResolvedValue(false);
 		const executeNodeService = { run: vi.fn() };
 		const { service, mockUser } = createNodeAdapterServiceForTests([], { executeNodeService });
@@ -7830,24 +7833,24 @@ describe('createContext — builder delegate wiring', () => {
 
 	it.each([
 		{
-			name: 'omits new Agent builds when Agents are disabled',
+			name: 'omits Agent builds when Settings > Agents is off',
 			moduleActive: true,
-			resumeAgentBuild: false,
+			agentsEnabled: false,
 			expected: false,
 		},
 		{
-			name: 'keeps admitted Agent builds when Agents are disabled',
+			name: 'wires Agent builds when the module is active and Settings > Agents is on',
 			moduleActive: true,
-			resumeAgentBuild: true,
+			agentsEnabled: true,
 			expected: true,
 		},
 		{
-			name: 'omits admitted Agent builds when the module is inactive',
+			name: 'omits Agent builds when the module is inactive',
 			moduleActive: false,
-			resumeAgentBuild: true,
+			agentsEnabled: true,
 			expected: false,
 		},
-	])('$name', async ({ moduleActive, resumeAgentBuild, expected }) => {
+	])('$name', async ({ moduleActive, agentsEnabled, expected }) => {
 		const { createOrchestrationTools } = await import(
 			'../../../../../@n8n/instance-ai/dist/tools/index.js'
 		);
@@ -7856,13 +7859,12 @@ describe('createContext — builder delegate wiring', () => {
 		mockBuilderModuleActive(delegate);
 		const moduleRegistry = Container.get(ModuleRegistry);
 		vi.mocked(moduleRegistry.isActive).mockReturnValue(moduleActive);
-		moduleRegistry.settings.set('agents', { enabled: false });
+		moduleRegistry.settings.set('agents', { enabled: agentsEnabled });
 
 		const context = service.createContext(mockUser, {
 			threadId: 'thread-1',
 			projectId: 'proj-1',
 			agentId: 'agent-42',
-			resumeAgentBuild,
 		});
 		const orchestrationContext = mock<OrchestrationContext>();
 		orchestrationContext.domainContext = context;
@@ -8257,6 +8259,41 @@ describe('createCredentialAdapter', () => {
 
 			await expect(credentialService.test('cred-1')).rejects.toBe(refusal);
 			expect(test).not.toHaveBeenCalled();
+		});
+
+		it('writes the stand-in URL into the credential field an eval target names', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({ apiKey: 'secret' });
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { service, mockUser } = adapterWith(decryptForUse, test);
+			const { credentialService } = service.createContext(mockUser, {
+				getCredentialTestTarget: () => ({
+					credentialType: 'slackApi',
+					baseUrl: 'http://stand-in.test:4100',
+					urlField: 'url',
+				}),
+			});
+
+			await credentialService.test('cred-1');
+
+			expect(test).toHaveBeenCalledWith(
+				mockUser.id,
+				expect.objectContaining({
+					data: { apiKey: 'secret', url: 'http://stand-in.test:4100' },
+				}),
+			);
+		});
+
+		it('tests the stored data unchanged when the thread has no target', async () => {
+			const decryptForUse = vi.fn().mockResolvedValue({ apiKey: 'secret' });
+			const test = vi.fn().mockResolvedValue({ status: 'OK', message: 'ok' });
+			const { credentialService, mockUser } = adapterWith(decryptForUse, test);
+
+			await credentialService.test('cred-1');
+
+			expect(test).toHaveBeenCalledWith(
+				mockUser.id,
+				expect.objectContaining({ data: { apiKey: 'secret' } }),
+			);
 		});
 	});
 

@@ -95,7 +95,6 @@ async function seedIndexedAgent(
 		}),
 		integrations: [],
 		tools: {},
-		skills: {},
 		versionId: 'draft-version-1',
 	});
 	await agentRepo.save(agent);
@@ -106,7 +105,6 @@ async function seedIndexedAgent(
 		agentId: agent.id,
 		schema: agent.schema,
 		tools: agent.tools,
-		skills: agent.skills,
 		publishedBy: user,
 	});
 	agent.activeVersionId = publishedVersionId;

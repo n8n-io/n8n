@@ -134,7 +134,7 @@ const statusColor = computed(() => {
 }
 
 .sectionTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	margin-bottom: var(--spacing--3xs);

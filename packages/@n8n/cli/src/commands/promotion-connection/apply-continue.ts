@@ -6,7 +6,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionConnectionApplyContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue an Apply that was blocked on bindings, after they are set up. Pass the config ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
+		'Continue a blocked Apply after you resolve its bindings, access requirements, or conflicts. Pass the config ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the source changed since then and 4 when bindings are still missing or a destructive data table change or project deletion is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-connection apply-continue conn-1 --expected-config-id=cfg-1 --expected-branch=main --expected-commit-sha=<full sha>',
@@ -19,7 +19,7 @@ export default class PromotionConnectionApplyContinue extends PromotionApplyComm
 		...expectedSourceFlags({ required: true }),
 		confirmDestructiveChanges: Flags.boolean({
 			description:
-				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',
+				'Also apply data table changes that remove or retype columns, and delete the team projects that the package does not hold. The values in those columns and everything in those projects are removed.',
 			aliases: ['confirm-destructive-changes'],
 		}),
 	};

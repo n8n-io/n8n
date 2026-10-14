@@ -1,8 +1,12 @@
+import { DateTime } from 'luxon';
+
 import { ExpressionExtensionError } from '../../errors/expression-extension.error';
 import { ExpressionError } from '../../errors/expression.error';
+import { extend } from '../../extensions';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	EXTENSION_METHODS,
 	ITERATOR_NATIVES,
 	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
@@ -10,6 +14,8 @@ import {
 	MAX_WORK,
 	NUMBER_METHODS,
 	STRING_METHODS,
+	TIME_MEMBERS,
+	TIME_METHODS,
 	hasOwn,
 	isArray,
 	isObj,
@@ -118,6 +124,10 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): unknown {
+	if (node.object.kind === 'timeRoot') {
+		return evalTimeRead(env.data[node.object.name], TIME_MEMBERS.get(toStr(node.key)));
+	}
+
 	const object = evalNode(node.object, env);
 
 	if (node.optional && (object === null || object === undefined)) {
@@ -352,11 +362,17 @@ function evalReceiver(
 }
 
 function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
-	const receiver = evalReceiver(node, env);
-
 	if (node.receiver.kind === 'nodeRef') {
-		return evalNodeRefCall(receiver, node.method);
+		return evalNodeRefCall(evalReceiver(node, env), node.method);
 	}
+
+	if (node.receiver.kind === 'timeRoot') {
+		return evalTimeRead(evalReceiver(node, env), TIME_METHODS.get(node.method));
+	}
+
+	if (EXTENSION_METHODS.has(node.method)) return evalExtension(node, env);
+
+	const receiver = evalReceiver(node, env);
 
 	// An own property shadowing the method (an engine-resolved $parameter value
 	// can carry one) would take precedence in the engines.
@@ -365,11 +381,7 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 	}
 
 	const method = methodFor(receiver, node.method);
-
-	const args = node.args.map((argument) => evalNode(argument, env));
-	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
-		throw new EngineFallbackError();
-	}
+	const args = evalArgs(node, env);
 
 	if (isArray(receiver)) {
 		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
@@ -378,6 +390,44 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 	env.charge(preflightSize(receiver, node.method, args));
 
 	return bounded(method.apply(receiver, args));
+}
+
+function evalArgs(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown[] {
+	const args = node.args.map((argument) => evalNode(argument, env));
+	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
+		throw new EngineFallbackError();
+	}
+
+	return args;
+}
+
+/**
+ * An allowlisted extension runs through extend(), the same host dispatch the
+ * engines call. extendSyntax rewrites the call into that dispatch whatever
+ * the receiver holds: an own property does not shadow it, and a missing
+ * receiver is extend()'s own error, not a TypeError. Every extension is at
+ * most linear in its receiver, so the receiver's content is the work charged
+ * and the pre-flight bound. A receiver that can be a root proxy is declined
+ * at parse time (mayBeRoot), and a result the engines would copy
+ * differently (a Date, a class instance, an iterator) is theirs too.
+ */
+function evalExtension(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
+	const receiver = evalNode(node.receiver, env);
+	if (node.optional && (receiver === null || receiver === undefined)) {
+		throw chainShortCircuit;
+	}
+
+	const args = evalArgs(node, env);
+	const weight = contentWeight(receiver, MAX_RESULT_LENGTH);
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+	env.charge(weight);
+
+	const result: unknown = extend(receiver, node.method, args);
+	if (isObj(result) && !isArray(result) && Object.getPrototypeOf(result) !== Object.prototype) {
+		throw new EngineFallbackError();
+	}
+
+	return bounded(result);
 }
 
 /**
@@ -427,6 +477,21 @@ function evalNodeRefCall(proxy: unknown, method: string): unknown {
 	if (typeof fn !== 'function') throw new EngineFallbackError();
 
 	return bounded(fn.call(proxy));
+}
+
+/**
+ * A captured Luxon getter or zero-argument method on `$now`/`$today`. The
+ * root is the proxy's own DateTime (anything else is the engine's), and the
+ * result is a primitive by allowlist; a non-primitive would mean a patched
+ * prototype, which is also the engine's.
+ */
+function evalTimeRead(root: unknown, fn: NativeMethod | undefined): unknown {
+	if (fn === undefined || !DateTime.isDateTime(root)) throw new EngineFallbackError();
+
+	const result = fn.call(root);
+	if (!isPrimitive(result)) throw new EngineFallbackError();
+
+	return result;
 }
 
 function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
@@ -498,6 +563,8 @@ function evalNode(node: SimpleNode, env: Env): unknown {
 			return env.data[node.name];
 		case 'nodeRef':
 			return evalNodeRef(node, env);
+		case 'timeRoot':
+			return env.data[node.name];
 		case 'undefined':
 			return undefined;
 		case 'member':

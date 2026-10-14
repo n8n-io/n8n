@@ -57,10 +57,14 @@ export interface BuildTeamsManifestOptions {
 	settings?: AgentTeamsIntegrationSettings;
 }
 
+/** The placeholder Microsoft's own resource-specific consent examples carry. */
+const RSC_RESOURCE = 'https://RscBasedStoreApp';
+
 /**
- * Teams delivers only @mentions in a shared conversation unless the app asks to
- * read everything there. Each name is paired with the scope it depends on, so a
- * permission cannot be emitted without its surface. `conversationType` is the
+ * Each surface asks to read its messages, because Teams leaves files out of a
+ * shared conversation's activity and they are read through Graph instead. The
+ * permission also makes Teams deliver every message there, not only @mentions;
+ * `setting` decides whether the agent acts on them. `conversationType` is the
  * surface as Teams reports it on an activity.
  */
 export const READ_PERMISSIONS = [
@@ -123,7 +127,7 @@ export class TeamsManifestService {
 					botId: options.botId,
 					scopes: this.buildScopes(options.settings),
 					isNotificationOnly: false,
-					supportsFiles: false,
+					supportsFiles: true,
 				},
 			],
 			permissions: ['identity', 'messageTeamMembers'],
@@ -164,18 +168,22 @@ export class TeamsManifestService {
 	/**
 	 * `webApplicationInfo` is required alongside resource-specific permissions,
 	 * so both appear together or neither does.
+	 *
+	 * `resource` does nothing in a resource-specific grant, but Microsoft answers
+	 * with an error when it is missing, so it carries the placeholder their own
+	 * examples use.
 	 */
 	private buildReadPermissions(
 		botId: string,
 		availability: BuildTeamsManifestOptions['settings'],
 	): Partial<TeamsAgentAppManifest> {
 		const resourceSpecific = READ_PERMISSIONS.filter(
-			({ setting, requires }) => availability?.[setting] && availability?.[requires],
+			({ requires }) => availability?.[requires],
 		).map(({ name }) => ({ name, type: 'Application' as const }));
 
 		if (resourceSpecific.length === 0) return {};
 		return {
-			webApplicationInfo: { id: botId },
+			webApplicationInfo: { id: botId, resource: RSC_RESOURCE },
 			authorization: { permissions: { resourceSpecific } },
 		};
 	}
