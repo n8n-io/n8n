@@ -18,8 +18,14 @@ const workflowSourceFileBindingSchema = z.object({
 	/** False when the source was read while parameter values were hidden. */
 	parameterValuesIncluded: z.boolean().optional(),
 	setupPending: z.boolean().optional(),
-	/** Setup scope of this run's builds so far. `nodeNames` undefined = every node. */
-	setupScope: z.object({ runId: z.string(), nodeNames: z.array(z.string()).optional() }).optional(),
+	/** Setup scope of this work item's builds so far. `nodeNames` undefined = every node. */
+	setupScope: z
+		.object({
+			workItemId: z.string(),
+			runId: z.string().optional(),
+			nodeNames: z.array(z.string()).optional(),
+		})
+		.optional(),
 	setupPreferences: z
 		.object({
 			runId: z.string().optional(),

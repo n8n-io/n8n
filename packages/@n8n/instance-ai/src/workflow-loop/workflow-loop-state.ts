@@ -430,10 +430,10 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	/**
-	 * Nodes this run's builds added or modified relative to the workflow saved
+	 * Nodes this work item's builds added or modified relative to the workflow saved
 	 * before each build. Setup routing and `workflows(action="setup")` requests are
 	 * scoped to these nodes so editing one node never routes pre-existing,
-	 * unrelated nodes into setup. Absent when this run created the workflow
+	 * unrelated nodes into setup. Absent when this work item created the workflow
 	 * or the prior state was unreadable — every node is then in scope.
 	 */
 	changedNodeNames: z.array(z.string()).optional(),

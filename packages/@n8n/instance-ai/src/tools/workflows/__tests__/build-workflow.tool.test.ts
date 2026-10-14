@@ -1631,8 +1631,9 @@ describe('createBuildWorkflowTool', () => {
 		// leaves the pending node untouched.
 		async function rebuildUnchanged({
 			nextRunId,
+			nextWorkItemId,
 			failInBetween = false,
-		}: { nextRunId?: string; failInBetween?: boolean } = {}) {
+		}: { nextRunId?: string; nextWorkItemId?: string; failInBetween?: boolean } = {}) {
 			vi.mocked(analyzeWorkflow).mockResolvedValue([pendingWebhook]);
 			const { context, filePath } = makeContext({ source: 'workflow source' });
 			const tool = createBuildWorkflowTool(context);
@@ -1654,7 +1655,7 @@ describe('createBuildWorkflowTool', () => {
 				});
 			}
 			if (nextRunId) context.runId = nextRunId;
-			return await executeTool<BuildToolOutput>(tool, { filePath });
+			return await executeTool<BuildToolOutput>(tool, { filePath, workItemId: nextWorkItemId });
 		}
 
 		it.each([false, true])(
@@ -1667,10 +1668,18 @@ describe('createBuildWorkflowTool', () => {
 			},
 		);
 
-		it('drops the earlier scope in a later run', async () => {
-			expect(await rebuildUnchanged({ nextRunId: 'run-2' })).toMatchObject({
+		it.each([
+			['a later run of the same work item', 'required', { nextRunId: 'run-2' }],
+			['another work item in the same run', 'required', { nextWorkItemId: 'wi-2' }],
+			[
+				'another work item in a later run',
+				'not_required',
+				{ nextRunId: 'run-2', nextWorkItemId: 'wi-2' },
+			],
+		])('rebuild in %s: setup %s', async (_label, status, options) => {
+			expect(await rebuildUnchanged(options)).toMatchObject({
 				success: true,
-				setupRequirement: { status: 'not_required' },
+				setupRequirement: { status },
 			});
 		});
 	});
