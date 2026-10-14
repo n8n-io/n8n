@@ -1,5 +1,5 @@
 import { runMemoryBaseline } from './memory-baseline';
-import { test } from '../../fixtures/base';
+import { test } from 'n8n-playwright/containers';
 
 test.use({
 	capability: {

@@ -8087,6 +8087,10 @@ importers:
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/quality/efficiency:
+    dependencies:
+      n8n-playwright:
+        specifier: workspace:*
+        version: link:../testing/playwright
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -8094,9 +8098,6 @@ importers:
       '@playwright/test':
         specifier: catalog:e2e
         version: 1.62.1
-      n8n-playwright:
-        specifier: workspace:*
-        version: link:../testing/playwright
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)

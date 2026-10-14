@@ -587,7 +587,7 @@ Push to master
 | Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
-| Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
+| Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
