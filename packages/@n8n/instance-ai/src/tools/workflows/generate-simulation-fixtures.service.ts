@@ -84,7 +84,7 @@ Dates and timestamps MUST be derived from the "## Date anchors" block at the end
 Special node types:
 - Trigger nodes (marked as the workflow's simulated event source): emit the EVENT PAYLOAD the trigger delivers into the workflow — the received email/message/record object itself — never an API response envelope, acknowledgement, or request metadata.
 - Form nodes (a mid-workflow form page): emit the submitted field values — one key per field defined in the node's formFields, with plausible values, plus "submittedAt".
-- Pass-through nodes (a timer Wait, Text Classifier, Sentiment Analysis): their real output IS their input. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving — a timer Wait and Text Classifier pass it through unchanged; Sentiment Analysis passes it through and adds a "sentimentAnalysis" object.
+- Pass-through nodes (a timer Wait, Text Classifier, Sentiment Analysis): their real output IS their input. Emit data matching what the listed upstream nodes would produce, so downstream expressions keep resolving — a timer Wait passes it through unchanged; Text Classifier does too, unless its parameters turn on includeConfidenceScores, when it also adds a "classification" object; Sentiment Analysis passes it through and adds a "sentimentAnalysis" object.
 - A Wait set to resume on a webhook call or a form submission does NOT pass its input through: emit what resumes it — the received request body, or one key per field in the node's own formFields plus "submittedAt".
 
 Output: a single JSON object whose keys are node names and whose values are arrays of n8n pin-data items in the form { "json": { ... } }. One item per node is enough.
@@ -165,14 +165,14 @@ function buildUpstreamContext(
  */
 const PASS_THROUGH_AI_ROOTS = new Map<string, readonly string[]>([
 	// Value = the keys the node adds ON TOP of its input. Empty means a pure
-	// pass-through, whose output is the input and nothing else. Both roots can
-	// be flipped to `simulate` by a credentialless language-model sub-node
-	// (see withSimulatedCredentiallessAiRootVerdicts).
-	['@n8n/n8n-nodes-langchain.textClassifier', []],
+	// pass-through, whose output is the input and nothing else. This root, and
+	// the classifier below, can be flipped to `simulate` by a credentialless
+	// language-model sub-node (see withSimulatedCredentiallessAiRootVerdicts).
 	['@n8n/n8n-nodes-langchain.sentimentAnalysis', ['sentimentAnalysis']],
 ]);
 
 const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
+const TEXT_CLASSIFIER_NODE_TYPE = '@n8n/n8n-nodes-langchain.textClassifier';
 
 /**
  * The keys a pass-through node adds on top of its input, or `undefined` when
@@ -185,8 +185,14 @@ const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
  * throw away the only output they really have.
  */
 function passThroughAddedKeys(node: NamedNode): readonly string[] | undefined {
-	if (node.type !== WAIT_NODE_TYPE) return PASS_THROUGH_AI_ROOTS.get(node.type);
 	const params = isRecord(node.parameters) ? node.parameters : {};
+
+	if (node.type === TEXT_CLASSIFIER_NODE_TYPE) {
+		const options = isRecord(params.options) ? params.options : {};
+		return options.includeConfidenceScores === true ? ['classification'] : [];
+	}
+
+	if (node.type !== WAIT_NODE_TYPE) return PASS_THROUGH_AI_ROOTS.get(node.type);
 	const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';
 	return resume === 'timeInterval' || resume === 'specificTime' ? [] : undefined;
 }

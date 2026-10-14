@@ -37,53 +37,38 @@ export const Default: Story = {
 		template: '<N8nSpinner v-bind="args" />',
 	}),
 	args: {
-		type: 'dots',
+		type: 'grid',
 		size: 'medium',
 	},
 };
 
-export const Grid: Story = {
-	...Default,
-	args: {
-		type: 'grid',
-		size: 'xxlarge',
-	},
-};
+const sizes = ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'] as const;
 
-export const Variants = {
-	render: () => ({
+function renderSizes(type: 'dots' | 'ring' | 'grid') {
+	return {
 		components: { N8nSpinner },
+		setup() {
+			return { sizes };
+		},
 		template: `
 			<div style="display: flex; align-items: center; gap: var(--spacing--lg); flex-wrap: wrap;">
-				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
-					<N8nSpinner type="dots" size="medium" />
-					<span>dots</span>
-				</div>
-				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
-					<N8nSpinner type="ring" size="medium" />
-					<span>ring</span>
-				</div>
-				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
-					<N8nSpinner type="grid" size="medium" />
-					<span>grid</span>
+				<div v-for="size in sizes" :key="size" style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
+					<N8nSpinner :type="'${type}'" :size="size" />
+					<span>{{ size }}</span>
 				</div>
 			</div>
 		`,
-	}),
-} satisfies Story;
+	};
+}
 
-export const Sizes = {
-	render: () => ({
-		components: { N8nSpinner },
-		template: `
-			<div style="display: flex; align-items: center; gap: var(--spacing--sm); flex-wrap: wrap;">
-				<N8nSpinner type="dots" size="small" />
-				<N8nSpinner type="dots" size="medium" />
-				<N8nSpinner type="dots" size="large" />
-				<N8nSpinner type="ring" size="small" />
-				<N8nSpinner type="ring" size="medium" />
-				<N8nSpinner type="ring" size="large" />
-			</div>
-		`,
-	}),
-} satisfies Story;
+export const Dots: Story = {
+	render: () => renderSizes('dots'),
+};
+
+export const Ring: Story = {
+	render: () => renderSizes('ring'),
+};
+
+export const Grid: Story = {
+	render: () => renderSizes('grid'),
+};

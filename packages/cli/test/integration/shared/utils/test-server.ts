@@ -428,6 +428,10 @@ export const setupTestServer = ({
 						await import('@/modules/encryption-key-manager/encryption-key.controller.js');
 						break;
 
+					case 'trusted-sources':
+						await import('@/modules/inbound-auth-core/trusted-source.controller.js');
+						break;
+
 					case 'test-webhooks':
 						await import('@/webhooks/test-webhooks.controller.js');
 						break;

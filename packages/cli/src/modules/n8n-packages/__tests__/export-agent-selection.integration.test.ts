@@ -101,7 +101,6 @@ async function publish(agent: Agent) {
 		versionId: `${agent.id}_published`,
 		publishedBy: 'Package test',
 		schema: definition.schema && storedAgentConfig(definition.schema),
-		skills: definition.skills,
 		tools: definition.tools,
 	});
 	await repository.setActiveVersionFenced(agent.id, agent.revision, {
