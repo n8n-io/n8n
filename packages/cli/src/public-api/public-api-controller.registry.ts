@@ -50,6 +50,21 @@ function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params
 	return output.data[key];
 }
 
+/**
+ * Whether an Express route template (`/widgets/:widgetId`) matches a request path. A `:param`
+ * segment matches any single segment. Any other segment must be equal.
+ */
+function matchesPathTemplate(template: string, path: string): boolean {
+	const templateSegments = template.split('/');
+	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
+		'/',
+	);
+	return (
+		templateSegments.length === pathSegments.length &&
+		templateSegments.every((segment, i) => segment.startsWith(':') || segment === pathSegments[i])
+	);
+}
+
 // Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
 function routePath(prefix: string, req: Request): string {
 	const path = (prefix === '/' ? '' : prefix) + req.path;
@@ -66,6 +81,43 @@ export class PublicApiControllerRegistry {
 	) {}
 
 	activate(router: Router, apiVersion: string) {
+		const methodsByTemplate = new Map<string, string[]>();
+		for (const route of resolvePublicApiRoutes()) {
+			const methods = methodsByTemplate.get(route.path) ?? [];
+			methods.push(route.method.toUpperCase());
+			methodsByTemplate.set(route.path, methods);
+		}
+
+		// A URL can match several templates, for example `/:id/archive` and `/:id/:versionId`.
+		// Allow lists the methods of every template that matches this URL.
+		const allowedMethodsFor = (path: string): string[] => {
+			const allowed = new Set<string>();
+			for (const [template, methods] of methodsByTemplate) {
+				if (!matchesPathTemplate(template, path)) {
+					continue;
+				}
+				for (const method of methods) {
+					allowed.add(method);
+				}
+			}
+			return [...allowed];
+		};
+
+		// HEAD is not supported. Express would otherwise run the GET handler for it.
+		router.use((req, res, next) => {
+			if (req.method !== 'HEAD') {
+				return next();
+			}
+
+			const allowed = allowedMethodsFor(req.path);
+			if (allowed.length === 0) {
+				return next();
+			}
+
+			res.set('Allow', allowed.join(', '));
+			res.status(405).json({ message: 'HEAD method not allowed' });
+		});
+
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (!metadata.isPublicApi) continue;
@@ -74,16 +126,9 @@ export class PublicApiControllerRegistry {
 
 		// A known path with a method no controller serves.
 		// Registered after every controller, so it only runs when no route matched.
-		const allowedMethodsByPath = new Map<string, string[]>();
-		for (const route of resolvePublicApiRoutes()) {
-			const allowedMethods = allowedMethodsByPath.get(route.path) ?? [];
-			allowedMethods.push(route.method.toUpperCase());
-			allowedMethodsByPath.set(route.path, allowedMethods);
-		}
-
-		for (const [path, allowedMethods] of allowedMethodsByPath) {
+		for (const path of methodsByTemplate.keys()) {
 			router.all(path, (req, res) => {
-				res.set('Allow', allowedMethods.join(', '));
+				res.set('Allow', allowedMethodsFor(req.path).join(', '));
 				res.status(405).json({ message: `${req.method} method not allowed` });
 			});
 		}
