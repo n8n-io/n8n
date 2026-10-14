@@ -311,6 +311,14 @@ const openCount = computed(
 // Rows with a state change in flight. One change at a time keeps the revert correct.
 const savingWorkflowIds = ref<Set<string>>(new Set());
 
+// Rows with a notification in flight. Its response sets the status, so a state
+// change must wait for it.
+const notifyingWorkflowIds = ref<Set<string>>(new Set());
+
+function isBusy(workflow: AffectedWorkflow): boolean {
+	return notifyingWorkflowIds.value.has(workflow.id) || savingWorkflowIds.value.has(workflow.id);
+}
+
 // The state is a shallow ref, so replace the list to make the table update.
 function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>) {
 	state.value = {
@@ -348,7 +356,7 @@ async function onFindingStatusChange(
 	workflow: AffectedWorkflow,
 	status: MigrationFindingTriageStatus,
 ) {
-	if (status === workflow.status || savingWorkflowIds.value.has(workflow.id)) return;
+	if (status === workflow.status || isBusy(workflow)) return;
 
 	setFindingStatuses(new Map([[workflow.id, status]]));
 	setSaving([workflow.id], true);
@@ -386,10 +394,7 @@ function isSelectable(workflow: AffectedWorkflow): boolean {
  */
 function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
 	return selectedWorkflows.value.filter(
-		(workflow) =>
-			findingState(workflow) !== status &&
-			isSelectable(workflow) &&
-			!savingWorkflowIds.value.has(workflow.id),
+		(workflow) => findingState(workflow) !== status && isSelectable(workflow) && !isBusy(workflow),
 	);
 }
 
@@ -442,13 +447,10 @@ const unusedOpenWorkflows = computed(() => {
 	return state.value.affectedWorkflows.filter(
 		(workflow) =>
 			isUnresolved(workflow) &&
-			!savingWorkflowIds.value.has(workflow.id) &&
+			!isBusy(workflow) &&
 			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now),
 	);
 });
-
-// Rows with a notification in flight.
-const notifyingWorkflowIds = ref<Set<string>>(new Set());
 
 // An email goes to the owner, so a row without one has nobody to notify.
 function canNotifyRow(workflow: AffectedWorkflow): boolean {
@@ -505,10 +507,6 @@ function setNotifying(workflowIds: string[], notifying: boolean) {
 		else next.delete(workflowId);
 	}
 	notifyingWorkflowIds.value = next;
-}
-
-function isBusy(workflow: AffectedWorkflow): boolean {
-	return notifyingWorkflowIds.value.has(workflow.id) || savingWorkflowIds.value.has(workflow.id);
 }
 
 /** Emails the owner of one workflow. A second call on a notified row is a reminder. */

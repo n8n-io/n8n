@@ -1699,6 +1699,8 @@ describe('MigrationRuleDetail', () => {
 					expect(within(row).getByTestId('migration-workflow-notified-at')).toBeInTheDocument();
 					expect(screen.getByTestId('selected-items-info')).toHaveTextContent('1 row selected');
 				});
+				expect(within(getRow('Test Workflow 1')).getByRole('checkbox')).not.toBeChecked();
+				expect(within(getRow('Test Workflow 2')).getByRole('checkbox')).toBeChecked();
 				expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledTimes(1);
 				expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalledWith(
 					rootStore.restApiContext,
@@ -1706,6 +1708,30 @@ describe('MigrationRuleDetail', () => {
 					['workflow-1'],
 				);
 				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			});
+
+			it('should not change the state of a row while its notification is in flight', async () => {
+				let finishNotify = () => {};
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							finishNotify = () => resolve({ notifiedWorkflowIds: ['workflow-1'], skipped: [] });
+						}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await userEvent.click(screen.getByTestId('migration-bulk-notify-button'));
+
+				expect(screen.getByTestId('migration-bulk-wont-fix-button')).toBeDisabled();
+				finishNotify();
+				await waitFor(() =>
+					expect(
+						within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+					).toHaveTextContent('Notified'),
+				);
+				expect(breakingChangesApi.updateFindingStatuses).not.toHaveBeenCalled();
 			});
 
 			it('should disable the action when no selected row has an owner', async () => {
